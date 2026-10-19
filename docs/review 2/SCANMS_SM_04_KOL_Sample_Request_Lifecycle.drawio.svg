@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg content="<mxfile host=&quot;Electron&quot; modified=&quot;2026-10-18T18:09:49.662Z&quot; agent=&quot;SCANMS&quot; version=&quot;21.0.0&quot; type=&quot;device&quot;>
+  <diagram id=&quot;sm04&quot; name=&quot;4. KOL Sample Request&quot;>
+    <mxGraphModel dx=&quot;1290&quot; dy=&quot;880&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1210&quot; pageHeight=&quot;800&quot; math=&quot;0&quot; shadow=&quot;0&quot;>
+      <root>
+        <mxCell id=&quot;0&quot;/>
+<mxCell id=&quot;1&quot; parent=&quot;0&quot;/>
+
+        <mxCell id=&quot;st_start&quot; value=&quot;&quot; style=&quot;ellipse;fillColor=#000000;strokeColor=#000000;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;46&quot; y=&quot;61&quot; width=&quot;28&quot; height=&quot;28&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_start&quot; value=&quot;&lt;b&gt;Start&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;30&quot; y=&quot;39&quot; width=&quot;60&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_pending&quot; value=&quot;&lt;b&gt;Pending Review&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_rejected&quot; value=&quot;&lt;b&gt;Rejected&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;50&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_rejected&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1065&quot; y=&quot;60&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_rejected&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;92&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_approved&quot; value=&quot;&lt;b&gt;Approved&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;170&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_shipped&quot; value=&quot;&lt;b&gt;Shipped&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;280&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_received&quot; value=&quot;&lt;b&gt;Received&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;390&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_overdue&quot; value=&quot;&lt;b&gt;Overdue&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;390&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_overdue&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1065&quot; y=&quot;400&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_overdue&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;1045&quot; y=&quot;432&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_video_submitted&quot; value=&quot;&lt;b&gt;Video Submitted&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;520&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_revision_req&quot; value=&quot;&lt;b&gt;Revision Required&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;720&quot; y=&quot;520&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_completed&quot; value=&quot;&lt;b&gt;Completed&lt;/b&gt;&quot; style=&quot;rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;240&quot; y=&quot;650&quot; width=&quot;180&quot; height=&quot;50&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+        <mxCell id=&quot;st_end_completed&quot; value=&quot;&quot; style=&quot;ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;45&quot; y=&quot;660&quot; width=&quot;30&quot; height=&quot;30&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+        <mxCell id=&quot;lbl_end_completed&quot; value=&quot;&lt;b&gt;End&lt;/b&gt;&quot; style=&quot;text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;>
+          <mxGeometry x=&quot;25&quot; y=&quot;692&quot; width=&quot;70&quot; height=&quot;20&quot; as=&quot;geometry&quot;/>
+        </mxCell>
+      
+
+      <mxCell id=&quot;edge_1&quot; value=&quot;&lt;b&gt;Request Sample&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_start&quot; target=&quot;st_pending&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_2&quot; value=&quot;&lt;b&gt;Reject Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_3&quot; value=&quot;&lt;b&gt;Close Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_rejected&quot; target=&quot;st_end_rejected&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_4&quot; value=&quot;&lt;b&gt;Approve Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_pending&quot; target=&quot;st_approved&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_5&quot; value=&quot;&lt;b&gt;Dispatch Sample&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_approved&quot; target=&quot;st_shipped&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_6&quot; value=&quot;&lt;b&gt;Confirm Delivery&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_shipped&quot; target=&quot;st_received&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_7&quot; value=&quot;&lt;b&gt;Expire Deadline&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_received&quot; target=&quot;st_overdue&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_8&quot; value=&quot;&lt;b&gt;Suspend Privileges&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_overdue&quot; target=&quot;st_end_overdue&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_9&quot; value=&quot;&lt;b&gt;Submit Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_received&quot; target=&quot;st_video_submitted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_10&quot; value=&quot;&lt;b&gt;Request Revision&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.30;exitDx=0;exitDy=0;entryX=0.00;entryY=0.30;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_video_submitted&quot; target=&quot;st_revision_req&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_11&quot; value=&quot;&lt;b&gt;Resubmit Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_revision_req&quot; target=&quot;st_video_submitted&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_12&quot; value=&quot;&lt;b&gt;Approve Video&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;&quot; edge=&quot;1&quot; source=&quot;st_video_submitted&quot; target=&quot;st_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint x=&quot;15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id=&quot;edge_13&quot; value=&quot;&lt;b&gt;Complete Request&lt;/b&gt;&quot; style=&quot;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;&quot; edge=&quot;1&quot; source=&quot;st_completed&quot; target=&quot;st_end_completed&quot; parent=&quot;1&quot;>
+        <mxGeometry relative=&quot;1&quot; as=&quot;geometry&quot;>
+          <mxPoint y=&quot;-15&quot; as=&quot;offset&quot;/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1210 800" width="1210" height="800">
+  <defs>
+    <!-- UML Open Arrowhead -->
+    <marker id="arrowhead-open" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1 L 7 4.5 L 0 8" fill="none" stroke="#000000" stroke-width="1.6" />
+    </marker>
+  </defs>
+
+  <!-- Clean Pure White Canvas -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Transitions (Strict Solid Lines, Zero Diagonals) -->
+  
+      <!-- Edge: start -> pending -->
+      <path d="M 74 75 L 240 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="110" y="53" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Sample</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> rejected -->
+      <path d="M 420 75 L 720 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="523" y="53" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Reject Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: rejected -> end_rejected -->
+      <path d="M 900 75 L 1065 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="938" y="53" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="982" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Close Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> approved -->
+      <path d="M 330 100 L 330 170" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="128" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="135" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: approved -> shipped -->
+      <path d="M 330 220 L 330 280" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="243" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="250" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Dispatch Sample</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shipped -> received -->
+      <path d="M 330 330 L 330 390" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="353" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="360" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Confirm Delivery</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: received -> overdue -->
+      <path d="M 420 415 L 720 415" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="520.5" y="393" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="403" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Expire Deadline</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: overdue -> end_overdue -->
+      <path d="M 900 415 L 1065 415" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="923.5" y="393" width="117" height="14" fill="#FFFFFF" rx="2" />
+        <text x="982" y="403" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Suspend Privileges</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: received -> video_submitted -->
+      <path d="M 330 440 L 330 520" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="473" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="480" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Submit Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: video_submitted -> revision_req -->
+      <path d="M 420 535 L 720 535" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="517.5" y="513" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="523" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Revision</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: revision_req -> video_submitted -->
+      <path d="M 720 558 L 420 558" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="523" y="568" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="570" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Resubmit Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: video_submitted -> completed -->
+      <path d="M 330 570 L 330 650" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="603" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="610" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: completed -> end_completed -->
+      <path d="M 240 675 L 75 675" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="104.5" y="653" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="663" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Complete Request</tspan>
+        </text>
+      </g>
+    
+
+  <!-- States & Nodes (Clean Single Boxes, English) -->
+  
+        <!-- Initial State: Start (Label placed cleanly ABOVE circle) -->
+        <circle cx="60" cy="75" r="14" fill="#000000" />
+        <text x="60" y="55" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">Start</text>
+      
+
+        <!-- State: pending -->
+        <g id="state-pending">
+          <rect x="240" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Pending Review</text>
+        </g>
+      
+
+        <!-- State: rejected -->
+        <g id="state-rejected">
+          <rect x="720" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Rejected</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1080" cy="75" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1080" cy="75" r="8" fill="#000000" />
+        <text x="1080" y="103" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: approved -->
+        <g id="state-approved">
+          <rect x="240" y="170" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="200" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Approved</text>
+        </g>
+      
+
+        <!-- State: shipped -->
+        <g id="state-shipped">
+          <rect x="240" y="280" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="310" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Shipped</text>
+        </g>
+      
+
+        <!-- State: received -->
+        <g id="state-received">
+          <rect x="240" y="390" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="420" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Received</text>
+        </g>
+      
+
+        <!-- State: overdue -->
+        <g id="state-overdue">
+          <rect x="720" y="390" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="420" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Overdue</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1080" cy="415" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1080" cy="415" r="8" fill="#000000" />
+        <text x="1080" y="443" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: video_submitted -->
+        <g id="state-video_submitted">
+          <rect x="240" y="520" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="550" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Video Submitted</text>
+        </g>
+      
+
+        <!-- State: revision_req -->
+        <g id="state-revision_req">
+          <rect x="720" y="520" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="550" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Revision Required</text>
+        </g>
+      
+
+        <!-- State: completed -->
+        <g id="state-completed">
+          <rect x="240" y="650" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="680" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Completed</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="60" cy="675" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="60" cy="675" r="8" fill="#000000" />
+        <text x="60" y="703" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+</svg>

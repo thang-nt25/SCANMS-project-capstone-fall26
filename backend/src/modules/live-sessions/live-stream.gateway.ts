@@ -199,4 +199,81 @@ export class LiveStreamGateway implements OnGatewayConnection, OnGatewayDisconne
 
     target.emit('live_signal', { fromSocketId: client.id, signal });
   }
+
+  @SubscribeMessage('send_live_chat')
+  async sendLiveChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sessionId: string; text: string; sender?: string; avatar?: string; role?: string },
+  ) {
+    const sessionId = data?.sessionId?.trim();
+    const text = data?.text?.trim();
+    if (!sessionId || !text) return;
+
+    const room = client.data.liveRoom || liveRoom(sessionId);
+    let sender = data?.sender || 'Khách xem';
+    let avatar = data?.avatar || undefined;
+    let role: 'HOST' | 'SHOP' | 'VIEWER' = (data?.role as any) || 'VIEWER';
+
+    if (client.data.userId) {
+      try {
+        const user = await this.liveSessionsService.getUserSummary(client.data.userId);
+        if (user) {
+          sender = user.fullName || sender;
+          avatar = user.avatarUrl || avatar;
+          if (client.data.liveRole === 'host') {
+            role = 'HOST';
+          } else if (user.role === 'SHOP_MANAGER') {
+            role = 'SHOP';
+          }
+        }
+      } catch {
+        // Fallback to client provided data
+      }
+    } else if (client.data.liveRole === 'host') {
+      role = 'HOST';
+    }
+
+    const messagePayload = {
+      id: `chat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      sender,
+      role,
+      avatar,
+      text: text.slice(0, 300),
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.server.to(room).emit('new_live_chat', messagePayload);
+  }
+
+  @SubscribeMessage('host_pin_product')
+  pinProduct(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sessionId: string; productIndex: number; productId?: string },
+  ) {
+    const sessionId = data?.sessionId?.trim();
+    if (!sessionId || typeof data?.productIndex !== 'number') return;
+    const room = client.data.liveRoom || liveRoom(sessionId);
+    this.server.to(room).emit('product_pinned_changed', {
+      sessionId,
+      productIndex: data.productIndex,
+      productId: data.productId,
+      pinnedAt: new Date().toISOString(),
+    });
+  }
+
+  @SubscribeMessage('send_reaction')
+  sendReaction(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sessionId: string; emoji: string; iconUrl?: string },
+  ) {
+    const sessionId = data?.sessionId?.trim();
+    if (!sessionId) return;
+    const room = client.data.liveRoom || liveRoom(sessionId);
+    client.to(room).emit('reaction_broadcast', {
+      emoji: data?.emoji || '❤️',
+      iconUrl: data?.iconUrl,
+      senderSocketId: client.id,
+    });
+  }
 }

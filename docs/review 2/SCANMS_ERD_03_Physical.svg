@@ -1,0 +1,3029 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3040 3354" width="3040" height="3354" style="background:#ffffff; font-family: Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;">
+  <style>
+    .tbl-header { fill: #000000; stroke: #000000; stroke-width: 1.6px; }
+    .tbl-header-txt { font-size: 11px; font-weight: bold; fill: #ffffff; text-anchor: middle; font-family: 'Segoe UI', monospace; }
+    .tbl-body { fill: #ffffff; stroke: #000000; stroke-width: 1.6px; }
+    .row-sep { stroke: #eaeaea; stroke-width: 0.8px; }
+    .col-pk { font-size: 9px; font-weight: bold; fill: #333333; font-family: 'Segoe UI', monospace; text-anchor: middle; }
+    .col-name { font-size: 9.5px; fill: #111111; font-family: 'Segoe UI', monospace; }
+    .col-pk-txt { font-size: 9.5px; font-weight: bold; fill: #000000; font-family: 'Segoe UI', monospace; text-decoration: underline; }
+    .col-type { font-size: 8.5px; fill: #555555; font-family: 'Segoe UI', monospace; text-anchor: end; }
+    .rel-line { fill: none; stroke: #000000; stroke-width: 1.4px; }
+    .card-badge { font-size: 11px; font-weight: bold; fill: #000000; font-family: 'Segoe UI', monospace; text-anchor: middle; }
+    .title-main { font-size: 20px; font-weight: bold; fill: #000000; text-anchor: middle; letter-spacing: 0.8px; }
+    .subtitle { font-size: 11.5px; fill: #555555; text-anchor: middle; }
+  </style>
+
+  <!-- TITLE -->
+  <text x="1520.0" y="18" class="title-main">SCANMS - PHYSICAL DATABASE SCHEMA</text>
+  <text x="1520.0" y="32" class="subtitle">Normalized relational table, Data types and Foreign keys</text>
+
+  <g id="t_media_assets">
+    <rect x="800" y="40" width="270" height="330" class="tbl-body" />
+    <rect x="800" y="40" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="57" class="tbl-header-txt">MEDIA_ASSETS</text>
+    <line x1="800" y1="66" x2="1070" y2="66" class="row-sep" />
+    <text x="819" y="77" class="col-pk">PK</text>
+    <text x="844" y="77" class="col-pk-txt">id</text>
+    <text x="1062" y="77" class="col-type">UUID</text>
+    <line x1="800" y1="82" x2="1070" y2="82" class="row-sep" />
+    <text x="819" y="93" class="col-pk">FK</text>
+    <text x="844" y="93" class="col-name">store_id</text>
+    <text x="1062" y="93" class="col-type">UUID</text>
+    <line x1="800" y1="98" x2="1070" y2="98" class="row-sep" />
+    <text x="819" y="109" class="col-pk">FK</text>
+    <text x="844" y="109" class="col-name">product_id</text>
+    <text x="1062" y="109" class="col-type">UUID</text>
+    <line x1="800" y1="114" x2="1070" y2="114" class="row-sep" />
+    <text x="844" y="125" class="col-name">title</text>
+    <text x="1062" y="125" class="col-type">VARCHAR(255)</text>
+    <line x1="800" y1="130" x2="1070" y2="130" class="row-sep" />
+    <text x="844" y="141" class="col-name">url_or_content</text>
+    <text x="1062" y="141" class="col-type">TEXT</text>
+    <line x1="800" y1="146" x2="1070" y2="146" class="row-sep" />
+    <text x="844" y="157" class="col-name">is_deleted</text>
+    <text x="1062" y="157" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="162" x2="1070" y2="162" class="row-sep" />
+    <text x="844" y="173" class="col-name">deleted_at</text>
+    <text x="1062" y="173" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="178" x2="1070" y2="178" class="row-sep" />
+    <text x="844" y="189" class="col-name">created_at</text>
+    <text x="1062" y="189" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="194" x2="1070" y2="194" class="row-sep" />
+    <text x="844" y="205" class="col-name">asset_type</text>
+    <text x="1062" y="205" class="col-type">ASSETTYPE</text>
+    <line x1="800" y1="210" x2="1070" y2="210" class="row-sep" />
+    <text x="819" y="221" class="col-pk">FK</text>
+    <text x="844" y="221" class="col-name">collaborator_id</text>
+    <text x="1062" y="221" class="col-type">UUID</text>
+    <line x1="800" y1="226" x2="1070" y2="226" class="row-sep" />
+    <text x="844" y="237" class="col-name">status</text>
+    <text x="1062" y="237" class="col-type">MEDIAASSETSTATUS</text>
+    <line x1="800" y1="242" x2="1070" y2="242" class="row-sep" />
+    <text x="819" y="253" class="col-pk">FK</text>
+    <text x="844" y="253" class="col-name">reviewed_by</text>
+    <text x="1062" y="253" class="col-type">UUID</text>
+    <line x1="800" y1="258" x2="1070" y2="258" class="row-sep" />
+    <text x="844" y="269" class="col-name">reviewed_at</text>
+    <text x="1062" y="269" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="274" x2="1070" y2="274" class="row-sep" />
+    <text x="844" y="285" class="col-name">rejection_reason</text>
+    <text x="1062" y="285" class="col-type">VARCHAR(500)</text>
+    <line x1="800" y1="290" x2="1070" y2="290" class="row-sep" />
+    <text x="844" y="301" class="col-name">is_featured</text>
+    <text x="1062" y="301" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="306" x2="1070" y2="306" class="row-sep" />
+    <text x="844" y="317" class="col-name">poster_url</text>
+    <text x="1062" y="317" class="col-type">TEXT</text>
+    <line x1="800" y1="322" x2="1070" y2="322" class="row-sep" />
+    <text x="844" y="333" class="col-name">caption</text>
+    <text x="1062" y="333" class="col-type">TEXT</text>
+    <line x1="800" y1="338" x2="1070" y2="338" class="row-sep" />
+    <text x="844" y="349" class="col-name">updated_at</text>
+    <text x="1062" y="349" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="354" x2="1070" y2="354" class="row-sep" />
+    <text x="819" y="365" class="col-pk">FK</text>
+    <text x="844" y="365" class="col-name">sample_request_id</text>
+    <text x="1062" y="365" class="col-type">UUID</text>
+  </g>
+  <g id="t_store_follows">
+    <rect x="1170" y="40" width="270" height="90" class="tbl-body" />
+    <rect x="1170" y="40" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="57" class="tbl-header-txt">STORE_FOLLOWS</text>
+    <line x1="1170" y1="66" x2="1440" y2="66" class="row-sep" />
+    <text x="1189" y="77" class="col-pk">PK</text>
+    <text x="1214" y="77" class="col-pk-txt">id</text>
+    <text x="1432" y="77" class="col-type">UUID</text>
+    <line x1="1170" y1="82" x2="1440" y2="82" class="row-sep" />
+    <text x="1189" y="93" class="col-pk">FK</text>
+    <text x="1214" y="93" class="col-name">store_id</text>
+    <text x="1432" y="93" class="col-type">UUID</text>
+    <line x1="1170" y1="98" x2="1440" y2="98" class="row-sep" />
+    <text x="1189" y="109" class="col-pk">FK</text>
+    <text x="1214" y="109" class="col-name">user_id</text>
+    <text x="1432" y="109" class="col-type">UUID</text>
+    <line x1="1170" y1="114" x2="1440" y2="114" class="row-sep" />
+    <text x="1214" y="125" class="col-name">created_at</text>
+    <text x="1432" y="125" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_live_shopping_sessions">
+    <rect x="1910" y="40" width="270" height="330" class="tbl-body" />
+    <rect x="1910" y="40" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="57" class="tbl-header-txt">LIVE_SHOPPING_SESSIONS</text>
+    <line x1="1910" y1="66" x2="2180" y2="66" class="row-sep" />
+    <text x="1929" y="77" class="col-pk">PK</text>
+    <text x="1954" y="77" class="col-pk-txt">id</text>
+    <text x="2172" y="77" class="col-type">UUID</text>
+    <line x1="1910" y1="82" x2="2180" y2="82" class="row-sep" />
+    <text x="1929" y="93" class="col-pk">FK</text>
+    <text x="1954" y="93" class="col-name">store_id</text>
+    <text x="2172" y="93" class="col-type">UUID</text>
+    <line x1="1910" y1="98" x2="2180" y2="98" class="row-sep" />
+    <text x="1929" y="109" class="col-pk">FK</text>
+    <text x="1954" y="109" class="col-name">creator_id</text>
+    <text x="2172" y="109" class="col-type">UUID</text>
+    <line x1="1910" y1="114" x2="2180" y2="114" class="row-sep" />
+    <text x="1929" y="125" class="col-pk">FK</text>
+    <text x="1954" y="125" class="col-name">created_by</text>
+    <text x="2172" y="125" class="col-type">UUID</text>
+    <line x1="1910" y1="130" x2="2180" y2="130" class="row-sep" />
+    <text x="1954" y="141" class="col-name">title</text>
+    <text x="2172" y="141" class="col-type">VARCHAR(200)</text>
+    <line x1="1910" y1="146" x2="2180" y2="146" class="row-sep" />
+    <text x="1954" y="157" class="col-name">cover_image_url</text>
+    <text x="2172" y="157" class="col-type">TEXT</text>
+    <line x1="1910" y1="162" x2="2180" y2="162" class="row-sep" />
+    <text x="1954" y="173" class="col-name">description</text>
+    <text x="2172" y="173" class="col-type">TEXT</text>
+    <line x1="1910" y1="178" x2="2180" y2="178" class="row-sep" />
+    <text x="1954" y="189" class="col-name">platform</text>
+    <text x="2172" y="189" class="col-type">LIVESESSIONPLATFORM</text>
+    <line x1="1910" y1="194" x2="2180" y2="194" class="row-sep" />
+    <text x="1954" y="205" class="col-name">live_url</text>
+    <text x="2172" y="205" class="col-type">VARCHAR(1000)</text>
+    <line x1="1910" y1="210" x2="2180" y2="210" class="row-sep" />
+    <text x="1954" y="221" class="col-name">starts_at</text>
+    <text x="2172" y="221" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="226" x2="2180" y2="226" class="row-sep" />
+    <text x="1954" y="237" class="col-name">ends_at</text>
+    <text x="2172" y="237" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="242" x2="2180" y2="242" class="row-sep" />
+    <text x="1954" y="253" class="col-name">status</text>
+    <text x="2172" y="253" class="col-type">LIVESESSIONSTATUS</text>
+    <line x1="1910" y1="258" x2="2180" y2="258" class="row-sep" />
+    <text x="1954" y="269" class="col-name">invite_status</text>
+    <text x="2172" y="269" class="col-type">LIVESESSIONINVITESTATUS</text>
+    <line x1="1910" y1="274" x2="2180" y2="274" class="row-sep" />
+    <text x="1954" y="285" class="col-name">responded_at</text>
+    <text x="2172" y="285" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="290" x2="2180" y2="290" class="row-sep" />
+    <text x="1954" y="301" class="col-name">commission_rate</text>
+    <text x="2172" y="301" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1910" y1="306" x2="2180" y2="306" class="row-sep" />
+    <text x="1954" y="317" class="col-name">created_at</text>
+    <text x="2172" y="317" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="322" x2="2180" y2="322" class="row-sep" />
+    <text x="1954" y="333" class="col-name">updated_at</text>
+    <text x="2172" y="333" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="338" x2="2180" y2="338" class="row-sep" />
+    <text x="1954" y="349" class="col-name">external_channels</text>
+    <text x="2172" y="349" class="col-type">JSONB</text>
+    <line x1="1910" y1="354" x2="2180" y2="354" class="row-sep" />
+    <text x="1954" y="365" class="col-name">governance</text>
+    <text x="2172" y="365" class="col-type">JSONB</text>
+  </g>
+  <g id="t_live_session_products">
+    <rect x="2280" y="40" width="270" height="106" class="tbl-body" />
+    <rect x="2280" y="40" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="57" class="tbl-header-txt">LIVE_SESSION_PRODUCTS</text>
+    <line x1="2280" y1="66" x2="2550" y2="66" class="row-sep" />
+    <text x="2299" y="77" class="col-pk">PK</text>
+    <text x="2324" y="77" class="col-pk-txt">id</text>
+    <text x="2542" y="77" class="col-type">UUID</text>
+    <line x1="2280" y1="82" x2="2550" y2="82" class="row-sep" />
+    <text x="2299" y="93" class="col-pk">FK</text>
+    <text x="2324" y="93" class="col-name">session_id</text>
+    <text x="2542" y="93" class="col-type">UUID</text>
+    <line x1="2280" y1="98" x2="2550" y2="98" class="row-sep" />
+    <text x="2299" y="109" class="col-pk">FK</text>
+    <text x="2324" y="109" class="col-name">product_id</text>
+    <text x="2542" y="109" class="col-type">UUID</text>
+    <line x1="2280" y1="114" x2="2550" y2="114" class="row-sep" />
+    <text x="2299" y="125" class="col-pk">FK</text>
+    <text x="2324" y="125" class="col-name">variant_id</text>
+    <text x="2542" y="125" class="col-type">UUID</text>
+    <line x1="2280" y1="130" x2="2550" y2="130" class="row-sep" />
+    <text x="2324" y="141" class="col-name">created_at</text>
+    <text x="2542" y="141" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_live_session_viewers">
+    <rect x="2650" y="40" width="270" height="106" class="tbl-body" />
+    <rect x="2650" y="40" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="57" class="tbl-header-txt">LIVE_SESSION_VIEWERS</text>
+    <line x1="2650" y1="66" x2="2920" y2="66" class="row-sep" />
+    <text x="2669" y="77" class="col-pk">PK, FK</text>
+    <text x="2694" y="77" class="col-pk-txt">session_id</text>
+    <text x="2912" y="77" class="col-type">UUID</text>
+    <line x1="2650" y1="82" x2="2920" y2="82" class="row-sep" />
+    <text x="2669" y="93" class="col-pk">PK</text>
+    <text x="2694" y="93" class="col-pk-txt">client_id</text>
+    <text x="2912" y="93" class="col-type">VARCHAR(100)</text>
+    <line x1="2650" y1="98" x2="2920" y2="98" class="row-sep" />
+    <text x="2694" y="109" class="col-name">first_seen_at</text>
+    <text x="2912" y="109" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2650" y1="114" x2="2920" y2="114" class="row-sep" />
+    <text x="2694" y="125" class="col-name">last_seen_at</text>
+    <text x="2912" y="125" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2650" y1="130" x2="2920" y2="130" class="row-sep" />
+    <text x="2694" y="141" class="col-name">left_at</text>
+    <text x="2912" y="141" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_customer_cart_items">
+    <rect x="1540" y="80" width="270" height="154" class="tbl-body" />
+    <rect x="1540" y="80" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="97" class="tbl-header-txt">CUSTOMER_CART_ITEMS</text>
+    <line x1="1540" y1="106" x2="1810" y2="106" class="row-sep" />
+    <text x="1559" y="117" class="col-pk">PK</text>
+    <text x="1584" y="117" class="col-pk-txt">id</text>
+    <text x="1802" y="117" class="col-type">UUID</text>
+    <line x1="1540" y1="122" x2="1810" y2="122" class="row-sep" />
+    <text x="1559" y="133" class="col-pk">FK</text>
+    <text x="1584" y="133" class="col-name">user_id</text>
+    <text x="1802" y="133" class="col-type">UUID</text>
+    <line x1="1540" y1="138" x2="1810" y2="138" class="row-sep" />
+    <text x="1559" y="149" class="col-pk">FK</text>
+    <text x="1584" y="149" class="col-name">product_id</text>
+    <text x="1802" y="149" class="col-type">UUID</text>
+    <line x1="1540" y1="154" x2="1810" y2="154" class="row-sep" />
+    <text x="1559" y="165" class="col-pk">FK</text>
+    <text x="1584" y="165" class="col-name">variant_id</text>
+    <text x="1802" y="165" class="col-type">UUID</text>
+    <line x1="1540" y1="170" x2="1810" y2="170" class="row-sep" />
+    <text x="1584" y="181" class="col-name">variant_key</text>
+    <text x="1802" y="181" class="col-type">VARCHAR(36)</text>
+    <line x1="1540" y1="186" x2="1810" y2="186" class="row-sep" />
+    <text x="1584" y="197" class="col-name">quantity</text>
+    <text x="1802" y="197" class="col-type">INTEGER</text>
+    <line x1="1540" y1="202" x2="1810" y2="202" class="row-sep" />
+    <text x="1584" y="213" class="col-name">created_at</text>
+    <text x="1802" y="213" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="218" x2="1810" y2="218" class="row-sep" />
+    <text x="1584" y="229" class="col-name">updated_at</text>
+    <text x="1802" y="229" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_live_session_claims">
+    <rect x="2280" y="240" width="270" height="106" class="tbl-body" />
+    <rect x="2280" y="240" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="257" class="tbl-header-txt">LIVE_SESSION_CLAIMS</text>
+    <line x1="2280" y1="266" x2="2550" y2="266" class="row-sep" />
+    <text x="2299" y="277" class="col-pk">PK</text>
+    <text x="2324" y="277" class="col-pk-txt">id</text>
+    <text x="2542" y="277" class="col-type">UUID</text>
+    <line x1="2280" y1="282" x2="2550" y2="282" class="row-sep" />
+    <text x="2299" y="293" class="col-pk">FK</text>
+    <text x="2324" y="293" class="col-name">session_id</text>
+    <text x="2542" y="293" class="col-type">UUID</text>
+    <line x1="2280" y1="298" x2="2550" y2="298" class="row-sep" />
+    <text x="2324" y="309" class="col-name">claim_key</text>
+    <text x="2542" y="309" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="314" x2="2550" y2="314" class="row-sep" />
+    <text x="2299" y="325" class="col-pk">FK</text>
+    <text x="2324" y="325" class="col-name">user_id</text>
+    <text x="2542" y="325" class="col-type">UUID</text>
+    <line x1="2280" y1="330" x2="2550" y2="330" class="row-sep" />
+    <text x="2324" y="341" class="col-name">claimed_at</text>
+    <text x="2542" y="341" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_product_variants">
+    <rect x="1540" y="270" width="270" height="250" class="tbl-body" />
+    <rect x="1540" y="270" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="287" class="tbl-header-txt">PRODUCT_VARIANTS</text>
+    <line x1="1540" y1="296" x2="1810" y2="296" class="row-sep" />
+    <text x="1559" y="307" class="col-pk">PK</text>
+    <text x="1584" y="307" class="col-pk-txt">id</text>
+    <text x="1802" y="307" class="col-type">UUID</text>
+    <line x1="1540" y1="312" x2="1810" y2="312" class="row-sep" />
+    <text x="1559" y="323" class="col-pk">FK</text>
+    <text x="1584" y="323" class="col-name">product_id</text>
+    <text x="1802" y="323" class="col-type">UUID</text>
+    <line x1="1540" y1="328" x2="1810" y2="328" class="row-sep" />
+    <text x="1584" y="339" class="col-name">sku</text>
+    <text x="1802" y="339" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="344" x2="1810" y2="344" class="row-sep" />
+    <text x="1584" y="355" class="col-name">name</text>
+    <text x="1802" y="355" class="col-type">VARCHAR(150)</text>
+    <line x1="1540" y1="360" x2="1810" y2="360" class="row-sep" />
+    <text x="1584" y="371" class="col-name">price</text>
+    <text x="1802" y="371" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="376" x2="1810" y2="376" class="row-sep" />
+    <text x="1584" y="387" class="col-name">stock_quantity</text>
+    <text x="1802" y="387" class="col-type">INTEGER</text>
+    <line x1="1540" y1="392" x2="1810" y2="392" class="row-sep" />
+    <text x="1584" y="403" class="col-name">is_active</text>
+    <text x="1802" y="403" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="408" x2="1810" y2="408" class="row-sep" />
+    <text x="1584" y="419" class="col-name">created_at</text>
+    <text x="1802" y="419" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="424" x2="1810" y2="424" class="row-sep" />
+    <text x="1584" y="435" class="col-name">updated_at</text>
+    <text x="1802" y="435" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="440" x2="1810" y2="440" class="row-sep" />
+    <text x="1584" y="451" class="col-name">sample_enabled</text>
+    <text x="1802" y="451" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="456" x2="1810" y2="456" class="row-sep" />
+    <text x="1584" y="467" class="col-name">sample_quota</text>
+    <text x="1802" y="467" class="col-type">INTEGER</text>
+    <line x1="1540" y1="472" x2="1810" y2="472" class="row-sep" />
+    <text x="1584" y="483" class="col-name">sample_granted_count</text>
+    <text x="1802" y="483" class="col-type">INTEGER</text>
+    <line x1="1540" y1="488" x2="1810" y2="488" class="row-sep" />
+    <text x="1584" y="499" class="col-name">image_url</text>
+    <text x="1802" y="499" class="col-type">TEXT</text>
+    <line x1="1540" y1="504" x2="1810" y2="504" class="row-sep" />
+    <text x="1584" y="515" class="col-name">attributes</text>
+    <text x="1802" y="515" class="col-type">JSONB</text>
+  </g>
+  <g id="t_chat_messages">
+    <rect x="1170" y="280" width="270" height="170" class="tbl-body" />
+    <rect x="1170" y="280" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="297" class="tbl-header-txt">CHAT_MESSAGES</text>
+    <line x1="1170" y1="306" x2="1440" y2="306" class="row-sep" />
+    <text x="1189" y="317" class="col-pk">PK</text>
+    <text x="1214" y="317" class="col-pk-txt">id</text>
+    <text x="1432" y="317" class="col-type">UUID</text>
+    <line x1="1170" y1="322" x2="1440" y2="322" class="row-sep" />
+    <text x="1189" y="333" class="col-pk">FK</text>
+    <text x="1214" y="333" class="col-name">conversation_id</text>
+    <text x="1432" y="333" class="col-type">UUID</text>
+    <line x1="1170" y1="338" x2="1440" y2="338" class="row-sep" />
+    <text x="1189" y="349" class="col-pk">FK</text>
+    <text x="1214" y="349" class="col-name">sender_id</text>
+    <text x="1432" y="349" class="col-type">UUID</text>
+    <line x1="1170" y1="354" x2="1440" y2="354" class="row-sep" />
+    <text x="1214" y="365" class="col-name">message_text</text>
+    <text x="1432" y="365" class="col-type">TEXT</text>
+    <line x1="1170" y1="370" x2="1440" y2="370" class="row-sep" />
+    <text x="1214" y="381" class="col-name">media_url</text>
+    <text x="1432" y="381" class="col-type">TEXT</text>
+    <line x1="1170" y1="386" x2="1440" y2="386" class="row-sep" />
+    <text x="1214" y="397" class="col-name">is_read</text>
+    <text x="1432" y="397" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="402" x2="1440" y2="402" class="row-sep" />
+    <text x="1214" y="413" class="col-name">created_at</text>
+    <text x="1432" y="413" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="418" x2="1440" y2="418" class="row-sep" />
+    <text x="1214" y="429" class="col-name">media_type</text>
+    <text x="1432" y="429" class="col-type">VARCHAR(20)</text>
+    <line x1="1170" y1="434" x2="1440" y2="434" class="row-sep" />
+    <text x="1214" y="445" class="col-name">media_name</text>
+    <text x="1432" y="445" class="col-type">VARCHAR(255)</text>
+  </g>
+  <g id="t_bonus_adjustments">
+    <rect x="60" y="420" width="270" height="186" class="tbl-body" />
+    <rect x="60" y="420" width="270" height="26" class="tbl-header" />
+    <text x="195.0" y="437" class="tbl-header-txt">BONUS_ADJUSTMENTS</text>
+    <line x1="60" y1="446" x2="330" y2="446" class="row-sep" />
+    <text x="79" y="457" class="col-pk">PK</text>
+    <text x="104" y="457" class="col-pk-txt">id</text>
+    <text x="322" y="457" class="col-type">UUID</text>
+    <line x1="60" y1="462" x2="330" y2="462" class="row-sep" />
+    <text x="104" y="473" class="col-name">store_id</text>
+    <text x="322" y="473" class="col-type">UUID</text>
+    <line x1="60" y1="478" x2="330" y2="478" class="row-sep" />
+    <text x="104" y="489" class="col-name">collaborator_id</text>
+    <text x="322" y="489" class="col-type">UUID</text>
+    <line x1="60" y1="494" x2="330" y2="494" class="row-sep" />
+    <text x="79" y="505" class="col-pk">FK</text>
+    <text x="104" y="505" class="col-name">original_settlement_id</text>
+    <text x="322" y="505" class="col-type">UUID</text>
+    <line x1="60" y1="510" x2="330" y2="510" class="row-sep" />
+    <text x="79" y="521" class="col-pk">FK</text>
+    <text x="104" y="521" class="col-name">refund_id</text>
+    <text x="322" y="521" class="col-type">UUID</text>
+    <line x1="60" y1="526" x2="330" y2="526" class="row-sep" />
+    <text x="104" y="537" class="col-name">target_year_month</text>
+    <text x="322" y="537" class="col-type">VARCHAR(7)</text>
+    <line x1="60" y1="542" x2="330" y2="542" class="row-sep" />
+    <text x="104" y="553" class="col-name">adjustment_amount</text>
+    <text x="322" y="553" class="col-type">DECIMAL(15,2)</text>
+    <line x1="60" y1="558" x2="330" y2="558" class="row-sep" />
+    <text x="104" y="569" class="col-name">reason</text>
+    <text x="322" y="569" class="col-type">TEXT</text>
+    <line x1="60" y1="574" x2="330" y2="574" class="row-sep" />
+    <text x="104" y="585" class="col-name">status</text>
+    <text x="322" y="585" class="col-type">VARCHAR(50)</text>
+    <line x1="60" y1="590" x2="330" y2="590" class="row-sep" />
+    <text x="104" y="601" class="col-name">created_at</text>
+    <text x="322" y="601" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_monthly_bonus_results">
+    <rect x="430" y="420" width="270" height="314" class="tbl-body" />
+    <rect x="430" y="420" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="437" class="tbl-header-txt">MONTHLY_BONUS_RESULTS</text>
+    <line x1="430" y1="446" x2="700" y2="446" class="row-sep" />
+    <text x="449" y="457" class="col-pk">PK</text>
+    <text x="474" y="457" class="col-pk-txt">id</text>
+    <text x="692" y="457" class="col-type">UUID</text>
+    <line x1="430" y1="462" x2="700" y2="462" class="row-sep" />
+    <text x="449" y="473" class="col-pk">FK</text>
+    <text x="474" y="473" class="col-name">store_id</text>
+    <text x="692" y="473" class="col-type">UUID</text>
+    <line x1="430" y1="478" x2="700" y2="478" class="row-sep" />
+    <text x="449" y="489" class="col-pk">FK</text>
+    <text x="474" y="489" class="col-name">collaborator_id</text>
+    <text x="692" y="489" class="col-type">UUID</text>
+    <line x1="430" y1="494" x2="700" y2="494" class="row-sep" />
+    <text x="474" y="505" class="col-name">year_month</text>
+    <text x="692" y="505" class="col-type">VARCHAR(7)</text>
+    <line x1="430" y1="510" x2="700" y2="510" class="row-sep" />
+    <text x="474" y="521" class="col-name">valid_revenue</text>
+    <text x="692" y="521" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="526" x2="700" y2="526" class="row-sep" />
+    <text x="449" y="537" class="col-pk">FK</text>
+    <text x="474" y="537" class="col-name">applied_rule_id</text>
+    <text x="692" y="537" class="col-type">UUID</text>
+    <line x1="430" y1="542" x2="700" y2="542" class="row-sep" />
+    <text x="474" y="553" class="col-name">applied_rule_name</text>
+    <text x="692" y="553" class="col-type">VARCHAR(150)</text>
+    <line x1="430" y1="558" x2="700" y2="558" class="row-sep" />
+    <text x="474" y="569" class="col-name">bonus_percentage</text>
+    <text x="692" y="569" class="col-type">DECIMAL(5,2)</text>
+    <line x1="430" y1="574" x2="700" y2="574" class="row-sep" />
+    <text x="474" y="585" class="col-name">bonus_amount</text>
+    <text x="692" y="585" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="590" x2="700" y2="590" class="row-sep" />
+    <text x="474" y="601" class="col-name">rule_snapshot</text>
+    <text x="692" y="601" class="col-type">JSONB</text>
+    <line x1="430" y1="606" x2="700" y2="606" class="row-sep" />
+    <text x="474" y="617" class="col-name">status</text>
+    <text x="692" y="617" class="col-type">COMMISSIONSTATUS</text>
+    <line x1="430" y1="622" x2="700" y2="622" class="row-sep" />
+    <text x="474" y="633" class="col-name">settled_at</text>
+    <text x="692" y="633" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="638" x2="700" y2="638" class="row-sep" />
+    <text x="474" y="649" class="col-name">created_at</text>
+    <text x="692" y="649" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="654" x2="700" y2="654" class="row-sep" />
+    <text x="474" y="665" class="col-name">achievement_bonus</text>
+    <text x="692" y="665" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="670" x2="700" y2="670" class="row-sep" />
+    <text x="474" y="681" class="col-name">approved_at</text>
+    <text x="692" y="681" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="686" x2="700" y2="686" class="row-sep" />
+    <text x="474" y="697" class="col-name">paid_at</text>
+    <text x="692" y="697" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="702" x2="700" y2="702" class="row-sep" />
+    <text x="474" y="713" class="col-name">wallet_transaction_id</text>
+    <text x="692" y="713" class="col-type">UUID</text>
+    <line x1="430" y1="718" x2="700" y2="718" class="row-sep" />
+    <text x="474" y="729" class="col-name">updated_at</text>
+    <text x="692" y="729" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_commission_rules">
+    <rect x="800" y="420" width="270" height="298" class="tbl-body" />
+    <rect x="800" y="420" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="437" class="tbl-header-txt">COMMISSION_RULES</text>
+    <line x1="800" y1="446" x2="1070" y2="446" class="row-sep" />
+    <text x="819" y="457" class="col-pk">PK</text>
+    <text x="844" y="457" class="col-pk-txt">id</text>
+    <text x="1062" y="457" class="col-type">UUID</text>
+    <line x1="800" y1="462" x2="1070" y2="462" class="row-sep" />
+    <text x="819" y="473" class="col-pk">FK</text>
+    <text x="844" y="473" class="col-name">store_id</text>
+    <text x="1062" y="473" class="col-type">UUID</text>
+    <line x1="800" y1="478" x2="1070" y2="478" class="row-sep" />
+    <text x="844" y="489" class="col-name">name</text>
+    <text x="1062" y="489" class="col-type">VARCHAR(150)</text>
+    <line x1="800" y1="494" x2="1070" y2="494" class="row-sep" />
+    <text x="844" y="505" class="col-name">min_monthly_revenue</text>
+    <text x="1062" y="505" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="510" x2="1070" y2="510" class="row-sep" />
+    <text x="844" y="521" class="col-name">bonus_percentage</text>
+    <text x="1062" y="521" class="col-type">DECIMAL(5,2)</text>
+    <line x1="800" y1="526" x2="1070" y2="526" class="row-sep" />
+    <text x="844" y="537" class="col-name">is_deleted</text>
+    <text x="1062" y="537" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="542" x2="1070" y2="542" class="row-sep" />
+    <text x="844" y="553" class="col-name">deleted_at</text>
+    <text x="1062" y="553" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="558" x2="1070" y2="558" class="row-sep" />
+    <text x="844" y="569" class="col-name">created_at</text>
+    <text x="1062" y="569" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="574" x2="1070" y2="574" class="row-sep" />
+    <text x="844" y="585" class="col-name">updated_at</text>
+    <text x="1062" y="585" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="590" x2="1070" y2="590" class="row-sep" />
+    <text x="844" y="601" class="col-name">effective_from</text>
+    <text x="1062" y="601" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="606" x2="1070" y2="606" class="row-sep" />
+    <text x="844" y="617" class="col-name">effective_to</text>
+    <text x="1062" y="617" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="622" x2="1070" y2="622" class="row-sep" />
+    <text x="844" y="633" class="col-name">version</text>
+    <text x="1062" y="633" class="col-type">INTEGER</text>
+    <line x1="800" y1="638" x2="1070" y2="638" class="row-sep" />
+    <text x="844" y="649" class="col-name">description</text>
+    <text x="1062" y="649" class="col-type">TEXT</text>
+    <line x1="800" y1="654" x2="1070" y2="654" class="row-sep" />
+    <text x="844" y="665" class="col-name">achievement_bonus</text>
+    <text x="1062" y="665" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="670" x2="1070" y2="670" class="row-sep" />
+    <text x="844" y="681" class="col-name">is_active</text>
+    <text x="1062" y="681" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="686" x2="1070" y2="686" class="row-sep" />
+    <text x="844" y="697" class="col-name">created_by</text>
+    <text x="1062" y="697" class="col-type">UUID</text>
+    <line x1="800" y1="702" x2="1070" y2="702" class="row-sep" />
+    <text x="844" y="713" class="col-name">updated_by</text>
+    <text x="1062" y="713" class="col-type">UUID</text>
+  </g>
+  <g id="t_customer_wishlists">
+    <rect x="1910" y="420" width="270" height="90" class="tbl-body" />
+    <rect x="1910" y="420" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="437" class="tbl-header-txt">CUSTOMER_WISHLISTS</text>
+    <line x1="1910" y1="446" x2="2180" y2="446" class="row-sep" />
+    <text x="1929" y="457" class="col-pk">PK</text>
+    <text x="1954" y="457" class="col-pk-txt">id</text>
+    <text x="2172" y="457" class="col-type">UUID</text>
+    <line x1="1910" y1="462" x2="2180" y2="462" class="row-sep" />
+    <text x="1929" y="473" class="col-pk">FK</text>
+    <text x="1954" y="473" class="col-name">user_id</text>
+    <text x="2172" y="473" class="col-type">UUID</text>
+    <line x1="1910" y1="478" x2="2180" y2="478" class="row-sep" />
+    <text x="1929" y="489" class="col-pk">FK</text>
+    <text x="1954" y="489" class="col-name">product_id</text>
+    <text x="2172" y="489" class="col-type">UUID</text>
+    <line x1="1910" y1="494" x2="2180" y2="494" class="row-sep" />
+    <text x="1954" y="505" class="col-name">created_at</text>
+    <text x="2172" y="505" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_conversations">
+    <rect x="1170" y="500" width="270" height="122" class="tbl-body" />
+    <rect x="1170" y="500" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="517" class="tbl-header-txt">CONVERSATIONS</text>
+    <line x1="1170" y1="526" x2="1440" y2="526" class="row-sep" />
+    <text x="1189" y="537" class="col-pk">PK</text>
+    <text x="1214" y="537" class="col-pk-txt">id</text>
+    <text x="1432" y="537" class="col-type">UUID</text>
+    <line x1="1170" y1="542" x2="1440" y2="542" class="row-sep" />
+    <text x="1189" y="553" class="col-pk">FK</text>
+    <text x="1214" y="553" class="col-name">store_id</text>
+    <text x="1432" y="553" class="col-type">UUID</text>
+    <line x1="1170" y1="558" x2="1440" y2="558" class="row-sep" />
+    <text x="1189" y="569" class="col-pk">FK</text>
+    <text x="1214" y="569" class="col-name">collaborator_id</text>
+    <text x="1432" y="569" class="col-type">UUID</text>
+    <line x1="1170" y1="574" x2="1440" y2="574" class="row-sep" />
+    <text x="1214" y="585" class="col-name">last_message_at</text>
+    <text x="1432" y="585" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="590" x2="1440" y2="590" class="row-sep" />
+    <text x="1214" y="601" class="col-name">created_at</text>
+    <text x="1432" y="601" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="606" x2="1440" y2="606" class="row-sep" />
+    <text x="1189" y="617" class="col-pk">FK</text>
+    <text x="1214" y="617" class="col-name">customer_id</text>
+    <text x="1432" y="617" class="col-type">UUID</text>
+  </g>
+  <g id="t_product_reviews">
+    <rect x="1910" y="550" width="270" height="266" class="tbl-body" />
+    <rect x="1910" y="550" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="567" class="tbl-header-txt">PRODUCT_REVIEWS</text>
+    <line x1="1910" y1="576" x2="2180" y2="576" class="row-sep" />
+    <text x="1929" y="587" class="col-pk">PK</text>
+    <text x="1954" y="587" class="col-pk-txt">id</text>
+    <text x="2172" y="587" class="col-type">UUID</text>
+    <line x1="1910" y1="592" x2="2180" y2="592" class="row-sep" />
+    <text x="1929" y="603" class="col-pk">FK</text>
+    <text x="1954" y="603" class="col-name">product_id</text>
+    <text x="2172" y="603" class="col-type">UUID</text>
+    <line x1="1910" y1="608" x2="2180" y2="608" class="row-sep" />
+    <text x="1929" y="619" class="col-pk">FK</text>
+    <text x="1954" y="619" class="col-name">order_id</text>
+    <text x="2172" y="619" class="col-type">UUID</text>
+    <line x1="1910" y1="624" x2="2180" y2="624" class="row-sep" />
+    <text x="1954" y="635" class="col-name">customer_name</text>
+    <text x="2172" y="635" class="col-type">VARCHAR(150)</text>
+    <line x1="1910" y1="640" x2="2180" y2="640" class="row-sep" />
+    <text x="1954" y="651" class="col-name">rating</text>
+    <text x="2172" y="651" class="col-type">INTEGER</text>
+    <line x1="1910" y1="656" x2="2180" y2="656" class="row-sep" />
+    <text x="1954" y="667" class="col-name">comment</text>
+    <text x="2172" y="667" class="col-type">TEXT</text>
+    <line x1="1910" y1="672" x2="2180" y2="672" class="row-sep" />
+    <text x="1954" y="683" class="col-name">review_image_url</text>
+    <text x="2172" y="683" class="col-type">TEXT</text>
+    <line x1="1910" y1="688" x2="2180" y2="688" class="row-sep" />
+    <text x="1954" y="699" class="col-name">is_approved</text>
+    <text x="2172" y="699" class="col-type">BOOLEAN</text>
+    <line x1="1910" y1="704" x2="2180" y2="704" class="row-sep" />
+    <text x="1954" y="715" class="col-name">created_at</text>
+    <text x="2172" y="715" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="720" x2="2180" y2="720" class="row-sep" />
+    <text x="1954" y="731" class="col-name">status</text>
+    <text x="2172" y="731" class="col-type">REVIEWSTATUS</text>
+    <line x1="1910" y1="736" x2="2180" y2="736" class="row-sep" />
+    <text x="1954" y="747" class="col-name">reviewed_by</text>
+    <text x="2172" y="747" class="col-type">UUID</text>
+    <line x1="1910" y1="752" x2="2180" y2="752" class="row-sep" />
+    <text x="1954" y="763" class="col-name">reviewed_at</text>
+    <text x="2172" y="763" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="768" x2="2180" y2="768" class="row-sep" />
+    <text x="1954" y="779" class="col-name">rejection_reason</text>
+    <text x="2172" y="779" class="col-type">VARCHAR(500)</text>
+    <line x1="1910" y1="784" x2="2180" y2="784" class="row-sep" />
+    <text x="1954" y="795" class="col-name">images</text>
+    <text x="2172" y="795" class="col-type">ARRAY</text>
+    <line x1="1910" y1="800" x2="2180" y2="800" class="row-sep" />
+    <text x="1954" y="811" class="col-name">video_url</text>
+    <text x="2172" y="811" class="col-type">TEXT</text>
+  </g>
+  <g id="t_store_collaborators">
+    <rect x="1540" y="560" width="270" height="154" class="tbl-body" />
+    <rect x="1540" y="560" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="577" class="tbl-header-txt">STORE_COLLABORATORS</text>
+    <line x1="1540" y1="586" x2="1810" y2="586" class="row-sep" />
+    <text x="1559" y="597" class="col-pk">PK</text>
+    <text x="1584" y="597" class="col-pk-txt">id</text>
+    <text x="1802" y="597" class="col-type">UUID</text>
+    <line x1="1540" y1="602" x2="1810" y2="602" class="row-sep" />
+    <text x="1559" y="613" class="col-pk">FK</text>
+    <text x="1584" y="613" class="col-name">store_id</text>
+    <text x="1802" y="613" class="col-type">UUID</text>
+    <line x1="1540" y1="618" x2="1810" y2="618" class="row-sep" />
+    <text x="1559" y="629" class="col-pk">FK</text>
+    <text x="1584" y="629" class="col-name">collaborator_id</text>
+    <text x="1802" y="629" class="col-type">UUID</text>
+    <line x1="1540" y1="634" x2="1810" y2="634" class="row-sep" />
+    <text x="1584" y="645" class="col-name">status</text>
+    <text x="1802" y="645" class="col-type">STORECOLLABORATORSTATUS</text>
+    <line x1="1540" y1="650" x2="1810" y2="650" class="row-sep" />
+    <text x="1584" y="661" class="col-name">approved_at</text>
+    <text x="1802" y="661" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="666" x2="1810" y2="666" class="row-sep" />
+    <text x="1584" y="677" class="col-name">note</text>
+    <text x="1802" y="677" class="col-type">VARCHAR(255)</text>
+    <line x1="1540" y1="682" x2="1810" y2="682" class="row-sep" />
+    <text x="1584" y="693" class="col-name">created_at</text>
+    <text x="1802" y="693" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="698" x2="1810" y2="698" class="row-sep" />
+    <text x="1584" y="709" class="col-name">updated_at</text>
+    <text x="1802" y="709" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_campaigns">
+    <rect x="800" y="770" width="270" height="186" class="tbl-body" />
+    <rect x="800" y="770" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="787" class="tbl-header-txt">CAMPAIGNS</text>
+    <line x1="800" y1="796" x2="1070" y2="796" class="row-sep" />
+    <text x="819" y="807" class="col-pk">PK</text>
+    <text x="844" y="807" class="col-pk-txt">id</text>
+    <text x="1062" y="807" class="col-type">UUID</text>
+    <line x1="800" y1="812" x2="1070" y2="812" class="row-sep" />
+    <text x="819" y="823" class="col-pk">FK</text>
+    <text x="844" y="823" class="col-name">store_id</text>
+    <text x="1062" y="823" class="col-type">UUID</text>
+    <line x1="800" y1="828" x2="1070" y2="828" class="row-sep" />
+    <text x="844" y="839" class="col-name">name</text>
+    <text x="1062" y="839" class="col-type">VARCHAR(200)</text>
+    <line x1="800" y1="844" x2="1070" y2="844" class="row-sep" />
+    <text x="844" y="855" class="col-name">bonus_commission_rate</text>
+    <text x="1062" y="855" class="col-type">DECIMAL(5,2)</text>
+    <line x1="800" y1="860" x2="1070" y2="860" class="row-sep" />
+    <text x="844" y="871" class="col-name">start_date</text>
+    <text x="1062" y="871" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="876" x2="1070" y2="876" class="row-sep" />
+    <text x="844" y="887" class="col-name">end_date</text>
+    <text x="1062" y="887" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="892" x2="1070" y2="892" class="row-sep" />
+    <text x="844" y="903" class="col-name">is_active</text>
+    <text x="1062" y="903" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="908" x2="1070" y2="908" class="row-sep" />
+    <text x="844" y="919" class="col-name">created_at</text>
+    <text x="1062" y="919" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="924" x2="1070" y2="924" class="row-sep" />
+    <text x="844" y="935" class="col-name">bonus_budget_total</text>
+    <text x="1062" y="935" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="940" x2="1070" y2="940" class="row-sep" />
+    <text x="844" y="951" class="col-name">bonus_budget_used</text>
+    <text x="1062" y="951" class="col-type">DECIMAL(15,2)</text>
+  </g>
+  <g id="t_stores">
+    <rect x="1170" y="770" width="270" height="474" class="tbl-body" />
+    <rect x="1170" y="770" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="787" class="tbl-header-txt">STORES</text>
+    <line x1="1170" y1="796" x2="1440" y2="796" class="row-sep" />
+    <text x="1189" y="807" class="col-pk">PK</text>
+    <text x="1214" y="807" class="col-pk-txt">id</text>
+    <text x="1432" y="807" class="col-type">UUID</text>
+    <line x1="1170" y1="812" x2="1440" y2="812" class="row-sep" />
+    <text x="1189" y="823" class="col-pk">FK</text>
+    <text x="1214" y="823" class="col-name">owner_id</text>
+    <text x="1432" y="823" class="col-type">UUID</text>
+    <line x1="1170" y1="828" x2="1440" y2="828" class="row-sep" />
+    <text x="1214" y="839" class="col-name">name</text>
+    <text x="1432" y="839" class="col-type">VARCHAR(200)</text>
+    <line x1="1170" y1="844" x2="1440" y2="844" class="row-sep" />
+    <text x="1214" y="855" class="col-name">slug</text>
+    <text x="1432" y="855" class="col-type">VARCHAR(200)</text>
+    <line x1="1170" y1="860" x2="1440" y2="860" class="row-sep" />
+    <text x="1214" y="871" class="col-name">logo_url</text>
+    <text x="1432" y="871" class="col-type">TEXT</text>
+    <line x1="1170" y1="876" x2="1440" y2="876" class="row-sep" />
+    <text x="1214" y="887" class="col-name">description</text>
+    <text x="1432" y="887" class="col-type">TEXT</text>
+    <line x1="1170" y1="892" x2="1440" y2="892" class="row-sep" />
+    <text x="1214" y="903" class="col-name">website_url</text>
+    <text x="1432" y="903" class="col-type">VARCHAR(255)</text>
+    <line x1="1170" y1="908" x2="1440" y2="908" class="row-sep" />
+    <text x="1214" y="919" class="col-name">default_commission_rate</text>
+    <text x="1432" y="919" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1170" y1="924" x2="1440" y2="924" class="row-sep" />
+    <text x="1214" y="935" class="col-name">attribution_window_days</text>
+    <text x="1432" y="935" class="col-type">INTEGER</text>
+    <line x1="1170" y1="940" x2="1440" y2="940" class="row-sep" />
+    <text x="1214" y="951" class="col-name">min_payout_amount</text>
+    <text x="1432" y="951" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1170" y1="956" x2="1440" y2="956" class="row-sep" />
+    <text x="1214" y="967" class="col-name">is_deleted</text>
+    <text x="1432" y="967" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="972" x2="1440" y2="972" class="row-sep" />
+    <text x="1214" y="983" class="col-name">deleted_at</text>
+    <text x="1432" y="983" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="988" x2="1440" y2="988" class="row-sep" />
+    <text x="1214" y="999" class="col-name">created_at</text>
+    <text x="1432" y="999" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1004" x2="1440" y2="1004" class="row-sep" />
+    <text x="1214" y="1015" class="col-name">updated_at</text>
+    <text x="1432" y="1015" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1020" x2="1440" y2="1020" class="row-sep" />
+    <text x="1214" y="1031" class="col-name">is_active</text>
+    <text x="1432" y="1031" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="1036" x2="1440" y2="1036" class="row-sep" />
+    <text x="1214" y="1047" class="col-name">is_verified</text>
+    <text x="1432" y="1047" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="1052" x2="1440" y2="1052" class="row-sep" />
+    <text x="1214" y="1063" class="col-name">policy_return</text>
+    <text x="1432" y="1063" class="col-type">TEXT</text>
+    <line x1="1170" y1="1068" x2="1440" y2="1068" class="row-sep" />
+    <text x="1214" y="1079" class="col-name">policy_warranty</text>
+    <text x="1432" y="1079" class="col-type">VARCHAR(500)</text>
+    <line x1="1170" y1="1084" x2="1440" y2="1084" class="row-sep" />
+    <text x="1214" y="1095" class="col-name">policy_shipping</text>
+    <text x="1432" y="1095" class="col-type">VARCHAR(500)</text>
+    <line x1="1170" y1="1100" x2="1440" y2="1100" class="row-sep" />
+    <text x="1214" y="1111" class="col-name">onboarding_status</text>
+    <text x="1432" y="1111" class="col-type">SHOPONBOARDINGSTATUS</text>
+    <line x1="1170" y1="1116" x2="1440" y2="1116" class="row-sep" />
+    <text x="1214" y="1127" class="col-name">onboarding_data</text>
+    <text x="1432" y="1127" class="col-type">JSONB</text>
+    <line x1="1170" y1="1132" x2="1440" y2="1132" class="row-sep" />
+    <text x="1214" y="1143" class="col-name">onboarding_submitted_at</text>
+    <text x="1432" y="1143" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1148" x2="1440" y2="1148" class="row-sep" />
+    <text x="1214" y="1159" class="col-name">onboarding_reviewed_at</text>
+    <text x="1432" y="1159" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1164" x2="1440" y2="1164" class="row-sep" />
+    <text x="1214" y="1175" class="col-name">onboarding_review_note</text>
+    <text x="1432" y="1175" class="col-type">VARCHAR(1000)</text>
+    <line x1="1170" y1="1180" x2="1440" y2="1180" class="row-sep" />
+    <text x="1189" y="1191" class="col-pk">FK</text>
+    <text x="1214" y="1191" class="col-name">onboarding_reviewed_by_id</text>
+    <text x="1432" y="1191" class="col-type">UUID</text>
+    <line x1="1170" y1="1196" x2="1440" y2="1196" class="row-sep" />
+    <text x="1214" y="1207" class="col-name">return_warehouse</text>
+    <text x="1432" y="1207" class="col-type">JSONB</text>
+    <line x1="1170" y1="1212" x2="1440" y2="1212" class="row-sep" />
+    <text x="1214" y="1223" class="col-name">live_restriction_until</text>
+    <text x="1432" y="1223" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1228" x2="1440" y2="1228" class="row-sep" />
+    <text x="1214" y="1239" class="col-name">live_cooperation_blocked</text>
+    <text x="1432" y="1239" class="col-type">BOOLEAN</text>
+  </g>
+  <g id="t_products">
+    <rect x="1540" y="770" width="270" height="458" class="tbl-body" />
+    <rect x="1540" y="770" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="787" class="tbl-header-txt">PRODUCTS</text>
+    <line x1="1540" y1="796" x2="1810" y2="796" class="row-sep" />
+    <text x="1559" y="807" class="col-pk">PK</text>
+    <text x="1584" y="807" class="col-pk-txt">id</text>
+    <text x="1802" y="807" class="col-type">UUID</text>
+    <line x1="1540" y1="812" x2="1810" y2="812" class="row-sep" />
+    <text x="1559" y="823" class="col-pk">FK</text>
+    <text x="1584" y="823" class="col-name">store_id</text>
+    <text x="1802" y="823" class="col-type">UUID</text>
+    <line x1="1540" y1="828" x2="1810" y2="828" class="row-sep" />
+    <text x="1584" y="839" class="col-name">sku</text>
+    <text x="1802" y="839" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="844" x2="1810" y2="844" class="row-sep" />
+    <text x="1584" y="855" class="col-name">title</text>
+    <text x="1802" y="855" class="col-type">VARCHAR(255)</text>
+    <line x1="1540" y1="860" x2="1810" y2="860" class="row-sep" />
+    <text x="1584" y="871" class="col-name">category_name</text>
+    <text x="1802" y="871" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="876" x2="1810" y2="876" class="row-sep" />
+    <text x="1584" y="887" class="col-name">description</text>
+    <text x="1802" y="887" class="col-type">TEXT</text>
+    <line x1="1540" y1="892" x2="1810" y2="892" class="row-sep" />
+    <text x="1584" y="903" class="col-name">image_url</text>
+    <text x="1802" y="903" class="col-type">TEXT</text>
+    <line x1="1540" y1="908" x2="1810" y2="908" class="row-sep" />
+    <text x="1584" y="919" class="col-name">original_price</text>
+    <text x="1802" y="919" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="924" x2="1810" y2="924" class="row-sep" />
+    <text x="1584" y="935" class="col-name">price</text>
+    <text x="1802" y="935" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="940" x2="1810" y2="940" class="row-sep" />
+    <text x="1584" y="951" class="col-name">custom_commission_rate</text>
+    <text x="1802" y="951" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1540" y1="956" x2="1810" y2="956" class="row-sep" />
+    <text x="1584" y="967" class="col-name">stock_quantity</text>
+    <text x="1802" y="967" class="col-type">INTEGER</text>
+    <line x1="1540" y1="972" x2="1810" y2="972" class="row-sep" />
+    <text x="1584" y="983" class="col-name">is_active</text>
+    <text x="1802" y="983" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="988" x2="1810" y2="988" class="row-sep" />
+    <text x="1584" y="999" class="col-name">is_deleted</text>
+    <text x="1802" y="999" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="1004" x2="1810" y2="1004" class="row-sep" />
+    <text x="1584" y="1015" class="col-name">deleted_at</text>
+    <text x="1802" y="1015" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1020" x2="1810" y2="1020" class="row-sep" />
+    <text x="1584" y="1031" class="col-name">created_at</text>
+    <text x="1802" y="1031" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1036" x2="1810" y2="1036" class="row-sep" />
+    <text x="1584" y="1047" class="col-name">updated_at</text>
+    <text x="1802" y="1047" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1052" x2="1810" y2="1052" class="row-sep" />
+    <text x="1584" y="1063" class="col-name">is_affiliate_enabled</text>
+    <text x="1802" y="1063" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="1068" x2="1810" y2="1068" class="row-sep" />
+    <text x="1584" y="1079" class="col-name">sample_enabled</text>
+    <text x="1802" y="1079" class="col-type">BOOLEAN</text>
+    <line x1="1540" y1="1084" x2="1810" y2="1084" class="row-sep" />
+    <text x="1584" y="1095" class="col-name">sample_quota</text>
+    <text x="1802" y="1095" class="col-type">INTEGER</text>
+    <line x1="1540" y1="1100" x2="1810" y2="1100" class="row-sep" />
+    <text x="1584" y="1111" class="col-name">sample_granted_count</text>
+    <text x="1802" y="1111" class="col-type">INTEGER</text>
+    <line x1="1540" y1="1116" x2="1810" y2="1116" class="row-sep" />
+    <text x="1584" y="1127" class="col-name">moderation_status</text>
+    <text x="1802" y="1127" class="col-type">PRODUCTMODERATIONSTATUS</text>
+    <line x1="1540" y1="1132" x2="1810" y2="1132" class="row-sep" />
+    <text x="1584" y="1143" class="col-name">moderation_reason</text>
+    <text x="1802" y="1143" class="col-type">VARCHAR(1000)</text>
+    <line x1="1540" y1="1148" x2="1810" y2="1148" class="row-sep" />
+    <text x="1584" y="1159" class="col-name">moderated_at</text>
+    <text x="1802" y="1159" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1164" x2="1810" y2="1164" class="row-sep" />
+    <text x="1584" y="1175" class="col-name">moderated_by_id</text>
+    <text x="1802" y="1175" class="col-type">UUID</text>
+    <line x1="1540" y1="1180" x2="1810" y2="1180" class="row-sep" />
+    <text x="1584" y="1191" class="col-name">ingredients</text>
+    <text x="1802" y="1191" class="col-type">TEXT</text>
+    <line x1="1540" y1="1196" x2="1810" y2="1196" class="row-sep" />
+    <text x="1584" y="1207" class="col-name">origin</text>
+    <text x="1802" y="1207" class="col-type">VARCHAR(255)</text>
+    <line x1="1540" y1="1212" x2="1810" y2="1212" class="row-sep" />
+    <text x="1584" y="1223" class="col-name">label_info</text>
+    <text x="1802" y="1223" class="col-type">TEXT</text>
+  </g>
+  <g id="t_campaign_participants">
+    <rect x="430" y="790" width="270" height="122" class="tbl-body" />
+    <rect x="430" y="790" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="807" class="tbl-header-txt">CAMPAIGN_PARTICIPANTS</text>
+    <line x1="430" y1="816" x2="700" y2="816" class="row-sep" />
+    <text x="449" y="827" class="col-pk">PK</text>
+    <text x="474" y="827" class="col-pk-txt">id</text>
+    <text x="692" y="827" class="col-type">UUID</text>
+    <line x1="430" y1="832" x2="700" y2="832" class="row-sep" />
+    <text x="449" y="843" class="col-pk">FK</text>
+    <text x="474" y="843" class="col-name">campaign_id</text>
+    <text x="692" y="843" class="col-type">UUID</text>
+    <line x1="430" y1="848" x2="700" y2="848" class="row-sep" />
+    <text x="449" y="859" class="col-pk">FK</text>
+    <text x="474" y="859" class="col-name">collaborator_id</text>
+    <text x="692" y="859" class="col-type">UUID</text>
+    <line x1="430" y1="864" x2="700" y2="864" class="row-sep" />
+    <text x="474" y="875" class="col-name">status</text>
+    <text x="692" y="875" class="col-type">CAMPAIGNPARTICIPANTSTATUS</text>
+    <line x1="430" y1="880" x2="700" y2="880" class="row-sep" />
+    <text x="474" y="891" class="col-name">joined_at</text>
+    <text x="692" y="891" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="896" x2="700" y2="896" class="row-sep" />
+    <text x="474" y="907" class="col-name">created_at</text>
+    <text x="692" y="907" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_sample_product_requests">
+    <rect x="1910" y="870" width="270" height="634" class="tbl-body" />
+    <rect x="1910" y="870" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="887" class="tbl-header-txt">SAMPLE_PRODUCT_REQUESTS</text>
+    <line x1="1910" y1="896" x2="2180" y2="896" class="row-sep" />
+    <text x="1929" y="907" class="col-pk">PK</text>
+    <text x="1954" y="907" class="col-pk-txt">id</text>
+    <text x="2172" y="907" class="col-type">UUID</text>
+    <line x1="1910" y1="912" x2="2180" y2="912" class="row-sep" />
+    <text x="1929" y="923" class="col-pk">FK</text>
+    <text x="1954" y="923" class="col-name">collaborator_id</text>
+    <text x="2172" y="923" class="col-type">UUID</text>
+    <line x1="1910" y1="928" x2="2180" y2="928" class="row-sep" />
+    <text x="1929" y="939" class="col-pk">FK</text>
+    <text x="1954" y="939" class="col-name">product_id</text>
+    <text x="2172" y="939" class="col-type">UUID</text>
+    <line x1="1910" y1="944" x2="2180" y2="944" class="row-sep" />
+    <text x="1954" y="955" class="col-name">shipping_address</text>
+    <text x="2172" y="955" class="col-type">TEXT</text>
+    <line x1="1910" y1="960" x2="2180" y2="960" class="row-sep" />
+    <text x="1954" y="971" class="col-name">tracking_number</text>
+    <text x="2172" y="971" class="col-type">VARCHAR(100)</text>
+    <line x1="1910" y1="976" x2="2180" y2="976" class="row-sep" />
+    <text x="1954" y="987" class="col-name">created_at</text>
+    <text x="2172" y="987" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="992" x2="2180" y2="992" class="row-sep" />
+    <text x="1954" y="1003" class="col-name">updated_at</text>
+    <text x="2172" y="1003" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1008" x2="2180" y2="1008" class="row-sep" />
+    <text x="1954" y="1019" class="col-name">status</text>
+    <text x="2172" y="1019" class="col-type">SAMPLEREQUESTSTATUS</text>
+    <line x1="1910" y1="1024" x2="2180" y2="1024" class="row-sep" />
+    <text x="1929" y="1035" class="col-pk">FK</text>
+    <text x="1954" y="1035" class="col-name">social_channel_id</text>
+    <text x="2172" y="1035" class="col-type">UUID</text>
+    <line x1="1910" y1="1040" x2="2180" y2="1040" class="row-sep" />
+    <text x="1954" y="1051" class="col-name">content_type</text>
+    <text x="2172" y="1051" class="col-type">VARCHAR(500)</text>
+    <line x1="1910" y1="1056" x2="2180" y2="1056" class="row-sep" />
+    <text x="1954" y="1067" class="col-name">expected_video_at</text>
+    <text x="2172" y="1067" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1072" x2="2180" y2="1072" class="row-sep" />
+    <text x="1954" y="1083" class="col-name">accepted_terms_at</text>
+    <text x="2172" y="1083" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1088" x2="2180" y2="1088" class="row-sep" />
+    <text x="1954" y="1099" class="col-name">carrier</text>
+    <text x="2172" y="1099" class="col-type">VARCHAR(50)</text>
+    <line x1="1910" y1="1104" x2="2180" y2="1104" class="row-sep" />
+    <text x="1954" y="1115" class="col-name">rejected_reason</text>
+    <text x="2172" y="1115" class="col-type">VARCHAR(500)</text>
+    <line x1="1910" y1="1120" x2="2180" y2="1120" class="row-sep" />
+    <text x="1954" y="1131" class="col-name">received_at</text>
+    <text x="2172" y="1131" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1136" x2="2180" y2="1136" class="row-sep" />
+    <text x="1954" y="1147" class="col-name">deadline_at</text>
+    <text x="2172" y="1147" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1152" x2="2180" y2="1152" class="row-sep" />
+    <text x="1954" y="1163" class="col-name">reminder_sent_at</text>
+    <text x="2172" y="1163" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1168" x2="2180" y2="1168" class="row-sep" />
+    <text x="1954" y="1179" class="col-name">overdue_at</text>
+    <text x="2172" y="1179" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1184" x2="2180" y2="1184" class="row-sep" />
+    <text x="1954" y="1195" class="col-name">video_url</text>
+    <text x="2172" y="1195" class="col-type">VARCHAR(2000)</text>
+    <line x1="1910" y1="1200" x2="2180" y2="1200" class="row-sep" />
+    <text x="1954" y="1211" class="col-name">video_title</text>
+    <text x="2172" y="1211" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="1216" x2="2180" y2="1216" class="row-sep" />
+    <text x="1954" y="1227" class="col-name">video_submitted_at</text>
+    <text x="2172" y="1227" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1232" x2="2180" y2="1232" class="row-sep" />
+    <text x="1954" y="1243" class="col-name">video_rejection_reason</text>
+    <text x="2172" y="1243" class="col-type">VARCHAR(500)</text>
+    <line x1="1910" y1="1248" x2="2180" y2="1248" class="row-sep" />
+    <text x="1929" y="1259" class="col-pk">FK</text>
+    <text x="1954" y="1259" class="col-name">product_variant_id</text>
+    <text x="2172" y="1259" class="col-type">UUID</text>
+    <line x1="1910" y1="1264" x2="2180" y2="1264" class="row-sep" />
+    <text x="1954" y="1275" class="col-name">recipient_name</text>
+    <text x="2172" y="1275" class="col-type">VARCHAR(150)</text>
+    <line x1="1910" y1="1280" x2="2180" y2="1280" class="row-sep" />
+    <text x="1954" y="1291" class="col-name">recipient_phone</text>
+    <text x="2172" y="1291" class="col-type">VARCHAR(30)</text>
+    <line x1="1910" y1="1296" x2="2180" y2="1296" class="row-sep" />
+    <text x="1954" y="1307" class="col-name">granted_at</text>
+    <text x="2172" y="1307" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1312" x2="2180" y2="1312" class="row-sep" />
+    <text x="1954" y="1323" class="col-name">social_platform_snapshot</text>
+    <text x="2172" y="1323" class="col-type">VARCHAR(50)</text>
+    <line x1="1910" y1="1328" x2="2180" y2="1328" class="row-sep" />
+    <text x="1954" y="1339" class="col-name">social_channel_name_snapshot</text>
+    <text x="2172" y="1339" class="col-type">VARCHAR(150)</text>
+    <line x1="1910" y1="1344" x2="2180" y2="1344" class="row-sep" />
+    <text x="1954" y="1355" class="col-name">social_channel_url_snapshot</text>
+    <text x="2172" y="1355" class="col-type">VARCHAR(1000)</text>
+    <line x1="1910" y1="1360" x2="2180" y2="1360" class="row-sep" />
+    <text x="1954" y="1371" class="col-name">social_follower_snapshot</text>
+    <text x="2172" y="1371" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1376" x2="2180" y2="1376" class="row-sep" />
+    <text x="1954" y="1387" class="col-name">expected_reminder_sent_at</text>
+    <text x="2172" y="1387" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1392" x2="2180" y2="1392" class="row-sep" />
+    <text x="1954" y="1403" class="col-name">shop_reminder_sent_at</text>
+    <text x="2172" y="1403" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1408" x2="2180" y2="1408" class="row-sep" />
+    <text x="1954" y="1419" class="col-name">revision_deadline_at</text>
+    <text x="2172" y="1419" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1424" x2="2180" y2="1424" class="row-sep" />
+    <text x="1954" y="1435" class="col-name">revision_reminder_sent_at</text>
+    <text x="2172" y="1435" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1440" x2="2180" y2="1440" class="row-sep" />
+    <text x="1954" y="1451" class="col-name">revision_shop_reminder_sent_at</text>
+    <text x="2172" y="1451" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1456" x2="2180" y2="1456" class="row-sep" />
+    <text x="1954" y="1467" class="col-name">ghn_province_id</text>
+    <text x="2172" y="1467" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1472" x2="2180" y2="1472" class="row-sep" />
+    <text x="1954" y="1483" class="col-name">ghn_district_id</text>
+    <text x="2172" y="1483" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1488" x2="2180" y2="1488" class="row-sep" />
+    <text x="1954" y="1499" class="col-name">ghn_ward_code</text>
+    <text x="2172" y="1499" class="col-type">VARCHAR(20)</text>
+  </g>
+  <g id="t_sample_request_events">
+    <rect x="2280" y="870" width="270" height="122" class="tbl-body" />
+    <rect x="2280" y="870" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="887" class="tbl-header-txt">SAMPLE_REQUEST_EVENTS</text>
+    <line x1="2280" y1="896" x2="2550" y2="896" class="row-sep" />
+    <text x="2299" y="907" class="col-pk">PK</text>
+    <text x="2324" y="907" class="col-pk-txt">id</text>
+    <text x="2542" y="907" class="col-type">UUID</text>
+    <line x1="2280" y1="912" x2="2550" y2="912" class="row-sep" />
+    <text x="2299" y="923" class="col-pk">FK</text>
+    <text x="2324" y="923" class="col-name">sample_request_id</text>
+    <text x="2542" y="923" class="col-type">UUID</text>
+    <line x1="2280" y1="928" x2="2550" y2="928" class="row-sep" />
+    <text x="2299" y="939" class="col-pk">FK</text>
+    <text x="2324" y="939" class="col-name">actor_id</text>
+    <text x="2542" y="939" class="col-type">UUID</text>
+    <line x1="2280" y1="944" x2="2550" y2="944" class="row-sep" />
+    <text x="2324" y="955" class="col-name">action</text>
+    <text x="2542" y="955" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="960" x2="2550" y2="960" class="row-sep" />
+    <text x="2324" y="971" class="col-name">details</text>
+    <text x="2542" y="971" class="col-type">JSONB</text>
+    <line x1="2280" y1="976" x2="2550" y2="976" class="row-sep" />
+    <text x="2324" y="987" class="col-name">created_at</text>
+    <text x="2542" y="987" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_campaign_products">
+    <rect x="430" y="980" width="270" height="90" class="tbl-body" />
+    <rect x="430" y="980" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="997" class="tbl-header-txt">CAMPAIGN_PRODUCTS</text>
+    <line x1="430" y1="1006" x2="700" y2="1006" class="row-sep" />
+    <text x="449" y="1017" class="col-pk">PK</text>
+    <text x="474" y="1017" class="col-pk-txt">id</text>
+    <text x="692" y="1017" class="col-type">UUID</text>
+    <line x1="430" y1="1022" x2="700" y2="1022" class="row-sep" />
+    <text x="449" y="1033" class="col-pk">FK</text>
+    <text x="474" y="1033" class="col-name">campaign_id</text>
+    <text x="692" y="1033" class="col-type">UUID</text>
+    <line x1="430" y1="1038" x2="700" y2="1038" class="row-sep" />
+    <text x="449" y="1049" class="col-pk">FK</text>
+    <text x="474" y="1049" class="col-name">product_id</text>
+    <text x="692" y="1049" class="col-type">UUID</text>
+    <line x1="430" y1="1054" x2="700" y2="1054" class="row-sep" />
+    <text x="474" y="1065" class="col-name">created_at</text>
+    <text x="692" y="1065" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_store_wallets">
+    <rect x="800" y="1050" width="270" height="138" class="tbl-body" />
+    <rect x="800" y="1050" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="1067" class="tbl-header-txt">STORE_WALLETS</text>
+    <line x1="800" y1="1076" x2="1070" y2="1076" class="row-sep" />
+    <text x="819" y="1087" class="col-pk">PK</text>
+    <text x="844" y="1087" class="col-pk-txt">id</text>
+    <text x="1062" y="1087" class="col-type">UUID</text>
+    <line x1="800" y1="1092" x2="1070" y2="1092" class="row-sep" />
+    <text x="819" y="1103" class="col-pk">FK</text>
+    <text x="844" y="1103" class="col-name">wallet_id</text>
+    <text x="1062" y="1103" class="col-type">UUID</text>
+    <line x1="800" y1="1108" x2="1070" y2="1108" class="row-sep" />
+    <text x="819" y="1119" class="col-pk">FK</text>
+    <text x="844" y="1119" class="col-name">store_id</text>
+    <text x="1062" y="1119" class="col-type">UUID</text>
+    <line x1="800" y1="1124" x2="1070" y2="1124" class="row-sep" />
+    <text x="844" y="1135" class="col-name">available_balance</text>
+    <text x="1062" y="1135" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="1140" x2="1070" y2="1140" class="row-sep" />
+    <text x="844" y="1151" class="col-name">pending_balance</text>
+    <text x="1062" y="1151" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="1156" x2="1070" y2="1156" class="row-sep" />
+    <text x="844" y="1167" class="col-name">version</text>
+    <text x="1062" y="1167" class="col-type">INTEGER</text>
+    <line x1="800" y1="1172" x2="1070" y2="1172" class="row-sep" />
+    <text x="844" y="1183" class="col-name">updated_at</text>
+    <text x="1062" y="1183" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_sample_shipping_charges">
+    <rect x="2280" y="1050" width="270" height="202" class="tbl-body" />
+    <rect x="2280" y="1050" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="1067" class="tbl-header-txt">SAMPLE_SHIPPING_CHARGES</text>
+    <line x1="2280" y1="1076" x2="2550" y2="1076" class="row-sep" />
+    <text x="2299" y="1087" class="col-pk">PK</text>
+    <text x="2324" y="1087" class="col-pk-txt">id</text>
+    <text x="2542" y="1087" class="col-type">UUID</text>
+    <line x1="2280" y1="1092" x2="2550" y2="1092" class="row-sep" />
+    <text x="2299" y="1103" class="col-pk">FK</text>
+    <text x="2324" y="1103" class="col-name">sample_request_id</text>
+    <text x="2542" y="1103" class="col-type">UUID</text>
+    <line x1="2280" y1="1108" x2="2550" y2="1108" class="row-sep" />
+    <text x="2299" y="1119" class="col-pk">FK</text>
+    <text x="2324" y="1119" class="col-name">store_id</text>
+    <text x="2542" y="1119" class="col-type">UUID</text>
+    <line x1="2280" y1="1124" x2="2550" y2="1124" class="row-sep" />
+    <text x="2324" y="1135" class="col-name">carrier</text>
+    <text x="2542" y="1135" class="col-type">VARCHAR(30)</text>
+    <line x1="2280" y1="1140" x2="2550" y2="1140" class="row-sep" />
+    <text x="2324" y="1151" class="col-name">environment</text>
+    <text x="2542" y="1151" class="col-type">VARCHAR(10)</text>
+    <line x1="2280" y1="1156" x2="2550" y2="1156" class="row-sep" />
+    <text x="2324" y="1167" class="col-name">tracking_number</text>
+    <text x="2542" y="1167" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="1172" x2="2550" y2="1172" class="row-sep" />
+    <text x="2324" y="1183" class="col-name">amount</text>
+    <text x="2542" y="1183" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1188" x2="2550" y2="1188" class="row-sep" />
+    <text x="2324" y="1199" class="col-name">payer</text>
+    <text x="2542" y="1199" class="col-type">VARCHAR(10)</text>
+    <line x1="2280" y1="1204" x2="2550" y2="1204" class="row-sep" />
+    <text x="2324" y="1215" class="col-name">cod_amount</text>
+    <text x="2542" y="1215" class="col-type">INTEGER</text>
+    <line x1="2280" y1="1220" x2="2550" y2="1220" class="row-sep" />
+    <text x="2324" y="1231" class="col-name">status</text>
+    <text x="2542" y="1231" class="col-type">VARCHAR(30)</text>
+    <line x1="2280" y1="1236" x2="2550" y2="1236" class="row-sep" />
+    <text x="2324" y="1247" class="col-name">recorded_at</text>
+    <text x="2542" y="1247" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_exclusive_deal_proposals">
+    <rect x="430" y="1140" width="270" height="250" class="tbl-body" />
+    <rect x="430" y="1140" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="1157" class="tbl-header-txt">EXCLUSIVE_DEAL_PROPOSALS</text>
+    <line x1="430" y1="1166" x2="700" y2="1166" class="row-sep" />
+    <text x="449" y="1177" class="col-pk">PK</text>
+    <text x="474" y="1177" class="col-pk-txt">id</text>
+    <text x="692" y="1177" class="col-type">UUID</text>
+    <line x1="430" y1="1182" x2="700" y2="1182" class="row-sep" />
+    <text x="449" y="1193" class="col-pk">FK</text>
+    <text x="474" y="1193" class="col-name">collaborator_id</text>
+    <text x="692" y="1193" class="col-type">UUID</text>
+    <line x1="430" y1="1198" x2="700" y2="1198" class="row-sep" />
+    <text x="449" y="1209" class="col-pk">FK</text>
+    <text x="474" y="1209" class="col-name">store_id</text>
+    <text x="692" y="1209" class="col-type">UUID</text>
+    <line x1="430" y1="1214" x2="700" y2="1214" class="row-sep" />
+    <text x="449" y="1225" class="col-pk">FK</text>
+    <text x="474" y="1225" class="col-name">product_id</text>
+    <text x="692" y="1225" class="col-type">UUID</text>
+    <line x1="430" y1="1230" x2="700" y2="1230" class="row-sep" />
+    <text x="449" y="1241" class="col-pk">FK</text>
+    <text x="474" y="1241" class="col-name">conversation_id</text>
+    <text x="692" y="1241" class="col-type">UUID</text>
+    <line x1="430" y1="1246" x2="700" y2="1246" class="row-sep" />
+    <text x="474" y="1257" class="col-name">proposed_commission_rate</text>
+    <text x="692" y="1257" class="col-type">DECIMAL(5,2)</text>
+    <line x1="430" y1="1262" x2="700" y2="1262" class="row-sep" />
+    <text x="474" y="1273" class="col-name">approved_commission_rate</text>
+    <text x="692" y="1273" class="col-type">DECIMAL(5,2)</text>
+    <line x1="430" y1="1278" x2="700" y2="1278" class="row-sep" />
+    <text x="474" y="1289" class="col-name">sales_commitment</text>
+    <text x="692" y="1289" class="col-type">VARCHAR(1000)</text>
+    <line x1="430" y1="1294" x2="700" y2="1294" class="row-sep" />
+    <text x="474" y="1305" class="col-name">status</text>
+    <text x="692" y="1305" class="col-type">EXCLUSIVEDEALSTATUS</text>
+    <line x1="430" y1="1310" x2="700" y2="1310" class="row-sep" />
+    <text x="474" y="1321" class="col-name">shop_response</text>
+    <text x="692" y="1321" class="col-type">VARCHAR(1000)</text>
+    <line x1="430" y1="1326" x2="700" y2="1326" class="row-sep" />
+    <text x="449" y="1337" class="col-pk">FK</text>
+    <text x="474" y="1337" class="col-name">reviewer_id</text>
+    <text x="692" y="1337" class="col-type">UUID</text>
+    <line x1="430" y1="1342" x2="700" y2="1342" class="row-sep" />
+    <text x="474" y="1353" class="col-name">reviewed_at</text>
+    <text x="692" y="1353" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1358" x2="700" y2="1358" class="row-sep" />
+    <text x="474" y="1369" class="col-name">created_at</text>
+    <text x="692" y="1369" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1374" x2="700" y2="1374" class="row-sep" />
+    <text x="474" y="1385" class="col-name">updated_at</text>
+    <text x="692" y="1385" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_coupon_products">
+    <rect x="2280" y="1285" width="270" height="90" class="tbl-body" />
+    <rect x="2280" y="1285" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="1302" class="tbl-header-txt">COUPON_PRODUCTS</text>
+    <line x1="2280" y1="1311" x2="2550" y2="1311" class="row-sep" />
+    <text x="2299" y="1322" class="col-pk">PK</text>
+    <text x="2324" y="1322" class="col-pk-txt">id</text>
+    <text x="2542" y="1322" class="col-type">UUID</text>
+    <line x1="2280" y1="1327" x2="2550" y2="1327" class="row-sep" />
+    <text x="2299" y="1338" class="col-pk">FK</text>
+    <text x="2324" y="1338" class="col-name">coupon_id</text>
+    <text x="2542" y="1338" class="col-type">UUID</text>
+    <line x1="2280" y1="1343" x2="2550" y2="1343" class="row-sep" />
+    <text x="2299" y="1354" class="col-pk">FK</text>
+    <text x="2324" y="1354" class="col-name">product_id</text>
+    <text x="2542" y="1354" class="col-type">UUID</text>
+    <line x1="2280" y1="1359" x2="2550" y2="1359" class="row-sep" />
+    <text x="2324" y="1370" class="col-name">created_at</text>
+    <text x="2542" y="1370" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_customer_saved_coupons">
+    <rect x="2650" y="1285" width="270" height="74" class="tbl-body" />
+    <rect x="2650" y="1285" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="1302" class="tbl-header-txt">CUSTOMER_SAVED_COUPONS</text>
+    <line x1="2650" y1="1311" x2="2920" y2="1311" class="row-sep" />
+    <text x="2669" y="1322" class="col-pk">PK, FK</text>
+    <text x="2694" y="1322" class="col-pk-txt">user_id</text>
+    <text x="2912" y="1322" class="col-type">UUID</text>
+    <line x1="2650" y1="1327" x2="2920" y2="1327" class="row-sep" />
+    <text x="2669" y="1338" class="col-pk">PK, FK</text>
+    <text x="2694" y="1338" class="col-pk-txt">coupon_id</text>
+    <text x="2912" y="1338" class="col-type">UUID</text>
+    <line x1="2650" y1="1343" x2="2920" y2="1343" class="row-sep" />
+    <text x="2694" y="1354" class="col-name">saved_at</text>
+    <text x="2912" y="1354" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_wallets">
+    <rect x="800" y="1330" width="270" height="122" class="tbl-body" />
+    <rect x="800" y="1330" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="1347" class="tbl-header-txt">WALLETS</text>
+    <line x1="800" y1="1356" x2="1070" y2="1356" class="row-sep" />
+    <text x="819" y="1367" class="col-pk">PK</text>
+    <text x="844" y="1367" class="col-pk-txt">id</text>
+    <text x="1062" y="1367" class="col-type">UUID</text>
+    <line x1="800" y1="1372" x2="1070" y2="1372" class="row-sep" />
+    <text x="819" y="1383" class="col-pk">FK</text>
+    <text x="844" y="1383" class="col-name">collaborator_id</text>
+    <text x="1062" y="1383" class="col-type">UUID</text>
+    <line x1="800" y1="1388" x2="1070" y2="1388" class="row-sep" />
+    <text x="844" y="1399" class="col-name">available_balance</text>
+    <text x="1062" y="1399" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="1404" x2="1070" y2="1404" class="row-sep" />
+    <text x="844" y="1415" class="col-name">pending_balance</text>
+    <text x="1062" y="1415" class="col-type">DECIMAL(15,2)</text>
+    <line x1="800" y1="1420" x2="1070" y2="1420" class="row-sep" />
+    <text x="844" y="1431" class="col-name">version</text>
+    <text x="1062" y="1431" class="col-type">INTEGER</text>
+    <line x1="800" y1="1436" x2="1070" y2="1436" class="row-sep" />
+    <text x="844" y="1447" class="col-name">updated_at</text>
+    <text x="1062" y="1447" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_users">
+    <rect x="1170" y="1330" width="270" height="218" class="tbl-body" />
+    <rect x="1170" y="1330" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="1347" class="tbl-header-txt">USERS</text>
+    <line x1="1170" y1="1356" x2="1440" y2="1356" class="row-sep" />
+    <text x="1189" y="1367" class="col-pk">PK</text>
+    <text x="1214" y="1367" class="col-pk-txt">id</text>
+    <text x="1432" y="1367" class="col-type">UUID</text>
+    <line x1="1170" y1="1372" x2="1440" y2="1372" class="row-sep" />
+    <text x="1214" y="1383" class="col-name">email</text>
+    <text x="1432" y="1383" class="col-type">VARCHAR(255)</text>
+    <line x1="1170" y1="1388" x2="1440" y2="1388" class="row-sep" />
+    <text x="1214" y="1399" class="col-name">password_hash</text>
+    <text x="1432" y="1399" class="col-type">VARCHAR(255)</text>
+    <line x1="1170" y1="1404" x2="1440" y2="1404" class="row-sep" />
+    <text x="1214" y="1415" class="col-name">full_name</text>
+    <text x="1432" y="1415" class="col-type">VARCHAR(150)</text>
+    <line x1="1170" y1="1420" x2="1440" y2="1420" class="row-sep" />
+    <text x="1214" y="1431" class="col-name">phone_number</text>
+    <text x="1432" y="1431" class="col-type">VARCHAR(20)</text>
+    <line x1="1170" y1="1436" x2="1440" y2="1436" class="row-sep" />
+    <text x="1214" y="1447" class="col-name">is_active</text>
+    <text x="1432" y="1447" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="1452" x2="1440" y2="1452" class="row-sep" />
+    <text x="1214" y="1463" class="col-name">is_deleted</text>
+    <text x="1432" y="1463" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="1468" x2="1440" y2="1468" class="row-sep" />
+    <text x="1214" y="1479" class="col-name">deleted_at</text>
+    <text x="1432" y="1479" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1484" x2="1440" y2="1484" class="row-sep" />
+    <text x="1214" y="1495" class="col-name">created_at</text>
+    <text x="1432" y="1495" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1500" x2="1440" y2="1500" class="row-sep" />
+    <text x="1214" y="1511" class="col-name">updated_at</text>
+    <text x="1432" y="1511" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1516" x2="1440" y2="1516" class="row-sep" />
+    <text x="1214" y="1527" class="col-name">role</text>
+    <text x="1432" y="1527" class="col-type">USERROLE</text>
+    <line x1="1170" y1="1532" x2="1440" y2="1532" class="row-sep" />
+    <text x="1214" y="1543" class="col-name">avatar_url</text>
+    <text x="1432" y="1543" class="col-type">TEXT</text>
+  </g>
+  <g id="t_orders">
+    <rect x="1540" y="1330" width="270" height="666" class="tbl-body" />
+    <rect x="1540" y="1330" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="1347" class="tbl-header-txt">ORDERS</text>
+    <line x1="1540" y1="1356" x2="1810" y2="1356" class="row-sep" />
+    <text x="1559" y="1367" class="col-pk">PK</text>
+    <text x="1584" y="1367" class="col-pk-txt">id</text>
+    <text x="1802" y="1367" class="col-type">UUID</text>
+    <line x1="1540" y1="1372" x2="1810" y2="1372" class="row-sep" />
+    <text x="1559" y="1383" class="col-pk">FK</text>
+    <text x="1584" y="1383" class="col-name">store_id</text>
+    <text x="1802" y="1383" class="col-type">UUID</text>
+    <line x1="1540" y1="1388" x2="1810" y2="1388" class="row-sep" />
+    <text x="1584" y="1399" class="col-name">external_order_sn</text>
+    <text x="1802" y="1399" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="1404" x2="1810" y2="1404" class="row-sep" />
+    <text x="1559" y="1415" class="col-pk">FK</text>
+    <text x="1584" y="1415" class="col-name">attributed_collaborator_id</text>
+    <text x="1802" y="1415" class="col-type">UUID</text>
+    <line x1="1540" y1="1420" x2="1810" y2="1420" class="row-sep" />
+    <text x="1584" y="1431" class="col-name">customer_name</text>
+    <text x="1802" y="1431" class="col-type">VARCHAR(150)</text>
+    <line x1="1540" y1="1436" x2="1810" y2="1436" class="row-sep" />
+    <text x="1584" y="1447" class="col-name">customer_phone</text>
+    <text x="1802" y="1447" class="col-type">VARCHAR(20)</text>
+    <line x1="1540" y1="1452" x2="1810" y2="1452" class="row-sep" />
+    <text x="1584" y="1463" class="col-name">shipping_address</text>
+    <text x="1802" y="1463" class="col-type">TEXT</text>
+    <line x1="1540" y1="1468" x2="1810" y2="1468" class="row-sep" />
+    <text x="1584" y="1479" class="col-name">subtotal_amount</text>
+    <text x="1802" y="1479" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="1484" x2="1810" y2="1484" class="row-sep" />
+    <text x="1584" y="1495" class="col-name">discount_amount</text>
+    <text x="1802" y="1495" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="1500" x2="1810" y2="1500" class="row-sep" />
+    <text x="1584" y="1511" class="col-name">final_amount</text>
+    <text x="1802" y="1511" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="1516" x2="1810" y2="1516" class="row-sep" />
+    <text x="1584" y="1527" class="col-name">created_at</text>
+    <text x="1802" y="1527" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1532" x2="1810" y2="1532" class="row-sep" />
+    <text x="1584" y="1543" class="col-name">updated_at</text>
+    <text x="1802" y="1543" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1548" x2="1810" y2="1548" class="row-sep" />
+    <text x="1584" y="1559" class="col-name">attribution_method</text>
+    <text x="1802" y="1559" class="col-type">ATTRIBUTIONMETHOD</text>
+    <line x1="1540" y1="1564" x2="1810" y2="1564" class="row-sep" />
+    <text x="1584" y="1575" class="col-name">status</text>
+    <text x="1802" y="1575" class="col-type">ORDERSTATUS</text>
+    <line x1="1540" y1="1580" x2="1810" y2="1580" class="row-sep" />
+    <text x="1584" y="1591" class="col-name">shipping_fee</text>
+    <text x="1802" y="1591" class="col-type">DECIMAL(12,2)</text>
+    <line x1="1540" y1="1596" x2="1810" y2="1596" class="row-sep" />
+    <text x="1584" y="1607" class="col-name">completed_at</text>
+    <text x="1802" y="1607" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1612" x2="1810" y2="1612" class="row-sep" />
+    <text x="1584" y="1623" class="col-name">refunded_amount</text>
+    <text x="1802" y="1623" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="1628" x2="1810" y2="1628" class="row-sep" />
+    <text x="1559" y="1639" class="col-pk">FK</text>
+    <text x="1584" y="1639" class="col-name">referral_link_id</text>
+    <text x="1802" y="1639" class="col-type">UUID</text>
+    <line x1="1540" y1="1644" x2="1810" y2="1644" class="row-sep" />
+    <text x="1584" y="1655" class="col-name">coupon_code_snapshot</text>
+    <text x="1802" y="1655" class="col-type">VARCHAR(20)</text>
+    <line x1="1540" y1="1660" x2="1810" y2="1660" class="row-sep" />
+    <text x="1584" y="1671" class="col-name">coupon_discount_amount</text>
+    <text x="1802" y="1671" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="1676" x2="1810" y2="1676" class="row-sep" />
+    <text x="1559" y="1687" class="col-pk">FK</text>
+    <text x="1584" y="1687" class="col-name">coupon_id</text>
+    <text x="1802" y="1687" class="col-type">UUID</text>
+    <line x1="1540" y1="1692" x2="1810" y2="1692" class="row-sep" />
+    <text x="1584" y="1703" class="col-name">original_attribution_method</text>
+    <text x="1802" y="1703" class="col-type">ATTRIBUTIONMETHOD</text>
+    <line x1="1540" y1="1708" x2="1810" y2="1708" class="row-sep" />
+    <text x="1584" y="1719" class="col-name">original_collaborator_id</text>
+    <text x="1802" y="1719" class="col-type">UUID</text>
+    <line x1="1540" y1="1724" x2="1810" y2="1724" class="row-sep" />
+    <text x="1584" y="1735" class="col-name">override_reason</text>
+    <text x="1802" y="1735" class="col-type">VARCHAR(255)</text>
+    <line x1="1540" y1="1740" x2="1810" y2="1740" class="row-sep" />
+    <text x="1584" y="1751" class="col-name">idempotency_key</text>
+    <text x="1802" y="1751" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="1756" x2="1810" y2="1756" class="row-sep" />
+    <text x="1584" y="1767" class="col-name">cancellation_token</text>
+    <text x="1802" y="1767" class="col-type">VARCHAR(100)</text>
+    <line x1="1540" y1="1772" x2="1810" y2="1772" class="row-sep" />
+    <text x="1584" y="1783" class="col-name">attribution_session_id</text>
+    <text x="1802" y="1783" class="col-type">UUID</text>
+    <line x1="1540" y1="1788" x2="1810" y2="1788" class="row-sep" />
+    <text x="1584" y="1799" class="col-name">click_id</text>
+    <text x="1802" y="1799" class="col-type">UUID</text>
+    <line x1="1540" y1="1804" x2="1810" y2="1804" class="row-sep" />
+    <text x="1584" y="1815" class="col-name">attribution_confidence</text>
+    <text x="1802" y="1815" class="col-type">VARCHAR(20)</text>
+    <line x1="1540" y1="1820" x2="1810" y2="1820" class="row-sep" />
+    <text x="1584" y="1831" class="col-name">attribution_snapshot</text>
+    <text x="1802" y="1831" class="col-type">JSONB</text>
+    <line x1="1540" y1="1836" x2="1810" y2="1836" class="row-sep" />
+    <text x="1584" y="1847" class="col-name">attributed_at</text>
+    <text x="1802" y="1847" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1852" x2="1810" y2="1852" class="row-sep" />
+    <text x="1584" y="1863" class="col-name">clicked_at</text>
+    <text x="1802" y="1863" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1868" x2="1810" y2="1868" class="row-sep" />
+    <text x="1584" y="1879" class="col-name">source_platform</text>
+    <text x="1802" y="1879" class="col-type">ORDERSOURCEPLATFORM</text>
+    <line x1="1540" y1="1884" x2="1810" y2="1884" class="row-sep" />
+    <text x="1584" y="1895" class="col-name">raw_payload</text>
+    <text x="1802" y="1895" class="col-type">JSONB</text>
+    <line x1="1540" y1="1900" x2="1810" y2="1900" class="row-sep" />
+    <text x="1584" y="1911" class="col-name">source_updated_at</text>
+    <text x="1802" y="1911" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1916" x2="1810" y2="1916" class="row-sep" />
+    <text x="1584" y="1927" class="col-name">customer_email</text>
+    <text x="1802" y="1927" class="col-type">VARCHAR(254)</text>
+    <line x1="1540" y1="1932" x2="1810" y2="1932" class="row-sep" />
+    <text x="1559" y="1943" class="col-pk">FK</text>
+    <text x="1584" y="1943" class="col-name">customer_id</text>
+    <text x="1802" y="1943" class="col-type">UUID</text>
+    <line x1="1540" y1="1948" x2="1810" y2="1948" class="row-sep" />
+    <text x="1584" y="1959" class="col-name">policy_accepted_at</text>
+    <text x="1802" y="1959" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="1964" x2="1810" y2="1964" class="row-sep" />
+    <text x="1584" y="1975" class="col-name">policy_snapshot</text>
+    <text x="1802" y="1975" class="col-type">JSONB</text>
+    <line x1="1540" y1="1980" x2="1810" y2="1980" class="row-sep" />
+    <text x="1584" y="1991" class="col-name">delivered_at</text>
+    <text x="1802" y="1991" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_coupon_categories">
+    <rect x="2280" y="1425" width="270" height="90" class="tbl-body" />
+    <rect x="2280" y="1425" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="1442" class="tbl-header-txt">COUPON_CATEGORIES</text>
+    <line x1="2280" y1="1451" x2="2550" y2="1451" class="row-sep" />
+    <text x="2299" y="1462" class="col-pk">PK</text>
+    <text x="2324" y="1462" class="col-pk-txt">id</text>
+    <text x="2542" y="1462" class="col-type">UUID</text>
+    <line x1="2280" y1="1467" x2="2550" y2="1467" class="row-sep" />
+    <text x="2299" y="1478" class="col-pk">FK</text>
+    <text x="2324" y="1478" class="col-name">coupon_id</text>
+    <text x="2542" y="1478" class="col-type">UUID</text>
+    <line x1="2280" y1="1483" x2="2550" y2="1483" class="row-sep" />
+    <text x="2324" y="1494" class="col-name">category_name</text>
+    <text x="2542" y="1494" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="1499" x2="2550" y2="1499" class="row-sep" />
+    <text x="2324" y="1510" class="col-name">created_at</text>
+    <text x="2542" y="1510" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_stacked_voucher_redemptions">
+    <rect x="2650" y="1435" width="270" height="170" class="tbl-body" />
+    <rect x="2650" y="1435" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="1452" class="tbl-header-txt">STACKED_VOUCHER_REDEMPTIONS</text>
+    <line x1="2650" y1="1461" x2="2920" y2="1461" class="row-sep" />
+    <text x="2669" y="1472" class="col-pk">PK, FK</text>
+    <text x="2694" y="1472" class="col-pk-txt">order_id</text>
+    <text x="2912" y="1472" class="col-type">UUID</text>
+    <line x1="2650" y1="1477" x2="2920" y2="1477" class="row-sep" />
+    <text x="2669" y="1488" class="col-pk">PK, FK</text>
+    <text x="2694" y="1488" class="col-pk-txt">coupon_id</text>
+    <text x="2912" y="1488" class="col-type">UUID</text>
+    <line x1="2650" y1="1493" x2="2920" y2="1493" class="row-sep" />
+    <text x="2694" y="1504" class="col-name">customer_phone</text>
+    <text x="2912" y="1504" class="col-type">VARCHAR(20)</text>
+    <line x1="2650" y1="1509" x2="2920" y2="1509" class="row-sep" />
+    <text x="2694" y="1520" class="col-name">benefit_type</text>
+    <text x="2912" y="1520" class="col-type">COUPONBENEFITTYPE</text>
+    <line x1="2650" y1="1525" x2="2920" y2="1525" class="row-sep" />
+    <text x="2694" y="1536" class="col-name">status</text>
+    <text x="2912" y="1536" class="col-type">COUPONREDEMPTIONSTATUS</text>
+    <line x1="2650" y1="1541" x2="2920" y2="1541" class="row-sep" />
+    <text x="2694" y="1552" class="col-name">discount_amount</text>
+    <text x="2912" y="1552" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2650" y1="1557" x2="2920" y2="1557" class="row-sep" />
+    <text x="2694" y="1568" class="col-name">shop_funded_amount</text>
+    <text x="2912" y="1568" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2650" y1="1573" x2="2920" y2="1573" class="row-sep" />
+    <text x="2694" y="1584" class="col-name">platform_funded_amount</text>
+    <text x="2912" y="1584" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2650" y1="1589" x2="2920" y2="1589" class="row-sep" />
+    <text x="2694" y="1600" class="col-name">created_at</text>
+    <text x="2912" y="1600" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_wallet_top_ups">
+    <rect x="430" y="1440" width="270" height="298" class="tbl-body" />
+    <rect x="430" y="1440" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="1457" class="tbl-header-txt">WALLET_TOP_UPS</text>
+    <line x1="430" y1="1466" x2="700" y2="1466" class="row-sep" />
+    <text x="449" y="1477" class="col-pk">PK</text>
+    <text x="474" y="1477" class="col-pk-txt">id</text>
+    <text x="692" y="1477" class="col-type">UUID</text>
+    <line x1="430" y1="1482" x2="700" y2="1482" class="row-sep" />
+    <text x="449" y="1493" class="col-pk">FK</text>
+    <text x="474" y="1493" class="col-name">user_id</text>
+    <text x="692" y="1493" class="col-type">UUID</text>
+    <line x1="430" y1="1498" x2="700" y2="1498" class="row-sep" />
+    <text x="474" y="1509" class="col-name">order_code</text>
+    <text x="692" y="1509" class="col-type">BIGINT</text>
+    <line x1="430" y1="1514" x2="700" y2="1514" class="row-sep" />
+    <text x="474" y="1525" class="col-name">amount</text>
+    <text x="692" y="1525" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="1530" x2="700" y2="1530" class="row-sep" />
+    <text x="474" y="1541" class="col-name">status</text>
+    <text x="692" y="1541" class="col-type">VARCHAR(20)</text>
+    <line x1="430" y1="1546" x2="700" y2="1546" class="row-sep" />
+    <text x="474" y="1557" class="col-name">payment_link_id</text>
+    <text x="692" y="1557" class="col-type">TEXT</text>
+    <line x1="430" y1="1562" x2="700" y2="1562" class="row-sep" />
+    <text x="474" y="1573" class="col-name">checkout_url</text>
+    <text x="692" y="1573" class="col-type">TEXT</text>
+    <line x1="430" y1="1578" x2="700" y2="1578" class="row-sep" />
+    <text x="474" y="1589" class="col-name">qr_code</text>
+    <text x="692" y="1589" class="col-type">TEXT</text>
+    <line x1="430" y1="1594" x2="700" y2="1594" class="row-sep" />
+    <text x="474" y="1605" class="col-name">bin</text>
+    <text x="692" y="1605" class="col-type">TEXT</text>
+    <line x1="430" y1="1610" x2="700" y2="1610" class="row-sep" />
+    <text x="474" y="1621" class="col-name">account_number</text>
+    <text x="692" y="1621" class="col-type">TEXT</text>
+    <line x1="430" y1="1626" x2="700" y2="1626" class="row-sep" />
+    <text x="474" y="1637" class="col-name">account_name</text>
+    <text x="692" y="1637" class="col-type">TEXT</text>
+    <line x1="430" y1="1642" x2="700" y2="1642" class="row-sep" />
+    <text x="474" y="1653" class="col-name">description</text>
+    <text x="692" y="1653" class="col-type">TEXT</text>
+    <line x1="430" y1="1658" x2="700" y2="1658" class="row-sep" />
+    <text x="474" y="1669" class="col-name">expires_at</text>
+    <text x="692" y="1669" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1674" x2="700" y2="1674" class="row-sep" />
+    <text x="474" y="1685" class="col-name">paid_at</text>
+    <text x="692" y="1685" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1690" x2="700" y2="1690" class="row-sep" />
+    <text x="474" y="1701" class="col-name">next_check_at</text>
+    <text x="692" y="1701" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1706" x2="700" y2="1706" class="row-sep" />
+    <text x="474" y="1717" class="col-name">created_at</text>
+    <text x="692" y="1717" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1722" x2="700" y2="1722" class="row-sep" />
+    <text x="474" y="1733" class="col-name">updated_at</text>
+    <text x="692" y="1733" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_customer_identities">
+    <rect x="800" y="1520" width="270" height="154" class="tbl-body" />
+    <rect x="800" y="1520" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="1537" class="tbl-header-txt">CUSTOMER_IDENTITIES</text>
+    <line x1="800" y1="1546" x2="1070" y2="1546" class="row-sep" />
+    <text x="819" y="1557" class="col-pk">PK, FK</text>
+    <text x="844" y="1557" class="col-pk-txt">user_id</text>
+    <text x="1062" y="1557" class="col-type">UUID</text>
+    <line x1="800" y1="1562" x2="1070" y2="1562" class="row-sep" />
+    <text x="844" y="1573" class="col-name">full_name</text>
+    <text x="1062" y="1573" class="col-type">VARCHAR(150)</text>
+    <line x1="800" y1="1578" x2="1070" y2="1578" class="row-sep" />
+    <text x="844" y="1589" class="col-name">id_card_number</text>
+    <text x="1062" y="1589" class="col-type">VARCHAR(12)</text>
+    <line x1="800" y1="1594" x2="1070" y2="1594" class="row-sep" />
+    <text x="844" y="1605" class="col-name">address</text>
+    <text x="1062" y="1605" class="col-type">VARCHAR(200)</text>
+    <line x1="800" y1="1610" x2="1070" y2="1610" class="row-sep" />
+    <text x="844" y="1621" class="col-name">verification_method</text>
+    <text x="1062" y="1621" class="col-type">VARCHAR(30)</text>
+    <line x1="800" y1="1626" x2="1070" y2="1626" class="row-sep" />
+    <text x="844" y="1637" class="col-name">verified_at</text>
+    <text x="1062" y="1637" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="1642" x2="1070" y2="1642" class="row-sep" />
+    <text x="844" y="1653" class="col-name">created_at</text>
+    <text x="1062" y="1653" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="1658" x2="1070" y2="1658" class="row-sep" />
+    <text x="844" y="1669" class="col-name">updated_at</text>
+    <text x="1062" y="1669" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_coupons">
+    <rect x="1910" y="1560" width="270" height="618" class="tbl-body" />
+    <rect x="1910" y="1560" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="1577" class="tbl-header-txt">COUPONS</text>
+    <line x1="1910" y1="1586" x2="2180" y2="1586" class="row-sep" />
+    <text x="1929" y="1597" class="col-pk">PK</text>
+    <text x="1954" y="1597" class="col-pk-txt">id</text>
+    <text x="2172" y="1597" class="col-type">UUID</text>
+    <line x1="1910" y1="1602" x2="2180" y2="1602" class="row-sep" />
+    <text x="1954" y="1613" class="col-name">code_normalized</text>
+    <text x="2172" y="1613" class="col-type">VARCHAR(20)</text>
+    <line x1="1910" y1="1618" x2="2180" y2="1618" class="row-sep" />
+    <text x="1954" y="1629" class="col-name">display_code</text>
+    <text x="2172" y="1629" class="col-type">VARCHAR(20)</text>
+    <line x1="1910" y1="1634" x2="2180" y2="1634" class="row-sep" />
+    <text x="1929" y="1645" class="col-pk">FK</text>
+    <text x="1954" y="1645" class="col-name">collaborator_id</text>
+    <text x="2172" y="1645" class="col-type">UUID</text>
+    <line x1="1910" y1="1650" x2="2180" y2="1650" class="row-sep" />
+    <text x="1929" y="1661" class="col-pk">FK</text>
+    <text x="1954" y="1661" class="col-name">store_id</text>
+    <text x="2172" y="1661" class="col-type">UUID</text>
+    <line x1="1910" y1="1666" x2="2180" y2="1666" class="row-sep" />
+    <text x="1929" y="1677" class="col-pk">FK</text>
+    <text x="1954" y="1677" class="col-name">campaign_id</text>
+    <text x="2172" y="1677" class="col-type">UUID</text>
+    <line x1="1910" y1="1682" x2="2180" y2="1682" class="row-sep" />
+    <text x="1954" y="1693" class="col-name">status</text>
+    <text x="2172" y="1693" class="col-type">COUPONSTATUS</text>
+    <line x1="1910" y1="1698" x2="2180" y2="1698" class="row-sep" />
+    <text x="1954" y="1709" class="col-name">discount_type</text>
+    <text x="2172" y="1709" class="col-type">DISCOUNTTYPE</text>
+    <line x1="1910" y1="1714" x2="2180" y2="1714" class="row-sep" />
+    <text x="1954" y="1725" class="col-name">discount_value</text>
+    <text x="2172" y="1725" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1910" y1="1730" x2="2180" y2="1730" class="row-sep" />
+    <text x="1954" y="1741" class="col-name">minimum_order_amount</text>
+    <text x="2172" y="1741" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1910" y1="1746" x2="2180" y2="1746" class="row-sep" />
+    <text x="1954" y="1757" class="col-name">maximum_discount_amount</text>
+    <text x="2172" y="1757" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1910" y1="1762" x2="2180" y2="1762" class="row-sep" />
+    <text x="1954" y="1773" class="col-name">usage_limit_total</text>
+    <text x="2172" y="1773" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1778" x2="2180" y2="1778" class="row-sep" />
+    <text x="1954" y="1789" class="col-name">usage_limit_per_customer</text>
+    <text x="2172" y="1789" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1794" x2="2180" y2="1794" class="row-sep" />
+    <text x="1954" y="1805" class="col-name">usage_count</text>
+    <text x="2172" y="1805" class="col-type">INTEGER</text>
+    <line x1="1910" y1="1810" x2="2180" y2="1810" class="row-sep" />
+    <text x="1954" y="1821" class="col-name">budget_total</text>
+    <text x="2172" y="1821" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1910" y1="1826" x2="2180" y2="1826" class="row-sep" />
+    <text x="1954" y="1837" class="col-name">budget_used</text>
+    <text x="2172" y="1837" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1910" y1="1842" x2="2180" y2="1842" class="row-sep" />
+    <text x="1954" y="1853" class="col-name">starts_at</text>
+    <text x="2172" y="1853" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1858" x2="2180" y2="1858" class="row-sep" />
+    <text x="1954" y="1869" class="col-name">expires_at</text>
+    <text x="2172" y="1869" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="1874" x2="2180" y2="1874" class="row-sep" />
+    <text x="1954" y="1885" class="col-name">scope_type</text>
+    <text x="2172" y="1885" class="col-type">COUPONSCOPE</text>
+    <line x1="1910" y1="1890" x2="2180" y2="1890" class="row-sep" />
+    <text x="1954" y="1901" class="col-name">funding_source</text>
+    <text x="2172" y="1901" class="col-type">COUPONFUNDINGSOURCE</text>
+    <line x1="1910" y1="1906" x2="2180" y2="1906" class="row-sep" />
+    <text x="1954" y="1917" class="col-name">shop_funding_rate</text>
+    <text x="2172" y="1917" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1910" y1="1922" x2="2180" y2="1922" class="row-sep" />
+    <text x="1954" y="1933" class="col-name">platform_funding_rate</text>
+    <text x="2172" y="1933" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1910" y1="1938" x2="2180" y2="1938" class="row-sep" />
+    <text x="1954" y="1949" class="col-name">stackable_with_product_discount</text>
+    <text x="2172" y="1949" class="col-type">BOOLEAN</text>
+    <line x1="1910" y1="1954" x2="2180" y2="1954" class="row-sep" />
+    <text x="1954" y="1965" class="col-name">stackable_with_shop_voucher</text>
+    <text x="2172" y="1965" class="col-type">BOOLEAN</text>
+    <line x1="1910" y1="1970" x2="2180" y2="1970" class="row-sep" />
+    <text x="1954" y="1981" class="col-name">stackable_with_platform_voucher</text>
+    <text x="2172" y="1981" class="col-type">BOOLEAN</text>
+    <line x1="1910" y1="1986" x2="2180" y2="1986" class="row-sep" />
+    <text x="1929" y="1997" class="col-pk">FK</text>
+    <text x="1954" y="1997" class="col-name">approved_by</text>
+    <text x="2172" y="1997" class="col-type">UUID</text>
+    <line x1="1910" y1="2002" x2="2180" y2="2002" class="row-sep" />
+    <text x="1954" y="2013" class="col-name">approved_at</text>
+    <text x="2172" y="2013" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2018" x2="2180" y2="2018" class="row-sep" />
+    <text x="1954" y="2029" class="col-name">rejected_reason</text>
+    <text x="2172" y="2029" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="2034" x2="2180" y2="2034" class="row-sep" />
+    <text x="1954" y="2045" class="col-name">blocked_reason</text>
+    <text x="2172" y="2045" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="2050" x2="2180" y2="2050" class="row-sep" />
+    <text x="1954" y="2061" class="col-name">deleted_by</text>
+    <text x="2172" y="2061" class="col-type">UUID</text>
+    <line x1="1910" y1="2066" x2="2180" y2="2066" class="row-sep" />
+    <text x="1954" y="2077" class="col-name">delete_reason</text>
+    <text x="2172" y="2077" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="2082" x2="2180" y2="2082" class="row-sep" />
+    <text x="1954" y="2093" class="col-name">deleted_at</text>
+    <text x="2172" y="2093" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2098" x2="2180" y2="2098" class="row-sep" />
+    <text x="1954" y="2109" class="col-name">created_at</text>
+    <text x="2172" y="2109" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2114" x2="2180" y2="2114" class="row-sep" />
+    <text x="1954" y="2125" class="col-name">updated_at</text>
+    <text x="2172" y="2125" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2130" x2="2180" y2="2130" class="row-sep" />
+    <text x="1929" y="2141" class="col-pk">FK</text>
+    <text x="1954" y="2141" class="col-name">live_session_id</text>
+    <text x="2172" y="2141" class="col-type">UUID</text>
+    <line x1="1910" y1="2146" x2="2180" y2="2146" class="row-sep" />
+    <text x="1954" y="2157" class="col-name">benefit_type</text>
+    <text x="2172" y="2157" class="col-type">COUPONBENEFITTYPE</text>
+    <line x1="1910" y1="2162" x2="2180" y2="2162" class="row-sep" />
+    <text x="1954" y="2173" class="col-name">status_before_block</text>
+    <text x="2172" y="2173" class="col-type">COUPONSTATUS</text>
+  </g>
+  <g id="t_coupon_redemptions">
+    <rect x="2280" y="1565" width="270" height="298" class="tbl-body" />
+    <rect x="2280" y="1565" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="1582" class="tbl-header-txt">COUPON_REDEMPTIONS</text>
+    <line x1="2280" y1="1591" x2="2550" y2="1591" class="row-sep" />
+    <text x="2299" y="1602" class="col-pk">PK</text>
+    <text x="2324" y="1602" class="col-pk-txt">id</text>
+    <text x="2542" y="1602" class="col-type">UUID</text>
+    <line x1="2280" y1="1607" x2="2550" y2="1607" class="row-sep" />
+    <text x="2299" y="1618" class="col-pk">FK</text>
+    <text x="2324" y="1618" class="col-name">coupon_id</text>
+    <text x="2542" y="1618" class="col-type">UUID</text>
+    <line x1="2280" y1="1623" x2="2550" y2="1623" class="row-sep" />
+    <text x="2299" y="1634" class="col-pk">FK</text>
+    <text x="2324" y="1634" class="col-name">order_id</text>
+    <text x="2542" y="1634" class="col-type">UUID</text>
+    <line x1="2280" y1="1639" x2="2550" y2="1639" class="row-sep" />
+    <text x="2324" y="1650" class="col-name">collaborator_id</text>
+    <text x="2542" y="1650" class="col-type">UUID</text>
+    <line x1="2280" y1="1655" x2="2550" y2="1655" class="row-sep" />
+    <text x="2324" y="1666" class="col-name">store_id</text>
+    <text x="2542" y="1666" class="col-type">UUID</text>
+    <line x1="2280" y1="1671" x2="2550" y2="1671" class="row-sep" />
+    <text x="2324" y="1682" class="col-name">customer_id</text>
+    <text x="2542" y="1682" class="col-type">UUID</text>
+    <line x1="2280" y1="1687" x2="2550" y2="1687" class="row-sep" />
+    <text x="2324" y="1698" class="col-name">customer_phone</text>
+    <text x="2542" y="1698" class="col-type">VARCHAR(20)</text>
+    <line x1="2280" y1="1703" x2="2550" y2="1703" class="row-sep" />
+    <text x="2324" y="1714" class="col-name">status</text>
+    <text x="2542" y="1714" class="col-type">COUPONREDEMPTIONSTATUS</text>
+    <line x1="2280" y1="1719" x2="2550" y2="1719" class="row-sep" />
+    <text x="2324" y="1730" class="col-name">discount_amount</text>
+    <text x="2542" y="1730" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1735" x2="2550" y2="1735" class="row-sep" />
+    <text x="2324" y="1746" class="col-name">shop_funded_amount</text>
+    <text x="2542" y="1746" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1751" x2="2550" y2="1751" class="row-sep" />
+    <text x="2324" y="1762" class="col-name">platform_funded_amount</text>
+    <text x="2542" y="1762" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1767" x2="2550" y2="1767" class="row-sep" />
+    <text x="2324" y="1778" class="col-name">eligible_subtotal</text>
+    <text x="2542" y="1778" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1783" x2="2550" y2="1783" class="row-sep" />
+    <text x="2324" y="1794" class="col-name">coupon_code_snapshot</text>
+    <text x="2542" y="1794" class="col-type">VARCHAR(20)</text>
+    <line x1="2280" y1="1799" x2="2550" y2="1799" class="row-sep" />
+    <text x="2324" y="1810" class="col-name">discount_type_snapshot</text>
+    <text x="2542" y="1810" class="col-type">DISCOUNTTYPE</text>
+    <line x1="2280" y1="1815" x2="2550" y2="1815" class="row-sep" />
+    <text x="2324" y="1826" class="col-name">discount_value_snapshot</text>
+    <text x="2542" y="1826" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="1831" x2="2550" y2="1831" class="row-sep" />
+    <text x="2324" y="1842" class="col-name">created_at</text>
+    <text x="2542" y="1842" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="1847" x2="2550" y2="1847" class="row-sep" />
+    <text x="2324" y="1858" class="col-name">updated_at</text>
+    <text x="2542" y="1858" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_commissions">
+    <rect x="1170" y="1620" width="270" height="202" class="tbl-body" />
+    <rect x="1170" y="1620" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="1637" class="tbl-header-txt">COMMISSIONS</text>
+    <line x1="1170" y1="1646" x2="1440" y2="1646" class="row-sep" />
+    <text x="1189" y="1657" class="col-pk">PK</text>
+    <text x="1214" y="1657" class="col-pk-txt">id</text>
+    <text x="1432" y="1657" class="col-type">UUID</text>
+    <line x1="1170" y1="1662" x2="1440" y2="1662" class="row-sep" />
+    <text x="1189" y="1673" class="col-pk">FK</text>
+    <text x="1214" y="1673" class="col-name">order_id</text>
+    <text x="1432" y="1673" class="col-type">UUID</text>
+    <line x1="1170" y1="1678" x2="1440" y2="1678" class="row-sep" />
+    <text x="1189" y="1689" class="col-pk">FK</text>
+    <text x="1214" y="1689" class="col-name">collaborator_id</text>
+    <text x="1432" y="1689" class="col-type">UUID</text>
+    <line x1="1170" y1="1694" x2="1440" y2="1694" class="row-sep" />
+    <text x="1214" y="1705" class="col-name">commission_amount</text>
+    <text x="1432" y="1705" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1170" y1="1710" x2="1440" y2="1710" class="row-sep" />
+    <text x="1214" y="1721" class="col-name">approved_at</text>
+    <text x="1432" y="1721" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1726" x2="1440" y2="1726" class="row-sep" />
+    <text x="1214" y="1737" class="col-name">created_at</text>
+    <text x="1432" y="1737" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1742" x2="1440" y2="1742" class="row-sep" />
+    <text x="1214" y="1753" class="col-name">status</text>
+    <text x="1432" y="1753" class="col-type">COMMISSIONSTATUS</text>
+    <line x1="1170" y1="1758" x2="1440" y2="1758" class="row-sep" />
+    <text x="1214" y="1769" class="col-name">store_wallet_tracked</text>
+    <text x="1432" y="1769" class="col-type">BOOLEAN</text>
+    <line x1="1170" y1="1774" x2="1440" y2="1774" class="row-sep" />
+    <text x="1214" y="1785" class="col-name">eligible_at</text>
+    <text x="1432" y="1785" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1790" x2="1440" y2="1790" class="row-sep" />
+    <text x="1214" y="1801" class="col-name">available_at</text>
+    <text x="1432" y="1801" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="1806" x2="1440" y2="1806" class="row-sep" />
+    <text x="1214" y="1817" class="col-name">reversed_at</text>
+    <text x="1432" y="1817" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_customer_addresses">
+    <rect x="800" y="1750" width="270" height="282" class="tbl-body" />
+    <rect x="800" y="1750" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="1767" class="tbl-header-txt">CUSTOMER_ADDRESSES</text>
+    <line x1="800" y1="1776" x2="1070" y2="1776" class="row-sep" />
+    <text x="819" y="1787" class="col-pk">PK</text>
+    <text x="844" y="1787" class="col-pk-txt">id</text>
+    <text x="1062" y="1787" class="col-type">UUID</text>
+    <line x1="800" y1="1792" x2="1070" y2="1792" class="row-sep" />
+    <text x="819" y="1803" class="col-pk">FK</text>
+    <text x="844" y="1803" class="col-name">user_id</text>
+    <text x="1062" y="1803" class="col-type">UUID</text>
+    <line x1="800" y1="1808" x2="1070" y2="1808" class="row-sep" />
+    <text x="844" y="1819" class="col-name">full_name</text>
+    <text x="1062" y="1819" class="col-type">VARCHAR(150)</text>
+    <line x1="800" y1="1824" x2="1070" y2="1824" class="row-sep" />
+    <text x="844" y="1835" class="col-name">phone_number</text>
+    <text x="1062" y="1835" class="col-type">VARCHAR(20)</text>
+    <line x1="800" y1="1840" x2="1070" y2="1840" class="row-sep" />
+    <text x="844" y="1851" class="col-name">province_code</text>
+    <text x="1062" y="1851" class="col-type">VARCHAR(50)</text>
+    <line x1="800" y1="1856" x2="1070" y2="1856" class="row-sep" />
+    <text x="844" y="1867" class="col-name">province_name</text>
+    <text x="1062" y="1867" class="col-type">VARCHAR(100)</text>
+    <line x1="800" y1="1872" x2="1070" y2="1872" class="row-sep" />
+    <text x="844" y="1883" class="col-name">district_code</text>
+    <text x="1062" y="1883" class="col-type">VARCHAR(50)</text>
+    <line x1="800" y1="1888" x2="1070" y2="1888" class="row-sep" />
+    <text x="844" y="1899" class="col-name">district_name</text>
+    <text x="1062" y="1899" class="col-type">VARCHAR(100)</text>
+    <line x1="800" y1="1904" x2="1070" y2="1904" class="row-sep" />
+    <text x="844" y="1915" class="col-name">ward_code</text>
+    <text x="1062" y="1915" class="col-type">VARCHAR(50)</text>
+    <line x1="800" y1="1920" x2="1070" y2="1920" class="row-sep" />
+    <text x="844" y="1931" class="col-name">ward_name</text>
+    <text x="1062" y="1931" class="col-type">VARCHAR(100)</text>
+    <line x1="800" y1="1936" x2="1070" y2="1936" class="row-sep" />
+    <text x="844" y="1947" class="col-name">detail_address</text>
+    <text x="1062" y="1947" class="col-type">VARCHAR(255)</text>
+    <line x1="800" y1="1952" x2="1070" y2="1952" class="row-sep" />
+    <text x="844" y="1963" class="col-name">is_default</text>
+    <text x="1062" y="1963" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="1968" x2="1070" y2="1968" class="row-sep" />
+    <text x="844" y="1979" class="col-name">created_at</text>
+    <text x="1062" y="1979" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="1984" x2="1070" y2="1984" class="row-sep" />
+    <text x="844" y="1995" class="col-name">updated_at</text>
+    <text x="1062" y="1995" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="2000" x2="1070" y2="2000" class="row-sep" />
+    <text x="844" y="2011" class="col-name">latitude</text>
+    <text x="1062" y="2011" class="col-type">DECIMAL(10,7)</text>
+    <line x1="800" y1="2016" x2="1070" y2="2016" class="row-sep" />
+    <text x="844" y="2027" class="col-name">longitude</text>
+    <text x="1062" y="2027" class="col-type">DECIMAL(10,7)</text>
+  </g>
+  <g id="t_financial_ledgers">
+    <rect x="430" y="1790" width="270" height="234" class="tbl-body" />
+    <rect x="430" y="1790" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="1807" class="tbl-header-txt">FINANCIAL_LEDGERS</text>
+    <line x1="430" y1="1816" x2="700" y2="1816" class="row-sep" />
+    <text x="449" y="1827" class="col-pk">PK</text>
+    <text x="474" y="1827" class="col-pk-txt">id</text>
+    <text x="692" y="1827" class="col-type">UUID</text>
+    <line x1="430" y1="1832" x2="700" y2="1832" class="row-sep" />
+    <text x="449" y="1843" class="col-pk">FK</text>
+    <text x="474" y="1843" class="col-name">wallet_id</text>
+    <text x="692" y="1843" class="col-type">UUID</text>
+    <line x1="430" y1="1848" x2="700" y2="1848" class="row-sep" />
+    <text x="474" y="1859" class="col-name">amount</text>
+    <text x="692" y="1859" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="1864" x2="700" y2="1864" class="row-sep" />
+    <text x="474" y="1875" class="col-name">balance_before</text>
+    <text x="692" y="1875" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="1880" x2="700" y2="1880" class="row-sep" />
+    <text x="474" y="1891" class="col-name">balance_after</text>
+    <text x="692" y="1891" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="1896" x2="700" y2="1896" class="row-sep" />
+    <text x="474" y="1907" class="col-name">reference_id</text>
+    <text x="692" y="1907" class="col-type">UUID</text>
+    <line x1="430" y1="1912" x2="700" y2="1912" class="row-sep" />
+    <text x="474" y="1923" class="col-name">created_at</text>
+    <text x="692" y="1923" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="1928" x2="700" y2="1928" class="row-sep" />
+    <text x="474" y="1939" class="col-name">transaction_type</text>
+    <text x="692" y="1939" class="col-type">TRANSACTIONTYPE</text>
+    <line x1="430" y1="1944" x2="700" y2="1944" class="row-sep" />
+    <text x="474" y="1955" class="col-name">balance_bucket</text>
+    <text x="692" y="1955" class="col-type">WALLETBALANCEBUCKET</text>
+    <line x1="430" y1="1960" x2="700" y2="1960" class="row-sep" />
+    <text x="474" y="1971" class="col-name">reference_type</text>
+    <text x="692" y="1971" class="col-type">VARCHAR(30)</text>
+    <line x1="430" y1="1976" x2="700" y2="1976" class="row-sep" />
+    <text x="474" y="1987" class="col-name">store_balance_after</text>
+    <text x="692" y="1987" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="1992" x2="700" y2="1992" class="row-sep" />
+    <text x="474" y="2003" class="col-name">store_balance_before</text>
+    <text x="692" y="2003" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="2008" x2="700" y2="2008" class="row-sep" />
+    <text x="449" y="2019" class="col-pk">FK</text>
+    <text x="474" y="2019" class="col-name">store_id</text>
+    <text x="692" y="2019" class="col-type">UUID</text>
+  </g>
+  <g id="t_payment_transactions">
+    <rect x="1170" y="1880" width="270" height="170" class="tbl-body" />
+    <rect x="1170" y="1880" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="1897" class="tbl-header-txt">PAYMENT_TRANSACTIONS</text>
+    <line x1="1170" y1="1906" x2="1440" y2="1906" class="row-sep" />
+    <text x="1189" y="1917" class="col-pk">PK</text>
+    <text x="1214" y="1917" class="col-pk-txt">id</text>
+    <text x="1432" y="1917" class="col-type">UUID</text>
+    <line x1="1170" y1="1922" x2="1440" y2="1922" class="row-sep" />
+    <text x="1189" y="1933" class="col-pk">FK</text>
+    <text x="1214" y="1933" class="col-name">order_id</text>
+    <text x="1432" y="1933" class="col-type">UUID</text>
+    <line x1="1170" y1="1938" x2="1440" y2="1938" class="row-sep" />
+    <text x="1214" y="1949" class="col-name">transaction_id</text>
+    <text x="1432" y="1949" class="col-type">VARCHAR(100)</text>
+    <line x1="1170" y1="1954" x2="1440" y2="1954" class="row-sep" />
+    <text x="1214" y="1965" class="col-name">amount</text>
+    <text x="1432" y="1965" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1170" y1="1970" x2="1440" y2="1970" class="row-sep" />
+    <text x="1214" y="1981" class="col-name">currency</text>
+    <text x="1432" y="1981" class="col-type">VARCHAR(10)</text>
+    <line x1="1170" y1="1986" x2="1440" y2="1986" class="row-sep" />
+    <text x="1214" y="1997" class="col-name">payment_method</text>
+    <text x="1432" y="1997" class="col-type">VARCHAR(50)</text>
+    <line x1="1170" y1="2002" x2="1440" y2="2002" class="row-sep" />
+    <text x="1214" y="2013" class="col-name">payment_proof</text>
+    <text x="1432" y="2013" class="col-type">TEXT</text>
+    <line x1="1170" y1="2018" x2="1440" y2="2018" class="row-sep" />
+    <text x="1214" y="2029" class="col-name">status</text>
+    <text x="1432" y="2029" class="col-type">VARCHAR(20)</text>
+    <line x1="1170" y1="2034" x2="1440" y2="2034" class="row-sep" />
+    <text x="1214" y="2045" class="col-name">created_at</text>
+    <text x="1432" y="2045" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_click_traffic_logs">
+    <rect x="2280" y="1900" width="270" height="442" class="tbl-body" />
+    <rect x="2280" y="1900" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="1917" class="tbl-header-txt">CLICK_TRAFFIC_LOGS</text>
+    <line x1="2280" y1="1926" x2="2550" y2="1926" class="row-sep" />
+    <text x="2299" y="1937" class="col-pk">PK</text>
+    <text x="2324" y="1937" class="col-pk-txt">id</text>
+    <text x="2542" y="1937" class="col-type">UUID</text>
+    <line x1="2280" y1="1942" x2="2550" y2="1942" class="row-sep" />
+    <text x="2299" y="1953" class="col-pk">FK</text>
+    <text x="2324" y="1953" class="col-name">referral_link_id</text>
+    <text x="2542" y="1953" class="col-type">UUID</text>
+    <line x1="2280" y1="1958" x2="2550" y2="1958" class="row-sep" />
+    <text x="2324" y="1969" class="col-name">ip_address</text>
+    <text x="2542" y="1969" class="col-type">VARCHAR(45)</text>
+    <line x1="2280" y1="1974" x2="2550" y2="1974" class="row-sep" />
+    <text x="2324" y="1985" class="col-name">user_agent</text>
+    <text x="2542" y="1985" class="col-type">TEXT</text>
+    <line x1="2280" y1="1990" x2="2550" y2="1990" class="row-sep" />
+    <text x="2324" y="2001" class="col-name">device_fingerprint</text>
+    <text x="2542" y="2001" class="col-type">VARCHAR(255)</text>
+    <line x1="2280" y1="2006" x2="2550" y2="2006" class="row-sep" />
+    <text x="2324" y="2017" class="col-name">created_at</text>
+    <text x="2542" y="2017" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2022" x2="2550" y2="2022" class="row-sep" />
+    <text x="2324" y="2033" class="col-name">device_type</text>
+    <text x="2542" y="2033" class="col-type">VARCHAR(50)</text>
+    <line x1="2280" y1="2038" x2="2550" y2="2038" class="row-sep" />
+    <text x="2324" y="2049" class="col-name">is_valid</text>
+    <text x="2542" y="2049" class="col-type">BOOLEAN</text>
+    <line x1="2280" y1="2054" x2="2550" y2="2054" class="row-sep" />
+    <text x="2324" y="2065" class="col-name">referrer</text>
+    <text x="2542" y="2065" class="col-type">VARCHAR(255)</text>
+    <line x1="2280" y1="2070" x2="2550" y2="2070" class="row-sep" />
+    <text x="2324" y="2081" class="col-name">rejection_reason</text>
+    <text x="2542" y="2081" class="col-type">VARCHAR(150)</text>
+    <line x1="2280" y1="2086" x2="2550" y2="2086" class="row-sep" />
+    <text x="2324" y="2097" class="col-name">session_id</text>
+    <text x="2542" y="2097" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2102" x2="2550" y2="2102" class="row-sep" />
+    <text x="2324" y="2113" class="col-name">utm_campaign</text>
+    <text x="2542" y="2113" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2118" x2="2550" y2="2118" class="row-sep" />
+    <text x="2324" y="2129" class="col-name">utm_medium</text>
+    <text x="2542" y="2129" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2134" x2="2550" y2="2134" class="row-sep" />
+    <text x="2324" y="2145" class="col-name">utm_source</text>
+    <text x="2542" y="2145" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2150" x2="2550" y2="2150" class="row-sep" />
+    <text x="2324" y="2161" class="col-name">access_method</text>
+    <text x="2542" y="2161" class="col-type">ACCESSMETHOD</text>
+    <line x1="2280" y1="2166" x2="2550" y2="2166" class="row-sep" />
+    <text x="2324" y="2177" class="col-name">event_id</text>
+    <text x="2542" y="2177" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2182" x2="2550" y2="2182" class="row-sep" />
+    <text x="2324" y="2193" class="col-name">store_id</text>
+    <text x="2542" y="2193" class="col-type">UUID</text>
+    <line x1="2280" y1="2198" x2="2550" y2="2198" class="row-sep" />
+    <text x="2324" y="2209" class="col-name">collaborator_id</text>
+    <text x="2542" y="2209" class="col-type">UUID</text>
+    <line x1="2280" y1="2214" x2="2550" y2="2214" class="row-sep" />
+    <text x="2324" y="2225" class="col-name">product_id</text>
+    <text x="2542" y="2225" class="col-type">UUID</text>
+    <line x1="2280" y1="2230" x2="2550" y2="2230" class="row-sep" />
+    <text x="2324" y="2241" class="col-name">campaign_id</text>
+    <text x="2542" y="2241" class="col-type">UUID</text>
+    <line x1="2280" y1="2246" x2="2550" y2="2246" class="row-sep" />
+    <text x="2324" y="2257" class="col-name">ip_hash</text>
+    <text x="2542" y="2257" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2262" x2="2550" y2="2262" class="row-sep" />
+    <text x="2324" y="2273" class="col-name">fingerprint_hash</text>
+    <text x="2542" y="2273" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2278" x2="2550" y2="2278" class="row-sep" />
+    <text x="2324" y="2289" class="col-name">is_unique</text>
+    <text x="2542" y="2289" class="col-type">BOOLEAN</text>
+    <line x1="2280" y1="2294" x2="2550" y2="2294" class="row-sep" />
+    <text x="2324" y="2305" class="col-name">risk_reason</text>
+    <text x="2542" y="2305" class="col-type">VARCHAR(150)</text>
+    <line x1="2280" y1="2310" x2="2550" y2="2310" class="row-sep" />
+    <text x="2324" y="2321" class="col-name">request_id</text>
+    <text x="2542" y="2321" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2326" x2="2550" y2="2326" class="row-sep" />
+    <text x="2324" y="2337" class="col-name">received_at</text>
+    <text x="2542" y="2337" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_audit_logs">
+    <rect x="800" y="2070" width="270" height="138" class="tbl-body" />
+    <rect x="800" y="2070" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="2087" class="tbl-header-txt">AUDIT_LOGS</text>
+    <line x1="800" y1="2096" x2="1070" y2="2096" class="row-sep" />
+    <text x="819" y="2107" class="col-pk">PK</text>
+    <text x="844" y="2107" class="col-pk-txt">id</text>
+    <text x="1062" y="2107" class="col-type">UUID</text>
+    <line x1="800" y1="2112" x2="1070" y2="2112" class="row-sep" />
+    <text x="819" y="2123" class="col-pk">FK</text>
+    <text x="844" y="2123" class="col-name">user_id</text>
+    <text x="1062" y="2123" class="col-type">UUID</text>
+    <line x1="800" y1="2128" x2="1070" y2="2128" class="row-sep" />
+    <text x="844" y="2139" class="col-name">action</text>
+    <text x="1062" y="2139" class="col-type">VARCHAR(100)</text>
+    <line x1="800" y1="2144" x2="1070" y2="2144" class="row-sep" />
+    <text x="844" y="2155" class="col-name">details</text>
+    <text x="1062" y="2155" class="col-type">JSONB</text>
+    <line x1="800" y1="2160" x2="1070" y2="2160" class="row-sep" />
+    <text x="844" y="2171" class="col-name">ip_address</text>
+    <text x="1062" y="2171" class="col-type">VARCHAR(45)</text>
+    <line x1="800" y1="2176" x2="1070" y2="2176" class="row-sep" />
+    <text x="844" y="2187" class="col-name">created_at</text>
+    <text x="1062" y="2187" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="800" y1="2192" x2="1070" y2="2192" class="row-sep" />
+    <text x="844" y="2203" class="col-name">event_id</text>
+    <text x="1062" y="2203" class="col-type">UUID</text>
+  </g>
+  <g id="t_order_items">
+    <rect x="1540" y="2070" width="270" height="234" class="tbl-body" />
+    <rect x="1540" y="2070" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="2087" class="tbl-header-txt">ORDER_ITEMS</text>
+    <line x1="1540" y1="2096" x2="1810" y2="2096" class="row-sep" />
+    <text x="1559" y="2107" class="col-pk">PK</text>
+    <text x="1584" y="2107" class="col-pk-txt">id</text>
+    <text x="1802" y="2107" class="col-type">UUID</text>
+    <line x1="1540" y1="2112" x2="1810" y2="2112" class="row-sep" />
+    <text x="1559" y="2123" class="col-pk">FK</text>
+    <text x="1584" y="2123" class="col-name">order_id</text>
+    <text x="1802" y="2123" class="col-type">UUID</text>
+    <line x1="1540" y1="2128" x2="1810" y2="2128" class="row-sep" />
+    <text x="1559" y="2139" class="col-pk">FK</text>
+    <text x="1584" y="2139" class="col-name">product_id</text>
+    <text x="1802" y="2139" class="col-type">UUID</text>
+    <line x1="1540" y1="2144" x2="1810" y2="2144" class="row-sep" />
+    <text x="1584" y="2155" class="col-name">quantity</text>
+    <text x="1802" y="2155" class="col-type">INTEGER</text>
+    <line x1="1540" y1="2160" x2="1810" y2="2160" class="row-sep" />
+    <text x="1584" y="2171" class="col-name">unit_price</text>
+    <text x="1802" y="2171" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="2176" x2="1810" y2="2176" class="row-sep" />
+    <text x="1584" y="2187" class="col-name">applied_commission_rate</text>
+    <text x="1802" y="2187" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1540" y1="2192" x2="1810" y2="2192" class="row-sep" />
+    <text x="1584" y="2203" class="col-name">calculated_commission_amount</text>
+    <text x="1802" y="2203" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1540" y1="2208" x2="1810" y2="2208" class="row-sep" />
+    <text x="1584" y="2219" class="col-name">created_at</text>
+    <text x="1802" y="2219" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2224" x2="1810" y2="2224" class="row-sep" />
+    <text x="1559" y="2235" class="col-pk">FK</text>
+    <text x="1584" y="2235" class="col-name">referral_link_id</text>
+    <text x="1802" y="2235" class="col-type">UUID</text>
+    <line x1="1540" y1="2240" x2="1810" y2="2240" class="row-sep" />
+    <text x="1584" y="2251" class="col-name">commission_snapshot_at</text>
+    <text x="1802" y="2251" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2256" x2="1810" y2="2256" class="row-sep" />
+    <text x="1559" y="2267" class="col-pk">FK</text>
+    <text x="1584" y="2267" class="col-name">variant_id</text>
+    <text x="1802" y="2267" class="col-type">UUID</text>
+    <line x1="1540" y1="2272" x2="1810" y2="2272" class="row-sep" />
+    <text x="1584" y="2283" class="col-name">regular_commission_rate</text>
+    <text x="1802" y="2283" class="col-type">DECIMAL(5,2)</text>
+    <line x1="1540" y1="2288" x2="1810" y2="2288" class="row-sep" />
+    <text x="1584" y="2299" class="col-name">regular_commission_amount</text>
+    <text x="1802" y="2299" class="col-type">DECIMAL(15,2)</text>
+  </g>
+  <g id="t_order_refunds">
+    <rect x="1170" y="2100" width="270" height="138" class="tbl-body" />
+    <rect x="1170" y="2100" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="2117" class="tbl-header-txt">ORDER_REFUNDS</text>
+    <line x1="1170" y1="2126" x2="1440" y2="2126" class="row-sep" />
+    <text x="1189" y="2137" class="col-pk">PK</text>
+    <text x="1214" y="2137" class="col-pk-txt">id</text>
+    <text x="1432" y="2137" class="col-type">UUID</text>
+    <line x1="1170" y1="2142" x2="1440" y2="2142" class="row-sep" />
+    <text x="1189" y="2153" class="col-pk">FK</text>
+    <text x="1214" y="2153" class="col-name">order_id</text>
+    <text x="1432" y="2153" class="col-type">UUID</text>
+    <line x1="1170" y1="2158" x2="1440" y2="2158" class="row-sep" />
+    <text x="1214" y="2169" class="col-name">amount</text>
+    <text x="1432" y="2169" class="col-type">DECIMAL(15,2)</text>
+    <line x1="1170" y1="2174" x2="1440" y2="2174" class="row-sep" />
+    <text x="1214" y="2185" class="col-name">reason</text>
+    <text x="1432" y="2185" class="col-type">TEXT</text>
+    <line x1="1170" y1="2190" x2="1440" y2="2190" class="row-sep" />
+    <text x="1214" y="2201" class="col-name">status</text>
+    <text x="1432" y="2201" class="col-type">VARCHAR(50)</text>
+    <line x1="1170" y1="2206" x2="1440" y2="2206" class="row-sep" />
+    <text x="1214" y="2217" class="col-name">refunded_at</text>
+    <text x="1432" y="2217" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="2222" x2="1440" y2="2222" class="row-sep" />
+    <text x="1214" y="2233" class="col-name">created_at</text>
+    <text x="1432" y="2233" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_payout_batches">
+    <rect x="60" y="2120" width="270" height="106" class="tbl-body" />
+    <rect x="60" y="2120" width="270" height="26" class="tbl-header" />
+    <text x="195.0" y="2137" class="tbl-header-txt">PAYOUT_BATCHES</text>
+    <line x1="60" y1="2146" x2="330" y2="2146" class="row-sep" />
+    <text x="79" y="2157" class="col-pk">PK</text>
+    <text x="104" y="2157" class="col-pk-txt">id</text>
+    <text x="322" y="2157" class="col-type">UUID</text>
+    <line x1="60" y1="2162" x2="330" y2="2162" class="row-sep" />
+    <text x="79" y="2173" class="col-pk">FK</text>
+    <text x="104" y="2173" class="col-name">store_id</text>
+    <text x="322" y="2173" class="col-type">UUID</text>
+    <line x1="60" y1="2178" x2="330" y2="2178" class="row-sep" />
+    <text x="79" y="2189" class="col-pk">FK</text>
+    <text x="104" y="2189" class="col-name">created_by_id</text>
+    <text x="322" y="2189" class="col-type">UUID</text>
+    <line x1="60" y1="2194" x2="330" y2="2194" class="row-sep" />
+    <text x="104" y="2205" class="col-name">created_at</text>
+    <text x="322" y="2205" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="60" y1="2210" x2="330" y2="2210" class="row-sep" />
+    <text x="104" y="2221" class="col-name">file_data</text>
+    <text x="322" y="2221" class="col-type">BYTEA</text>
+  </g>
+  <g id="t_payout_requests">
+    <rect x="430" y="2120" width="270" height="346" class="tbl-body" />
+    <rect x="430" y="2120" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="2137" class="tbl-header-txt">PAYOUT_REQUESTS</text>
+    <line x1="430" y1="2146" x2="700" y2="2146" class="row-sep" />
+    <text x="449" y="2157" class="col-pk">PK</text>
+    <text x="474" y="2157" class="col-pk-txt">id</text>
+    <text x="692" y="2157" class="col-type">UUID</text>
+    <line x1="430" y1="2162" x2="700" y2="2162" class="row-sep" />
+    <text x="449" y="2173" class="col-pk">FK</text>
+    <text x="474" y="2173" class="col-name">collaborator_id</text>
+    <text x="692" y="2173" class="col-type">UUID</text>
+    <line x1="430" y1="2178" x2="700" y2="2178" class="row-sep" />
+    <text x="474" y="2189" class="col-name">amount</text>
+    <text x="692" y="2189" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="2194" x2="700" y2="2194" class="row-sep" />
+    <text x="474" y="2205" class="col-name">bank_ref_code</text>
+    <text x="692" y="2205" class="col-type">VARCHAR(100)</text>
+    <line x1="430" y1="2210" x2="700" y2="2210" class="row-sep" />
+    <text x="474" y="2221" class="col-name">proof_image_url</text>
+    <text x="692" y="2221" class="col-type">TEXT</text>
+    <line x1="430" y1="2226" x2="700" y2="2226" class="row-sep" />
+    <text x="474" y="2237" class="col-name">rejected_reason</text>
+    <text x="692" y="2237" class="col-type">TEXT</text>
+    <line x1="430" y1="2242" x2="700" y2="2242" class="row-sep" />
+    <text x="474" y="2253" class="col-name">processed_at</text>
+    <text x="692" y="2253" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="2258" x2="700" y2="2258" class="row-sep" />
+    <text x="474" y="2269" class="col-name">created_at</text>
+    <text x="692" y="2269" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="2274" x2="700" y2="2274" class="row-sep" />
+    <text x="474" y="2285" class="col-name">status</text>
+    <text x="692" y="2285" class="col-type">PAYOUTSTATUS</text>
+    <line x1="430" y1="2290" x2="700" y2="2290" class="row-sep" />
+    <text x="474" y="2301" class="col-name">bank_account_name</text>
+    <text x="692" y="2301" class="col-type">VARCHAR(150)</text>
+    <line x1="430" y1="2306" x2="700" y2="2306" class="row-sep" />
+    <text x="474" y="2317" class="col-name">bank_account_number</text>
+    <text x="692" y="2317" class="col-type">VARCHAR(50)</text>
+    <line x1="430" y1="2322" x2="700" y2="2322" class="row-sep" />
+    <text x="474" y="2333" class="col-name">bank_name</text>
+    <text x="692" y="2333" class="col-type">VARCHAR(100)</text>
+    <line x1="430" y1="2338" x2="700" y2="2338" class="row-sep" />
+    <text x="474" y="2349" class="col-name">net_amount</text>
+    <text x="692" y="2349" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="2354" x2="700" y2="2354" class="row-sep" />
+    <text x="474" y="2365" class="col-name">tax_amount</text>
+    <text x="692" y="2365" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="2370" x2="700" y2="2370" class="row-sep" />
+    <text x="449" y="2381" class="col-pk">FK</text>
+    <text x="474" y="2381" class="col-name">store_id</text>
+    <text x="692" y="2381" class="col-type">UUID</text>
+    <line x1="430" y1="2386" x2="700" y2="2386" class="row-sep" />
+    <text x="449" y="2397" class="col-pk">FK</text>
+    <text x="474" y="2397" class="col-name">approved_by_id</text>
+    <text x="692" y="2397" class="col-type">UUID</text>
+    <line x1="430" y1="2402" x2="700" y2="2402" class="row-sep" />
+    <text x="449" y="2413" class="col-pk">FK</text>
+    <text x="474" y="2413" class="col-name">batch_id</text>
+    <text x="692" y="2413" class="col-type">UUID</text>
+    <line x1="430" y1="2418" x2="700" y2="2418" class="row-sep" />
+    <text x="474" y="2429" class="col-name">proof_image_format</text>
+    <text x="692" y="2429" class="col-type">VARCHAR(10)</text>
+    <line x1="430" y1="2434" x2="700" y2="2434" class="row-sep" />
+    <text x="474" y="2445" class="col-name">proof_image_public_id</text>
+    <text x="692" y="2445" class="col-type">TEXT</text>
+    <line x1="430" y1="2450" x2="700" y2="2450" class="row-sep" />
+    <text x="474" y="2461" class="col-name">proof_image_sha256</text>
+    <text x="692" y="2461" class="col-type">VARCHAR(64)</text>
+  </g>
+  <g id="t_referral_links">
+    <rect x="1910" y="2230" width="270" height="490" class="tbl-body" />
+    <rect x="1910" y="2230" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="2247" class="tbl-header-txt">REFERRAL_LINKS</text>
+    <line x1="1910" y1="2256" x2="2180" y2="2256" class="row-sep" />
+    <text x="1929" y="2267" class="col-pk">PK</text>
+    <text x="1954" y="2267" class="col-pk-txt">id</text>
+    <text x="2172" y="2267" class="col-type">UUID</text>
+    <line x1="1910" y1="2272" x2="2180" y2="2272" class="row-sep" />
+    <text x="1929" y="2283" class="col-pk">FK</text>
+    <text x="1954" y="2283" class="col-name">collaborator_id</text>
+    <text x="2172" y="2283" class="col-type">UUID</text>
+    <line x1="1910" y1="2288" x2="2180" y2="2288" class="row-sep" />
+    <text x="1929" y="2299" class="col-pk">FK</text>
+    <text x="1954" y="2299" class="col-name">product_id</text>
+    <text x="2172" y="2299" class="col-type">UUID</text>
+    <line x1="1910" y1="2304" x2="2180" y2="2304" class="row-sep" />
+    <text x="1954" y="2315" class="col-name">short_code</text>
+    <text x="2172" y="2315" class="col-type">VARCHAR(50)</text>
+    <line x1="1910" y1="2320" x2="2180" y2="2320" class="row-sep" />
+    <text x="1954" y="2331" class="col-name">custom_coupon_code</text>
+    <text x="2172" y="2331" class="col-type">VARCHAR(50)</text>
+    <line x1="1910" y1="2336" x2="2180" y2="2336" class="row-sep" />
+    <text x="1954" y="2347" class="col-name">qr_code_url</text>
+    <text x="2172" y="2347" class="col-type">TEXT</text>
+    <line x1="1910" y1="2352" x2="2180" y2="2352" class="row-sep" />
+    <text x="1954" y="2363" class="col-name">total_clicks</text>
+    <text x="2172" y="2363" class="col-type">INTEGER</text>
+    <line x1="1910" y1="2368" x2="2180" y2="2368" class="row-sep" />
+    <text x="1954" y="2379" class="col-name">total_orders</text>
+    <text x="2172" y="2379" class="col-type">INTEGER</text>
+    <line x1="1910" y1="2384" x2="2180" y2="2384" class="row-sep" />
+    <text x="1954" y="2395" class="col-name">deleted_at</text>
+    <text x="2172" y="2395" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2400" x2="2180" y2="2400" class="row-sep" />
+    <text x="1954" y="2411" class="col-name">created_at</text>
+    <text x="2172" y="2411" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2416" x2="2180" y2="2416" class="row-sep" />
+    <text x="1929" y="2427" class="col-pk">FK</text>
+    <text x="1954" y="2427" class="col-name">store_id</text>
+    <text x="2172" y="2427" class="col-type">UUID</text>
+    <line x1="1910" y1="2432" x2="2180" y2="2432" class="row-sep" />
+    <text x="1929" y="2443" class="col-pk">FK</text>
+    <text x="1954" y="2443" class="col-name">campaign_id</text>
+    <text x="2172" y="2443" class="col-type">UUID</text>
+    <line x1="1910" y1="2448" x2="2180" y2="2448" class="row-sep" />
+    <text x="1954" y="2459" class="col-name">channel</text>
+    <text x="2172" y="2459" class="col-type">SOCIALPLATFORM</text>
+    <line x1="1910" y1="2464" x2="2180" y2="2464" class="row-sep" />
+    <text x="1954" y="2475" class="col-name">destination_path</text>
+    <text x="2172" y="2475" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="2480" x2="2180" y2="2480" class="row-sep" />
+    <text x="1954" y="2491" class="col-name">disabled_at</text>
+    <text x="2172" y="2491" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2496" x2="2180" y2="2496" class="row-sep" />
+    <text x="1954" y="2507" class="col-name">disabled_by</text>
+    <text x="2172" y="2507" class="col-type">UUID</text>
+    <line x1="1910" y1="2512" x2="2180" y2="2512" class="row-sep" />
+    <text x="1954" y="2523" class="col-name">disabled_reason</text>
+    <text x="2172" y="2523" class="col-type">VARCHAR(255)</text>
+    <line x1="1910" y1="2528" x2="2180" y2="2528" class="row-sep" />
+    <text x="1954" y="2539" class="col-name">expires_at</text>
+    <text x="2172" y="2539" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2544" x2="2180" y2="2544" class="row-sep" />
+    <text x="1954" y="2555" class="col-name">label</text>
+    <text x="2172" y="2555" class="col-type">VARCHAR(150)</text>
+    <line x1="1910" y1="2560" x2="2180" y2="2560" class="row-sep" />
+    <text x="1954" y="2571" class="col-name">last_accessed_at</text>
+    <text x="2172" y="2571" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2576" x2="2180" y2="2576" class="row-sep" />
+    <text x="1954" y="2587" class="col-name">status</text>
+    <text x="2172" y="2587" class="col-type">REFERRALLINKSTATUS</text>
+    <line x1="1910" y1="2592" x2="2180" y2="2592" class="row-sep" />
+    <text x="1954" y="2603" class="col-name">unique_clicks</text>
+    <text x="2172" y="2603" class="col-type">INTEGER</text>
+    <line x1="1910" y1="2608" x2="2180" y2="2608" class="row-sep" />
+    <text x="1954" y="2619" class="col-name">updated_at</text>
+    <text x="2172" y="2619" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1910" y1="2624" x2="2180" y2="2624" class="row-sep" />
+    <text x="1954" y="2635" class="col-name">utm_campaign</text>
+    <text x="2172" y="2635" class="col-type">VARCHAR(100)</text>
+    <line x1="1910" y1="2640" x2="2180" y2="2640" class="row-sep" />
+    <text x="1954" y="2651" class="col-name">utm_content</text>
+    <text x="2172" y="2651" class="col-type">VARCHAR(100)</text>
+    <line x1="1910" y1="2656" x2="2180" y2="2656" class="row-sep" />
+    <text x="1954" y="2667" class="col-name">utm_medium</text>
+    <text x="2172" y="2667" class="col-type">VARCHAR(100)</text>
+    <line x1="1910" y1="2672" x2="2180" y2="2672" class="row-sep" />
+    <text x="1954" y="2683" class="col-name">utm_source</text>
+    <text x="2172" y="2683" class="col-type">VARCHAR(100)</text>
+    <line x1="1910" y1="2688" x2="2180" y2="2688" class="row-sep" />
+    <text x="1954" y="2699" class="col-name">qr_download_count</text>
+    <text x="2172" y="2699" class="col-type">INTEGER</text>
+    <line x1="1910" y1="2704" x2="2180" y2="2704" class="row-sep" />
+    <text x="1929" y="2715" class="col-pk">FK</text>
+    <text x="1954" y="2715" class="col-name">exclusive_deal_id</text>
+    <text x="2172" y="2715" class="col-type">UUID</text>
+  </g>
+  <g id="t_notifications">
+    <rect x="800" y="2280" width="270" height="154" class="tbl-body" />
+    <rect x="800" y="2280" width="270" height="26" class="tbl-header" />
+    <text x="935.0" y="2297" class="tbl-header-txt">NOTIFICATIONS</text>
+    <line x1="800" y1="2306" x2="1070" y2="2306" class="row-sep" />
+    <text x="819" y="2317" class="col-pk">PK</text>
+    <text x="844" y="2317" class="col-pk-txt">id</text>
+    <text x="1062" y="2317" class="col-type">UUID</text>
+    <line x1="800" y1="2322" x2="1070" y2="2322" class="row-sep" />
+    <text x="819" y="2333" class="col-pk">FK</text>
+    <text x="844" y="2333" class="col-name">user_id</text>
+    <text x="1062" y="2333" class="col-type">UUID</text>
+    <line x1="800" y1="2338" x2="1070" y2="2338" class="row-sep" />
+    <text x="844" y="2349" class="col-name">title</text>
+    <text x="1062" y="2349" class="col-type">VARCHAR(255)</text>
+    <line x1="800" y1="2354" x2="1070" y2="2354" class="row-sep" />
+    <text x="844" y="2365" class="col-name">message</text>
+    <text x="1062" y="2365" class="col-type">TEXT</text>
+    <line x1="800" y1="2370" x2="1070" y2="2370" class="row-sep" />
+    <text x="844" y="2381" class="col-name">type</text>
+    <text x="1062" y="2381" class="col-type">VARCHAR(50)</text>
+    <line x1="800" y1="2386" x2="1070" y2="2386" class="row-sep" />
+    <text x="844" y="2397" class="col-name">data</text>
+    <text x="1062" y="2397" class="col-type">JSONB</text>
+    <line x1="800" y1="2402" x2="1070" y2="2402" class="row-sep" />
+    <text x="844" y="2413" class="col-name">is_read</text>
+    <text x="1062" y="2413" class="col-type">BOOLEAN</text>
+    <line x1="800" y1="2418" x2="1070" y2="2418" class="row-sep" />
+    <text x="844" y="2429" class="col-name">created_at</text>
+    <text x="1062" y="2429" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_ghn_tracking_records">
+    <rect x="1170" y="2300" width="270" height="186" class="tbl-body" />
+    <rect x="1170" y="2300" width="270" height="26" class="tbl-header" />
+    <text x="1305.0" y="2317" class="tbl-header-txt">GHN_TRACKING_RECORDS</text>
+    <line x1="1170" y1="2326" x2="1440" y2="2326" class="row-sep" />
+    <text x="1189" y="2337" class="col-pk">PK</text>
+    <text x="1214" y="2337" class="col-pk-txt">id</text>
+    <text x="1432" y="2337" class="col-type">UUID</text>
+    <line x1="1170" y1="2342" x2="1440" y2="2342" class="row-sep" />
+    <text x="1214" y="2353" class="col-name">environment</text>
+    <text x="1432" y="2353" class="col-type">VARCHAR(10)</text>
+    <line x1="1170" y1="2358" x2="1440" y2="2358" class="row-sep" />
+    <text x="1214" y="2369" class="col-name">order_code</text>
+    <text x="1432" y="2369" class="col-type">VARCHAR(100)</text>
+    <line x1="1170" y1="2374" x2="1440" y2="2374" class="row-sep" />
+    <text x="1214" y="2385" class="col-name">status</text>
+    <text x="1432" y="2385" class="col-type">VARCHAR(40)</text>
+    <line x1="1170" y1="2390" x2="1440" y2="2390" class="row-sep" />
+    <text x="1214" y="2401" class="col-name">events</text>
+    <text x="1432" y="2401" class="col-type">JSONB</text>
+    <line x1="1170" y1="2406" x2="1440" y2="2406" class="row-sep" />
+    <text x="1214" y="2417" class="col-name">shipper_name</text>
+    <text x="1432" y="2417" class="col-type">VARCHAR(150)</text>
+    <line x1="1170" y1="2422" x2="1440" y2="2422" class="row-sep" />
+    <text x="1214" y="2433" class="col-name">shipper_phone</text>
+    <text x="1432" y="2433" class="col-type">VARCHAR(30)</text>
+    <line x1="1170" y1="2438" x2="1440" y2="2438" class="row-sep" />
+    <text x="1214" y="2449" class="col-name">contact_updated_at</text>
+    <text x="1432" y="2449" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="2454" x2="1440" y2="2454" class="row-sep" />
+    <text x="1214" y="2465" class="col-name">status_updated_at</text>
+    <text x="1432" y="2465" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1170" y1="2470" x2="1440" y2="2470" class="row-sep" />
+    <text x="1214" y="2481" class="col-name">observed_at</text>
+    <text x="1432" y="2481" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_return_requests">
+    <rect x="1540" y="2360" width="270" height="426" class="tbl-body" />
+    <rect x="1540" y="2360" width="270" height="26" class="tbl-header" />
+    <text x="1675.0" y="2377" class="tbl-header-txt">RETURN_REQUESTS</text>
+    <line x1="1540" y1="2386" x2="1810" y2="2386" class="row-sep" />
+    <text x="1559" y="2397" class="col-pk">PK</text>
+    <text x="1584" y="2397" class="col-pk-txt">id</text>
+    <text x="1802" y="2397" class="col-type">UUID</text>
+    <line x1="1540" y1="2402" x2="1810" y2="2402" class="row-sep" />
+    <text x="1559" y="2413" class="col-pk">FK</text>
+    <text x="1584" y="2413" class="col-name">order_id</text>
+    <text x="1802" y="2413" class="col-type">UUID</text>
+    <line x1="1540" y1="2418" x2="1810" y2="2418" class="row-sep" />
+    <text x="1559" y="2429" class="col-pk">FK</text>
+    <text x="1584" y="2429" class="col-name">customer_id</text>
+    <text x="1802" y="2429" class="col-type">UUID</text>
+    <line x1="1540" y1="2434" x2="1810" y2="2434" class="row-sep" />
+    <text x="1584" y="2445" class="col-name">reason</text>
+    <text x="1802" y="2445" class="col-type">RETURNREASON</text>
+    <line x1="1540" y1="2450" x2="1810" y2="2450" class="row-sep" />
+    <text x="1584" y="2461" class="col-name">details</text>
+    <text x="1802" y="2461" class="col-type">VARCHAR(1000)</text>
+    <line x1="1540" y1="2466" x2="1810" y2="2466" class="row-sep" />
+    <text x="1584" y="2477" class="col-name">image_urls</text>
+    <text x="1802" y="2477" class="col-type">ARRAY</text>
+    <line x1="1540" y1="2482" x2="1810" y2="2482" class="row-sep" />
+    <text x="1584" y="2493" class="col-name">unboxing_video_url</text>
+    <text x="1802" y="2493" class="col-type">TEXT</text>
+    <line x1="1540" y1="2498" x2="1810" y2="2498" class="row-sep" />
+    <text x="1584" y="2509" class="col-name">status</text>
+    <text x="1802" y="2509" class="col-type">RETURNREQUESTSTATUS</text>
+    <line x1="1540" y1="2514" x2="1810" y2="2514" class="row-sep" />
+    <text x="1584" y="2525" class="col-name">deadline_at</text>
+    <text x="1802" y="2525" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2530" x2="1810" y2="2530" class="row-sep" />
+    <text x="1584" y="2541" class="col-name">shop_response</text>
+    <text x="1802" y="2541" class="col-type">VARCHAR(1000)</text>
+    <line x1="1540" y1="2546" x2="1810" y2="2546" class="row-sep" />
+    <text x="1584" y="2557" class="col-name">shop_responded_at</text>
+    <text x="1802" y="2557" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2562" x2="1810" y2="2562" class="row-sep" />
+    <text x="1584" y="2573" class="col-name">submitted_at</text>
+    <text x="1802" y="2573" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2578" x2="1810" y2="2578" class="row-sep" />
+    <text x="1584" y="2589" class="col-name">updated_at</text>
+    <text x="1802" y="2589" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2594" x2="1810" y2="2594" class="row-sep" />
+    <text x="1584" y="2605" class="col-name">original_order_status</text>
+    <text x="1802" y="2605" class="col-type">ORDERSTATUS</text>
+    <line x1="1540" y1="2610" x2="1810" y2="2610" class="row-sep" />
+    <text x="1584" y="2621" class="col-name">ship_by_at</text>
+    <text x="1802" y="2621" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2626" x2="1810" y2="2626" class="row-sep" />
+    <text x="1584" y="2637" class="col-name">return_address</text>
+    <text x="1802" y="2637" class="col-type">VARCHAR(500)</text>
+    <line x1="1540" y1="2642" x2="1810" y2="2642" class="row-sep" />
+    <text x="1584" y="2653" class="col-name">return_instructions</text>
+    <text x="1802" y="2653" class="col-type">VARCHAR(1000)</text>
+    <line x1="1540" y1="2658" x2="1810" y2="2658" class="row-sep" />
+    <text x="1584" y="2669" class="col-name">resolution</text>
+    <text x="1802" y="2669" class="col-type">RETURNRESOLUTION</text>
+    <line x1="1540" y1="2674" x2="1810" y2="2674" class="row-sep" />
+    <text x="1584" y="2685" class="col-name">inspection_notes</text>
+    <text x="1802" y="2685" class="col-type">VARCHAR(2000)</text>
+    <line x1="1540" y1="2690" x2="1810" y2="2690" class="row-sep" />
+    <text x="1584" y="2701" class="col-name">received_at</text>
+    <text x="1802" y="2701" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2706" x2="1810" y2="2706" class="row-sep" />
+    <text x="1584" y="2717" class="col-name">inspection_started_at</text>
+    <text x="1802" y="2717" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2722" x2="1810" y2="2722" class="row-sep" />
+    <text x="1584" y="2733" class="col-name">inspection_completed_at</text>
+    <text x="1802" y="2733" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2738" x2="1810" y2="2738" class="row-sep" />
+    <text x="1584" y="2749" class="col-name">inspection_escalated_at</text>
+    <text x="1802" y="2749" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2754" x2="1810" y2="2754" class="row-sep" />
+    <text x="1584" y="2765" class="col-name">completed_at</text>
+    <text x="1802" y="2765" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="1540" y1="2770" x2="1810" y2="2770" class="row-sep" />
+    <text x="1584" y="2781" class="col-name">pickup_contact</text>
+    <text x="1802" y="2781" class="col-type">JSONB</text>
+  </g>
+  <g id="t_attribution_sessions">
+    <rect x="2280" y="2400" width="270" height="250" class="tbl-body" />
+    <rect x="2280" y="2400" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="2417" class="tbl-header-txt">ATTRIBUTION_SESSIONS</text>
+    <line x1="2280" y1="2426" x2="2550" y2="2426" class="row-sep" />
+    <text x="2299" y="2437" class="col-pk">PK</text>
+    <text x="2324" y="2437" class="col-pk-txt">id</text>
+    <text x="2542" y="2437" class="col-type">UUID</text>
+    <line x1="2280" y1="2442" x2="2550" y2="2442" class="row-sep" />
+    <text x="2299" y="2453" class="col-pk">FK</text>
+    <text x="2324" y="2453" class="col-name">store_id</text>
+    <text x="2542" y="2453" class="col-type">UUID</text>
+    <line x1="2280" y1="2458" x2="2550" y2="2458" class="row-sep" />
+    <text x="2299" y="2469" class="col-pk">FK</text>
+    <text x="2324" y="2469" class="col-name">collaborator_id</text>
+    <text x="2542" y="2469" class="col-type">UUID</text>
+    <line x1="2280" y1="2474" x2="2550" y2="2474" class="row-sep" />
+    <text x="2299" y="2485" class="col-pk">FK</text>
+    <text x="2324" y="2485" class="col-name">referral_link_id</text>
+    <text x="2542" y="2485" class="col-type">UUID</text>
+    <line x1="2280" y1="2490" x2="2550" y2="2490" class="row-sep" />
+    <text x="2324" y="2501" class="col-name">visitor_id_hash</text>
+    <text x="2542" y="2501" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2506" x2="2550" y2="2506" class="row-sep" />
+    <text x="2324" y="2517" class="col-name">fingerprint_hash</text>
+    <text x="2542" y="2517" class="col-type">VARCHAR(64)</text>
+    <line x1="2280" y1="2522" x2="2550" y2="2522" class="row-sep" />
+    <text x="2324" y="2533" class="col-name">latest_click_id</text>
+    <text x="2542" y="2533" class="col-type">UUID</text>
+    <line x1="2280" y1="2538" x2="2550" y2="2538" class="row-sep" />
+    <text x="2324" y="2549" class="col-name">first_clicked_at</text>
+    <text x="2542" y="2549" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2554" x2="2550" y2="2554" class="row-sep" />
+    <text x="2324" y="2565" class="col-name">last_clicked_at</text>
+    <text x="2542" y="2565" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2570" x2="2550" y2="2570" class="row-sep" />
+    <text x="2324" y="2581" class="col-name">expires_at</text>
+    <text x="2542" y="2581" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2586" x2="2550" y2="2586" class="row-sep" />
+    <text x="2324" y="2597" class="col-name">version</text>
+    <text x="2542" y="2597" class="col-type">INTEGER</text>
+    <line x1="2280" y1="2602" x2="2550" y2="2602" class="row-sep" />
+    <text x="2324" y="2613" class="col-name">status</text>
+    <text x="2542" y="2613" class="col-type">VARCHAR(20)</text>
+    <line x1="2280" y1="2618" x2="2550" y2="2618" class="row-sep" />
+    <text x="2324" y="2629" class="col-name">created_at</text>
+    <text x="2542" y="2629" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2634" x2="2550" y2="2634" class="row-sep" />
+    <text x="2324" y="2645" class="col-name">updated_at</text>
+    <text x="2542" y="2645" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_attribution_adjustments">
+    <rect x="2650" y="2400" width="270" height="202" class="tbl-body" />
+    <rect x="2650" y="2400" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="2417" class="tbl-header-txt">ATTRIBUTION_ADJUSTMENTS</text>
+    <line x1="2650" y1="2426" x2="2920" y2="2426" class="row-sep" />
+    <text x="2669" y="2437" class="col-pk">PK</text>
+    <text x="2694" y="2437" class="col-pk-txt">id</text>
+    <text x="2912" y="2437" class="col-type">UUID</text>
+    <line x1="2650" y1="2442" x2="2920" y2="2442" class="row-sep" />
+    <text x="2669" y="2453" class="col-pk">FK</text>
+    <text x="2694" y="2453" class="col-name">order_id</text>
+    <text x="2912" y="2453" class="col-type">UUID</text>
+    <line x1="2650" y1="2458" x2="2920" y2="2458" class="row-sep" />
+    <text x="2669" y="2469" class="col-pk">FK</text>
+    <text x="2694" y="2469" class="col-name">admin_id</text>
+    <text x="2912" y="2469" class="col-type">UUID</text>
+    <line x1="2650" y1="2474" x2="2920" y2="2474" class="row-sep" />
+    <text x="2694" y="2485" class="col-name">previous_collaborator_id</text>
+    <text x="2912" y="2485" class="col-type">UUID</text>
+    <line x1="2650" y1="2490" x2="2920" y2="2490" class="row-sep" />
+    <text x="2694" y="2501" class="col-name">new_collaborator_id</text>
+    <text x="2912" y="2501" class="col-type">UUID</text>
+    <line x1="2650" y1="2506" x2="2920" y2="2506" class="row-sep" />
+    <text x="2694" y="2517" class="col-name">reason</text>
+    <text x="2912" y="2517" class="col-type">VARCHAR(255)</text>
+    <line x1="2650" y1="2522" x2="2920" y2="2522" class="row-sep" />
+    <text x="2694" y="2533" class="col-name">evidence_url</text>
+    <text x="2912" y="2533" class="col-type">TEXT</text>
+    <line x1="2650" y1="2538" x2="2920" y2="2538" class="row-sep" />
+    <text x="2694" y="2549" class="col-name">adjusted_at</text>
+    <text x="2912" y="2549" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2650" y1="2554" x2="2920" y2="2554" class="row-sep" />
+    <text x="2694" y="2565" class="col-name">created_at</text>
+    <text x="2912" y="2565" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2650" y1="2570" x2="2920" y2="2570" class="row-sep" />
+    <text x="2669" y="2581" class="col-pk">FK</text>
+    <text x="2694" y="2581" class="col-name">previous_commission_id</text>
+    <text x="2912" y="2581" class="col-type">UUID</text>
+    <line x1="2650" y1="2586" x2="2920" y2="2586" class="row-sep" />
+    <text x="2669" y="2597" class="col-pk">FK</text>
+    <text x="2694" y="2597" class="col-name">new_commission_id</text>
+    <text x="2912" y="2597" class="col-type">UUID</text>
+  </g>
+  <g id="t_collaborator_tiers">
+    <rect x="60" y="2520" width="270" height="106" class="tbl-body" />
+    <rect x="60" y="2520" width="270" height="26" class="tbl-header" />
+    <text x="195.0" y="2537" class="tbl-header-txt">COLLABORATOR_TIERS</text>
+    <line x1="60" y1="2546" x2="330" y2="2546" class="row-sep" />
+    <text x="79" y="2557" class="col-pk">PK</text>
+    <text x="104" y="2557" class="col-pk-txt">id</text>
+    <text x="322" y="2557" class="col-type">UUID</text>
+    <line x1="60" y1="2562" x2="330" y2="2562" class="row-sep" />
+    <text x="104" y="2573" class="col-name">name</text>
+    <text x="322" y="2573" class="col-type">VARCHAR(50)</text>
+    <line x1="60" y1="2578" x2="330" y2="2578" class="row-sep" />
+    <text x="104" y="2589" class="col-name">min_revenue_threshold</text>
+    <text x="322" y="2589" class="col-type">DECIMAL(15,2)</text>
+    <line x1="60" y1="2594" x2="330" y2="2594" class="row-sep" />
+    <text x="104" y="2605" class="col-name">extra_bonus_percentage</text>
+    <text x="322" y="2605" class="col-type">DECIMAL(5,2)</text>
+    <line x1="60" y1="2610" x2="330" y2="2610" class="row-sep" />
+    <text x="104" y="2621" class="col-name">created_at</text>
+    <text x="322" y="2621" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_collaborator_profiles">
+    <rect x="430" y="2520" width="270" height="330" class="tbl-body" />
+    <rect x="430" y="2520" width="270" height="26" class="tbl-header" />
+    <text x="565.0" y="2537" class="tbl-header-txt">COLLABORATOR_PROFILES</text>
+    <line x1="430" y1="2546" x2="700" y2="2546" class="row-sep" />
+    <text x="449" y="2557" class="col-pk">PK</text>
+    <text x="474" y="2557" class="col-pk-txt">id</text>
+    <text x="692" y="2557" class="col-type">UUID</text>
+    <line x1="430" y1="2562" x2="700" y2="2562" class="row-sep" />
+    <text x="449" y="2573" class="col-pk">FK</text>
+    <text x="474" y="2573" class="col-name">user_id</text>
+    <text x="692" y="2573" class="col-type">UUID</text>
+    <line x1="430" y1="2578" x2="700" y2="2578" class="row-sep" />
+    <text x="449" y="2589" class="col-pk">FK</text>
+    <text x="474" y="2589" class="col-name">tier_id</text>
+    <text x="692" y="2589" class="col-type">UUID</text>
+    <line x1="430" y1="2594" x2="700" y2="2594" class="row-sep" />
+    <text x="474" y="2605" class="col-name">avatar_url</text>
+    <text x="692" y="2605" class="col-type">TEXT</text>
+    <line x1="430" y1="2610" x2="700" y2="2610" class="row-sep" />
+    <text x="474" y="2621" class="col-name">bio</text>
+    <text x="692" y="2621" class="col-type">TEXT</text>
+    <line x1="430" y1="2626" x2="700" y2="2626" class="row-sep" />
+    <text x="474" y="2637" class="col-name">id_card_number</text>
+    <text x="692" y="2637" class="col-type">VARCHAR(50)</text>
+    <line x1="430" y1="2642" x2="700" y2="2642" class="row-sep" />
+    <text x="474" y="2653" class="col-name">tax_code</text>
+    <text x="692" y="2653" class="col-type">VARCHAR(50)</text>
+    <line x1="430" y1="2658" x2="700" y2="2658" class="row-sep" />
+    <text x="474" y="2669" class="col-name">bank_name</text>
+    <text x="692" y="2669" class="col-type">VARCHAR(100)</text>
+    <line x1="430" y1="2674" x2="700" y2="2674" class="row-sep" />
+    <text x="474" y="2685" class="col-name">bank_account_number</text>
+    <text x="692" y="2685" class="col-type">VARCHAR(50)</text>
+    <line x1="430" y1="2690" x2="700" y2="2690" class="row-sep" />
+    <text x="474" y="2701" class="col-name">bank_account_name</text>
+    <text x="692" y="2701" class="col-type">VARCHAR(150)</text>
+    <line x1="430" y1="2706" x2="700" y2="2706" class="row-sep" />
+    <text x="474" y="2717" class="col-name">social_links_json</text>
+    <text x="692" y="2717" class="col-type">JSONB</text>
+    <line x1="430" y1="2722" x2="700" y2="2722" class="row-sep" />
+    <text x="474" y="2733" class="col-name">total_followers</text>
+    <text x="692" y="2733" class="col-type">INTEGER</text>
+    <line x1="430" y1="2738" x2="700" y2="2738" class="row-sep" />
+    <text x="474" y="2749" class="col-name">total_earned_commission</text>
+    <text x="692" y="2749" class="col-type">DECIMAL(15,2)</text>
+    <line x1="430" y1="2754" x2="700" y2="2754" class="row-sep" />
+    <text x="474" y="2765" class="col-name">total_orders_referred</text>
+    <text x="692" y="2765" class="col-type">INTEGER</text>
+    <line x1="430" y1="2770" x2="700" y2="2770" class="row-sep" />
+    <text x="474" y="2781" class="col-name">created_at</text>
+    <text x="692" y="2781" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="2786" x2="700" y2="2786" class="row-sep" />
+    <text x="474" y="2797" class="col-name">updated_at</text>
+    <text x="692" y="2797" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="2802" x2="700" y2="2802" class="row-sep" />
+    <text x="474" y="2813" class="col-name">kyc_status</text>
+    <text x="692" y="2813" class="col-type">KYCSTATUS</text>
+    <line x1="430" y1="2818" x2="700" y2="2818" class="row-sep" />
+    <text x="474" y="2829" class="col-name">sample_requests_blocked_at</text>
+    <text x="692" y="2829" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="430" y1="2834" x2="700" y2="2834" class="row-sep" />
+    <text x="474" y="2845" class="col-name">sample_requests_block_reason</text>
+    <text x="692" y="2845" class="col-type">VARCHAR(500)</text>
+  </g>
+  <g id="t_return_events">
+    <rect x="2650" y="2660" width="270" height="122" class="tbl-body" />
+    <rect x="2650" y="2660" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="2677" class="tbl-header-txt">RETURN_EVENTS</text>
+    <line x1="2650" y1="2686" x2="2920" y2="2686" class="row-sep" />
+    <text x="2669" y="2697" class="col-pk">PK</text>
+    <text x="2694" y="2697" class="col-pk-txt">id</text>
+    <text x="2912" y="2697" class="col-type">UUID</text>
+    <line x1="2650" y1="2702" x2="2920" y2="2702" class="row-sep" />
+    <text x="2669" y="2713" class="col-pk">FK</text>
+    <text x="2694" y="2713" class="col-name">return_request_id</text>
+    <text x="2912" y="2713" class="col-type">UUID</text>
+    <line x1="2650" y1="2718" x2="2920" y2="2718" class="row-sep" />
+    <text x="2694" y="2729" class="col-name">actor_id</text>
+    <text x="2912" y="2729" class="col-type">UUID</text>
+    <line x1="2650" y1="2734" x2="2920" y2="2734" class="row-sep" />
+    <text x="2694" y="2745" class="col-name">type</text>
+    <text x="2912" y="2745" class="col-type">VARCHAR(80)</text>
+    <line x1="2650" y1="2750" x2="2920" y2="2750" class="row-sep" />
+    <text x="2694" y="2761" class="col-name">data</text>
+    <text x="2912" y="2761" class="col-type">JSONB</text>
+    <line x1="2650" y1="2766" x2="2920" y2="2766" class="row-sep" />
+    <text x="2694" y="2777" class="col-name">created_at</text>
+    <text x="2912" y="2777" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_collaborator_social_channels">
+    <rect x="60" y="2700" width="270" height="154" class="tbl-body" />
+    <rect x="60" y="2700" width="270" height="26" class="tbl-header" />
+    <text x="195.0" y="2717" class="tbl-header-txt">COLLABORATOR_SOCIAL_CHANNELS</text>
+    <line x1="60" y1="2726" x2="330" y2="2726" class="row-sep" />
+    <text x="79" y="2737" class="col-pk">PK</text>
+    <text x="104" y="2737" class="col-pk-txt">id</text>
+    <text x="322" y="2737" class="col-type">UUID</text>
+    <line x1="60" y1="2742" x2="330" y2="2742" class="row-sep" />
+    <text x="79" y="2753" class="col-pk">FK</text>
+    <text x="104" y="2753" class="col-name">collaborator_id</text>
+    <text x="322" y="2753" class="col-type">UUID</text>
+    <line x1="60" y1="2758" x2="330" y2="2758" class="row-sep" />
+    <text x="104" y="2769" class="col-name">channel_name</text>
+    <text x="322" y="2769" class="col-type">VARCHAR(150)</text>
+    <line x1="60" y1="2774" x2="330" y2="2774" class="row-sep" />
+    <text x="104" y="2785" class="col-name">channel_url</text>
+    <text x="322" y="2785" class="col-type">TEXT</text>
+    <line x1="60" y1="2790" x2="330" y2="2790" class="row-sep" />
+    <text x="104" y="2801" class="col-name">follower_count</text>
+    <text x="322" y="2801" class="col-type">INTEGER</text>
+    <line x1="60" y1="2806" x2="330" y2="2806" class="row-sep" />
+    <text x="104" y="2817" class="col-name">is_primary</text>
+    <text x="322" y="2817" class="col-type">BOOLEAN</text>
+    <line x1="60" y1="2822" x2="330" y2="2822" class="row-sep" />
+    <text x="104" y="2833" class="col-name">created_at</text>
+    <text x="322" y="2833" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="60" y1="2838" x2="330" y2="2838" class="row-sep" />
+    <text x="104" y="2849" class="col-name">platform_name</text>
+    <text x="322" y="2849" class="col-type">SOCIALPLATFORM</text>
+  </g>
+  <g id="t_return_shipments">
+    <rect x="2280" y="2710" width="270" height="266" class="tbl-body" />
+    <rect x="2280" y="2710" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="2727" class="tbl-header-txt">RETURN_SHIPMENTS</text>
+    <line x1="2280" y1="2736" x2="2550" y2="2736" class="row-sep" />
+    <text x="2299" y="2747" class="col-pk">PK</text>
+    <text x="2324" y="2747" class="col-pk-txt">id</text>
+    <text x="2542" y="2747" class="col-type">UUID</text>
+    <line x1="2280" y1="2752" x2="2550" y2="2752" class="row-sep" />
+    <text x="2299" y="2763" class="col-pk">FK</text>
+    <text x="2324" y="2763" class="col-name">return_request_id</text>
+    <text x="2542" y="2763" class="col-type">UUID</text>
+    <line x1="2280" y1="2768" x2="2550" y2="2768" class="row-sep" />
+    <text x="2324" y="2779" class="col-name">direction</text>
+    <text x="2542" y="2779" class="col-type">RETURNSHIPMENTDIRECTION</text>
+    <line x1="2280" y1="2784" x2="2550" y2="2784" class="row-sep" />
+    <text x="2324" y="2795" class="col-name">carrier_name</text>
+    <text x="2542" y="2795" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2800" x2="2550" y2="2800" class="row-sep" />
+    <text x="2324" y="2811" class="col-name">tracking_number</text>
+    <text x="2542" y="2811" class="col-type">VARCHAR(100)</text>
+    <line x1="2280" y1="2816" x2="2550" y2="2816" class="row-sep" />
+    <text x="2324" y="2827" class="col-name">receipt_image_url</text>
+    <text x="2542" y="2827" class="col-type">VARCHAR(1000)</text>
+    <line x1="2280" y1="2832" x2="2550" y2="2832" class="row-sep" />
+    <text x="2324" y="2843" class="col-name">version</text>
+    <text x="2542" y="2843" class="col-type">INTEGER</text>
+    <line x1="2280" y1="2848" x2="2550" y2="2848" class="row-sep" />
+    <text x="2324" y="2859" class="col-name">shipped_at</text>
+    <text x="2542" y="2859" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2864" x2="2550" y2="2864" class="row-sep" />
+    <text x="2324" y="2875" class="col-name">received_at</text>
+    <text x="2542" y="2875" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2880" x2="2550" y2="2880" class="row-sep" />
+    <text x="2324" y="2891" class="col-name">provider</text>
+    <text x="2542" y="2891" class="col-type">VARCHAR(30)</text>
+    <line x1="2280" y1="2896" x2="2550" y2="2896" class="row-sep" />
+    <text x="2324" y="2907" class="col-name">provider_status</text>
+    <text x="2542" y="2907" class="col-type">VARCHAR(50)</text>
+    <line x1="2280" y1="2912" x2="2550" y2="2912" class="row-sep" />
+    <text x="2324" y="2923" class="col-name">client_order_code</text>
+    <text x="2542" y="2923" class="col-type">VARCHAR(50)</text>
+    <line x1="2280" y1="2928" x2="2550" y2="2928" class="row-sep" />
+    <text x="2324" y="2939" class="col-name">fee_amount</text>
+    <text x="2542" y="2939" class="col-type">INTEGER</text>
+    <line x1="2280" y1="2944" x2="2550" y2="2944" class="row-sep" />
+    <text x="2324" y="2955" class="col-name">booked_at</text>
+    <text x="2542" y="2955" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="2960" x2="2550" y2="2960" class="row-sep" />
+    <text x="2324" y="2971" class="col-name">picked_up_at</text>
+    <text x="2542" y="2971" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_return_items">
+    <rect x="1910" y="2770" width="270" height="106" class="tbl-body" />
+    <rect x="1910" y="2770" width="270" height="26" class="tbl-header" />
+    <text x="2045.0" y="2787" class="tbl-header-txt">RETURN_ITEMS</text>
+    <line x1="1910" y1="2796" x2="2180" y2="2796" class="row-sep" />
+    <text x="1929" y="2807" class="col-pk">PK</text>
+    <text x="1954" y="2807" class="col-pk-txt">id</text>
+    <text x="2172" y="2807" class="col-type">UUID</text>
+    <line x1="1910" y1="2812" x2="2180" y2="2812" class="row-sep" />
+    <text x="1929" y="2823" class="col-pk">FK</text>
+    <text x="1954" y="2823" class="col-name">return_request_id</text>
+    <text x="2172" y="2823" class="col-type">UUID</text>
+    <line x1="1910" y1="2828" x2="2180" y2="2828" class="row-sep" />
+    <text x="1929" y="2839" class="col-pk">FK</text>
+    <text x="1954" y="2839" class="col-name">order_item_id</text>
+    <text x="2172" y="2839" class="col-type">UUID</text>
+    <line x1="1910" y1="2844" x2="2180" y2="2844" class="row-sep" />
+    <text x="1954" y="2855" class="col-name">quantity</text>
+    <text x="2172" y="2855" class="col-type">INTEGER</text>
+    <line x1="1910" y1="2860" x2="2180" y2="2860" class="row-sep" />
+    <text x="1954" y="2871" class="col-name">unit_price</text>
+    <text x="2172" y="2871" class="col-type">DECIMAL(15,2)</text>
+  </g>
+  <g id="t_return_disputes">
+    <rect x="2650" y="2840" width="270" height="186" class="tbl-body" />
+    <rect x="2650" y="2840" width="270" height="26" class="tbl-header" />
+    <text x="2785.0" y="2857" class="tbl-header-txt">RETURN_DISPUTES</text>
+    <line x1="2650" y1="2866" x2="2920" y2="2866" class="row-sep" />
+    <text x="2669" y="2877" class="col-pk">PK</text>
+    <text x="2694" y="2877" class="col-pk-txt">id</text>
+    <text x="2912" y="2877" class="col-type">UUID</text>
+    <line x1="2650" y1="2882" x2="2920" y2="2882" class="row-sep" />
+    <text x="2669" y="2893" class="col-pk">FK</text>
+    <text x="2694" y="2893" class="col-name">return_request_id</text>
+    <text x="2912" y="2893" class="col-type">UUID</text>
+    <line x1="2650" y1="2898" x2="2920" y2="2898" class="row-sep" />
+    <text x="2694" y="2909" class="col-name">reason</text>
+    <text x="2912" y="2909" class="col-type">VARCHAR(100)</text>
+    <line x1="2650" y1="2914" x2="2920" y2="2914" class="row-sep" />
+    <text x="2694" y="2925" class="col-name">details</text>
+    <text x="2912" y="2925" class="col-type">VARCHAR(2000)</text>
+    <line x1="2650" y1="2930" x2="2920" y2="2930" class="row-sep" />
+    <text x="2694" y="2941" class="col-name">status</text>
+    <text x="2912" y="2941" class="col-type">RETURNDISPUTESTATUS</text>
+    <line x1="2650" y1="2946" x2="2920" y2="2946" class="row-sep" />
+    <text x="2694" y="2957" class="col-name">ruling</text>
+    <text x="2912" y="2957" class="col-type">VARCHAR(50)</text>
+    <line x1="2650" y1="2962" x2="2920" y2="2962" class="row-sep" />
+    <text x="2694" y="2973" class="col-name">resolution_notes</text>
+    <text x="2912" y="2973" class="col-type">VARCHAR(3000)</text>
+    <line x1="2650" y1="2978" x2="2920" y2="2978" class="row-sep" />
+    <text x="2669" y="2989" class="col-pk">FK</text>
+    <text x="2694" y="2989" class="col-name">resolved_by_id</text>
+    <text x="2912" y="2989" class="col-type">UUID</text>
+    <line x1="2650" y1="2994" x2="2920" y2="2994" class="row-sep" />
+    <text x="2694" y="3005" class="col-name">opened_at</text>
+    <text x="2912" y="3005" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2650" y1="3010" x2="2920" y2="3010" class="row-sep" />
+    <text x="2694" y="3021" class="col-name">resolved_at</text>
+    <text x="2912" y="3021" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+  <g id="t_return_refunds">
+    <rect x="2280" y="3030" width="270" height="218" class="tbl-body" />
+    <rect x="2280" y="3030" width="270" height="26" class="tbl-header" />
+    <text x="2415.0" y="3047" class="tbl-header-txt">RETURN_REFUNDS</text>
+    <line x1="2280" y1="3056" x2="2550" y2="3056" class="row-sep" />
+    <text x="2299" y="3067" class="col-pk">PK</text>
+    <text x="2324" y="3067" class="col-pk-txt">id</text>
+    <text x="2542" y="3067" class="col-type">UUID</text>
+    <line x1="2280" y1="3072" x2="2550" y2="3072" class="row-sep" />
+    <text x="2299" y="3083" class="col-pk">FK</text>
+    <text x="2324" y="3083" class="col-name">return_request_id</text>
+    <text x="2542" y="3083" class="col-type">UUID</text>
+    <line x1="2280" y1="3088" x2="2550" y2="3088" class="row-sep" />
+    <text x="2324" y="3099" class="col-name">amount</text>
+    <text x="2542" y="3099" class="col-type">DECIMAL(15,2)</text>
+    <line x1="2280" y1="3104" x2="2550" y2="3104" class="row-sep" />
+    <text x="2324" y="3115" class="col-name">method</text>
+    <text x="2542" y="3115" class="col-type">VARCHAR(50)</text>
+    <line x1="2280" y1="3120" x2="2550" y2="3120" class="row-sep" />
+    <text x="2324" y="3131" class="col-name">provider</text>
+    <text x="2542" y="3131" class="col-type">VARCHAR(50)</text>
+    <line x1="2280" y1="3136" x2="2550" y2="3136" class="row-sep" />
+    <text x="2324" y="3147" class="col-name">provider_reference</text>
+    <text x="2542" y="3147" class="col-type">VARCHAR(150)</text>
+    <line x1="2280" y1="3152" x2="2550" y2="3152" class="row-sep" />
+    <text x="2324" y="3163" class="col-name">idempotency_key</text>
+    <text x="2542" y="3163" class="col-type">VARCHAR(150)</text>
+    <line x1="2280" y1="3168" x2="2550" y2="3168" class="row-sep" />
+    <text x="2324" y="3179" class="col-name">status</text>
+    <text x="2542" y="3179" class="col-type">RETURNREFUNDSTATUS</text>
+    <line x1="2280" y1="3184" x2="2550" y2="3184" class="row-sep" />
+    <text x="2324" y="3195" class="col-name">failure_reason</text>
+    <text x="2542" y="3195" class="col-type">VARCHAR(1000)</text>
+    <line x1="2280" y1="3200" x2="2550" y2="3200" class="row-sep" />
+    <text x="2324" y="3211" class="col-name">processed_at</text>
+    <text x="2542" y="3211" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="3216" x2="2550" y2="3216" class="row-sep" />
+    <text x="2324" y="3227" class="col-name">created_at</text>
+    <text x="2542" y="3227" class="col-type">TIMESTAMPTZ(6)</text>
+    <line x1="2280" y1="3232" x2="2550" y2="3232" class="row-sep" />
+    <text x="2324" y="3243" class="col-name">updated_at</text>
+    <text x="2542" y="3243" class="col-type">TIMESTAMPTZ(6)</text>
+  </g>
+
+  <!-- RELATIONSHIPS -->
+  <path d="M 1070.0 1597.0 L 1140.0 1600.0 L 1140.0 1440.0 L 1170.0 1436.8" class="rel-line" />
+  <text x="1084.0" y="1591.0" class="card-badge">N</text>
+  <text x="1156.0" y="1430.8" class="card-badge">1</text>
+  <path d="M 565.0 2520.0 L 550.0 2490.0 L 1090.0 2490.0 L 1090.0 1580.0 L 1290.0 1580.0 L 1305.0 1548.0" class="rel-line" />
+  <text x="575.0" y="2506.0" class="card-badge">N</text>
+  <text x="1315.0" y="1562.0" class="card-badge">1</text>
+  <path d="M 430.0 2688.3 L 360.0 2690.0 L 360.0 2580.0 L 330.0 2577.2" class="rel-line" />
+  <text x="416.0" y="2682.3" class="card-badge">N</text>
+  <text x="344.0" y="2571.2" class="card-badge">1</text>
+  <path d="M 330.0 2777.0 L 400.0 2780.0 L 400.0 2620.0 L 430.0 2619.0" class="rel-line" />
+  <text x="344.0" y="2771.0" class="card-badge">N</text>
+  <text x="416.0" y="2613.0" class="card-badge">1</text>
+  <path d="M 935.0 1750.0 L 920.0 1700.0 L 1130.0 1700.0 L 1130.0 1590.0 L 1240.0 1590.0 L 1248.3 1548.0" class="rel-line" />
+  <text x="945.0" y="1736.0" class="card-badge">N</text>
+  <text x="1258.3" y="1562.0" class="card-badge">1</text>
+  <path d="M 1070.0 2137.6 L 1120.0 2140.0 L 1120.0 1570.0 L 1340.0 1570.0 L 1361.7 1548.0" class="rel-line" />
+  <text x="1084.0" y="2131.6" class="card-badge">N</text>
+  <text x="1371.7" y="1562.0" class="card-badge">1</text>
+  <path d="M 935.0 2280.0 L 920.0 2230.0 L 1140.0 2230.0 L 1140.0 1850.0 L 1460.0 1850.0 L 1460.0 1580.0 L 1360.0 1580.0 L 1383.3 1548.0" class="rel-line" />
+  <text x="945.0" y="2266.0" class="card-badge">N</text>
+  <text x="1393.3" y="1562.0" class="card-badge">1</text>
+  <path d="M 1305.0 1244.0 L 1305.0 1330.0" class="rel-line" />
+  <text x="1315.0" y="1258.0" class="card-badge">N</text>
+  <text x="1315.0" y="1316.0" class="card-badge">1</text>
+  <path d="M 1675.0 714.0 L 1660.0 740.0 L 1290.0 740.0 L 1305.0 770.0" class="rel-line" />
+  <text x="1685.0" y="728.0" class="card-badge">N</text>
+  <text x="1315.0" y="756.0" class="card-badge">1</text>
+  <path d="M 1305.0 130.0 L 1290.0 250.0 L 1140.0 250.0 L 1140.0 740.0 L 1240.0 740.0 L 1248.3 770.0" class="rel-line" />
+  <text x="1315.0" y="144.0" class="card-badge">N</text>
+  <text x="1258.3" y="756.0" class="card-badge">1</text>
+  <path d="M 1070.0 1117.6 L 1140.0 1120.0 L 1140.0 1010.0 L 1170.0 1007.0" class="rel-line" />
+  <text x="1084.0" y="1111.6" class="card-badge">N</text>
+  <text x="1156.0" y="1001.0" class="card-badge">1</text>
+  <path d="M 1070.0 208.3 L 1130.0 210.0 L 1130.0 730.0 L 1340.0 730.0 L 1361.7 770.0" class="rel-line" />
+  <text x="1084.0" y="202.3" class="card-badge">N</text>
+  <text x="1371.7" y="756.0" class="card-badge">1</text>
+  <path d="M 1305.0 622.0 L 1290.0 720.0 L 1220.0 720.0 L 1226.7 770.0" class="rel-line" />
+  <text x="1315.0" y="636.0" class="card-badge">N</text>
+  <text x="1236.7" y="756.0" class="card-badge">1</text>
+  <path d="M 1440.0 366.7 L 1470.0 370.0 L 1470.0 470.0 L 1290.0 470.0 L 1305.0 500.0" class="rel-line" />
+  <text x="1454.0" y="360.7" class="card-badge">N</text>
+  <text x="1315.0" y="486.0" class="card-badge">1</text>
+  <path d="M 1540.0 999.0 L 1470.0 1000.0 L 1470.0 1010.0 L 1440.0 1007.0" class="rel-line" />
+  <text x="1526.0" y="993.0" class="card-badge">N</text>
+  <text x="1454.0" y="1001.0" class="card-badge">1</text>
+  <path d="M 1810.0 397.5 L 1840.0 400.0 L 1840.0 740.0 L 1710.0 740.0 L 1731.7 770.0" class="rel-line" />
+  <text x="1824.0" y="391.5" class="card-badge">N</text>
+  <text x="1741.7" y="756.0" class="card-badge">1</text>
+  <path d="M 1910.0 685.7 L 1820.0 690.0 L 1820.0 1000.0 L 1810.0 999.0" class="rel-line" />
+  <text x="1896.0" y="679.7" class="card-badge">N</text>
+  <text x="1824.0" y="993.0" class="card-badge">1</text>
+  <path d="M 1810.0 157.0 L 1840.0 160.0 L 1840.0 50.0 L 1510.0 50.0 L 1510.0 910.0 L 1540.0 907.4" class="rel-line" />
+  <text x="1824.0" y="151.0" class="card-badge">N</text>
+  <text x="1526.0" y="901.4" class="card-badge">1</text>
+  <path d="M 2180.0 466.8 L 2210.0 470.0 L 2210.0 840.0 L 1830.0 840.0 L 1830.0 1250.0 L 1510.0 1250.0 L 1510.0 1090.0 L 1540.0 1086.0" class="rel-line" />
+  <text x="2194.0" y="460.8" class="card-badge">N</text>
+  <text x="1526.0" y="1080.0" class="card-badge">1</text>
+  <path d="M 1070.0 866.7 L 1140.0 870.0 L 1140.0 910.0 L 1170.0 907.5" class="rel-line" />
+  <text x="1084.0" y="860.7" class="card-badge">N</text>
+  <text x="1156.0" y="901.5" class="card-badge">1</text>
+  <path d="M 700.0 847.3 L 770.0 850.0 L 770.0 870.0 L 800.0 866.7" class="rel-line" />
+  <text x="714.0" y="841.3" class="card-badge">N</text>
+  <text x="786.0" y="860.7" class="card-badge">1</text>
+  <path d="M 700.0 1026.8 L 760.0 1030.0 L 760.0 830.0 L 800.0 827.7" class="rel-line" />
+  <text x="714.0" y="1020.8" class="card-badge">N</text>
+  <text x="786.0" y="821.7" class="card-badge">1</text>
+  <path d="M 565.0 1140.0 L 550.0 1090.0 L 770.0 1090.0 L 770.0 990.0 L 920.0 990.0 L 935.0 956.0" class="rel-line" />
+  <text x="575.0" y="1126.0" class="card-badge">N</text>
+  <text x="945.0" y="970.0" class="card-badge">1</text>
+  <path d="M 935.0 718.0 L 920.0 740.0 L 1120.0 740.0 L 1120.0 710.0 L 1360.0 710.0 L 1383.3 770.0" class="rel-line" />
+  <text x="945.0" y="732.0" class="card-badge">N</text>
+  <text x="1393.3" y="756.0" class="card-badge">1</text>
+  <path d="M 700.0 577.0 L 770.0 580.0 L 770.0 570.0 L 800.0 566.0" class="rel-line" />
+  <text x="714.0" y="571.0" class="card-badge">N</text>
+  <text x="786.0" y="560.0" class="card-badge">1</text>
+  <path d="M 330.0 516.7 L 400.0 520.0 L 400.0 580.0 L 430.0 577.0" class="rel-line" />
+  <text x="344.0" y="510.7" class="card-badge">N</text>
+  <text x="416.0" y="571.0" class="card-badge">1</text>
+  <path d="M 2045.0 2230.0 L 2030.0 2200.0 L 1830.0 2200.0 L 1830.0 1260.0 L 1660.0 1260.0 L 1675.0 1228.0" class="rel-line" />
+  <text x="2055.0" y="2216.0" class="card-badge">N</text>
+  <text x="1685.0" y="1242.0" class="card-badge">1</text>
+  <path d="M 2280.0 2116.6 L 2210.0 2120.0 L 2210.0 2480.0 L 2180.0 2475.0" class="rel-line" />
+  <text x="2266.0" y="2110.6" class="card-badge">N</text>
+  <text x="2194.0" y="2469.0" class="card-badge">1</text>
+  <path d="M 2280.0 2527.5 L 2190.0 2530.0 L 2190.0 2380.0 L 2180.0 2377.0" class="rel-line" />
+  <text x="2266.0" y="2521.5" class="card-badge">N</text>
+  <text x="2194.0" y="2371.0" class="card-badge">1</text>
+  <path d="M 2650.0 2497.0 L 2580.0 2500.0 L 2580.0 2530.0 L 2550.0 2527.5" class="rel-line" />
+  <text x="2636.0" y="2491.0" class="card-badge">N</text>
+  <text x="2564.0" y="2521.5" class="card-badge">1</text>
+  <path d="M 1910.0 1187.0 L 1840.0 1190.0 L 1840.0 910.0 L 1810.0 907.4" class="rel-line" />
+  <text x="1896.0" y="1181.0" class="card-badge">N</text>
+  <text x="1824.0" y="901.4" class="card-badge">1</text>
+  <path d="M 2280.0 927.3 L 2210.0 930.0 L 2210.0 1190.0 L 2180.0 1187.0" class="rel-line" />
+  <text x="2266.0" y="921.3" class="card-badge">N</text>
+  <text x="2194.0" y="1181.0" class="card-badge">1</text>
+  <path d="M 2280.0 1147.0 L 2190.0 1150.0 L 2190.0 1060.0 L 2180.0 1060.2" class="rel-line" />
+  <text x="2266.0" y="1141.0" class="card-badge">N</text>
+  <text x="2194.0" y="1054.2" class="card-badge">1</text>
+  <path d="M 2180.0 208.3 L 2210.0 210.0 L 2210.0 10.0 L 1450.0 10.0 L 1450.0 650.0 L 1270.0 650.0 L 1283.4 770.0" class="rel-line" />
+  <text x="2194.0" y="202.3" class="card-badge">N</text>
+  <text x="1293.4" y="756.0" class="card-badge">1</text>
+  <path d="M 2280.0 97.2 L 2190.0 100.0 L 2190.0 140.0 L 2180.0 139.0" class="rel-line" />
+  <text x="2266.0" y="91.2" class="card-badge">N</text>
+  <text x="2194.0" y="133.0" class="card-badge">1</text>
+  <path d="M 2280.0 297.2 L 2210.0 300.0 L 2210.0 280.0 L 2180.0 274.3" class="rel-line" />
+  <text x="2266.0" y="291.2" class="card-badge">N</text>
+  <text x="2194.0" y="268.3" class="card-badge">1</text>
+  <path d="M 2650.0 97.2 L 2570.0 100.0 L 2570.0 170.0 L 2200.0 170.0 L 2200.0 110.0 L 2180.0 109.3" class="rel-line" />
+  <text x="2636.0" y="91.2" class="card-badge">N</text>
+  <text x="2194.0" y="103.3" class="card-badge">1</text>
+  <path d="M 2045.0 1560.0 L 2030.0 1530.0 L 1840.0 1530.0 L 1840.0 1280.0 L 1240.0 1280.0 L 1248.3 1244.0" class="rel-line" />
+  <text x="2055.0" y="1546.0" class="card-badge">N</text>
+  <text x="1258.3" y="1258.0" class="card-badge">1</text>
+  <path d="M 2415.0 1375.0 L 2400.0 1400.0 L 2200.0 1400.0 L 2200.0 1530.0 L 2080.0 1530.0 L 2101.7 1560.0" class="rel-line" />
+  <text x="2425.0" y="1389.0" class="card-badge">N</text>
+  <text x="2111.7" y="1546.0" class="card-badge">1</text>
+  <path d="M 2415.0 1515.0 L 2400.0 1540.0 L 2200.0 1540.0 L 2200.0 2740.0 L 1880.0 2740.0 L 1880.0 1870.0 L 1910.0 1869.0" class="rel-line" />
+  <text x="2425.0" y="1529.0" class="card-badge">N</text>
+  <text x="1896.0" y="1863.0" class="card-badge">1</text>
+  <path d="M 2280.0 1711.0 L 2250.0 1715.0 L 2250.0 1720.0 L 2210.0 1720.0 L 2210.0 1870.0 L 2180.0 1869.0" class="rel-line" />
+  <text x="2266.0" y="1705.0" class="card-badge">N</text>
+  <text x="2194.0" y="1863.0" class="card-badge">1</text>
+  <path d="M 2650.0 1322.0 L 2620.0 1325.0 L 2620.0 1320.0 L 2570.0 1320.0 L 2570.0 1020.0 L 2200.0 1020.0 L 2200.0 1750.0 L 2180.0 1745.4" class="rel-line" />
+  <text x="2636.0" y="1316.0" class="card-badge">N</text>
+  <text x="2194.0" y="1739.4" class="card-badge">1</text>
+  <path d="M 2650.0 1521.7 L 2620.0 1525.0 L 2620.0 1520.0 L 2570.0 1520.0 L 2570.0 2370.0 L 2190.0 2370.0 L 2190.0 2000.0 L 2180.0 1998.8" class="rel-line" />
+  <text x="2636.0" y="1515.7" class="card-badge">N</text>
+  <text x="2194.0" y="1992.8" class="card-badge">1</text>
+  <path d="M 1675.0 1330.0 L 1660.0 1290.0 L 1340.0 1290.0 L 1361.7 1244.0" class="rel-line" />
+  <text x="1685.0" y="1316.0" class="card-badge">N</text>
+  <text x="1371.7" y="1258.0" class="card-badge">1</text>
+  <path d="M 1675.0 2070.0 L 1675.0 1996.0" class="rel-line" />
+  <text x="1685.0" y="2056.0" class="card-badge">N</text>
+  <text x="1685.0" y="2010.0" class="card-badge">1</text>
+  <path d="M 1618.3 2070.0 L 1610.0 2020.0 L 1510.0 2020.0 L 1510.0 1260.0 L 1610.0 1260.0 L 1618.3 1228.0" class="rel-line" />
+  <text x="1628.3" y="2056.0" class="card-badge">N</text>
+  <text x="1628.3" y="1242.0" class="card-badge">1</text>
+  <path d="M 1305.0 2100.0 L 1290.0 2070.0 L 1510.0 2070.0 L 1510.0 2030.0 L 1710.0 2030.0 L 1731.7 1996.0" class="rel-line" />
+  <text x="1315.0" y="2086.0" class="card-badge">N</text>
+  <text x="1741.7" y="2010.0" class="card-badge">1</text>
+  <path d="M 1305.0 2300.0 L 1290.0 2260.0 L 1500.0 2260.0 L 1500.0 2040.0 L 1590.0 2040.0 L 1596.7 1996.0" class="rel-line" />
+  <text x="1315.0" y="2286.0" class="card-badge">N</text>
+  <text x="1606.7" y="2010.0" class="card-badge">1</text>
+  <path d="M 1675.0 2360.0 L 1660.0 2330.0 L 1840.0 2330.0 L 1840.0 2030.0 L 1730.0 2030.0 L 1753.3 1996.0" class="rel-line" />
+  <text x="1685.0" y="2346.0" class="card-badge">N</text>
+  <text x="1763.3" y="2010.0" class="card-badge">1</text>
+  <path d="M 1910.0 2827.2 L 1840.0 2830.0 L 1840.0 2580.0 L 1810.0 2577.3" class="rel-line" />
+  <text x="1896.0" y="2821.2" class="card-badge">N</text>
+  <text x="1824.0" y="2571.3" class="card-badge">1</text>
+  <path d="M 2280.0 2845.7 L 2200.0 2850.0 L 2200.0 2900.0 L 1830.0 2900.0 L 1830.0 2490.0 L 1810.0 2487.8" class="rel-line" />
+  <text x="2266.0" y="2839.7" class="card-badge">N</text>
+  <text x="1824.0" y="2481.8" class="card-badge">1</text>
+  <path d="M 2280.0 3136.8 L 1820.0 3140.0 L 1820.0 2660.0 L 1810.0 2653.9" class="rel-line" />
+  <text x="2266.0" y="3130.8" class="card-badge">N</text>
+  <text x="1824.0" y="2647.9" class="card-badge">1</text>
+  <path d="M 2650.0 2717.3 L 2570.0 2720.0 L 2570.0 3000.0 L 1830.0 3000.0 L 1830.0 2450.0 L 1810.0 2449.5" class="rel-line" />
+  <text x="2636.0" y="2711.3" class="card-badge">N</text>
+  <text x="1824.0" y="2443.5" class="card-badge">1</text>
+  <path d="M 2650.0 2936.7 L 2580.0 2940.0 L 2580.0 2680.0 L 2210.0 2680.0 L 2210.0 2910.0 L 1840.0 2910.0 L 1840.0 2710.0 L 1810.0 2705.1" class="rel-line" />
+  <text x="2636.0" y="2930.7" class="card-badge">N</text>
+  <text x="1824.0" y="2699.1" class="card-badge">1</text>
+  <path d="M 1440.0 1717.0 L 1490.0 1720.0 L 1490.0 1530.0 L 1540.0 1529.8" class="rel-line" />
+  <text x="1454.0" y="1711.0" class="card-badge">N</text>
+  <text x="1526.0" y="1523.8" class="card-badge">1</text>
+  <path d="M 1170.0 1717.0 L 1100.0 1720.0 L 1100.0 1390.0 L 1070.0 1387.3" class="rel-line" />
+  <text x="1156.0" y="1711.0" class="card-badge">N</text>
+  <text x="1084.0" y="1381.3" class="card-badge">1</text>
+  <path d="M 1070.0 1367.8 L 1140.0 1370.0 L 1140.0 1400.0 L 1170.0 1397.6" class="rel-line" />
+  <text x="1084.0" y="1361.8" class="card-badge">N</text>
+  <text x="1156.0" y="1391.6" class="card-badge">1</text>
+  <path d="M 700.0 1586.0 L 770.0 1590.0 L 770.0 1390.0 L 800.0 1387.3" class="rel-line" />
+  <text x="714.0" y="1580.0" class="card-badge">N</text>
+  <text x="786.0" y="1381.3" class="card-badge">1</text>
+  <path d="M 565.0 1790.0 L 550.0 1760.0 L 720.0 1760.0 L 720.0 1490.0 L 920.0 1490.0 L 935.0 1452.0" class="rel-line" />
+  <text x="575.0" y="1776.0" class="card-badge">N</text>
+  <text x="945.0" y="1466.0" class="card-badge">1</text>
+  <path d="M 565.0 2120.0 L 550.0 2050.0 L 760.0 2050.0 L 760.0 1480.0 L 870.0 1480.0 L 878.3 1452.0" class="rel-line" />
+  <text x="575.0" y="2106.0" class="card-badge">N</text>
+  <text x="888.3" y="1466.0" class="card-badge">1</text>
+  <path d="M 330.0 2177.2 L 400.0 2180.0 L 400.0 2300.0 L 430.0 2296.5" class="rel-line" />
+  <text x="344.0" y="2171.2" class="card-badge">N</text>
+  <text x="416.0" y="2290.5" class="card-badge">1</text>
+</svg>
