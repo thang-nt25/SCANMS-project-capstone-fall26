@@ -794,6 +794,8 @@ export class LiveSessionsService {
       return {
         ...publicSession,
         liveStats: stats,
+        pinnedProductId: stats.pinnedProductId,
+        voucherDrop: stats.voucherDrop,
       };
     }
 
@@ -851,9 +853,21 @@ export class LiveSessionsService {
   async getSessionStats(identifier: string) {
     const key = await this.resolveSessionKey(identifier);
     const viewers = key ? (await this.getViewerStats(key, 'SCANMS')).currentViewers : 0;
+    const session = key ? await this.prisma.liveShoppingSession.findUnique({
+      where: { id: key }, select: { governance: true },
+    }) : null;
+    const governance = session?.governance;
+    const pinnedProductId = governance && typeof governance === 'object' && !Array.isArray(governance)
+      && typeof governance.pinnedProductId === 'string' ? governance.pinnedProductId : null;
+    const drop = governance && typeof governance === 'object' && !Array.isArray(governance) ? governance.voucherDrop : null;
+    const voucherDrop = drop && typeof drop === 'object' && !Array.isArray(drop)
+      && typeof drop.id === 'string' && typeof drop.code === 'string' && typeof drop.quantity === 'number' && typeof drop.releasedAt === 'string'
+      ? { id: drop.id, code: drop.code, quantity: drop.quantity, releasedAt: drop.releasedAt } : null;
 
     return {
       identifier: key,
+      pinnedProductId,
+      voucherDrop,
       viewers,
       likes: key ? (this.sessionStatsMap.get(key)?.likes || 0) : 0,
       serverTime: new Date().toISOString(),
@@ -892,12 +906,10 @@ export class LiveSessionsService {
       entry.likes += Math.max(1, Math.min(100, Math.floor(likeCount)));
       this.sessionStatsMap.set(key, entry);
     }
-    const viewers = (await this.getViewerStats(key, 'SCANMS')).currentViewers;
+    const stats = await this.getSessionStats(key);
 
     return {
-      identifier: key,
-      viewers,
-      likes: this.sessionStatsMap.get(key)?.likes || 0,
+      ...stats,
       actionApplied: body.action,
       serverTime: new Date().toISOString(),
     };
@@ -925,7 +937,39 @@ export class LiveSessionsService {
     }));
   }
 
-  async pinProduct(userId: string, sessionId: string, productId: string) {
+  async releaseVoucher(userId: string, sessionId: string, dto: { couponId: string; quantity: number }) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${sessionId}::uuid FOR UPDATE`;
+      const session = await tx.liveShoppingSession.findUnique({ where: { id: sessionId }, include: { coupon: true } });
+      if (!session) throw new NotFoundException('Không tìm thấy phiên Live.');
+      if (session.creatorId !== userId && session.createdBy !== userId) throw new ForbiddenException('Chỉ Shop hoặc KOL của phiên được tung voucher.');
+      const now = new Date();
+      if (session.status !== 'LIVE' || session.inviteStatus !== 'ACCEPTED' || session.startsAt > now || session.endsAt <= now) {
+        throw new BadRequestException('Chỉ được tung voucher trong phiên đang phát.');
+      }
+      if (!session.coupon || session.coupon.id !== dto.couponId || session.coupon.status !== 'ACTIVE') {
+        throw new BadRequestException('Voucher không thuộc phiên hoặc đã ngừng hoạt động.');
+      }
+      const coupon = session.coupon;
+      await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${coupon.id}::uuid FOR UPDATE`;
+      const freshCoupon = await tx.coupon.findUniqueOrThrow({ where: { id: coupon.id } });
+      if (freshCoupon.status !== 'ACTIVE' || (freshCoupon.startsAt && freshCoupon.startsAt > now)
+        || (freshCoupon.expiresAt && freshCoupon.expiresAt <= now)
+        || (freshCoupon.budgetTotal !== null && Number(freshCoupon.budgetUsed) >= Number(freshCoupon.budgetTotal))) {
+        throw new BadRequestException('Voucher chưa có hiệu lực, đã hết hạn hoặc hết ngân sách.');
+      }
+      const available = freshCoupon.usageLimitTotal === null ? null : Math.max(0, freshCoupon.usageLimitTotal - freshCoupon.usageCount);
+      if (!Number.isInteger(dto.quantity) || dto.quantity < 1 || dto.quantity > 10000 || (available !== null && dto.quantity > available)) {
+        throw new BadRequestException('Số lượng phải lớn hơn 0 và không vượt số lượt voucher còn lại.');
+      }
+      const governance = session.governance && typeof session.governance === 'object' && !Array.isArray(session.governance) ? session.governance : {};
+      const voucherDrop = { id: randomBytes(12).toString('hex'), couponId: coupon.id, code: coupon.displayCode, quantity: dto.quantity, releasedAt: now.toISOString() };
+      await tx.liveShoppingSession.update({ where: { id: sessionId }, data: { governance: { ...governance, voucherDrop } } });
+      return voucherDrop;
+    });
+  }
+
+  async pinProduct(userId: string, sessionId: string, productId: string | null) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${sessionId}::uuid FOR UPDATE`;
       const session = await tx.liveShoppingSession.findUnique({
@@ -938,7 +982,7 @@ export class LiveSessionsService {
       if (session.status !== 'LIVE' || session.endsAt <= new Date()) {
         throw new BadRequestException('Chỉ được ghim trong phiên đang phát.');
       }
-      if (!session.products.some((row) => row.productId === productId)) {
+      if (productId !== null && !session.products.some((row) => row.productId === productId)) {
         throw new BadRequestException('Sản phẩm không thuộc phiên Live.');
       }
       const governance = session.governance && typeof session.governance === 'object' && !Array.isArray(session.governance)

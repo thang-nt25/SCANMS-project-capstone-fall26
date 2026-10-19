@@ -36,7 +36,7 @@ describe('customer purchase GHN simulation', () => {
     expect(customerGhnSimulationDetail({ ...saved, ghnSimulation: { ...saved.ghnSimulation, startedAt: 'bad' } }, 'TEST-ORDER', start)).toBeNull();
   });
   it('serves saved simulation through the existing tracking API without contacting GHN or changing order finances', async () => {
-    const prisma: any = { order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }) } };
+    const prisma: any = { order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }), findMany: jest.fn().mockResolvedValue([]) } };
     const service = new GhnService(prisma, {} as any);
     const fetch = jest.spyOn(service as any, 'ghnFetch');
     const detail = await service.trackOrder('TEST-ORDER', GhnEnvironment.TEST);
@@ -58,7 +58,7 @@ describe('customer purchase GHN simulation', () => {
     const tx: any = { $queryRaw: jest.fn().mockResolvedValue([{ id: 'order' }]), order: {
       findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'order', storeId: 'store', status: 'SHIPPING', rawPayload: saved }), update: jest.fn(),
     } };
-    const service = new GhnService({ $transaction: (callback: any) => callback(tx), order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: saved }) } } as any, {} as any);
+    const service = new GhnService({ $transaction: (callback: any) => callback(tx), order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: saved }), findMany: jest.fn().mockResolvedValue([]) } } as any, {} as any);
     const result = await service.startCustomerSimulation('order', 'store');
     expect(result).toMatchObject({ simulationStartedAt: saved.ghnSimulation.startedAt, shipperName: saved.ghnSimulation.shipperName });
     expect(tx.order.update).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('customer purchase GHN simulation', () => {
     expect(second).toMatchObject({ simulationStartedAt: first.simulationStartedAt, status: 'ready_to_pick' });
   });
   it('does not process carrier callbacks against simulated purchases', async () => {
-    const prisma: any = { order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }) } };
+    const prisma: any = { order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }), findMany: jest.fn().mockResolvedValue([]) } };
     const service = new GhnService(prisma, {} as any);
     expect(await service.handleGhnWebhook({ OrderCode: 'TEST-ORDER', Status: 'delivered' })).toMatchObject({ ignored: true });
   });

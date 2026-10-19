@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import './LiveStreamRoomHeader.css';
+import '../../components/live/LiveReactionFlight.css';
+import { LiveVoucherDropDialog } from '../../components/live/LiveVoucherDropDialog';
+import { HostStudioProducts } from '../../components/live/HostStudioProducts';
+import { LivePinnedProductCard, LiveReactionDock } from '../../components/live/LiveRoomCommerce';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -22,9 +27,6 @@ import {
   Mic,
   MicOff,
   Upload,
-  Flame,
-  ChevronUp,
-  ChevronDown,
   ShieldCheck,
   MessageCircle,
   Check,
@@ -104,10 +106,10 @@ interface FloatingReaction {
   left?: number;
   size: number;
   driftX: number;
-  sway: number;
-  rotStart: number;
-  rotMid: number;
-  rotEnd: number;
+  path: string;
+  rise: number;
+  tilt: number;
+  delay: number;
   duration: number;
 }
 
@@ -141,15 +143,17 @@ export interface LiveReactionDef {
   iconUrl: string;
   color: string;
   burstColor: string;
+  fallbackIconUrl?: string;
 }
 
-// Official Animated Facebook Live Reactions & Authentic TikTok 3D Elements
+// Animated Google Noto Emoji, bundled locally (CC BY 4.0), with static reduced-motion fallbacks.
 export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
   {
     id: 'heart',
     emoji: '❤️',
     label: 'Thả tim',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/love.gif',
+    iconUrl: '/assets/live-reactions/animated/heart.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/heart.png',
     color: 'from-rose-500 to-red-500',
     burstColor: '#ef4444',
   },
@@ -157,7 +161,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'like',
     emoji: '👍',
     label: 'Thích',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/like.gif',
+    iconUrl: '/assets/live-reactions/animated/like.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/like.png',
     color: 'from-blue-500 to-indigo-600',
     burstColor: '#3b82f6',
   },
@@ -165,7 +170,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'haha',
     emoji: '😂',
     label: 'Haha',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/haha.gif',
+    iconUrl: '/assets/live-reactions/animated/haha.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/haha.png',
     color: 'from-amber-400 to-yellow-500',
     burstColor: '#eab308',
   },
@@ -173,7 +179,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'wow',
     emoji: '😮',
     label: 'Wow',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/wow.gif',
+    iconUrl: '/assets/live-reactions/animated/wow.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/wow.png',
     color: 'from-yellow-400 to-orange-500',
     burstColor: '#f59e0b',
   },
@@ -181,7 +188,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'sad',
     emoji: '😢',
     label: 'Buồn',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/sad.gif',
+    iconUrl: '/assets/live-reactions/animated/sad.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/sad.png',
     color: 'from-blue-400 to-sky-500',
     burstColor: '#38bdf8',
   },
@@ -189,7 +197,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'angry',
     emoji: '😡',
     label: 'Phẫn nộ',
-    iconUrl: 'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/angry.gif',
+    iconUrl: '/assets/live-reactions/animated/angry.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/angry.png',
     color: 'from-red-600 to-orange-600',
     burstColor: '#dc2626',
   },
@@ -197,7 +206,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'fire',
     emoji: '🔥',
     label: 'Cháy quá',
-    iconUrl: 'https://em-content.zobj.net/source/apple/354/fire_1f525.png',
+    iconUrl: '/assets/live-reactions/animated/fire.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/fire.png',
     color: 'from-amber-500 to-orange-500',
     burstColor: '#f97316',
   },
@@ -205,7 +215,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'gift',
     emoji: '🎁',
     label: 'Tặng quà',
-    iconUrl: 'https://em-content.zobj.net/source/apple/354/wrapped-gift_1f381.png',
+    iconUrl: '/assets/live-reactions/animated/gift.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/gift.png',
     color: 'from-purple-500 to-indigo-500',
     burstColor: '#a855f7',
   },
@@ -213,7 +224,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'party',
     emoji: '🎉',
     label: 'Bắn pháo',
-    iconUrl: 'https://em-content.zobj.net/source/apple/354/party-popper_1f389.png',
+    iconUrl: '/assets/live-reactions/animated/party.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/party.png',
     color: 'from-pink-500 to-rose-500',
     burstColor: '#ec4899',
   },
@@ -221,7 +233,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'hundred',
     emoji: '💯',
     label: '100 Điểm',
-    iconUrl: 'https://em-content.zobj.net/source/apple/354/hundred-points_1f4af.png',
+    iconUrl: '/assets/live-reactions/animated/hundred.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/hundred.png',
     color: 'from-red-500 to-rose-600',
     burstColor: '#dc2626',
   },
@@ -229,7 +242,8 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
     id: 'star',
     emoji: '⭐',
     label: '5 Sao',
-    iconUrl: 'https://em-content.zobj.net/source/microsoft-teams/363/glowing-star_1f31f.png',
+    iconUrl: '/assets/live-reactions/animated/star.webp',
+    fallbackIconUrl: '/assets/live-reactions/animated/star.png',
     color: 'from-amber-400 to-yellow-500',
     burstColor: '#f59e0b',
   },
@@ -237,12 +251,12 @@ export const REALISTIC_3D_REACTIONS: LiveReactionDef[] = [
 
 // Dòng chảy tim đổi màu TikTok Live siêu rực rỡ khi spam tap
 export const TIKTOK_HEARTS = [
-  'https://raw.githubusercontent.com/duytq94/react-native-fb-reactions-animation/master/Images/love.gif',
-  'https://em-content.zobj.net/source/apple/354/red-heart_2764-fe0f.png',
-  'https://em-content.zobj.net/source/apple/354/pink-heart_1fa77.png',
-  'https://em-content.zobj.net/source/apple/354/orange-heart_1f9e1.png',
-  'https://em-content.zobj.net/source/apple/354/purple-heart_1f49c.png',
-  'https://em-content.zobj.net/source/apple/354/light-blue-heart_1fa75.png',
+  '/assets/live-reactions/heart.png',
+  '/assets/live-reactions/heart-pink.png',
+  '/assets/live-reactions/heart-orange.png',
+  '/assets/live-reactions/heart-purple.png',
+  '/assets/live-reactions/heart-light_blue.png',
+  '/assets/live-reactions/heart-yellow.png',
 ];
 
 
@@ -611,19 +625,24 @@ export default function LiveStreamRoomPage() {
   });
 
   useEffect(() => {
-    if (!sessionEnded) return;
+    if (!sessionEnded && !['ENDED', 'CANCELLED'].includes(sessionData?.status)) return;
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     mediaStreamRef.current = null;
     setIsCameraActive(false);
     setCameraStream(null);
     setSessionData((previous: any) => previous ? { ...previous, status: 'ENDED' } : previous);
-  }, [sessionEnded]);
+  }, [sessionEnded, sessionData?.status]);
 
   const isStreamEnded = Boolean(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status));
 
   // Floating Reactions & Hearts
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
   const reactionCounterRef = useRef(0);
+  const lastReactionFlightAt = useRef(0);
+  useEffect(() => {
+    setFloatingReactions([]);
+    lastReactionFlightAt.current = 0;
+  }, [identifier, isStreamEnded]);
 
   // In-stream drawers / overlays (TikTok Shop Live Style)
   const [isBagOpen, setIsBagOpen] = useState(false);
@@ -661,11 +680,13 @@ export default function LiveStreamRoomPage() {
   const liveShopName = sessionData?.store?.name || 'Sora Skin Official Store';
   const liveHostName = sessionData?.creator?.fullName || sessionData?.creator?.name || 'Nguyễn Thành Thắng (Leader)';
 
-  const [pinnedIndex, setPinnedIndex] = useState(0);
+  const [pinPendingId, setPinPendingId] = useState<string | null>(null);
+  const pinRevision = useRef(0);
   const [isPinnedDealCollapsed, setIsPinnedDealCollapsed] = useState(false);
   const [dealCountdownSeconds, setDealCountdownSeconds] = useState(405); // 06:45
   const [isVoucherClaimed, setIsVoucherClaimed] = useState(false);
   const [voucherClaimLoading, setVoucherClaimLoading] = useState(false);
+  const [isVoucherDropOpen, setIsVoucherDropOpen] = useState(false);
 
   // Live countdown timer for deal price
   useEffect(() => {
@@ -1105,6 +1126,7 @@ export default function LiveStreamRoomPage() {
     let active = true;
 
     const syncLiveStats = async () => {
+      const revision = pinRevision.current;
       try {
         const res: any = await api.post(
           `/live-sessions/public/${encodeURIComponent(identifier)}/interaction`,
@@ -1115,6 +1137,12 @@ export default function LiveStreamRoomPage() {
         );
         const data = res?.data?.data || res?.data || res;
         if (active && data) {
+          if (revision === pinRevision.current && Object.prototype.hasOwnProperty.call(data, 'pinnedProductId')) {
+            setSessionData((prev: any) => prev ? { ...prev, pinnedProductId: data.pinnedProductId } : prev);
+          }
+          if (Object.prototype.hasOwnProperty.call(data, 'voucherDrop')) {
+            setSessionData((prev: any) => prev ? { ...prev, voucherDrop: data.voucherDrop } : prev);
+          }
           if (typeof data.viewers === 'number') {
             setViewerCount(Math.max(0, data.viewers));
           }
@@ -1192,7 +1220,29 @@ export default function LiveStreamRoomPage() {
     return defaultProducts;
   }, [sessionData, defaultProducts]);
 
-  const pinnedProduct = products[pinnedIndex] || products[0];
+  const pinnedIndex = products.findIndex((p) => p.id === sessionData?.pinnedProductId);
+  const pinnedProduct = products[pinnedIndex];
+
+  const handlePinChange = async (productId: string | null) => {
+    if (!sessionData?.id || pinPendingId !== null) return;
+    const pendingId = productId ?? pinnedProduct?.id;
+    if (!pendingId) return;
+    setPinPendingId(pendingId);
+    pinRevision.current += 1;
+    try {
+      const url = `/live-sessions/${sessionData.id}/pinned-product`;
+      if (productId === null) await api.delete(url);
+      else await api.post(url, { productId });
+      setSessionData((prev: any) => ({ ...prev, pinnedProductId: productId }));
+      setIsPinnedDealCollapsed(false);
+      toast.success(productId ? 'Đã chuyển sản phẩm đang giới thiệu.' : 'Đã bỏ ghim sản phẩm.');
+    } catch {
+      toast.error('Chưa thể cập nhật ghim. Kiểm tra quyền chủ phiên và trạng thái Live rồi thử lại.');
+    } finally {
+      pinRevision.current += 1;
+      setPinPendingId(null);
+    }
+  };
 
   // Dynamic categories available for filter pills (TikTok Live style)
   const availableCategories = useMemo(() => {
@@ -1215,7 +1265,7 @@ export default function LiveStreamRoomPage() {
       list = list.filter((p) => p.title.toLowerCase().includes(q));
     }
     if (bagFilterTab === 'PINNED') {
-      return [products[pinnedIndex] || products[0]];
+      return list.filter((p) => p.id === products[pinnedIndex]?.id);
     }
     if (bagFilterTab !== 'ALL') {
       return list.filter(
@@ -1236,13 +1286,15 @@ export default function LiveStreamRoomPage() {
 
   // TRIGGER FLOATING EMOJI REACTION (TikTok / Facebook Live style)
   const triggerReaction = (emoji: string, e?: React.MouseEvent, customIconUrl?: string) => {
+    if (isStreamEnded) return;
     const stageRect = stageRef.current?.getBoundingClientRect();
     let baseBottom = 76;
     let baseRight: number | undefined = undefined;
     let baseLeft: number | undefined = undefined;
 
     const matchedDef = REALISTIC_3D_REACTIONS.find((r) => r.emoji === emoji || r.id === emoji);
-    const resolvedIconUrl = customIconUrl || matchedDef?.iconUrl;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const resolvedIconUrl = reducedMotion ? matchedDef?.fallbackIconUrl || customIconUrl || matchedDef?.iconUrl : customIconUrl || matchedDef?.iconUrl;
 
     if (e && stageRect) {
       const targetBtn = (e.target as HTMLElement).closest('button');
@@ -1294,50 +1346,36 @@ export default function LiveStreamRoomPage() {
       })
       .catch(() => {});
 
-    // Khi bấm tim hoặc icon, bắn ra 1 đến 2 icon với kích thước và độ lệch khác nhau
-    const spawnCount = emoji === '❤️' ? (Math.random() < 0.6 ? 2 : 3) : 1;
+    const flightTime = performance.now();
+    if (flightTime - lastReactionFlightAt.current < 80) return;
+    lastReactionFlightAt.current = flightTime;
+    const spawnCount = reducedMotion ? 1 : matchedDef?.id === 'heart' ? 3 : 2;
     const newItems: FloatingReaction[] = [];
-
+    const stageWidth = stageRect?.width || 400;
+    const stageHeight = stageRect?.height || 600;
+    const originX = Math.max(24, Math.min(stageWidth - 24, baseLeft !== undefined ? baseLeft + 20 : stageWidth - (baseRight ?? 36) - 20));
+    const riseRoom = Math.max(60, stageHeight - baseBottom - 30);
     for (let i = 0; i < spawnCount; i++) {
       reactionCounterRef.current += 1;
       const newId = reactionCounterRef.current;
-      // Drift & sway chuẩn vật lý tự nhiên TikTok / Facebook
-      const driftX = (Math.random() - 0.5) * 110;
-      const sway = Math.floor(Math.random() * 22) + 16;
-      const rotStart = Math.floor(Math.random() * 20) - 10;
-      const rotMid = Math.floor(Math.random() * 26) - 13;
-      const rotEnd = Math.floor(Math.random() * 32) - 16;
-      // Tốc độ bay nhanh, dứt khoát: 0.95s - 1.25s (thay vì 2s chậm chạp)
-      const duration = +(Math.random() * 0.3 + 0.95).toFixed(2);
-
-      const offsetSpread = (Math.random() - 0.5) * 26;
-      // Dòng chảy tim luân chuyển màu rực rỡ như TikTok Live
-      const assignedIconUrl = emoji === '❤️'
-        ? TIKTOK_HEARTS[(newId + i) % TIKTOK_HEARTS.length]
-        : resolvedIconUrl;
-
+      const size = i === 0 ? 38 + Math.random() * 6 : 27 + Math.random() * 8;
+      const rise = Math.min(riseRoom, Math.min(500, stageHeight * .65)) * (.78 + Math.random() * .22);
+      const direction = Math.random() < .5 ? -1 : 1;
+      const clampX = (value: number) => Math.max(24 - originX, Math.min(stageWidth - originX - 24, value));
+      const driftX = clampX(direction * (18 + Math.random() * 48));
+      const control1 = clampX(-direction * (18 + Math.random() * 36));
+      const control2 = clampX(direction * (35 + Math.random() * 54));
       newItems.push({
-        id: newId,
-        emoji,
-        iconUrl: assignedIconUrl,
-        bottom: baseBottom + i * 10,
-        right: baseRight !== undefined ? Math.max(8, baseRight + offsetSpread) : undefined,
-        left: baseLeft !== undefined ? Math.max(8, baseLeft + offsetSpread) : undefined,
-        size: Math.floor(Math.random() * 14) + (i === 0 ? 48 : 40),
-        driftX,
-        sway,
-        rotStart,
-        rotMid,
-        rotEnd,
-        duration,
+        id: newId, emoji, iconUrl: resolvedIconUrl,
+        bottom: Math.max(16, Math.min(stageHeight - 40, baseBottom)),
+        left: originX - size / 2, size, driftX, rise,
+        path: `path("M 0 0 C ${control1.toFixed(1)} ${(-rise * .3).toFixed(1)}, ${control2.toFixed(1)} ${(-rise * .7).toFixed(1)}, ${driftX.toFixed(1)} ${(-rise).toFixed(1)}")`,
+        tilt: direction * (4 + Math.random() * 7),
+        delay: i * 100 + Math.random() * 45,
+        duration: 2.1 + Math.random() * .65,
       });
-
-      setTimeout(() => {
-        setFloatingReactions((prev) => prev.filter((r) => r.id !== newId));
-      }, Math.floor(duration * 1000) + 60);
     }
-
-    setFloatingReactions((prev) => [...prev.slice(-45), ...newItems]);
+    setFloatingReactions((previous) => [...previous, ...newItems].slice(-24));
   };
 
   // Handle click anywhere on the video screen (TikTok style tap to heart)
@@ -1477,30 +1515,30 @@ export default function LiveStreamRoomPage() {
       />
 
       {/* TOP HEADER BAR (TONE SÁNG TRẮNG BE CHUẨN THƯƠNG HIỆU SCANMS) */}
-      <header className="h-16 px-3 sm:px-6 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] flex items-center justify-between z-30 shrink-0 shadow-2xs">
-        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+      <header className={cn('live-room-header', couponCode && 'has-voucher')} aria-label="Thông tin và điều khiển phòng Live">
+        <div className="live-room-identity">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] transition cursor-pointer"
+            className="live-room-back"
             title="Quay lại Sàn Mua Sắm"
           >
             <ArrowLeft className="w-4 h-4 text-[#7D715E]" />
           </button>
 
           {/* Logo & Live Badge */}
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#1A1612] hidden sm:inline">
+          <div className="live-room-brand">
+            <span className="live-room-wordmark">
               SCANMS <span className="text-[#B88E4F]">LIVE</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              {isCameraActive ? 'Camera Live' : 'Trực tiếp'}
+            <span className={cn('live-room-status', sessionData?.status === 'LIVE' && !isStreamEnded && 'is-live')}>
+              <span className="live-room-status-dot" />
+              {isStreamEnded ? 'Đã kết thúc' : sessionData?.status === 'LIVE' ? 'Trực tiếp' : sessionData?.status === 'PAUSED' ? 'Tạm dừng' : 'Chờ phát'}
             </span>
           </div>
 
           {/* KOL / Host Avatar & Shop Information (Bấm để xem Profile chi tiết) */}
-          <div className="flex items-center gap-2 pl-1 sm:pl-3 border-l border-[#EAE4D7] min-w-0">
+          <div className="live-room-host">
             {/* Avatar KOL với vòng pulse phát sóng trực tiếp */}
             <button
               type="button"
@@ -1526,30 +1564,27 @@ export default function LiveStreamRoomPage() {
             </button>
 
             {/* Thông tin 2 hàng: Tên KOL (trên) & Tên Shop (dưới) */}
-            <div className="min-w-0 flex flex-col justify-center">
+            <div className="live-room-host-text">
               {/* Hàng 1: KOL đang live */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={handleOpenKolProfile}
-                  className="text-xs sm:text-sm font-black text-[#1A1612] hover:text-[#B88E4F] transition-colors truncate max-w-[120px] sm:max-w-[160px] text-left cursor-pointer flex items-center gap-1 group/kolname"
-                  title="Xem thông tin chi tiết KOC đang livestream"
+                  className="live-room-host-name group/kolname"
+                  title={sessionData?.creator?.fullName || 'Xem hồ sơ nhà sáng tạo'}
                 >
                   <span className="truncate group-hover/kolname:underline">
-                    {sessionData?.creator?.fullName || (currentUser?.fullName ? `${currentUser.fullName} (Host)` : 'KOC Linh Trương')}
+                    {sessionData?.creator?.fullName || 'Nhà sáng tạo'}
                   </span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                 </button>
-                <span className="hidden sm:inline-flex items-center px-1.5 py-0.2 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[9px] font-black text-[#B88E4F] uppercase tracking-wide">
-                  KOC Live
-                </span>
               </div>
 
               {/* Hàng 2: Gian Hàng Đối Tác cung cấp sản phẩm (Bấm avatar hoặc tên để vào shop) */}
               <button
                 type="button"
                 onClick={handleOpenShopProfile}
-                className="text-[10.5px] text-[#7D715E] hover:text-[#B88E4F] transition-colors truncate max-w-[140px] sm:max-w-[200px] text-left cursor-pointer flex items-center gap-1.5 group/shop"
+                className="live-room-shop group/shop"
                 title="Bấm vào để đến gian hàng của Chủ Shop"
               >
                 <div className="w-4 h-4 rounded-full overflow-hidden bg-[#FAF8F5] border border-[#E8D4B0] shrink-0 group-hover/shop:scale-110 transition-transform">
@@ -1563,10 +1598,10 @@ export default function LiveStreamRoomPage() {
                   />
                 </div>
                 <span className="group-hover/shop:underline truncate font-semibold text-[#1A1612] group-hover/shop:text-[#B88E4F]">
-                  {sessionData?.store?.name || 'Sora Skin Official Store'}
+                  {sessionData?.store?.name || 'Gian hàng'}
                 </span>
                 <span className="px-1 py-0.2 rounded bg-amber-50 text-amber-700 text-[8px] font-black border border-amber-200 shrink-0">
-                  MALL
+                  SHOP
                 </span>
               </button>
             </div>
@@ -1575,7 +1610,7 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={() => setIsFollowing((v) => !v)}
-              className={`ml-1 px-2.5 py-1 rounded-full text-xs font-bold transition shrink-0 cursor-pointer select-none active:scale-95 ${
+              className={`live-room-follow ${
                 isFollowing
                   ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
                   : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs hover:opacity-95'
@@ -1588,45 +1623,45 @@ export default function LiveStreamRoomPage() {
 
         {/* Voucher Live Pill trong Header (Sang trọng, Vàng Be, KHÔNG CHE VIDEO) */}
         {couponCode && (
-          <div className="hidden lg:flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-full bg-[#FAF8F5] border border-[#EEDFC6] shadow-2xs">
+          <div className="live-room-voucher" title={`Voucher ${couponCode}: Giảm ${couponDiscount}`}>
             <div className="w-5 h-5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
               <Ticket className="w-3 h-3 text-[#B88E4F]" />
             </div>
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="font-extrabold text-[#1A1612]">Voucher: Giảm {couponDiscount}</span>
-              <span className="text-[10px] text-[#7D715E] font-mono">({couponCode})</span>
+            <div className="live-room-voucher-text">
+              <span className="live-room-voucher-label">Ưu đãi phiên Live</span>
+              <span className="live-room-voucher-value">Giảm {couponDiscount}</span>
             </div>
+            <span className="live-room-voucher-code">{couponCode}</span>
             <button
               type="button"
               onClick={() => void handleClaimVoucher()}
-              disabled={voucherClaimLoading}
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
+              disabled={voucherClaimLoading || isStreamEnded}
+              className={`live-room-claim ${
                 isVoucherClaimed
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-[#F3EFE6] text-[#7D715E]'
                   : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] text-white'
               }`}
             >
-              {isVoucherClaimed ? 'Đã lưu' : 'Lưu mã'}
+              {isStreamEnded ? 'Đã kết thúc' : voucherClaimLoading ? 'Đang lưu…' : isVoucherClaimed ? 'Đã lưu' : 'Lưu mã'}
             </button>
           </div>
         )}
 
         {/* Right Stats & Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="live-room-controls">
           {/* Viewers Pill (Số người đang xem trực tiếp thực tế) */}
           <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-xs font-bold text-[#1A1612] shadow-2xs"
+            className="live-room-viewers"
             title={`${viewerCount.toLocaleString('vi-VN')} người đang xem trực tiếp phiên live này`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <Eye className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span className="font-mono">{viewerCount.toLocaleString('vi-VN')}</span>
           </div>
 
           {/* Likes Pill with Micro Pop Animation (Lượt thả tim thực tế) */}
-          <div className="relative">
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-black text-rose-600 shadow-2xs cursor-pointer active:scale-90 transition-transform select-none"
+          <div className="live-room-likes-wrap">
+            <button type="button"
+              className="live-room-likes"
               onClick={(e) => triggerReaction('❤️', e, REALISTIC_3D_REACTIONS[0].iconUrl)}
               title={`${likesCount.toLocaleString('vi-VN')} lượt thả tim thực tế (Bấm để thả tim)`}
             >
@@ -1634,7 +1669,7 @@ export default function LiveStreamRoomPage() {
               <span className="font-mono">
                 {likesCount >= 10000 ? `${(likesCount / 1000).toFixed(1)}k` : likesCount.toLocaleString('vi-VN')}
               </span>
-            </div>
+            </button>
 
             {/* Flying +1 / +2 Pop Indicator */}
             {likeDelta && (
@@ -1649,7 +1684,7 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={isCameraActive ? stopCamera : startCamera}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer select-none shadow-xs ${
+              className={`live-room-camera live-room-tool ${
                 isCameraActive
                   ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                   : 'bg-white hover:bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]'
@@ -1659,12 +1694,12 @@ export default function LiveStreamRoomPage() {
               {isCameraActive ? (
                 <>
                   <VideoOff className="w-3.5 h-3.5 text-rose-600" />
-                  <span className="hidden sm:inline">Tắt Cam</span>
+                  <span className="live-room-camera-label">Tắt camera</span>
                 </>
               ) : (
                 <>
                   <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="hidden sm:inline">Bật Camera Live</span>
+                  <span className="live-room-camera-label">Bật camera</span>
                 </>
               )}
             </button>
@@ -1672,13 +1707,13 @@ export default function LiveStreamRoomPage() {
 
           {/* Mute Audio Toggle */}
           {isSessionHost && (
-            <div className="relative">
+            <div className="live-room-filter">
               <button type="button" disabled={!isCameraActive} aria-expanded={isFilterPanelOpen}
                 onClick={() => setIsFilterPanelOpen((open) => !open)}
                 className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:opacity-40',
                   faceFilter === 'off' ? 'border-[#EAE4D7] bg-white text-[#7D715E]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]')}
                 title="Filter khuôn mặt">
-                <Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Filter</span>
+                <Sparkles className="h-4 w-4" /><span className="sr-only">Filter</span>
               </button>
               {isFilterPanelOpen && isCameraActive && (
                 <div className="absolute right-0 top-full z-50 mt-3 flex max-h-[calc(100dvh-100px)] w-[min(380px,calc(100vw-24px))] flex-col rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-lg">
@@ -1724,7 +1759,7 @@ export default function LiveStreamRoomPage() {
           <button
             type="button"
             onClick={() => setIsMuted((v) => !v)}
-            className="p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] transition cursor-pointer"
+            className="live-room-tool live-room-sound"
             title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-[#7D715E]" />}
@@ -1739,7 +1774,7 @@ export default function LiveStreamRoomPage() {
                 toast.success('Đã sao chép link phòng live');
               }
             }}
-            className="p-2 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer hidden sm:block"
+            className="live-room-tool live-room-share"
             title="Chia sẻ phiên livestream"
           >
             <Share2 className="w-4 h-4" />
@@ -1753,16 +1788,23 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={() => setIsHostStudioOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] text-white text-xs font-bold transition shadow-xs cursor-pointer select-none"
+              className="live-room-studio"
+              title="Mở Host Studio"
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Host Studio</span>
+              <span>Host Studio</span>
             </button>
           )}
         </div>
       </header>
+      {sessionData?.voucherDrop && !isStreamEnded && (
+        <div role="status" className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs text-[#1A1612]">
+          <Ticket size={16} className="text-[#B88E4F]" />
+          <span>Vừa tung ưu đãi <strong>{sessionData.voucherDrop.code}</strong> · {sessionData.voucherDrop.quantity} lượt được giới thiệu</span>
+          <button type="button" onClick={() => void handleClaimVoucher()} disabled={voucherClaimLoading || isVoucherClaimed} className="rounded-lg border border-[#EEDFC6] bg-white px-3 py-1 font-semibold text-[#B88E4F] disabled:opacity-50">{isVoucherClaimed ? 'Đã lưu mã' : 'Nhận voucher'}</button>
+        </div>
+      )}
 
-      {isSessionHost && sessionData?.id && <div className="max-h-[35vh] shrink-0 overflow-auto px-3 pb-3"><LiveGovernancePanel session={sessionData} audience="kol" liveRoom /></div>}
       {(sessionEnded || ['ENDED', 'CANCELLED'].includes(sessionData?.status)) && <div className="shrink-0 border-b border-[#EEDFC6] bg-[#FBF5EB] px-6 py-3 text-sm text-[#7D715E]">Phiên đã kết thúc. Đơn đã đặt tiếp tục được xử lý; KOL có thể xem lý do và gửi khiếu nại trong hồ sơ phiên.</div>}
 
       {/* MAIN SCREEN: BRIGHT WARM STAGE + CHAT SIDEBAR */}
@@ -1903,163 +1945,36 @@ export default function LiveStreamRoomPage() {
           </div>
 
           {/* REALTIME FLOATING REACTION EMOJIS (TikTok / Facebook Live Flying Trails) */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden z-30">
             {floatingReactions.map((reaction) => (
-              <span
-                key={reaction.id}
+              <span key={reaction.id} className="live-reaction-flight"
+                onAnimationEnd={event => {
+                  if (event.target === event.currentTarget) setFloatingReactions(previous => previous.filter(item => item.id !== reaction.id));
+                }}
                 style={{
-                  position: 'absolute',
-                  bottom: `${reaction.bottom}px`,
-                  right: reaction.right !== undefined ? `${reaction.right}px` : undefined,
-                  left: reaction.left !== undefined ? `${reaction.left}px` : undefined,
-                  width: `${reaction.size}px`,
-                  height: `${reaction.size}px`,
-                  fontSize: `${reaction.size}px`,
-                  '--drift-x': `${reaction.driftX}px`,
-                  '--sway': `${reaction.sway}px`,
-                  '--rot-start': `${reaction.rotStart}deg`,
-                  '--rot-mid': `${reaction.rotMid}deg`,
-                  '--rot-end': `${reaction.rotEnd}deg`,
-                  '--reaction-duration': `${reaction.duration}s`,
-                } as React.CSSProperties}
-                className="animate-floating-reaction select-none drop-shadow-md inline-flex items-center justify-center leading-none pointer-events-none"
-              >
-                {reaction.iconUrl ? (
-                  <img
-                    src={reaction.iconUrl}
-                    alt={reaction.emoji}
-                    style={{ width: `${reaction.size}px`, height: `${reaction.size}px` }}
-                    className="object-contain filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.42)] select-none pointer-events-none"
-                    loading="eager"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: `${reaction.size * 0.75}px` }}>{reaction.emoji}</span>
-                )}
+                  bottom: reaction.bottom, left: reaction.left, width: reaction.size, height: reaction.size,
+                  offsetPath: reaction.path,
+                  '--flight-duration': `${reaction.duration}s`, '--flight-delay': `${reaction.delay}ms`,
+                  '--flight-tilt': `${reaction.tilt}deg`, '--flight-rise': `${reaction.rise}px`, '--flight-drift': `${reaction.driftX}px`,
+                } as React.CSSProperties}>
+                <span className="live-reaction-flight-visual">
+                  {reaction.iconUrl ? <img src={reaction.iconUrl} alt="" decoding="async" draggable={false}
+                    onError={event => { event.currentTarget.style.display = 'none'; }} /> : <span style={{ fontSize: reaction.size * .8 }}>{reaction.emoji}</span>}
+                </span>
               </span>
             ))}
           </div>
 
-          {/* PINNED DEAL CARD (Deal Ghim Đang Giới Thiệu - Thiết Kế Nhỏ Gọn & Hiệu Ứng Lung Linh) */}
           {pinnedProduct && (!isBagOpen || bagPosition !== 'left') && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="absolute bottom-16 sm:bottom-18 left-3 sm:left-4 z-20 transition-all duration-300 pointer-events-auto"
-            >
-              {isPinnedDealCollapsed ? (
-                /* Nút Thu Gọn Siêu Nhỏ Gọn Có Hiệu Ứng Nhấp Nháy & Glow */
-                <button
-                  type="button"
-                  onClick={() => setIsPinnedDealCollapsed(false)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-[#EEDFC6] shadow-[0_4px_16px_rgba(197,155,88,0.25)] text-[#1A1612] hover:bg-[#FAF8F5] transition-all hover:scale-105 active:scale-95 cursor-pointer text-xs font-bold group select-none animate-in fade-in zoom-in-95 duration-200"
-                  title="Bấm để mở rộng sản phẩm đang giới thiệu"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600" />
-                  </span>
-                  <Flame className="w-3.5 h-3.5 text-rose-500 animate-bounce" />
-                  <span className="font-extrabold text-[#B88E4F]">#{pinnedIndex + 1} Deal Live</span>
-                  <span className="text-[11px] text-rose-600 font-mono font-black">{formatCountdown(dealCountdownSeconds)}</span>
-                  <ChevronUp className="w-3 h-3 text-[#7D715E] group-hover:-translate-y-0.5 transition-transform" />
-                </button>
-              ) : (
-                /* Card Sản Phẩm Nhỏ Gọn Với Hiệu Ứng Ánh Sáng Shimmer & Ticking Countdown */
-                <div className="relative w-[280px] sm:w-[310px] rounded-2xl bg-white/95 backdrop-blur-md border border-[#EEDFC6] p-2.5 text-[#1A1612] shadow-[0_8px_30px_rgba(197,155,88,0.22)] hover:shadow-[0_12px_36px_rgba(197,155,88,0.3)] transition-all duration-300 hover:-translate-y-0.5 group overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
-                  {/* Subtle top shimmer glow bar */}
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C59B58] to-transparent opacity-80" />
-
-                  {/* Header: Pinned Label + Countdown Timer + Minimize Button */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 text-rose-700 text-[9.5px] font-black uppercase tracking-wider shadow-2xs">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600" />
-                      </span>
-                      <span>ĐANG GIỚI THIỆU #{pinnedIndex + 1}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-1 text-[10px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]/60">
-                        <Flame className="w-3 h-3 text-rose-500 animate-pulse" />
-                        <span className="font-mono">{formatCountdown(dealCountdownSeconds)}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsPinnedDealCollapsed(true)}
-                        className="p-1 rounded-md text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer"
-                        title="Thu nhỏ thẻ giới thiệu"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Product Info Row: Compact Thumbnail + Title + Price */}
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-[#EAE4D7] shrink-0 bg-white shadow-2xs group-hover:border-[#C59B58]/60 transition-colors">
-                      <img
-                        src={pinnedProduct.imageUrl || ''}
-                        alt={pinnedProduct.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {pinnedProduct.discountPercentage && (
-                        <span className="absolute bottom-0 right-0 left-0 bg-gradient-to-r from-rose-600 to-red-600 text-white text-[8px] font-black text-center py-0.2">
-                          -{pinnedProduct.discountPercentage}%
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h4
-                        className="text-xs font-bold text-[#1A1612] truncate leading-tight group-hover:text-[#B88E4F] transition-colors"
-                        title={pinnedProduct.title}
-                      >
-                        {pinnedProduct.title}
-                      </h4>
-                      <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
-                        <span className="text-xs sm:text-[13px] font-black text-rose-600 font-mono tracking-tight">
-                          {Number(pinnedProduct.livePrice || pinnedProduct.price).toLocaleString('vi-VN')} ₫
-                        </span>
-                        {pinnedProduct.livePrice && (
-                          <span className="text-[10px] text-[#7D715E] line-through font-mono">
-                            {Number(pinnedProduct.price).toLocaleString('vi-VN')} ₫
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Action Buttons: Compact & Shimmer */}
-                  <div className="mt-2 pt-2 border-t border-[#EAE4D7]/70 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleAddToCart(pinnedProduct)}
-                      className="flex-1 py-1.5 px-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#B88E4F] hover:text-[#1A1612] text-[11px] font-bold transition cursor-pointer select-none active:scale-95 text-center shadow-2xs"
-                    >
-                      Thêm vào giỏ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInstantBuy(pinnedProduct)}
-                      className="relative flex-1 py-1.5 px-2 rounded-xl bg-gradient-to-r from-[#C59B58] via-[#D4AF37] to-[#B88E4F] hover:brightness-105 text-white text-[11px] font-black tracking-wide transition shadow-xs cursor-pointer select-none active:scale-95 text-center overflow-hidden group/btn"
-                    >
-                      {/* Sweep shine light effect */}
-                      <span className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
-                      <span>MUA NGAY</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div onClick={(event) => event.stopPropagation()} className="absolute bottom-[84px] left-3 sm:left-4 z-20 pointer-events-auto">
+              <LivePinnedProductCard product={pinnedProduct} index={pinnedIndex} countdown={formatCountdown(dealCountdownSeconds)} collapsed={isPinnedDealCollapsed} onCollapsedChange={setIsPinnedDealCollapsed} onAddToCart={() => handleAddToCart(pinnedProduct)} onBuy={() => handleInstantBuy(pinnedProduct)} disabled={isStreamEnded} />
             </div>
           )}
 
           {/* BOTTOM STREAM CONTROLS: TÚI ĐỒ LIVE & REACTION EMOJI DOCK (TIKTOK / SHOPEE STYLE) */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-auto"
+            className={cn('live-stream-bottom-controls absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-auto', isReactionDockExpanded && 'live-controls-reactions-open')}
           >
             {/* Bag Button: Túi Đồ Live (Thiết kế nhỏ gọn, sang trọng) */}
             <div className="flex items-center gap-2">
@@ -2082,103 +1997,7 @@ export default function LiveStreamRoomPage() {
               </button>
             </div>
 
-            {/* COLLAPSIBLE 3D REACTION DOCK (TIKTOK & FACEBOOK LIVE STYLE) */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Khi Mở Rộng: Hiển thị đầy đủ khay 11 Icon Facebook & TikTok kèm nút Thu gọn */}
-              {isReactionDockExpanded ? (
-                <div className="flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-xl p-1 sm:p-1.5 rounded-2xl border border-[#EEDFC6] shadow-[0_8px_30px_rgba(197,155,88,0.28)] animate-in slide-in-from-right-4 duration-200">
-                  {/* Nút Thu Gọn (Collapse Button) */}
-                  <button
-                    type="button"
-                    onClick={() => setIsReactionDockExpanded(false)}
-                    className="p-1 sm:p-1.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] transition-colors cursor-pointer select-none active:scale-90"
-                    title="Thu gọn thanh cảm xúc"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-
-                  <div className="h-6 w-px bg-[#EAE4D7] mx-0.5" />
-
-                  {/* Danh sách 11 Icon sắc nét chuẩn Facebook Live GIF & TikTok */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 max-w-[280px] xs:max-w-none overflow-x-auto no-scrollbar py-0.5">
-                    {REALISTIC_3D_REACTIONS.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={(e) => triggerReaction(item.emoji, e, item.iconUrl)}
-                        className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl hover:bg-[#FAF8F5] active:scale-75 hover:scale-125 transition-all duration-150 flex items-center justify-center cursor-pointer select-none shadow-2xs hover:shadow-xs group"
-                        title={item.label}
-                      >
-                        <img
-                          src={item.iconUrl}
-                          alt={item.label}
-                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-xs group-hover:scale-115 transition-transform"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                        <span className="text-base sm:text-lg absolute inset-0 flex items-center justify-center -z-10">
-                          {item.emoji}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="h-6 w-px bg-[#EAE4D7] mx-0.5" />
-
-                  {/* Heart Tap Button Trong Khay Mở Rộng */}
-                  <button
-                    type="button"
-                    onClick={(e) => triggerReaction('❤️', e)}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-rose-500 via-rose-600 to-red-600 hover:from-rose-600 hover:to-red-700 text-white flex items-center justify-center shadow-md hover:shadow-rose-500/35 transition-all duration-150 cursor-pointer select-none active:scale-75 hover:scale-110"
-                    title="Thả tim (Bấm liên tục để bắn tim bay)"
-                  >
-                    <img
-                      src={REALISTIC_3D_REACTIONS[0].iconUrl}
-                      alt="Heart"
-                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain filter drop-shadow-sm animate-pulse pointer-events-none"
-                    />
-                  </button>
-                </div>
-              ) : (
-                /* Khi Thu Gọn: Nút bấm nhỏ gọn tinh tế + Nút Thả tim đỏ rực */
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur-xl p-1 sm:p-1.5 rounded-2xl border border-[#EEDFC6] shadow-[0_4px_24px_rgba(197,155,88,0.22)] animate-in fade-in duration-200">
-                  {/* Nút Mở Rộng khay Icon */}
-                  <button
-                    type="button"
-                    onClick={() => setIsReactionDockExpanded(true)}
-                    className="group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612] text-xs font-bold transition-all cursor-pointer select-none active:scale-95 shadow-2xs"
-                    title="Bấm để mở đủ 11 icon cảm xúc chuẩn Facebook & TikTok Live"
-                  >
-                    <img
-                      src={REALISTIC_3D_REACTIONS[1].iconUrl}
-                      alt="Like"
-                      className="w-5 h-5 object-contain group-hover:scale-125 transition-transform"
-                    />
-                    <span className="hidden sm:inline text-[11px] text-[#7D715E] group-hover:text-[#1A1612]">
-                      Icon Live
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[9.5px] font-black text-[#B88E4F]">
-                      +{REALISTIC_3D_REACTIONS.length}
-                    </span>
-                  </button>
-
-                  {/* Nút Bắn Tim Lớn (Big Tap Heart - TikTok Fountain) */}
-                  <button
-                    type="button"
-                    onClick={(e) => triggerReaction('❤️', e)}
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-rose-500 via-rose-600 to-red-600 hover:from-rose-600 hover:to-red-700 text-white flex items-center justify-center shadow-lg hover:shadow-rose-500/35 transition-all duration-150 cursor-pointer select-none active:scale-75 hover:scale-110 active:rotate-12 group border border-rose-400/40"
-                    title="Bắn tim cho phiên live (Bấm liên tục để thả tim bay)"
-                  >
-                    <img
-                      src={REALISTIC_3D_REACTIONS[0].iconUrl}
-                      alt="Heart"
-                      className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-md group-hover:scale-120 group-active:scale-130 transition-transform duration-150 animate-pulse pointer-events-none"
-                    />
-                  </button>
-                </div>
-              )}
-            </div>
+            <LiveReactionDock reactions={REALISTIC_3D_REACTIONS} expanded={isReactionDockExpanded} onExpandedChange={setIsReactionDockExpanded} onReact={triggerReaction} disabled={isStreamEnded} />
           </div>
         </div>
 
@@ -2695,9 +2514,16 @@ export default function LiveStreamRoomPage() {
       )}
 
       {/* HOST STUDIO MODAL: BẢNG ĐIỀU KHIỂN DÀNH CHO KOL / CHỦ SHOP (SẠCH SẼ, GỌN GÀNG, SỐ LIỆU THẬT) */}
+      {isVoucherDropOpen && sessionData?.id && (
+        <LiveVoucherDropDialog sessionId={sessionData.id} onClose={() => setIsVoucherDropOpen(false)} onReleased={(drop) => {
+          setSessionData((prev: any) => ({ ...prev, voucherDrop: drop }));
+          setIsVoucherDropOpen(false);
+          toast.success(`Đã giới thiệu ${drop.quantity} lượt voucher ${drop.code} trong phòng Live.`);
+        }} />
+      )}
       {isHostStudioOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-white rounded-3xl border border-[#EAE4D7] shadow-[0_25px_70px_rgba(26,22,18,0.22)] overflow-hidden text-[#1A1612] flex flex-col animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-white rounded-3xl border border-[#EAE4D7] shadow-[0_25px_70px_rgba(26,22,18,0.22)] text-[#1A1612] flex flex-col animate-in zoom-in-95 duration-200">
             {/* Header: Tiêu đề + Thông tin Shop & Host + Nút Đóng */}
             <div className="px-6 py-4 bg-[#FAF8F5] border-b border-[#EAE4D7] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
@@ -2818,78 +2644,15 @@ export default function LiveStreamRoomPage() {
               </div>
 
               {studioTab === 'PRODUCTS' && (
-                <span className="text-xs text-[#7D715E] font-medium hidden sm:inline">
-                  Đang ghim trên màn hình: <strong className="text-[#B88E4F]">#{pinnedIndex === 0 ? '6' : pinnedIndex}</strong>
-                </span>
+                <span className="text-xs text-[#7D715E] font-medium hidden sm:inline">{pinnedProduct ? `Đang ghim #${pinnedIndex + 1}` : 'Chưa ghim sản phẩm'}</span>
               )}
             </div>
 
             {/* NỘI DUNG TAB 1: GHIM SẢN PHẨM (DANH SÁCH HÀNG PHẲNG, GỌN GÀNG) */}
             {studioTab === 'PRODUCTS' && (
-              <div className="px-6 py-2">
-                <div className="max-h-[250px] overflow-y-auto divide-y divide-[#EAE4D7] rounded-2xl border border-[#EAE4D7] bg-white no-scrollbar">
-                  {products.map((p, idx) => {
-                    const isCurrentPinned = idx === pinnedIndex;
-                    const displayRank = idx === 0 ? 6 : idx;
-                    return (
-                      <div
-                        key={p.id}
-                        className={`flex items-center justify-between p-3 transition ${
-                          isCurrentPinned ? 'bg-[#FBF5EB]/80' : 'hover:bg-[#FAF8F5]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 pr-2">
-                          <span className="text-xs font-mono font-bold text-[#7D715E] w-6 shrink-0 text-center">
-                            #{displayRank}
-                          </span>
-                          <img
-                            src={p.imageUrl || ''}
-                            alt={p.title}
-                            className="w-11 h-11 rounded-xl object-cover border border-[#EAE4D7] bg-[#FAF8F5] shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-[#1A1612] truncate max-w-[260px] sm:max-w-[340px]">
-                              {p.title}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-0.5 text-[11px]">
-                              <span className="font-black text-rose-600">
-                                {Number(p.livePrice || p.price).toLocaleString('vi-VN')} ₫
-                              </span>
-                              <span className="text-[#7D715E] line-through">
-                                {Number(p.price).toLocaleString('vi-VN')} ₫
-                              </span>
-                              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">
-                                Đã bán {p.soldPercent || 85}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              if (!sessionData?.id) throw new Error('Chưa tải được phiên Live.');
-                              await api.post(`/live-sessions/${sessionData.id}/pinned-product`, { productId: p.id });
-                              setPinnedIndex(idx);
-                              toast.success(`Đã ghim "${p.title}" lên luồng live!`);
-                            } catch {
-                              toast.error('Chưa thể ghim sản phẩm. Vui lòng kiểm tra quyền chủ phiên và thử lại.');
-                            }
-                          }}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
-                            isCurrentPinned
-                              ? 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs'
-                              : 'bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EAE4D7] text-[#1A1612]'
-                          }`}
-                        >
-                          {isCurrentPinned ? '🔥 Đang ghim' : 'Ghim deal'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <HostStudioProducts products={products} pinnedId={pinnedProduct?.id ?? null} pendingId={pinPendingId}
+                disabled={isStreamEnded || sessionData?.status !== 'LIVE' || !(isSessionHost || currentUser?.id === sessionData?.createdBy)}
+                onPinChange={handlePinChange} />
             )}
 
             {/* NỘI DUNG TAB 2: CÀI ĐẶT THIẾT BỊ & PHÔNG NỀN (TỐI GIẢN, PHẲNG) */}
@@ -2993,20 +2756,25 @@ export default function LiveStreamRoomPage() {
             )}
 
             {/* THANH TÁC VỤ DƯỚI CÙNG (FOOTER ACTIONS) */}
-            <div className="px-6 py-4 bg-[#FAF8F5] border-t border-[#EAE4D7] flex items-center justify-between gap-3 mt-auto">
+            <div className="flex shrink-0 justify-start px-6 pt-3">
               <button
                 type="button"
-                onClick={() => {
-                  toast.success('Đã tung thêm 50 voucher giảm 25K độc quyền phiên live!');
-                }}
-                className="px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] transition cursor-pointer flex items-center gap-1.5"
+                onClick={() => setIsVoucherDropOpen(true)}
+                disabled={!sessionData?.id || sessionData?.status !== 'LIVE' || !(isSessionHost || currentUser?.id === sessionData?.createdBy)}
+                className="px-4 py-2.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#F3EFE6] text-xs font-bold text-[#1A1612] transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <span>🎁 Tung 50 Voucher Live</span>
+                <Ticket size={16} className="text-[#B88E4F]" />
+                <span>{'Tung Voucher Live'}</span>
               </button>
+            </div>
+            <div className={cn('mt-3 grid shrink-0 items-end gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] px-6 py-4', isSessionHost && sessionData?.id ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
+              {isSessionHost && sessionData?.id && <LiveGovernancePanel session={sessionData} audience="kol" liveRoom compact onChanged={() => {
+                void api.get(`/live-sessions/public/detail/${sessionData.id}`, { headers: { 'x-skip-cache': '1' } }).then((response: any) => setSessionData(response?.data || response)).catch(() => {});
+              }} />}
               <button
                 type="button"
                 onClick={() => setIsHostStudioOpen(false)}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] text-xs font-black text-white transition cursor-pointer shadow-xs active:scale-95"
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#C59B58] bg-[#C59B58] px-4 text-xs font-semibold text-white transition hover:bg-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
               >
                 Hoàn tất & Đóng
               </button>

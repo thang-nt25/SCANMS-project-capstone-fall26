@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
+import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import { SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { isSamplePhoneValid, normalizeSamplePhone, SAMPLE_PHONE_ERROR } from '../../utils/sample-phone';
@@ -32,6 +34,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import api from '../../services/api';
+import { getChatSocket } from '../../services/chat-socket.service';
 import { kycService, type KycProfile } from '../../services/kyc.service';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { type MediaAsset } from '../../services/media.service';
@@ -231,6 +234,7 @@ export default function ShopCollaborationPage() {
   const [sampleRecipientPhone, setSampleRecipientPhone] = useState('');
   const [sampleRecipientPhoneConfirmed, setSampleRecipientPhoneConfirmed] = useState(false);
   const [shippingAddress, setShippingAddress] = useState('');
+  const [sampleLocation, setSampleLocation] = useState<AddressLocationResult | null>(null);
   const [sampleProvinces, setSampleProvinces] = useState<Array<{ ProvinceID: number; ProvinceName: string }>>([]);
   const [sampleDistricts, setSampleDistricts] = useState<Array<{ DistrictID: number; DistrictName: string }>>([]);
   const [sampleWards, setSampleWards] = useState<Array<{ WardCode: string; WardName: string }>>([]);
@@ -249,6 +253,7 @@ export default function ShopCollaborationPage() {
     if (!requestSampleModalProduct) return;
     let active = true;
     const editing = requestSampleModalProduct._editingRequest;
+    setSampleLocation(null);
     setSampleProvinceId(editing?.ghnProvinceId ? String(editing.ghnProvinceId) : '');
     setSampleDistrictId(editing?.ghnDistrictId ? String(editing.ghnDistrictId) : '');
     setSampleWardCode(editing?.ghnWardCode || '');
@@ -309,7 +314,7 @@ export default function ShopCollaborationPage() {
   const [dealModalProducts, setDealModalProducts] = useState<any[]>([]);
   const [dealProposedRate, setDealProposedRate] = useState<number>(11);
   const [dealDurationMonths, setDealDurationMonths] = useState<number>(3);
-  const [dealOrderCommitment, setDealOrderCommitment] = useState<number>(100);
+  const [dealOrderCommitment, setDealOrderCommitment] = useState<number | ''>(100);
   const [dealRevenueCommitment, setDealRevenueCommitment] = useState<string>('25.000.000');
   const [dealContentPlan, setDealContentPlan] = useState<string>('3 Video TikTok/Reels chuyên sâu + 1 Phiên Livestream đẩy số');
   const [dealTermsAccepted, setDealTermsAccepted] = useState(false);
@@ -569,16 +574,44 @@ export default function ShopCollaborationPage() {
       setTabCounts({
         storeId,
         messages: conversations ? conversations.filter((item: any) => (item.storeId || item.store?.id) === storeId)
-          .reduce((sum: number, item: any) => sum + Number(item._count?.chatMessages || 0), 0) : null,
+          .reduce((sum: number, item: any) => sum + Number(item.messageCount || 0), 0) : null,
         products: typeof data[1]?.pagination?.total === 'number' ? data[1].pagination.total : null,
         samples: requests ? requests.filter((item: any) => item.product?.storeId === storeId).length : null,
         media: typeof data[3]?.pagination?.total === 'number' ? data[3].pagination.total : null,
       });
     };
     void refresh();
+    let messageTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshingMessages = false;
+    const refreshMessageCount = async () => {
+      if (!active || refreshingMessages) return;
+      refreshingMessages = true;
+      try {
+        const response: any = await api.get('/chat/conversations', { headers: { 'x-skip-cache': 'true' } });
+        const rows = response?.data ?? response;
+        if (!active || !Array.isArray(rows)) return;
+        const total = rows.filter((item: any) => (item.storeId || item.store?.id) === storeId)
+          .reduce((sum: number, item: any) => sum + Number(item.messageCount || 0), 0);
+        setTabCounts(previous => previous.storeId === storeId ? { ...previous, messages: total } : previous);
+      } finally {
+        refreshingMessages = false;
+      }
+    };
+    const onMessage = () => {
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(() => { void refreshMessageCount().catch(() => undefined); }, 200);
+    };
+    const socket = getChatSocket();
+    socket.on('new_message', onMessage);
     const timer = window.setInterval(() => void refresh(), 30000);
     window.addEventListener('focus', refresh);
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      clearTimeout(messageTimer);
+      socket.off('new_message', onMessage);
+      window.removeEventListener('focus', refresh);
+    };
   }, [selectedStore.id, activeTab]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
@@ -924,8 +957,9 @@ export default function ShopCollaborationPage() {
   const handleConnectStore = async (store: any) => {
     setConnectingStoreId(store.id);
     try {
+      await api.post('/store-collaborators/request', { storeId: store.id });
       await api.post('/chat/conversations', { storeId: store.id });
-      toast.success(`Đã kết nối thành công với ${store.name}!`);
+      toast.success(`Đã gửi yêu cầu hợp tác tới ${store.name}, chờ Shop duyệt.`);
       setShowDiscoverModal(false);
       await loadConversationsAndStores();
       setSelectedStoreId(store.id);
@@ -1298,6 +1332,7 @@ export default function ShopCollaborationPage() {
           </div>
 
           {/* Sub-Tabs Bar: Vừa Vặn 100%, Nhãn Ngắn Gọn, Không Bị Tràn Chữ */}
+          <StoreCooperationPanel key={selectedStoreId} mode="kol" storeId={selectedStoreId || undefined} />
           <div
             className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-[#EAE4D7] bg-white grid grid-cols-2 sm:grid-cols-4 items-stretch gap-2"
             role="tablist"
@@ -1333,8 +1368,8 @@ export default function ShopCollaborationPage() {
                   <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                   <span>{tab.label}</span>
                   <span className="inline-flex min-w-[24px] h-6 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
-                    aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn chưa đọc' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}
-                    title={tab.id === 'messages' ? 'Số tin nhắn chưa đọc' : 'Tổng số của gian hàng đang chọn'}>
+                    aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn trong cuộc trò chuyện' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}
+                    title={tab.id === 'messages' ? 'Tổng số tin nhắn, gồm cả tin đã đọc và thẻ deal' : 'Tổng số của gian hàng đang chọn'}>
                     {count === null ? '—' : count}
                   </span>
                 </button>
@@ -2413,7 +2448,8 @@ export default function ShopCollaborationPage() {
                 <label id="sample-address-label" className="text-[11px] font-bold text-[#1A1612] block mb-1">
                   Địa chỉ nhận hàng GHN <span className="text-rose-600">*</span>
                 </label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="sm:col-span-2"><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Tỉnh / Thành phố</span>
                   <Select
                     placement="top"
                     searchable
@@ -2422,7 +2458,7 @@ export default function ShopCollaborationPage() {
                     value={sampleProvinceId}
                     aria-label="Tỉnh/Thành phố nhận hàng"
                     placeholder="Tỉnh / Thành"
-                    className={`w-full text-xs h-9 py-0 px-2 ${sampleAddressError && !sampleProvinceId ? 'rounded-xl ring-1 ring-[#DC2626]' : ''}`}
+                    className={`w-full text-xs h-10 py-0 px-3 ${sampleAddressError && !sampleProvinceId ? 'rounded-xl ring-1 ring-[#DC2626]' : ''}`}
                     options={[
                       { value: '', label: 'Tỉnh / Thành', disabled: true },
                       ...sampleProvinces.map((item) => ({
@@ -2439,7 +2475,8 @@ export default function ShopCollaborationPage() {
                       setSampleWardCode('');
                     }}
                   />
-
+                  </label>
+                  <label><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Quận / Huyện</span>
                   <Select
                     placement="top"
                     searchable
@@ -2463,7 +2500,8 @@ export default function ShopCollaborationPage() {
                       setSampleWardCode('');
                     }}
                   />
-
+                  </label>
+                  <label><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Phường / Xã</span>
                   <Select
                     placement="top"
                     align="right"
@@ -2483,12 +2521,15 @@ export default function ShopCollaborationPage() {
                     ]}
                     onChange={(e) => { setSampleWardCode(e.target.value); setSampleAddressError(''); }}
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Row 4: Địa chỉ chi tiết */}
               <div>
+                <label htmlFor="sample-street-address" className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Địa chỉ chi tiết <span className="font-normal">· Số nhà, tên đường, tòa nhà, căn hộ</span></label>
                 <input
+                  id="sample-street-address"
                   type="text"
                   required
                   minLength={5}
@@ -2502,6 +2543,17 @@ export default function ShopCollaborationPage() {
                     {sampleAddressError}
                   </p>
                 )}
+              </div>
+
+              <div className="relative isolate z-0">
+                <AddressLocationPicker nationwide latitude={sampleLocation?.latitude} longitude={sampleLocation?.longitude}
+                  addressQuery={[shippingAddress, sampleWards.find(item => item.WardCode === sampleWardCode)?.WardName, sampleDistricts.find(item => String(item.DistrictID) === sampleDistrictId)?.DistrictName, sampleProvinces.find(item => String(item.ProvinceID) === sampleProvinceId)?.ProvinceName, 'Việt Nam'].filter(Boolean).join(', ')}
+                  onChange={(location) => {
+                    setSampleLocation(location);
+                    if (location.detailAddress) setShippingAddress(location.detailAddress);
+                    toast.info('Đã chọn vị trí. Kiểm tra lại tỉnh, quận/huyện và phường/xã GHN trước khi gửi.');
+                  }} />
+                <p className="mt-2 text-[10px] leading-relaxed text-[#7D715E]">Ghim hỗ trợ xác định địa chỉ chi tiết; vận đơn sử dụng địa chỉ và mã khu vực GHN bạn chọn ở trên. Vui lòng kiểm tra trước khi gửi.</p>
               </div>
 
               </fieldset>
@@ -2680,7 +2732,7 @@ export default function ShopCollaborationPage() {
                               className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                             >
                               {connectingStoreId === ms.id ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                              <span>{connectingStoreId === ms.id ? 'Đang kết nối' : 'Kết nối'}</span>
+                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : 'Gửi yêu cầu hợp tác'}</span>
                             </button>
                           )}
                         </div>
@@ -2915,26 +2967,36 @@ export default function ShopCollaborationPage() {
 
                       {/* Số đơn cam kết */}
                       <div>
-                        <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                        <label htmlFor="deal-order-commitment" className="block text-[11px] font-semibold text-[#7D715E] mb-1">
                           {isBundle ? 'Mục tiêu tổng số đơn cả gói' : 'Mục tiêu số đơn tối thiểu'}
                         </label>
-                        <div className="relative">
+                        <div className="flex items-stretch gap-2">
                           <input
+                            id="deal-order-commitment"
                             type="number"
                             min={10}
                             step={10}
                             value={dealOrderCommitment}
                             onChange={(e) => {
-                              const count = Number(e.target.value);
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setDealOrderCommitment('');
+                                setDealRevenueCommitment('');
+                                return;
+                              }
+                              const count = Number(raw);
                               setDealOrderCommitment(count);
-                              const rev = Math.round(avgPrice * count).toLocaleString('vi-VN');
+                              const rev = count > 0 ? Math.round(avgPrice * count).toLocaleString('vi-VN') : '';
                               setDealRevenueCommitment(rev);
                             }}
-                            className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
+                            aria-invalid={dealOrderCommitment !== '' && dealOrderCommitment < 10}
+                            aria-describedby={dealOrderCommitment !== '' && dealOrderCommitment < 10 ? 'deal-order-commitment-error' : undefined}
+                            className="min-w-0 flex-1 px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
                             required
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#7D715E]">đơn</span>
+                          <span className="inline-flex min-w-12 items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FBF5EB] px-2 text-xs font-semibold text-[#7D715E]">đơn</span>
                         </div>
+                        {dealOrderCommitment !== '' && dealOrderCommitment < 10 && <p id="deal-order-commitment-error" className="mt-1.5 text-[11px] leading-relaxed text-[#DC2626]" role="alert">Số đơn cam kết tối thiểu là 10.</p>}
                       </div>
                     </div>
 

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import './ShopKolHubCompactHeader.css';
 import { createPortal } from 'react-dom';
+import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -271,6 +273,8 @@ export default function ShopKolHubPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<'ALL' | 'PENDING_SAMPLE'>('ALL');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isDetailHeaderCompact, setIsDetailHeaderCompact] = useState(false);
+  useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
 
   // Samples management
   const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>({});
@@ -469,7 +473,7 @@ export default function ShopKolHubPage() {
       }
 
       // 2. Load members from store collaborators
-      const membersRes: any = await api.get('/store-collaborators/shop');
+      const membersRes: any = await api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } });
       const membersBody = membersRes?.data || membersRes;
       if (membersBody?.store?.id) setOwnedStore(membersBody.store);
       if (Array.isArray(membersBody?.members) && membersBody.members.length > 0) {
@@ -523,7 +527,7 @@ export default function ShopKolHubPage() {
       }
 
       // 3. Load active verified creators from backend database
-      const creatorsRes: any = await api.get('/chat/search-collaborators');
+      const creatorsRes: any = await api.get('/chat/search-collaborators', { headers: { 'x-skip-cache': '1' } });
       const creatorsData = creatorsRes?.data || creatorsRes;
       if (Array.isArray(creatorsData) && creatorsData.length > 0) {
         const dbKols: PartnerKol[] = creatorsData.map((c: any) => {
@@ -625,35 +629,6 @@ export default function ShopKolHubPage() {
         url: selectedKol.primaryChannel.url,
         handle: selectedKol.handle || '@kenh',
         followers: selectedKol.primaryChannel.followers,
-      });
-    }
-    // Enrich with demo channels if single channel to display rich multi-channel capabilities
-    if (list.length === 1 && selectedKol.fullName.includes('Thắng')) {
-      list.push({
-        platform: 'YOUTUBE',
-        url: 'https://youtube.com/@thangtechreview',
-        handle: '@ThangTechReview',
-        followers: 85000,
-      });
-      list.push({
-        platform: 'FACEBOOK',
-        url: 'https://facebook.com/thangtechreview',
-        handle: 'Thắng Tech Review',
-        followers: 42000,
-      });
-    } else if (list.length === 1 && selectedKol.fullName.includes('Nhật')) {
-      list.push({
-        platform: 'YOUTUBE',
-        url: 'https://youtube.com/@nhat_review',
-        handle: '@NhatReviewOfficial',
-        followers: 95000,
-      });
-    } else if (list.length === 1 && selectedKol.fullName.includes('Linh')) {
-      list.push({
-        platform: 'INSTAGRAM',
-        url: 'https://instagram.com/linh.beauty',
-        handle: '@linh.beauty',
-        followers: 65000,
       });
     }
     return list;
@@ -1721,7 +1696,8 @@ return true;
           </div>
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
-          <div className="shop-kol-detail flex-1 flex flex-col min-w-0 bg-white">
+          <div className={`shop-kol-detail flex-1 flex flex-col min-w-0 bg-white${isDetailHeaderCompact ? ' is-header-compact' : ''}`}>
+            <StoreCooperationPanel mode="shop" />
             {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
             <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
               {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
@@ -1894,39 +1870,42 @@ return true;
 
               {/* Các Tab còn lại: Có vùng cuộn độc lập bên trong */}
               {activeTab !== 'messages' && (
-                <div className="h-full w-full overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div onScroll={event => {
+                  const top = event.currentTarget.scrollTop;
+                  setIsDetailHeaderCompact(current => top > 100 ? true : top < 12 ? false : current);
+                }} className={`h-full w-full overflow-y-auto ${activeTab === 'samples' ? 'px-3 pb-4 pt-3 sm:px-4 sm:pt-3.5' : 'p-4 sm:p-6'} space-y-3`}>
                   {/* TAB 2: SAMPLE REQUESTS MANAGEMENT */}
                   {activeTab === 'samples' && (
-                    <div className="animate-in fade-in-50 duration-200 space-y-4">
+                    <div className="animate-in fade-in-50 duration-200 space-y-3">
                   {sampleProgramStats && (
-                    <div className="space-y-2"><div className="grid grid-cols-2 xl:grid-cols-5 gap-2">
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
+                    <div className="space-y-2"><div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
                         <span className="text-[10px] text-[#7D715E] block">Giá trị mẫu đã cấp</span>
-                        <strong className="text-sm text-[#1A1612]">{Number(sampleProgramStats.issuedValue || 0).toLocaleString('vi-VN')} ₫</strong>
+                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{Number(sampleProgramStats.issuedValue || 0).toLocaleString('vi-VN')} ₫</strong>
                       </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
+                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
                         <span className="text-[10px] text-[#7D715E] block">Đã duyệt cấp mẫu</span>
-                        <strong className="text-sm text-[#1A1612]">{sampleProgramStats.grantedCount || 0}</strong>
+                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.grantedCount || 0}</strong>
                       </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
+                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
                         <span className="text-[10px] text-[#7D715E] block">Tỷ lệ nộp video</span>
-                        <strong className="text-sm text-[#1A1612]">{sampleProgramStats.videoSubmissionRate || 0}%</strong>
+                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.videoSubmissionRate || 0}%</strong>
                       </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
+                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
                         <span className="text-[10px] text-[#7D715E] block">Tỷ lệ hoàn tất</span>
-                        <strong className="text-sm text-[#1A1612]">{sampleProgramStats.completedRate || 0}%</strong>
+                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.completedRate || 0}%</strong>
                       </div>
-                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2.5">
+                      <div className="rounded-xl bg-white border border-[#EAE4D7] px-3 py-2">
                         <span className="text-[10px] text-[#7D715E] block">Quá hạn / mẫu còn lại</span>
-                        <strong className="text-sm text-[#1A1612]">{sampleProgramStats.overdue || 0} / {sampleProgramStats.remainingSampleQuota || 0}</strong>
+                        <strong className="mt-0.5 block text-[13px] font-semibold leading-5 tabular-nums text-[#1A1612]">{sampleProgramStats.overdue || 0} / {sampleProgramStats.remainingSampleQuota || 0}</strong>
                       </div>
                     </div></div>
                   )}
-                  <div className="grid grid-cols-2 items-stretch gap-2 rounded-xl sm:grid-cols-3 xl:grid-cols-6 border border-[#EAE4D7] bg-white p-2.5">
+                  <div className="grid grid-cols-2 items-center gap-1.5 rounded-xl sm:grid-cols-3 xl:grid-cols-[1fr_1.35fr_1.35fr_1.6fr_1fr_1fr] border border-[#EAE4D7] bg-white p-2">
                     <div className="contents">
                       {([{value:'ALL',label:'Tất cả'}, {value:'PENDING',label:'Chờ duyệt mẫu'}, {value:'VIDEO_SUBMITTED',label:'Chờ duyệt video'}] as const).map((filter) => (
                         <button key={filter.value} type="button" onClick={() => setSampleFilter(filter.value)} aria-pressed={sampleFilter === filter.value} className={
-                          'flex h-11 min-w-0 items-center justify-center rounded-lg px-2 text-xs font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
+                          'flex h-9 min-w-0 items-center justify-center whitespace-nowrap rounded-lg px-2 text-[11px] font-semibold transition ' + (sampleFilter === filter.value ? 'bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#EEDFC6]' : 'text-[#7D715E] hover:bg-[#FAF8F5]')
                         }>{filter.label}<span className="ml-1.5 text-[11px]">{(samplesMap[selectedKol.id] || []).filter((sample) => filter.value === 'ALL' || sample.status === filter.value).length}</span></button>
                       ))}
                     </div>
@@ -1935,7 +1914,7 @@ return true;
                         value={sampleFilter}
                         onChange={(event) => setSampleFilter(event.target.value as typeof sampleFilter)}
                         aria-label="Lọc lịch sử yêu cầu mẫu"
-                        className="h-11 w-full min-w-0 text-xs font-medium [&_button]:h-11 [&_button]:min-h-11 [&_button]:px-2 [&_button]:text-xs"
+                        className="h-9 w-full min-w-0 text-xs font-medium [&_button]:h-9 [&_button]:min-h-9 [&_button]:px-2 [&_button]:text-xs"
                       >
                         <option value="ALL">Tất cả trạng thái</option>
                         <option value="PENDING">Chờ Shop duyệt</option>
@@ -1950,7 +1929,7 @@ return true;
                         <option value="REJECTED">Bị từ chối</option>
                         <option value="CANCELLED">Đã hủy</option>
                       </Select>
-                      <button type="button" title="Làm mới thông tin nhận hàng" disabled={loadingBackendData} onClick={() => void loadBackendData()} className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 text-xs font-semibold text-[#795A2D] transition-colors hover:bg-[#FBF5EB] disabled:opacity-50">
+                      <button type="button" title="Làm mới thông tin nhận hàng" disabled={loadingBackendData} onClick={() => void loadBackendData()} className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white px-3 text-xs font-semibold text-[#795A2D] transition-colors hover:bg-[#FBF5EB] disabled:opacity-50">
                         <RefreshCw size={14} className={loadingBackendData ? 'animate-spin' : ''} aria-hidden="true" />
                         Làm mới
                       </button>
@@ -1962,7 +1941,7 @@ return true;
                           aria-label="Thao tác với nhà sáng tạo"
                           aria-expanded={showKolActionsMenu}
                           onClick={() => setShowKolActionsMenu(prev => !prev)}
-                          className={`flex h-11 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${
+                          className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] ${
                             showKolActionsMenu
                               ? 'bg-[#FBF5EB] border-[#B88E4F] text-[#B88E4F] shadow-xs'
                               : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] hover:text-[#1A1612]'
@@ -2193,8 +2172,10 @@ return true;
 
                             {/* Actions by status */}
                             <div className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-[#EAE4D7] pt-2.5">
-                              <SampleDeadlineExtension request={item} onSuccess={() => void loadBackendData()} />
-                              <SampleViolationAction request={item} blocked={Boolean(item.sampleRequestsBlockedAt)} onSuccess={() => void loadBackendData()} />
+                              <div className="sample-deadline-actions">
+                                <SampleDeadlineExtension request={item} onSuccess={() => void loadBackendData()} />
+                                <SampleViolationAction request={item} blocked={Boolean(item.sampleRequestsBlockedAt)} onSuccess={() => void loadBackendData()} />
+                              </div>
                               {item.status === 'PENDING' && (
                                 <>
                                   <button

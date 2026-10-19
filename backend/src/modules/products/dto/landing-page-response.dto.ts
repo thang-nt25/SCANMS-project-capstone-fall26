@@ -13,6 +13,9 @@ export class LandingProductDto {
   })
   sku: string;
 
+  @ApiProperty({ description: 'Số lượng đã giao thành công hoặc hoàn tất, không gồm đơn hủy/hoàn trả' })
+  soldCount: number;
+
   @ApiProperty({ example: 'Serum Vitamin C 15%', description: 'Tên sản phẩm' })
   title: string;
 

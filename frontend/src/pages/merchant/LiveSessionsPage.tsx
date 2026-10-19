@@ -91,7 +91,7 @@ type LiveSessionItem = {
     usageLimitTotal: number | null;
   };
   products: Array<{ product: { id: string; title: string; imageUrl?: string | null } }>;
-  report: {
+  report?: {
     claims: number;
     buyers?: number;
     orders: number;
@@ -202,10 +202,13 @@ export default function LiveSessionsPage({
   const [sessions, setSessions] = useState<LiveSessionItem[]>([]);
   const [catalog, setCatalog] = useState<Catalog>({ products: [], creators: [], defaultCommissionRate: 10 });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'SCHEDULED' | 'ENDED'>('ALL');
   const [detailModalSession, setDetailModalSession] = useState<LiveSessionItem | null>(null);
+  const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     creatorId: '',
@@ -232,8 +235,13 @@ export default function LiveSessionsPage({
   });
 
   const [kolSearch, setKolSearch] = useState('');
-  const [kolFilterTab, setKolFilterTab] = useState<'ALL' | 'VIP' | 'TOP'>('ALL');
+  const [kolFilterTab, setKolFilterTab] = useState<'ALL' | 'VIP'>('ALL');
+  const [kolSortByFollowers, setKolSortByFollowers] = useState(false);
   const [isChangingKol, setIsChangingKol] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  const [linkRetry, setLinkRetry] = useState(0);
+  const [showProductError, setShowProductError] = useState(false);
 
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [productFilterTab, setProductFilterTab] = useState<'ALL' | 'SELECTED'>('ALL');
@@ -249,20 +257,19 @@ export default function LiveSessionsPage({
       });
       const data: LiveSessionItem[] = response?.data || response || [];
       setSessions(data);
-      if (detailModalSession) {
-        const updated = data.find((s) => s.id === detailModalSession.id);
-        if (updated) setDetailModalSession(updated);
-      }
+      setDetailModalSession((current) => current ? data.find((session) => session.id === current.id) || current : current);
+      return data;
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'Không tải được danh sách phiên livestream.');
     }
-  }, [detailModalSession]);
+  }, []);
 
   useEffect(() => {
     let active = true;
     const init = async () => {
       try {
         setLoading(true);
+        setLoadError('');
         const meRes: any = await api.get('/auth/me');
         const user = meRes?.data || meRes;
         const myStore = user?.stores?.[0] || user?.ownedStores?.[0] || user?.store;
@@ -275,11 +282,12 @@ export default function LiveSessionsPage({
           return;
         }
 
-        const [catRes] = await Promise.all([
-          api.get('/live-sessions/shop/catalog', { params: { storeId: sId } }),
+        const [catRes, loadedSessions] = await Promise.all([
+          api.get('/live-sessions/shop/catalog', { params: { storeId: sId }, headers: { 'x-skip-cache': '1' } }),
           loadSessions(sId),
         ]);
         if (!active) return;
+        if (!loadedSessions) throw new Error('Không tải được danh sách phiên. Vui lòng thử lại khi máy chủ kết nối lại.');
         const cat = (catRes as any)?.data || catRes;
         setCatalog(cat);
         setForm((prev) => ({
@@ -287,6 +295,7 @@ export default function LiveSessionsPage({
           commissionRate: String(cat.defaultCommissionRate || 10),
         }));
       } catch (err: any) {
+        if (active) setLoadError(err?.response?.data?.message || 'Mất kết nối máy chủ hoặc không tải được dữ liệu phiên Live. Vui lòng thử lại.');
         if (active) toast.error(err?.response?.data?.message || err?.message || 'Không khởi tạo được dữ liệu.');
       } finally {
         if (active) setLoading(false);
@@ -296,16 +305,27 @@ export default function LiveSessionsPage({
     return () => {
       active = false;
     };
-  }, [loadSessions]);
+  }, [loadSessions, loadAttempt]);
+
+  useEffect(() => {
+    if (!loadError) return;
+    const retry = () => setLoadAttempt((attempt) => attempt + 1);
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, [loadError]);
 
   useEffect(() => {
     if (!storeId || !form.creatorId || isShortScanmsLiveUrl(form.scanmsLiveUrl)) return;
     let active = true;
+    setLinkLoading(true);
+    setLinkError('');
     void api
       .post('/live-sessions/shop/link-code', { storeId, creatorId: form.creatorId })
       .then((response: any) => {
         const result = response?.data || response;
-        if (!active || !/^[A-Za-z0-9_-]{12}$/.test(result?.code || '')) return;
+        if (!active) return;
+        if (!/^[A-Za-z0-9_-]{12}$/.test(result?.code || '')) throw new Error('Máy chủ chưa trả về mã phòng hợp lệ.');
+        setLinkLoading(false);
         setForm((prev) =>
           prev.creatorId === form.creatorId
             ? { ...prev, scanmsLiveUrl: `${window.location.origin}/live/${result.code}` }
@@ -313,12 +333,15 @@ export default function LiveSessionsPage({
         );
       })
       .catch((error: any) => {
-        if (active) toast.error(error?.response?.data?.message || 'Không tạo được link SCANMS Live.');
+        if (active) {
+          setLinkLoading(false);
+          setLinkError(error?.response?.data?.message || error?.message || 'Không tạo được link SCANMS Live.');
+        }
       });
     return () => {
       active = false;
     };
-  }, [storeId, form.creatorId, form.scanmsLiveUrl]);
+  }, [storeId, form.creatorId, form.scanmsLiveUrl, linkRetry]);
 
   useEffect(() => {
     if (refreshKey === lastRefreshKey.current) return;
@@ -397,7 +420,8 @@ export default function LiveSessionsPage({
     let list = catalog.creators;
     if (kolFilterTab === 'VIP') {
       list = list.filter((c) => c.isExclusiveVip);
-    } else if (kolFilterTab === 'TOP') {
+    }
+    if (kolSortByFollowers) {
       list = [...list].sort(
         (a, b) =>
           (b.collaboratorProfile?.totalFollowers || 0) -
@@ -405,17 +429,19 @@ export default function LiveSessionsPage({
       );
     }
     if (!kolSearch.trim()) return list;
-    const q = kolSearch.trim().toLowerCase();
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+    const q = normalize(kolSearch.trim());
     return list.filter(
       (c) =>
-        c.fullName.toLowerCase().includes(q) ||
+        normalize(c.fullName).includes(q) ||
         c.socialChannels.some(
           (ch) =>
-            ch.platformName.toLowerCase().includes(q) ||
-            (ch.channelName && ch.channelName.toLowerCase().includes(q))
+            normalize(ch.platformName).includes(q) ||
+            (ch.channelName && normalize(ch.channelName).includes(q)) ||
+            (ch.channelUrl && normalize(ch.channelUrl).includes(q))
         )
     );
-  }, [catalog.creators, kolSearch, kolFilterTab]);
+  }, [catalog.creators, kolSearch, kolFilterTab, kolSortByFollowers]);
 
   const selectedCreator = useMemo(
     () => catalog.creators.find((c) => c.id === form.creatorId),
@@ -492,8 +518,23 @@ export default function LiveSessionsPage({
 
   const createSession = async (event: FormEvent) => {
     event.preventDefault();
-    if (!storeId || !form.creatorId || form.productIds.length === 0 || !form.startsAt || !form.endsAt) {
-      toast.error('Chọn KOL, sản phẩm và thời gian bắt đầu/kết thúc.');
+    if (!storeId) { toast.error('Chưa tải được gian hàng. Vui lòng làm mới trang.'); return; }
+    if (!form.creatorId) { toast.error('Vui lòng chọn KOL phát sóng.'); return; }
+    if (form.productIds.length === 0) {
+      setShowProductError(true);
+      setProductFilterTab('ALL');
+      setProductSearchQuery('');
+      toast.error('Bạn chưa chọn sản phẩm ghim trong Live. Chọn ít nhất 1 sản phẩm.');
+      document.getElementById('live-products-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelector<HTMLInputElement>('#live-products-section input[type="checkbox"]')?.focus({ preventScroll: true });
+      return;
+    }
+    if (!form.startsAt || !form.endsAt) {
+      toast.error(!form.startsAt ? 'Vui lòng chọn giờ bắt đầu phiên Live.' : 'Vui lòng chọn giờ kết thúc phiên Live.');
+      return;
+    }
+    if (!Number.isFinite(new Date(form.startsAt).getTime()) || !Number.isFinite(new Date(form.endsAt).getTime()) || new Date(form.endsAt) <= new Date(form.startsAt)) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu phiên Live.');
       return;
     }
     if (!form.discountValue || !form.usageLimitTotal || !form.usageLimitPerCustomer) {
@@ -524,7 +565,7 @@ export default function LiveSessionsPage({
       return;
     }
     if (form.platform === 'SCANMS' && !form.scanmsLiveUrl) {
-      toast.error('Chọn KOL để hệ thống tạo link SCANMS Live.');
+      toast.error(linkLoading ? 'Link phòng đang được tạo. Vui lòng chờ một chút.' : 'Chưa tạo được link phòng. Bấm Thử lại ở mục Link phòng live.');
       return;
     }
     const finalLiveUrl = form.platform === 'SCANMS' ? form.scanmsLiveUrl : externalChannels[0].channelUrl;
@@ -555,6 +596,7 @@ export default function LiveSessionsPage({
       });
 
       toast.success('Đã tạo phiên live và gửi lời mời đến KOL.');
+      setShowProductError(false);
       setForm((prev) => ({
         ...prev,
         title: '',
@@ -573,10 +615,10 @@ export default function LiveSessionsPage({
         externalChannels: [{ channelUrl: '', followerCount: '' }],
       }));
       setIsChangingKol(false);
-      await loadSessions(storeId);
+      const refreshedSessions = await loadSessions(storeId);
       setActiveTab('history');
       const createdItem = (res?.data || res) as LiveSessionItem;
-      if (createdItem?.id) setDetailModalSession(createdItem);
+      if (createdItem?.id) setDetailModalSession(refreshedSessions?.find(item => item.id === createdItem.id) || createdItem);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'Không tạo được phiên livestream.');
     } finally {
@@ -675,6 +717,13 @@ export default function LiveSessionsPage({
   ];
 
   if (loading) return <div className="p-8 text-center text-sm text-[#7D715E]">Đang tải dữ liệu phiên livestream…</div>;
+  if (loadError) return (
+    <div role="alert" className="mx-auto my-8 max-w-lg rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center">
+      <h2 className="font-semibold text-[#1A1612]">Chưa tải được phiên livestream</h2>
+      <p className="mt-2 text-sm leading-relaxed text-[#7D715E]">{loadError}</p>
+      <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-4 rounded-xl bg-[#C59B58] px-5 py-2.5 text-sm font-semibold text-[#1A1612] hover:bg-[#B88E4F]">Thử lại</button>
+    </div>
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1560px] space-y-4 pb-10 text-[#1A1612]">
@@ -861,21 +910,22 @@ export default function LiveSessionsPage({
                       <div className="grid grid-cols-3 gap-2 border-t border-[#F0EAE0] pt-2 text-[11px]">
                         <div>
                           <span className="text-[#7D715E]">Đơn live</span>
-                          <p className="font-bold text-[#1A1612]">{session.report.orders || 0}</p>
+                          <p className="font-bold text-[#1A1612]">{session.report?.orders || 0}</p>
                         </div>
                         <div>
                           <span className="text-[#7D715E]">Nhận mã</span>
-                          <p className="font-bold text-[#1A1612]">{session.report.claims || 0}</p>
+                          <p className="font-bold text-[#1A1612]">{session.report?.claims || 0}</p>
                         </div>
                         <div>
                           <span className="text-[#7D715E]">Doanh số</span>
-                          <p className="font-bold text-[#B88E4F]">{currency(session.report.grossSales || 0)}</p>
+                          <p className="font-bold text-[#B88E4F]">{currency(session.report?.grossSales || 0)}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Action buttons */}
-                    <div className="mt-4 flex items-center gap-2 border-t border-[#F0EAE0] pt-3">
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#F0EAE0] pt-3">
+                      {['LIVE', 'PAUSED'].includes(session.status) && session.inviteStatus === 'ACCEPTED' && <button type="button" onClick={() => { setEndingSessionId(session.id); setDetailModalSession(session); }} className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[11px] font-semibold text-[#1A1612] hover:bg-[#F3EFE6] cursor-pointer"><StopCircle className="h-3.5 w-3.5" /> Kết thúc phiên · Gửi Admin</button>}
                       {session.liveUrl && (
                         <a
                           href={session.liveUrl}
@@ -978,7 +1028,7 @@ export default function LiveSessionsPage({
                     <input
                       readOnly
                       value={form.scanmsLiveUrl}
-                      placeholder={form.creatorId ? 'Đang tạo mã phòng...' : 'Chọn KOL để tạo link'}
+                      placeholder={form.creatorId ? linkError ? 'Chưa tạo được link phòng' : linkLoading ? 'Đang tạo mã phòng...' : 'Chờ tạo link phòng' : 'Chọn KOL để tạo link'}
                       className="min-w-0 flex-1 bg-transparent text-xs font-normal outline-none"
                     />
                     <button
@@ -991,6 +1041,7 @@ export default function LiveSessionsPage({
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  {linkError && <div className="flex flex-wrap items-center gap-2 text-[11px] font-normal text-[#DC2626]" role="alert"><span>{linkError}</span><button type="button" onClick={() => setLinkRetry(previous => previous + 1)} className="shrink-0 underline cursor-pointer">Thử lại</button></div>}
                 </div>
               ) : null}
             </div>
@@ -1144,6 +1195,7 @@ export default function LiveSessionsPage({
                         <button
                           type="button"
                           onClick={() => setKolFilterTab('ALL')}
+                          aria-pressed={kolFilterTab === 'ALL'}
                           className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
                             kolFilterTab === 'ALL'
                               ? 'bg-white text-[#B88E4F] shadow-2xs border border-[#EEDFC6]'
@@ -1155,6 +1207,7 @@ export default function LiveSessionsPage({
                         <button
                           type="button"
                           onClick={() => setKolFilterTab('VIP')}
+                          aria-pressed={kolFilterTab === 'VIP'}
                           className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
                             kolFilterTab === 'VIP'
                               ? 'bg-white text-[#B88E4F] shadow-2xs border border-[#EEDFC6]'
@@ -1165,14 +1218,16 @@ export default function LiveSessionsPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setKolFilterTab('TOP')}
+                          onClick={() => setKolSortByFollowers(previous => !previous)}
+                          aria-pressed={kolSortByFollowers}
+                          title="Đổi thứ tự theo số người theo dõi; không thay đổi bộ lọc VIP"
                           className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
-                            kolFilterTab === 'TOP'
+                            kolSortByFollowers
                               ? 'bg-white text-[#B88E4F] shadow-2xs border border-[#EEDFC6]'
                               : 'text-[#7D715E] hover:text-[#1A1612]'
                           }`}
                         >
-                          🔥 Top Followers
+                          {kolSortByFollowers ? 'Follower: cao → thấp' : 'Sắp xếp follower'}
                         </button>
                       </div>
 
@@ -1188,6 +1243,11 @@ export default function LiveSessionsPage({
                     </div>
                   </div>
 
+                  <p role="status" className="text-[11px] leading-5 text-[#7D715E]">
+                    Hiển thị {filteredCreators.length}/{catalog.creators.length} KOL
+                    {kolSortByFollowers ? ' · Follower từ cao xuống thấp' : ' · Ưu tiên đối tác VIP'}
+                    {kolFilterTab === 'VIP' && vipCreatorsCount === catalog.creators.length && catalog.creators.length > 0 && ' · Tất cả KOL hiện có đều là VIP'}
+                  </p>
                   {/* KOL Cards List */}
                   {filteredCreators.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-[#EAE4D7] p-6 text-center text-xs text-[#7D715E]">
@@ -1201,13 +1261,15 @@ export default function LiveSessionsPage({
                         const effectiveRate = c.currentEffectiveRate ?? c.baseRate ?? catalog.defaultCommissionRate ?? 10;
 
                         return (
-                          <div
+                          <button
+                            type="button"
+                            aria-pressed={isSelected}
                             key={c.id}
                             onClick={() => {
                               setField('creatorId', c.id);
                               setIsChangingKol(false);
                             }}
-                            className={`flex items-center justify-between rounded-xl border p-2.5 transition cursor-pointer ${
+                            className={`flex w-full min-w-0 items-center justify-between rounded-xl border p-2.5 text-left transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${
                               isSelected
                                 ? 'border-[#C59B58] bg-[#FBF5EB] ring-1 ring-[#C59B58]/30 shadow-2xs'
                                 : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]/70 hover:bg-[#FAF8F5]/80'
@@ -1251,7 +1313,7 @@ export default function LiveSessionsPage({
                               </span>
                               {isSelected && <span className="mt-0.5 inline-block text-[10px] font-bold text-[#B88E4F]">Đã chọn</span>}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1324,7 +1386,7 @@ export default function LiveSessionsPage({
           </section>
 
           {/* Block 3: Products */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 space-y-3">
+          <section id="live-products-section" className="scroll-mt-28 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-[#B88E4F] shadow-2xs">3</span>
@@ -1380,6 +1442,7 @@ export default function LiveSessionsPage({
             </div>
 
             {/* Instant Search Bar */}
+            {showProductError && form.productIds.length === 0 && <p role="alert" className="rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-3 py-2 text-xs text-[#DC2626]">Chưa chọn sản phẩm. Tích ô bên cạnh tên sản phẩm hoặc bấm “Chọn tất cả”.</p>}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7D715E]" />
               <input
@@ -1740,7 +1803,7 @@ export default function LiveSessionsPage({
               </div>
               <button
                 type="button"
-                onClick={() => setDetailModalSession(null)}
+                onClick={() => { setDetailModalSession(null); setEndingSessionId(null); }}
                 className="rounded-xl p-2 text-[#7D715E] hover:bg-[#FAF8F5] cursor-pointer"
               >
                 <X className="h-5 w-5" />
@@ -1788,19 +1851,19 @@ export default function LiveSessionsPage({
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                   <span className="text-[10px] text-[#7D715E]">Doanh số live</span>
-                  <p className="mt-0.5 font-bold text-sm text-[#B88E4F]">{currency(detailModalSession.report.grossSales || 0)}</p>
+                  <p className="mt-0.5 font-bold text-sm text-[#B88E4F]">{currency(detailModalSession.report?.grossSales || 0)}</p>
                 </div>
                 <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                   <span className="text-[10px] text-[#7D715E]">Đơn hàng</span>
-                  <p className="mt-0.5 font-bold text-sm text-[#1A1612]">{detailModalSession.report.orders || 0}</p>
+                  <p className="mt-0.5 font-bold text-sm text-[#1A1612]">{detailModalSession.report?.orders || 0}</p>
                 </div>
                 <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                   <span className="text-[10px] text-[#7D715E]">Nhận voucher</span>
-                  <p className="mt-0.5 font-bold text-sm text-[#1A1612]">{detailModalSession.report.claims || 0}</p>
+                  <p className="mt-0.5 font-bold text-sm text-[#1A1612]">{detailModalSession.report?.claims || 0}</p>
                 </div>
                 <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
                   <span className="text-[10px] text-[#7D715E]">Hoa hồng phiên</span>
-                  <p className="mt-0.5 font-bold text-sm text-[#B88E4F]">{currency(detailModalSession.report.commission || 0)}</p>
+                  <p className="mt-0.5 font-bold text-sm text-[#B88E4F]">{currency(detailModalSession.report?.commission || 0)}</p>
                 </div>
               </div>
 
@@ -1839,11 +1902,14 @@ export default function LiveSessionsPage({
               )}
 
               {/* Governance Panel */}
-              {detailModalSession.governance && (
+              {(
                 <LiveGovernancePanel
+                  key={`${detailModalSession.id}:${endingSessionId === detailModalSession.id ? 'end' : 'detail'}`}
                   session={detailModalSession}
                   audience="shop"
+                  initialAction={endingSessionId === detailModalSession.id ? 'SHOP_END' : undefined}
                   onChanged={() => {
+                    setEndingSessionId(null);
                     if (storeId) void loadSessions(storeId);
                   }}
                 />
@@ -1887,7 +1953,7 @@ export default function LiveSessionsPage({
                     </button>
                     <button
                       type="button"
-                      onClick={() => void changeState(detailModalSession, 'CANCELLED')}
+                      onClick={() => setEndingSessionId(detailModalSession.id)}
                       className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3.5 text-xs font-bold text-rose-700 hover:bg-rose-100"
                     >
                       <StopCircle className="h-3.5 w-3.5" /> Kết thúc

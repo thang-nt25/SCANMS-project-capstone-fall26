@@ -3,6 +3,14 @@
 .sample-violation-unavailable { display:flex; flex-direction:column; align-items:flex-end; gap:5px; max-width:100%; }
 .sample-violation-unavailable small { color:#7D715E; font-size:10px; line-height:1.5; text-align:right; }
 .sample-violation-button:disabled { background:#FAF8F5; border-color:#EAE4D7; color:#7D715E; cursor:not-allowed; }
+.sample-deadline-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-items:start; gap:6px 10px; width:min(100%, 370px); }
+.sample-deadline-actions:empty { display:none; }
+.sample-deadline-actions .sample-violation-button { width:100%; min-height:38px; justify-content:center; padding:9px 12px; font-weight:500; line-height:18px; white-space:nowrap; }
+.sample-deadline-actions .sample-violation-button svg { flex-shrink:0; }
+.sample-deadline-actions .sample-violation-unavailable { display:contents; }
+.sample-deadline-actions .sample-violation-unavailable small { grid-column:1 / -1; text-align:right; font-size:10px; line-height:16px; }
+.sample-deadline-actions .sample-violation-state { grid-column:1 / -1; }
+@media (max-width:400px) { .sample-deadline-actions { gap:6px; } .sample-deadline-actions .sample-violation-button { padding:8px 6px; font-size:11px; } }
 .sample-violation-state { color:#7D715E; font-size:11px; line-height:1.6; }
 .sample-violation-overlay { position:fixed; inset:0; z-index:150; display:grid; place-items:center; padding:16px; background:rgb(35 29 21 / .35); backdrop-filter:blur(3px); }
 .sample-violation-dialog { width:100%; max-width:460px; max-height:85dvh; overflow:auto; padding:20px; border:1px solid #EAE4D7; border-radius:18px; background:#FFFFFF; color:#1A1612; box-shadow:0 20px 60px rgb(35 29 21 / .15); text-align:left; }

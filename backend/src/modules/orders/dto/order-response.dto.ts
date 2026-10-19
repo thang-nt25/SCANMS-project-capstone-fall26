@@ -129,6 +129,12 @@ export class OrderCreatedResponseDto {
   })
   confirmationEmailQueued: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Kết quả gửi SMTP sau khi đơn đã commit. SENT là máy chủ gửi đã chấp nhận, không phải xác nhận vào hộp thư đến.',
+    enum: ['SENT', 'FAILED', 'PARTIAL', 'NOT_REQUESTED'],
+  })
+  confirmationEmailStatus?: 'SENT' | 'FAILED' | 'PARTIAL' | 'NOT_REQUESTED';
+
   @ApiProperty({
     description: 'Danh sách sản phẩm trong đơn',
     type: [OrderItemResponseDto],

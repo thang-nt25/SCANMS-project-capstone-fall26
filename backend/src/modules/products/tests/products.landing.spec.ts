@@ -16,6 +16,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
   let configService: ConfigService;
 
   const mockPrismaService = {
+    orderItem: { aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }) },
     product: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -272,6 +273,37 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     expect(result.videos[0].videoUrl).toBe(
       'https://cdn.scanms.vn/videos/review-1.mp4',
     );
+  });
+
+  it.each([
+    ['http://localhost:5173/assets/products/real/cleanser.jpg', '/assets/products/real/cleanser.jpg'],
+    ['/assets/products/real/cleanser.jpg', '/assets/products/real/cleanser.jpg'],
+    ['https://cdn.scanms.vn/products/cleanser.jpg', 'https://cdn.scanms.vn/products/cleanser.jpg'],
+    ['http://localhost:3000/assets/products/real/cleanser.jpg', null],
+    ['http://localhost:5173/admin/private-image', null],
+    ['http://192.168.1.2/assets/products/real/cleanser.jpg', null],
+    ['//untrusted.example/image.jpg', null],
+    ['javascript:alert(1)', null],
+  ])('keeps supported product images without allowing arbitrary local URLs: %s', async (imageUrl, expected) => {
+    mockConfigService.get.mockImplementation((key: string) => {
+      if (key === 'FRONTEND_URL') return 'http://localhost:5173';
+      if (key === 'JWT_SECRET') return 'unit-test-jwt-secret-key-12345';
+      return null;
+    });
+    mockPrismaService.product.findFirst.mockResolvedValue({
+      id: 'product-images', sku: 'IMAGE-TEST', title: 'Product image test',
+      price: 160000, stockQuantity: 10, isActive: true, isDeleted: false,
+      imageUrl,
+      variants: [{ id: 'variant-image', name: '100 ml', sku: 'IMAGE-100', imageUrl, stockQuantity: 10, isActive: true }],
+      store: { id: 'store-images', name: 'Store', isActive: true, isDeleted: false,
+        isVerified: true, onboardingStatus: 'VERIFIED', owner: { id: 'owner', isActive: true } },
+    });
+    mockPrismaService.mediaAsset.findMany.mockResolvedValue([{ id: 'media-image', assetType: 'IMAGE', urlOrContent: imageUrl }]);
+    mockPrismaService.productReview.findMany.mockResolvedValue([]);
+    const result = await service.getLandingPageData('IMAGE-TEST');
+    expect(result.product.imageUrl).toBe(expected);
+    expect(result.product.variants?.[0].imageUrl).toBe(expected);
+    expect(result.images).toEqual(expected ? [expected] : []);
   });
 
   it('nên trả averageRating = null khi sản phẩm chưa có review nào (Mục 11)', async () => {

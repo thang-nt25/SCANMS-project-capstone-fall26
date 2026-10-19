@@ -153,6 +153,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
       [CollaboratorCouponsController, 'proposeCoupon', [UserRole.COLLABORATOR]],
       [AdminCouponsController, 'createPlatformCoupon', [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER]],
       [PublicCouponsController, 'getSavedAvailableCoupons', [UserRole.CUSTOMER]],
+      [PublicCouponsController, 'getSavedExpiredCoupons', [UserRole.CUSTOMER]],
     ];
     for (const [Controller, method, permitted] of matrix) for (const role of Object.values(UserRole)) {
       const context: any = { getClass: () => Controller, getHandler: () => Controller.prototype[method],

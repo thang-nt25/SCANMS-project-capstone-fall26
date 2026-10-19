@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -17,6 +18,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   ClaimLiveSessionDto,
+  ReleaseLiveVoucherDto,
   CreateLiveSessionDto,
   GenerateLiveLinkCodeDto,
   RespondLiveSessionDto,
@@ -57,6 +59,18 @@ export class LiveSessionsController {
     @Body('productId', ParseUUIDPipe) productId: string,
   ) {
     return this.service.pinProduct(userId, id, productId);
+  }
+
+  @Post(':id/voucher-drop')
+  @UseGuards(JwtAuthGuard)
+  releaseVoucher(@CurrentUser('id') userId: string, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ReleaseLiveVoucherDto) {
+    return this.service.releaseVoucher(userId, id, dto);
+  }
+
+  @Delete(':id/pinned-product')
+  @UseGuards(JwtAuthGuard)
+  unpinProduct(@CurrentUser('id') userId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.pinProduct(userId, id, null);
   }
 
   @Get('public/detail/:identifier')

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { renderOrderConfirmationEmail, type OrderConfirmationEmailInput } from './order-confirmation-email';
 
 @Injectable()
 export class MailService {
@@ -14,6 +15,9 @@ export class MailService {
       this.transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user, pass },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
       });
       this.logger.log(
         `Nodemailer Gmail Transporter initialized with account: ${user}`,
@@ -25,64 +29,11 @@ export class MailService {
     }
   }
 
-  async sendOrderConfirmation(input: {
-    email: string;
-    customerName: string;
-    publicOrderCode: string;
-    finalAmount: number;
-    paymentMethod: string;
-    paymentStatus?: string;
-    storeName: string;
-  }) {
-    const webUrl = (
-      process.env.PUBLIC_WEB_URL ||
-      process.env.FRONTEND_URL ||
-      'http://localhost:5173'
-    ).replace(/\/$/, '');
-    const trackingUrl = `${webUrl}/tracking?sn=${encodeURIComponent(input.publicOrderCode)}`;
-    const name = this.escapeHtml(input.customerName);
-    const orderCode = this.escapeHtml(input.publicOrderCode);
-    const storeName = this.escapeHtml(input.storeName);
-    const paymentMethod =
-      input.paymentMethod === 'PAYOS'
-        ? 'PayOS'
-        : input.paymentMethod === 'VIETQR'
-          ? 'VietQR'
-          : input.paymentMethod === 'WALLET' ? 'Ví SCANMS' : 'COD';
-    const awaitingPayosPayment = input.paymentMethod === 'PAYOS' && input.paymentStatus !== 'PAID';
-    const heading = awaitingPayosPayment ? 'Đơn hàng chờ thanh toán' : 'Đơn hàng đã được tạo';
-    const paymentNotice = awaitingPayosPayment
-      ? 'Đơn hàng chưa thanh toán. Vui lòng quét mã QR PayOS; trạng thái chỉ cập nhật khi PayOS xác nhận đã nhận đủ tiền.'
-      : input.paymentStatus === 'PAID' ? 'Thanh toán đã được xác nhận.' : '';
-    const amount = new Intl.NumberFormat('vi-VN').format(input.finalAmount);
-    const subject = `[SCANMS] Xác nhận đơn hàng ${input.publicOrderCode}`;
-    const html = `
-      <div style="font-family:Arial,sans-serif;background:#FAF8F5;padding:30px;color:#1A1612">
-        <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #EAE4D7;border-radius:16px;padding:28px">
-          <div style="font-size:24px;font-weight:800;color:#B88E4F;text-align:center">SCANMS</div>
-          <h1 style="font-size:20px;text-align:center;margin:18px 0 8px">${heading}</h1>
-          <p style="color:#7D715E;line-height:1.6">Xin chào <strong>${name}</strong>, đơn hàng của bạn tại <strong>${storeName}</strong> đã được ghi nhận.</p>
-          <div style="background:#FBF5EB;border:1px solid #EEDFC6;border-radius:12px;padding:16px;line-height:1.8">
-            <div>Mã đơn: <strong>${orderCode}</strong></div>
-            <div>Tổng thanh toán: <strong>${amount} ₫</strong></div>
-            <div>Phương thức: <strong>${paymentMethod}</strong></div>
-            ${paymentNotice ? `<div>${paymentNotice}</div>` : ''}
-          </div>
-          <div style="text-align:center;margin-top:22px">
-            <a href="${trackingUrl}" style="display:inline-block;background:#C59B58;color:#FFFFFF;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px">Theo dõi đơn hàng</a>
-          </div>
-          <p style="font-size:12px;color:#7D715E;line-height:1.5;margin-top:22px">Khi tra cứu trên thiết bị khác, hãy nhập số điện thoại đã dùng để đặt hàng. Không chia sẻ thông tin xác minh với người khác.</p>
-        </div>
-      </div>`;
-
-    await this.sendMail(
-      input.email,
-      subject,
-      html,
-      `Đơn hàng ${input.publicOrderCode} đã được ghi nhận. ${paymentNotice} Tổng thanh toán: ${amount} ₫. Theo dõi tại: ${trackingUrl}`,
-    );
+  async sendOrderConfirmation(input: OrderConfirmationEmailInput): Promise<boolean> {
+    const webUrl = process.env.PUBLIC_WEB_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const message = renderOrderConfirmationEmail(input, webUrl);
+    return this.sendMail(input.email, message.subject, message.html, message.text, true);
   }
-
   /**
    * Gửi mã OTP xác thực đăng ký tài khoản
    */
@@ -326,33 +277,40 @@ export class MailService {
     subject: string,
     html: string,
     textFallback: string,
-  ) {
+    requireDelivery = false,
+  ): Promise<boolean> {
+    const sender = process.env.GMAIL_USER || process.env.SMTP_USER || 'no-reply@scanms.vn';
     if (this.transporter) {
       try {
-        await this.transporter.sendMail({
-          from: `"SCANMS" <${process.env.GMAIL_USER || 'no-reply@scanms.vn'}>`,
+        const result = await this.transporter.sendMail({
+          from: { name: 'SCANMS', address: sender },
           to,
-          replyTo: process.env.GMAIL_USER || 'no-reply@scanms.vn',
+          replyTo: sender,
           subject,
           text: textFallback,
           html,
-          priority: 'high',
-          headers: {
-            'X-Priority': '1',
-            'X-MSMail-Priority': 'High',
-            Importance: 'high',
-          },
+          ...(!requireDelivery ? {
+            priority: 'high' as const,
+            headers: { 'X-Priority': '1', 'X-MSMail-Priority': 'High', Importance: 'high' },
+          } : {}),
         });
+        if (requireDelivery && !(result.accepted || []).some((recipient: string | { address: string }) =>
+          (typeof recipient === 'string' ? recipient : recipient.address).toLowerCase() === to.trim().toLowerCase())) {
+          throw new Error('SMTP_RECIPIENT_NOT_ACCEPTED');
+        }
         this.logger.log(
-          `Real Gmail successfully sent to: ${to} | Subject: ${subject}`,
+          `SMTP accepted email | Message-ID: ${result.messageId || 'unavailable'}`,
         );
-        return;
+        return true;
       } catch (err: any) {
         this.logger.error(
-          `Failed to send real Gmail to ${to}: ${err.message}. Falling back to console output.`,
+          `SMTP send failed | Code: ${err.code || 'DELIVERY_FAILED'} | Response: ${err.responseCode || 'unavailable'}`,
         );
+        if (requireDelivery) throw new Error('Không gửi được email xác nhận đơn hàng.');
       }
     }
+
+    if (requireDelivery) throw new Error('Dịch vụ gửi email chưa được cấu hình.');
 
     // Console Logging Mode (Dev / Demo)
     console.log('\n======================================================');
@@ -360,6 +318,7 @@ export class MailService {
     console.log(`Gửi tới: ${to}`);
     console.log(`Nội dung: ${textFallback}`);
     console.log('======================================================\n');
+    return false;
   }
 
   private escapeHtml(value: string): string {

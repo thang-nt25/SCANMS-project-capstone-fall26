@@ -7,6 +7,7 @@ import { toast } from '../../utils/toast';
 import { NotificationDropdown } from './NotificationDropdown';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
+import { AccountConnectionStatus } from './AccountConnectionStatus';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -139,15 +140,7 @@ export function Topbar({
 
         {/* Right: Actions, Notifications & User Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden lg:inline-flex items-center gap-[7px] h-8 p-[5px_10px_5px_6px] border border-[#EAE4D7] rounded-[10px] bg-white whitespace-nowrap" title="Hệ thống trực tuyến">
-            <span className="grid place-items-center w-5 h-5 rounded-[6px] bg-[#FBF5EB]" aria-hidden="true">
-              <span className="w-[5px] h-[5px] rounded-full bg-[#059669]" />
-            </span>
-            <span className="text-[#7D715E] text-[11px] leading-4 font-normal">
-              Hệ thống <strong className="text-[#1A1612] font-semibold">trực tuyến</strong>
-            </span>
-          </div>
-
+          <AccountConnectionStatus userId={currentUser?.id} />
           <NotificationDropdown />
 
           <div className="relative z-50" ref={menuRef}>
@@ -215,12 +208,12 @@ export function Topbar({
 
                 <div className="py-1 flex flex-col gap-0.5">
                   <Link
-                    to="/customer/orders"
+                    to={isShop ? '/merchant/orders' : isCustomer || isAdmin ? '/customer/orders' : '/collaborator/dashboard'}
                     onClick={() => setIsMenuOpen(false)}
                     className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
                   >
                     <ShoppingBag className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    <span>Đơn mua cá nhân (Khách Hàng)</span>
+                    <span>{isShop ? 'Quản lý đơn hàng' : isCustomer ? 'Đơn mua của tôi' : isAdmin ? 'Đơn mua cá nhân' : 'Không gian KOL'}</span>
                   </Link>
 
                   <Link
@@ -241,6 +234,7 @@ export function Topbar({
                     <span>Sàn mua sắm công khai</span>
                   </Link>
                 </div>
+
 
                 <div className="pt-1 border-t border-[#EAE4D7]">
                   <button

@@ -16,11 +16,30 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import type { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto';
 import { StoreCollaboratorsService } from './store-collaborators.service';
+import { RequestStoreCooperationDto } from './dto/request-store-cooperation.dto';
 
 @Controller('store-collaborators')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StoreCollaboratorsController {
   constructor(private readonly service: StoreCollaboratorsService) {}
+
+  @Post('request')
+  @Roles(UserRole.COLLABORATOR)
+  request(@Req() req: AuthenticatedRequest, @Body() dto: RequestStoreCooperationDto) {
+    return this.service.requestCooperation(req.user!.id, dto.storeId);
+  }
+
+  @Patch(':id/shop-approve')
+  @Roles(UserRole.SHOP_MANAGER)
+  approveRequest(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.service.reviewRequest(req.user!.id, id, true);
+  }
+
+  @Patch(':id/shop-reject')
+  @Roles(UserRole.SHOP_MANAGER)
+  rejectRequest(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.service.reviewRequest(req.user!.id, id, false);
+  }
 
   @Get('shop')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)

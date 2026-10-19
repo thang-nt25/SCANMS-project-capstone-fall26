@@ -157,7 +157,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
     api.get('/store-collaborators/my-invitations')
       .then((res: any) => {
         const body = res?.data || res;
-        setStoreInvitations(Array.isArray(body) ? body.filter((item: any) => item.status === 'PENDING') : []);
+        setStoreInvitations(Array.isArray(body) ? body.filter((item: any) => item.status === 'PENDING' && !item.requestedByKol) : []);
       })
       .catch(() => setStoreInvitations([]));
   }, []);

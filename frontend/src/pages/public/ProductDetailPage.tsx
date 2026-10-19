@@ -43,6 +43,8 @@ import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
+import { StoreActivityStatus } from '@/components/store/StoreActivityStatus';
+import { ProductBreadcrumbs } from '@/components/product/ProductBreadcrumbs';
 
 
 function getSmartFallbackImage(title?: string, categoryName?: string): string {
@@ -81,6 +83,7 @@ interface LandingProduct {
   canPurchase: boolean;
   status?: string;
   stockQuantity?: number;
+  soldCount?: number;
   sampleEnabled?: boolean;
   sampleAvailable?: boolean;
   sampleQuotaRemaining?: number;
@@ -168,12 +171,14 @@ function getEstimatedDeliveryWindow() {
   return `${format(end)} – ${format(latest)}`;
 }
 
-function resolveProductVariants(product: LandingProduct, _productImages: string[] = []): ProductVariantItem[] {
+function resolveProductVariants(product: LandingProduct, productImages: string[] = []): ProductVariantItem[] {
+  const productImage = [product.imageUrl, ...productImages]
+    .find((image) => image?.trim() && image.trim() !== SCANMS_PLACEHOLDER);
   return (product.variants || [])
     .filter((variant) => variant.isActive !== false)
     .map((variant) => ({
       ...variant,
-      imageUrl: variant.imageUrl?.trim() || product.imageUrl || SCANMS_PLACEHOLDER,
+      imageUrl: variant.imageUrl?.trim() || productImage?.trim() || SCANMS_PLACEHOLDER,
     }));
 }
 
@@ -233,30 +238,26 @@ export default function ProductDetailPage() {
   const LOW_STOCK_THRESHOLD = 5;
 
   const handleOpenChat = () => {
-    const storeObj = data?.store ? {
+    if (!data?.store?.id || !data.product) {
+      toast.error('Chưa tải được thông tin gian hàng. Vui lòng thử lại.');
+      return;
+    }
+
+    const storeObj = {
       id: data.store.id,
       name: data.store.name,
       logoUrl: data.store.logoUrl || undefined,
-      slug: data.store.slug,
       isVerified: Boolean(data.store.isVerified),
-    } : {
-      id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
-      name: 'Sora Skin Official Store',
-      logoUrl: '/assets/shops/shop-sora-skin.png',
-      slug: 'sora-skin',
-      isVerified: true,
     };
-
-    const firstImg = data?.images?.[0] || data?.product?.imageUrl || '';
-    const productPrice = Number(data?.product?.price || 0);
-    const productObj = data?.product ? {
+    const productPrice = Number(selectedVariant?.price ?? data.product.price ?? 0);
+    const productObj = {
       id: data.product.id,
       title: data.product.title,
       price: productPrice,
-      originalPrice: (data.product as any).originalPrice ? Number((data.product as any).originalPrice) : Math.round(productPrice * 1.3),
-      imageUrl: firstImg,
-      soldCount: (data.product as any).soldCount || 1420,
-    } : undefined;
+      originalPrice: data.product.originalPrice ? Number(data.product.originalPrice) : undefined,
+      imageUrl: selectedVariant?.imageUrl || data.images?.[0] || data.product.imageUrl || undefined,
+      soldCount: data.product.soldCount ?? 0,
+    };
 
     openChat(storeObj, productObj);
   };
@@ -264,7 +265,7 @@ export default function ProductDetailPage() {
   const handleRequestSample = () => {
     if (!currentUser) {
       toast.info('Đăng nhập bằng tài khoản KOL để đăng ký nhận sản phẩm mẫu.');
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      navigate(`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`);
       return;
     }
     if (!isKolUser) {
@@ -323,6 +324,8 @@ export default function ProductDetailPage() {
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantItem | null>(null);
+  const [variantSelectionRequired, setVariantSelectionRequired] = useState(false);
+  const variantOptionsRef = useRef<HTMLDivElement | null>(null);
 
   const [quantity, setQuantity] = useState(1);
 
@@ -376,6 +379,7 @@ export default function ProductDetailPage() {
   }, [isCheckoutParam, isCheckoutOpen]);
 
   const handleBuyNow = (source?: string) => {
+    if (requestVariantSelection()) return;
     if (data?.product) {
       setIsCheckoutOpen(true);
       setSearchParams(
@@ -426,7 +430,7 @@ export default function ProductDetailPage() {
     const u = authService.getCurrentUser();
     if (!u) {
       toast.error('Vui lòng đăng nhập tài khoản Khách hàng để lưu sản phẩm yêu thích!');
-      navigate('/login?role=CUSTOMER');
+      navigate(`/login?role=CUSTOMER&redirect=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`);
       return;
     }
     if (u.role !== 'CUSTOMER') {
@@ -624,6 +628,9 @@ export default function ProductDetailPage() {
           const resolvedVars = resolveProductVariants(landingPayload.product, landingPayload.images || []);
           const firstInStock = resolvedVars.find((v) => v.stockQuantity > 0) || resolvedVars[0] || null;
           setSelectedVariant(firstInStock);
+          setSelectedImageIndex(0);
+          setHoveredImage(null);
+          setSelectedImage('');
           if (firstInStock?.imageUrl) {
             setSelectedImage(firstInStock.imageUrl);
           }
@@ -958,6 +965,46 @@ export default function ProductDetailPage() {
   const subtotal = unitPrice * quantity;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
+  const requestVariantSelection = () => {
+    if (activeVariants.length === 0 || selectedVariant) {
+      setVariantSelectionRequired(false);
+      return false;
+    }
+    setVariantSelectionRequired(true);
+    variantOptionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    variantOptionsRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+    return true;
+  };
+  const handleAddProductToCart = () => {
+    if (requestVariantSelection()) return;
+    if (!data?.product || !data.store) return;
+    addItem({
+      product: {
+        id: data.product.id,
+        title: data.product.title,
+        sku: currentSku || data.product.sku,
+        price: unitPrice,
+        originalPrice: data.product.originalPrice ?? undefined,
+        imageUrl: selectedVariant?.imageUrl || displayImage || gallery[0] || data.product.imageUrl || undefined,
+        stockQuantity: currentStock,
+        variants: activeVariants,
+        isActive: data.product.isActive,
+      },
+      store: {
+        id: data.store.id,
+        name: data.store.name,
+        slug: data.store.slug,
+        policyReturn: policies?.returnPolicy,
+        policyWarranty: policies?.warranty,
+        policyShipping: policies?.shipping,
+      },
+      variantId: selectedVariant?.id,
+      quantity,
+      openCartAfterAdd: true,
+    });
+    toast.success('Đã thêm sản phẩm vào giỏ hàng thành công!');
+    trackAnalytics('add_to_cart', { productId: data.product.id, variantId: selectedVariant?.id, quantity });
+  };
 
   if (loading) {
     return (
@@ -1016,7 +1063,7 @@ export default function ProductDetailPage() {
     ...activeVariants.map((v) => v.imageUrl),
   ].filter((img): img is string => Boolean(img && img.trim() && !img.includes('data:image/svg+xml')));
 
-  const gallery = Array.from(new Set(candidateImages));
+  const gallery = Array.from(new Set(candidateImages.filter((image) => image !== SCANMS_PLACEHOLDER)));
   if (gallery.length === 0) {
     gallery.push(fallbackImg);
   }
@@ -1029,34 +1076,7 @@ export default function ProductDetailPage() {
 
       <main className="max-w-[1200px] mx-auto px-3 sm:px-4 pt-2.5 sm:pt-3">
 
-        {/* SCANMS Standard Breadcrumbs Bar - Compact, Slim & Aligned */}
-        <div className="py-1.5 sm:py-2 mb-2 sm:mb-2.5 flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] text-[#333333] overflow-hidden whitespace-nowrap">
-          <Link
-            to="/marketplace"
-            className="text-[#0055AA] hover:underline hover:text-[#B88E4F] transition-colors shrink-0 font-normal"
-          >
-            Sàn SCANMS
-          </Link>
-          <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#757575] shrink-0" />
-          {product.categoryName && (
-            <>
-              <Link
-                to={`/search?category=${encodeURIComponent(product.categoryName)}`}
-                className="text-[#0055AA] hover:underline hover:text-[#B88E4F] transition-colors shrink-0 max-w-[200px] truncate font-normal"
-                title={product.categoryName}
-              >
-                {product.categoryName}
-              </Link>
-              <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#757575] shrink-0" />
-            </>
-          )}
-          <span
-            className="text-[#333333] font-normal truncate flex-1 min-w-0"
-            title={product.title}
-          >
-            {product.title}
-          </span>
-        </div>
+        <ProductBreadcrumbs title={product.title} category={product.categoryName} />
 
         <div className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 p-3.5 sm:p-4">
 
@@ -1073,7 +1093,8 @@ export default function ProductDetailPage() {
                     target.src = fallbackImg;
                   }
                 }}
-                className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                key={displayImage}
+                className="w-full h-full object-contain group-hover:scale-103 transition-transform duration-300"
               />
               <span className="absolute top-2.5 left-2.5 bg-[#EBD08C] text-[#231D15] text-[10px] font-bold px-2 py-1 rounded-full shadow-xs flex items-center gap-1">
                 <BadgeCheck className="w-3 h-3" />
@@ -1219,7 +1240,7 @@ export default function ProductDetailPage() {
             <div className="lg:max-w-[460px] lg:mx-auto p-3.5 sm:p-4 rounded-xl bg-white border border-[#EAE4D7] shadow-xs flex items-center gap-3.5 sm:gap-4 min-w-0">
               {/* Left Column: Original Shop Avatar */}
               <Link
-                to={`/shop/${store.slug || 'sora-skin'}`}
+                to={`/shop/${store.slug || store.id}`}
                 className="shrink-0 no-underline group block"
                 title={`Xem gian hàng ${store.name}`}
               >
@@ -1242,7 +1263,7 @@ export default function ProductDetailPage() {
               {/* Right Column: Name + Online Status + Action Buttons */}
               <div className="min-w-0 flex-1">
                 <Link
-                  to={`/shop/${store.slug || store.id || 'sora-skin'}`}
+                  to={`/shop/${store.slug || store.id}`}
                   className="no-underline block group"
                   title={`Xem gian hàng ${store.name}`}
                 >
@@ -1255,30 +1276,15 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                 </Link>
-                <div className="flex items-center gap-1.5 text-xs text-[#757575] mt-1">
-                  <span className="w-2 h-2 rounded-full bg-[#10B981] inline-block shrink-0" />
-                  <span>online</span>
-                </div>
+                <StoreActivityStatus storeId={store.id} className="mt-1" />
 
                 <div className="flex items-center gap-2 mt-2.5">
-                  {/* Button 1: Chat Ngay (SCANMS Marketplace Style) */}
-                  <button
-                    type="button"
-                    onClick={handleOpenChat}
-                    className="h-8 px-3 sm:px-3.5 border border-[#d0011b] bg-[#ffeeee] hover:bg-[#ffe5e5] text-[#d0011b] rounded-[2px] text-xs sm:text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none active:scale-98"
-                    title="Chat Ngay với gian hàng"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                    <span>Chat Ngay</span>
-                  </button>
-
-                  {/* Button 2: Xem Shop (SCANMS Standard) */}
                   <Link
-                    to={`/shop/${store.slug || store.id || 'sora-skin'}`}
-                    className="h-8 px-3 sm:px-3.5 border border-black/15 bg-white hover:bg-[#FAF8F5] text-[#555555] rounded-[2px] text-xs sm:text-[13px] font-normal flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none no-underline active:scale-98"
-                    title="Xem tất cả sản phẩm của Shop"
+                    to={`/shop/${store.slug || store.id}`}
+                    className="h-8 px-3 sm:px-3.5 border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] rounded-lg text-xs sm:text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none no-underline"
+                    title="Xem tất cả sản phẩm của gian hàng"
                   >
-                    <Store className="w-3.5 h-3.5 text-[#555555] shrink-0" />
+                    <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                     <span>Xem Shop</span>
                   </Link>
                 </div>
@@ -1320,7 +1326,7 @@ export default function ProductDetailPage() {
 
                 <div className="flex items-center gap-1">
                   <span className="font-extrabold text-[#1A1612]">
-                    {currentStock > 0 ? `${50 + (currentStock % 120)}k+` : '600k+'}
+                    {Number(product.soldCount ?? 0).toLocaleString('vi-VN')}
                   </span>
                   <span>Đã Bán</span>
                 </div>
@@ -1455,7 +1461,7 @@ export default function ProductDetailPage() {
 
               {/* SCANMS UI Reference: Phân Loại (Variant Selector with Thumbnails) */}
               {activeVariants.length > 0 && (
-                <div className="flex items-start gap-4 py-3.5 border-t border-[#EAE4D7]/80">
+              <div ref={variantOptionsRef} className="flex items-start gap-4 py-3.5 border-t border-[#EAE4D7]/80 scroll-mt-24" data-required={variantSelectionRequired}>
                   <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-1.5">
                     Phân Loại
                   </span>
@@ -1483,6 +1489,7 @@ export default function ProductDetailPage() {
                             }}
                             onClick={() => {
                               setSelectedVariant(v);
+                              setVariantSelectionRequired(false);
                               setSelectedImage(variantImg);
                               setHoveredImage(null);
                               setQuantity(1);
@@ -1515,6 +1522,7 @@ export default function ProductDetailPage() {
                         );
                       })}
                     </div>
+                    {variantSelectionRequired && <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#DC2626]" role="alert"><AlertCircle size={14} aria-hidden="true" />Vui lòng chọn phân loại hàng để tiếp tục.</p>}
                   </div>
                 </div>
               )}
@@ -1682,7 +1690,7 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-[#EAE4D7]">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 pt-3 border-t border-[#EAE4D7]">
                 {(!currentUser || isKolUser) && (
                   <button
                     type="button"
@@ -1705,39 +1713,21 @@ export default function ProductDetailPage() {
                     </span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={handleOpenChat}
+                  className="h-12 px-4 rounded-xl border border-[#EEDFC6] bg-white hover:bg-[#FBF5EB] text-[#8C6226] font-semibold text-xs sm:text-sm flex flex-1 sm:flex-none items-center justify-center gap-2 cursor-pointer transition active:scale-98"
+                  title={`Chat với gian hàng ${store.name}`}
+                >
+                  <MessageSquare className="w-4 h-4 shrink-0" />
+                  <span>Chat với shop</span>
+                </button>
                 {/* Button 1: Thêm Vào Giỏ Hàng (SCANMS UI Reference Outline Soft Style) */}
                 <button
                   type="button"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
-                  onClick={() => {
-                    addItem({
-                      product: {
-                        id: product.id,
-                        title: product.title,
-                        sku: currentSku || product.sku,
-                        price: unitPrice,
-                        originalPrice: product.originalPrice ?? undefined,
-                        imageUrl: selectedVariant?.imageUrl || displayImage || gallery[0] || product.imageUrl || undefined,
-                        stockQuantity: currentStock,
-                        variants: activeVariants,
-                        isActive: product.isActive,
-                      },
-                      store: {
-                        id: store.id,
-                        name: store.name,
-                        slug: store.slug,
-                        policyReturn: policies?.returnPolicy,
-                        policyWarranty: policies?.warranty,
-                        policyShipping: policies?.shipping,
-                      },
-                      variantId: selectedVariant?.id,
-                      quantity,
-                      openCartAfterAdd: true,
-                    });
-                    toast.success('Đã thêm sản phẩm vào giỏ hàng thành công!');
-                    trackAnalytics('add_to_cart', { productId: product.id, variantId: selectedVariant?.id, quantity });
-                  }}
-                  className="h-12 px-6 rounded border-2 border-[#C59B58] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#B88E4F] font-bold text-xs sm:text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={handleAddProductToCart}
+                  className="h-12 px-6 rounded-xl border border-[#C59B58] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] font-bold text-xs sm:text-sm shadow-xs flex flex-1 sm:flex-none items-center justify-center gap-2 cursor-pointer transition active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Thêm sản phẩm và phân loại đã chọn vào giỏ hàng"
                 >
                   <ShoppingCart className="w-4 h-4 text-[#B88E4F]" />
@@ -1749,7 +1739,7 @@ export default function ProductDetailPage() {
                   type="button"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
                   onClick={() => handleBuyNow('main_cta')}
-                  className="h-12 px-8 rounded bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-[#1A1612] font-black text-xs sm:text-sm shadow-md shadow-[#C59B58]/20 flex flex-col items-center justify-center cursor-pointer active:scale-98 transition"
+                  className="h-12 px-8 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-[#1A1612] font-bold text-xs sm:text-sm shadow-sm shadow-[#C59B58]/20 flex flex-1 sm:flex-none flex-col items-center justify-center cursor-pointer active:scale-98 transition"
                 >
                   <span className="leading-tight">
                     {(!product.isActive || product.status === 'INACTIVE')
@@ -2184,24 +2174,42 @@ export default function ProductDetailPage() {
       )}
 
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#EAE4D7] p-3 px-4 z-20 flex items-center justify-between shadow-lg">
-        <div>
-          <div className="text-[10px] text-[#7D715E] truncate max-w-[180px]">
-            {selectedVariant ? `Phân loại: ${selectedVariant.name}` : 'Tạm tính tiền hàng:'}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 grid grid-cols-[minmax(96px,1fr)_40px_40px_minmax(96px,1.2fr)] items-center gap-1 border-t border-[#EAE4D7] bg-white/95 px-2 py-2 shadow-[0_-5px_18px_rgba(35,29,21,0.08)] backdrop-blur-md">
+        <div className="min-w-0 pl-1">
+          <div className="truncate text-[10px] text-[#7D715E]">
+            {selectedVariant ? `Phân loại: ${selectedVariant.name}` : 'Tạm tính tiền hàng'}
           </div>
-          <div className="text-lg font-extrabold text-[#B88E4F]">
+          <div className="truncate text-sm font-extrabold text-[#8C6226]">
             {finalTotal.toLocaleString('vi-VN')} ₫
           </div>
         </div>
-
         <button
           type="button"
-          disabled={currentStock <= 0}
-          onClick={() => handleBuyNow('mobile_sticky')}
-          className="px-6 py-2.5 bg-[#EBD08C] hover:bg-[#DEC07A] disabled:bg-[#EAE4D7] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 active:scale-98 transition-all"
+          onClick={handleOpenChat}
+          aria-label="Chat với shop"
+          title="Chat với shop"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-[#EAE4D7] bg-white text-[#8C6226] hover:bg-[#FBF5EB]"
         >
-          <ShoppingBag className="w-4 h-4" />
-          <span>{currentStock > 0 ? 'Mua Ngay' : 'Hết Hàng'}</span>
+          <MessageSquare className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
+          onClick={handleAddProductToCart}
+          aria-label="Thêm vào giỏ hàng"
+          title="Thêm vào giỏ hàng"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] disabled:border-[#EAE4D7] disabled:text-[#7D715E]"
+        >
+          <ShoppingCart className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
+          onClick={() => handleBuyNow('mobile_sticky')}
+          className="flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl bg-[#C59B58] px-2 text-[11px] font-bold text-[#231D15] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E]"
+        >
+          <ShoppingBag className="h-4 w-4 shrink-0" />
+          <span className="truncate">{currentStock > 0 ? 'Mua ngay' : 'Hết hàng'}</span>
         </button>
       </div>
 

@@ -18,6 +18,9 @@ export interface Product {
   storeId?: string;
   sku?: string;
   stockQuantity?: number;
+  createdAt?: string;
+  soldCount?: number;
+  viewCount?: number;
   commissionRate?: number;
   commissionAmount?: number;
   variants?: Array<{

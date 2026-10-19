@@ -27,6 +27,7 @@ import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { productLoginUrl } from '../../utils/login-return';
 
 export interface PublicHeaderProps {
   cartCount?: number;
@@ -47,6 +48,7 @@ export function PublicHeader({
 }: PublicHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const loginUrl = productLoginUrl(`${location.pathname}${location.search}${location.hash}`);
   const { totalCount, openCart } = useCart();
 
   const effectiveCartCount = cartCount !== undefined ? cartCount : totalCount;
@@ -117,7 +119,7 @@ export function PublicHeader({
 
   const handleLogout = () => {
     setIsUserMenuOpen(false);
-    authService.logout();
+    authService.logout(`${location.pathname}${location.search}${location.hash}`);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -396,7 +398,7 @@ export function PublicHeader({
                         </Link>
                       )}
 
-                      {!isCustomer && (
+                      {!isCustomer && !isShop && !isKol && (
                         <button
                           type="button"
                           onClick={() => {
@@ -429,14 +431,6 @@ export function PublicHeader({
 
                       {isKol && (
                         <>
-                          <Link
-                            to="/collaborator/collaboration?tab=messages"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <MessageSquare className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Tin nhắn & Hợp tác Shop</span>
-                          </Link>
                           <Link
                             to="/collaborator/wallet"
                             onClick={() => setIsUserMenuOpen(false)}
@@ -481,6 +475,7 @@ export function PublicHeader({
                       )}
                     </div>
 
+
                     {/* Explicit Logout Button */}
                     <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
                       <button
@@ -499,23 +494,12 @@ export function PublicHeader({
           ) : (
             /* Guest (Not Logged In) Authentication Actions */
             <div className="flex items-center gap-1.5">
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                <User className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Khách mua sắm</span>
-              </span>
-
               <Link
-                to="/login"
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-white/95 border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58]/70 transition-all duration-200 shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                to={loginUrl}
+                className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
               >
-                Đăng nhập
-              </Link>
-
-              <Link
-                to="/register"
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] transition-all duration-200 shadow-sm shadow-[#C59B58]/20 active:scale-[0.98]"
-              >
-                Đăng ký đối tác
+                <User className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
+                Đăng nhập / Đăng ký
               </Link>
             </div>
           )}

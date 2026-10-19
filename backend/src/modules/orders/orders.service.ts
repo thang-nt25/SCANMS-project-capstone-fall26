@@ -17,6 +17,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
+import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -96,6 +97,7 @@ const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
 
 import { MailService } from '../auth/mail.service';
 import { GhnService } from '../shipping/ghn.service';
+import { orderConfirmationEmailInput, type OrderConfirmationSnapshot } from './order-confirmation-email';
 
 @Injectable()
 export class OrdersService {
@@ -112,6 +114,20 @@ export class OrdersService {
     @Optional() private readonly mailService?: MailService,
     @Optional() private readonly ghnService?: GhnService,
   ) {}
+
+  private async sendConfirmationEmail(order: OrderConfirmationSnapshot, recipient: {
+    email: string | null; customerName: string; customerPhone: string; shippingAddress: string;
+  }): Promise<'SENT' | 'FAILED' | 'NOT_REQUESTED'> {
+    if (!recipient.email) return 'NOT_REQUESTED';
+    if (!this.mailService) return 'FAILED';
+    try {
+      const accepted = await this.mailService.sendOrderConfirmation(orderConfirmationEmailInput(order, { ...recipient, email: recipient.email }));
+      return accepted === true ? 'SENT' : 'FAILED';
+    } catch {
+      this.logger.error(`Không gửi được email xác nhận đơn ${order.externalOrderSn}. Đơn hàng vẫn được giữ nguyên.`);
+      return 'FAILED';
+    }
+  }
 
   private async quoteCheckoutShipping(address: string, quantity: number, subtotal: number, storeId: string) {
     if (!this.ghnService) throw new InternalServerErrorException('Dịch vụ tính cước GHN chưa sẵn sàng. Vui lòng thử lại sau.');
@@ -907,26 +923,9 @@ export class OrdersService {
 
     const raw = (order.rawPayload as Record<string, any>) || {};
 
-    let confirmationEmailQueued = false;
-    if (customerEmail && this.mailService) {
-      confirmationEmailQueued = true;
-      void this.mailService
-        .sendOrderConfirmation({
-          email: customerEmail,
-          customerName,
-          publicOrderCode: order.externalOrderSn,
-          finalAmount: Number(order.finalAmount),
-          paymentMethod: raw.paymentMethod || 'COD',
-          paymentStatus: raw.paymentStatus,
-          storeName: order.store.name,
-        })
-        .catch((error: unknown) => {
-          this.logger.error(
-            `Không thể gửi email xác nhận đơn ${order.externalOrderSn}: ${this.getErrorMessage(error)}`,
-          );
-        });
-    }
-
+    const confirmationEmailStatus = await this.sendConfirmationEmail(order, {
+      email: customerEmail, customerName, customerPhone, shippingAddress,
+    });
     const singleResult = {
       message: 'Đơn hàng đã được tạo.',
       publicOrderCode: order.externalOrderSn,
@@ -941,7 +940,8 @@ export class OrdersService {
       vietqr: raw.vietqr || null,
       cancellationToken: rawCancellationToken,
       trackingUrl: `/tracking?sn=${order.externalOrderSn}`,
-      confirmationEmailQueued,
+      confirmationEmailQueued: false,
+      confirmationEmailStatus,
       items: order.orderItems.map((item) => ({
         productId: item.productId,
         variantId: item.variantId || undefined,
@@ -2373,28 +2373,11 @@ export class OrdersService {
       throw error;
     }
 
-    // 3. Post-Transaction Email Queue & Kết xuất dữ liệu đơn hàng
-    for (const res of createdResults) {
-      if (customerEmail && this.mailService) {
-        void this.mailService
-          .sendOrderConfirmation({
-            email: customerEmail,
-            customerName,
-            publicOrderCode: res.order.externalOrderSn,
-            finalAmount: Number(res.order.finalAmount),
-            paymentMethod: normalizedPaymentMethod,
-            paymentStatus: (res.order.rawPayload as Record<string, any>)?.paymentStatus,
-            storeName: res.order.store.name,
-          })
-          .catch((error: unknown) => {
-            this.logger.error(
-              `Không thể gửi email xác nhận đơn ${res.order.externalOrderSn}: ${this.getErrorMessage(error)}`,
-            );
-          });
-      }
-    }
-
-    const createdOrders = createdResults.map((res) => ({
+    // SMTP is checked after every order is committed; delivery failure never rolls back payment or stock.
+    const emailStatuses = await Promise.all(createdResults.map(result => this.sendConfirmationEmail(result.order, {
+      email: customerEmail, customerName, customerPhone, shippingAddress,
+    })));
+    const createdOrders = createdResults.map((res, index) => ({
       message: 'Đơn hàng đã được tạo.',
       publicOrderCode: res.order.externalOrderSn,
       status: res.order.status,
@@ -2410,7 +2393,8 @@ export class OrdersService {
       vietqr: res.vietqrData,
       cancellationToken: res.rawCancellationToken,
       trackingUrl: `/tracking?sn=${res.order.externalOrderSn}`,
-      confirmationEmailQueued: Boolean(customerEmail && this.mailService),
+      confirmationEmailQueued: false,
+      confirmationEmailStatus: emailStatuses[index],
       items: res.order.orderItems.map((item: any) => ({
         productId: item.productId,
         variantId: item.variantId || undefined,
@@ -2467,7 +2451,8 @@ export class OrdersService {
       canRequestCancellationOtp: true,
       cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
       trackingUrl: `/tracking?sn=${createdOrders[0]?.publicOrderCode}`,
-      confirmationEmailQueued: Boolean(customerEmail && this.mailService),
+      confirmationEmailQueued: false,
+      confirmationEmailStatus: !customerEmail ? 'NOT_REQUESTED' : emailStatuses.every(status => status === 'SENT') ? 'SENT' : emailStatuses.some(status => status === 'SENT') ? 'PARTIAL' : 'FAILED',
       orders: createdOrders,
       items: createdOrders.flatMap((o) => o.items || []),
       store: {
@@ -3226,11 +3211,12 @@ export class OrdersService {
     }
     if (orderSn?.trim()) {
       whereConditions.externalOrderSn = {
-        equals: orderSn.trim(),
+        equals: orderSn.trim().replace(/^#+\s*/, ''),
         mode: 'insensitive',
       };
     }
 
+    await syncCustomerGhnSimulations(this.prisma, whereConditions);
     const orders = await this.prisma.order.findMany({
       where: whereConditions,
       orderBy: { createdAt: 'desc' },
@@ -3795,6 +3781,7 @@ export class OrdersService {
       }
     }
 
+    await syncCustomerGhnSimulations(this.prisma, targetStoreId ? { storeId: targetStoreId } : {});
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;

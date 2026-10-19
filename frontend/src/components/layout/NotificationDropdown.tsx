@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -15,12 +15,14 @@ import {
   MessageSquare,
   Volume2,
   VolumeX,
+  ArrowRight,
 } from 'lucide-react';
 import { notificationsService, type AppNotification } from '../../services/notifications.service';
 import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
 import { getNotificationSection } from '../../utils/notification-categories.utils';
 import { useChatNotifications } from '../../hooks/useChatNotifications';
+import './NotificationDropdown.css';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,25 +35,44 @@ export const NotificationDropdown: React.FC = () => {
   const navigate = useNavigate();
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [panelTop, setPanelTop] = useState(72);
-  const [panelRight, setPanelRight] = useState(12);
+  const notificationListRef = useRef<HTMLDivElement>(null);
+  const [panelPosition, setPanelPosition] = useState({ top: 72, right: 12, maxHeight: 480 });
   const listRequest = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return;
     const position = () => {
       const bounds = bellRef.current?.getBoundingClientRect();
-      setPanelTop((bounds?.bottom || 64) + 8);
-      setPanelRight(window.innerWidth < 640 ? 12 : Math.max(12, window.innerWidth - (bounds?.right || window.innerWidth - 12)));
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop || 0;
+      const viewportBottom = viewportTop + (viewport?.height || window.innerHeight);
+      const below = Math.max(0, viewportBottom - (bounds?.bottom || 64) - 18);
+      const above = Math.max(0, (bounds?.top || 64) - viewportTop - 18);
+      const openAbove = below < 220 && above > below;
+      const fitViewport = Math.max(above, below) < 180;
+      const maxHeight = Math.min(480, Math.max(0, fitViewport ? viewportBottom - viewportTop - 20 : openAbove ? above : below));
+      const top = fitViewport ? viewportTop + 10 : openAbove ? (bounds?.top || 64) - 8 - maxHeight : Math.min((bounds?.bottom || 64) + 8, viewportBottom - 10);
+      const width = Math.min(380, window.innerWidth - 20);
+      const right = Math.min(Math.max(10, window.innerWidth - (bounds?.right || window.innerWidth - 10)), Math.max(10, window.innerWidth - width - 10));
+      setPanelPosition(previous => previous.top === top && previous.right === right && previous.maxHeight === maxHeight ? previous : { top, right, maxHeight });
     };
     position();
     const dismiss = (event: KeyboardEvent) => {
       if (event.key === "Escape") { setIsOpen(false); bellRef.current?.focus(); }
     };
     window.addEventListener("resize", position);
+    window.addEventListener('scroll', position, true);
+    window.visualViewport?.addEventListener('resize', position);
+    window.visualViewport?.addEventListener('scroll', position);
     document.addEventListener("keydown", dismiss);
     panelRef.current?.focus();
-    return () => { window.removeEventListener("resize", position); document.removeEventListener("keydown", dismiss); };
+    return () => {
+      window.removeEventListener("resize", position);
+      window.removeEventListener('scroll', position, true);
+      window.visualViewport?.removeEventListener('resize', position);
+      window.visualViewport?.removeEventListener('scroll', position);
+      document.removeEventListener("keydown", dismiss);
+    };
   }, [isOpen]);
 
   const getLiveNotifications = useCallback((): AppNotification[] => {
@@ -199,6 +220,8 @@ export const NotificationDropdown: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
+      if (notificationListRef.current) notificationListRef.current.scrollTop = 0;
+      setExpandedMessages(new Set());
       void fetchNotifications();
     }
   }, [isOpen, fetchNotifications]);
@@ -406,10 +429,10 @@ export const NotificationDropdown: React.FC = () => {
           role="region"
           aria-label="Trung tâm thông báo"
           tabIndex={-1}
-          className="fixed z-[100] flex flex-col w-[380px] max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100dvh-var(--notification-top)-12px))] border border-[#EAE4D7] rounded-[14px] bg-white text-[#1A1612] shadow-[0_12px_32px_rgb(35_29_21_/_0.1)] overflow-hidden text-left outline-none max-[639px]:right-[12px] max-[639px]:w-[calc(100vw-24px)]"
-          style={{ top: panelTop, right: panelRight }}
+          className="scanms-notifications"
+          style={{ top: panelPosition.top, right: panelPosition.right, maxHeight: panelPosition.maxHeight }}
         >
-          <header className="flex items-center justify-between shrink-0 gap-[12px] p-[13px_14px_11px]">
+          <header className="scanms-notifications-header">
             <div className="flex items-center gap-[7px]">
               <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
               {unreadCount > 0 && (
@@ -455,7 +478,7 @@ export const NotificationDropdown: React.FC = () => {
             </button>
           )}
 
-          <div className="grid grid-cols-4 gap-[4px] p-[0_12px_11px] shrink-0 border-b border-[#EAE4D7]" role="group" aria-label="Loại thông báo">
+          <div className="scanms-notifications-tabs" role="group" aria-label="Loại thông báo">
             {([
               { id: 'ALL', label: 'Tất cả' },
               { id: 'ORDER', label: 'Đơn hàng' },
@@ -481,7 +504,7 @@ export const NotificationDropdown: React.FC = () => {
             })}
           </div>
 
-          <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:thin]" aria-busy={loading}>
+          <div className="scanms-notifications-list" ref={notificationListRef} role="region" aria-label="Danh sách thông báo" tabIndex={0} aria-busy={loading}>
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center" role="status">
                 <Loader2 size={22} className="animate-spin text-[#B88E4F]" />
@@ -498,38 +521,34 @@ export const NotificationDropdown: React.FC = () => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
                 const expanded = expandedMessages.has(n.id);
                 return (
-                  <div key={n.id} className={`relative flex flex-col w-full p-[13px_14px] border-b border-[#EAE4D7] last:border-b-0 ${!n.isRead ? 'bg-[#FBF5EB]/40' : 'bg-white'} hover:bg-[#FAF8F5] transition-colors`}>
+                  <article key={n.id} className="scanms-notification-item" data-notification-id={n.id} data-read={n.isRead}>
                     <button
                       type="button"
                       onClick={() => void handleNotificationClick(n)}
-                      className="flex items-start gap-[10px] w-full text-left cursor-pointer border-0 bg-transparent p-0"
+                      className="scanms-notification-open"
                     >
-                      <span className="grid place-items-center shrink-0 w-[28px] h-[28px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-white text-[#B88E4F]">
+                      <span className="scanms-notification-icon" aria-hidden="true">
                         {getNotificationIcon(n.type)}
                       </span>
                       <span className="block flex-1 min-w-0">
                         <span className="flex items-start gap-[8px]">
-                          <strong title={n.title} className={`line-clamp-2 flex-1 text-[#1A1612] text-[12px] leading-[1.5] ${!n.isRead ? 'font-[600]' : 'font-[500]'}`}>
+                          <strong title={n.title} className="scanms-notification-title">
                             {n.title}
                           </strong>
                           {!n.isRead && <span className="shrink-0 w-[5px] h-[5px] mt-[6px] rounded-full bg-[#C59B58]" aria-label="Chưa đọc" />}
                         </span>
-                        <span className={`mt-[4px] text-[#7D715E] text-[11px] leading-[1.6] block ${expanded ? '' : 'line-clamp-2'}`}>
+                        <span className="scanms-notification-message" data-expanded={expanded}>
                           {n.message}
-                        </span>
-                        <span className="flex items-center justify-between flex-wrap gap-[5px] mt-[7px]">
-                          <time dateTime={n.createdAt} className="inline-flex items-center gap-[4px] text-[#9A8E7C] text-[9px] leading-[1.5]">
-                            <Clock size={11} />
-                            {formatTimeAgo(n.createdAt)}
-                          </time>
-                          {isLive && <span className="text-[#B88E4F] text-[9px] font-[500] hover:underline">Xem phiên live →</span>}
                         </span>
                       </span>
                     </button>
-                    {n.message.length > 100 && (
+                    <div className="scanms-notification-meta">
+                      <time dateTime={n.createdAt}><Clock size={10} aria-hidden="true" />{formatTimeAgo(n.createdAt)}</time>
+                      {isLive && <span>Phiên live</span>}
+                    {(n.message.length > 100 || n.title.length > 52) && (
                       <button
                         type="button"
-                        className="self-end mt-1 text-[10px] text-[#B88E4F] hover:underline bg-transparent border-0 cursor-pointer p-0"
+                        className="scanms-notification-expand"
                         aria-expanded={expanded}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -541,18 +560,20 @@ export const NotificationDropdown: React.FC = () => {
                           });
                         }}
                       >
-                        {expanded ? 'Thu gọn' : 'Xem đầy đủ'}
+                        {expanded ? 'Thu gọn' : 'Xem thêm'}
                       </button>
                     )}
-                  </div>
+                    </div>
+                  </article>
                 );
               })
             )}
           </div>
 
-          <footer className="flex items-center justify-center gap-[5px] shrink-0 p-[10px_12px] border-t border-[#EAE4D7] bg-white text-[#9A8E7C] text-[9px] leading-[1.5]">
-            <span className="w-[4px] h-[4px] rounded-full bg-[#C59B58]" />
-            Cập nhật hoạt động trên SCANMS
+          <footer className="scanms-notifications-footer">
+            {authService.getCurrentUser()?.role === 'CUSTOMER' || authService.getActiveWorkspace() === 'customer'
+              ? <button type="button" onClick={() => { setIsOpen(false); navigate('/customer/notifications'); }}>Xem tất cả thông báo<ArrowRight size={14} aria-hidden="true" /></button>
+              : <span>Cập nhật hoạt động trên SCANMS</span>}
           </footer>
         </div>,
         document.body

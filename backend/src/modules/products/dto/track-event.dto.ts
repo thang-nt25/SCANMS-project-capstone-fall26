@@ -28,7 +28,7 @@ export class TrackAnalyticsEventDto {
 
   @ApiPropertyOptional({ example: 'prod-uuid-1', description: 'ID sản phẩm' })
   @IsOptional()
-  @IsUUID('4', { message: 'productId phải là UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'productId phải là UUID hợp lệ' })
   productId?: string;
 
   @ApiPropertyOptional({
@@ -36,7 +36,7 @@ export class TrackAnalyticsEventDto {
     description: 'Mã hoặc slug gian hàng',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 
   @ApiPropertyOptional({

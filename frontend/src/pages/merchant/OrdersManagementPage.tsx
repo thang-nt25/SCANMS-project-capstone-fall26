@@ -22,7 +22,6 @@ import {
   Phone,
   Users,
   Printer,
-  Zap,
   ChevronDown,
   MoreHorizontal,
   Info,
@@ -355,6 +354,20 @@ export default function OrdersManagementPage({
       active = false;
     };
   }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (!document.hidden) setOrdersRefreshCount(count => count + 1);
+    };
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   // Deep-linking: Tự động mở chi tiết đơn hàng khi URL có ?orderId=... hoặc ?search=...
   useEffect(() => {
@@ -1657,19 +1670,19 @@ export default function OrdersManagementPage({
                     disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                     onClick={() => handleCreateGhnShippingOrder("TEST")}
                     className="shipping-dispatch-choice shipping-dispatch-choice-test"
-                    title="Tạo vận đơn GHN Staging và tự chạy hành trình mô phỏng trong SCANMS"
+                    title="Tạo vận đơn thử nghiệm trên GHN Sandbox"
                   >
                     {creatingGhnEnvironment === "TEST" ? (
                       <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#B88E4F]" />
                     ) : (
-                      <Zap className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                      <Truck className="h-4 w-4 shrink-0 text-[#B88E4F]" />
                     )}
                     <span className="min-w-0">
                       <span className="shipping-dispatch-choice-title">
-                        {creatingGhnEnvironment === "TEST" ? "Đang tạo vận đơn mô phỏng…" : "Mô phỏng giao hàng GHN"}
+                        {creatingGhnEnvironment === "TEST" ? "Đang tạo vận đơn Sandbox…" : "Tạo vận đơn GHN Sandbox"}
                       </span>
                       <span className="shipping-dispatch-choice-description">
-                        Sandbox · 5 mốc tự động trong 4 phút
+                        Sandbox · Môi trường thử nghiệm
                       </span>
                     </span>
                   </button>
@@ -1718,7 +1731,6 @@ export default function OrdersManagementPage({
               </div>
 
               <div className="shipping-dispatch-divider"><span>Đã có mã GHN? Nhập thủ công</span></div>
-              <p className="mb-3 text-[11px] leading-relaxed text-[#7D715E]">Chỉ nhập bên dưới nếu bạn đã tạo vận đơn trên GHN và có mã sẵn. Hai nút phía trên tự tạo và lưu mã, không cần nhập lại.</p>
               <div className="shipping-dispatch-fields">
               <div>
                 <label htmlFor="dispatch-carrier" className="shipping-dispatch-label">

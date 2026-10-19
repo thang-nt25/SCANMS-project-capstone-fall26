@@ -137,9 +137,12 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @Req() req: Request,
     @CurrentUser('id') userId: string,
+    @CurrentUser('email') accountEmail?: string,
   ) {
     // Never trust a customerId supplied by the browser.
     dto.customerId = userId;
+    // A signed-in buyer still receives confirmation when the optional email field is left blank.
+    dto.customerEmail = dto.customerEmail?.trim().toLowerCase() || accountEmail?.trim().toLowerCase();
     if (dto.paymentMethod === 'PAYOS') this.payosPaymentService.assertReady();
     const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
     await this.ordersService.checkCreateOrderRateLimit(

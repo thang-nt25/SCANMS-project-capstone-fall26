@@ -1,5 +1,6 @@
 import {
   IsArray,
+  ArrayMaxSize,
   IsIn,
   IsInt,
   IsOptional,
@@ -13,6 +14,9 @@ import {
 export class LiveGovernanceDto {
   @IsIn([
     'REQUEST_END',
+    'END_BY_KOL',
+    'SHOP_END',
+    'KOL_EXPLAIN',
     'EMERGENCY_STOP',
     'ACCEPT_END',
     'REJECT_END',
@@ -26,7 +30,7 @@ export class LiveGovernanceDto {
   action: string;
 
   @IsOptional()
-  @IsIn(['OUT_OF_STOCK', 'TECHNICAL', 'KOL_VIOLATION', 'OTHER'])
+  @IsIn(['OUT_OF_STOCK', 'TECHNICAL', 'KOL_VIOLATION', 'PERSONAL', 'HEALTH', 'OTHER'])
   reason?: string;
 
   @IsString()
@@ -35,6 +39,7 @@ export class LiveGovernanceDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @MaxLength(1000, { each: true })
   @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
   evidence?: string[];

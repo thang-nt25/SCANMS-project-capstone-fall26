@@ -55,7 +55,7 @@ function SandboxShippingPayment({ code, amount, role }: { code: string; amount?:
       {paid && <p role="status" className="sample-freight__paid"><CheckCircle2 size={15} />Shop đã thanh toán cước mô phỏng</p>}
     </div>
     {paid && <p className="sample-freight__reference">Mã xác nhận: <code>{payment.reference}</code><span>{new Date(payment.paidAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span></p>}
-    <p className="sample-freight__note"><FlaskConical size={12} aria-hidden="true" /><span>{role === 'shop' ? 'Cước sandbox chỉ dùng kiểm thử, không trừ ví hoặc thanh toán thật.' : 'Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.'}</span></p>
+    {role !== 'shop' && <p className="sample-freight__note"><FlaskConical size={12} aria-hidden="true" /><span>Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.</span></p>}
     {error && <p role="alert" className="sample-freight__error">{error}</p>}
   </div>;
 }

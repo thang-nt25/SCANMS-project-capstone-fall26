@@ -27,6 +27,7 @@ import {
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import * as crypto from 'crypto';
+import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
 
 @Injectable()
 export class ProductsService {
@@ -542,8 +543,8 @@ export class ProductsService {
       search = queryOrSearch;
     }
 
-    const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.min(48, Math.max(1, Number(limit) || 24));
+    const safePage = Number.isFinite(Number(page)) ? Math.max(1, Math.floor(Number(page) || 1)) : 1;
+    const safeLimit = Math.min(48, Math.max(1, Math.floor(Number(limit) || 24)));
 
     const where: any = {
       isDeleted: false,
@@ -559,11 +560,12 @@ export class ProductsService {
     };
 
     if (search?.trim()) {
+      const literalSearch = search.trim().replace(/[\\%_]/g, '\\$&');
       where.OR = [
-        { title: { contains: search.trim(), mode: 'insensitive' } },
-        { sku: { contains: search.trim(), mode: 'insensitive' } },
-        { categoryName: { contains: search.trim(), mode: 'insensitive' } },
-        { store: { name: { contains: search.trim(), mode: 'insensitive' } } },
+        { title: { contains: literalSearch, mode: 'insensitive' } },
+        { sku: { contains: literalSearch, mode: 'insensitive' } },
+        { categoryName: { contains: literalSearch, mode: 'insensitive' } },
+        { store: { name: { contains: literalSearch, mode: 'insensitive' } } },
       ];
     }
 
@@ -583,20 +585,14 @@ export class ProductsService {
         where.price.lte = maxPrice;
     }
 
-    let orderBy: any = { createdAt: 'desc' };
-    if (sortBy === 'price_asc') {
-      orderBy = { price: 'asc' };
-    } else if (sortBy === 'price_desc') {
-      orderBy = { price: 'desc' };
-    }
-
-    const [total, items] = await this.prisma.$transaction([
+    const [total, ranked] = await Promise.all([
       this.prisma.product.count({ where }),
-      this.prisma.product.findMany({
-        where,
-        skip: (safePage - 1) * safeLimit,
-        take: safeLimit,
-        orderBy,
+      this.prisma.$queryRaw<CatalogRankingRow[]>(catalogRankingQuery({
+        search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit,
+      })),
+    ]);
+    const items = ranked.length ? await this.prisma.product.findMany({
+        where: { ...where, id: { in: ranked.map((row) => row.id) } },
         select: {
           id: true,
           sku: true,
@@ -608,6 +604,7 @@ export class ProductsService {
           originalPrice: true,
           ...(includeCommission ? { customCommissionRate: true } : {}),
           stockQuantity: true,
+          createdAt: true,
           variants: {
             where: { isActive: true },
             select: {
@@ -639,11 +636,14 @@ export class ProductsService {
             },
           },
         },
-      }),
-    ]);
+      }) : [];
+    const itemsById = new Map(items.map((item) => [item.id, item]));
 
     return {
-      items,
+      items: ranked.flatMap((row) => {
+        const item = itemsById.get(row.id);
+        return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount) }] : [];
+      }),
       pagination: {
         total,
         page: safePage,
@@ -2027,7 +2027,7 @@ export class ProductsService {
     }
 
     // 2. Phân giải Attribution Cookie một cách an toàn qua HMAC Token và DB Session (FR-13)
-    const cacheKey = `landing:v2:${product.id}:${visitorIdHash || 'anon'}`;
+    const cacheKey = `landing:v2:${product.id}:${visitorIdHash || 'anon'}:catalog-v1`;
     const cached =
       await this.cacheService.get<ProductLandingResponseDto>(cacheKey);
     if (cached) return cached;
@@ -2094,19 +2094,14 @@ export class ProductsService {
     });
 
     const galleryImages: string[] = [];
-    if (this.isSafeUrl(product.imageUrl)) {
-      galleryImages.push(product.imageUrl!.trim());
-    }
+    const productImageUrl = this.resolveLandingImageUrl(product.imageUrl);
+    if (productImageUrl) galleryImages.push(productImageUrl);
 
     const videoAssets: any[] = [];
     for (const asset of mediaList) {
       if (asset.assetType === 'IMAGE') {
-        if (
-          this.isSafeUrl(asset.urlOrContent) &&
-          !galleryImages.includes(asset.urlOrContent.trim())
-        ) {
-          galleryImages.push(asset.urlOrContent.trim());
-        }
+        const imageUrl = this.resolveLandingImageUrl(asset.urlOrContent);
+        if (imageUrl && !galleryImages.includes(imageUrl)) galleryImages.push(imageUrl);
       } else if (asset.assetType === 'VIDEO') {
         if (this.isSafeUrl(asset.urlOrContent)) {
           const isReferredKol = Boolean(
@@ -2121,11 +2116,7 @@ export class ProductsService {
             id: asset.id,
             title: asset.title,
             videoUrl: asset.urlOrContent.trim(),
-            posterUrl: this.isSafeUrl(asset.posterUrl)
-              ? asset.posterUrl!.trim()
-              : this.isSafeUrl(product.imageUrl)
-                ? product.imageUrl!.trim()
-                : null,
+            posterUrl: this.resolveLandingImageUrl(asset.posterUrl) || productImageUrl,
             caption: asset.caption || null,
             kol: {
               id: asset.collaboratorId || null,
@@ -2245,11 +2236,16 @@ export class ProductsService {
         ? 'OUT_OF_STOCK'
         : 'ACTIVE';
 
+    const sales = await this.prisma.orderItem.aggregate({
+      where: { productId: product.id, order: { status: { in: ['DELIVERED', 'COMPLETED'] } } },
+      _sum: { quantity: true },
+    });
     const resultPayload: ProductLandingResponseDto = {
       status: productStatus,
       product: {
         id: product.id,
         sku: product.sku,
+        soldCount: sales._sum.quantity ?? 0,
         title: product.title,
         status: productStatus,
         categoryName: product.categoryName || 'Sản phẩm tiêu dùng',
@@ -2260,7 +2256,7 @@ export class ProductsService {
         originalPrice: product.originalPrice
           ? Number(product.originalPrice)
           : null,
-        imageUrl: this.isSafeUrl(product.imageUrl) ? product.imageUrl : null,
+        imageUrl: productImageUrl || galleryImages[0] || null,
         isActive: isProductActive,
         canPurchase,
         sampleEnabled: product.sampleEnabled,
@@ -2278,7 +2274,7 @@ export class ProductsService {
             sku: v.sku,
             name: v.name,
             attributes: v.attributes || {},
-            imageUrl: this.isSafeUrl(v.imageUrl) ? v.imageUrl : null,
+            imageUrl: this.resolveLandingImageUrl(v.imageUrl),
             price: Number(v.price ?? product.price),
             stockQuantity: v.stockQuantity,
             isActive: v.isActive,
@@ -2328,6 +2324,29 @@ export class ProductsService {
     await this.cacheService.set(cacheKey, resultPayload, 30);
 
     return resultPayload;
+  }
+
+  private resolveLandingImageUrl(url?: string | null): string | null {
+    const value = url?.trim();
+    if (!value || value.startsWith('//')) return null;
+    // Static images hosted by this frontend are served as same-origin paths.
+    // Keep the existing host restrictions for every other media URL.
+    try {
+      const parsed = new URL(value);
+      const frontendUrls = [
+        this.configService.get<string>('FRONTEND_URL'),
+        this.configService.get<string>('PUBLIC_APP_URL'),
+      ].filter((origin): origin is string => Boolean(origin));
+      if (
+        ['http:', 'https:'].includes(parsed.protocol) &&
+        !parsed.username && !parsed.password &&
+        parsed.pathname.startsWith('/assets/') &&
+        frontendUrls.some((origin) => {
+          try { return new URL(origin).origin === parsed.origin; } catch { return false; }
+        })
+      ) return `${parsed.pathname}${parsed.search}`;
+    } catch { /* Relative paths are validated below. */ }
+    return this.isSafeUrl(value) ? value : null;
   }
 
   /**

@@ -48,6 +48,7 @@ export interface CouponItem {
   collaboratorId: string;
   storeId: string;
   campaignId?: string | null;
+  campaign?: { id: string; name: string; isActive: boolean; startDate: string; endDate: string } | null;
   status: CouponStatus;
   discountType: DiscountType;
   discountValue: number | string;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sparkles, ChevronDown, ExternalLink, Copy, Check, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../services/api';
@@ -7,14 +7,51 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   const [loading, setLoading] = useState(false);
   const [decision, setDecision] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState<string | null>(card.shortUrl || null);
+  const [voucherCode, setVoucherCode] = useState<string | null>(card.vipVoucherCode || null);
+  const [loadingIssued, setLoadingIssued] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'link' | 'voucher' | null>(null);
   const status = decision || card.status;
   const isDecision = card.type === 'EXCLUSIVE_DEAL_DECISION';
   const approved = status === 'APPROVED';
   const rejected = status === 'REJECTED';
   const rate = card.approvedCommissionRate ?? card.proposedCommissionRate;
   const canReview = !isDecision && status === 'PENDING' && isShop && !isMine;
+
+  useEffect(() => {
+    setLinkUrl(card.shortUrl || null);
+    setVoucherCode(card.vipVoucherCode || null);
+  }, [card.proposalId, card.shortUrl, card.vipVoucherCode]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  useEffect(() => {
+    if (!approved || !card.proposalId || (linkUrl && voucherCode)) return;
+    let active = true;
+    setLoadingIssued(true);
+    const loadIssued = async () => {
+      try {
+        const response: any = await api.get(`/affiliate-deals/${isShop ? 'shop' : 'mine'}`);
+        const payload = response?.data?.data || response?.data || response;
+        const issued = Array.isArray(payload) ? payload.find(item => item.id === card.proposalId) : null;
+        if (!active || !issued) return;
+        if (issued.shortUrl) setLinkUrl(issued.shortUrl);
+        else if (issued.referralLink?.shortCode) setLinkUrl(`${window.location.origin}/r/${encodeURIComponent(issued.referralLink.shortCode)}`);
+        const code = issued.vipVoucherCode || issued.referralLink?.customCouponCode;
+        if (code) setVoucherCode(code);
+      } catch {
+        if (active) setError('Chưa tải được link và mã đã cấp. Vui lòng mở lại cuộc trò chuyện.');
+      } finally {
+        if (active) setLoadingIssued(false);
+      }
+    };
+    void loadIssued();
+    return () => { active = false; };
+  }, [approved, card.proposalId, isShop, linkUrl, voucherCode]);
 
   const decide = async (approve: boolean) => {
     if (!card.proposalId || loading) return;
@@ -25,6 +62,8 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
       const result = response?.data?.data || response?.data || response;
       setDecision(approve ? 'APPROVED' : 'REJECTED');
       if (result?.shortUrl) setLinkUrl(result.shortUrl);
+      const code = result?.vipVoucherCode || result?.referralLink?.customCouponCode;
+      if (code) setVoucherCode(code);
       toast.success(approve ? 'Đã duyệt deal và tạo link VIP.' : 'Đã từ chối đề xuất deal.');
     } catch (actionError: any) {
       setError(actionError?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
@@ -33,12 +72,13 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
     }
   };
 
-  const copyLink = async () => {
-    if (!linkUrl) return;
+  const copyIssued = async (kind: 'link' | 'voucher') => {
+    const value = kind === 'link' ? linkUrl : voucherCode;
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(linkUrl);
-      setCopied(true);
-      toast.success('Đã sao chép link tiếp thị độc quyền!');
+      await navigator.clipboard.writeText(value);
+      setCopied(kind);
+      toast.success(kind === 'link' ? 'Đã sao chép link tiếp thị độc quyền!' : 'Đã sao chép mã voucher VIP!');
     } catch {
       toast.error('Không sao chép được link. Vui lòng thử lại.');
     }
@@ -97,16 +137,25 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         )}
         {error && <p className="mt-2 text-[11px] leading-relaxed text-[#DC2626]" role="alert">{error}</p>}
       </div>
-      {(canReview || (approved && linkUrl) || (!isDecision && isMine && status === 'PENDING')) && (
+      {(canReview || approved || (!isDecision && isMine && status === 'PENDING')) && (
         <footer className="px-3 py-2 border-t border-[#EAE4D7] bg-white">
-          {approved && linkUrl && (
-            <div className="flex items-center gap-2">
-              <a href={linkUrl} target="_blank" rel="noreferrer" className="flex flex-1 items-center gap-2 min-w-0 text-[#1A1612] text-[11px] font-medium no-underline hover:underline">
-                <ExternalLink size={14} className="text-[#B88E4F] shrink-0" /><span>Link tiếp thị độc quyền</span>
-              </a>
-              <button type="button" onClick={() => void copyLink()} title={copied ? 'Đã sao chép' : 'Sao chép link tiếp thị'} aria-label={copied ? 'Đã sao chép link' : 'Sao chép link tiếp thị'} className="grid place-items-center w-8 h-8 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] hover:text-[#8C6226] hover:border-[#C59B58] transition-colors cursor-pointer">
-                {copied ? <Check size={14} className="text-[#059669]" /> : <Copy size={14} />}
-              </button>
+          {approved && (
+            <div className="space-y-3">
+              <div>
+                <p className="m-0 mb-1 text-[10px] font-medium text-[#7D715E]">Link tiếp thị độc quyền</p>
+                <div className="flex items-start gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-2">
+                  {linkUrl ? <a href={linkUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 break-all text-[11px] leading-relaxed text-[#1A1612] hover:underline">{linkUrl}</a> : <span className="flex-1 text-[11px] text-[#7D715E]">{loadingIssued ? 'Đang tải link đã cấp…' : 'Chưa có link được cấp'}</span>}
+                  <button type="button" disabled={!linkUrl} onClick={() => void copyIssued('link')} title="Sao chép link tiếp thị" aria-label="Sao chép link tiếp thị" className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-[#EAE4D7] bg-white text-[#B88E4F] hover:border-[#C59B58] disabled:opacity-40">{copied === 'link' ? <Check size={14} /> : <Copy size={14} />}</button>
+                </div>
+              </div>
+              <div>
+                <p className="m-0 mb-1 text-[10px] font-medium text-[#7D715E]">Mã voucher VIP đã cấp</p>
+                <div className="flex items-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2">
+                  <span className="min-w-0 flex-1 break-all font-mono text-xs font-semibold text-[#1A1612]">{voucherCode || (loadingIssued ? 'Đang tải mã đã cấp…' : 'Chưa có mã voucher được cấp')}</span>
+                  <button type="button" disabled={!voucherCode} onClick={() => void copyIssued('voucher')} title="Sao chép mã voucher VIP" aria-label="Sao chép mã voucher VIP" className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-[#EEDFC6] bg-white text-[#B88E4F] hover:border-[#C59B58] disabled:opacity-40">{copied === 'voucher' ? <Check size={14} /> : <Copy size={14} />}</button>
+                </div>
+              </div>
+              {linkUrl && <a href={linkUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] text-[#B88E4F] hover:underline"><ExternalLink size={12} />Mở link tiếp thị</a>}
             </div>
           )}
           {canReview && (

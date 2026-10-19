@@ -134,6 +134,33 @@ export class CouponsService {
     return ids.length ? this.getPublicAvailableCoupons(ids) : [];
   }
 
+  async getSavedExpiredCoupons(userId: string) {
+    const ids = await this.getSavedCouponIds(userId);
+    if (!ids.length) return [];
+    const coupons = await this.prisma.coupon.findMany({
+      where: {
+        id: { in: ids }, deletedAt: null, expiresAt: { lte: new Date() },
+        status: { in: [CouponStatus.ACTIVE, CouponStatus.EXPIRED, CouponStatus.PAUSED, CouponStatus.BLOCKED] },
+      },
+      select: {
+        id: true, displayCode: true, discountType: true, discountValue: true,
+        minimumOrderAmount: true, maximumDiscountAmount: true,
+        usageLimitTotal: true, usageCount: true, expiresAt: true,
+        scopeType: true, fundingSource: true, benefitType: true,
+        store: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: [{ expiresAt: 'desc' }, { id: 'asc' }],
+    });
+    return coupons.map((coupon) => ({
+      id: coupon.id, code: coupon.displayCode, discountType: coupon.discountType,
+      discountValue: Number(coupon.discountValue), minimumOrderAmount: Number(coupon.minimumOrderAmount || 0),
+      maximumDiscountAmount: coupon.maximumDiscountAmount === null ? null : Number(coupon.maximumDiscountAmount),
+      remainingUses: coupon.usageLimitTotal === null ? null : Math.max(0, coupon.usageLimitTotal - coupon.usageCount),
+      expiresAt: coupon.expiresAt, scopeType: coupon.scopeType, fundingSource: coupon.fundingSource,
+      benefitType: coupon.benefitType, store: coupon.store,
+    }));
+  }
+
   async saveCoupon(userId: string, couponId: string) {
     const coupon = await this.prisma.coupon.findFirst({
       where: {
@@ -1037,6 +1064,7 @@ export class CouponsService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
+          campaign: { select: { id: true, name: true, isActive: true, startDate: true, endDate: true } },
           collaborator: {
             select: {
               id: true,

@@ -76,6 +76,14 @@ export class PublicCouponsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.CUSTOMER)
+  @Get('saved/expired')
+  @ApiOperation({ summary: 'Voucher đã lưu của tài khoản đã quá thời hạn sử dụng' })
+  getSavedExpiredCoupons(@CurrentUser('id') userId: string) {
+    return this.service.getSavedExpiredCoupons(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
   @Post('saved/:couponId')
   saveCoupon(@CurrentUser('id') userId: string, @Param('couponId', ParseUUIDPipe) couponId: string) {
     return this.service.saveCoupon(userId, couponId);

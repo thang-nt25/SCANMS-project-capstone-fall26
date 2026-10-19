@@ -420,7 +420,7 @@ export default function KolDashboardPage() {
                   <strong className="text-[#B88E4F]">
                     {Number(tierStatus.revenueNeeded || 0).toLocaleString('vi-VN')} ₫
                   </strong>{' '}
-                  doanh số tháng này để thăng hạng {tierStatus.nextTier.name}!
+                  GMV so với ngưỡng hạng {tierStatus.nextTier.name} (đối chiếu tháng trước).
                 </>
               ) : (
                 'Tích cực chia sẻ link tiếp thị để gia tăng hoa hồng và mở khóa đặc quyền tài khoản!'

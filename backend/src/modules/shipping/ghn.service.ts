@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma.service';
 import { isGeneratedGhnTestTrackingCode } from './ghn-tracking-code';
 import { createCustomerGhnSimulation, customerGhnSimulationDetail } from './customer-ghn-simulation';
+import { syncCustomerGhnSimulations } from './sync-customer-ghn-simulation';
 import { isValidShippingFee, requireShippingFee } from './shipping-fee';
 import { OrderStatus, SampleRequestStatus, Prisma } from '@prisma/client';
 import {
@@ -510,6 +511,11 @@ export class GhnService {
 
     // Không ghi nhận vận đơn nếu GHN không xác nhận mã thật.
     if (!orderCode) {
+      if (/SEND_WARD_IS_DISABLED/i.test(ghnFailureReason)) {
+        throw new BadRequestException(
+          `GHN ${ghnEnvironment === GhnEnvironment.TEST ? 'sandbox' : 'thật'} không hỗ trợ lấy hàng tại phường/xã của kho Shop ${order.store.name} (${fromAddressRaw}). Hãy kiểm tra địa chỉ kho trong Cài đặt gian hàng và địa chỉ lấy hàng trên tài khoản GHN đúng môi trường. Không đổi địa chỉ người nhận để xử lý lỗi này. Đơn vẫn chờ gửi, chưa có mã vận đơn. [SEND_WARD_IS_DISABLED]`,
+        );
+      }
       if (/exceed|limit|quota|vượt quá|giới hạn|số lượng cho phép/i.test(ghnFailureReason)) {
         throw new BadRequestException(
           'GHN từ chối tạo vận đơn vì tài khoản đã đạt giới hạn tạo đơn. Đơn vẫn chờ gửi và chưa có mã vận đơn; hãy kiểm tra hạn mức hoặc liên hệ GHN.',
@@ -881,7 +887,12 @@ export class GhnService {
         where: { rawPayload: { path: ['ghnOrderCode'], equals: orderCode } }, select: { rawPayload: true },
       });
       const simulated = order?.rawPayload && customerGhnSimulationDetail(order.rawPayload as Record<string, any>, orderCode);
-      if (simulated) return simulated;
+      if (simulated) {
+        if (simulated.status === 'delivered') {
+          await syncCustomerGhnSimulations(this.prisma, { rawPayload: { path: ['ghnOrderCode'], equals: orderCode } });
+        }
+        return simulated;
+      }
     }
     let detailData: any = null;
     let trackingError: 'ORDER_NOT_FOUND' | null = null;
@@ -1221,6 +1232,15 @@ export class GhnService {
     }
 
     return { success: true, processedOrderCode: orderCode, status: ghnStatus };
+  }
+
+  @Cron('*/10 * * * * *')
+  async reconcileCustomerSimulations() {
+    try {
+      await syncCustomerGhnSimulations(this.prisma);
+    } catch (error: any) {
+      this.logger.warn(`Chưa đồng bộ được trạng thái giao hàng Sandbox: ${error?.message}`);
+    }
   }
 
   private translateStatus(status: string): string {

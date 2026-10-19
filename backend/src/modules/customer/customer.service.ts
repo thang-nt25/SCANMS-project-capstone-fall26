@@ -24,6 +24,7 @@ import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
 import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
+import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -306,6 +307,8 @@ export class CustomerService {
       OR: orderFilterOr,
     };
 
+    await syncCustomerGhnSimulations(this.prisma, { OR: orderFilterOr });
+
     if (query.status) {
       if (query.status === 'RETURNED') {
         where.status = { in: ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'] };
@@ -391,6 +394,11 @@ export class CustomerService {
       select: { email: true, phoneNumber: true },
     });
 
+    await syncCustomerGhnSimulations(this.prisma, { id: orderId, OR: [
+      { customerId: userId },
+      ...(user?.email ? [{ customerEmail: user.email.toLowerCase() }] : []),
+      ...(user?.phoneNumber ? [{ customerPhone: user.phoneNumber.trim() }] : []),
+    ] });
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {

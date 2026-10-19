@@ -20,6 +20,8 @@ import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
 import './LoginPage.css';
 import { getDemoLogin } from '../../utils/demo-login';
+import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
+import { safeLoginReturn } from '../../utils/login-return';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
 
@@ -47,18 +49,18 @@ export default function LoginPage() {
   const requestedRedirect = searchParams.get('redirect');
   const registeredProvider = searchParams.get('registered');
   const registeredEmail = searchParams.get('email');
-  const returnTo =
-    requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
-      ? requestedRedirect
-      : null;
+  const returnTo = safeLoginReturn(requestedRedirect);
   const registerUrl = returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register';
 
-  const [role, setRole] = useState<RoleType>('customer');
+  const [role, setRole] = useState<RoleType>(() => {
+    const requestedRole = searchParams.get('role')?.toLowerCase();
+    const normalizedRole = requestedRole === 'collaborator' ? 'kol' : requestedRole;
+    if (ROLES.some(option => option.id === normalizedRole)) return normalizedRole as RoleType;
+    return registeredEmail ? 'customer' : getRememberedLoginRole();
+  });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const demoLogin = getDemoLogin(role);
-  const [identifier, setIdentifier] = useState(() => registeredEmail || getDemoLogin('customer')?.identifier || '');
-  const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin('customer')?.password || '');
-  const [identifierEditable, setIdentifierEditable] = useState(false);
+  const [identifier, setIdentifier] = useState(() => registeredEmail || getRememberedIdentifier(role) || getDemoLogin(role)?.identifier || '');
+  const [password, setPassword] = useState(() => registeredEmail || getRememberedIdentifier(role) ? '' : getDemoLogin(role)?.password || '');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -80,9 +82,9 @@ export default function LoginPage() {
     if (loading || passwordAuthState === 'success') return;
     if (selectedRole !== role) {
       const account = getDemoLogin(selectedRole);
-      setIdentifier(account?.identifier || '');
-      setPassword(account?.password || '');
-      setIdentifierEditable(false);
+      const remembered = getRememberedIdentifier(selectedRole);
+      setIdentifier(remembered || account?.identifier || '');
+      setPassword(remembered ? '' : account?.password || '');
     }
     setPasswordAuthState('idle');
     setRole(selectedRole);
@@ -114,10 +116,15 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     setPasswordAuthState('checking');
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const submittedIdentifier = String(formData.get('username') || identifier).trim();
+    const submittedPassword = String(formData.get('password') || password);
 
     try {
-      const res: any = await authService.login(identifier, password);
+      const res: any = await authService.login(submittedIdentifier, submittedPassword);
       const user = res?.data?.user || res?.user;
+      const loginRole: RoleType = ({ CUSTOMER: 'customer', COLLABORATOR: 'kol', SHOP_MANAGER: 'shop', SYSTEM_MANAGER: 'manager', SYSTEM_ADMIN: 'admin' } as Record<string, RoleType>)[user?.role] || role;
+      rememberLoginIdentifier(loginRole, submittedIdentifier, rememberMe);
       setPasswordAuthState('success');
       toast.success(`Đăng nhập thành công! Chào mừng ${user?.fullName || user?.email}`);
 
@@ -302,16 +309,17 @@ export default function LoginPage() {
             )}
 
             {/* Form inputs */}
-            <form key={role} name={`scanms-login-${role}`} autoComplete={demoLogin ? 'off' : 'on'} onSubmit={handleSubmit} className="space-y-3">
+            {searchParams.get('sessionChanged') === '1' && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
+              Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
+            </p>}
+            <form key={role} name="scanms-login" autoComplete="on" onSubmit={handleSubmit} className="space-y-3">
               <div className="relative flex items-center">
                 <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
                 <input
                   id="login-identifier"
-                  name={`username-${role}`}
+                  name="username"
                   type="text"
-                  autoComplete={demoLogin ? 'off' : `section-${role} username`}
-                  readOnly={Boolean(demoLogin) && !identifierEditable}
-                  onFocus={() => setIdentifierEditable(true)}
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -327,9 +335,8 @@ export default function LoginPage() {
 
               <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
               <AnimatedPasswordField
-                autoComplete={demoLogin ? 'new-password' : `section-${role} current-password`}
-                name={`password-${role}`}
-                readOnlyUntilFocus={Boolean(demoLogin)}
+                autoComplete="current-password"
+                name="password"
                 value={password}
                 state={passwordAuthState}
                 onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}

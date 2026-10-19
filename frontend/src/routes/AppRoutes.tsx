@@ -88,6 +88,7 @@ import { CartDrawer } from '../components/cart/CartDrawer';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
+import { StorePresenceHeartbeat } from '../components/store/StorePresenceHeartbeat';
 
 function GlobalCheckoutModal() {
   const { isCheckoutOpen, closeCheckout, checkoutItems, checkoutCouponCode } = useCart();
@@ -124,6 +125,7 @@ function AppRoutes() {
   return (
     <Router>
       <CartProvider>
+        <StorePresenceHeartbeat />
         <ScanmsChatProvider>
           <ErrorBoundary>
             <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>

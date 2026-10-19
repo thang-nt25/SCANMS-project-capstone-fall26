@@ -671,8 +671,7 @@ export default function ShopSettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <details className="settings-extra settings-owner-details">
-                    <summary><span className="settings-owner-preview"><strong>{shopOwnerDetails.representativeName || 'Chưa cập nhật người đại diện'}</strong><span>{shopOwnerDetails.contactEmail || shopOwnerDetails.contactPhone || 'Xem thông tin liên hệ và pháp lý'}</span></span></summary>
+                  <div className="settings-owner-details">
                   <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
@@ -739,7 +738,7 @@ export default function ShopSettingsPage() {
                       </div>
                     </div>
                   </div>
-                  </details>
+                  </div>
                 )}
               </div>
           </section>

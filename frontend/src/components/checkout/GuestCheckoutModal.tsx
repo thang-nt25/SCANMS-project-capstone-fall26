@@ -1,31 +1,22 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { PayosOrderPayment } from './PayosOrderPayment';
+import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutOrderConfirmation';
+import { CheckoutItemsSection } from './CheckoutItemsSection';
+import { CheckoutVoucherSection } from './CheckoutVoucherSection';
+import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
+import './CheckoutPage.css';
 import {
-  X,
-  ShoppingBag,
-  CheckCircle2,
+  ArrowLeft,
+  ChevronDown,
   AlertCircle,
-  Copy,
-  Check,
-  Truck,
-  Tag,
   Loader2,
-  Clock3,
-  Store as StoreIcon,
   MapPin,
-  ExternalLink,
-  Pencil,
-  ShoppingCart,
   Lock,
   LogIn,
   ShieldCheck,
-  MessageSquare,
-  Mail,
   Save,
   Plus,
   Trash2,
-  Wallet,
 } from 'lucide-react';
 
 function normalizeVietnameseAddress(str: string): string {
@@ -366,7 +357,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET'>('PAYOS');
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
-  const [topUpLoading, setTopUpLoading] = useState(false);
+
 
   useEffect(() => {
     if (isOpen && isSignedIn) {
@@ -380,21 +371,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         .finally(() => setWalletLoading(false));
     }
   }, [isOpen, isSignedIn]);
-
-  const handleTopUpDemo = async (amount: number) => {
-    try {
-      setTopUpLoading(true);
-      await walletService.topUpDemo(amount);
-      toast.success(`Nạp thành công ${formatMoney(amount)} vào Ví SCANMS!`);
-      const updated = await walletService.getMyWallet();
-      setWallet(updated);
-      setPaymentMethod('WALLET');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể nạp tiền thử nghiệm');
-    } finally {
-      setTopUpLoading(false);
-    }
-  };
 
   // Single-product fallback state
   const [singleQuantity] = useState(initialQuantity);
@@ -448,24 +424,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   };
 
   // Order Placement Success Details (Supports single & multi-store orders)
-  const [orderSuccess, setOrderSuccess] = useState<{
-    isMultiStore?: boolean;
-    publicOrderCode: string;
-    totalAmount: number;
-    paymentMethod: string;
-    paymentStatus: string;
-    orders: Array<{
-      publicOrderCode: string;
-      storeId?: string;
-      storeName?: string;
-      finalAmount: number;
-      paymentStatus: string;
-      trackingUrl?: string;
-      items?: any[];
-    }>;
-    cancellationToken?: string;
-    confirmationEmailQueued?: boolean;
-  } | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState<CheckoutOrderResult | null>(null);
   const paymentConfirmedOrders = useRef(new Set<string>());
 
   const handlePayosOrderPaid = useCallback((publicOrderCode: string) => {
@@ -485,7 +444,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     onPaymentConfirmed?.(orderSuccess);
   }, [orderSuccess, onPaymentConfirmed]);
 
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [payosAvailable, setPayosAvailable] = useState<boolean | null>(null);
 
   // Normalize active items to order
@@ -616,6 +574,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const result = response?.data || response;
       if (benefitType === 'GOODS') setAppliedPlatformCoupon(result);
       else setAppliedShippingCoupon(result);
+      const successMessage = `Đã áp dụng mã ${result.code} thành công! Giảm ${formatMoney(Number(result.discountAmount) || 0)}${benefitType === 'SHIPPING' ? ' phí vận chuyển' : ' tiền hàng'}.`;
+      setErrorMessage(null);
+      setCouponMessage({ type: 'success', text: successMessage });
+      toast.success(successMessage);
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Voucher không hợp lệ.'); }
     finally { setStackedCouponBusy(null); }
   };
@@ -1074,10 +1036,13 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         discountType: data.discountType,
       });
       setAppliedPlatformCoupon(null);
+      const successMessage = `Đã áp dụng mã ${data.code} thành công! Giảm ${formatMoney(Number(data.discountAmount) || 0)} tiền hàng.`;
+      setErrorMessage(null);
       setCouponMessage({
         type: 'success',
-        text: `Áp dụng thành công! Tiết kiệm ${Number(data.discountAmount).toLocaleString('vi-VN')} ₫.`,
+        text: successMessage,
       });
+      toast.success(successMessage);
     } catch (err: any) {
       setAppliedCoupon(null);
       setCouponMessage({
@@ -1135,7 +1100,20 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
     setAddressValidationField(null);
-    if (couponLoading) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
+    if (couponLoading || stackedCouponBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
+
+    const pendingVoucherLabels = [
+      couponCode.trim() && !appliedCoupon ? 'Voucher Shop / KOL' : null,
+      platformCouponCode.trim() && !appliedPlatformCoupon ? 'Voucher SCANMS' : null,
+      shippingCouponCode.trim() && !appliedShippingCoupon ? 'Voucher vận chuyển' : null,
+    ].filter(Boolean);
+    if (pendingVoucherLabels.length) {
+      const message = `Chưa thể đặt hàng: mã tại ${pendingVoucherLabels.join(', ')} chưa được áp dụng thành công. Chỉ được dùng 1 voucher tiền hàng Shop hoặc KOL cho mỗi Shop. Vui lòng bấm “Áp dụng” đúng loại voucher hoặc xóa mã chưa dùng.`;
+      setErrorMessage(message);
+      setCouponMessage({ type: 'error', text: message });
+      document.getElementById('checkout-vouchers-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -1168,7 +1146,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       return;
     }
 
-    if (!isEmailValid(customerEmail)) {
+    const orderEmail = customerEmail.trim() || authService.getCurrentUser()?.email || '';
+    if (!isEmailValid(orderEmail)) {
       setErrorMessage('Email nhận thông tin đơn hàng không hợp lệ.');
       return;
     }
@@ -1249,7 +1228,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         storeId: activeItems[0]?.store.id || store?.id,
         customerName: trimmedName,
         customerPhone: customerPhone.trim(),
-        customerEmail: customerEmail.trim().toLowerCase() || undefined,
+        customerEmail: orderEmail.trim().toLowerCase() || undefined,
         shippingAddress: fullShippingAddress,
         policyAccepted: true,
         orderNotes: orderNotes.trim() || undefined,
@@ -1264,7 +1243,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         items: normalizedItems,
       };
 
-      const res = await api.post('/orders', payload);
+      const res = await api.post('/orders', payload, { timeout: 45000 });
       const rawResponse = res as any;
       const resData = rawResponse?.data?.data || rawResponse?.data || rawResponse;
 
@@ -1293,6 +1272,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         orders: formattedOrders,
         cancellationToken: resData.cancellationToken,
         confirmationEmailQueued: Boolean(resData.confirmationEmailQueued),
+        confirmationEmailStatus: resData.confirmationEmailStatus,
       };
       if (orderResult.paymentMethod === 'PAYOS') {
         orderResult.paymentStatus = formattedOrders.every(order => order.paymentStatus === 'PAID') ? 'PAID' : 'WAITING_PAYMENT';
@@ -1348,18 +1328,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      setCopiedCode(text);
-      setTimeout(() => setCopiedCode(null), 2000);
-    }
-  };
-
   if (!isOpen) return null;
-  const isPayosOrder = orderSuccess?.paymentMethod === 'PAYOS';
-  const awaitingPayosPayment = isPayosOrder && orderSuccess?.paymentStatus !== 'PAID';
-  const paidOrderCount = orderSuccess?.orders.filter(order => order.paymentStatus === 'PAID').length || 0;
 
   const fullShippingAddressString = [
     shippingAddress.trim(),
@@ -1375,7 +1344,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="guest-checkout-title"
-      className="fixed inset-0 z-[80] bg-[#FAF8F5] overflow-y-auto min-h-screen text-[#1A1612] font-sans animate-in fade-in duration-150 text-left"
+      className="scanms-checkout fixed inset-0 z-[80] bg-[#FAF8F5] overflow-y-auto min-h-[100dvh] text-[#1A1612] font-sans animate-in fade-in duration-150 text-left"
     >
       {/* 1. Header Chuẩn SCANMS & các sàn lớn (Logo SCANMS | Thanh Toán) */}
       <header className="bg-white border-b border-[#EAE4D7] sticky top-0 z-40">
@@ -1387,7 +1356,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               </span>
             </Link>
             <div className="h-6 w-px bg-[#EAE4D7]" />
-            <span className="text-sm sm:text-base font-semibold text-[#7D715E]">
+            <span id={!orderSuccess ? 'guest-checkout-title' : undefined} className="text-sm sm:text-base font-semibold text-[#7D715E]">
               Thanh toán
             </span>
           </div>
@@ -1401,10 +1370,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] hover:border-[#EEDFC6] text-xs font-semibold text-[#7D715E] bg-white hover:bg-[#FBF5EB] transition cursor-pointer"
+              className="flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] hover:border-[#EEDFC6] text-xs font-semibold text-[#7D715E] bg-white hover:bg-[#FBF5EB] transition cursor-pointer"
               title="Quay lại mua sắm"
             >
-              <X className="w-4 h-4 text-[#7D715E]" />
+              <ArrowLeft className="w-4 h-4 text-[#7D715E]" />
               <span>Quay lại</span>
             </button>
           </div>
@@ -1418,108 +1387,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       <main className="max-w-6xl mx-auto px-4 py-5 sm:py-6 space-y-4 sm:space-y-5">
         {/* Order Confirmation Screen (Requirement 10) */}
         {orderSuccess ? (
-          <div className="max-w-[744px] mx-auto p-4 sm:p-6 border border-[#EAE4D7] rounded-[14px] sm:rounded-[20px] bg-white text-[#1A1612] shadow-[0_10px_40px_rgba(35,29,21,0.02)]">
-            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 pb-3.5 sm:pb-4 border-b border-[#F3EFE6]">
-              <div className="w-9 sm:w-11 h-9 sm:h-11 grid place-items-center shrink-0 border border-[#EEDFC6] rounded-[10px] sm:rounded-[14px] bg-white text-[#B88E4F]">
-                {awaitingPayosPayment ? <Clock3 size={23} strokeWidth={1.7} /> : <CheckCircle2 size={23} strokeWidth={1.7} />}
-              </div>
-              <div>
-                <h2 id="guest-checkout-title" aria-live="polite" className="m-0 text-[19px] sm:text-[22px] font-semibold tracking-tight text-[#1A1612] leading-snug">
-                  {awaitingPayosPayment ? 'Chờ thanh toán PayOS' : isPayosOrder ? 'Thanh toán thành công' : 'Đặt hàng thành công'}
-                </h2>
-                <p className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">
-                  {awaitingPayosPayment
-                    ? orderSuccess.isMultiStore
-                      ? 'Đã thanh toán ' + paidOrderCount + '/' + orderSuccess.orders.length + ' đơn. Quét mã QR của từng gian hàng để hoàn tất.'
-                      : 'Quét mã QR bằng ứng dụng ngân hàng để hoàn tất đơn hàng.'
-                    : isPayosOrder ? 'PayOS đã xác nhận nhận đủ tiền. Gian hàng sẽ tiếp tục xử lý đơn của bạn.'
-                    : 'Đơn hàng đã được ghi nhận và gửi tới gian hàng để xử lý.'}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 mt-4">
-              <aside className="min-w-0 p-3 sm:p-3.5 bg-white border border-[#EAE4D7] rounded-xl" aria-label="Thông tin đơn hàng">
-                <h3 className="sr-only">Thông tin đơn hàng</h3>
-                {(orderSuccess.isMultiStore || !isPayosOrder) && (
-                  <div className="flex justify-between items-center gap-3 pb-2.5 mb-2.5 border-b border-[#EAE4D7]">
-                    <span className="text-xs text-[#7D715E]">Tổng giá trị đơn hàng</span>
-                    <strong className="text-[21px] font-bold text-[#1A1612] tabular-nums">{formatMoney(orderSuccess.totalAmount)}</strong>
-                  </div>
-                )}
-                {orderSuccess.orders.map((subOrder, index) => (
-                  <div key={subOrder.publicOrderCode || index} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2.5 sm:gap-x-4 items-center py-2.5 border-b border-[#EAE4D7] first:pt-0 last:pb-0 last:border-b-0">
-                    <div className="col-start-1 flex items-center gap-1.5 text-[13px] leading-snug font-semibold text-[#1A1612]">
-                      <span className="w-7 h-7 grid place-items-center shrink-0 rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><StoreIcon size={17} /></span>
-                      <span>{subOrder.storeName || 'Gian hàng đối tác'}</span>
-                    </div>
-                    <div className="col-start-1 flex items-center gap-1.5 mt-1">
-                      <strong className="text-xs font-medium text-[#7D715E] break-all">{subOrder.publicOrderCode}</strong>
-                      <button
-                        type="button"
-                        className="grid place-items-center min-w-7 h-7 shrink-0 border border-[#EAE4D7] rounded-lg bg-white text-[#B88E4F] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors cursor-pointer"
-                        onClick={() => copyToClipboard(subOrder.publicOrderCode)}
-                        title={copiedCode === subOrder.publicOrderCode ? 'Đã sao chép mã đơn' : 'Sao chép mã đơn'}
-                        aria-label={'Sao chép mã đơn ' + subOrder.publicOrderCode}
-                      >
-                        {copiedCode === subOrder.publicOrderCode ? <Check size={14} className="text-[#059669]" /> : <Copy size={14} />}
-                      </button>
-                    </div>
-                    <div className="col-start-2 row-span-2 grid justify-items-end gap-1.5 text-[11px] text-[#7D715E]">
-                      {isPayosOrder && (
-                        <span data-payment-status={subOrder.paymentStatus} className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#FBF5EB] rounded-md text-[11px]">
-                          {subOrder.paymentStatus === 'PAID' ? <CheckCircle2 size={13} className="text-[#059669]" /> : <Clock3 size={13} className="text-[#B88E4F]" />}
-                          {subOrder.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chờ thanh toán'}
-                        </span>
-                      )}
-                      <Link
-                        to={'/tracking?sn=' + encodeURIComponent(subOrder.publicOrderCode)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-1.5 px-2 py-1 text-[#7D715E] font-medium border border-[#EAE4D7] rounded-[7px] bg-white hover:text-[#B88E4F] hover:border-[#EEDFC6] hover:bg-[#FBF5EB] transition-colors"
-                      >
-                        Tra cứu <ExternalLink size={12} />
-                      </Link>
-                    </div>
-                    {orderSuccess.isMultiStore && <div className="col-start-1 mt-1 text-xs font-semibold text-[#1A1612]">{formatMoney(subOrder.finalAmount)}</div>}
-                  </div>
-                ))}
-              </aside>
-              <div className="min-w-0">
-                {isPayosOrder && <>
-                  {orderSuccess.isMultiStore && awaitingPayosPayment && <p className="m-0 mb-3 text-xs leading-relaxed text-[#7D715E]">Mỗi gian hàng có một mã thanh toán riêng. Vui lòng thanh toán các đơn còn chờ bên dưới.</p>}
-                  {orderSuccess.orders.map(subOrder => <PayosOrderPayment key={subOrder.publicOrderCode} orderCode={subOrder.publicOrderCode} storeName={subOrder.storeName} showOrderHeading={Boolean(orderSuccess.isMultiStore)} onPaid={() => handlePayosOrderPaid(subOrder.publicOrderCode)} />)}
-                </>}
-                {orderSuccess.paymentMethod === 'WALLET' && (
-                  <section className="p-4 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl">
-                    <h3 className="flex items-center gap-2 m-0 mb-2 text-sm font-semibold text-[#1A1612]"><Wallet size={20} className="text-[#B88E4F]" />Đã thanh toán bằng Ví SCANMS</h3>
-                    <p className="text-sm leading-7 text-[#7D715E] m-0">Số tiền đã được trừ từ số dư ví khả dụng. Bạn có thể theo dõi tiến độ xử lý trong danh sách đơn mua.</p>
-                  </section>
-                )}
-              </div>
-            </div>
-            {orderSuccess.confirmationEmailQueued && customerEmail.trim() && (
-              <div className="mt-2.5 flex items-start gap-1.5 text-xs leading-relaxed text-[#7D715E]"><Mail size={14} className="shrink-0 mt-0.5 text-[#B88E4F]" /><p className="m-0">Mã đơn và liên kết tra cứu được gửi tới <strong className="text-[#1A1612] font-medium break-all">{customerEmail.trim().toLowerCase()}</strong></p></div>
-            )}
-            <div className="grid grid-cols-2 sm:flex sm:justify-end gap-2.5 pt-3.5 mt-3.5 border-t border-[#EAE4D7]">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-[38px] inline-flex justify-center items-center gap-2 px-3 sm:px-3.5 py-2 border border-[#EAE4D7] rounded-[10px] text-[11px] sm:text-xs font-medium bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors cursor-pointer text-center"
-              >
-                Tiếp tục mua sắm
-              </button>
-              <Link
-                to="/customer/orders"
-                onClick={onClose}
-                className="min-h-[38px] inline-flex justify-center items-center gap-2 px-3 sm:px-3.5 py-2 border border-[#EEDFC6] rounded-[10px] text-[11px] sm:text-xs font-semibold bg-[#FBF5EB] text-[#1A1612] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-all cursor-pointer text-center"
-              >
-                <ShoppingBag size={16} className="text-[#B88E4F]" />Xem đơn mua của tôi
-              </Link>
-            </div>
-          </div>
+          <CheckoutOrderConfirmation
+            order={orderSuccess}
+            customerEmail={customerEmail.trim() || authService.getCurrentUser()?.email || ''}
+            onClose={onClose}
+            onPayosPaid={handlePayosOrderPaid}
+          />
         ) : (
           /* Checkout Form (SCANMS Style) */
-          <form noValidate onSubmit={handleSubmitOrder} className="space-y-4">
+          <form noValidate onSubmit={handleSubmitOrder} className="checkout-flow-form">
             {/* Status alerts */}
             {isValidatingCart && (
               <div className="p-3 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2">
@@ -1627,20 +1503,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="mb-4 p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#059669]" />
-                  <span>
-                    Khách hàng: <strong className="text-[#1A1612]">{currentUser.fullName || currentUser.email}</strong> ({currentUser.email})
-                  </span>
-                </div>
-                <span className="text-[11px] font-bold text-[#059669] flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Đã xác thực danh tính
-                </span>
-              </div>
-            )}
+            ) : null}
 
             {/* Error Message banner */}
             {errorMessage && (
@@ -1653,43 +1516,19 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* ========================================================================= */}
             {/* BLOCK 1: ĐỊA CHỈ NHẬN HÀNG (Chuẩn SCANMS ẢNH 2) */}
             {/* ========================================================================= */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left">
-              {/* Tiêu đề mục: 📍 Địa Chỉ Nhận Hàng */}
-              <div className="flex items-center gap-2 text-base font-bold text-[#B88E4F] pb-3 border-b border-gray-100">
-                <MapPin className="w-5 h-5 text-[#B88E4F] shrink-0" />
-                <span>Địa Chỉ Nhận Hàng</span>
-              </div>
-
-              {/* Dòng tóm tắt địa chỉ người nhận Chuẩn SCANMS */}
-              <div className="pt-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-gray-800">
-                    <strong className="font-bold text-[#1A1612]">
-                      {customerName ? `${customerName} (${customerPhone || 'Chưa có SĐT'})` : 'Chưa nhập thông tin nhận hàng'}
-                    </strong>
-                    <span className="text-gray-600">
-                      {fullShippingAddressString || 'Vui lòng cung cấp địa chỉ nhận hàng để shop giao tận nơi'}
-                    </span>
-                    {customerAddresses.find((a) => a.id === selectedSavedAddressId)?.isDefault ? (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold text-[#B88E4F] border border-[#EEDFC6] bg-[#FBF5EB]">
-                        Mặc Định
-                      </span>
-                    ) : !selectedSavedAddressId && fullShippingAddressString ? (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-700 border border-blue-300 bg-blue-50">
-                        Địa Chỉ Giao Mới
-                      </span>
-                    ) : null}
+            <div className="checkout-section checkout-address" aria-labelledby="checkout-address-title">
+              <header className="checkout-section-heading"><h2 id="checkout-address-title"><MapPin size={19} aria-hidden="true" />Địa chỉ nhận hàng</h2></header>
+              <div className="checkout-address-body">
+                <div className="checkout-address-summary">
+                  <div className="checkout-address-summary-info">
+                    <strong>{customerName ? `${customerName} · ${customerPhone || 'Chưa có SĐT'}` : 'Chưa nhập thông tin nhận hàng'}</strong>
+                    <span>{fullShippingAddressString || 'Thêm địa chỉ để tính phí vận chuyển và nhận hàng.'}</span>
+                    {customerAddresses.find(address => address.id === selectedSavedAddressId)?.isDefault
+                      ? <span className="checkout-address-label">Mặc định</span>
+                      : !selectedSavedAddressId && fullShippingAddressString ? <span className="checkout-address-label">Địa chỉ giao mới</span> : null}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingAddress((prev) => !prev)}
-                    className="text-xs font-semibold text-[#0055AA] hover:underline cursor-pointer shrink-0 self-start sm:self-auto"
-                  >
-                    {isEditingAddress ? 'Thu gọn' : 'Thay Đổi'}
-                  </button>
+                  <button type="button" className="checkout-address-change" onClick={() => setIsEditingAddress(previous => !previous)}>{isEditingAddress ? 'Thu gọn' : 'Thay Đổi'}</button>
                 </div>
-
                 {/* Form chi tiết địa chỉ (Mở khi bấm Thay Đổi hoặc khi chưa có địa chỉ) */}
                 {(!fullShippingAddressString || isEditingAddress) && (
                   <div className="mt-4 pt-4 border-t border-gray-100 space-y-3.5 animate-in fade-in duration-150">
@@ -1832,7 +1671,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
                       <div>
                         <label htmlFor="checkout-customer-email" className="block text-xs font-bold text-[#1A1612] mb-1">
-                          Email nhận xác nhận đơn <span className="font-normal text-[#7D715E]">(Tùy chọn)</span>
+                          Email nhận xác nhận đơn
                         </label>
                         <input
                           id="checkout-customer-email"
@@ -1845,6 +1684,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           onChange={(e) => setCustomerEmail(e.target.value)}
                           className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition"
                         />
+                        <p className="mt-1 mb-0 text-[10px] leading-relaxed text-[#7D715E]">Tự động gửi thông tin đơn hàng. Để trống sẽ dùng email tài khoản đang đăng nhập.</p>
                       </div>
                     </div>
 
@@ -1971,501 +1811,59 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* ========================================================================= */}
             {/* BLOCK 2: SẢN PHẨM (Chuẩn SCANMS ẢNH 2 & TIKTOK SHOP) */}
             {/* ========================================================================= */}
-            <div className="bg-white rounded-lg shadow-xs border border-gray-200 overflow-hidden text-left">
-              {/* Header các cột (Chuẩn Ảnh 2: Sản phẩm | Đơn giá | Số lượng | Thành tiền) */}
-              <div className="hidden sm:grid grid-cols-12 px-6 py-4 border-b border-gray-100 text-xs sm:text-sm font-semibold text-gray-500 bg-white">
-                <div className="col-span-6">Sản phẩm</div>
-                <div className="col-span-2 text-center">Đơn giá</div>
-                <div className="col-span-2 text-center">Số lượng</div>
-                <div className="col-span-2 text-right">Thành tiền</div>
-              </div>
+            <CheckoutItemsSection
+              groups={itemsGroupedByShop}
+              shippingFees={shippingFeesByStore}
+              notes={orderNotes}
+              onNotesChange={setOrderNotes}
+              onChat={openChat}
+              onEditCart={() => { editCheckoutCart(activeItems); onClose(); }}
+              onContinueShopping={() => { continueShoppingFromCheckout(activeItems); onClose(); navigate('/marketplace#catalog-section'); }}
+            />
+            <CheckoutVoucherSection
+              groups={itemsGroupedByShop}
+              targetStoreId={targetVoucherStoreId}
+              onTargetChange={id => { setVoucherTargetStoreId(id); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }}
+              shop={{ value: couponCode, applied: Boolean(appliedCoupon), busy: couponLoading,
+                onChange: value => { setCouponCode(value); setAutoCouponDismissed(true); setCouponLoading(false); setAppliedCoupon(null); setCouponMessage(null); },
+                onApply: handleValidateCoupon, onRemove: handleRemoveCoupon }}
+              platform={{ value: platformCouponCode, applied: Boolean(appliedPlatformCoupon), busy: stackedCouponBusy === 'GOODS',
+                onChange: value => { setPlatformCouponCode(value); setAppliedPlatformCoupon(null); }, onApply: () => { void applyStackedCoupon('GOODS'); }, onRemove: () => { setAppliedPlatformCoupon(null); setPlatformCouponCode(''); } }}
+              shipping={{ value: shippingCouponCode, applied: Boolean(appliedShippingCoupon), busy: stackedCouponBusy === 'SHIPPING',
+                onChange: value => { setShippingCouponCode(value); setAppliedShippingCoupon(null); }, onApply: () => { void applyStackedCoupon('SHIPPING'); }, onRemove: () => { setAppliedShippingCoupon(null); setShippingCouponCode(''); } }}
+              message={couponMessage}
+            />
 
-              {/* Từng Gian hàng */}
-              <div className="divide-y divide-gray-200">
-                {itemsGroupedByShop.map((shopGroup, sIdx) => (
-                  <div key={shopGroup.store.id || sIdx} className="space-y-0">
-                    {/* Header Shop (Chuẩn Ảnh 2: [Yêu thích] [Tên Shop] | Chat ngay) */}
-                    <div className="px-5 sm:px-6 py-3 bg-[#FAF8F5]/80 border-b border-gray-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#C59B58] text-[#1A1612] shrink-0">
-                          Yêu thích
-                        </span>
-                        <strong className="text-xs sm:text-sm font-bold text-[#1A1612] truncate">
-                          {shopGroup.store.name}
-                        </strong>
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#F3EFE6] text-[#B88E4F] border border-[#EEDFC6] shrink-0">
-                          SHOP
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openChat(shopGroup.store)}
-                          className="text-xs text-[#059669] hover:underline flex items-center gap-1 shrink-0 ml-1.5 cursor-pointer font-medium"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Chat ngay</span>
-                        </button>
-                      </div>
+            <section className="checkout-section checkout-payment" aria-labelledby="checkout-payment-title">
+              <CheckoutPaymentMethods method={paymentMethod} onChange={setPaymentMethod} balance={Number(wallet?.availableBalance || 0)} loading={walletLoading} total={finalTotal} payosAvailable={payosAvailable} />
+              <dl className="checkout-totals" aria-label="Chi tiết thanh toán">
+                <div><dt>Tổng tiền hàng ({activeUnitCount} sản phẩm)</dt><dd>{formatMoney(rawSubtotal)}</dd></div>
+                <div><dt>Phí vận chuyển GHN</dt><dd role="status">{shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}{shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}</dd></div>
+                {appliedCoupon && <div className="checkout-total-discount"><dt>Voucher Shop / KOL ({appliedCoupon.code})</dt><dd>−{formatMoney(discountAmount)}</dd></div>}
+                {appliedPlatformCoupon && <div className="checkout-total-discount"><dt>Voucher SCANMS ({appliedPlatformCoupon.code})</dt><dd>−{formatMoney(appliedPlatformCoupon.discountAmount)}</dd></div>}
+                {appliedShippingCoupon && <div className="checkout-total-discount"><dt>Voucher vận chuyển ({appliedShippingCoupon.code})</dt><dd>−{formatMoney(appliedShippingCoupon.discountAmount)}</dd></div>}
+                <div className="checkout-total-final"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>
+              </dl>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            editCheckoutCart(activeItems);
-                            onClose();
-                          }}
-                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 cursor-pointer font-medium"
-                          title="Sửa giỏ hàng"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Sửa giỏ hàng</span>
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            continueShoppingFromCheckout(activeItems);
-                            onClose();
-                            navigate('/marketplace#catalog-section');
-                          }}
-                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 cursor-pointer font-medium"
-                          title="Mua thêm sản phẩm"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Mua thêm</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Danh sách sản phẩm của Shop */}
-                    <div className="divide-y divide-gray-100">
-                      {shopGroup.items.map((item) => (
-                        <div
-                          key={item.cartItemId}
-                          className="grid grid-cols-1 sm:grid-cols-12 px-5 sm:px-6 py-4 items-center gap-3 sm:gap-0"
-                        >
-                          {/* Cột 1: Sản phẩm (Ảnh + Tên + Phân loại) */}
-                          <div className="sm:col-span-6 flex items-center gap-3 min-w-0">
-                            <img
-                              src={getSafeProductImageUrl(item.imageUrl, item.title, item.variantName)}
-                              alt={item.title}
-                              className="w-14 h-14 sm:w-16 sm:h-16 rounded-xs object-cover border border-gray-200 shrink-0 bg-white"
-                              onError={(e) => {
-                                const target = e.currentTarget as HTMLImageElement;
-                                if (!target.dataset.hasFallback) {
-                                  target.dataset.hasFallback = 'true';
-                                  target.src = getSafeProductImageUrl(null, item.title);
-                                }
-                              }}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs sm:text-sm text-[#1A1612] font-normal line-clamp-2 leading-snug">
-                                {item.title}
-                              </h4>
-                              {item.variantName && (
-                                <span className="text-xs text-gray-500 block mt-1">
-                                  Phân loại: {item.variantName}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Cột 2: Đơn giá */}
-                          <div className="sm:col-span-2 sm:text-center text-xs sm:text-sm text-gray-700">
-                            <span className="sm:hidden font-medium text-gray-500 mr-2">Đơn giá:</span>
-                            {formatMoney(item.price)}
-                          </div>
-
-                          {/* Cột 3: Số lượng */}
-                          <div className="sm:col-span-2 sm:text-center text-xs sm:text-sm text-gray-700">
-                            <span className="sm:hidden font-medium text-gray-500 mr-2">Số lượng:</span>
-                            {item.quantity}
-                          </div>
-
-                          {/* Cột 4: Thành tiền */}
-                          <div className="sm:col-span-2 sm:text-right text-xs sm:text-sm font-bold text-[#1A1612]">
-                            <span className="sm:hidden font-medium text-gray-500 mr-2">Thành tiền:</span>
-                            {formatMoney(item.price * item.quantity)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Tiện ích chân Shop: Lời nhắn + Vận chuyển (Chuẩn Ảnh 2) */}
-                    <div className="bg-[#FAF8F5]/80 px-5 sm:px-6 py-3.5 border-t border-gray-100 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        {/* Lời nhắn cho Người bán */}
-                        <div className="flex items-center gap-2 flex-1 max-w-md">
-                          <span className="text-gray-600 shrink-0">Lời nhắn cho Người bán:</span>
-                          <input
-                            type="text"
-                            placeholder="Lưu ý cho người bán (giờ giao, gọi trước...)"
-                            value={orderNotes}
-                            onChange={(e) => setOrderNotes(e.target.value)}
-                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#C59B58]"
-                          />
-                        </div>
-
-                        {/* Đơn vị vận chuyển */}
-                        <div className="flex items-center gap-2 text-gray-700 shrink-0">
-                          <span className="text-[#B88E4F] font-semibold flex items-center gap-1">
-                            <Truck className="w-4 h-4 text-[#B88E4F]" />
-                            Vận Chuyển Nhanh
-                          </span>
-                          <span className="text-gray-500">Cước GHN được tính theo địa chỉ nhận</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end text-xs pt-2 border-t border-dashed border-gray-200">
-                        <span className="text-gray-600 mr-2">
-                          Tổng số tiền ({shopGroup.items.reduce((s, i) => s + i.quantity, 0)} sản phẩm):
-                        </span>
-                        <strong className="text-sm font-bold text-[#B88E4F]">
-                          {formatMoney(shopGroup.subtotal)}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <section className="rounded-lg border border-[#EEDFC6] bg-white p-4 sm:p-5 text-left space-y-3" aria-labelledby="checkout-return-policies-title">
-              <div className="flex items-center gap-2 border-b border-[#EAE4D7] pb-3">
-                <ShieldCheck className="h-5 w-5 text-[#B88E4F]" />
-                <div>
-                  <h3 id="checkout-return-policies-title" className="text-sm font-bold text-[#1A1612]">Chính sách của gian hàng</h3>
-                  <p className="mt-0.5 text-xs text-[#7D715E]">Vui lòng đọc chính sách đổi trả trước khi đặt hàng.</p>
+              <details className="checkout-policy-details" id="checkout-return-policies">
+                <summary><span><ShieldCheck size={16} aria-hidden="true" />Chính sách đổi trả & giao hàng của các gian hàng</span><ChevronDown size={15} aria-hidden="true" /></summary>
+                <div className="checkout-policy-details-body">
+                  {policyLoading ? <p>Đang tải chính sách Shop…</p> : policyError ? <p className="checkout-policy-error">{policyError}</p> : itemsGroupedByShop.map(group => {
+                    const policy = shopPolicies[group.store.id];
+                    return <article key={group.store.id}><h3>{group.store.name}</h3>{policy ? <>
+                      <p>{policy.policyReturn || 'Shop chưa công bố nội dung đổi trả riêng.'}</p>
+                      {policy.policyWarranty && <p><strong>Bảo hành: </strong>{policy.policyWarranty}</p>}
+                      {policy.policyShipping && <p><strong>Giao hàng: </strong>{policy.policyShipping}</p>}
+                    </> : <p className="checkout-policy-error">Chưa tải được chính sách của gian hàng. Vui lòng thử lại sau.</p>}</article>;
+                  })}
                 </div>
-              </div>
-
-              {policyLoading ? (
-                <p className="flex items-center gap-2 text-xs text-[#7D715E]"><Loader2 className="h-4 w-4 animate-spin" /> Đang tải chính sách Shop…</p>
-              ) : policyError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{policyError}</p>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    {itemsGroupedByShop.map((group) => {
-                      const policy = shopPolicies[group.store.id];
-                      if (!policy) {
-                        return <p key={group.store.id} className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">Chưa tải được chính sách của {group.store.name}. Hãy tải lại trang rồi thử lại.</p>;
-                      }
-
-                      return (
-                        <article key={group.store.id} className="rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs text-[#1A1612]">
-                          <h4 className="font-bold">{policy.name || group.store.name}</h4>
-                          <p className="mt-1"><strong>Đổi trả / hoàn tiền:</strong> {policy.policyReturn?.trim() || 'Theo quy định SCANMS: yêu cầu đổi trả trong 14 ngày kể từ khi nhận hàng, kèm ảnh và video mở hộp.'}</p>
-                          {policy.policyWarranty?.trim() && <p className="mt-1"><strong>Bảo hành:</strong> {policy.policyWarranty}</p>}
-                          {policy.policyShipping?.trim() && <p className="mt-1"><strong>Giao hàng:</strong> {policy.policyShipping}</p>}
-                        </article>
-                      );
-                    })}
-                  </div>
-
-                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#1A1612]">
-                    <input
-                      type="checkbox"
-                      checked={policyAccepted}
-                      disabled={itemsGroupedByShop.some((group) => !shopPolicies[group.store.id])}
-                      onChange={(event) => setPolicyAccepted(event.target.checked)}
-                      className="mt-0.5 h-4 w-4 accent-[#C59B58]"
-                    />
-                    <span>Tôi xác nhận đã đọc và đồng ý với chính sách đổi trả của tất cả gian hàng trong đơn.</span>
-                  </label>
-                </>
-              )}
+              </details>
+              {policyError && <p className="checkout-payment-notice checkout-policy-error" role="alert">{policyError}</p>}
+              <footer className="checkout-place-order">
+                <label htmlFor="checkout-policy-agreement"><input id="checkout-policy-agreement" type="checkbox" checked={policyAccepted} disabled={policyLoading || Boolean(policyError) || itemsGroupedByShop.some(group => !shopPolicies[group.store.id])} onChange={event => { setPolicyAccepted(event.target.checked); if (event.target.checked && errorMessage?.includes('chính sách đổi trả')) setErrorMessage(null); }} /><span>Tôi đã đọc và đồng ý với <a href="#checkout-return-policies" onClick={event => { event.preventDefault(); const details = document.getElementById('checkout-return-policies') as HTMLDetailsElement | null; if (details) { details.open = true; details.scrollIntoView({ block: 'center' }); details.querySelector('summary')?.focus(); } }}>chính sách đổi trả, giao hàng của các gian hàng</a> trong đơn.</span></label>
+                <button type="submit" className="checkout-submit" disabled={isSubmitting || activeItems.length === 0}>{isSubmitting ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" />Đang đặt hàng…</> : !currentUser ? 'Đăng nhập để đặt hàng' : 'Đặt hàng'}</button>
+              </footer>
             </section>
-
-            {/* ========================================================================= */}
-            {/* BLOCK 3: PHƯƠNG THỨC THANH TOÁN (CHUẨN CÁC SÀN LỚN) */}
-            {/* ========================================================================= */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h3 className="text-sm sm:text-base font-bold text-[#1A1612]">Phương Thức Thanh Toán</h3>
-                <span className="text-xs text-gray-500">Mọi giao dịch được bảo hộ 100% qua Quỹ Escrow SCANMS</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* SCANMS Wallet Option */}
-                <label
-                  className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
-                    paymentMethod === 'WALLET'
-                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
-                      : 'bg-white border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="WALLET"
-                        checked={paymentMethod === 'WALLET'}
-                        onChange={() => setPaymentMethod('WALLET')}
-                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
-                      />
-                      <strong className="text-xs sm:text-sm text-[#1A1612] flex items-center gap-1.5">
-                        <Wallet className="w-4 h-4 text-[#B88E4F]" />
-                        Ví SCANMS
-                      </strong>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#F3EFE6] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
-                      1-Chạm
-                    </span>
-                  </div>
-                  <div className="mt-2 pl-6.5 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-gray-500">Số dư khả dụng:</span>
-                      <strong className="text-[#B88E4F] font-bold">
-                        {walletLoading ? '...' : formatMoney(Number(wallet?.availableBalance || 0))}
-                      </strong>
-                    </div>
-                    {Number(wallet?.availableBalance || 0) >= finalTotal ? (
-                      <span className="inline-block text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                        ✓ Đủ số dư thanh toán ngay
-                      </span>
-                    ) : (
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[10px] font-medium text-amber-700 block">
-                          Thiếu {formatMoney(Math.max(0, finalTotal - Number(wallet?.availableBalance || 0)))}
-                        </span>
-                        <div className="text-[10px] text-gray-500 font-medium">Nạp nhanh Demo:</div>
-                        <div className="flex flex-wrap gap-1">
-                          {[200000, 500000, 1000000, 2000000].map((amt) => (
-                            <button
-                              key={amt}
-                              type="button"
-                              disabled={topUpLoading}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                handleTopUpDemo(amt);
-                              }}
-                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-[#F3EFE6] text-[#B88E4F] hover:bg-[#EEDFC6] border border-[#EEDFC6] transition cursor-pointer"
-                            >
-                              +{amt >= 1000000 ? `${amt / 1000000}M` : `${amt / 1000}k`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </label>
-
-                {/* PayOS Option */}
-                <label
-                  className={`p-4 rounded-lg border text-left cursor-pointer transition-all ${
-                    paymentMethod === 'PAYOS'
-                      ? 'bg-[#FBF5EB] border-[#C59B58] ring-1 ring-[#C59B58] shadow-2xs'
-                      : 'bg-white border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="PAYOS"
-                        checked={paymentMethod === 'PAYOS'}
-                        onChange={() => setPaymentMethod('PAYOS')}
-                        className="w-4 h-4 text-[#C59B58] accent-[#C59B58]"
-                      />
-                      <strong className="text-xs sm:text-sm text-[#1A1612]">Chuyển khoản PayOS (VietQR)</strong>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
-                      Tự động 24/7
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-600 mt-1.5 pl-6.5 leading-relaxed">
-                    Quét mã VietQR bằng ứng dụng ngân hàng. Đơn được xác nhận khi PayOS nhận đủ tiền.
-                  </p>
-                </label>
-              </div>
-
-              {paymentMethod === 'PAYOS' && payosAvailable === false && (
-                <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                  Chưa kết nối được PayOS. Vui lòng thử lại sau hoặc chọn phương thức thanh toán khác.
-                </p>
-              )}
-            </div>
-
-            {/* ========================================================================= */}
-            {/* BLOCK 4: TỔNG KẾT ĐƠN HÀNG & ĐẶT HÀNG (Chuẩn SCANMS ẢNH 2) */}
-            {/* ========================================================================= */}
-            <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left space-y-4">
-              {/* Voucher sàn SCANMS */}
-              {itemsGroupedByShop.length > 1 && <label className="block text-xs font-semibold text-[#1A1612]">Áp dụng voucher cho gian hàng
-                <select value={targetVoucherStoreId} onChange={(event) => { setVoucherTargetStoreId(event.target.value); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }} className="block w-full mt-2 border border-[#EAE4D7] rounded-lg p-2 bg-white">{itemsGroupedByShop.map((group) => <option key={group.store.id} value={group.store.id}>{group.store.name}</option>)}</select>
-              </label>}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1A1612]">
-                  <Tag className="w-4 h-4 text-[#B88E4F]" />
-                  <span>Voucher tiền hàng của Shop / KOL (chọn 1 mã)</span>
-                </div>
-
-                <div className="flex items-center gap-2 max-w-md w-full sm:w-auto">
-                  <input
-                    type="text"
-                    placeholder="Nhập mã Shop hoặc KOL (VD: MAIANH5)"
-                    value={couponCode}
-                    disabled={!!appliedCoupon}
-                    onChange={(e) => {
-                      setCouponCode(e.target.value.toUpperCase());
-                      setAutoCouponDismissed(true);
-                      setCouponLoading(false);
-                      setAppliedCoupon(null);
-                      setCouponMessage(null);
-                    }}
-                    className="px-3.5 py-1.5 bg-white border border-gray-300 rounded text-xs text-[#1A1612] uppercase font-bold focus:outline-none focus:border-[#C59B58] flex-1 sm:w-60"
-                  />
-                  {appliedCoupon ? (
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#DC2626] font-bold text-xs rounded transition cursor-pointer shrink-0"
-                    >
-                      Bỏ mã
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!couponCode.trim() || couponLoading}
-                      onClick={handleValidateCoupon}
-                      className="px-4 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] disabled:opacity-50 font-bold text-xs rounded transition cursor-pointer shrink-0"
-                    >
-                      {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Áp Dụng'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {couponMessage && (
-                <div
-                  className={`text-[11px] font-semibold flex items-center gap-1.5 ${
-                    couponMessage.type === 'success' ? 'text-emerald-700' : 'text-[#DC2626]'
-                  }`}
-                >
-                  {couponMessage.type === 'success' ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  )}
-                  <span>{couponMessage.text}</span>
-                </div>
-              )}
-
-              {/* Bảng chi tiết tài chính */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b border-[#EAE4D7] pb-4">
-                {(['GOODS', 'SHIPPING'] as const).map((kind) => {
-                  const applied = kind === 'GOODS' ? appliedPlatformCoupon : appliedShippingCoupon;
-                  const value = kind === 'GOODS' ? platformCouponCode : shippingCouponCode;
-                  const setValue = kind === 'GOODS' ? setPlatformCouponCode : setShippingCouponCode;
-                  const clear = kind === 'GOODS' ? setAppliedPlatformCoupon : setAppliedShippingCoupon;
-                  return <label key={kind} className="text-xs font-semibold text-[#1A1612]">{kind === 'GOODS' ? 'Voucher tiền hàng SCANMS' : 'Voucher vận chuyển GHN'}
-                    <span className="flex gap-2 mt-2"><input value={value} disabled={!!applied} onChange={(e) => { setValue(e.target.value.toUpperCase()); clear(null); }} placeholder="Nhập mã voucher" className="min-w-0 flex-1 border border-[#EAE4D7] rounded-lg px-3 py-2 uppercase" />
-                      <button type="button" disabled={stackedCouponBusy === kind || !value.trim()} onClick={() => applied ? (clear(null), setValue('')) : applyStackedCoupon(kind)} className="px-3 rounded-lg bg-[#C59B58] text-[#1A1612] disabled:opacity-50">{applied ? 'Bỏ mã' : 'Áp dụng'}</button></span>
-                  </label>;
-                })}
-              </div>
-              <div className="flex flex-col items-end space-y-2.5 text-xs text-gray-600 pt-2">
-                {appliedPlatformCoupon && <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]"><span>Voucher sàn ({appliedPlatformCoupon.code}):</span><span className="font-bold min-w-[130px] text-right">-{formatMoney(appliedPlatformCoupon.discountAmount)}</span></div>}
-                {appliedShippingCoupon && <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]"><span>Voucher ship ({appliedShippingCoupon.code}):</span><span className="font-bold min-w-[130px] text-right">-{formatMoney(appliedShippingCoupon.discountAmount)}</span></div>}
-                <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto">
-                  <span>Tổng tiền hàng ({activeUnitCount} món):</span>
-                  <span className="font-semibold text-[#1A1612] min-w-[130px] text-right">{formatMoney(rawSubtotal)}</span>
-                </div>
-
-                {appliedCoupon && (
-                  <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto text-[#B88E4F]">
-                    <span>Giảm giá Voucher ({appliedCoupon.code}):</span>
-                    <span className="font-bold min-w-[130px] text-right">-{formatMoney(discountAmount)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto">
-                  <span>Phí vận chuyển GHN:</span>
-                  <span className="font-semibold text-[#1A1612] min-w-[130px] max-w-[280px] text-right" role="status">
-                    {shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}
-                    {shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}
-                  </span>
-                </div>
-
-                <div className="flex justify-between sm:justify-end gap-8 w-full sm:w-auto items-baseline pt-3 border-t border-gray-200">
-                  <span className="text-sm font-medium text-gray-800">Tổng thanh toán:</span>
-                  <strong className="text-2xl sm:text-3xl font-black text-[#B88E4F] min-w-[150px] text-right">
-                    {shippingFee === null || shippingFeeError || shippingAddressHint ? <span className="text-sm font-semibold">Chờ tính phí ship</span> : formatMoney(finalTotal)}
-                  </strong>
-                </div>
-              </div>
-
-              {/* Chính sách đổi trả & cam kết Escrow 14 ngày */}
-              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#8C6B32]">
-                  <ShieldCheck className="w-4 h-4 text-[#C59B58]" />
-                  <span>Chính sách đổi trả 14 ngày & Quỹ Bảo Chứng SCANMS</span>
-                </div>
-                <div className="text-[11px] text-[#7D715E] leading-relaxed space-y-1">
-                  <p>
-                    • <b>Bảo đảm đổi trả:</b> Khách hàng được quyền gửi yêu cầu đổi hàng / trả hàng hoàn tiền trong vòng <b>14 ngày</b> kể từ khi nhận kiện hàng (kèm hình ảnh / video mở hộp).
-                  </p>
-                  <p>
-                    • <b>Bảo vệ quyền lợi:</b> Tiền thanh toán được giữ an toàn tại Quỹ bảo chứng Escrow của sàn cho đến khi khách xác nhận hài lòng hoặc hết hạn khiếu nại.
-                  </p>
-                </div>
-                <label className="flex items-start gap-2.5 pt-2 border-t border-[#EAE4D7] text-xs text-[#1A1612] cursor-pointer select-none font-medium">
-                  <input
-                    type="checkbox"
-                    id="checkout-policy-agreement"
-                    checked={policyAccepted}
-                    onChange={(e) => {
-                      setPolicyAccepted(e.target.checked);
-                      if (e.target.checked && errorMessage?.includes('chính sách đổi trả')) {
-                        setErrorMessage(null);
-                      }
-                    }}
-                    className="w-4 h-4 mt-0.5 rounded text-[#C59B58] focus:ring-[#C59B58] cursor-pointer shrink-0"
-                  />
-                  <span>
-                    Tôi đã đọc, hiểu rõ và đồng ý với <b>Chính sách đổi trả 14 ngày</b> và điều kiện bảo hành của các gian hàng trên sàn SCANMS.
-                  </span>
-                </label>
-              </div>
-
-              {/* Chân trang thanh toán và nút ĐẶT HÀNG */}
-              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-[11px] text-gray-500 leading-relaxed text-center sm:text-left max-w-md">
-                  Nhấn "Đặt hàng" đồng nghĩa với việc bạn đồng ý tuân theo{' '}
-                  <a
-                    href="#rules"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toast.info('Chính sách giao dịch an toàn SCANMS: Escrow 14 ngày & Bảo hộ 100%.');
-                    }}
-                    className="text-[#B88E4F] hover:underline font-medium"
-                  >
-                    Điều khoản SCANMS
-                  </a>{' '}
-                  & Cam kết bảo vệ quyền lợi người mua 100%.
-                </p>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting || activeItems.length === 0}
-                  className="w-full sm:w-64 py-3.5 bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#1A1612] font-black text-base rounded-xl shadow-md hover:shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider border border-[#B88E4F]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#1A1612]" />
-                      <span>ĐANG XỬ LÝ...</span>
-                    </>
-                  ) : !currentUser ? (
-                    <span>ĐĂNG NHẬP ĐỂ ĐẶT HÀNG</span>
-                  ) : (
-                    <span>ĐẶT HÀNG</span>
-                  )}
-                </button>
-              </div>
-            </div>
           </form>
         )}
       </main>

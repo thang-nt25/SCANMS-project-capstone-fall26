@@ -16,7 +16,7 @@ export class WalletSummaryService {
   ) {}
 
   async getMyWallet(collaboratorId: string) {
-    const [wallet, profile] = await Promise.all([
+    const [wallet, profile, partnerships] = await Promise.all([
       this.prisma.wallet.upsert({
         where: { collaboratorId },
         update: {},
@@ -49,6 +49,12 @@ export class WalletSummaryService {
           bankAccountName: true,
         },
       }),
+      this.prisma.storeCollaborator.findMany({
+        where: { collaboratorId, store: { isDeleted: false } },
+        select: { storeId: true, status: true, requestedByKol: true,
+          store: { select: { name: true, logoUrl: true } } },
+        orderBy: { store: { name: 'asc' } },
+      }),
     ]);
 
     const hasBankAccount = Boolean(
@@ -58,6 +64,19 @@ export class WalletSummaryService {
     );
 
     return {
+      cooperationStores: partnerships.map((partnership) => {
+        const balance = wallet.storeWallets.find((item) => item.storeId === partnership.storeId);
+        return {
+          storeId: partnership.storeId,
+          storeName: partnership.store.name,
+          logoUrl: partnership.store.logoUrl,
+          status: partnership.status,
+          requestedByKol: partnership.requestedByKol,
+          availableBalance: balance?.availableBalance.toFixed(2) ?? '0.00',
+          pendingBalance: balance?.pendingBalance.toFixed(2) ?? '0.00',
+          hasWallet: Boolean(balance),
+        };
+      }),
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
