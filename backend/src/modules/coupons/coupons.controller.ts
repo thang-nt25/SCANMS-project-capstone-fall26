@@ -5,6 +5,8 @@ import {
   Patch,
   Delete,
   ParseUUIDPipe,
+  ParseIntPipe,
+  DefaultValuePipe,
   Body,
   Param,
   Query,
@@ -99,8 +101,17 @@ export class PublicCouponsController {
   })
   async getAvailableStoreCoupons(
     @Param('storeId', new ParseUUIDPipe({ version: '4' })) storeId: string,
+    @Query('productId', new ParseUUIDPipe({ optional: true })) productId?: string,
   ) {
-    return this.service.getPublicStoreCoupons(storeId);
+    return this.service.getPublicStoreCoupons(storeId, productId);
+  }
+
+  @Get(':couponId/products')
+  getVoucherProducts(
+    @Param('couponId', ParseUUIDPipe) couponId: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return this.service.getVoucherProducts(couponId, page);
   }
 
   @Post('validate')
