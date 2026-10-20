@@ -8,6 +8,7 @@ export interface SeedDataset {
   socialChannels: Prisma.CollaboratorSocialChannelCreateManyInput[];
   addresses: Prisma.CustomerAddressCreateManyInput[];
   stores: Prisma.StoreCreateManyInput[];
+  sponsoredPlacements: Prisma.SponsoredPlacementCreateManyInput[];
   products: Prisma.ProductCreateManyInput[];
   variants: Prisma.ProductVariantCreateManyInput[];
   mediaAssets: Prisma.MediaAssetCreateManyInput[];
@@ -23,6 +24,8 @@ export interface SeedDataset {
   coupons: Prisma.CouponCreateManyInput[];
   couponProducts: Prisma.CouponProductCreateManyInput[];
   redemptions: Prisma.CouponRedemptionCreateManyInput[];
+  stackedRedemptions: Prisma.StackedVoucherRedemptionCreateManyInput[];
+  savedCoupons: Prisma.CustomerSavedCouponCreateManyInput[];
   liveSessions: Prisma.LiveShoppingSessionCreateManyInput[];
   liveProducts: Prisma.LiveSessionProductCreateManyInput[];
   liveViewers: Prisma.LiveSessionViewerCreateManyInput[];
@@ -33,6 +36,7 @@ export interface SeedDataset {
   reviews: Prisma.ProductReviewCreateManyInput[];
   samples: Prisma.SampleProductRequestCreateManyInput[];
   sampleEvents: Prisma.SampleRequestEventCreateManyInput[];
+  sampleShippingCharges: Prisma.SampleShippingChargeCreateManyInput[];
   returns: Prisma.ReturnRequestCreateManyInput[];
   returnItems: Prisma.ReturnItemCreateManyInput[];
   returnEvents: Prisma.ReturnEventCreateManyInput[];

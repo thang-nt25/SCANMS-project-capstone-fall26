@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1210 800" width="1210" height="800">
+  <defs>
+    <!-- UML Open Arrowhead -->
+    <marker id="arrowhead-open" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1 L 7 4.5 L 0 8" fill="none" stroke="#000000" stroke-width="1.6" />
+    </marker>
+  </defs>
+
+  <!-- Clean Pure White Canvas -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Transitions (Strict Solid Lines, Zero Diagonals) -->
+  
+      <!-- Edge: start -> pending -->
+      <path d="M 74 75 L 240 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="110" y="53" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Sample</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> rejected -->
+      <path d="M 420 75 L 720 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="523" y="53" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Reject Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: rejected -> end_rejected -->
+      <path d="M 900 75 L 1065 75" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="938" y="53" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="982" y="63" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Close Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: pending -> approved -->
+      <path d="M 330 100 L 330 170" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="128" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="135" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve Request</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: approved -> shipped -->
+      <path d="M 330 220 L 330 280" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="243" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="250" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Dispatch Sample</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: shipped -> received -->
+      <path d="M 330 330 L 330 390" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="353" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="360" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Confirm Delivery</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: received -> overdue -->
+      <path d="M 420 415 L 720 415" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="520.5" y="393" width="99" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="403" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Expire Deadline</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: overdue -> end_overdue -->
+      <path d="M 900 415 L 1065 415" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="923.5" y="393" width="117" height="14" fill="#FFFFFF" rx="2" />
+        <text x="982" y="403" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Suspend Privileges</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: received -> video_submitted -->
+      <path d="M 330 440 L 330 520" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="473" width="82" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="480" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Submit Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: video_submitted -> revision_req -->
+      <path d="M 420 535 L 720 535" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="517.5" y="513" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="523" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Request Revision</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: revision_req -> video_submitted -->
+      <path d="M 720 558 L 420 558" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="523" y="568" width="94" height="14" fill="#FFFFFF" rx="2" />
+        <text x="570" y="570" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Resubmit Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: video_submitted -> completed -->
+      <path d="M 330 570 L 330 650" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="342" y="603" width="88" height="14" fill="#FFFFFF" rx="2" />
+        <text x="344" y="610" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="start">
+          <tspan font-weight="700" fill="#000000">Approve Video</tspan>
+        </text>
+      </g>
+    
+
+      <!-- Edge: completed -> end_completed -->
+      <path d="M 240 675 L 75 675" fill="none" stroke="#000000" stroke-width="1.6" marker-end="url(#arrowhead-open)" />
+      
+      <!-- Label with Protective White Background (No collision with arrow or box) -->
+      <g>
+        <rect x="104.5" y="653" width="105" height="14" fill="#FFFFFF" rx="2" />
+        <text x="157" y="663" font-family="Segoe UI, Roboto, sans-serif" font-size="9.5" text-anchor="middle">
+          <tspan font-weight="700" fill="#000000">Complete Request</tspan>
+        </text>
+      </g>
+    
+
+  <!-- States & Nodes (Clean Single Boxes, English) -->
+  
+        <!-- Initial State: Start (Label placed cleanly ABOVE circle) -->
+        <circle cx="60" cy="75" r="14" fill="#000000" />
+        <text x="60" y="55" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">Start</text>
+      
+
+        <!-- State: pending -->
+        <g id="state-pending">
+          <rect x="240" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Pending Review</text>
+        </g>
+      
+
+        <!-- State: rejected -->
+        <g id="state-rejected">
+          <rect x="720" y="50" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="80" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Rejected</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1080" cy="75" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1080" cy="75" r="8" fill="#000000" />
+        <text x="1080" y="103" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: approved -->
+        <g id="state-approved">
+          <rect x="240" y="170" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="200" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Approved</text>
+        </g>
+      
+
+        <!-- State: shipped -->
+        <g id="state-shipped">
+          <rect x="240" y="280" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="310" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Shipped</text>
+        </g>
+      
+
+        <!-- State: received -->
+        <g id="state-received">
+          <rect x="240" y="390" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="420" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Received</text>
+        </g>
+      
+
+        <!-- State: overdue -->
+        <g id="state-overdue">
+          <rect x="720" y="390" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="420" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Overdue</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="1080" cy="415" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="1080" cy="415" r="8" fill="#000000" />
+        <text x="1080" y="443" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+
+        <!-- State: video_submitted -->
+        <g id="state-video_submitted">
+          <rect x="240" y="520" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="550" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Video Submitted</text>
+        </g>
+      
+
+        <!-- State: revision_req -->
+        <g id="state-revision_req">
+          <rect x="720" y="520" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="810" y="550" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Revision Required</text>
+        </g>
+      
+
+        <!-- State: completed -->
+        <g id="state-completed">
+          <rect x="240" y="650" width="180" height="50" rx="8" fill="#FFFFFF" stroke="#000000" stroke-width="1.8" />
+          <text x="330" y="680" font-family="Segoe UI, Roboto, sans-serif" font-size="13" font-weight="700" fill="#000000" text-anchor="middle">Completed</text>
+        </g>
+      
+
+        <!-- Final State: End (Label placed cleanly BELOW circle) -->
+        <circle cx="60" cy="675" r="15" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+        <circle cx="60" cy="675" r="8" fill="#000000" />
+        <text x="60" y="703" font-family="Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#000000" text-anchor="middle">End</text>
+      
+</svg>

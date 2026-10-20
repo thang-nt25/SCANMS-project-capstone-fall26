@@ -15,6 +15,12 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 import { StoresController } from './stores.controller';
 import { StoresService } from './stores.service';
+import { SponsorshipController } from './sponsorship/sponsorship.controller';
+import { SponsorshipService } from './sponsorship/sponsorship.service';
+import { ProductsController } from '../products/products.controller';
+import { ProductsService } from '../products/products.service';
+import { CacheService } from '../../core/cache/cache.service';
+import { GhnService } from '../shipping/ghn.service';
 import { LiveSessionsController } from '../live-sessions/live-sessions.controller';
 import { LiveSessionsService } from '../live-sessions/live-sessions.service';
 import { LiveGovernanceService } from '../live-sessions/live-governance.service';
@@ -34,6 +40,7 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
     let ownerToken: string;
     let customerToken: string;
     let shopTwoToken: string;
+    let adminToken: string;
     const context = {
       referenceDate: new Date(),
       frontendUrl: 'http://localhost:5173',
@@ -87,9 +94,12 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
           JwtModule.register({ secret }),
           PassportModule.register({ defaultStrategy: 'jwt' }),
         ],
-        controllers: [StoresController, LiveSessionsController],
+        controllers: [StoresController, LiveSessionsController, SponsorshipController, ProductsController],
         providers: [
           StoresService,
+          SponsorshipService,
+          ProductsService,
+          { provide: CacheService, useValue: { delPrefix: jest.fn().mockResolvedValue(0) } },
           JwtStrategy,
           {
             provide: ConfigService,
@@ -128,6 +138,7 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
         role: 'SHOP_MANAGER',
       });
       customerToken = jwt.sign({ sub: seedId('customer:0'), role: 'CUSTOMER' });
+      adminToken = jwt.sign({ sub: seedId('user:admin'), role: 'SYSTEM_ADMIN' });
     }, 120000);
 
     afterAll(async () => {
@@ -257,6 +268,60 @@ const connectionString = process.env.SEED_TEST_DATABASE_URL;
           data: { rating: 5 },
         });
       }
+    });
+
+    it('persists sponsorship request → approval → public display → cancellation with ownership and evidence checks', async () => {
+      process.env.MARKETPLACE_SPONSORED_PLACEMENTS = '[]';
+      const now = Date.now();
+      const payload = { requestKey: randomUUID(), headline: 'Gian hàng đối tác được sàn cấp vị trí', startsAt: new Date(now - 60000).toISOString(), endsAt: new Date(now + 7200000).toISOString() };
+      const http = app.getHttpServer();
+      await request(http).post('/api/sponsored-placements').send(payload).expect(401);
+      await request(http).post('/api/sponsored-placements').auth(customerToken, { type: 'bearer' }).send(payload).expect(403);
+      await request(http).post('/api/sponsored-placements').auth(ownerToken, { type: 'bearer' }).send({ ...payload, headline: '     ' }).expect(400);
+      const created = await request(http).post('/api/sponsored-placements').auth(ownerToken, { type: 'bearer' }).send(payload).expect(201);
+      const id = created.body.id;
+      const retry = await request(http).post('/api/sponsored-placements').auth(ownerToken, { type: 'bearer' }).send(payload).expect(201);
+      expect(retry.body.id).toBe(id);
+      await request(http).post('/api/sponsored-placements').auth(ownerToken, { type: 'bearer' }).send({ ...payload, headline: 'Khác nội dung cùng khóa' }).expect(409);
+      const foreignList = await request(http).get('/api/sponsored-placements').auth(shopTwoToken, { type: 'bearer' }).expect(200);
+      expect(foreignList.body.items).toEqual([]);
+      await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(ownerToken, { type: 'bearer' }).send({ decision: 'REJECT', note: 'Shop tự duyệt' }).expect(403);
+      await request(http).patch(`/api/sponsored-placements/${id}/cancel`).auth(shopTwoToken, { type: 'bearer' }).send({ note: 'Shop khác hủy' }).expect(404);
+      await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'APPROVE', note: 'Thiếu chứng từ đối soát', fundingType: 'PAID', amount: 100000 }).expect(400);
+      // Exercise the DB check as well as DTO/service validation: NULL must not bypass CHECK.
+      await expect(prisma.sponsoredPlacement.update({ where: { id }, data: { status: 'APPROVED', reviewedById: seedId('user:admin'), reviewedAt: new Date(), reviewNote: 'Thiếu thông tin hình thức cấp' } })).rejects.toThrow();
+      const approved = await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'APPROVE', note: 'Sàn cấp miễn phí có ghi nhận', fundingType: 'PLATFORM_GRANT', amount: 0 }).expect(200);
+      expect(approved.body.status).toBe('APPROVED');
+      const publicRows = await request(http).get('/api/stores/public/placements').expect(200);
+      expect(publicRows.body).toHaveLength(1);
+      expect(publicRows.body[0].store.id).toBe(seedId('store:0'));
+      expect(publicRows.body[0].paymentProofUrl).toBeUndefined();
+      expect(await prisma.notification.count({ where: { userId: seedId('shop-owner:0'), type: 'SPONSORSHIP_REVIEWED' } })).toBe(1);
+      await request(http).patch(`/api/sponsored-placements/${id}/review`).auth(adminToken, { type: 'bearer' }).send({ decision: 'REJECT', note: 'Không duyệt lần hai' }).expect(409);
+      await request(http).patch(`/api/sponsored-placements/${id}/cancel`).auth(ownerToken, { type: 'bearer' }).send({ note: 'Dừng lịch hiển thị' }).expect(200);
+      expect((await request(http).get('/api/stores/public/placements').expect(200)).body).toEqual([]);
+    });
+
+    it('validates and persists package edits through the real product API, then calculates a server-authoritative parcel', async () => {
+      const http = app.getHttpServer();
+      const productId = seedId('product:0');
+      const packageData = { barcode: data.products[0].barcode, packageWeight: 700, packageLength: 22, packageWidth: 18, packageHeight: 9 };
+      await request(http).put(`/api/products/${productId}`).auth(shopTwoToken, { type: 'bearer' }).send(packageData).expect(403);
+      await request(http).put(`/api/products/${productId}`).auth(ownerToken, { type: 'bearer' }).send({ packageWeight: 0 }).expect(400);
+      await request(http).put(`/api/products/${productId}`).auth(ownerToken, { type: 'bearer' }).send({ packageLength: 1.1 }).expect(400);
+      await request(http).put(`/api/products/${productId}`).auth(ownerToken, { type: 'bearer' }).send({ barcode: '4006381333932' }).expect(400);
+      const result = await request(http).put(`/api/products/${productId}`).auth(ownerToken, { type: 'bearer' }).send(packageData).expect(200);
+      expect(result.body.requiresModeration).toBe(false);
+      expect(await prisma.product.findUnique({ where: { id: productId } })).toMatchObject(packageData);
+      // Only the carrier boundary is stubbed: database lookups and calculations are real.
+      const carrier = new GhnService(prisma as never, {} as never);
+      const quote = jest.spyOn(carrier, 'quoteAddress').mockResolvedValue({ totalFee: 27000, districtId: 1484, wardCode: '1A0114' } as never);
+      const variant = data.variants.find((row) => row.productId === productId)!;
+      const response = await carrier.quoteCart(seedId('store:0'), 'Địa chỉ kiểm thử', [{ productId, variantId: variant.id, quantity: 2 }]);
+      expect(response.shippingPackage).toEqual({ weight: 1400, length: 22, width: 18, height: 18 });
+      expect(quote).toHaveBeenCalledWith('Địa chỉ kiểm thử', 1400, Number(variant.price) * 2, seedId('store:0'), response.shippingPackage);
+      await expect(carrier.quoteCart(seedId('store:1'), 'Địa chỉ kiểm thử', [{ productId, quantity: 1 }])).rejects.toThrow('không thuộc gian hàng');
+      await expect(carrier.quoteCart(seedId('store:0'), 'Địa chỉ kiểm thử', [{ productId, variantId: randomUUID(), quantity: 1 }])).rejects.toThrow('Phân loại');
     });
 
     it('reads both active live sessions with their seeded pins and zero real viewers', async () => {

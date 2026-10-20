@@ -55,6 +55,7 @@ import {
 } from "../../components/orders/ShippingLabel";
 import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
+import { ShippingSimulationControls } from '../../components/shipping/ShippingSimulationControls';
 import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
@@ -417,7 +418,7 @@ export default function OrdersManagementPage({
       setShippingCarrier("GHN");
       setShippingTrackingNumber(trackingNumber);
       setActionSuccessMsg(targetEnvironment === "TEST"
-        ? `Đã tạo vận đơn ${trackingNumber}. Hành trình mô phỏng đang chạy; Customer mở Chi tiết đơn để theo dõi.`
+        ? `Đã tạo vận đơn GHN sandbox ${trackingNumber}. Đây không phải chuyến giao hàng thật; mở Chi tiết đơn để tra cứu trạng thái do GHN trả về.`
         : targetEnvironment === "LIVE"
           ? `Đã tạo vận đơn GHN thật thành công. Mã vận đơn: ${trackingNumber}`
           : `Đã lưu vận đơn GHN: ${trackingNumber}. Mở hành trình để kiểm tra môi trường và tiến độ.`);
@@ -1657,7 +1658,7 @@ export default function OrdersManagementPage({
                     disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                     onClick={() => handleCreateGhnShippingOrder("TEST")}
                     className="shipping-dispatch-choice shipping-dispatch-choice-test"
-                    title="Tạo vận đơn GHN Staging và tự chạy hành trình mô phỏng trong SCANMS"
+                    title="Tạo vận đơn trên máy chủ thử nghiệm GHN, không điều phối giao hàng thật"
                   >
                     {creatingGhnEnvironment === "TEST" ? (
                       <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#B88E4F]" />
@@ -1666,10 +1667,10 @@ export default function OrdersManagementPage({
                     )}
                     <span className="min-w-0">
                       <span className="shipping-dispatch-choice-title">
-                        {creatingGhnEnvironment === "TEST" ? "Đang tạo vận đơn mô phỏng…" : "Mô phỏng giao hàng GHN"}
+                        {creatingGhnEnvironment === "TEST" ? "Đang tạo vận đơn sandbox…" : "Tạo vận đơn GHN sandbox"}
                       </span>
                       <span className="shipping-dispatch-choice-description">
-                        Sandbox · 5 mốc tự động trong 4 phút
+                        Môi trường test · Trạng thái lấy từ GHN
                       </span>
                     </span>
                   </button>
@@ -2859,12 +2860,13 @@ export default function OrdersManagementPage({
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             <GhnTrackingTimeline key={String(trackingGhnDetail.isSimulation) + trackingGhnDetail.orderCode} orderCode={trackingGhnDetail.orderCode} environment={trackingGhnDetail.environment} />
-            {trackingGhnDetail.environment === 'TEST' && !trackingGhnDetail.isSimulation && trackingGhnOrderId && <button type="button" disabled={loadingTracking} onClick={async () => {
-              setLoadingTracking(true);
-              try { setTrackingGhnDetail(await shippingService.startCustomerSimulation(trackingGhnOrderId)); }
-              catch (error: any) { alert(error?.response?.data?.message || error?.message); }
-              finally { setLoadingTracking(false); }
-            }} className="mt-3 rounded-xl bg-[#C59B58] px-4 py-2 text-xs font-semibold text-[#231D15] disabled:opacity-50">Bắt đầu mô phỏng giao hàng</button>}
+            {trackingGhnOrderId && <ShippingSimulationControls key={trackingGhnOrderId}
+              orderId={trackingGhnOrderId} tracking={trackingGhnDetail} onStarted={setTrackingGhnDetail}
+              onCompleted={() => {
+                setTrackingGhnDetail(null);
+                setReload(value => value + 1);
+                toast.success('Đã đồng bộ giao thử', { description: 'Khách có thể tải lại Đơn mua để kiểm thử nhận hàng/đổi trả.' });
+              }} />}
             </div>
 
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] px-5 py-3">

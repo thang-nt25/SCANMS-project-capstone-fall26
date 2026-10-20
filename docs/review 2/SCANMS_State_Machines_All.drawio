@@ -1,0 +1,1050 @@
+<mxfile host="Electron" modified="2026-10-18T18:09:53.042Z" agent="SCANMS" version="21.0.0" type="device">
+  <diagram id="sm01" name="1. Order Lifecycle">
+    <mxGraphModel dx="1270" dy="915" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1190" pageHeight="835" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_pending" value="&lt;b&gt;Pending&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_cancelled" value="&lt;b&gt;Cancelled&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_cancelled" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="60" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_cancelled" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="92" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_shipping" value="&lt;b&gt;Shipping&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="180" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_delivered" value="&lt;b&gt;Delivered&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="310" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_completed" value="&lt;b&gt;Completed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="440" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_completed" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="450" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_completed" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="482" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_return_req" value="&lt;b&gt;Return Requested&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="310" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_disputed" value="&lt;b&gt;Disputed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="440" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_returned" value="&lt;b&gt;Returned&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="570" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_returned" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="795" y="695" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_returned" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="775" y="727" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Create Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Cancel Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_pending" target="st_cancelled" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Close Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_cancelled" target="st_end_cancelled" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Ship Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pending" target="st_shipping" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Confirm Delivery&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_shipping" target="st_delivered" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Complete Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_delivered" target="st_completed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Settle Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_completed" target="st_end_completed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Request Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_delivered" target="st_return_req" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Accept Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_return_req" target="st_returned" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          <Array as="points"><mxPoint x="960" y="335"/><mxPoint x="960" y="595"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Reject Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_return_req" target="st_disputed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_11" value="&lt;b&gt;Arbitrate for Buyer&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_disputed" target="st_returned" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_12" value="&lt;b&gt;Arbitrate for Shop&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_disputed" target="st_completed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_13" value="&lt;b&gt;Refund Order&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;" edge="1" source="st_returned" target="st_end_returned" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sm02" name="2. Return & Dispute">
+    <mxGraphModel dx="1650" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1570" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_requested" value="&lt;b&gt;Return Requested&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_shop_rejected" value="&lt;b&gt;Shop Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_closed" value="&lt;b&gt;Closed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="50" width="160" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_closed" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1425" y="60" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_closed" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1405" y="92" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_shop_approved" value="&lt;b&gt;Shop Approved&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="170" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_pickup_booked" value="&lt;b&gt;Pickup Booked&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="290" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_return_shipped" value="&lt;b&gt;Return Shipped&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="410" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_inspecting" value="&lt;b&gt;Inspecting&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="530" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_disputed" value="&lt;b&gt;Disputed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="290" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_refunded" value="&lt;b&gt;Refunded&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="530" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_refunded" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="540" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_refunded" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="572" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Submit Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_requested" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Reject Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_requested" target="st_shop_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Expire Request&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_shop_rejected" target="st_closed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Close Case&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_closed" target="st_end_closed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Approve Return&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_requested" target="st_shop_approved" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Book Pickup&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_shop_approved" target="st_pickup_booked" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Pick Up Package&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pickup_booked" target="st_return_shipped" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Receive at Warehouse&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_return_shipped" target="st_inspecting" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Escalate to Admin&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_shop_rejected" target="st_disputed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Fail Inspection&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.20;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_inspecting" target="st_disputed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          <Array as="points"><mxPoint x="570" y="540"/><mxPoint x="570" y="315"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_11" value="&lt;b&gt;Rule for Shop&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.30;exitDx=0;exitDy=0;entryX=0.50;entryY=1.00;entryDx=0;entryDy=0;" edge="1" source="st_disputed" target="st_closed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          <Array as="points"><mxPoint x="1220" y="305"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_12" value="&lt;b&gt;Pass Inspection&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_inspecting" target="st_refunded" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_13" value="&lt;b&gt;Rule for Buyer&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_disputed" target="st_refunded" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_14" value="&lt;b&gt;Transfer Funds&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_refunded" target="st_end_refunded" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sm03" name="3. Commission & Payout">
+    <mxGraphModel dx="1280" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_pending" value="&lt;b&gt;Commission Pending&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_reversed" value="&lt;b&gt;Commission Reversed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="730" y="50" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_reversed" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="60" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_reversed" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="92" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_approved" value="&lt;b&gt;Commission Approved&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="170" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_pending" value="&lt;b&gt;Payout Pending&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="290" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_processing" value="&lt;b&gt;Payout Processing&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="410" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_rejected" value="&lt;b&gt;Payout Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="730" y="410" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_rejected" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="420" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_rejected" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="452" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_paid" value="&lt;b&gt;Payout Paid&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="530" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_paid" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="540" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_paid" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="572" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Record Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_comm_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Revoke Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_comm_pending" target="st_comm_reversed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Reverse Ledger&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_comm_reversed" target="st_end_reversed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Release Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_comm_pending" target="st_comm_approved" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Request Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_comm_approved" target="st_payout_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Process Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_payout_pending" target="st_payout_processing" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Reject Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_payout_processing" target="st_payout_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Restore Funds&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_payout_rejected" target="st_end_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Transfer Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_payout_processing" target="st_payout_paid" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Settle Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_payout_paid" target="st_end_paid" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sm04" name="4. KOL Sample Request">
+    <mxGraphModel dx="1290" dy="880" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1210" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_pending" value="&lt;b&gt;Pending Review&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_rejected" value="&lt;b&gt;Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_rejected" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="60" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_rejected" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="92" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_approved" value="&lt;b&gt;Approved&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="170" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_shipped" value="&lt;b&gt;Shipped&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="280" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_received" value="&lt;b&gt;Received&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="390" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_overdue" value="&lt;b&gt;Overdue&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="390" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_overdue" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="400" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_overdue" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="432" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_video_submitted" value="&lt;b&gt;Video Submitted&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="520" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_revision_req" value="&lt;b&gt;Revision Required&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="520" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_completed" value="&lt;b&gt;Completed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="650" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_completed" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="660" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_completed" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="692" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Request Sample&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Reject Request&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_pending" target="st_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Close Request&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_rejected" target="st_end_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Approve Request&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pending" target="st_approved" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Dispatch Sample&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_approved" target="st_shipped" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Confirm Delivery&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_shipped" target="st_received" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Expire Deadline&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_received" target="st_overdue" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Suspend Privileges&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_overdue" target="st_end_overdue" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Submit Video&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_received" target="st_video_submitted" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Request Revision&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.30;exitDx=0;exitDy=0;entryX=0.00;entryY=0.30;entryDx=0;entryDy=0;" edge="1" source="st_video_submitted" target="st_revision_req" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_11" value="&lt;b&gt;Resubmit Video&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;" edge="1" source="st_revision_req" target="st_video_submitted" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_12" value="&lt;b&gt;Approve Video&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_video_submitted" target="st_completed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_13" value="&lt;b&gt;Complete Request&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_completed" target="st_end_completed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sm05" name="5. Product Moderation">
+    <mxGraphModel dx="1060" dy="930" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="980" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_draft" value="&lt;b&gt;Draft&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_pending_appr" value="&lt;b&gt;Pending Approval&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="180" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_rejected" value="&lt;b&gt;Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="180" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_approved" value="&lt;b&gt;Approved&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="310" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_active" value="&lt;b&gt;Active&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="440" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_out_of_stock" value="&lt;b&gt;Out of Stock&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="440" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_inactive" value="&lt;b&gt;Inactive&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="570" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_suspended" value="&lt;b&gt;Suspended&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="570" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_deleted" value="&lt;b&gt;Deleted&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="700" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_deleted" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="710" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_deleted" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="742" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Create Draft&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_draft" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Submit for Review&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_draft" target="st_pending_appr" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Reject Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;" edge="1" source="st_pending_appr" target="st_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Resubmit for Review&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;" edge="1" source="st_rejected" target="st_pending_appr" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Approve Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pending_appr" target="st_approved" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Publish Listing&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_approved" target="st_active" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Deplete Stock&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;" edge="1" source="st_active" target="st_out_of_stock" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Restock Inventory&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;" edge="1" source="st_out_of_stock" target="st_active" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Pause Listing&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.33;exitY=1.00;exitDx=0;exitDy=0;entryX=0.33;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_active" target="st_inactive" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Resume Listing&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.67;exitY=0.00;exitDx=0;exitDy=0;entryX=0.67;entryY=1.00;entryDx=0;entryDy=0;" edge="1" source="st_inactive" target="st_active" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_11" value="&lt;b&gt;Suspend Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.94;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_active" target="st_suspended" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          <Array as="points"><mxPoint x="410" y="540"/><mxPoint x="810" y="540"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_12" value="&lt;b&gt;Delete Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_inactive" target="st_deleted" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_13" value="&lt;b&gt;Take Down Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=1.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_suspended" target="st_deleted" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          <Array as="points"><mxPoint x="810" y="725"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_14" value="&lt;b&gt;Archive Product&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_deleted" target="st_end_deleted" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="sm06" name="6. KYC Verification">
+    <mxGraphModel dx="1290" dy="690" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1210" pageHeight="610" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_unverified" value="&lt;b&gt;Unverified&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_pending_review" value="&lt;b&gt;Pending Review&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="180" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_needs_info" value="&lt;b&gt;Needs Info&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="180" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_rejected" value="&lt;b&gt;Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="320" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_rejected" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="330" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_rejected" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="362" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_verified" value="&lt;b&gt;Verified&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="320" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_verified" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="330" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_verified" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="362" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_suspended" value="&lt;b&gt;Suspended&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="460" width="180" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_suspended" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="470" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_suspended" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="502" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Register Account&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_unverified" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Submit KYC Dossier&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_unverified" target="st_pending_review" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Request Clarification&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.24;exitDx=0;exitDy=0;entryX=0.00;entryY=0.24;entryDx=0;entryDy=0;" edge="1" source="st_pending_review" target="st_needs_info" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Reupload Documents&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.76;exitDx=0;exitDy=0;entryX=1.00;entryY=0.76;entryDx=0;entryDy=0;" edge="1" source="st_needs_info" target="st_pending_review" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Reject KYC&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.78;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pending_review" target="st_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          <Array as="points"><mxPoint x="380" y="275"/><mxPoint x="810" y="275"/></Array>
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Blacklist Dossier&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_rejected" target="st_end_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Approve KYC&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_pending_review" target="st_verified" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Unlock Privileges&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_verified" target="st_end_verified" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Suspend Account&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_verified" target="st_suspended" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Revoke Access&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_suspended" target="st_end_suspended" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

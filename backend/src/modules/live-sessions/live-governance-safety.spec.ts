@@ -53,6 +53,7 @@ describe('Live stop safety', () => {
     const session = {
       id: 'session',
       governance: { dispute: { evidence: ['private-evidence'] } },
+      products: [],
       coupon: { usageLimitTotal: 10, usageCount: 1 },
     };
     const prisma: any = {

@@ -8,6 +8,7 @@ import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { PaymentMethod } from './dto/create-order.dto';
+import { GhnService } from '../shipping/ghn.service';
 
 describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
   let service: OrdersService;
@@ -41,6 +42,9 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         { provide: WalletsService, useValue: {} },
         { provide: CouponsService, useValue: { validateCoupon: jest.fn() } },
         { provide: OrderWebhookNormalizerService, useValue: {} },
+        { provide: GhnService, useValue: {
+          quoteAddress: jest.fn().mockResolvedValue({ totalFee: 25000, districtId: 1484, wardCode: '1A0114' }),
+        } },
       ],
     }).compile();
 
@@ -145,6 +149,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         id: productId,
         storeId,
         title: 'Áo thun Polo Luxury',
+        packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5,
         price: '200000',
         stockQuantity: 50,
         isActive: true,
@@ -197,6 +202,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
               isDeleted: false,
             }),
           },
+          $queryRaw: jest.fn().mockResolvedValue(await prisma.product.findMany()),
           $executeRaw: jest.fn().mockResolvedValue(1), // stock deduction successful
           order: {
             create: jest.fn().mockImplementation(async ({ data }: any) => {
@@ -252,7 +258,8 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     // Subtotal: (220,000 * 1) + (250,000 * 2) = 720,000
     expect(Number(savedOrderData.subtotalAmount)).toBe(720000);
-    expect(Number(savedOrderData.finalAmount)).toBe(720000);
+    expect(Number(savedOrderData.shippingFee)).toBe(25000);
+    expect(Number(savedOrderData.finalAmount)).toBe(745000);
     expect(savedOrderData.orderItems.create[0].unitPrice).toBe(220000);
     expect(savedOrderData.orderItems.create[1].unitPrice).toBe(250000);
   });
@@ -268,6 +275,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         id: prodAId,
         storeId: storeAId,
         title: 'Sản phẩm Shop A',
+        packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5,
         price: '100000',
         stockQuantity: 10,
         isActive: true,
@@ -285,6 +293,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         id: prodBId,
         storeId: storeBId,
         title: 'Sản phẩm Shop B',
+        packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5,
         price: '200000',
         stockQuantity: 5,
         isActive: true,
@@ -329,6 +338,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
               };
             }),
           },
+          $queryRaw: jest.fn().mockResolvedValue(await prisma.product.findMany()),
           $executeRaw: jest.fn().mockImplementation(() => {
             executeCount++;
             if (executeCount === 2) {
@@ -361,5 +371,17 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
 
     expect(transactionExecuted).toBe(true);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a package change after quotation, before stock or order writes', async () => {
+    const original = { id: 'product', packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5 };
+    const tx = { store: { findUnique: jest.fn().mockResolvedValue({ id: 'shop', isActive: true }) },
+      $queryRaw: jest.fn().mockResolvedValue([{ ...original, packageWeight: 900 }]), $executeRaw: jest.fn(), order: { create: jest.fn() } };
+    await expect((service as any).executeStoreOrderInTransaction(tx, {
+      dto: { items: [{ productId: 'product', quantity: 1 }] }, store: { id: 'shop' }, dbProducts: [original],
+      shippingQuote: { totalFee: 20000, shippingPackage: { weight: 500, length: 15, width: 10, height: 5 } },
+    })).rejects.toThrow('Thông số đóng gói vừa thay đổi');
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+    expect(tx.order.create).not.toHaveBeenCalled();
   });
 });

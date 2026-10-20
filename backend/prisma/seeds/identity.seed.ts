@@ -3,13 +3,13 @@ import { ADMIN_ID, assetUrl, daysFrom, seedId } from './seed.helpers';
 import { addressFor } from './data/addresses.data';
 import { SHOPS } from './data/catalog.data';
 import {
-  CREATOR_AVATARS,
   CREATOR_NAMES,
   CUSTOMER_NAMES,
   demoPhone,
   tierIndexForCreator,
   TIERS,
 } from './data/people.data';
+import { CREATOR_REFERENCES, creatorReferenceMetadata } from './data/creator-references.data';
 
 export function buildIdentities(data: SeedDataset, context: SeedContext): void {
   const createdAt = daysFrom(context, -60);
@@ -68,14 +68,14 @@ export function buildIdentities(data: SeedDataset, context: SeedContext): void {
     const phone = demoPhone(1, index);
     const avatar = assetUrl(
       context,
-      CREATOR_AVATARS[index % CREATOR_AVATARS.length],
+      'seed/creators/reference.svg',
     );
     const followerCount = 15_000 + index * 20_000;
     data.users.push({
       id: userId,
       email: `kol${String(index + 1).padStart(2, '0')}@seed.scanms.test`,
       role: 'COLLABORATOR',
-      fullName: name,
+      fullName: `${CREATOR_REFERENCES[index].name} · TEST`,
       phoneNumber: phone,
       avatarUrl: avatar,
       passwordHash: context.passwordHash,
@@ -86,7 +86,8 @@ export function buildIdentities(data: SeedDataset, context: SeedContext): void {
       userId,
       tierId: seedId(`tier:${tierIndexForCreator(index)}`),
       avatarUrl: avatar,
-      bio: 'Hồ sơ người sáng tạo giả lập phục vụ kiểm thử Capstone SCANMS.',
+      bio: `Hồ sơ TEST tham khảo ${CREATOR_REFERENCES[index].name}; không phải tài khoản hoặc đối tác được creator thật xác nhận. Follower, tier, KYC, ngân hàng và giao dịch chỉ là fixture.`,
+      socialLinksJson: { seedReference: creatorReferenceMetadata(index) },
       idCardNumber: `999${String(index + 1).padStart(9, '0')}`,
       taxCode: `999${String(index + 1).padStart(7, '0')}`,
       bankName: index % 2 === 0 ? 'MB' : 'Vietcombank',
@@ -96,13 +97,13 @@ export function buildIdentities(data: SeedDataset, context: SeedContext): void {
       kycStatus: 'VERIFIED',
       createdAt,
     });
-    // .invalid prevents fixture profiles from impersonating a real social account.
+    // A public reference link does not verify ownership of the test account.
     data.socialChannels.push({
       id: seedId(`social:${index}`),
       collaboratorId: userId,
-      platformName: index % 2 === 0 ? 'TIKTOK' : 'YOUTUBE',
-      channelName: `SCANMS Creator ${index + 1}`,
-      channelUrl: `https://social.scanms.invalid/creator/${index + 1}`,
+      platformName: 'YOUTUBE',
+      channelName: `${CREATOR_REFERENCES[index].name} (tham khảo)`,
+      channelUrl: CREATOR_REFERENCES[index].channelUrl,
       followerCount,
       isPrimary: true,
       createdAt,

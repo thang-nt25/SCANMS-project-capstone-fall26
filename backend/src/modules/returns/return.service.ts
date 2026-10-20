@@ -180,14 +180,7 @@ export class ReturnService {
       returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
         .success
         ? order.store.returnWarehouse
-        : {
-            name: (order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
-            phone: '0901234567',
-            address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-            wardName: 'Bến Nghé',
-            provinceName: 'Hồ Chí Minh',
-            districtName: 'Quận 1',
-          },
+        : null,
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -446,8 +439,8 @@ export class ReturnService {
     const shipment = detail.shipments.find(
       (item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP,
     );
-    if (!shipment?.provider)
-      throw new ConflictException('Chưa có đơn lấy hàng tự động');
+    if (!shipment?.provider || !['MOCK', 'GHN_STAGING'].includes(shipment.provider))
+      throw new ConflictException('Chỉ mô phỏng vận đơn lấy hàng MOCK hoặc GHN Staging, không hỗ trợ vận đơn Production.');
     await this.applyCarrierStatus(
       shipment.trackingNumber,
       status,
@@ -489,7 +482,7 @@ export class ReturnService {
     }
     if (
       this.pickupGateway.mode() !== 'staging' ||
-      payload.ShopID !== Number(process.env.GHN_STAGING_SHOP_ID)
+      payload.ShopID !== Number(process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID)
     ) {
       throw new UnauthorizedException(
         'Webhook không thuộc tài khoản GHN Staging',

@@ -71,26 +71,44 @@ function getChatStorageKey(scope = getChatStorageScope()): string {
   return `scanms_chat_conversations:${encodeURIComponent(scope)}`;
 }
 
+function formatTimeDisplay(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return 'Hôm qua';
+  }
+  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+}
+
 function loadCachedConversations(scope: string): ChatConversationItem[] {
   try {
+    const isGuest = scope === 'guest';
     const key = getChatStorageKey(scope);
     const legacyKey = `scanms_shopee_chat_conversations:${encodeURIComponent(scope)}`;
     const saved = localStorage.getItem(key) || localStorage.getItem(legacyKey);
-    if (!saved) return DEFAULT_CONVERSATIONS;
+    if (!saved) return isGuest ? DEFAULT_CONVERSATIONS : [];
     const parsed: ChatConversationItem[] = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return DEFAULT_CONVERSATIONS;
+    if (!Array.isArray(parsed)) return isGuest ? DEFAULT_CONVERSATIONS : [];
     const filtered = parsed.filter(
       (c) =>
         c?.store?.name &&
         !c.store.name.toLowerCase().includes('marie.japan') &&
         !c.store.name.toLowerCase().includes('umizoku') &&
         c.id !== 'conv-marie-japan' &&
-        c.id !== 'conv-umizoku'
+        c.id !== 'conv-umizoku' &&
+        (isGuest || c.id !== 'conv-sora-skin')
     );
     const deduped = deduplicateConversations(filtered);
-    return deduped.length > 0 ? deduped : DEFAULT_CONVERSATIONS;
+    return deduped.length > 0 ? deduped : (isGuest ? DEFAULT_CONVERSATIONS : []);
   } catch {
-    return DEFAULT_CONVERSATIONS;
+    return scope === 'guest' ? DEFAULT_CONVERSATIONS : [];
   }
 }
 
@@ -220,9 +238,7 @@ function mapServerConversation(raw: any): ChatConversationItem {
       logoUrl: isUnsafeShopLogo(rawLogo) ? undefined : rawLogo,
     },
     lastMessage: getChatMessagePreview(last?.messageText, last?.mediaName),
-    lastTime: last?.createdAt
-      ? new Date(last.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      : '',
+    lastTime: last?.createdAt ? formatTimeDisplay(last.createdAt) : '',
     unreadCount: Number(raw._count?.chatMessages) || 0,
     messages: [],
   };
@@ -298,8 +314,9 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       const currentScope = getChatStorageScope();
       if (authScopeRef.current !== currentScope) {
         authScopeRef.current = currentScope;
-        setConversations(loadCachedConversations(currentScope));
-        setActiveConversationId('conv-sora-skin');
+        const initial = loadCachedConversations(currentScope);
+        setConversations(initial);
+        setActiveConversationId(initial[0]?.id || '');
         setActiveProduct(null);
         setIsOpen(false);
         setIsMinimized(false);
@@ -320,10 +337,15 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
                 lastMessage: srv.lastMessage !== 'Bắt đầu cuộc trò chuyện' ? srv.lastMessage : (localMatch?.lastMessage || srv.lastMessage),
               };
             });
-            return deduplicateConversations([...mergedMapped, ...prev]);
+            const pendingOptimistic = prev.filter(
+              (p) => !UUID_REGEX.test(p.id) && p.id !== 'conv-sora-skin' && p.store?.id && !mapped.some((m) => m.store?.id === p.store?.id)
+            );
+            return deduplicateConversations([...mergedMapped, ...pendingOptimistic]);
           });
           if (mapped.length) {
-            setActiveConversationId((current) => UUID_REGEX.test(current) ? current : mapped[0].id);
+            setActiveConversationId((current) => UUID_REGEX.test(current) && mapped.some((m) => m.id === current) ? current : mapped[0].id);
+          } else {
+            setActiveConversationId('');
           }
           ensureSocket();
         })

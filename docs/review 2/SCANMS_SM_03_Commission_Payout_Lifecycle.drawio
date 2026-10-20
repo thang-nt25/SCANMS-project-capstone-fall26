@@ -1,0 +1,157 @@
+<mxfile host="Electron" modified="2026-10-18T18:09:48.549Z" agent="SCANMS" version="21.0.0" type="device">
+  <diagram id="sm03" name="3. Commission & Payout">
+    <mxGraphModel dx="1280" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+
+        <mxCell id="st_start" value="" style="ellipse;fillColor=#000000;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="46" y="61" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_start" value="&lt;b&gt;Start&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="30" y="39" width="60" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_pending" value="&lt;b&gt;Commission Pending&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_reversed" value="&lt;b&gt;Commission Reversed&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="730" y="50" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_reversed" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="60" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_reversed" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="92" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_comm_approved" value="&lt;b&gt;Commission Approved&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="170" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_pending" value="&lt;b&gt;Payout Pending&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="290" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_processing" value="&lt;b&gt;Payout Processing&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="410" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_rejected" value="&lt;b&gt;Payout Rejected&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="730" y="410" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_rejected" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="420" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_rejected" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="452" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_payout_paid" value="&lt;b&gt;Payout Paid&lt;/b&gt;" style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.8;fontColor=#000000;fontSize=13;fontFamily=Segoe UI, Roboto, sans-serif;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="240" y="530" width="200" height="50" as="geometry"/>
+        </mxCell>
+      
+
+        <mxCell id="st_end_paid" value="" style="ellipse;shape=endState;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="540" width="30" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl_end_paid" value="&lt;b&gt;End&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#000000;fontFamily=Segoe UI, Roboto, sans-serif;" vertex="1" parent="1">
+          <mxGeometry x="25" y="572" width="70" height="20" as="geometry"/>
+        </mxCell>
+      
+
+      <mxCell id="edge_1" value="&lt;b&gt;Record Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_start" target="st_comm_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_2" value="&lt;b&gt;Revoke Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_comm_pending" target="st_comm_reversed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_3" value="&lt;b&gt;Reverse Ledger&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_comm_reversed" target="st_end_reversed" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_4" value="&lt;b&gt;Release Commission&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_comm_pending" target="st_comm_approved" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_5" value="&lt;b&gt;Request Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_comm_approved" target="st_payout_pending" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_6" value="&lt;b&gt;Process Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_payout_pending" target="st_payout_processing" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_7" value="&lt;b&gt;Reject Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;entryX=0.00;entryY=0.50;entryDx=0;entryDy=0;" edge="1" source="st_payout_processing" target="st_payout_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_8" value="&lt;b&gt;Restore Funds&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=1.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_payout_rejected" target="st_end_rejected" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_9" value="&lt;b&gt;Transfer Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.50;exitY=1.00;exitDx=0;exitDy=0;entryX=0.50;entryY=0.00;entryDx=0;entryDy=0;" edge="1" source="st_payout_processing" target="st_payout_paid" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint x="15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+
+      <mxCell id="edge_10" value="&lt;b&gt;Settle Payout&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#000000;strokeWidth=1.6;fontColor=#000000;fontSize=9.5;labelBackgroundColor=#FFFFFF;labelBorderColor=none;fontFamily=Segoe UI, Roboto, sans-serif;endArrow=open;endSize=8;exitX=0.00;exitY=0.50;exitDx=0;exitDy=0;" edge="1" source="st_payout_paid" target="st_end_paid" parent="1">
+        <mxGeometry relative="1" as="geometry">
+          <mxPoint y="-15" as="offset"/>
+          
+        </mxGeometry>
+      </mxCell>
+    
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
