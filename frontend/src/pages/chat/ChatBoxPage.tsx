@@ -28,6 +28,7 @@ import {
   Package,
 } from 'lucide-react';
 import { ChatAttachmentButton } from '@/components/chat/ChatAttachmentButton';
+import { ConversationExplorer } from '@/components/chat/ConversationExplorer';
 import { useConversationDraft } from '@/hooks/useConversationDraft';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
@@ -1036,6 +1037,7 @@ export default function ChatBoxPage({
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCustomerOrdersDrawer, setShowCustomerOrdersDrawer] = useState(false);
   const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
+  const [explorerConversationId, setExplorerConversationId] = useState<string | null>(null);
   const [showCustomerToolsMenu, setShowCustomerToolsMenu] = useState(false);
   const customerToolsDropdownRef = useRef<HTMLDivElement>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -1997,6 +1999,7 @@ export default function ChatBoxPage({
                   </div>
                 ) : null
               )}
+              <button type="button" onClick={() => setExplorerConversationId(activeConv.id)} aria-label="Tìm tin nhắn và tệp" title="Kho nội dung: tìm tin nhắn và tệp" className="shrink-0 rounded-xl p-2 text-[#B88E4F] hover:bg-[#FBF5EB]"><Search size={20} /></button>
             </header>
             )}
 
@@ -2415,6 +2418,10 @@ export default function ChatBoxPage({
           onClose={() => setShowCustomerOrdersDrawer(false)}
           onShareOrderUpdate={shareOrderUpdate}
         />
+      )}
+
+      {explorerConversationId === activeConvId && activeConv && (
+        <ConversationExplorer key={activeConv.id} conversationId={activeConv.id} partnerName={getOtherParty(activeConv)} onClose={() => setExplorerConversationId(null)} />
       )}
 
       {showQuickRepliesModal && (

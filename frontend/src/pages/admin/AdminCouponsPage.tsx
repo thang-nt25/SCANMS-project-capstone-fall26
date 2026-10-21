@@ -78,6 +78,7 @@ export const AdminCouponsPage: React.FC = () => {
   const [issuing, setIssuing] = useState(false);
   const [issueForm, setIssueForm] = useState({ storeId: '', code: '', benefitType: 'GOODS' as 'GOODS' | 'SHIPPING', discountType: 'FIXED_AMOUNT' as 'FIXED_AMOUNT' | 'PERCENTAGE', discountValue: 30000, minimumOrderAmount: 0, budgetTotal: 3000000, usageLimitTotal: 100, maximumDiscountAmount: 30000 });
   const [issueStores, setIssueStores] = useState<Array<{ id: string; name: string }>>([]);
+  const [issueSchedule, setIssueSchedule] = useState({ startsAt: '', expiresAt: '', usageLimitPerCustomer: 1 });
 
   useEffect(() => { api.get('/stores/marketplace').then((res: any) => {
     const data = res?.data?.data || res?.data || res;
@@ -86,9 +87,18 @@ export const AdminCouponsPage: React.FC = () => {
 
   const issueVoucher = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (issuing) return;
+    if (issueSchedule.expiresAt && new Date(issueSchedule.expiresAt) <= new Date(issueSchedule.startsAt || Date.now())) {
+      toast.error('Hạn dùng phải sau thời gian bắt đầu.'); return;
+    }
     try {
       setIssuing(true);
-      await couponService.createPlatformCoupon(issueForm);
+      await couponService.createPlatformCoupon({
+        ...issueForm,
+        usageLimitPerCustomer: issueSchedule.usageLimitPerCustomer,
+        startsAt: issueSchedule.startsAt ? new Date(issueSchedule.startsAt).toISOString() : undefined,
+        expiresAt: issueSchedule.expiresAt ? new Date(issueSchedule.expiresAt).toISOString() : undefined,
+      });
       toast.success('Đã phát hành voucher sàn.');
       setIssueForm((value) => ({ ...value, code: '' }));
       await fetchCoupons();
@@ -251,6 +261,10 @@ export const AdminCouponsPage: React.FC = () => {
 
         <form onSubmit={issueVoucher} className="bg-white border border-[#EAE4D7] rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <h2 className="font-bold text-[#1A1612] col-span-full">Phát hành voucher do sàn tài trợ</h2>
+          <p className="col-span-full rounded-xl bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">SCANMS tài trợ 100% giá trị giảm. Voucher phục vụ quảng bá tại gian hàng được chọn; khách có thể dùng ngay, không cần lưu. Ngân sách và điều kiện sẽ được kiểm tra lại khi đặt hàng.</p>
+          <label>Bắt đầu (giờ trên thiết bị)<input type="datetime-local" value={issueSchedule.startsAt} onChange={(e) => setIssueSchedule({ ...issueSchedule, startsAt: e.target.value })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Kết thúc<input type="datetime-local" min={issueSchedule.startsAt || undefined} value={issueSchedule.expiresAt} onChange={(e) => setIssueSchedule({ ...issueSchedule, expiresAt: e.target.value })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
+          <label>Lượt dùng mỗi khách<input required type="number" min="1" step="1" value={issueSchedule.usageLimitPerCustomer} onChange={(e) => setIssueSchedule({ ...issueSchedule, usageLimitPerCustomer: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
           <select required value={issueForm.storeId} onChange={(e) => setIssueForm({ ...issueForm, storeId: e.target.value })} className="border border-[#EAE4D7] rounded-lg p-2 bg-white"><option value="">Chọn gian hàng</option>{issueStores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           <input required placeholder="Mã voucher" value={issueForm.code} onChange={(e) => setIssueForm({ ...issueForm, code: e.target.value.toUpperCase() })} className="border border-[#EAE4D7] rounded-lg p-2" />
           <select value={issueForm.benefitType} onChange={(e) => setIssueForm({ ...issueForm, benefitType: e.target.value as 'GOODS' | 'SHIPPING' })} className="border border-[#EAE4D7] rounded-lg p-2"><option value="GOODS">Giảm tiền hàng</option><option value="SHIPPING">Giảm cước GHN</option></select>

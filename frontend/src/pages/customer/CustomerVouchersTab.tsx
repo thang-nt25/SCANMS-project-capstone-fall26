@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { VoucherProducts } from '@/components/checkout/VoucherProducts';
 import { ArrowRight, Check, ChevronDown, Copy, Ticket, Store, Clock3 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
@@ -28,14 +28,19 @@ export function CustomerVouchersTab() {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [showSaved, setShowSaved] = useState(false);
   const [savingId, setSavingId] = useState('');
+  const [expandedVoucher, setExpandedVoucher] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    Promise.all([
+    Promise.allSettled([
       api.get('/coupons/available', { headers: { 'x-skip-cache': 'true' } }),
       api.get('/coupons/saved', { headers: { 'x-skip-cache': 'true' } }),
       api.get('/coupons/saved/details', { headers: { 'x-skip-cache': 'true' } }),
-    ]).then(([availableResponse, savedResponse, savedDetailsResponse]: any[]) => {
+    ]).then(([availableResult, savedResult, detailsResult]) => {
+        if (availableResult.status === 'rejected') throw availableResult.reason;
+        const availableResponse: any = availableResult.value;
+        const savedResponse: any = savedResult.status === 'fulfilled' ? savedResult.value : [];
+        const savedDetailsResponse: any = detailsResult.status === 'fulfilled' ? detailsResult.value : [];
         const data = availableResponse?.data?.data || availableResponse?.data || availableResponse;
         const saved = savedResponse?.data?.data || savedResponse?.data || savedResponse;
         const savedDetails = savedDetailsResponse?.data?.data || savedDetailsResponse?.data || savedDetailsResponse;
@@ -92,7 +97,7 @@ export function CustomerVouchersTab() {
               {vouchers.length} ưu đãi
             </span>
           </div>
-          <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Ưu đãi từ SCANMS và các gian hàng đối tác.</p>
+          <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Ưu đãi từ SCANMS và các gian hàng đối tác. Chọn Dùng ngay để xem sản phẩm áp dụng; lưu mã là tùy chọn.</p>
         </div>
       </header>
       <div className="flex gap-2 pb-4">
@@ -150,14 +155,15 @@ export function CustomerVouchersTab() {
                   {copied ? <Check size={14} className="shrink-0 text-[#059669]" /> : <Copy size={14} className="shrink-0 text-[#B88E4F]" />}
                   <span className="tracking-[0.3px]">{voucher.code}</span>
                 </button>
-                <Link
+                <button type="button" aria-expanded={expandedVoucher === voucher.id}
                   className="inline-flex items-center justify-center gap-[6px] min-h-[28px] px-2.5 py-1 border border-[#EEDFC6] rounded-[8px] text-[11px] font-semibold bg-[#FBF5EB] text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6] transition whitespace-nowrap no-underline"
-                  to={`/shop/${voucher.store.slug}`}
+                  onClick={() => setExpandedVoucher((id) => id === voucher.id ? null : voucher.id)}
                 >
                   <span>Dùng ngay</span>
                   <ArrowRight size={13} className="shrink-0 text-[#B88E4F]" />
-                </Link>
+                </button>
               </div>
+              {expandedVoucher === voucher.id && <VoucherProducts key={voucher.id} couponId={voucher.id} />}
               <details className="col-span-full min-w-0 border-t border-[#EAE4D7] mt-0 group">
                 <summary
                   className="flex items-center justify-between flex-wrap gap-[5px_10px] min-h-[34px] p-[8px_0] list-none text-[10px] leading-[1.5] text-[#7D715E] hover:text-[#B88E4F] cursor-pointer select-none [&::-webkit-details-marker]:hidden"

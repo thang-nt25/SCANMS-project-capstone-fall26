@@ -22,7 +22,6 @@ import {
   Subtitles,
   Gauge,
   Heart,
-  Ticket,
   ShoppingCart,
   ChevronLeft,
   ChevronRight,
@@ -39,6 +38,9 @@ import { PublicHeader } from '@/components/layout/PublicHeader';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
 import { couponService } from '@/services/coupon.service';
+import type { PublicStoreCoupon } from '@/services/coupon.service';
+import { ProductVoucherShelf } from '@/components/checkout/ProductVoucherShelf';
+import { voucherSlot } from '@/utils/voucher-intent';
 import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
@@ -344,15 +346,19 @@ export default function ProductDetailPage() {
     description?: string;
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [availableStoreCoupons, setAvailableStoreCoupons] = useState<any[]>([]);
+  const [availableStoreCoupons, setAvailableStoreCoupons] = useState<PublicStoreCoupon[]>([]);
+  const [selectedExtraVoucher, setSelectedExtraVoucher] = useState<PublicStoreCoupon | null>(null);
+  const couponRequest = useRef(0);
 
   // Fetch active store vouchers for customers
   useEffect(() => {
+    let active = true;
+    setAvailableStoreCoupons([]);
     if (data?.store?.id) {
       couponService
-        .getPublicStoreCoupons(data.store.id)
+        .getPublicStoreCoupons(data.store.id, data.product.id)
         .then((coupons) => {
-          if (Array.isArray(coupons)) {
+          if (active && Array.isArray(coupons)) {
             setAvailableStoreCoupons(coupons);
           }
         })
@@ -360,10 +366,12 @@ export default function ProductDetailPage() {
           console.warn('Cannot fetch public store coupons:', e);
         });
     }
-  }, [data?.store?.id]);
+    return () => { active = false; };
+  }, [data?.store?.id, data?.product?.id]);
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const requestedVoucherCode = searchParams.get('voucher');
   const isCheckoutParam = searchParams.get('checkout') === '1' || searchParams.get('checkout') === 'true';
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(isCheckoutParam);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -870,7 +878,13 @@ export default function ProductDetailPage() {
 
   const applyCouponCode = async (rawCode: string): Promise<boolean> => {
     if (!rawCode.trim() || !data) return false;
-
+    const discovered = availableStoreCoupons.find((voucher) => voucher.code.toUpperCase() === rawCode.trim().toUpperCase());
+    if (discovered && voucherSlot(discovered) !== 'SHOP') {
+      setSelectedExtraVoucher(discovered);
+      setIsCheckoutOpen(true);
+      return true;
+    }
+    const requestId = ++couponRequest.current;
     setCouponLoading(true);
     setCouponError(null);
 
@@ -890,6 +904,7 @@ export default function ProductDetailPage() {
       });
 
       const couponRes = res?.data?.data || res?.data || {};
+      if (requestId !== couponRequest.current) return false;
       const discount = Number(
         couponRes.discountAmount || couponRes.totalDiscount || 0,
       );
@@ -913,6 +928,7 @@ export default function ProductDetailPage() {
         return false;
       }
     } catch (err: any) {
+      if (requestId !== couponRequest.current) return false;
       const msg =
         err?.response?.data?.message ||
         'Mã giảm giá không tồn tại, đã hết hạn hoặc chưa đạt giá trị đơn tối thiểu.';
@@ -920,13 +936,41 @@ export default function ProductDetailPage() {
       setAppliedCoupon(null);
       return false;
     } finally {
-      setCouponLoading(false);
+      if (requestId === couponRequest.current) setCouponLoading(false);
     }
   };
 
   const applyCouponDirectly = async (codeToApply: string) => {
     await applyCouponCode(codeToApply);
   };
+
+  const chooseProductVoucher = (voucher: PublicStoreCoupon) => {
+    if (voucherSlot(voucher) !== 'SHOP') {
+      setSelectedExtraVoucher(voucher);
+      setIsCheckoutOpen(true);
+    } else {
+      void applyCouponDirectly(voucher.code);
+    }
+  };
+
+  // Never retain a discount calculated for another product, variant or quantity.
+  useEffect(() => {
+    couponRequest.current++;
+    setAppliedCoupon(null);
+    setCouponLoading(false);
+    setCouponError(null);
+  }, [data?.product?.id, selectedVariant?.id, quantity]);
+
+  useEffect(() => {
+    setSelectedExtraVoucher(null);
+    const code = requestedVoucherCode;
+    if (!code || !availableStoreCoupons.length) return;
+    const voucher = availableStoreCoupons.find((item) => item.code.toUpperCase() === code.toUpperCase());
+    if (!voucher) { setCouponError('Voucher không còn phù hợp với sản phẩm này.'); return; }
+    chooseProductVoucher(voucher);
+    // Revalidate the deep-linked intent when the selected product basis changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableStoreCoupons, requestedVoucherCode, selectedVariant?.id, quantity]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1574,59 +1618,8 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* ────── AVAILABLE SHOP VOUCHERS CAROUSEL / LIST ────── */}
-              {availableStoreCoupons.length > 0 && (
-                <div className="py-2.5 border-t border-[#EAE4D7]/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-[#8C6B32] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                      Voucher độc quyền của Shop:
-                    </span>
-                    <span className="text-[10px] text-[#7D715E]">Click để áp dụng</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {availableStoreCoupons.map((vc) => {
-                      const isPct = vc.discountType === 'PERCENTAGE';
-                      const label = isPct
-                        ? `Giảm ${vc.discountValue}%`
-                        : `Giảm ${Number(vc.discountValue).toLocaleString('vi-VN')}₫`;
-                      const isApplied =
-                        appliedCoupon?.code === vc.codeNormalized ||
-                        appliedCoupon?.code === vc.displayCode;
-                      return (
-                        <button
-                          key={vc.id}
-                          type="button"
-                          onClick={() => {
-                            setCouponCode(vc.displayCode);
-                            applyCouponDirectly(vc.displayCode);
-                          }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
-                            isApplied
-                              ? 'bg-emerald-100 border-emerald-300 text-emerald-800 font-bold'
-                              : 'bg-white border-[#DEBE85] hover:bg-[#F3EFE6] text-[#1A1612] hover:border-[#C59B58]'
-                          }`}
-                        >
-                          <Ticket
-                            className={`w-3.5 h-3.5 ${
-                              isApplied ? 'text-emerald-600' : 'text-[#C59B58]'
-                            }`}
-                          />
-                          <span>{label}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FAF8F5] border rounded text-[#8C6B32] font-bold uppercase">
-                            {vc.displayCode}
-                          </span>
-                          {isApplied && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* Coupon Voucher Input (Compact) */}
+              <ProductVoucherShelf vouchers={availableStoreCoupons} selected={selectedExtraVoucher?.code || appliedCoupon?.code} busy={couponLoading} onApply={chooseProductVoucher} />
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
                 <form onSubmit={handleApplyCoupon} className="flex gap-1.5 max-w-sm">
                   <div className="relative flex-1">
@@ -1656,7 +1649,13 @@ export default function ProductDetailPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                      onClick={() => {
+                        couponRequest.current++;
+                        setAppliedCoupon(null); setCouponCode(''); setCouponLoading(false);
+                        const params = new URLSearchParams(searchParams);
+                        params.delete('voucher');
+                        setSearchParams(params, { replace: true });
+                      }}
                       className="text-[#7D715E] hover:text-[#DC2626] font-bold p-1 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2231,6 +2230,7 @@ export default function ProductDetailPage() {
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}
           initialCouponCode={appliedCoupon?.code || ''}
+          initialExtraVoucher={selectedExtraVoucher ? { code: selectedExtraVoucher.code, benefitType: selectedExtraVoucher.benefitType || 'GOODS' } : undefined}
           onOrderPlaced={(order) => {
             if (order.paymentMethod === 'PAYOS') return;
             trackAnalytics('purchase', {
