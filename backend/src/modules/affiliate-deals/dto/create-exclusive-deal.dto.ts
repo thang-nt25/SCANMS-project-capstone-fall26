@@ -8,9 +8,23 @@ import {
   Equals,
   MaxLength,
   MinLength,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 
 export class CreateExclusiveDealDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1000000)
+  targetOrders?: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(366)
+  commitmentDays?: number;
   @IsUUID()
   productId: string;
 

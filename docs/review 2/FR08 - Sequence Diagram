@@ -1,0 +1,309 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR08 - Sequence Diagram" id="FR08-Sequence">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1920" pageHeight="1837">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-08 Media Hub and 1-Click Copy - Sequence Diagram">
+          <mxGeometry y="20" width="1860" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="pre" value="Shop publishing is an API flow; KOL browsing/copying uses MediaHubBrowserPage. Media endpoints require JWT + RolesGuard.">
+          <mxGeometry y="62" width="1860" as="geometry" height="30" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head0" value="Shop Manager / KOL">
+          <mxGeometry y="100" width="30" as="geometry" height="55" x="85" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life0" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="180" as="sourcePoint" />
+            <mxPoint x="100" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head1" value="Browser / API Client">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="265" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="180" as="sourcePoint" />
+            <mxPoint x="380" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head2" value=":UploadController">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="545" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="660" y="180" as="sourcePoint" />
+            <mxPoint x="660" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head3" value=":CloudinaryService">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="825" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="180" as="sourcePoint" />
+            <mxPoint x="940" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head4" value=":MediaController">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="1105" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life4" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1220" y="180" as="sourcePoint" />
+            <mxPoint x="1220" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head5" value=":MediaService">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="1385" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1500" y="180" as="sourcePoint" />
+            <mxPoint x="1500" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="footer" value="Upload is optional for an existing media URL or a text script. Uploading a file does not automatically create a MediaAsset; Shop publishing is shown at API level.&#xA;KOL access: active non-deleted store + APPROVED collaboration; media must be APPROVED or submitted by that KOL. All queries exclude soft-deleted assets.&#xA;Copy is local browser behavior, with no copy API or database write. ZIP export uses client-side fetch / JSZip, with source-link fallback for unavailable files.&#xA;Validation / access failures stop the operation. KOL review submission, moderation and asset deletion are separate flows, omitted here.">
+          <mxGeometry y="1717" width="1860" as="geometry" height="90" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head6" value=":PrismaService">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="1665" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life6" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1780" y="180" as="sourcePoint" />
+            <mxPoint x="1780" y="1687" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation1-1" value="">
+          <mxGeometry y="210" width="8" as="geometry" height="706" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation2-2" value="">
+          <mxGeometry y="256" width="8" as="geometry" height="138" x="656" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation3-3" value="">
+          <mxGeometry y="302" width="8" as="geometry" height="46" x="936" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation4-6" value="">
+          <mxGeometry y="440" width="8" as="geometry" height="476" x="1216" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation5-7" value="">
+          <mxGeometry y="486" width="8" as="geometry" height="384" x="1496" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation6-8" value="">
+          <mxGeometry y="532" width="8" as="geometry" height="46" x="1776" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation6-11" value="">
+          <mxGeometry y="708" width="8" as="geometry" height="46" x="1776" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation1-16" value="">
+          <mxGeometry y="978" width="8" as="geometry" height="366" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation4-17" value="">
+          <mxGeometry y="1024" width="8" as="geometry" height="230" x="1216" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation5-18" value="">
+          <mxGeometry y="1070" width="8" as="geometry" height="138" x="1496" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation6-19" value="">
+          <mxGeometry y="1116" width="8" as="geometry" height="46" x="1776" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation1-24" value="">
+          <mxGeometry y="1384" width="8" as="geometry" height="122" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation1-27" value="">
+          <mxGeometry y="1566" width="8" as="geometry" height="76" x="376" />
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m1" value="1. [Shop] Prepare image / video / text script">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="210" as="sourcePoint" />
+            <mxPoint x="376" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m2" value="2. [Optional file] POST /upload/image or /upload/video">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="256" as="sourcePoint" />
+            <mxPoint x="656" y="256" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m3" value="3. uploadImage(file, folder) / uploadVideo(file, folder)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="664" y="302" as="sourcePoint" />
+            <mxPoint x="936" y="302" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m4" value="4. CloudinaryUploadResult with secureUrl">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="936" y="348" as="sourcePoint" />
+            <mxPoint x="664" y="348" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m5" value="5. 201 Created: uploaded file URL">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="656" y="394" as="sourcePoint" />
+            <mxPoint x="384" y="394" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m6" value="6. POST /media (title, type, URL or text, productId?)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="440" as="sourcePoint" />
+            <mxPoint x="1216" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m7" value="7. create(userId, role, CreateMediaDto)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="486" as="sourcePoint" />
+            <mxPoint x="1496" y="486" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m8" value="8. Read owned store; optional product ownership check">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1504" y="532" as="sourcePoint" />
+            <mxPoint x="1776" y="532" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m9" value="9. Valid store / product or missing">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1776" y="578" as="sourcePoint" />
+            <mxPoint x="1504" y="578" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m10" value="10. validateAllowedUrl() for IMAGE / VIDEO">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1504" y="638" as="sourcePoint" />
+            <mxPoint x="1504" y="660" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1544" y="638" />
+              <mxPoint x="1544" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m11" value="11. mediaAsset.create(status: APPROVED)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1504" y="708" as="sourcePoint" />
+            <mxPoint x="1776" y="708" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m12" value="12. Created asset">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1776" y="754" as="sourcePoint" />
+            <mxPoint x="1504" y="754" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m13" value="13. [With productId] cacheService.delPrefix(landing cache)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1504" y="800" as="sourcePoint" />
+            <mxPoint x="1504" y="822" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1544" y="800" />
+              <mxPoint x="1544" y="822" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m14" value="14. { message, asset }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1496" y="870" as="sourcePoint" />
+            <mxPoint x="1224" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m15" value="15. 201 Created: media registered">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1216" y="916" as="sourcePoint" />
+            <mxPoint x="384" y="916" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m16" value="16. [KOL] Open media hub">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="978" as="sourcePoint" />
+            <mxPoint x="376" y="978" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m17" value="17. GET /media (limit: 100)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1024" as="sourcePoint" />
+            <mxPoint x="1216" y="1024" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m18" value="18. findAll(query, viewer)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="1070" as="sourcePoint" />
+            <mxPoint x="1496" y="1070" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m19" value="19. mediaAsset.count / findMany with access filters">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1504" y="1116" as="sourcePoint" />
+            <mxPoint x="1776" y="1116" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m20" value="20. Eligible media and pagination">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1776" y="1162" as="sourcePoint" />
+            <mxPoint x="1504" y="1162" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m21" value="21. { items, pagination }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1496" y="1208" as="sourcePoint" />
+            <mxPoint x="1224" y="1208" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m22" value="22. 200 OK: media data">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1216" y="1254" as="sourcePoint" />
+            <mxPoint x="384" y="1254" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m23" value="23. Filter by product / type / search; preview asset">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1314" as="sourcePoint" />
+            <mxPoint x="384" y="1336" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="424" y="1314" />
+              <mxPoint x="424" y="1336" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m24" value="24. Click Copy for a script or caption">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="1384" as="sourcePoint" />
+            <mxPoint x="376" y="1384" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m25" value="25. navigator.clipboard.writeText(content)&#xA;Asset script or selected caption template">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1430" as="sourcePoint" />
+            <mxPoint x="384" y="1452" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="424" y="1430" />
+              <mxPoint x="424" y="1452" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;endArrow=open;endFill=0;" edge="1" id="m26" value="26. Show copied feedback">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="376" y="1506" as="sourcePoint" />
+            <mxPoint x="100" y="1506" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m27" value="27. [Optional] Open image/video or download ZIP pack">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="1566" as="sourcePoint" />
+            <mxPoint x="376" y="1566" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;" edge="1" id="m28" value="28. window.open(asset.urlOrContent), or&#xA;buildMediaPack(filteredMedia); saveMediaPack(blob)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1612" as="sourcePoint" />
+            <mxPoint x="384" y="1634" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="424" y="1612" />
+              <mxPoint x="424" y="1634" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

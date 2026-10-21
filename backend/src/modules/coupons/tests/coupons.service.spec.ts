@@ -111,6 +111,8 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
           maximumDiscountAmount: new Prisma.Decimal(80000),
           usageLimitTotal: 20,
           usageCount: 3,
+          budgetTotal: null,
+          budgetUsed: new Prisma.Decimal(0),
           expiresAt: new Date('2026-12-31T00:00:00.000Z'),
           scopeType: CouponScope.STORE_WIDE,
           fundingSource: CouponFundingSource.SHOP_FUNDED,

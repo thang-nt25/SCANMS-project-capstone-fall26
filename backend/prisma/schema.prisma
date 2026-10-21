@@ -1067,6 +1067,12 @@ model ExclusiveDealProposal {
   proposedCommissionRate Decimal             @map("proposed_commission_rate") @db.Decimal(5, 2)
   approvedCommissionRate Decimal?            @map("approved_commission_rate") @db.Decimal(5, 2)
   salesCommitment        String              @map("sales_commitment") @db.VarChar(1000)
+  targetOrders           Int?                @map("target_orders")
+  commitmentDays         Int?                @map("commitment_days")
+  commitmentStartedAt    DateTime?           @map("commitment_started_at") @db.Timestamptz(6)
+  commitmentEndsAt       DateTime?           @map("commitment_ends_at") @db.Timestamptz(6)
+  settlementEndsAt       DateTime?           @map("settlement_ends_at") @db.Timestamptz(6)
+  closedAt               DateTime?           @map("closed_at") @db.Timestamptz(6)
   status                 ExclusiveDealStatus @default(PENDING)
   shopResponse           String?             @map("shop_response") @db.VarChar(1000)
   reviewerId             String?             @map("reviewer_id") @db.Uuid

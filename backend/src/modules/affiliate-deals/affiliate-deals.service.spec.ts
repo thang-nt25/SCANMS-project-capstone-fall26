@@ -20,7 +20,7 @@ describe('AffiliateDealsService', () => {
       coupon: { create: jest.fn().mockResolvedValue({ id: '88888888-8888-4888-8888-888888888888' }) },
       couponProduct: { create: jest.fn() },
       referralLink: { update: jest.fn() },
-      exclusiveDealProposal: { create: jest.fn() },
+      exclusiveDealProposal: { create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
       chatMessage: { create: jest.fn() },
       conversation: { update: jest.fn() },
     };
@@ -135,6 +135,7 @@ describe('AffiliateDealsService', () => {
     });
 
     const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
+      targetOrders: 80, commitmentDays: 30,
       productId,
       proposedCommissionRate: 12,
       salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
@@ -169,6 +170,7 @@ describe('AffiliateDealsService', () => {
       productId,
       conversationId,
       proposedCommissionRate: 13,
+      targetOrders: 80, commitmentDays: 30,
       status: 'PENDING',
       store: { id: storeId, ownerId: shopOwnerId, defaultCommissionRate: 10 },
       product: { id: productId, title: 'Serum', customCommissionRate: 15 },
@@ -277,6 +279,7 @@ describe('AffiliateDealsService', () => {
     const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
       productId,
       proposedCommissionRate: 13,
+      targetOrders: 80, commitmentDays: 30,
       salesCommitment: 'Tăng doanh số trong tháng này',
     });
 
@@ -326,6 +329,9 @@ describe('AffiliateDealsService', () => {
       storeId,
       collaboratorId,
       status: 'APPROVED',
+      targetOrders: 10, commitmentDays: 30,
+      commitmentStartedAt: new Date('2020-01-01'), commitmentEndsAt: new Date('2020-02-01'),
+      settlementEndsAt: new Date('2020-02-15'), closedAt: null,
       product: { title: 'Sản phẩm' },
     });
     prisma.exclusiveDealProposal.update = jest.fn().mockResolvedValue({});
@@ -343,6 +349,13 @@ describe('AffiliateDealsService', () => {
         }),
       update: jest.fn().mockResolvedValue({}),
     };
+    prisma.order = { count: jest.fn().mockResolvedValue(0) };
+    tx.order = prisma.order;
+    tx.$queryRaw = jest.fn().mockResolvedValue([]);
+    tx.exclusiveDealProposal.findUnique = prisma.exclusiveDealProposal.findUnique;
+    tx.exclusiveDealProposal.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    tx.collaboratorProfile = prisma.collaboratorProfile;
+    tx.auditLog = { create: jest.fn() };
     jest
       .spyOn(service as any, 'appendDecisionMessage')
       .mockResolvedValue(undefined);

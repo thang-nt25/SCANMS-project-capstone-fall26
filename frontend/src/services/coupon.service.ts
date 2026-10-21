@@ -25,6 +25,7 @@ export interface PlatformSubsidySummary {
 }
 
 export interface PublicStoreCoupon {
+  fundingSource?: CouponFundingSource;
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
   code: string;
@@ -211,8 +212,8 @@ export const couponService = {
     return Array.isArray(payload) ? payload : [];
   },
 
-  getPublicStoreCoupons: async (storeId: string): Promise<PublicStoreCoupon[]> => {
-    const res: any = await api.get(`/coupons/stores/${storeId}/available`);
+  getPublicStoreCoupons: async (storeId: string, productId?: string, signal?: AbortSignal): Promise<PublicStoreCoupon[]> => {
+    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, signal, headers: { 'x-skip-cache': '1' } });
     const payload = res?.data?.data ?? res?.data ?? res;
     if (Array.isArray(payload)) return payload;
     return Array.isArray(payload?.items) ? payload.items : [];
@@ -320,7 +321,7 @@ export const couponService = {
     return res.data;
   },
 
-  createPlatformCoupon: async (payload: { storeId: string; code: string; benefitType: 'GOODS' | 'SHIPPING'; discountType: DiscountType; discountValue: number; budgetTotal: number; usageLimitTotal: number; maximumDiscountAmount?: number; minimumOrderAmount?: number; expiresAt?: string }) => {
+  createPlatformCoupon: async (payload: { storeId: string; code: string; benefitType: 'GOODS' | 'SHIPPING'; discountType: DiscountType; discountValue: number; budgetTotal: number; usageLimitTotal: number; maximumDiscountAmount?: number; minimumOrderAmount?: number; expiresAt?: string; startsAt?: string; usageLimitPerCustomer?: number }) => {
     const res = await api.post('/admin/coupons', payload);
     return res.data;
   },

@@ -1,0 +1,156 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR31 - Class Diagram" id="FR31---Class-Diagram">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1640" pageHeight="1180">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-31 Fraud and Fake-Click Detection — Class Diagram">
+          <mxGeometry y="20" width="1580" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="page" value="AiFraudSentinelPage">
+          <mxGeometry y="90" width="390" as="geometry" height="280" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-fields" value="«React functional component»&#xA;- summary: FraudScanSummary | null&#xA;- timeframe: '24h' | '7d' | '30d' | 'all'&#xA;- activeIncident: FraudIncident | null&#xA;- actionNote: string">
+          <mxGeometry y="30" width="390" as="geometry" height="110" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="shape=line;strokeColor=#000000;" id="page-line" value="">
+          <mxGeometry y="140" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-methods" value="+ loadData()&#xA;+ handleAction(action)&#xA;+ applyAction(action)">
+          <mxGeometry y="140" width="390" as="geometry" height="140" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="client" value="aiFraudService «object»">
+          <mxGeometry y="500" width="390" as="geometry" height="210" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-fields" value="«HTTP API client»">
+          <mxGeometry y="30" width="390" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="shape=line;strokeColor=#000000;" id="client-line" value="">
+          <mxGeometry y="65" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-methods" value="+ scanTraffic(params?)&#xA;+ getIncidents(params?) / getIncidentById(id)&#xA;+ analyzeCollaborator(collaboratorId)&#xA;+ takeAction(incidentId, action, note?)">
+          <mxGeometry y="65" width="390" as="geometry" height="145" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="audit" value="AuditLog">
+          <mxGeometry y="850" width="390" as="geometry" height="210" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="audit" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="audit-fields" value="+ id: string&#xA;+ eventId: string | null&#xA;+ userId: string | null&#xA;+ action: string&#xA;+ details: Json | null&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="390" as="geometry" height="180" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="controller" value="AiFraudController">
+          <mxGeometry y="90" width="450" as="geometry" height="240" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-fields" value="- aiFraudService: AiFraudService">
+          <mxGeometry y="30" width="450" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="shape=line;strokeColor=#000000;" id="controller-line" value="">
+          <mxGeometry y="65" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-methods" value="+ scanTraffic(query, req)&#xA;+ getIncidents(query, req)&#xA;+ getIncidentById(id, req)&#xA;+ analyzeCollaborator(collaboratorId, req)&#xA;+ takeAction(id, actionDto, req)">
+          <mxGeometry y="65" width="450" as="geometry" height="175" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="service" value="AiFraudService">
+          <mxGeometry y="450" width="450" as="geometry" height="260" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-fields" value="- prisma: PrismaService">
+          <mxGeometry y="30" width="450" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="shape=line;strokeColor=#000000;" id="service-line" value="">
+          <mxGeometry y="65" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-methods" value="+ scanTraffic(query, requesterUser)&#xA;+ getIncidents(query, requesterUser)&#xA;+ getIncidentById(incidentId, requesterUser)&#xA;+ analyzeCollaboratorFraud(collaboratorId, requesterUser)&#xA;+ takeActionOnIncident(incidentId, actionDto, actorUser)&#xA;- evaluateFraudAnomalies(data)">
+          <mxGeometry y="65" width="450" as="geometry" height="195" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="prisma" value="PrismaService">
+          <mxGeometry y="850" width="450" as="geometry" height="210" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-fields" value="«extends PrismaClient»&#xA;+ store: Prisma.StoreDelegate&#xA;+ referralLink: Prisma.ReferralLinkDelegate&#xA;+ commission: Prisma.CommissionDelegate&#xA;+ auditLog: Prisma.AuditLogDelegate&#xA;+ $transaction(...)">
+          <mxGeometry y="30" width="450" as="geometry" height="180" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="link" value="ReferralLink">
+          <mxGeometry y="90" width="270" as="geometry" height="230" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="link" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="link-fields" value="+ id: string&#xA;+ storeId: string&#xA;+ collaboratorId: string&#xA;+ productId: string&#xA;+ shortCode: string&#xA;+ status: ReferralLinkStatus&#xA;+ deletedAt: Date | null">
+          <mxGeometry y="30" width="270" as="geometry" height="200" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="click" value="ClickTrafficLog">
+          <mxGeometry y="90" width="250" as="geometry" height="230" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="click" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="click-fields" value="+ id: string&#xA;+ referralLinkId: string&#xA;+ ipAddress: string&#xA;+ userAgent: string | null&#xA;+ riskReason: string | null&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="200" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="order" value="Order">
+          <mxGeometry y="500" width="270" as="geometry" height="250" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="order" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="order-fields" value="+ id: string&#xA;+ referralLinkId: string | null&#xA;+ storeId: string&#xA;+ status: OrderStatus&#xA;+ customerId: string | null&#xA;+ customerEmail: string | null&#xA;+ customerPhone: string | null&#xA;+ finalAmount: Decimal&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="270" as="geometry" height="220" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="commission" value="Commission">
+          <mxGeometry y="500" width="250" as="geometry" height="230" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="commission" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="commission-fields" value="+ id: string&#xA;+ orderId: string&#xA;+ collaboratorId: string&#xA;+ commissionAmount: Decimal&#xA;+ status: CommissionStatus&#xA;+ availableAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="200" x="0" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d1" value="uses" source="page" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.25;entryX=0;entryY=0.65;" edge="1" id="d2" value="HTTP GET / POST" source="client" target="controller">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="553" />
+              <mxPoint x="455" y="246" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d3" value="aiFraudService" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d4" value="prisma" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.15;entryX=0;entryY=0.75;" edge="1" id="d5" value="«reads»" source="prisma" target="link">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="970" y="882" />
+              <mxPoint x="970" y="263" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.7;entryX=0.5;entryY=1;" edge="1" id="d6" value="«updates»" source="prisma" target="commission">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="997" />
+              <mxPoint x="990" y="810" />
+              <mxPoint x="1485" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" id="d7" value="«writes»" source="prisma" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="a1" value="1 link / 0..* click logs" source="link" target="click">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="380" />
+              <mxPoint x="1485" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="a2" value="0..1 link / 0..* orders" source="link" target="order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="a3" value="1 order / 0..* commissions" source="order" target="commission">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="780" />
+              <mxPoint x="1485" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="policy" value="Incidents are computed; flags and mitigation history persist in AuditLog. riskScore &gt;= 70 writes AI_FRAUD_FLAG; &gt;5,000 clicks with 0 orders adds 70 to base score 15. Scanning does not enforce mitigation. FREEZE_COMMISSION pauses the link and moves matching PENDING commission.availableAt to now + 90 days.">
+          <mxGeometry y="1110" width="1580" as="geometry" height="50" x="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -31,6 +31,7 @@ import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/send-message.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { MAX_CHAT_ATTACHMENT_BYTES } from './chat-attachment.utils';
+import type { ChatExplorerQuery } from './chat-explorer.query';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT-auth')
@@ -124,6 +125,16 @@ export class ChatController {
     @Query('cursor') cursor?: string,
   ) {
     return this.chatService.getMessages(conversationId, user.id, take, cursor);
+  }
+
+  @Get('conversations/:conversationId/explore')
+  @ApiOperation({ summary: 'Tra cứu nội dung và tệp của hội thoại theo ngày, người gửi, loại tệp' })
+  exploreMessages(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @CurrentUser('id') userId: string,
+    @Query() query: ChatExplorerQuery,
+  ) {
+    return this.chatService.exploreMessages(conversationId, userId, query);
   }
 
   @Get('unread-count')

@@ -35,6 +35,7 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 import { CacheService } from '../../core/cache/cache.service';
 import { liveVoucherActive } from './voucher-pricing';
 import { ProductCouponQueryDto } from './dto/product-coupon-query.dto';
+import { voucherMatchesProduct, voucherProductWhere } from './voucher-discovery';
 
 // Banned words list as per Section 10
 const BANNED_CODE_WORDS = [
@@ -304,8 +305,35 @@ export class CouponsService {
       .sort((left, right) => right.discountAmount - left.discountAmount);
   }
 
-  async getPublicStoreCoupons(storeId: string) {
+  async getVoucherProducts(couponId: string, page = 1) {
+    if (!Number.isInteger(page) || page < 1 || page > 10000) throw new BadRequestException('Trang sản phẩm không hợp lệ.');
+    const available = await this.getPublicAvailableCoupons([couponId]);
+    if (!available.length) throw new NotFoundException('Voucher đã hết hạn hoặc không còn khả dụng.');
+    const coupon = await this.prisma.coupon.findUnique({
+      where: { id: couponId },
+      include: { couponCategories: true, campaign: { include: { campaignProducts: true } } },
+    });
+    if (!coupon) throw new NotFoundException('Không tìm thấy voucher.');
+    const products = await this.prisma.product.findMany({
+      where: voucherProductWhere(coupon),
+      select: { id: true, title: true, imageUrl: true, price: true, stockQuantity: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      skip: (page - 1) * 24,
+      take: 25,
+    });
+    return { voucher: available[0], products: products.slice(0, 24), page, hasMore: products.length > 24 };
+  }
+
+  async getPublicStoreCoupons(storeId: string, productId?: string) {
     const now = new Date();
+    let selectedProduct: { id: string; categoryName: string | null } | null = null;
+    if (productId) {
+      selectedProduct = await this.prisma.product.findFirst({
+        where: { id: productId, storeId, isActive: true, isDeleted: false, moderationStatus: 'APPROVED' },
+        select: { id: true, categoryName: true },
+      });
+      if (!selectedProduct) throw new NotFoundException('Sản phẩm không thuộc gian hàng hoặc không còn bán.');
+    }
     const coupons = await this.prisma.coupon.findMany({
       where: {
         storeId,
@@ -331,12 +359,17 @@ export class CouponsService {
         maximumDiscountAmount: true,
         usageLimitTotal: true,
         usageCount: true,
+        budgetTotal: true,
+        budgetUsed: true,
+        storeId: true,
+        campaignId: true,
+        liveSessionId: true,
         expiresAt: true,
         scopeType: true,
         fundingSource: true,
         benefitType: true,
-        campaign: { select: { isActive: true, startDate: true, endDate: true } },
-        liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } },
+        campaign: { select: { isActive: true, startDate: true, endDate: true, campaignProducts: { select: { productId: true } } } },
+        liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true, products: { select: { productId: true, variantId: true } } } },
         couponProducts: {
           where: { product: { isDeleted: false, isActive: true } },
           select: { product: { select: { id: true, title: true } } },
@@ -350,6 +383,8 @@ export class CouponsService {
     return coupons
       .filter(
         (coupon) =>
+          (!selectedProduct || voucherMatchesProduct(coupon, selectedProduct)) &&
+          (coupon.budgetTotal === null || Number(coupon.budgetUsed) < Number(coupon.budgetTotal)) &&
           (coupon.usageLimitTotal === null ||
           coupon.usageCount < coupon.usageLimitTotal) &&
           liveVoucherActive(coupon.liveSession, now) &&

@@ -21,7 +21,6 @@ import {
   Subtitles,
   Gauge,
   Heart,
-  Ticket,
   ShoppingCart,
   ChevronLeft,
   ChevronRight,
@@ -31,6 +30,7 @@ import {
   Store,
   MessageSquare,
   Package,
+  Ticket,
 } from 'lucide-react';
 import api from '@/services/api';
 import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
@@ -38,6 +38,7 @@ import { PublicHeader } from '@/components/layout/PublicHeader';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
 import { couponService, type EligibleProductCoupon } from '@/services/coupon.service';
+import { voucherSlot } from '@/utils/voucher-intent';
 import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
@@ -356,6 +357,8 @@ export default function ProductDetailPage() {
   const [couponSuggestions, setCouponSuggestions] = useState<{ key: string; status: 'idle' | 'loading' | 'ready' | 'error'; items: EligibleProductCoupon[] }>({ key: '', status: 'idle', items: [] });
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [couponRefresh, setCouponRefresh] = useState(0);
+  const [selectedExtraVoucher, setSelectedExtraVoucher] = useState<any | null>(null);
+  const couponRequest = useRef(0);
   const couponContextKey = `${data?.product?.id ?? ''}|${selectedVariant?.id ?? ''}|${quantity}|${selectedVariant?.price ?? data?.product?.price ?? 0}`;
   const couponContextRef = useRef(couponContextKey);
   couponContextRef.current = couponContextKey;
@@ -394,8 +397,20 @@ export default function ProductDetailPage() {
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const requestedVoucherCode = searchParams.get('voucher');
   const isCheckoutParam = searchParams.get('checkout') === '1' || searchParams.get('checkout') === 'true';
   const isCheckoutOpen = isCheckoutParam;
+  const setIsCheckoutOpen = (open: boolean) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (open) next.set('checkout', '1');
+        else next.delete('checkout');
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [isWishlisted, setIsWishlisted] = useState(false);
   const estimatedDeliveryWindow = getEstimatedDeliveryWindow();
 
@@ -915,8 +930,14 @@ export default function ProductDetailPage() {
       setCouponError('Vui lòng chọn phân loại trước khi áp dụng mã ưu đãi.');
       return false;
     }
+    const discovered = availableStoreCoupons.find((voucher: any) => (voucher.displayCode || voucher.code || '').toUpperCase() === rawCode.trim().toUpperCase());
+    if (discovered && typeof voucherSlot === 'function' && voucherSlot(discovered as any) !== 'SHOP') {
+      setSelectedExtraVoucher(discovered);
+      setIsCheckoutOpen(true);
+      return true;
+    }
+    const requestId = ++couponRequest.current;
     const requestContext = couponContextRef.current;
-
     setCouponLoading(true);
     setCouponError(null);
 
@@ -936,7 +957,7 @@ export default function ProductDetailPage() {
       });
 
       const couponRes = res?.data?.data || res?.data || {};
-      if (couponContextRef.current !== requestContext) return false;
+      if (couponContextRef.current !== requestContext || requestId !== couponRequest.current) return false;
       const discount = Number(
         couponRes.discountAmount || couponRes.totalDiscount || 0,
       );
@@ -961,7 +982,7 @@ export default function ProductDetailPage() {
         return false;
       }
     } catch (err: any) {
-      if (couponContextRef.current !== requestContext) return false;
+      if (couponContextRef.current !== requestContext || requestId !== couponRequest.current) return false;
       const msg =
         err?.response?.data?.message ||
         'Mã giảm giá không tồn tại, đã hết hạn hoặc chưa đạt giá trị đơn tối thiểu.';
@@ -969,13 +990,41 @@ export default function ProductDetailPage() {
       setAppliedCoupon(null);
       return false;
     } finally {
-      setCouponLoading(false);
+      if (requestId === couponRequest.current) setCouponLoading(false);
     }
   };
 
   const applyCouponDirectly = async (codeToApply: string) => {
     await applyCouponCode(codeToApply);
   };
+
+  const chooseProductVoucher = (voucher: any) => {
+    if (typeof voucherSlot === 'function' && voucherSlot(voucher) !== 'SHOP') {
+      setSelectedExtraVoucher(voucher);
+      setIsCheckoutOpen(true);
+    } else {
+      void applyCouponDirectly(voucher.code || voucher.displayCode);
+    }
+  };
+
+  // Never retain a discount calculated for another product, variant or quantity.
+  useEffect(() => {
+    couponRequest.current++;
+    setAppliedCoupon(null);
+    setCouponLoading(false);
+    setCouponError(null);
+  }, [data?.product?.id, selectedVariant?.id, quantity]);
+
+  useEffect(() => {
+    setSelectedExtraVoucher(null);
+    const code = requestedVoucherCode;
+    if (!code || !availableStoreCoupons.length) return;
+    const voucher = (availableStoreCoupons as any[]).find((item) => ((item.code || item.displayCode) as string).toUpperCase() === code.toUpperCase());
+    if (!voucher) { setCouponError('Voucher không còn phù hợp với sản phẩm này.'); return; }
+    chooseProductVoucher(voucher);
+    // Revalidate the deep-linked intent when the selected product basis changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableStoreCoupons, requestedVoucherCode, selectedVariant?.id, quantity]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1622,8 +1671,6 @@ export default function ProductDetailPage() {
                     : couponSuggestions.status === 'error' ? <span>Chưa tải được voucher. <button type="button" className="underline text-[#8C6B32]" onClick={() => setCouponRefresh(value => value + 1)}>Thử lại</button></span>
                       : 'Chưa có voucher Shop / KOL phù hợp với lựa chọn này.'}
               </div>}
-
-              {/* Coupon Voucher Input (Compact) */}
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
                 <form onSubmit={handleApplyCoupon} className="flex w-full items-stretch gap-2">
                   <div className="relative min-w-0 flex-1">
@@ -1653,7 +1700,13 @@ export default function ProductDetailPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                      onClick={() => {
+                        couponRequest.current++;
+                        setAppliedCoupon(null); setCouponCode(''); setCouponLoading(false);
+                        const params = new URLSearchParams(searchParams);
+                        params.delete('voucher');
+                        setSearchParams(params, { replace: true });
+                      }}
                       className="text-[#7D715E] hover:text-[#DC2626] font-bold p-1 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2106,6 +2159,7 @@ export default function ProductDetailPage() {
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}
           initialCouponCode={appliedCoupon?.code || ''}
+          initialExtraVoucher={selectedExtraVoucher ? { code: selectedExtraVoucher.code, benefitType: selectedExtraVoucher.benefitType || 'GOODS' } : undefined}
           onOrderPlaced={(order) => {
             if (order.paymentMethod === 'PAYOS') return;
             trackAnalytics('order_complete', {

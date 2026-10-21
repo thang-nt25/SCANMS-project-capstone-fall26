@@ -15,6 +15,7 @@ import {
 import { CouponStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { chatNotificationPreview } from './chat-notification';
+import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -555,6 +556,41 @@ export class ChatService {
           (message) => !isExclusiveDealMessage(message.messageText),
         )
       : orderedMessages;
+  }
+
+  async exploreMessages(conversationId: string, userId: string, query: ChatExplorerQuery) {
+    const conversation = await this.getConversationById(conversationId, userId);
+    const where = buildExplorerWhere(conversationId, userId, query);
+    // A cursor from another conversation must never influence this query.
+    if (query.cursor) {
+      const anchor = await this.prisma.chatMessage.findFirst({
+        where: { id: query.cursor, conversationId },
+        select: { id: true, createdAt: true },
+      });
+      if (!anchor) throw new BadRequestException('Mốc tin nhắn không còn tồn tại');
+      where.AND = [{ OR: [
+        { createdAt: { lt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, id: { lt: anchor.id } },
+      ] }];
+    }
+    const rows = await this.prisma.chatMessage.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 31,
+      select: {
+        id: true, conversationId: true, senderId: true, messageText: true,
+        mediaUrl: true, mediaType: true, mediaName: true, createdAt: true, isRead: true,
+        sender: { select: { id: true, fullName: true, role: true } },
+      },
+    });
+    const page = rows.slice(0, 30);
+    const customer = conversation.customerId === userId ||
+      (conversation.collaboratorId === userId && conversation.collaborator?.role === 'CUSTOMER');
+    return {
+      items: customer ? page.filter((row) => !isExclusiveDealMessage(row.messageText)) : page,
+      // Advance using scanned rows even if private cards were omitted.
+      nextCursor: rows.length > 30 ? page[page.length - 1].id : null,
+    };
   }
 
   async markRead(conversationId: string, userId: string) {
