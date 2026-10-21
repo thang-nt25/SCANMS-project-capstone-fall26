@@ -1,7 +1,6 @@
 import { useState, type Ref } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Package, Truck } from 'lucide-react';
-import './OrderTrackingShortcut.css';
 
 export function OrderTrackingShortcut({ sectionRef }: { sectionRef: Ref<HTMLElement> }) {
   const navigate = useNavigate();
@@ -20,7 +19,7 @@ export function OrderTrackingShortcut({ sectionRef }: { sectionRef: Ref<HTMLElem
             if (query.trim()) navigate(`/tracking?${new URLSearchParams({ [kind]: query.trim() })}`);
           }} className="flex flex-wrap gap-2">
             <label className="sr-only" htmlFor="tracking-kind">Loại thông tin tra cứu</label>
-            <select id="tracking-kind" value={kind} onChange={(event) => setKind(event.target.value as 'orderSn' | 'phone')} className="tracking-kind-select rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs outline-[#C59B58]"><option value="orderSn">Mã đơn hàng</option><option value="phone">Số điện thoại</option></select>
+            <select id="tracking-kind" value={kind} onChange={(event) => setKind(event.target.value as 'orderSn' | 'phone')} className="tracking-kind-select relative flex h-11 min-w-[148px] items-center justify-center px-[26px] py-0 text-center [text-align-last:center] leading-[1.4] [&::picker-icon]:absolute [&::picker-icon]:end-3 [&::picker-icon]:top-1/2 [&::picker-icon]:[translate:0_-50%] [&::picker-icon]:ms-0 [&::picker-icon]:text-[11px] [&_option]:text-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs outline-[#C59B58]"><option value="orderSn">Mã đơn hàng</option><option value="phone">Số điện thoại</option></select>
             <label className="sr-only" htmlFor="tracking-shortcut-query">{kind === 'phone' ? 'Số điện thoại đặt hàng' : 'Mã đơn hàng'}</label>
             <input id="tracking-shortcut-query" required value={query} onChange={(event) => setQuery(event.target.value)} inputMode={kind === 'phone' ? 'tel' : 'text'} maxLength={100} placeholder={kind === 'phone' ? 'Nhập số điện thoại đặt hàng' : 'Nhập mã đơn hàng của bạn'} className="min-h-11 min-w-0 flex-1 basis-44 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs outline-[#C59B58]" />
             <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-[#231D15] hover:bg-[#B88E4F]"><Package size={16} />Tra cứu</button>

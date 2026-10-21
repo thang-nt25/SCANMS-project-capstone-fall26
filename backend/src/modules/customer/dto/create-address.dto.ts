@@ -62,7 +62,9 @@ export class CreateCustomerAddressDto {
   @ApiPropertyOptional({ example: 10.823099 })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 7 })
+  // Leaflet/GPS coordinates can have more than seven decimals; PostgreSQL
+  // normalizes storage to Decimal(10, 7). Validate the value and range here.
+  @IsNumber()
   @Min(-90)
   @Max(90)
   latitude?: number;
@@ -70,7 +72,7 @@ export class CreateCustomerAddressDto {
   @ApiPropertyOptional({ example: 106.629664 })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 7 })
+  @IsNumber()
   @Min(-180)
   @Max(180)
   longitude?: number;

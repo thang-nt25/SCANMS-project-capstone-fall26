@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Star, Store } from 'lucide-react';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { useLoopingStoreRail } from './useLoopingStoreRail';
-import './FeaturedStores.css';
 
 export function StoreLogo({ store, className = 'h-16 w-16' }: { store: MarketplaceStore; className?: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -45,12 +44,12 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
             {failed && <button type="button" onClick={onRetry} className="mt-3 rounded-lg bg-[#C59B58] px-4 py-2 text-xs font-bold text-[#231D15]">Thử lại</button>}
           </div>
         ) : (
-          <div ref={rail} role="region" aria-label="Danh sách gian hàng, vuốt để xem thêm" tabIndex={0} className="featured-store-rail no-scrollbar focus-visible:outline-[#C59B58]" {...railProps}>
-            {(looping ? [0, 1, 2] : [1]).map(copy => <div key={copy} className="featured-store-group" aria-hidden={copy !== 1 || undefined}>
+          <div ref={rail} role="region" aria-label="Danh sách gian hàng, vuốt để xem thêm" tabIndex={0} className="featured-store-rail [container-type:inline-size] flex overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] cursor-grab [touch-action:pan-x_pan-y] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0 data-[dragging=true]:cursor-grabbing data-[dragging=true]:select-none [&[data-dragging=true]_a]:cursor-grabbing no-scrollbar focus-visible:outline-[#C59B58]" {...railProps}>
+            {(looping ? [0, 1, 2] : [1]).map(copy => <div key={copy} className="featured-store-group flex shrink-0 items-stretch gap-4 pr-4" aria-hidden={copy !== 1 || undefined}>
             {items.map((store, index) => {
               const duplicate = copy !== 1 || index >= stores.length;
               return (
-              <article key={`${store.id}-${index}`} aria-hidden={duplicate || undefined} className="featured-store-card flex shrink-0 flex-col rounded-2xl border border-[#EAE4D7] bg-white p-5 transition hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(75,57,34,0.08)]">
+              <article key={`${store.id}-${index}`} aria-hidden={duplicate || undefined} className="featured-store-card w-[min(350px,85cqw)] sm:w-[min(350px,calc((100cqw_-_16px)/2))] lg:w-[min(350px,calc((100cqw_-_32px)/3))] flex shrink-0 flex-col rounded-2xl border border-[#EAE4D7] bg-white p-5 transition hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(75,57,34,0.08)]">
                 <div className="flex items-center gap-3">
                   <StoreLogo store={store} />
                   <div className="min-w-0">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type UIEvent } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
@@ -584,6 +584,18 @@ export default function ShopCollaborationPage() {
   const selectedStore = useMemo(() => {
     return stores.find((s) => s.id === selectedStoreId) || stores[0] || null;
   }, [stores, selectedStoreId]);
+  const [compactContext, setCompactContext] = useState(false);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setCompactContext(false);
+    if (tabScrollRef.current) tabScrollRef.current.scrollTop = 0;
+  }, [selectedStore?.id, activeTab]);
+  const handleContentScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.closest('[data-collaboration-content]') ||
+      target.matches('textarea, input') || target.scrollHeight <= target.clientHeight) return;
+    setCompactContext(previous => target.scrollTop > (previous ? 8 : 48));
+  };
 
   const [tabCounts, setTabCounts] = useState<{
     storeId: string; messages: number | null; products: number | null;
@@ -651,7 +663,7 @@ export default function ShopCollaborationPage() {
       socket.off('new_message', onMessage);
       window.removeEventListener('focus', refresh);
     };
-  }, [selectedStore.id, activeTab]);
+  }, [selectedStore?.id, activeTab]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
     if (store.slug) {
@@ -741,8 +753,9 @@ export default function ShopCollaborationPage() {
   }, [selectedStore?.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
 
   useEffect(() => {
-    if (activeTab !== 'products') return;
-    const refresh = () => { if (!document.hidden) void loadStoreProducts(selectedStore.id, true); };
+    const storeId = selectedStore?.id;
+    if (activeTab !== 'products' || !storeId) return;
+    const refresh = () => { if (!document.hidden) void loadStoreProducts(storeId, true); };
     const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -753,7 +766,7 @@ export default function ShopCollaborationPage() {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [activeTab, selectedStore.id, loadStoreProducts]);
+  }, [activeTab, selectedStore?.id, loadStoreProducts]);
 
   // Chọn / bỏ chọn sản phẩm để tạo gói deal
   const handleToggleProductSelection = (productId: string) => {
@@ -1064,7 +1077,7 @@ setActiveTab('samples');
 
   return (
     <div
-      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px]"
+      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px] [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:flex-1! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:h-[auto]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:min-h-[0]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:max-h-[none]!"
       id="partner-collaboration-workspace"
     >
       {/* Top Warning Banner nếu KOL chưa xác minh */}
@@ -1329,7 +1342,7 @@ setActiveTab('samples');
         </div>
 
         {/* RIGHT COLUMN: Không Gian Làm Việc 1-1 Với Shop */}
-        <div className="collaboration-chat-pane flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
+        <div className="collaboration-chat-pane flex-1 h-full min-h-0 flex flex-col min-w-0 bg-white overflow-hidden" onScrollCapture={handleContentScroll}>
           {!selectedStore ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
               <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
@@ -1354,6 +1367,7 @@ setActiveTab('samples');
           ) : (
             <>
               {/* Shop Context Header Bar */}
+              <div className="collaboration-context-bar sticky! top-[0]! z-[20]! shrink-0! bg-[#fff]! [&_.collaboration-shop-heading]:[transition:padding_.16s_ease]! [&[data-compact=true]]:[box-shadow:0_4px_12px_#7D715E0D]! [&[data-compact=true]_.collaboration-shop-heading]:flex-row! [&[data-compact=true]_.collaboration-shop-heading]:items-center! [&[data-compact=true]_.collaboration-shop-heading]:p-[7px_14px]! [&[data-compact=true]_.collaboration-shop-heading]:gap-[10px]! [&[data-compact=true]_.collaboration-context-avatar]:w-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:h-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-name]:text-[length:13px]! [&[data-compact=true]_.collaboration-context-meta]:hidden! [&[data-compact=true]_.collaboration-verified-label]:hidden! [&[data-compact=true]_.collaboration-context-cooperation>div]:pt-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:pb-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs]:p-[6px_12px]! [&[data-compact=true]_.collaboration-context-tabs]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button]:min-h-[32px]! [&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs>button]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:min-w-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:h-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:p-[0_4px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:grid-cols-[repeat(4,minmax(0,1fr))]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:p-[6px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button>svg]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:overflow-hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:text-ellipsis! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:whitespace-nowrap! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link>span]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link]:p-[7px]! motion-reduce:[&&]:[&_.collaboration-shop-heading]:[transition:none]! " data-compact={compactContext}>
               <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
@@ -1366,7 +1380,7 @@ setActiveTab('samples');
                     <StoreAvatar
                       name={selectedStore.ownerName || selectedStore.name}
                       logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
-                      className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
+                      className="collaboration-context-avatar w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm [transition:width_.16s_ease,height_.16s_ease]! motion-reduce:[&&]:[transition:none]! "
                     />
                   </button>
 
@@ -1375,17 +1389,17 @@ setActiveTab('samples');
                       <button
                         type="button"
                         onClick={() => openStorefront(selectedStore)}
-                        className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                        className="collaboration-context-name text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
                         title={`Mở gian hàng ${selectedStore.name}`}
                       >
                         {selectedStore.name}
                       </button>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                        <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Đã xác minh
+                        <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /><span className="collaboration-verified-label">Đã xác minh</span>
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
+                    <div className="collaboration-context-meta flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
                       <span className="flex items-center gap-1 text-[#B88E4F] font-semibold">
                         <Star className="w-3 h-3 fill-[#C59B58] text-[#B88E4F]" />
                         <span>{selectedStore.rating || 4.9}</span>
@@ -1412,7 +1426,8 @@ setActiveTab('samples');
                   : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer group shrink-0 select-none"
+                className="collaboration-store-link inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer group shrink-0 select-none"
+                aria-label={`Xem gian hàng ${selectedStore.name}`}
                 title={`Xem gian hàng ${selectedStore.name} trên Sàn`}
               >
                 <span>Xem gian hàng</span>
@@ -1422,9 +1437,9 @@ setActiveTab('samples');
           </div>
 
           {/* Sub-Tabs Bar: Vừa Vặn 100%, Nhãn Ngắn Gọn, Không Bị Tràn Chữ */}
-          <StoreCooperationPanel key={selectedStoreId} mode="kol" storeId={selectedStoreId || undefined} />
+          <div className="collaboration-context-cooperation"><StoreCooperationPanel key={selectedStoreId} mode="kol" storeId={selectedStoreId || undefined} /></div>
           <div
-            className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-[#EAE4D7] bg-white grid grid-cols-2 sm:grid-cols-4 items-stretch gap-2"
+            className="collaboration-context-tabs shrink-0 px-3 sm:px-4 py-2.5 border-b border-[#EAE4D7] bg-white grid grid-cols-2 sm:grid-cols-4 items-stretch gap-2 [&[role=tablist]>button]:[transition:padding_.16s_ease,min-height_.16s_ease,background-color_.16s_ease]! motion-reduce:[&&]:[&[role=tablist]>button]:[transition:none]! "
             role="tablist"
             aria-label="Nội dung hợp tác với gian hàng"
           >
@@ -1444,6 +1459,7 @@ setActiveTab('samples');
                   id={`subtab-${tab.id}`}
                   type="button"
                   role="tab"
+                  title={tab.label}
                   aria-selected={isActive}
                   onClick={() => {
                     setActiveTab(tab.id as any);
@@ -1456,7 +1472,7 @@ setActiveTab('samples');
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>{tab.label}</span>
+                  <span className="collaboration-tab-label">{tab.label}</span>
                   <span className="inline-flex min-w-[24px] h-6 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
                     aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn trong cuộc trò chuyện' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}
                     title={tab.id === 'messages' ? 'Tổng số tin nhắn, gồm cả tin đã đọc và thẻ deal' : 'Tổng số của gian hàng đang chọn'}>
@@ -1466,9 +1482,10 @@ setActiveTab('samples');
               );
             })}
           </div>
+          </div>
 
           {/* SUB-TAB CONTENTS */}
-          <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
+          <div data-collaboration-content className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
             {/* 1. CHAT TAB */}
             {activeTab === 'messages' && (
               <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200 flex flex-col">
@@ -1506,7 +1523,7 @@ setActiveTab('samples');
 
             {/* Các Tab còn lại */}
             {activeTab !== 'messages' && (
-              <div className={`h-full w-full overflow-y-auto ${activeTab === 'products' ? 'p-4' : 'p-5 space-y-4'}`}>
+              <div ref={tabScrollRef} className={`collaboration-tab-scroll h-full w-full overflow-y-auto  [overscroll-behavior-y:contain]! [scrollbar-width:thin]! [scrollbar-color:#C59B5880_transparent]! ${activeTab === 'products' ? 'p-4' : 'p-5 space-y-4'}`}>
                 {/* 2. PRODUCTS & SMART REFERRAL LINKS */}
                 {activeTab === 'products' && (
                   <div className="grid content-start gap-3.5 min-w-0 animate-in fade-in-50 duration-200">

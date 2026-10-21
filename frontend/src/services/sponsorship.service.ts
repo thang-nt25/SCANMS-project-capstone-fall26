@@ -1,7 +1,7 @@
 import api from "./api";
 
 export type SponsorshipStatus =
-  "REQUESTED" | "APPROVED" | "REJECTED" | "CANCELLED";
+  "REQUESTED" | "APPROVED" | "REJECTED" | "CANCELLED" | "EXPIRED";
 export interface Sponsorship {
   id: string;
   headline: string;
@@ -22,6 +22,8 @@ export interface SponsorshipPage {
   total: number;
 }
 export interface SponsorshipRequest {
+  renewsPlacementId?: string;
+  quotedAmount: number;
   requestKey: string;
   headline: string;
   startsAt: string;
@@ -30,7 +32,7 @@ export interface SponsorshipRequest {
 export interface SponsorshipReview {
   decision: "APPROVE" | "REJECT";
   note: string;
-  fundingType?: "PAID" | "PLATFORM_GRANT";
+  fundingType?: "PAID";
   amount?: number;
   paymentReference?: string;
   paymentProofUrl?: string;
@@ -39,6 +41,9 @@ export interface SponsorshipReview {
 const unwrap = <T>(response: unknown): T =>
   (response as { data?: T })?.data ?? (response as T);
 export const sponsorshipService = {
+  async pricing(): Promise<{ dailyRate: number; currency: string; billingHours: number; minHours: number; maxDays: number }> {
+    return unwrap(await api.get('/sponsored-placements/pricing', { headers: { 'x-skip-cache': 'true' } }));
+  },
   async list(page: number, status: string): Promise<SponsorshipPage> {
     return unwrap(
       await api.get("/sponsored-placements", {

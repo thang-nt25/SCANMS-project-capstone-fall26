@@ -4,7 +4,7 @@ import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutO
 import { CheckoutItemsSection } from './CheckoutItemsSection';
 import { CheckoutVoucherSection } from './CheckoutVoucherSection';
 import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
-import './CheckoutPage.css';
+import { ScanMSLogo } from '../common/ScanMSLogo';
 import {
   ArrowLeft,
   ChevronDown,
@@ -45,11 +45,19 @@ import { useCart, type CartItem } from '../../context/CartContext';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { CustomSelect } from '../ui/CustomSelect';
-import { resolveSavedShippingAddress } from '@/utils/checkout-address.utils';
+import { resolveSavedShippingAddress, resolveMapShippingAddress } from '@/utils/checkout-address.utils';
+import { AddressLocationPicker, type AddressLocationResult } from '../customer/AddressLocationPicker';
 import { walletService, type WalletSummary } from '../../services/wallet.service';
 import { normalizeOrderVariantId } from '../../utils/order-variant.utils';
 
 const UUID_RE = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+
+function readAddressCoordinates(address: CustomerAddress) {
+  if (address.latitude == null || address.longitude == null || address.latitude === '' || address.longitude === '') return null;
+  const latitude = Number(address.latitude), longitude = Number(address.longitude);
+  return Number.isFinite(latitude) && Math.abs(latitude) <= 90 && Number.isFinite(longitude) && Math.abs(longitude) <= 180
+    ? { latitude, longitude } : null;
+}
 
 const normalizeVariantToken = (value: unknown) =>
   typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
@@ -345,6 +353,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressLoadRetry, setAddressLoadRetry] = useState(0);
+  const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mappedAddress, setMappedAddress] = useState<AddressLocationResult | null>(null);
+  const [mapResetKey, setMapResetKey] = useState(0);
   const [orderNotes, setOrderNotes] = useState('');
   const [saveToAddressBook, setSaveToAddressBook] = useState(true);
   const [setAsDefaultAddress, setSetAsDefaultAddress] = useState(false);
@@ -405,11 +417,25 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [idempotencyKey, setIdempotencyKey] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const revealSubmissionError = useRef(false);
   const [addressValidationField, setAddressValidationField] = useState<'detail' | 'province' | 'district' | 'ward' | null>(null);
 
-  const markAddressEdited = () => {
+  useEffect(() => {
+    if (!isOpen || isSubmitting || !errorMessage || !revealSubmissionError.current) return;
+    revealSubmissionError.current = false;
+    const banner = document.getElementById('checkout-error');
+    banner?.scrollIntoView({ block: 'center' });
+    banner?.focus({ preventScroll: true });
+  }, [isOpen, isSubmitting, errorMessage]);
+
+  const markAddressEdited = (clearLocation = false) => {
     addressDraftEdited.current = true;
     setSelectedSavedAddressId('');
+    if (clearLocation) {
+      setDeliveryLocation(null);
+      setMappedAddress(null);
+      setMapResetKey(value => value + 1);
+    }
   };
 
   const reportAddressError = (field: NonNullable<typeof addressValidationField>, message: string) => {
@@ -643,6 +669,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 if (def.fullName) setCustomerName(def.fullName);
                 if (def.phoneNumber) setCustomerPhone(def.phoneNumber);
                 setShippingAddress(def.detailAddress || '');
+                setDeliveryLocation(readAddressCoordinates(def));
                 if (def.provinceCode) setProvinceCode(String(def.provinceCode));
                 if (def.districtCode) setDistrictCode(String(def.districtCode));
                 if (def.wardCode) setWardCode(String(def.wardCode));
@@ -692,9 +719,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
+    const controller = new AbortController();
     setAddressLoading(true);
     setAddressError(null);
-    loadShippingAddresses()
+    loadShippingAddresses(controller.signal)
       .then((provinces) => {
         if (!active) return;
         setShippingProvinces(provinces);
@@ -708,12 +736,32 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [isOpen]);
+  }, [isOpen, addressLoadRetry]);
 
   const selectedProvince = shippingProvinces.find((p) => String(p.code) === String(provinceCode));
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(districtCode));
   const selectedWard = selectedDistrict?.wards.find((w) => String(w.code) === String(wardCode));
+  useEffect(() => {
+    if (!mappedAddress) return;
+    const resolved = resolveMapShippingAddress(mappedAddress, shippingProvinces);
+    setProvinceCode(resolved.provinceCode);
+    setDistrictCode(resolved.districtCode);
+    setWardCode(resolved.wardCode);
+  }, [mappedAddress, shippingProvinces]);
+
+  const handleCheckoutLocationChange = (result: AddressLocationResult) => {
+    setIsEditingAddress(true);
+    markAddressEdited();
+    setDeliveryLocation({ latitude: result.latitude, longitude: result.longitude });
+    setMappedAddress(result);
+    setShippingAddress(result.detailAddress || '');
+    const resolved = resolveMapShippingAddress(result, shippingProvinces);
+    setProvinceCode(resolved.provinceCode);
+    setDistrictCode(resolved.districtCode);
+    setWardCode(resolved.wardCode);
+  };
   const shippingAddressHint = addressError || (addressLoading ? 'Đang tải danh mục địa chỉ…'
     : !selectedProvince ? 'Chọn Tỉnh/Thành phố để tính phí ship.'
     : !selectedDistrict ? 'Chọn Quận/Huyện để tính phí ship.'
@@ -824,6 +872,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   ) => {
     if (addr.fullName) setCustomerName(addr.fullName);
     if (addr.phoneNumber) setCustomerPhone(addr.phoneNumber);
+    setDeliveryLocation(readAddressCoordinates(addr));
+    setMappedAddress(null);
+    setMapResetKey(value => value + 1);
 
     const resolved = resolveSavedShippingAddress(addr, provinces);
     setShippingAddress(resolved.detailAddress || addr.detailAddress || '');
@@ -900,6 +951,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setDistrictCode('');
     setWardCode('');
     setShippingAddress('');
+    setDeliveryLocation(null);
+    setMappedAddress(null);
+    setMapResetKey(value => value + 1);
     setIsEditingAddress(true);
   };
 
@@ -982,6 +1036,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         wardCode: String(selectedWard.code),
         wardName: selectedWard.name,
         detailAddress: shippingAddress.trim(),
+        ...(deliveryLocation || {}),
         isDefault: setAsDefaultAddress,
       });
 
@@ -1301,14 +1356,27 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             wardCode: String(selectedWard.code),
             wardName: selectedWard.name,
             detailAddress: addressDetail,
+            ...(deliveryLocation || {}),
             isDefault: setAsDefaultAddress,
           })
           .catch(() => {});
       }
 
-      setOrderSuccess(orderResult);
       if (onOrderPlaced) {
         onOrderPlaced(orderResult);
+      }
+      if (localStorage.getItem('token') && authService.getCurrentUser()) {
+        if (orderResult.paymentMethod === 'PAYOS' && orderResult.paymentStatus === 'PAID') onPaymentConfirmed?.(orderResult);
+        onClose();
+        navigate('/customer/orders', {
+          replace: true,
+          state: { placedOrderCodes: formattedOrders.map(order => order.publicOrderCode).filter(Boolean) },
+        });
+        toast.success(orderResult.paymentMethod === 'PAYOS' && orderResult.paymentStatus !== 'PAID'
+          ? 'Đã tạo đơn. Bạn có thể tiếp tục thanh toán trong Đơn mua.'
+          : 'Đặt hàng thành công. Theo dõi đơn trong Đơn mua của tôi.');
+      } else {
+        setOrderSuccess(orderResult);
       }
     } catch (err: any) {
       if (err?.response?.status === 401) {
@@ -1322,6 +1390,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           : Array.isArray(rawMessage)
           ? rawMessage.join(' ')
           : rawMessage || 'Không thể hoàn tất đặt hàng lúc này. Vui lòng kiểm tra lại thông tin và thử lại.';
+      // Reveal the explanation after React has committed the error banner.
+      revealSubmissionError.current = true;
       setErrorMessage(serverMsg);
     } finally {
       setIsSubmitting(false);
@@ -1344,18 +1414,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="guest-checkout-title"
-      className="scanms-checkout fixed inset-0 z-[80] bg-[#FAF8F5] overflow-y-auto min-h-[100dvh] text-[#1A1612] font-sans animate-in fade-in duration-150 text-left"
+      className="scanms-checkout fixed inset-0 z-[80] bg-[#FAF8F5] overflow-y-auto min-h-[100dvh] text-[#1A1612] font-sans animate-in fade-in duration-150 text-left [--checkout-line:#EAE4D7] text-[color:#1A1612]! [&_.checkout-flow-form_:is(input,select,textarea):focus-visible]:outline-[2px] [&_.checkout-flow-form_:is(input,select,textarea):focus-visible]:outline-solid [&_.checkout-flow-form_:is(input,select,textarea):focus-visible]:outline-[#C59B58] [&_.checkout-flow-form_:is(input,select,textarea):focus-visible]:outline-offset-[2px] [&_.checkout-flow-form_:is(button,a,summary):focus-visible]:outline-[2px] [&_.checkout-flow-form_:is(button,a,summary):focus-visible]:outline-solid [&_.checkout-flow-form_:is(button,a,summary):focus-visible]:outline-[#B88E4F] [&_.checkout-flow-form_:is(button,a,summary):focus-visible]:outline-offset-[3px]"
     >
       {/* 1. Header Chuẩn SCANMS & các sàn lớn (Logo SCANMS | Thanh Toán) */}
       <header className="bg-white border-b border-[#EAE4D7] sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" onClick={onClose} className="flex items-center gap-1.5" title="Về trang chủ SCANMS">
-              <span className="text-xl sm:text-2xl font-black tracking-tight text-[#1A1612]">
-                Scan<span className="text-[#C59B58]">MS</span>
-              </span>
+        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <Link to="/" onClick={onClose} className="inline-flex min-w-0 no-underline" title="Về trang chủ SCANMS" aria-label="Về trang chủ SCANMS">
+              <ScanMSLogo size="md" className="checkout-brand-logo [&_.scanms-logo-subtitle]:whitespace-nowrap [@media_(max-width:639px)]:gap-[8px] [@media_(max-width:639px)]:[&_.scanms-logo-subtitle]:text-[8px] [@media_(max-width:639px)]:[&_.scanms-logo-subtitle]:tracking-[0.08em]!" />
             </Link>
-            <div className="h-6 w-px bg-[#EAE4D7]" />
+            <div className="hidden sm:block h-8 w-px bg-[#EAE4D7]" />
             <span id={!orderSuccess ? 'guest-checkout-title' : undefined} className="text-sm sm:text-base font-semibold text-[#7D715E]">
               Thanh toán
             </span>
@@ -1374,7 +1442,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               title="Quay lại mua sắm"
             >
               <ArrowLeft className="w-4 h-4 text-[#7D715E]" />
-              <span>Quay lại</span>
+              <span className="hidden sm:inline">Quay lại</span>
             </button>
           </div>
         </div>
@@ -1395,7 +1463,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           />
         ) : (
           /* Checkout Form (SCANMS Style) */
-          <form noValidate onSubmit={handleSubmitOrder} className="checkout-flow-form">
+          <form noValidate onSubmit={handleSubmitOrder} className="checkout-flow-form grid gap-[16px] min-w-0">
             {/* Status alerts */}
             {isValidatingCart && (
               <div className="p-3 rounded-lg bg-[#FBF5EB] border border-[#EAE4D7] text-xs text-[#B88E4F] flex items-center gap-2">
@@ -1507,7 +1575,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
             {/* Error Message banner */}
             {errorMessage && (
-              <div id="checkout-error" role="alert" className="p-3.5 rounded-lg bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] flex items-center gap-2.5">
+              <div id="checkout-error" role="alert" tabIndex={-1} className="p-3.5 rounded-lg bg-[#DC2626]/10 border border-[#DC2626]/30 text-xs text-[#DC2626] flex items-center gap-2.5">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span className="font-medium">{errorMessage}</span>
               </div>
@@ -1516,18 +1584,18 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             {/* ========================================================================= */}
             {/* BLOCK 1: ĐỊA CHỈ NHẬN HÀNG (Chuẩn SCANMS ẢNH 2) */}
             {/* ========================================================================= */}
-            <div className="checkout-section checkout-address" aria-labelledby="checkout-address-title">
-              <header className="checkout-section-heading"><h2 id="checkout-address-title"><MapPin size={19} aria-hidden="true" />Địa chỉ nhận hàng</h2></header>
+            <div className="checkout-section checkout-address min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left border-t-[3px] border-t-[#C59B58] p-[0_24px_22px] [&_>_.checkout-section-heading]:pl-0 [&_>_.checkout-section-heading]:pr-0 [&_input:not([type='checkbox']):not([type='radio'])]:min-h-[42px] [&_input:not([type='checkbox']):not([type='radio'])]:border-[#EAE4D7] [&_input:not([type='checkbox']):not([type='radio'])]:rounded-[8px] [&_select]:min-h-[42px] [&_select]:border-[#EAE4D7] [&_select]:rounded-[8px] [@media_(max-width:639px)]:p-[0_16px_18px]" aria-labelledby="checkout-address-title">
+              <header className="checkout-section-heading flex items-center justify-between flex-wrap gap-[10px_16px] min-w-0 p-[18px_24px] border-b border-b-[#EAE4D7] [&_h2]:[font-family:inherit]! [&_h2]:text-[16px] [&_h2]:font-[650] [&_h2]:leading-[1.5] [&_h2]:[font-style:inherit] [&_h2]:[font-variant:inherit] [&_h2]:[font-stretch:inherit] [&_h2]:flex [&_h2]:items-center [&_h2]:gap-[9px] [&_h2]:min-w-0 [&_h2]:m-0 [&_h2_>_svg]:shrink-0 [&_h2_>_svg]:text-[color:#B88E4F]! [@media_(max-width:639px)]:p-[16px] [@media_(max-width:639px)]:[&_h2]:text-[15px]"><h2 id="checkout-address-title"><MapPin size={19} aria-hidden="true" />Địa chỉ nhận hàng</h2></header>
               <div className="checkout-address-body">
-                <div className="checkout-address-summary">
-                  <div className="checkout-address-summary-info">
+                <div className="checkout-address-summary flex items-start justify-between gap-[16px] pt-[18px] [@media_(max-width:639px)]:gap-[10px]">
+                  <div className="checkout-address-summary-info flex flex-col items-start gap-[7px] min-w-0 text-[13px] leading-[1.65] [&_strong]:font-[600] [&_>_span]:text-[color:#7D715E]! [&_>_span]:[overflow-wrap:anywhere] [&_.checkout-address-label]:inline-flex [&_.checkout-address-label]:p-[2px_7px] [&_.checkout-address-label]:border [&_.checkout-address-label]:border-[#EEDFC6] [&_.checkout-address-label]:rounded-[5px] [&_.checkout-address-label]:bg-[color:#FBF5EB] [&_.checkout-address-label]:text-[color:#8A642C]! [&_.checkout-address-label]:text-[10px] [&_.checkout-address-label]:font-[550] [@media_(max-width:639px)]:text-[12px]">
                     <strong>{customerName ? `${customerName} · ${customerPhone || 'Chưa có SĐT'}` : 'Chưa nhập thông tin nhận hàng'}</strong>
                     <span>{fullShippingAddressString || 'Thêm địa chỉ để tính phí vận chuyển và nhận hàng.'}</span>
                     {customerAddresses.find(address => address.id === selectedSavedAddressId)?.isDefault
                       ? <span className="checkout-address-label">Mặc định</span>
                       : !selectedSavedAddressId && fullShippingAddressString ? <span className="checkout-address-label">Địa chỉ giao mới</span> : null}
                   </div>
-                  <button type="button" className="checkout-address-change" onClick={() => setIsEditingAddress(previous => !previous)}>{isEditingAddress ? 'Thu gọn' : 'Thay Đổi'}</button>
+                  <button type="button" className="checkout-address-change [font-family:inherit]! text-[12px] font-[550] leading-[inherit] [font-style:inherit] [font-variant:inherit] [font-stretch:inherit] inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[44px] p-[8px_12px] border border-[#EAE4D7] rounded-[8px] bg-[color:#FFFFFF] text-[color:#8A642C]! cursor-pointer [&:hover]:border-[#EEDFC6] [&:hover]:bg-[color:#FBF5EB] [@media_(max-width:639px)]:p-[8px] [@media_(max-width:639px)]:text-[11px]" onClick={() => setIsEditingAddress(previous => !previous)}>{isEditingAddress ? 'Thu gọn' : 'Thay Đổi'}</button>
                 </div>
                 {/* Form chi tiết địa chỉ (Mở khi bấm Thay Đổi hoặc khi chưa có địa chỉ) */}
                 {(!fullShippingAddressString || isEditingAddress) && (
@@ -1699,7 +1767,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                           setProvinceCode(code);
                           setDistrictCode('');
                           setWardCode('');
-                          markAddressEdited();
+                          markAddressEdited(true);
                         }}
                         placeholder={addressLoading ? 'Đang tải Tỉnh/Thành...' : 'Chọn Tỉnh/Thành phố *'}
                         options={shippingProvinces.map((province) => ({
@@ -1716,7 +1784,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         onChange={(code) => {
                           setDistrictCode(code);
                           setWardCode('');
-                          markAddressEdited();
+                          markAddressEdited(true);
                         }}
                         placeholder="Chọn Quận/Huyện *"
                         options={(selectedProvince?.districts || []).map((district) => ({
@@ -1732,7 +1800,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         disabled={!selectedDistrict || addressLoading}
                         onChange={(code) => {
                           setWardCode(code);
-                          markAddressEdited();
+                          markAddressEdited(true);
                         }}
                         placeholder="Chọn Phường/Xã *"
                         options={(selectedDistrict?.wards || []).map((ward) => ({
@@ -1743,7 +1811,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
 
                     {addressError && (
-                      <p className="text-[11px] text-[#DC2626] font-medium">{addressError}</p>
+                      <p role="alert" className="text-[11px] text-[#DC2626] font-medium">{addressError} <button type="button" onClick={() => setAddressLoadRetry(value => value + 1)} className="ml-1 underline underline-offset-2 text-[#8A642C]">Tải lại danh mục</button></p>
                     )}
 
                     <div>
@@ -1757,12 +1825,26 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                         aria-describedby={addressValidationField === 'detail' ? 'checkout-error' : undefined}
                         onChange={(e) => {
                           setShippingAddress(e.target.value);
-                          markAddressEdited();
+                          markAddressEdited(true);
                         }}
                         className="w-full px-3.5 py-2 bg-white border border-gray-300 rounded-md text-xs text-[#1A1612] focus:outline-none focus:border-[#C59B58] transition resize-none"
                       />
                       {shippingAddress.trim().length > 0 && shippingAddress.trim().length < 5 && <p role="status" className="mt-1.5 text-[11px] text-[#795A2D]">Vui lòng bổ sung địa chỉ chi tiết, ít nhất 5 ký tự, để tính phí giao hàng.</p>}
                     </div>
+
+                    <AddressLocationPicker
+                      nationwide
+                      latitude={deliveryLocation?.latitude}
+                      longitude={deliveryLocation?.longitude}
+                      resetKey={mapResetKey}
+                      addressQuery={[shippingAddress, selectedWard?.name, selectedDistrict?.name, selectedProvince?.name, 'Việt Nam'].filter(Boolean).join(', ')}
+                      onChange={handleCheckoutLocationChange}
+                    />
+                    {mappedAddress && (!selectedProvince || !selectedDistrict || !selectedWard) && (
+                      <p role="status" className="text-[11px] leading-relaxed text-[#7D715E]">
+                        Đã ghim vị trí. {addressLoading ? 'Đang tải danh mục địa chỉ…' : 'Một số địa danh chưa khớp với danh mục. Vui lòng chọn lại Tỉnh/Thành phố, Quận/Huyện và Phường/Xã trước khi đặt hàng.'}
+                      </p>
+                    )}
 
                     {/* Hộp tùy chọn Lưu địa chỉ mới vào Sổ địa chỉ */}
                     {isSignedIn && !selectedSavedAddressId && (
@@ -1834,34 +1916,34 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               message={couponMessage}
             />
 
-            <section className="checkout-section checkout-payment" aria-labelledby="checkout-payment-title">
+            <section className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left" aria-labelledby="checkout-payment-title">
               <CheckoutPaymentMethods method={paymentMethod} onChange={setPaymentMethod} balance={Number(wallet?.availableBalance || 0)} loading={walletLoading} total={finalTotal} payosAvailable={payosAvailable} />
-              <dl className="checkout-totals" aria-label="Chi tiết thanh toán">
+              <dl className="checkout-totals grid gap-[12px] w-full max-w-[440px] m-[0_0_0_auto] p-[22px_24px] [&_>_div]:flex [&_>_div]:items-baseline [&_>_div]:justify-between [&_>_div]:gap-[20px] [&_>_div]:text-[color:#7D715E]! [&_>_div]:text-[12px] [&_>_div]:leading-[1.65] [&_dt]:min-w-0 [&_dd]:min-w-0 [&_dd]:max-w-[240px] [&_dd]:m-0 [&_dd]:text-[color:#1A1612]! [&_dd]:text-right [&_dd]:tabular-nums [&_dd]:[overflow-wrap:anywhere] [&_.checkout-total-discount_dd]:text-[color:#8A642C]! [&_.checkout-total-final]:items-center [&_.checkout-total-final]:mt-[3px] [&_.checkout-total-final]:pt-[16px] [&_.checkout-total-final]:border-t [&_.checkout-total-final]:border-t-[#EAE4D7] [@media_(max-width:639px)]:max-w-none [@media_(max-width:639px)]:p-[18px_16px]" aria-label="Chi tiết thanh toán">
                 <div><dt>Tổng tiền hàng ({activeUnitCount} sản phẩm)</dt><dd>{formatMoney(rawSubtotal)}</dd></div>
                 <div><dt>Phí vận chuyển GHN</dt><dd role="status">{shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}{shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}</dd></div>
                 {appliedCoupon && <div className="checkout-total-discount"><dt>Voucher Shop / KOL ({appliedCoupon.code})</dt><dd>−{formatMoney(discountAmount)}</dd></div>}
                 {appliedPlatformCoupon && <div className="checkout-total-discount"><dt>Voucher SCANMS ({appliedPlatformCoupon.code})</dt><dd>−{formatMoney(appliedPlatformCoupon.discountAmount)}</dd></div>}
                 {appliedShippingCoupon && <div className="checkout-total-discount"><dt>Voucher vận chuyển ({appliedShippingCoupon.code})</dt><dd>−{formatMoney(appliedShippingCoupon.discountAmount)}</dd></div>}
-                <div className="checkout-total-final"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>
+                <div className="checkout-total-final [&_dd]:text-[color:#1A1612]! [&_dd]:text-[26px] [&_dd]:font-[650] [&_dd]:tracking-[-.5px]! [&_dd]:leading-[1.35] [&_dd_>_span]:text-[color:#7D715E]! [&_dd_>_span]:text-[13px] [&_dd_>_span]:font-[500] [@media_(max-width:639px)]:[&_dd]:text-[24px]"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>
               </dl>
 
-              <details className="checkout-policy-details" id="checkout-return-policies">
+              <details className="checkout-policy-details m-[0_24px] border-t border-t-[#EAE4D7] [&_>_summary]:flex [&_>_summary]:items-center [&_>_summary]:justify-between [&_>_summary]:gap-[12px] [&_>_summary]:min-h-[48px] [&_>_summary]:p-[12px_0] [&_>_summary]:list-none [&_>_summary]:text-[color:#7D715E]! [&_>_summary]:text-[12px] [&_>_summary]:leading-[1.6] [&_>_summary]:cursor-pointer [&_>_summary::-webkit-details-marker]:hidden [&_>_summary_>_span]:flex [&_>_summary_>_span]:items-center [&_>_summary_>_span]:gap-[7px] [&_svg]:shrink-0 [&_svg]:text-[color:#B88E4F]! [&[open]_>_summary_>_svg]:transform-[rotate(180deg)] [@media_(max-width:639px)]:m-[0_16px]" id="checkout-return-policies">
                 <summary><span><ShieldCheck size={16} aria-hidden="true" />Chính sách đổi trả & giao hàng của các gian hàng</span><ChevronDown size={15} aria-hidden="true" /></summary>
-                <div className="checkout-policy-details-body">
-                  {policyLoading ? <p>Đang tải chính sách Shop…</p> : policyError ? <p className="checkout-policy-error">{policyError}</p> : itemsGroupedByShop.map(group => {
+                <div className="checkout-policy-details-body grid gap-[12px] p-[4px_0_16px] text-[color:#7D715E]! text-[12px] leading-[1.7] [&_article]:p-[14px] [&_article]:border [&_article]:border-[#EAE4D7] [&_article]:rounded-[9px] [&_article]:bg-[color:#FAF8F5] [&_h3]:[font-family:inherit]! [&_h3]:text-[12px] [&_h3]:font-[600] [&_h3]:leading-[inherit] [&_h3]:[font-style:inherit] [&_h3]:[font-variant:inherit] [&_h3]:[font-stretch:inherit] [&_h3]:m-[0_0_6px] [&_h3]:text-[color:#1A1612]! [&_p]:m-[4px_0_0]">
+                  {policyLoading ? <p>Đang tải chính sách Shop…</p> : policyError ? <p className="checkout-policy-error text-[color:#DC2626]!">{policyError}</p> : itemsGroupedByShop.map(group => {
                     const policy = shopPolicies[group.store.id];
                     return <article key={group.store.id}><h3>{group.store.name}</h3>{policy ? <>
                       <p>{policy.policyReturn || 'Shop chưa công bố nội dung đổi trả riêng.'}</p>
                       {policy.policyWarranty && <p><strong>Bảo hành: </strong>{policy.policyWarranty}</p>}
                       {policy.policyShipping && <p><strong>Giao hàng: </strong>{policy.policyShipping}</p>}
-                    </> : <p className="checkout-policy-error">Chưa tải được chính sách của gian hàng. Vui lòng thử lại sau.</p>}</article>;
+                    </> : <p className="checkout-policy-error text-[color:#DC2626]!">Chưa tải được chính sách của gian hàng. Vui lòng thử lại sau.</p>}</article>;
                   })}
                 </div>
               </details>
-              {policyError && <p className="checkout-payment-notice checkout-policy-error" role="alert">{policyError}</p>}
-              <footer className="checkout-place-order">
+              {policyError && <p className="checkout-payment-notice checkout-policy-error m-[0_24px_18px] p-[12px] border border-[#EEDFC6] rounded-[8px] bg-[color:#FBF5EB] text-[color:#DC2626]! text-[12px] leading-[1.6] [@media_(max-width:639px)]:m-[0_16px_16px]" role="alert">{policyError}</p>}
+              <footer className="checkout-place-order flex items-center justify-between gap-[20px] p-[20px_24px] border-t border-t-[#EAE4D7] [&_>_label]:flex [&_>_label]:items-start [&_>_label]:gap-[9px] [&_>_label]:max-w-[650px] [&_>_label]:text-[color:#7D715E]! [&_>_label]:text-[12px] [&_>_label]:leading-[1.8] [&_>_label]:cursor-pointer [&_>_label_>_input]:shrink-0 [&_>_label_>_input]:w-[17px] [&_>_label_>_input]:h-[17px] [&_>_label_>_input]:mt-[3px] [&_>_label_>_input]:accent-[#B88E4F] [&_a]:text-[color:#8A642C]! [&_a]:underline [&_a]:underline-offset-[3px] [@media_(max-width:639px)]:flex-col [@media_(max-width:639px)]:items-stretch [@media_(max-width:639px)]:p-[18px_16px] [@media_(max-width:639px)]:gap-[16px] [@media_(max-width:639px)]:[&_>_label]:text-[11px]">
                 <label htmlFor="checkout-policy-agreement"><input id="checkout-policy-agreement" type="checkbox" checked={policyAccepted} disabled={policyLoading || Boolean(policyError) || itemsGroupedByShop.some(group => !shopPolicies[group.store.id])} onChange={event => { setPolicyAccepted(event.target.checked); if (event.target.checked && errorMessage?.includes('chính sách đổi trả')) setErrorMessage(null); }} /><span>Tôi đã đọc và đồng ý với <a href="#checkout-return-policies" onClick={event => { event.preventDefault(); const details = document.getElementById('checkout-return-policies') as HTMLDetailsElement | null; if (details) { details.open = true; details.scrollIntoView({ block: 'center' }); details.querySelector('summary')?.focus(); } }}>chính sách đổi trả, giao hàng của các gian hàng</a> trong đơn.</span></label>
-                <button type="submit" className="checkout-submit" disabled={isSubmitting || activeItems.length === 0}>{isSubmitting ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" />Đang đặt hàng…</> : !currentUser ? 'Đăng nhập để đặt hàng' : 'Đặt hàng'}</button>
+                <button type="submit" className="checkout-submit [font-family:inherit]! text-[14px] font-[650] leading-[1.5] [font-style:inherit] [font-variant:inherit] [font-stretch:inherit] inline-flex items-center justify-center gap-[8px] shrink-0 min-w-[220px] min-h-[48px] p-[12px_22px] border border-[#EEDFC6] rounded-[10px] bg-[color:#FBF5EB] text-[color:#1A1612]! cursor-pointer [&:hover:not(:disabled)]:bg-[color:#F3EFE6] [&:hover:not(:disabled)]:border-[#C59B58] [&:disabled]:bg-[color:#F3EFE6] [&:disabled]:border-[#EAE4D7] [&:disabled]:text-[color:#7D715E]! [&:disabled]:cursor-wait [@media_(max-width:639px)]:w-full [@media_(max-width:639px)]:min-w-0" disabled={isSubmitting || activeItems.length === 0}>{isSubmitting ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" />Đang đặt hàng…</> : !currentUser ? 'Đăng nhập để đặt hàng' : 'Đặt hàng'}</button>
               </footer>
             </section>
           </form>

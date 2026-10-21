@@ -1,0 +1,512 @@
+{
+  "fr": "FR01",
+  "stem": "FR01_Registration_Login_JWT_Email_OTP",
+  "title": "FR-01 Registration, Login JWT and Email OTP",
+  "classes": [
+    {
+      "id": "AuthController",
+      "name": "AuthController",
+      "attrs": [
+        "- authService: AuthService"
+      ],
+      "ops": [
+        "+ sendOtp(dto: SendOtpDto)",
+        "+ register(dto: RegisterDto)",
+        "+ login(dto: LoginDto, ip?, userAgent?)"
+      ]
+    },
+    {
+      "id": "AuthService",
+      "name": "AuthService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- jwtService: JwtService (@nestjs/jwt)",
+        "- mailService?: MailService",
+        "- otpCache: Map<string, StoredOtp>"
+      ],
+      "ops": [
+        "+ sendRegistrationOtp(dto: SendOtpDto)",
+        "+ register(dto: RegisterDto)",
+        "+ login(dto: LoginDto, meta?)",
+        "+ hashPassword(password): Promise<string>",
+        "+ verifyPassword(password, hash): Promise<boolean>",
+        "- assertOtp(key, suppliedCode): void",
+        "- findLoginUser(identifier: LoginIdentifier)"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ user: Prisma.UserDelegate",
+        "+ store: Prisma.StoreDelegate",
+        "+ collaboratorProfile: Prisma.CollaboratorProfileDelegate",
+        "+ collaboratorTier: Prisma.CollaboratorTierDelegate",
+        "+ wallet: Prisma.WalletDelegate"
+      ],
+      "ops": [
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>",
+        "+ $queryRaw(query): Promise<T>"
+      ]
+    },
+    {
+      "id": "NestJwtService",
+      "name": "JwtService (@nestjs/jwt)",
+      "attrs": [
+        "- options: JwtModuleOptions"
+      ],
+      "ops": [
+        "+ sign(payload, options?): string"
+      ]
+    },
+    {
+      "id": "MailService",
+      "name": "MailService",
+      "attrs": [
+        "- transporter: Transporter | null"
+      ],
+      "ops": [
+        "+ sendRegistrationOtp(email, otp)",
+        "+ sendLoginSecurityAlert(email, fullName, details)",
+        "- sendMail(to, subject, html, text, requireDelivery?)"
+      ]
+    },
+    {
+      "id": "User",
+      "name": "User",
+      "attrs": [
+        "+ id: string",
+        "+ email: string {unique}",
+        "+ passwordHash: string",
+        "+ fullName: string",
+        "+ phoneNumber: string | null",
+        "+ role: UserRole",
+        "+ isActive, isDeleted: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id, ownerId: string",
+        "+ name, slug: string",
+        "+ logoUrl: string | null",
+        "+ isActive, isVerified: boolean",
+        "+ onboardingStatus: ShopOnboardingStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "CollaboratorProfile",
+      "name": "CollaboratorProfile",
+      "attrs": [
+        "+ id: string",
+        "+ userId: string {unique}",
+        "+ tierId: string | null",
+        "+ avatarUrl: string | null",
+        "+ kycStatus: KycStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Wallet",
+      "name": "Wallet",
+      "attrs": [
+        "+ id: string",
+        "+ collaboratorId: string {unique}",
+        "+ availableBalance, pendingBalance: Decimal",
+        "+ version: number"
+      ],
+      "ops": []
+    }
+  ],
+  "relations": [
+    [
+      "AuthController",
+      "AuthService",
+      "reference",
+      "authService"
+    ],
+    [
+      "AuthService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "AuthService",
+      "NestJwtService",
+      "reference",
+      "jwtService"
+    ],
+    [
+      "AuthService",
+      "MailService",
+      "reference",
+      "mailService"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "User",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "CollaboratorProfile",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Wallet",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "User",
+      "Store",
+      "association",
+      "stores",
+      "1",
+      "0..*"
+    ],
+    [
+      "User",
+      "CollaboratorProfile",
+      "association",
+      "collaboratorProfile",
+      "1",
+      "0..1"
+    ],
+    [
+      "User",
+      "Wallet",
+      "association",
+      "wallet",
+      "1",
+      "0..1"
+    ]
+  ],
+  "classLayout": {
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "controller": "AuthController",
+    "service": "AuthService",
+    "supports": [
+      [
+        "NestJwtService",
+        150
+      ],
+      [
+        "MailService",
+        700
+      ]
+    ],
+    "models": [
+      "User",
+      "Store",
+      "CollaboratorProfile",
+      "Wallet"
+    ],
+    "modelPositions": {
+      "User": [
+        1930,
+        150,
+        620
+      ],
+      "Store": [
+        1930,
+        650,
+        620
+      ],
+      "CollaboratorProfile": [
+        1930,
+        1090,
+        620
+      ],
+      "Wallet": [
+        1930,
+        1503,
+        620
+      ]
+    }
+  },
+  "classNote": "Selected existing registration/login members. OTP is an in-process Map, not a database model. JwtService here is @nestjs/jwt. Login has no second-factor OTP challenge; Verify2FaDto is unused. Role-specific profile/Store/Wallet writes are separate.",
+  "subtitle": "Current web flow: CUSTOMER registration with email OTP → automatic password login → JWT. Login OTP 2FA is not implemented.",
+  "lanes": [
+    {
+      "id": "user",
+      "name": "User",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "ctrl",
+      "name": ":AuthController"
+    },
+    {
+      "id": "svc",
+      "name": ":AuthService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    },
+    {
+      "id": "jwt",
+      "name": ":JwtService (@nestjs/jwt)"
+    },
+    {
+      "id": "mail",
+      "name": ":MailService"
+    }
+  ],
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v3",
+    "order": [
+      "user",
+      "browser",
+      "ctrl",
+      "svc",
+      "db",
+      "jwt",
+      "mail"
+    ]
+  },
+  "messages": [
+    [
+      "user",
+      "browser",
+      "Enter registration details; accept terms; Register"
+    ],
+    [
+      "browser",
+      "browser",
+      "Require matching passwords (8+ characters) and terms"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "POST /api/auth/send-otp { email }"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "sendRegistrationOtp(dto)"
+    ],
+    [
+      "svc",
+      "db",
+      "Normalize email; user.findUnique({ email })"
+    ],
+    [
+      "db",
+      "svc",
+      "No existing non-deleted account",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Generate random 6-digit OTP; cache by email for 5 minutes"
+    ],
+    [
+      "svc",
+      "mail",
+      "sendRegistrationOtp(email, otp)"
+    ],
+    [
+      "mail",
+      "svc",
+      "Dispatcher completes: SMTP or console fallback",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "success and message; never return OTP",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "201: request accepted (no HttpCode override)",
+      "return"
+    ],
+    [
+      "browser",
+      "user",
+      "Show OTP modal; 60-second resend countdown",
+      "return"
+    ],
+    [
+      "user",
+      "browser",
+      "Read issued code; enter email OTP; Confirm"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "POST /api/auth/register (CUSTOMER, details, password, otp)"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "register(dto)"
+    ],
+    [
+      "svc",
+      "svc",
+      "Validate public role; assertOtp; consume OTP before DB writes"
+    ],
+    [
+      "svc",
+      "db",
+      "Recheck normalized email uniqueness"
+    ],
+    [
+      "db",
+      "svc",
+      "Email available",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "hashPassword(): Argon2id; bcrypt fallback on hash failure"
+    ],
+    [
+      "svc",
+      "db",
+      "user.create(CUSTOMER, passwordHash, normalized details)"
+    ],
+    [
+      "db",
+      "svc",
+      "Selected user fields; no passwordHash",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "User and registration message; no access token",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "201: registration completed",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "RegisterPage automatically calls authService.login()"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "POST /api/auth/login { identifier: email, password }"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "login(dto, { ipAddress, userAgent })"
+    ],
+    [
+      "svc",
+      "db",
+      "findLoginUser(email): User + Stores/Profile/tier/Wallet"
+    ],
+    [
+      "db",
+      "svc",
+      "Account and stored passwordHash",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Require active account; verifyPassword; upgrade bcrypt if needed"
+    ],
+    [
+      "svc",
+      "mail",
+      "[mail configured] sendLoginSecurityAlert(); catch failure",
+      "async"
+    ],
+    [
+      "svc",
+      "jwt",
+      "sign({ sub: user.id, email, role })"
+    ],
+    [
+      "jwt",
+      "svc",
+      "Access JWT; configured expiry (default 7d)",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "accessToken, safeUser, securityAlertQueued",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "200: login response in success/statusCode/data envelope",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "Save token/user/workspace in localStorage; emit auth events"
+    ],
+    [
+      "browser",
+      "user",
+      "Navigate to safe return path or /customer/orders",
+      "return"
+    ]
+  ],
+  "notes": [
+    "Browser = RegisterPage + LoginPage + frontend authService + Axios. Public RegisterPage sends CUSTOMER; backend also handles COLLABORATOR and SHOP_MANAGER requests. Global DTO validation runs before controller methods.",
+    "OTP verifies registration email, not a second login factor. It is held in a per-process Map for 5 minutes, removed after 5 wrong guesses or successful assertion. Resend replaces the cached code; the 60-second resend countdown is enforced by UI.",
+    "Expanded happy path is CUSTOMER. KOL requests create profile/tier lookup and Wallet; Shop requests create an inactive DRAFT Store while the User starts as CUSTOMER. These are separate writes, not a registration transaction; OTP is already consumed.",
+    "MailService encapsulates Nodemailer SMTP. Missing configuration or ordinary send failure can fall back to console; success response is not proof of inbox delivery. Login alert is unawaited and never a blocking OTP challenge. No real email was sent for this diagram.",
+    "Existing-account login also accepts a uniquely resolved Vietnamese phone number. Invalid credentials: 401; disabled account: 403; invalid/expired OTP or DTO: 400; duplicate email: 409. JWT_SECRET is required; no refresh-token flow or login 2FA endpoint exists in the inspected auth code.",
+    "Protected routes use JwtAuthGuard + JwtStrategy to verify Bearer signature/expiry and reload active User; GET /api/auth/me returns safe account data. Those later calls, Google OAuth and password recovery are documented separately. Auto-login failure after registration returns UI to /login."
+  ]
+}

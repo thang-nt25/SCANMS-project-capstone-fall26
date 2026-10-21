@@ -65,7 +65,9 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState<string>(searchParams.get('max') || '');
   const [onlyHasCommission, setOnlyHasCommission] = useState(searchParams.get('commission') === 'true');
   const [onlyInStock, setOnlyInStock] = useState(searchParams.get('inStock') === 'true');
-  const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'popular');
+  const sortParam = searchParams.get('sort');
+  const [sortBy, setSortBy] = useState<string>(sortParam || (queryParam ? 'relevance' : 'popular'));
+  useEffect(() => { setSortBy(sortParam || (queryParam ? 'relevance' : 'popular')); }, [sortParam, queryParam]);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showAllStores, setShowAllStores] = useState(false);
@@ -290,13 +292,18 @@ export default function SearchPage() {
   // Fetch real products from backend
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
     setLoading(true);
+    setItems([]);
 
     const loadProducts = async () => {
       const products: any[] = [];
       let page = 1, totalPages = 1;
       do {
-        const res = await api.get('/public/products', { params: { limit: 48, page, sortBy: 'newest' } });
+        const res = await api.get('/public/products', {
+          params: { limit: 48, page, search: queryParam || undefined, sortBy: queryParam ? 'relevance' : 'newest' },
+          signal: controller.signal, headers: { 'x-skip-cache': 'true' },
+        });
         const payload = res.data?.data !== undefined ? res.data.data : res.data;
         const batch = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
         if (!mounted) return [];
@@ -339,6 +346,7 @@ export default function SearchPage() {
               sold: String(Number(item.soldCount ?? 0)),
               soldCount: Number(item.soldCount ?? 0),
               viewCount: Number(item.viewCount ?? 0),
+              matchKind: item.matchKind === 'related' ? 'related' : 'direct',
               createdAt: item.createdAt,
               commissionRate: rawRate || undefined,
               commissionAmount: rawRate > 0 ? Math.round(priceNum * (rawRate / 100)) : undefined,
@@ -356,7 +364,7 @@ export default function SearchPage() {
         }
       })
       .catch((err) => {
-        console.error('Lỗi khi tải sản phẩm:', err);
+        if (mounted) console.error('Lỗi khi tải sản phẩm:', err);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -364,8 +372,9 @@ export default function SearchPage() {
 
     return () => {
       mounted = false;
+      controller.abort();
     };
-  }, []);
+  }, [queryParam]);
 
 
   // Filter and Sort Logic
@@ -373,17 +382,8 @@ export default function SearchPage() {
     return items.filter((p) => {
       if (!matchesHomeCategory(p.category, categoryGroup)) return false;
       if (discountedOnly && p.origPrice <= p.price) return false;
-      // 1. Search keyword
-      if (searchInput.trim()) {
-        const q = searchInput.toLowerCase().trim();
-        const matchTitle = p.name.toLowerCase().includes(q);
-        const matchBrand = (p.brand || '').toLowerCase().includes(q);
-        const matchCategory = (p.category || '').toLowerCase().includes(q);
-        const matchSku = p.sku ? p.sku.toLowerCase().includes(q) : false;
-        if (!matchTitle && !matchBrand && !matchCategory && !matchSku) {
-          return false;
-        }
-      }
+      // Keyword relevance, accents, aliases and typos use the same backend
+      // matcher as autocomplete; don't discard those matches with includes().
 
       // 2. Category
       if (selectedCategory !== 'all') {
@@ -437,7 +437,7 @@ export default function SearchPage() {
 
   // Sort
   const displayedProducts = useMemo(() => {
-    return sortCatalogProducts(filteredProducts, sortBy);
+    return sortBy === 'relevance' ? filteredProducts : sortCatalogProducts(filteredProducts, sortBy);
   }, [filteredProducts, sortBy]);
   const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals(displayedProducts.map((product) => product.id));
 
@@ -784,10 +784,14 @@ export default function SearchPage() {
 
           {/* RIGHT PRODUCT GRID COLUMN */}
           <div className="flex-1 min-w-0 space-y-3.5">
+            {!loading && displayedProducts.some(product => product.matchKind === 'related') && <p role="status" data-search-related-note
+              className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3 text-sm text-[#7D715E]">
+              Sản phẩm chăm sóc da liên quan đến “{queryParam}”. Xem công dụng của từng sản phẩm để lựa chọn phù hợp.
+            </p>}
             
             {/* SCANMS Standard Sort Bar: Exact matching 52px height and alignment with Bộ lọc sản phẩm */}
-            <div className="h-[52px] bg-white border border-[#EAE4D7] rounded-xl px-4 flex items-center justify-between gap-3 shadow-[0_2px_12px_rgba(75,57,34,0.03)]">
-              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div data-search-sort-bar className="min-h-[52px] bg-white border border-[#EAE4D7] rounded-xl px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_12px_rgba(75,57,34,0.03)]">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0">
                 {/* Mobile Filter Button */}
                 <button
                   type="button"
@@ -808,6 +812,9 @@ export default function SearchPage() {
                 </span>
 
                 {/* Phổ Biến Button */}
+                {queryParam && <button type="button" onClick={() => { setSortBy('relevance'); updateUrlParams({ sort: 'relevance' }); }}
+                  className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${sortBy === 'relevance' ? 'bg-[#FBF5EB] text-[#8C6226] border-[#EEDFC6]' : 'bg-white text-[#1A1612] border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}
+                  aria-pressed={sortBy === 'relevance'}>Liên quan</button>}
                 <button
                   type="button"
                   onClick={() => {

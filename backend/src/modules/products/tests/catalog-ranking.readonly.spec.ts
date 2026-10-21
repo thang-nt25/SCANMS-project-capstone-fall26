@@ -17,17 +17,19 @@ databaseTests('catalog ranking SQL with isolated read-only fixtures', () => {
   });
   afterAll(async () => { await pool?.end(); });
   const fixtures = Prisma.sql`
-    products(id, store_id, title, sku, category_name, price, created_at, is_deleted, is_active, moderation_status) AS (
+    product_seed(id, store_id, title, sku, category_name, price, created_at, is_deleted, is_active, moderation_status) AS (
       VALUES ('old', 'shop', 'Old', 'OLD', 'Skin', 100, '2026-01-01'::timestamptz, false, true, 'APPROVED'),
              ('new', 'shop', 'New', 'NEW', 'Skin', 300, '2026-03-01'::timestamptz, false, true, 'APPROVED'),
              ('visited', 'shop', 'Viewed', 'VIEW', 'Food', 200, '2026-02-01'::timestamptz, false, true, 'APPROVED'),
              ('zero', 'shop', 'Zero', 'ZERO', 'Skin', 50, '2026-01-02'::timestamptz, false, true, 'APPROVED'),
              ('draft', 'shop', 'Draft', 'DRAFT', 'Skin', 1, '2026-05-01'::timestamptz, false, true, 'DRAFT'),
              ('closed', 'closed-shop', 'Closed', 'CLOSED', 'Skin', 1, '2026-05-01'::timestamptz, false, true, 'APPROVED')
-    ), stores(id, owner_id, name, is_deleted, is_active, is_verified, onboarding_status) AS (
+    ), products AS (SELECT *, ''::text AS description, ''::text AS ingredients FROM product_seed),
+    stores(id, owner_id, name, is_deleted, is_active, is_verified, onboarding_status) AS (
       VALUES ('shop', 'owner', 'Shop', false, true, true, 'VERIFIED'),
              ('closed-shop', 'owner', 'Closed', false, false, true, 'VERIFIED')
-    ), users(id, is_active) AS (VALUES ('owner', true)),
+    ), users(id, is_active, is_deleted) AS (VALUES ('owner', true, false)),
+    product_variants(product_id, name, sku, is_active) AS (SELECT NULL::text, NULL::text, NULL::text, false WHERE false),
     orders(id, status) AS (VALUES ('delivered', 'DELIVERED'), ('completed', 'COMPLETED'),
       ('pending', 'PENDING'), ('cancelled', 'CANCELLED'), ('returned', 'RETURNED')),
     order_items(product_id, order_id, quantity) AS (VALUES
@@ -41,7 +43,7 @@ databaseTests('catalog ranking SQL with isolated read-only fixtures', () => {
       ('ANALYTICS_VIDEO_START', '{"productId":"new"}'::jsonb))`;
   async function run(options: Partial<Parameters<typeof catalogRankingQuery>[0]> = {}) {
     const ranked = catalogRankingQuery({ page: 1, limit: 10, ...options });
-    ranked.strings[0] = ranked.strings[0].replace('WITH eligible AS', 'eligible AS');
+    ranked.strings[0] = ranked.strings[0].replace(/\bWITH\b/, '');
     const query = Prisma.sql`WITH ${fixtures}, ${ranked}`;
     return (await pool.query(query.text, query.values)).rows;
   }

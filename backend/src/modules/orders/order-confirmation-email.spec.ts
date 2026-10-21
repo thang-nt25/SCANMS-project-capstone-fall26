@@ -1,6 +1,5 @@
-import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
-import { orderConfirmationEmailInput, type OrderConfirmationSnapshot } from './order-confirmation-email';
+import { confirmationEmailState, combinedConfirmationEmailState, orderConfirmationEmailInput, type OrderConfirmationSnapshot } from './order-confirmation-email';
 
 const order: OrderConfirmationSnapshot = {
   externalOrderSn: 'DH-TEST', createdAt: new Date('2026-10-18T00:00:00Z'), subtotalAmount: '400000', shippingFee: '29001', discountAmount: '15000', finalAmount: '414001',
@@ -28,25 +27,18 @@ describe('Post-commit order confirmation delivery', () => {
     expect(orderConfirmationEmailInput(second, recipient).items).toEqual([{ title: 'Cleanser', quantity: 1, unitPrice: 100000 }]);
   });
 
-  function service(mail?: unknown) { return new OrdersService({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, mail as any); }
-
-  it('waits for SMTP before returning SENT, and failures do not throw after order commit', async () => {
-    let resolve!: (value: boolean) => void;
-    const mail = { sendOrderConfirmation: jest.fn(() => new Promise<boolean>(done => { resolve = done; })) };
-    let finished = false;
-    const delivery = (service(mail) as any).sendConfirmationEmail(order, recipient).then((result: string) => { finished = true; return result; });
-    await Promise.resolve();
-    expect(finished).toBe(false);
-    resolve(true);
-    expect(await delivery).toBe('SENT');
-    expect(await (service({ sendOrderConfirmation: jest.fn().mockRejectedValue(new Error('SMTP')) }) as any).sendConfirmationEmail(order, recipient)).toBe('FAILED');
-    expect(await (service({ sendOrderConfirmation: jest.fn().mockResolvedValue(false) }) as any).sendConfirmationEmail(order, recipient)).toBe('FAILED');
-  });
-
-  it('reports missing mail configuration and skips orders without an email', async () => {
-    expect(await (service() as any).sendConfirmationEmail(order, recipient)).toBe('FAILED');
-    const mail = { sendOrderConfirmation: jest.fn() };
-    expect(await (service(mail) as any).sendConfirmationEmail(order, { ...recipient, email: null })).toBe('NOT_REQUESTED');
-    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
+  it('reports durable delivery state accurately on replay without sending again', () => {
+    expect(confirmationEmailState({ confirmationEmailStatus: 'QUEUED' }, recipient.email)).toEqual({ confirmationEmailStatus: 'QUEUED', confirmationEmailQueued: true });
+    expect(confirmationEmailState({ confirmationEmailStatus: 'SENT' }, recipient.email)).toEqual({ confirmationEmailStatus: 'SENT', confirmationEmailQueued: false });
+    expect(confirmationEmailState({}, recipient.email).confirmationEmailStatus).toBe('UNKNOWN');
+    expect(confirmationEmailState({}, null).confirmationEmailStatus).toBe('NOT_REQUESTED');
+    expect(combinedConfirmationEmailState([
+      confirmationEmailState({ confirmationEmailStatus: 'SENT' }),
+      confirmationEmailState({ confirmationEmailStatus: 'SENDING' }),
+    ])).toEqual({ confirmationEmailStatus: 'QUEUED', confirmationEmailQueued: true });
+    expect(combinedConfirmationEmailState([
+      confirmationEmailState({ confirmationEmailStatus: 'SENT' }),
+      confirmationEmailState({ confirmationEmailStatus: 'FAILED' }),
+    ]).confirmationEmailStatus).toBe('PARTIAL');
   });
 });

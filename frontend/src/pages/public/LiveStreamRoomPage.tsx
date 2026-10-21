@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import './LiveStreamRoomHeader.css';
-import '../../components/live/LiveReactionFlight.css';
 import { LiveVoucherDropDialog } from '../../components/live/LiveVoucherDropDialog';
 import { HostStudioProducts } from '../../components/live/HostStudioProducts';
 import { LivePinnedProductCard, LiveReactionDock } from '../../components/live/LiveRoomCommerce';
@@ -1287,30 +1285,30 @@ export default function LiveStreamRoomPage() {
       />
 
       {/* TOP HEADER BAR (TONE SÁNG TRẮNG BE CHUẨN THƯƠNG HIỆU SCANMS) */}
-      <header className={cn('live-room-header', couponCode && 'has-voucher')} aria-label="Thông tin và điều khiển phòng Live">
-        <div className="live-room-identity">
+      <header className={cn('live-room-header relative! z-[30]! grid! grid-cols-[minmax(0,_1fr)_auto]! items-center! gap-[20px]! shrink-0! min-h-[76px]! p-[10px_24px]! [border-bottom:1px_solid_#eae4d7]! bg-[#fff]! text-[#1a1612]! [&.has-voucher]:grid-cols-[minmax(0,_1fr)_auto_auto]! [&_button:focus-visible]:[outline:2px_solid_#b88e4f]! [&_button:focus-visible]:outline-offset-[3px]! [@media(max-width:_1279px)]:[&.has-voucher]:grid-cols-[minmax(0,_1fr)_auto]! [@media(max-width:_1279px)]:[&.has-voucher]:gap-[9px_16px]! [@media(max-width:_767px)]:p-[9px_12px]! [@media(max-width:_767px)]:gap-[8px]! [@media(max-width:_767px)]:grid-cols-[minmax(0,_1fr)]! [@media(max-width:_767px)]:[&.has-voucher]:grid-cols-[minmax(0,_1fr)]! ', couponCode && 'has-voucher')} aria-label="Thông tin và điều khiển phòng Live">
+        <div className="live-room-identity flex! items-center! gap-[16px]! min-w-0! [@media(max-width:_1279px)]:col-[1]! [@media(max-width:_1279px)]:row-[1]! [@media(max-width:_1279px)]:gap-[12px]! [@media(max-width:_767px)]:col-[1]! [@media(max-width:_767px)]:row-[1]! [@media(max-width:_767px)]:gap-[9px]! ">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="live-room-back"
+            className="live-room-back inline-flex! items-center! justify-center! gap-[6px]! shrink-0! w-[34px]! h-[34px]! p-[0]! [border:1px_solid_#eae4d7]! rounded-[10px]! bg-[#fff]! text-[#7d715e]! cursor-pointer! [&:hover]:bg-[#faf8f5]! [&:hover]:border-[#c59b58]! [@media(max-width:_767px)]:h-[30px]! [@media(max-width:_767px)]:w-[30px]! "
             title="Quay lại Sàn Mua Sắm"
           >
             <ArrowLeft className="w-4 h-4 text-[#7D715E]" />
           </button>
 
           {/* Logo & Live Badge */}
-          <div className="live-room-brand">
-            <span className="live-room-wordmark">
+          <div className="live-room-brand flex! flex-col! [align-items:flex-start]! gap-[3px]! shrink-0! [@media(max-width:_767px)]:gap-[1px]! ">
+            <span className="live-room-wordmark text-[length:14px]! font-[800]! tracking-[-.5px]! leading-[18px]! whitespace-nowrap! [@media(max-width:_767px)]:text-[length:12px]! ">
               SCANMS <span className="text-[#B88E4F]">LIVE</span>
             </span>
-            <span className={cn('live-room-status', sessionData?.status === 'LIVE' && !isStreamEnded && 'is-live')}>
-              <span className="live-room-status-dot" />
+            <span className={cn('live-room-status inline-flex! items-center! gap-[5px]! text-[length:9px]! font-[700]! leading-[14px]! whitespace-nowrap! text-[#7d715e]! [&.is-live]:text-[#dc2626]! ', sessionData?.status === 'LIVE' && !isStreamEnded && 'is-live')}>
+              <span className="live-room-status-dot w-[5px]! h-[5px]! rounded-[50%]! bg-[currentColor]! " />
               {isStreamEnded ? 'Đã kết thúc' : sessionData?.status === 'LIVE' ? 'Trực tiếp' : sessionData?.status === 'PAUSED' ? 'Tạm dừng' : 'Chờ phát'}
             </span>
           </div>
 
           {/* KOL / Host Avatar & Shop Information (Bấm để xem Profile chi tiết) */}
-          <div className="live-room-host">
+          <div className="live-room-host flex! items-center! gap-[9px]! min-w-0! pl-[16px]! [border-left:1px_solid_#eae4d7]! [@media(max-width:_767px)]:pl-[10px]! [@media(max-width:_767px)]:flex-1! [@media(max-width:_400px)]:[&&]:gap-[6px]! ">
             {/* Avatar KOL với vòng pulse phát sóng trực tiếp */}
             <button
               type="button"
@@ -1336,13 +1334,13 @@ export default function LiveStreamRoomPage() {
             </button>
 
             {/* Thông tin 2 hàng: Tên KOL (trên) & Tên Shop (dưới) */}
-            <div className="live-room-host-text">
+            <div className="live-room-host-text flex! flex-col! justify-center! gap-[3px]! min-w-0! ">
               {/* Hàng 1: KOL đang live */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={handleOpenKolProfile}
-                  className="live-room-host-name group/kolname"
+                  className="live-room-host-name group/kolname flex! items-center! gap-[5px]! min-w-0! max-w-[240px]! text-[length:13px]! font-[700]! leading-[18px]! text-left! cursor-pointer! [@media(max-width:_767px)]:max-w-[220px]! [@media(max-width:_400px)]:[&&]:max-w-[115px]! "
                   title={sessionData?.creator?.fullName || 'Xem hồ sơ nhà sáng tạo'}
                 >
                   <span className="truncate group-hover/kolname:underline">
@@ -1356,7 +1354,7 @@ export default function LiveStreamRoomPage() {
               <button
                 type="button"
                 onClick={handleOpenShopProfile}
-                className="live-room-shop group/shop"
+                className="live-room-shop group/shop flex! items-center! gap-[5px]! min-w-0! max-w-[220px]! text-[#7d715e]! text-[length:10px]! leading-[16px]! cursor-pointer! text-left! "
                 title="Bấm vào để đến gian hàng của Chủ Shop"
               >
                 <div className="w-4 h-4 rounded-full overflow-hidden bg-[#FAF8F5] border border-[#E8D4B0] shrink-0 group-hover/shop:scale-110 transition-transform">
@@ -1382,7 +1380,7 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={() => setIsFollowing((v) => !v)}
-              className={`live-room-follow ${
+              className={`live-room-follow  h-[29px]! p-[0_10px]! shrink-0! rounded-[8px]! text-[length:10px]! font-[600]! whitespace-nowrap! cursor-pointer! [@media(max-width:_767px)]:ml-[auto]! [@media(max-width:_767px)]:p-[0_8px]! [@media(max-width:_400px)]:[&&]:text-[length:9px]! [@media(max-width:_400px)]:[&&]:p-[0_6px]! ${
                 isFollowing
                   ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
                   : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-xs hover:opacity-95'
@@ -1395,20 +1393,20 @@ export default function LiveStreamRoomPage() {
 
         {/* Voucher Live Pill trong Header (Sang trọng, Vàng Be, KHÔNG CHE VIDEO) */}
         {couponCode && (
-          <div className="live-room-voucher" title={`Voucher ${couponCode}: Giảm ${couponDiscount}`}>
+          <div className="live-room-voucher flex! items-center! gap-[10px]! min-w-0! p-[6px_7px_6px_11px]! [border:1px_solid_#eedfc6]! rounded-[12px]! bg-[#fbf5eb]! [@media(max-width:_1279px)]:col-[1_/_-1]! [@media(max-width:_1279px)]:row-[2]! [@media(max-width:_1279px)]:p-[5px_8px]! [@media(max-width:_1279px)]:gap-[8px]! [@media(max-width:_767px)]:col-[1]! [@media(max-width:_767px)]:row-[3]! " title={`Voucher ${couponCode}: Giảm ${couponDiscount}`}>
             <div className="w-5 h-5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
               <Ticket className="w-3 h-3 text-[#B88E4F]" />
             </div>
-            <div className="live-room-voucher-text">
-              <span className="live-room-voucher-label">Ưu đãi phiên Live</span>
-              <span className="live-room-voucher-value">Giảm {couponDiscount}</span>
+            <div className="live-room-voucher-text flex! flex-col! gap-[1px]! whitespace-nowrap! [@media(max-width:_1279px)]:flex-row! [@media(max-width:_1279px)]:items-baseline! [@media(max-width:_1279px)]:gap-[8px]! ">
+              <span className="live-room-voucher-label text-[length:9px]! leading-[13px]! text-[#7d715e]! ">Ưu đãi phiên Live</span>
+              <span className="live-room-voucher-value text-[length:12px]! leading-[16px]! font-[700]! ">Giảm {couponDiscount}</span>
             </div>
-            <span className="live-room-voucher-code">{couponCode}</span>
+            <span className="live-room-voucher-code hidden! max-w-[135px]! overflow-hidden! text-ellipsis! whitespace-nowrap! text-[#7d715e]! text-[length:10px]! [font-family:monospace]! [@media(min-width:_1600px)]:block! [@media(max-width:_1279px)]:block! [@media(max-width:_1279px)]:max-w-[none]! [@media(max-width:_1279px)]:ml-[auto]! [@media(max-width:_767px)]:max-w-[115px]! [@media(max-width:_767px)]:text-[length:9px]! [@media(max-width:_400px)]:[&&]:hidden! ">{couponCode}</span>
             <button
               type="button"
               onClick={() => void handleClaimVoucher()}
               disabled={voucherClaimLoading || isStreamEnded}
-              className={`live-room-claim ${
+              className={`live-room-claim  min-w-[63px]! h-[30px]! p-[0_10px]! [border:1px_solid_#eedfc6]! rounded-[8px]! text-[length:10px]! font-[700]! whitespace-nowrap! cursor-pointer! [&:disabled]:cursor-default! [&:disabled]:opacity-[.65]! [@media(max-width:_1279px)]:h-[26px]! [@media(max-width:_1279px)]:ml-[auto]! ${
                 isVoucherClaimed
                   ? 'bg-[#F3EFE6] text-[#7D715E]'
                   : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] text-white'
@@ -1420,10 +1418,10 @@ export default function LiveStreamRoomPage() {
         )}
 
         {/* Right Stats & Controls */}
-        <div className="live-room-controls">
+        <div className="live-room-controls flex! items-center! gap-[7px]! shrink-0! [@media(max-width:_1279px)]:col-[2]! [@media(max-width:_1279px)]:row-[1]! [@media(max-width:_767px)]:col-[1]! [@media(max-width:_767px)]:row-[2]! [@media(max-width:_767px)]:justify-end! [@media(max-width:_767px)]:gap-[6px]! [@media(max-width:_767px)]:[&_.live-room-viewers]:mr-[auto]! ">
           {/* Viewers Pill (Số người đang xem trực tiếp thực tế) */}
           <div
-            className="live-room-viewers"
+            className="live-room-viewers inline-flex! items-center! justify-center! gap-[6px]! h-[30px]! p-[0_9px]! text-[length:11px]! font-[600]! whitespace-nowrap! rounded-[8px]! bg-[#faf8f5]! text-[#7d715e]! "
             title={`${viewerCount.toLocaleString('vi-VN')} người đang xem trực tiếp phiên live này`}
           >
             <Eye className="w-3.5 h-3.5 text-[#B88E4F]" />
@@ -1431,9 +1429,9 @@ export default function LiveStreamRoomPage() {
           </div>
 
           {/* Likes Pill with Micro Pop Animation (Lượt thả tim thực tế) */}
-          <div className="live-room-likes-wrap">
+          <div className="live-room-likes-wrap relative! shrink-0! ">
             <button type="button"
-              className="live-room-likes"
+              className="live-room-likes inline-flex! items-center! justify-center! gap-[6px]! h-[30px]! p-[0_9px]! text-[length:11px]! font-[600]! whitespace-nowrap! rounded-[8px]! [border:1px_solid_#ffe4e6]! bg-[#fff1f2]! text-[#e11d48]! cursor-pointer! "
               onClick={(e) => triggerReaction('❤️', e, REALISTIC_3D_REACTIONS[0].iconUrl)}
               title={`${likesCount.toLocaleString('vi-VN')} lượt thả tim thực tế (Bấm để thả tim)`}
             >
@@ -1456,7 +1454,7 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={isCameraActive ? stopCamera : startCamera}
-              className={`live-room-camera live-room-tool ${
+              className={`live-room-camera live-room-tool  inline-flex! items-center! justify-center! gap-[6px]! shrink-0! w-[34px]! h-[34px]! p-[0]! [border:1px_solid_#eae4d7]! rounded-[10px]! bg-[#fff]! text-[#7d715e]! cursor-pointer! [&:hover]:bg-[#faf8f5]! [&:hover]:border-[#c59b58]! [@media(max-width:_767px)]:h-[30px]! [@media(min-width:_1600px)]:w-[auto]! [@media(min-width:_1600px)]:p-[0_10px]! ${
                 isCameraActive
                   ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                   : 'bg-white hover:bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]'
@@ -1466,12 +1464,12 @@ export default function LiveStreamRoomPage() {
               {isCameraActive ? (
                 <>
                   <VideoOff className="w-3.5 h-3.5 text-rose-600" />
-                  <span className="live-room-camera-label">Tắt camera</span>
+                  <span className="live-room-camera-label hidden! [@media(min-width:_1600px)]:inline! [@media(min-width:_1600px)]:text-[length:11px]! [@media(min-width:_1600px)]:font-[600]! [@media(min-width:_1600px)]:whitespace-nowrap! ">Tắt camera</span>
                 </>
               ) : (
                 <>
                   <Video className="w-3.5 h-3.5 text-[#B88E4F]" />
-                  <span className="live-room-camera-label">Bật camera</span>
+                  <span className="live-room-camera-label hidden! [@media(min-width:_1600px)]:inline! [@media(min-width:_1600px)]:text-[length:11px]! [@media(min-width:_1600px)]:font-[600]! [@media(min-width:_1600px)]:whitespace-nowrap! ">Bật camera</span>
                 </>
               )}
             </button>
@@ -1479,7 +1477,7 @@ export default function LiveStreamRoomPage() {
 
           {/* Mute Audio Toggle */}
           {isSessionHost && (
-            <div className="live-room-filter">
+            <div className="live-room-filter [&_>_button]:inline-flex! [&_>_button]:items-center! [&_>_button]:justify-center! [&_>_button]:gap-[6px]! [&_>_button]:shrink-0! [&_>_button]:w-[34px]! [&_>_button]:h-[34px]! [&_>_button]:p-[0]! [&_>_button]:[border:1px_solid_#eae4d7]! [&_>_button]:rounded-[10px]! [&_>_button]:bg-[#fff]! [&_>_button]:text-[#7d715e]! [&_>_button]:cursor-pointer! [&_>_button:hover]:bg-[#faf8f5]! [&_>_button:hover]:border-[#c59b58]! relative! shrink-0! [@media(max-width:_767px)]:[&_>_button]:h-[30px]! ">
               <button type="button" disabled={!isCameraActive} aria-expanded={isFilterPanelOpen}
                 onClick={() => setIsFilterPanelOpen((open) => !open)}
                 className={cn('inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:opacity-40',
@@ -1531,7 +1529,7 @@ export default function LiveStreamRoomPage() {
           <button
             type="button"
             onClick={() => setIsMuted((v) => !v)}
-            className="live-room-tool live-room-sound"
+            className="live-room-tool live-room-sound inline-flex! items-center! justify-center! gap-[6px]! shrink-0! w-[34px]! h-[34px]! p-[0]! [border:1px_solid_#eae4d7]! rounded-[10px]! bg-[#fff]! text-[#7d715e]! cursor-pointer! [&:hover]:bg-[#faf8f5]! [&:hover]:border-[#c59b58]! [@media(max-width:_767px)]:h-[30px]! "
             title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-[#7D715E]" />}
@@ -1546,7 +1544,7 @@ export default function LiveStreamRoomPage() {
                 toast.success('Đã sao chép link phòng live');
               }
             }}
-            className="live-room-tool live-room-share"
+            className="live-room-tool live-room-share inline-flex! items-center! justify-center! gap-[6px]! shrink-0! w-[34px]! h-[34px]! p-[0]! [border:1px_solid_#eae4d7]! rounded-[10px]! bg-[#fff]! text-[#7d715e]! cursor-pointer! [&:hover]:bg-[#faf8f5]! [&:hover]:border-[#c59b58]! [@media(max-width:_767px)]:h-[30px]! "
             title="Chia sẻ phiên livestream"
           >
             <Share2 className="w-4 h-4" />
@@ -1560,7 +1558,7 @@ export default function LiveStreamRoomPage() {
             <button
               type="button"
               onClick={() => setIsHostStudioOpen((v) => !v)}
-              className="live-room-studio"
+              className="live-room-studio inline-flex! items-center! justify-center! gap-[7px]! h-[34px]! p-[0_12px]! ml-[3px]! [border:1px_solid_#c59b58]! rounded-[10px]! bg-[#c59b58]! text-[#fff]! text-[length:11px]! font-[700]! whitespace-nowrap! cursor-pointer! [&:hover]:bg-[#b88e4f]! [@media(max-width:_767px)]:h-[30px]! "
               title="Mở Host Studio"
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -1724,7 +1722,7 @@ export default function LiveStreamRoomPage() {
           {/* REALTIME FLOATING REACTION EMOJIS (TikTok / Facebook Live Flying Trails) */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden z-30">
             {floatingReactions.map((reaction) => (
-              <span key={reaction.id} className="live-reaction-flight"
+              <span key={reaction.id} className="live-reaction-flight absolute! grid! place-items-center! pointer-events-none! select-none! opacity-[0] [offset-anchor:50%_50%]! [offset-rotate:0deg]! animate-[scanmsReactionFlight_var(--flight-duration,_2400ms)_linear_var(--flight-delay,_0ms)_both]! [will-change:offset-distance,_opacity]! [&_img]:w-full! [&_img]:h-full! [&_img]:object-contain! [&_img]:[filter:drop-shadow(0_2px_4px_#231d1526)]! [@supports_not_(offset-path:_path('M_0_0_C_20_-100,_-20_-200,_0_-300'))]:animate-[scanmsReactionFallback_var(--flight-duration,_2400ms)_linear_var(--flight-delay,_0ms)_both]! [@supports_not_(offset-path:_path('M_0_0_C_20_-100,_-20_-200,_0_-300'))]:[will-change:transform,_opacity]! motion-reduce:[&&]:[offset-path:none]! motion-reduce:[&&]:animate-[scanmsReactionQuiet_500ms_ease-out_both]! motion-reduce:[&&]:[will-change:opacity]! "
                 onAnimationEnd={event => {
                   if (event.target === event.currentTarget) setFloatingReactions(previous => previous.filter(item => item.id !== reaction.id));
                 }}
@@ -1734,7 +1732,7 @@ export default function LiveStreamRoomPage() {
                   '--flight-duration': `${reaction.duration}s`, '--flight-delay': `${reaction.delay}ms`,
                   '--flight-tilt': `${reaction.tilt}deg`, '--flight-rise': `${reaction.rise}px`, '--flight-drift': `${reaction.driftX}px`,
                 } as React.CSSProperties}>
-                <span className="live-reaction-flight-visual">
+                <span className="live-reaction-flight-visual grid! w-full! h-full! place-items-center! animate-[scanmsReactionBloom_var(--flight-duration,_2400ms)_linear_var(--flight-delay,_0ms)_both]! [will-change:transform]! motion-reduce:[&&]:animate-[none]! ">
                   {reaction.iconUrl ? <img src={reaction.iconUrl} alt="" decoding="async" draggable={false}
                     onError={event => { event.currentTarget.style.display = 'none'; }} /> : <span style={{ fontSize: reaction.size * .8 }}>{reaction.emoji}</span>}
                 </span>
@@ -1751,7 +1749,7 @@ export default function LiveStreamRoomPage() {
           {/* BOTTOM STREAM CONTROLS: TÚI ĐỒ LIVE & REACTION EMOJI DOCK (TIKTOK / SHOPEE STYLE) */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className={cn('live-stream-bottom-controls absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-auto', isReactionDockExpanded && 'live-controls-reactions-open')}
+            className={cn('live-stream-bottom-controls absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-auto gap-[12px]! ', isReactionDockExpanded && 'live-controls-reactions-open [@media(max-width:_639px)]:[&_>_div:first-child]:hidden! [@media(max-width:_639px)]:[&_.live-reaction-dock.is-expanded]:flex-1! [@media(max-width:_639px)]:[&_.live-reaction-dock.is-expanded]:w-full! ')}
           >
             {/* Bag Button: Túi Đồ Live (Thiết kế nhỏ gọn, sang trọng) */}
             <div className="flex items-center gap-2">

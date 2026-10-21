@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router-dom';
 import { Toaster as SonnerToaster } from 'sonner';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
@@ -6,20 +5,9 @@ export interface ToasterProps {
   position?: 'top-left' | 'top-right' | 'top-center' | 'bottom-left' | 'bottom-right' | 'bottom-center';
 }
 
-function useIsLiveRoom() {
-  try {
-    const location = useLocation();
-    return location.pathname.startsWith('/live');
-  } catch {
-    return typeof window !== 'undefined' && window.location.pathname.startsWith('/live');
-  }
-}
-
 export function Toaster({ position }: ToasterProps) {
-  const isLive = useIsLiveRoom();
-
   const effectivePosition = position || 'top-center';
-  const effectiveOffset = isLive ? 66 : 'calc(var(--workspace-header-height, 64px) + 12px)';
+  const effectiveOffset = 'max(8px, env(safe-area-inset-top, 0px))';
 
   return (
     <SonnerToaster

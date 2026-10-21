@@ -131,9 +131,9 @@ export class OrderCreatedResponseDto {
 
   @ApiPropertyOptional({
     description: 'Kết quả gửi SMTP sau khi đơn đã commit. SENT là máy chủ gửi đã chấp nhận, không phải xác nhận vào hộp thư đến.',
-    enum: ['SENT', 'FAILED', 'PARTIAL', 'NOT_REQUESTED'],
+    enum: ['QUEUED', 'SENDING', 'SENT', 'FAILED', 'PARTIAL', 'NOT_REQUESTED', 'UNKNOWN'],
   })
-  confirmationEmailStatus?: 'SENT' | 'FAILED' | 'PARTIAL' | 'NOT_REQUESTED';
+  confirmationEmailStatus?: 'QUEUED' | 'SENDING' | 'SENT' | 'FAILED' | 'PARTIAL' | 'NOT_REQUESTED' | 'UNKNOWN';
 
   @ApiProperty({
     description: 'Danh sách sản phẩm trong đơn',

@@ -42,7 +42,7 @@ export class ModerateProductReviewDto {
       dto.status === ReviewStatus.HIDDEN,
   )
   @IsString()
-  @MinLength(3)
+  @MinLength(10)
   @MaxLength(500)
   reason?: string;
 }

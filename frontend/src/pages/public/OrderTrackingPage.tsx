@@ -139,9 +139,9 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
   const handleSearch = async (phoneValue?: string, orderSnValue?: string) => {
     const phone = (phoneValue !== undefined ? phoneValue : phoneInput).trim();
     const orderSn = (orderSnValue !== undefined ? orderSnValue : orderSnInput).trim().replace(/^#+\s*/, '');
-    if (!phone || !orderSn) {
+    if (embedded ? !orderSn && !phone : !orderSn || !phone) {
       setErrorMessage(
-        "Vui lòng nhập đầy đủ số điện thoại đặt hàng và mã đơn hàng để tra cứu.",
+        embedded ? "Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu." : "Vui lòng nhập đầy đủ số điện thoại đặt hàng và mã đơn hàng để tra cứu.",
       );
       return;
     }
@@ -157,7 +157,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
       if (orderSn) params.orderSn = orderSn;
       if (!embedded) setSearchParams(params);
 
-      const res: any = await api.get("/orders/track", { params, headers: { 'x-skip-cache': 'true' } });
+      const res: any = await api.get(embedded ? "/orders/track/mine" : "/orders/track", { params, headers: { 'x-skip-cache': 'true' } });
       if (sequence !== searchSequence.current) return;
       if (res?.orders) {
         setOrders(res.orders);
@@ -320,6 +320,8 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
               <Search className="w-4 h-4 text-[#7D715E] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                inputMode="tel"
+                aria-label="Số điện thoại nhận hàng cần tra cứu"
                 value={phoneInput}
                 onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 placeholder="Số điện thoại: 0933888999"
@@ -333,6 +335,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
                 value={orderSnInput}
                 onChange={(e) => setOrderSnInput(e.target.value.toUpperCase())}
                 placeholder="Mã đơn: DH-2026-XXXXXXXX"
+                aria-label="Mã đơn hàng cần tra cứu"
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-2 border-[#EAE4D7] text-xs sm:text-sm text-[#1A1612] outline-none focus:border-[#C59B58] shadow-xs transition"
               />
             </div>
@@ -384,8 +387,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
               Sẵn sàng tra cứu đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Vui lòng nhập số điện thoại và mã đơn hàng ở thanh tìm kiếm phía
-              trên để hiển thị trạng thái vận chuyển chi tiết.
+              {embedded ? 'Nhập mã đơn hàng hoặc số điện thoại nhận hàng để xem tiến trình đơn mua của bạn.' : 'Vui lòng nhập số điện thoại và mã đơn hàng ở thanh tìm kiếm phía trên để hiển thị trạng thái vận chuyển chi tiết.'}
             </p>
           </div>
         )}
@@ -400,8 +402,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
               Không tìm thấy đơn hàng
             </strong>
             <p className="text-xs text-[#7D715E] max-w-md m-0">
-              Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng
-              kiểm tra lại cả hai thông tin.
+              {embedded ? 'Không tìm thấy đơn hàng khớp với thông tin đã nhập trong tài khoản của bạn. Vui lòng kiểm tra lại mã đơn hoặc số điện thoại.' : 'Không tìm thấy đơn hàng khớp với số điện thoại và mã đơn đã nhập. Vui lòng kiểm tra lại cả hai thông tin.'}
             </p>
           </div>
         )}

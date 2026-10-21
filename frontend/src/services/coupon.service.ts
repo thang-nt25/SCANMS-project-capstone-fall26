@@ -40,6 +40,15 @@ export interface PublicStoreCoupon {
   storeName: string;
 }
 
+export interface EligibleProductCoupon {
+  id: string;
+  code: string;
+  displayCode: string;
+  discountAmount: number;
+  minimumOrderAmount: number;
+  expiresAt: string | null;
+}
+
 export interface CouponItem {
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
@@ -190,6 +199,17 @@ export interface CouponFilterParams {
 }
 
 export const couponService = {
+  getEligibleProductCoupons: async (
+    storeId: string,
+    params: { productId: string; variantId?: string; quantity: number },
+    signal?: AbortSignal,
+  ): Promise<EligibleProductCoupon[]> => {
+    const res: any = await api.get(`/coupons/stores/${storeId}/product-eligible`, {
+      params, signal, headers: { 'x-skip-cache': 'true' },
+    });
+    const payload = res?.data?.data ?? res?.data ?? res;
+    return Array.isArray(payload) ? payload : [];
+  },
 
   getPublicStoreCoupons: async (storeId: string): Promise<PublicStoreCoupon[]> => {
     const res: any = await api.get(`/coupons/stores/${storeId}/available`);

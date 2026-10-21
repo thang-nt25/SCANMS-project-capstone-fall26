@@ -7,6 +7,7 @@ export enum LandingAnalyticsEvent {
   VIDEO_PROGRESS = 'video_progress',
   VIDEO_COMPLETE = 'video_complete',
   CTA_CLICK = 'cta_click',
+  ADD_TO_CART = 'add_to_cart',
   CHECKOUT_START = 'checkout_start',
   ORDER_COMPLETE = 'order_complete',
 }

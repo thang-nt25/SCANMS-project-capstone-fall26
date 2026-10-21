@@ -20,6 +20,7 @@ interface Props {
   addressQuery: string;
   onChange: (location: AddressLocationResult) => void;
   nationwide?: boolean;
+  resetKey?: number;
 }
 
 const DEFAULT_POSITION: [number, number] = [10.8231, 106.6297];
@@ -124,7 +125,7 @@ function fromPhoton(feature: any) {
   };
 }
 
-export function AddressLocationPicker({ latitude, longitude, addressQuery, onChange, nationwide = false }: Props) {
+export function AddressLocationPicker({ latitude, longitude, addressQuery, onChange, nationwide = false, resetKey = 0 }: Props) {
   const [draftPosition, setDraftPosition] = useState<[number, number] | null>(
     latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null,
   );
@@ -149,6 +150,18 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
       latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null,
     );
   }, [latitude, longitude]);
+
+  useEffect(() => {
+    lookupSequence.current += 1;
+    locationSequence.current += 1;
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    setIsLocating(false);
+    setIsResolving(false);
+    setMessage(null);
+    setDraftPosition(latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null);
+    // Explicit parent reset also cancels pending lookups when coordinates were already empty.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   const requestJson = useCallback(async (url: URL, sequence: number) => {
     const waitMs = Math.max(0, 1100 - (Date.now() - lastLookupAt.current));
@@ -265,8 +278,10 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
       if (sequence !== lookupSequence.current) return;
       const match = payload?.[0];
       if (!match) throw new Error('Không tìm thấy địa chỉ. Hãy thêm số nhà hoặc tên đường.');
+      if (match.address?.country_code !== 'vn') throw new Error('Vui lòng chọn vị trí giao hàng tại Việt Nam.');
       const nextLatitude = Number(match.lat);
       const nextLongitude = Number(match.lon);
+      if (!Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude)) throw new Error('Chưa xác định được tọa độ địa chỉ. Vui lòng thử lại.');
       setDraftPosition([nextLatitude, nextLongitude]);
       onChange(toResult(match, nextLatitude, nextLongitude));
       setMessage('Đã đặt ghim theo địa chỉ bạn nhập.');
@@ -283,7 +298,7 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
   );
 
   return (
-    <section className="address-location-picker overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]">
+    <section className="address-location-picker shrink-0 overflow-hidden rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]">
       <div className="address-location-header p-3.5 sm:p-4">
         <div className="address-location-toolbar flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

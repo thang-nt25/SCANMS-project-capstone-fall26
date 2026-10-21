@@ -1,8 +1,17 @@
 # FR-11 - Tạo mã QR Code động
 
-Đối chiếu mã nguồn hiện tại ngày 2026-10-16. Đã tạo hai file draw.io riêng: class diagram có bố cục rộng; sequence diagram thể hiện xem trước trên trình duyệt và tải file từ máy chủ. Cả hai dùng trắng đen. Chỉ chọn các thành phần/thuộc tính liên quan FR-11, không sao chép toàn bộ module tracking.
+Cập nhật theo lựa chọn của người dùng ngày 2026-10-20: **giữ nguyên toàn bộ lớp, thành viên và quan hệ; chỉ đổi cách dàn hình và tỷ lệ hiển thị**. Class FR10–FR16 cùng khổ 2800 × 2240, font Arial 20/18 và trục Controller → Service → PrismaService tại x=850 như FR9. Các model liên quan được phân nhóm sang cột trái khi phù hợp, tránh dồn tất cả vào một cột bên phải. Hộp trục xử lý rộng 830, cột trái 560, model bên phải 620, PrismaClient 650. Không bổ sung guard hoặc lớp mới. Xem [bố cục và đối chiếu FR9](diagrams/FR09_WORD_CLASS_COMPARISON.md).
 
-Đã đọc lại và cập nhật theo mẫu các FR mới: sequence **một trang**, nhãn trong suốt, không có khung ngang ref/break/opt. Class được lưu trước sequence. Mỗi file `.drawio` đầy đủ có thể nhập bằng File → Import From → Device. Generator còn tạo `diagrams/FR11_Class_Paste.xml` và `diagrams/FR11_Sequence_Paste.xml`: sao chép toàn bộ nội dung một file, thay nội dung Extras → Edit Diagram trong Draw.io để dùng cách dán XML. Không chỉ sao chép một phần selection đang dừng giữa thẻ mxCell.
+Sequence dùng chung generator `report-uml-layout.cjs`: actor bên trái, Browser kế tiếp rồi các đối tượng thực tế; hộp Browser rộng 250, các hộp đối tượng rộng 430, cùng cao 58; tiêu đề 28, tên đối tượng 20, thông điệp 18. Khoảng cách và thanh thực thi, lời gọi nội bộ, mũi tên gọi/trả về, số thứ tự và ba chú thích cuối hình được đồng bộ. Giữ nhịp 64 px của FR9, thêm 8 px sau lời gọi nội bộ để không che vòng trả về. Giữ nguyên thành phần, nội dung và thứ tự thông điệp của bản rút gọn; số cột tùy chức năng. Không thêm khung bao hoặc khung chia nhánh.
+
+
+Đối chiếu mã nguồn ngày 2026-10-19. **Bản báo cáo rút gọn hiện tại: 8 lớp/model, 23 thông điệp sequence.** Hai hình dùng đen trắng, class ba ngăn và `+`/`-`, connector có source/target thật và bội số đúng schema; sequence có actor, lifeline, activation và mũi tên, không có khung bao/chia nhánh. Điều kiện ghi trên nhãn. Phong cách theo FR9 và mẫu Word đã tham khảo.
+
+Preview QR tại trình duyệt; tải PNG/SVG qua controller/service thật, kiểm tra quyền, rate limit, cache/render và bộ đếm. Audit hỗ trợ Shop/Admin và Redis counter được mô tả riêng.
+
+Các lớp/model được vẽ: `CollaboratorReferralLinksController`, `ReferralLinksService`, `CacheService`, `PrismaService`, `Store`, `User`, `ReferralLink`, `PrismaClient`. Chỉ chọn thành viên liên quan; model không có phương thức tự khai báo giữ ngăn operation trống. Không dựng Repository/UnitOfWork hoặc service giả. PrismaService kế thừa PrismaClient trong mã và được vẽ bằng tam giác rỗng hướng tới hộp PrismaClient ở phía dưới bên trái, giống FR9.
+
+Hai XML không có đuôi mở rộng: `docs/review 2/FR11 - Class Diagram` và `docs/review 2/FR11 - Sequence Diagram`. Bản `.drawio`, `.scene.json`, PNG có tiền tố `FR11_Generate_Dynamic_QR_Code` trong `docs/diagrams`; XML để dán là `FR11_Class_Paste.xml` và `FR11_Sequence_Paste.xml`. PNG là preview từ cùng geometry, không phải export trực tiếp diagrams.net. Bản chi tiết cũ, gồm tài liệu mô tả hình cũ, được lưu tại `docs/diagrams/archive/FR11_detailed`.
 
 ## 1. Hai đường sinh QR khác nhau trên web
 
@@ -34,7 +43,7 @@ Shop/Admin thao tác thay KOL tạo AuditLog action QR_DOWNLOAD_AUDIT hoặc QR_
 
 Backend dựng payload `{publicAppUrl}/r/{shortCode}?via=qr`. getPublicAppUrl chọn PUBLIC_APP_URL, FRONTEND_URL, cuối cùng http://localhost:5173 và bỏ dấu / cuối. Code không bắt buộc HTTPS tại hàm này, mặc dù comment nghiệp vụ mô tả URL HTTPS.
 
-Khóa cache `qr_render:{link.id}:{format}:{size}`, TTL 86400 giây. CacheService dùng Redis khi hoạt động và bộ nhớ trong tiến trình khi fallback. Cache hit PNG giải mã base64 sang Buffer, SVG dùng string. Cache miss PNG gọi QRCode.toBuffer, SVG gọi QRCode.toString rồi xóa script, event handlers và javascript: trước khi cache. Cả hai dùng width size, margin 4, ECC M và màu #1A1612/#FFFFFF. Không gọi dịch vụ QR công cộng.
+Khóa cache `qr_render:{link.id}:{format}:{size}`, TTL 86400 giây. CacheService dùng Redis khi hoạt động và bộ nhớ trong tiến trình khi fallback. Cache hit PNG giải mã base64 sang Buffer, SVG dùng string. Cache miss PNG gọi imported function `renderQrPng(shortUrl, size)` từ `utils/qr-png.renderer.ts`; hàm dùng `QRCode.create` rồi raster hóa qua `pngjs` và `PNG.sync.write`, không dùng `QRCode.toBuffer`. SVG gọi `QRCode.toString` rồi xóa script, event handlers và javascript: trước khi cache. Cả hai dùng size yêu cầu, margin 4, ECC M và màu #1A1612/#FFFFFF. Không gọi dịch vụ QR công cộng.
 
 ## 4. Đếm tải và trả response
 
@@ -56,10 +65,21 @@ ReferralLink liên kết User (collaborator), Store, Product; Store có ownerId 
 - `frontend/src/services/referral-links.service.ts`: downloadQrCode, getQrDownloadUrl, ReferralLinkItem.
 - `backend/src/modules/referral-links/referral-links.controller.ts`: CollaboratorReferralLinksController.getQrCode.
 - `backend/src/modules/referral-links/referral-links.service.ts`: generateQrCode, getPublicAppUrl, createReferralLink, handleRedirect.
+- `backend/src/modules/referral-links/utils/qr-png.renderer.ts`: renderQrPng, QRCode.create và PNG.sync.write.
 - `backend/src/core/cache/cache.service.ts`: get, set, checkRateLimit, getRedis.
 - `backend/src/modules/referral-links/redirect.controller.ts`: nhận via=qr và truyền accessMethod QR.
 - `backend/prisma/schema.prisma`: ReferralLink, Store, Product, User, AuditLog.
 
 Tái tạo sơ đồ: `node docs/diagrams/build-fr11-diagrams.cjs`.
 
-Sequence renderer mới: `diagrams/fr11-single-page-sequence.cjs`. Đã đọc test hiện có `backend/src/modules/referral-links/tests/referral-links-qr.spec.ts` về QR payload/decode, PNG/SVG, ownership, cache, rate limit và bộ đếm; không chạy thao tác tải/sinh QR qua web thật vì thay đổi chỉ là tài liệu. Kiểm tra bằng parse XML, một diagram mỗi file, ID không trùng và xem PNG render. PNG là preview từ geometry, không phải export trực tiếp diagrams.net. Không thay đổi code nghiệp vụ hay .env.
+Entry point gọi `build-report-diagrams.cjs` với đặc tả `fr11-report-spec.json`, dùng helper UML của FR9. Render preview bằng `powershell -NoProfile -ExecutionPolicy Bypass -File docs/diagrams/render-fr09-uml.ps1 -Kind Class -FeatureStem FR11_Generate_Dynamic_QR_Code` (thay Class bằng Sequence cho hình còn lại).
+
+Đã chạy test hiện có `backend/src/modules/referral-links/tests/referral-links-qr.spec.ts`: **15/15 passed** ngày 2026-10-19, gồm decode payload, PNG/SVG, ownership, cache, rate limit và bộ đếm. Test nghiệp vụ không chứng minh độ chính xác/đầy đủ của sơ đồ. Đã parse XML, kiểm tra một diagram mỗi file, ID/terminal hợp lệ, ba ngăn class, sequence không có khung điều kiện, bản review trùng nội dung và xem PNG render. PNG là preview từ geometry, không phải export trực tiếp diagrams.net. Không đổi code nghiệp vụ hay .env, không tạo link hay tải qua tài khoản web thật.
+
+## Kiểm tra bản báo cáo rút gọn
+
+Tái tạo: `node docs/diagrams/build-fr11-diagrams.cjs` hoặc `node docs/diagrams/build-report-diagrams.cjs 11`. Đặc tả nằm trong `fr11-report-spec.json`; bộ bố cục dùng `report-uml-layout.cjs` và helper UML của FR9.
+
+Kiểm tra 8 cặp ngăn class, 23 thông điệp, một trang mỗi file, ID/tham chiếu, giới hạn canvas, đường nối không xuyên lớp hoặc chồng đoạn thẳng cùng hướng; render/xem hai PNG và kiểm tra tràn chữ. Review và XML paste phải khớp bản gốc. Chỉ thay sơ đồ/tài liệu, không thay logic ứng dụng. Kết quả unit test bên trên thuộc lượt đối chiếu trước; không chạy lại test nghiệp vụ cho lần rút gọn này.
+
+Kiểm tra bằng `docs/diagrams/validate-report-diagrams.ps1`: XML một trang, ID/tham chiếu, review/paste, khổ hình và vị trí các khối, bội số và kiểu mũi tên. So với mốc `docs/diagrams/archive/FR11_before_balanced_class_layout`, danh sách lớp/thành viên và toàn bộ mảng quan hệ khớp nguyên vẹn; sequence/drawio/scene/PNG/paste khớp hash. Đã render và xem PNG class, không tràn chữ; nhãn không che dây. Bản mốc trước còn được giữ trong các thư mục `FR11_before_word_class_alignment`, `FR11_before_fr09_sequence_layout` và `FR11_compact_before_fr09_layout`.

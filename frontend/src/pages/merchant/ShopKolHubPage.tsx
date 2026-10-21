@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import './ShopKolHubCompactHeader.css';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
@@ -1828,9 +1827,9 @@ return true;
             ) : (
               <>
                 {/* 1. Header of Selected KOL (Ultra-Compact Single-Row SCANMS Creator Style) */}
-                <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="shop-kol-detail-heading px-4 py-3 bg-white border-b border-[#EAE4D7] flex flex-wrap items-center justify-between gap-3 shrink-0 transition-[padding] duration-[180ms] ease-[ease] motion-reduce:transition-none [.is-header-compact_&]:py-[8px]">
               {/* Left: Avatar + (Name & Badges on top) + (TikTok & Followers below) */}
-              <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1">
+              <div className="kol-profile-identity flex items-center gap-3 min-w-0 flex-1 [.is-header-compact_&>div:first-child]:hidden">
                 <div className="relative shrink-0">
                   <button
                     type="button"
@@ -1851,11 +1850,11 @@ return true;
                   </span>
                 </div>
 
-                <div className="kol-profile-copy min-w-0 flex flex-1 flex-col justify-center gap-1.5">
+                <div className="kol-profile-copy min-w-0 flex flex-1 flex-col justify-center gap-1.5 [.is-header-compact_&]:gap-0">
                   {/* Row 1: Full Name + Badges */}
                   <div className="kol-profile-name-row flex flex-wrap items-center gap-2 min-w-0">
                     <h2
-                      className="kol-profile-name min-w-0"
+                      className="kol-profile-name min-w-0 [.is-header-compact_&]:text-[14px] [.is-header-compact_&]:leading-[22px]"
                       title={selectedKol.fullName}
                     >
                       <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
@@ -1864,20 +1863,20 @@ return true;
                     </h2>
 
                     {selectedKol.kycStatus === 'VERIFIED' && (
-                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap">
+                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
                         <CheckCircle2 className="w-3 h-3 text-[#059669]" />
                         <span>Đã xác thực</span>
                       </span>
                     )}
 
-                    <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap">
+                    <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
                       <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" />
                       <span>Hoa hồng: 10% chuẩn sàn</span>
                     </span>
                   </div>
 
                   {/* Row 2: Multi-channel Social Stack (TikTok, YouTube, Facebook, Instagram with official brand logos) */}
-                  <div className="kol-profile-channel grid w-full items-stretch gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${Math.max(allChannels.length, 1)}, minmax(0, 1fr))` }}>
+                  <div className="kol-profile-channel grid w-full items-stretch gap-2 pt-1 max-h-[110px] opacity-100 overflow-hidden transition-[max-height,opacity,padding] [transition-duration:180ms,140ms,180ms] ease-[ease] motion-reduce:transition-none [.is-header-compact_&]:max-h-0 [.is-header-compact_&]:pt-0 [.is-header-compact_&]:opacity-0 [.is-header-compact_&]:invisible" style={{ gridTemplateColumns: `repeat(${Math.max(allChannels.length, 1)}, minmax(0, 1fr))` }}>
                     {allChannels.length > 0 ? (
                       allChannels.map((channel, cIdx) => (
                         <a
@@ -1906,7 +1905,7 @@ return true;
             </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
-            <div className="shop-kol-tabs shrink-0 overflow-x-auto border-b border-[#EAE4D7] bg-white px-3 py-1.5 no-scrollbar">
+            <div className="shop-kol-tabs shrink-0 overflow-x-auto border-b border-[#EAE4D7] bg-white px-3 py-1.5 no-scrollbar [.is-header-compact_&]:py-[3px] [.is-header-compact_&_button]:min-h-[34px]">
               <div className="grid w-full min-w-[460px] grid-cols-4 items-stretch gap-1.5">
                 <button
                   type="button"
@@ -2301,7 +2300,7 @@ return true;
 
                             {/* Actions by status */}
                             <div className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-[#EAE4D7] pt-2.5">
-                              <div className="sample-deadline-actions">
+                              <div className="sample-deadline-actions grid! grid-cols-[repeat(2,_minmax(0,_1fr))]! [align-items:start]! gap-[6px_10px]! w-[min(100%,_370px)]! [&:empty]:hidden! [&_.sample-violation-button]:w-full! [&_.sample-violation-button]:min-h-[38px]! [&_.sample-violation-button]:justify-center! [&_.sample-violation-button]:p-[9px_12px]! [&_.sample-violation-button]:font-[500]! [&_.sample-violation-button]:leading-[18px]! [&_.sample-violation-button]:whitespace-nowrap! [&_.sample-violation-button_svg]:shrink-0! [&_.sample-violation-unavailable]:contents! [&_.sample-violation-unavailable_small]:col-[1_/_-1]! [&_.sample-violation-unavailable_small]:text-right! [&_.sample-violation-unavailable_small]:text-[length:10px]! [&_.sample-violation-unavailable_small]:leading-[16px]! [&_.sample-violation-state]:col-[1_/_-1]! [@media(max-width:400px)]:[&&]:gap-[6px]! [@media(max-width:400px)]:[&&]:[&_.sample-violation-button]:p-[8px_6px]! [@media(max-width:400px)]:[&&]:[&_.sample-violation-button]:text-[length:11px]! ">
                                 <SampleDeadlineExtension request={item} onSuccess={() => void loadBackendData()} />
                                 <SampleViolationAction request={item} blocked={Boolean(item.sampleRequestsBlockedAt)} onSuccess={() => void loadBackendData()} />
                               </div>

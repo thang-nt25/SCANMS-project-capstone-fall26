@@ -405,6 +405,17 @@ export class OrdersController {
     );
   }
 
+  @Get('track/mine')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tra cứu đơn mua của tài khoản đang đăng nhập bằng mã đơn hoặc SĐT nhận hàng' })
+  async trackMyOrder(
+    @CurrentUser('id') userId: string,
+    @Query() query: TrackOrderQueryDto,
+  ) {
+    return this.ordersService.trackCustomerOrder(userId, query.orderSn || '', query.phone || '');
+  }
+
   @Get('track')
   @ApiOperation({
     summary:

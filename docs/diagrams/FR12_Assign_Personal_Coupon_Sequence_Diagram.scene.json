@@ -1,0 +1,1073 @@
+{
+  "width": 3200,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-12 Assign Personal Coupon — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 3110,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: KOL proposes a personal code → owning Shop approves the discount policy.",
+      "x": 45,
+      "y": 73,
+      "w": 3110,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "KOL",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "actor",
+      "x": 382,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Shop Manager",
+      "x": 290,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          400,
+          193
+        ],
+        [
+          400,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 625,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 633,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          750,
+          193
+        ],
+        [
+          750,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1105,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CollaboratorCouponsController",
+      "x": 1113,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1320,
+          193
+        ],
+        [
+          1320,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1645,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":StoreCouponsController",
+      "x": 1653,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1860,
+          193
+        ],
+        [
+          1860,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2185,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CouponsService",
+      "x": 2193,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2400,
+          193
+        ],
+        [
+          2400,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2725,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 2733,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2940,
+          193
+        ],
+        [
+          2940,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 1086
+    },
+    {
+      "type": "rect",
+      "x": 395,
+      "y": 1409,
+      "w": 10,
+      "h": 1086
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 618,
+      "w": 10,
+      "h": 98
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 794,
+      "w": 10,
+      "h": 98
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 970,
+      "w": 10,
+      "h": 98
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 421,
+      "w": 10,
+      "h": 734
+    },
+    {
+      "type": "rect",
+      "x": 1315,
+      "y": 333,
+      "w": 10,
+      "h": 910
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 1672,
+      "w": 10,
+      "h": 98
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 1958,
+      "w": 10,
+      "h": 98
+    },
+    {
+      "type": "rect",
+      "x": 2935,
+      "y": 2134,
+      "w": 10,
+      "h": 97
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 1585,
+      "w": 10,
+      "h": 734
+    },
+    {
+      "type": "rect",
+      "x": 1855,
+      "y": 1497,
+      "w": 10,
+      "h": 910
+    },
+    {
+      "type": "rect",
+      "x": 745,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          745,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Choose Shop; propose personal code",
+      "x": 412,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          333
+        ],
+        [
+          1315,
+          333
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. POST /api/collaborator/coupons",
+      "x": 762,
+      "y": 284,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1325,
+          421
+        ],
+        [
+          2395,
+          421
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. proposeCoupon(collaboratorId, dto, ip)",
+      "x": 1332,
+      "y": 372,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          509
+        ],
+        [
+          2450,
+          509
+        ],
+        [
+          2450,
+          528
+        ],
+        [
+          2405,
+          528
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. Check rate limit; normalize and validate code",
+      "x": 2462,
+      "y": 483,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          618
+        ],
+        [
+          2935,
+          618
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. Read User, Store, APPROVED partnership, policy and quotas",
+      "x": 2412,
+      "y": 569,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          706
+        ],
+        [
+          2405,
+          706
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "6. Eligibility and code uniqueness data",
+      "x": 2412,
+      "y": 657,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          794
+        ],
+        [
+          2935,
+          794
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. Create Coupon(PENDING_APPROVAL)",
+      "x": 2412,
+      "y": 745,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          882
+        ],
+        [
+          2405,
+          882
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "8. Proposed coupon",
+      "x": 2412,
+      "y": 833,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          970
+        ],
+        [
+          2935,
+          970
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. Write COUPON_PROPOSED audit; notify Store owner",
+      "x": 2412,
+      "y": 921,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          1058
+        ],
+        [
+          2405,
+          1058
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "10. Related write results (separate writes)",
+      "x": 2412,
+      "y": 1009,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          1145
+        ],
+        [
+          1325,
+          1145
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "11. Proposed coupon response",
+      "x": 1332,
+      "y": 1096,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1315,
+          1233
+        ],
+        [
+          755,
+          1233
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. 201: pending coupon",
+      "x": 762,
+      "y": 1184,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          745,
+          1321
+        ],
+        [
+          115,
+          1321
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. Show pending approval",
+      "x": 412,
+      "y": 1272,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          405,
+          1409
+        ],
+        [
+          745,
+          1409
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "14. Review code; enter discount policy; Approve",
+      "x": 412,
+      "y": 1360,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          1497
+        ],
+        [
+          1855,
+          1497
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. PATCH /api/stores/:storeId/coupons/:id/approve",
+      "x": 762,
+      "y": 1448,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          1585
+        ],
+        [
+          2395,
+          1585
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. approveCoupon(storeId, id, userId, role, dto, ip)",
+      "x": 1872,
+      "y": 1536,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          1672
+        ],
+        [
+          2935,
+          1672
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. Read Store ownership and pending coupon",
+      "x": 2412,
+      "y": 1623,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          1760
+        ],
+        [
+          2405,
+          1760
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "18. Owner and PENDING_APPROVAL coupon",
+      "x": 2412,
+      "y": 1711,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          1848
+        ],
+        [
+          2450,
+          1848
+        ],
+        [
+          2450,
+          1867
+        ],
+        [
+          2405,
+          1867
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "19. Require owning SHOP_MANAGER; validate SHOP_FUNDED policy",
+      "x": 2462,
+      "y": 1822,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          1958
+        ],
+        [
+          2935,
+          1958
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "20. $transaction: update policy/scope; set ACTIVE and approval data",
+      "x": 2412,
+      "y": 1909,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          2046
+        ],
+        [
+          2405,
+          2046
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. Committed ACTIVE coupon; concurrent change → 409",
+      "x": 2412,
+      "y": 1997,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2405,
+          2134
+        ],
+        [
+          2935,
+          2134
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "22. After commit: COUPON_APPROVED audit and KOL notification",
+      "x": 2412,
+      "y": 2085,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2935,
+          2221
+        ],
+        [
+          2405,
+          2221
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. Post-commit write results",
+      "x": 2412,
+      "y": 2172,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          2309
+        ],
+        [
+          1865,
+          2309
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. Approved coupon",
+      "x": 1872,
+      "y": 2260,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1855,
+          2397
+        ],
+        [
+          755,
+          2397
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "25. 200: ACTIVE coupon",
+      "x": 762,
+      "y": 2348,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          745,
+          2485
+        ],
+        [
+          405,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "26. Show approval result; refresh list",
+      "x": 412,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser groups KolCouponsPage and ShopCouponsPage. JWT/role/DTO guards precede protected calls. KOL proposes the code; the owning SHOP_MANAGER sets the discount policy.",
+      "x": 45,
+      "y": 2595,
+      "w": 3110,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Proposal requires an APPROVED partnership and commission policy. Coupon, proposal audit and notification are separate writes. Approval policy/scope changes use one transaction; approval audit/notification follow commit.",
+      "x": 45,
+      "y": 2645,
+      "w": 3110,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Coupon owner determines KOL attribution when redeemed. Preview consumes no quota; checkout locks/revalidates coupon and writes usage, Order and redemption atomically. These later interactions are documented separately.",
+      "x": 45,
+      "y": 2700,
+      "w": 3110,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

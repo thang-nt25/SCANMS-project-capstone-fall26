@@ -3,6 +3,15 @@ import { validate } from 'class-validator';
 import { TrackAnalyticsEventDto, LandingAnalyticsEvent } from '../dto/track-event.dto';
 
 describe('public catalogue real metrics', () => {
+  it.each(['add_to_cart', 'order_complete'])('accepts the product page event %s', async event => {
+    const dto = Object.assign(new TrackAnalyticsEventDto(), {
+      eventId: '00000000-0000-4000-8000-000000000001', event,
+      productId: '96b1caac-3cf2-5e06-aeed-b41cf7aaf8ac',
+    });
+    expect(await validate(dto)).toHaveLength(0);
+    dto.event = 'unsupported_event' as any;
+    expect((await validate(dto)).map(error => error.property)).toContain('event');
+  });
   it('preserves database ranking and serializes counts without exposing commission to buyers', async () => {
     const prisma: any = {
       product: { count: jest.fn().mockResolvedValue(2), findMany: jest.fn().mockResolvedValue([

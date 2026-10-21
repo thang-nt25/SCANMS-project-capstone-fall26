@@ -34,6 +34,7 @@ import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { QueryCouponsDto } from './dto/query-coupons.dto';
 import { CacheService } from '../../core/cache/cache.service';
 import { liveVoucherActive } from './voucher-pricing';
+import { ProductCouponQueryDto } from './dto/product-coupon-query.dto';
 
 // Banned words list as per Section 10
 const BANNED_CODE_WORDS = [
@@ -237,6 +238,72 @@ export class CouponsService {
       }));
   }
 
+  async getEligibleProductCoupons(storeId: string, query: ProductCouponQueryDto, userId?: string, ip?: string) {
+    await this.checkRateLimit(`suggest_${userId || ip || 'anon'}`, 60, 60000);
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: query.productId, storeId, isDeleted: false, isActive: true, moderationStatus: 'APPROVED',
+        store: { isActive: true, isDeleted: false, isVerified: true, onboardingStatus: 'VERIFIED', owner: { isActive: true, isDeleted: false } },
+      }, include: { variants: true },
+    });
+    if (!product) return [];
+    const variant = query.variantId ? product.variants.find(row => row.id === query.variantId && row.isActive) : null;
+    if ((product.variants.length && !variant) || (query.variantId && !variant) ||
+        query.quantity > (variant?.stockQuantity ?? product.stockQuantity)) return [];
+    const now = new Date();
+    const coupons = await this.prisma.coupon.findMany({
+      where: {
+        storeId, status: CouponStatus.ACTIVE, deletedAt: null,
+        benefitType: 'GOODS', fundingSource: { not: CouponFundingSource.PLATFORM_FUNDED },
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+        OR: [
+          { scopeType: CouponScope.STORE_WIDE },
+          { scopeType: CouponScope.PRODUCTS, couponProducts: { some: { productId: product.id } } },
+          { scopeType: CouponScope.CATEGORIES, couponCategories: { some: { categoryName: { equals: product.categoryName || '', mode: 'insensitive' } } } },
+          { scopeType: CouponScope.CAMPAIGN },
+        ],
+      },
+      include: {
+        store: { select: { id: true, name: true, isDeleted: true } }, couponProducts: true, couponCategories: true,
+        campaign: { include: { campaignProducts: { select: { productId: true } } } },
+        liveSession: { include: { products: { select: { productId: true, variantId: true } } } },
+      }, orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }], take: 100,
+    });
+    const account = userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { phoneNumber: true } }) : null;
+    const phone = account?.phoneNumber?.trim();
+    const used = userId && coupons.length ? await this.prisma.couponRedemption.groupBy({
+      by: ['couponId'], where: {
+        couponId: { in: coupons.map(coupon => coupon.id) }, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.RESERVED] },
+        OR: [{ customerId: userId }, ...(phone ? [{ customerPhone: phone }] : [])],
+      }, _count: { _all: true },
+    }) : [];
+    const counts = new Map(used.map(row => [row.couponId, row._count._all]));
+    const results = await Promise.all(coupons.map(async coupon => {
+      try {
+        const evaluated = await this.evaluateCoupon({
+          code: coupon.displayCode, storeId, customerPhone: phone,
+          items: [{ productId: product.id, variantId: variant?.id, quantity: query.quantity }],
+        }, undefined, userId, { coupon, products: [product], variants: variant ? [variant] : [], redemptions: counts.get(coupon.id) || 0 });
+        if (evaluated.discountAmount <= 0) return null;
+        return {
+          id: coupon.id, displayCode: coupon.displayCode, code: coupon.displayCode,
+          discountAmount: evaluated.discountAmount, discountType: coupon.discountType,
+          discountValue: Number(coupon.discountValue), minimumOrderAmount: Number(coupon.minimumOrderAmount || 0),
+          maximumDiscountAmount: coupon.maximumDiscountAmount === null ? null : Number(coupon.maximumDiscountAmount),
+          expiresAt: coupon.expiresAt, fundingSource: coupon.fundingSource, benefitType: coupon.benefitType,
+        };
+      } catch (error) {
+        if (error instanceof BadRequestException) return null;
+        throw error;
+      }
+    }));
+    return results.filter((result): result is NonNullable<typeof result> => result !== null)
+      .sort((left, right) => right.discountAmount - left.discountAmount);
+  }
+
   async getPublicStoreCoupons(storeId: string) {
     const now = new Date();
     const coupons = await this.prisma.coupon.findMany({
@@ -405,7 +472,8 @@ export class CouponsService {
     }
   }
 
-  private async recordValidationFailure(key: string) {
+  private async recordValidationFailure(key?: string) {
+    if (!key) return;
     const failKey = `coupon_fail:${key}`;
     const current = (await this.cacheService.get<number>(failKey)) || 0;
     const next = current + 1;
@@ -417,7 +485,8 @@ export class CouponsService {
     }
   }
 
-  private async resetValidationFailure(key: string) {
+  private async resetValidationFailure(key?: string) {
+    if (!key) return;
     await this.cacheService.del(`coupon_fail:${key}`);
   }
 
@@ -1882,10 +1951,20 @@ export class CouponsService {
       true,
     );
 
+    return this.evaluateCoupon(dto, rateLimitKey, userId);
+  }
+
+  private async evaluateCoupon(
+    dto: ValidateCouponDto,
+    rateLimitKey?: string,
+    userId?: string,
+    preview?: { coupon: any; products: any[]; variants: any[]; redemptions: number },
+  ) {
+
     const codeNormalized = dto.code.trim().toUpperCase();
 
     // 1. Fetch coupon with store & scope relations
-    const coupon = await this.prisma.coupon.findUnique({
+    const coupon = preview?.coupon ?? await this.prisma.coupon.findUnique({
       where: { codeNormalized },
       include: {
         store: {
@@ -2008,7 +2087,7 @@ export class CouponsService {
     // 5. Check Customer Limit (Section 27)
     const customerPhone = dto.customerPhone?.trim();
     if (userId || customerPhone) {
-      const customerRedemptionsCount = await this.prisma.couponRedemption.count(
+      const customerRedemptionsCount = preview?.redemptions ?? await this.prisma.couponRedemption.count(
         {
           where: {
             couponId: coupon.id,
@@ -2037,7 +2116,7 @@ export class CouponsService {
 
     // 6. Fetch products from DB to get real price and storeId (Section 20 & 25)
     const productIds = dto.items.map((i) => i.productId);
-    const dbProducts = await this.prisma.product.findMany({
+    const dbProducts = preview?.products ?? await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
         isDeleted: false,
@@ -2052,12 +2131,12 @@ export class CouponsService {
     const variantIds = dto.items
       .map((item) => item.variantId)
       .filter(Boolean) as string[];
-    const dbVariants = variantIds.length
+    const dbVariants = preview?.variants ?? (variantIds.length
       ? await this.prisma.productVariant.findMany({
           where: { id: { in: variantIds }, isActive: true },
           select: { id: true, productId: true, price: true },
         })
-      : [];
+      : []);
     const dbVariantMap = new Map(
       dbVariants.map((variant) => [variant.id, variant]),
     );
@@ -2090,11 +2169,11 @@ export class CouponsService {
     let campaignProductIds = new Set<string>();
     if (coupon.scopeType === CouponScope.CAMPAIGN) {
       if (!coupon.campaignId) throw new BadRequestException('Voucher chưa được gắn với chiến dịch hợp lệ.');
-      const campaign = await this.prisma.campaign.findUnique({ where: { id: coupon.campaignId }, select: { isActive: true, startDate: true, endDate: true, storeId: true } });
+      const campaign = coupon.campaign ?? await this.prisma.campaign.findUnique({ where: { id: coupon.campaignId }, select: { isActive: true, startDate: true, endDate: true, storeId: true } });
       if (!campaign || !campaign.isActive || campaign.storeId !== coupon.storeId || campaign.startDate > new Date() || campaign.endDate <= new Date()) {
         throw new BadRequestException('Chiến dịch của voucher không còn hiệu lực.');
       }
-      const campProds = await this.prisma.campaignProduct.findMany({
+      const campProds = coupon.campaign?.campaignProducts ?? await this.prisma.campaignProduct.findMany({
         where: { campaignId: coupon.campaignId },
         select: { productId: true },
       });
@@ -2149,7 +2228,12 @@ export class CouponsService {
     }
 
     // 6.5. Kiểm tra chính sách cộng dồn (Issue 6)
-    if (dto.hasProductDiscount && !coupon.stackableWithProductDiscount) {
+    const hasDirectDiscount = storeItems.some(item => {
+      const product = dbProductMap.get(item.productId)!;
+      const price = item.variantId ? dbVariantMap.get(item.variantId)?.price ?? product.price : product.price;
+      return Number(product.originalPrice || 0) > Number(price);
+    });
+    if ((dto.hasProductDiscount || hasDirectDiscount) && !coupon.stackableWithProductDiscount) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_STACKABLE',
@@ -2220,7 +2304,7 @@ export class CouponsService {
       Number(coupon.budgetUsed) + calculatedDiscount >=
         Number(coupon.budgetTotal) * 0.8;
 
-    if (isNearUsage || isNearBudget) {
+    if (rateLimitKey && (isNearUsage || isNearBudget)) {
       this.createNotification(
         coupon.collaboratorId,
         'Cảnh báo: Mã giảm giá sắp hết hạn mức',

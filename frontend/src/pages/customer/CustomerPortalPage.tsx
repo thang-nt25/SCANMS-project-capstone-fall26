@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { OrderProductLink } from '../../components/customer/OrderProductLink';
 import OrderTrackingPage from '../public/OrderTrackingPage';
 import { useSearchParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
@@ -17,7 +18,7 @@ import {
   Store as StoreIcon,
   ShieldCheck,
   RotateCcw,
-  Sparkles,
+  Star,
   X,
   XCircle,
   Camera,
@@ -69,6 +70,7 @@ import {
   type NotificationCategory,
 } from '../../services/notifications.service';
 import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { CustomerCancelOrderModal } from '../../components/customer/CustomerCancelOrderModal';
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
@@ -105,6 +107,10 @@ const administrativeNamesMatch = (left: string, right: string) => {
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const placedOrderCodes: string[] = Array.isArray(location.state?.placedOrderCodes)
+    ? location.state.placedOrderCodes.filter((code: unknown): code is string => typeof code === 'string' && code.length <= 100)
+    : [];
+  const revealedCheckoutOrders = useRef(new Set<string>());
   const [searchParams] = useSearchParams();
   const isProfilePath =
     location.pathname.includes('/customer/profile') ||
@@ -191,14 +197,13 @@ export default function CustomerPortalPage() {
   const [ordersError, setOrdersError] = useState(false);
   const ordersRequestSequence = useRef(0);
   const refreshOrdersRef = useRef<() => void>(() => {});
-  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>('ALL');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>(() => placedOrderCodes.length ? 'PENDING' : 'ALL');
   const [orderSearch, setOrderSearch] = useState('');
   const [showOrderLookup, setShowOrderLookup] = useState(false);
   const [appliedOrderSearch, setAppliedOrderSearch] = useState('');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<CustomerOrder | null>(null);
   const [liveGhnTracking, setLiveGhnTracking] = useState<{ orderId: string; status: string } | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
-  const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
   const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
@@ -362,6 +367,18 @@ export default function CustomerPortalPage() {
       fetchIdentity();
     }
   }, [currentTab, orderStatusFilter]);
+
+  useEffect(() => {
+    if (!placedOrderCodes.length) return;
+    setOrderStatusFilter('PENDING');
+    setOrderSearch('');
+    setAppliedOrderSearch('');
+    setSelectedOrderDetails(null);
+    // Refresh a repeat purchase on the current tab; switching from another
+    // filter triggers the normal fetch effect with PENDING and a cleared search.
+    if (orderStatusFilter === 'PENDING') void fetchOrders('');
+    void fetchProfile();
+  }, [location.key]);
 
   useEffect(() => {
     if (currentTab !== 'orders') return;
@@ -743,14 +760,13 @@ export default function CustomerPortalPage() {
   };
   refreshOrdersRef.current = () => { void fetchOrders(appliedOrderSearch, true); };
 
-  const handleCancelOrder = async () => {
-    if (!cancellingOrderId) return;
+  const handleCancelOrder = async (cancelReason: string) => {
+    if (!cancellingOrderId || isCancelling || !cancelReason.trim()) return;
     setIsCancelling(true);
     try {
       await customerService.cancelOrder(cancellingOrderId, cancelReason);
       toast.success('Hủy đơn hàng thành công');
       setCancellingOrderId(null);
-      setCancelReason('');
       fetchOrders();
       fetchProfile();
       if (selectedOrderDetails?.id === cancellingOrderId) {
@@ -770,6 +786,10 @@ export default function CustomerPortalPage() {
       const updatedOrder = await customerService.getOrderDetails(order.id);
       setSelectedOrderDetails(current => current?.id === updatedOrder.id ? updatedOrder : current);
       toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
+      if (getCustomerOrderActions(updatedOrder).review) {
+        setSelectedOrderDetails(null);
+        setReviewOrder(updatedOrder);
+      }
       await Promise.all([fetchOrders(), fetchProfile()]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
@@ -1212,6 +1232,7 @@ export default function CustomerPortalPage() {
                   <div className="grid gap-[12px]">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
+                      const awaitingPayment = isPending && order.rawPayload?.paymentMethod === 'PAYOS' && order.rawPayload?.paymentStatus !== 'PAID';
                       const isShipping = order.status === 'SHIPPING';
                       const isDelivered = order.status === 'DELIVERED';
                       const isCompleted = order.status === 'COMPLETED';
@@ -1225,12 +1246,20 @@ export default function CustomerPortalPage() {
                           : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
                           : 'Đang xử lý trả hàng'
                         : isCancelled ? 'Đã hủy đơn' : isCompleted ? 'Hoàn thành' : isDelivered ? 'Đã giao hàng'
-                        : isShipping ? 'Đang vận chuyển' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
+                        : isShipping ? 'Đang vận chuyển' : awaitingPayment ? 'Chờ thanh toán' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
                       const StatusIcon = hasReturnRequest ? RotateCcw : isCancelled ? XCircle : isCompleted || isDelivered ? CheckCircle2 : isShipping ? Truck : Clock;
 
                       return (
                         <details
                           key={order.id}
+                          data-order-code={order.externalOrderSn}
+                          ref={element => {
+                            const key = `${location.key}:${order.id}`;
+                            if (!element || !placedOrderCodes.includes(order.externalOrderSn) || revealedCheckoutOrders.current.has(key)) return;
+                            revealedCheckoutOrders.current.add(key);
+                            if (awaitingPayment) element.open = true;
+                            if (order.externalOrderSn === placedOrderCodes[0]) element.scrollIntoView({ block: 'nearest' });
+                          }}
                           className="customer-order-card group/order"
                         >
                           <CustomerOrderSummary order={order} statusLabel={statusLabel} statusIcon={StatusIcon} />
@@ -1249,7 +1278,7 @@ export default function CustomerPortalPage() {
                                   <span>Chat</span>
                                 </button>
                                 <Link
-                                  to={`/shop/${order.store?.slug || order.storeId}`}
+                                  to={`/shops/${order.store?.slug || order.storeId}`}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-[#EAE4D7] rounded-[7px] bg-white text-[#7D715E] text-[11px] font-[500] hover:border-[#C59B58] hover:text-[#1A1612] no-underline"
                                 >
                                   <StoreIcon className="w-[13px] h-[13px] text-[#B88E4F]" />
@@ -1275,7 +1304,7 @@ export default function CustomerPortalPage() {
                             <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
                                 <div key={item.id} className="grid grid-cols-[64px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[56px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-[12px] @max-[499px]:gap-[8px_10px] py-[14px] @max-[499px]:py-[12px]">
-                                  <div className="w-[64px] h-[64px] @max-[499px]:w-[56px] @max-[499px]:h-[56px] @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] flex items-center justify-center shrink-0 overflow-hidden">
+                                  <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} className="w-[64px] h-[64px] @max-[499px]:w-[56px] @max-[499px]:h-[56px] @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] flex items-center justify-center shrink-0 overflow-hidden">
                                     <img
                                       src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
                                       alt={item.product?.title || 'Sản phẩm'}
@@ -1288,11 +1317,11 @@ export default function CustomerPortalPage() {
                                         }
                                       }}
                                     />
-                                  </div>
+                                  </OrderProductLink>
 
                                   <div className="min-w-0">
                                     <strong className="block text-[14px] @max-[499px]:text-[13px] font-[550] leading-[1.45] text-[#1A1612] line-clamp-2">
-                                      {item.product?.title || 'Sản phẩm chính hãng SCANMS'}
+                                      <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} className="hover:underline">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
                                     </strong>
                                     {item.variant?.name && (
                                       <span className="block text-[12px] text-[#7D715E] leading-[1.45] mt-[2px]">
@@ -1380,16 +1409,6 @@ export default function CustomerPortalPage() {
 
                               {/* Action Buttons Row */}
                               <div className="flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {/* Chỉ mua lại khi đơn đã kết thúc */}
-                                {(isCompleted || isCancelled) && <button
-                                  type="button"
-                                  onClick={() => handleReorder(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
-                                >
-                                  <RotateCcw className="w-[14px] h-[14px]" />
-                                  <span>Mua lại</span>
-                                </button>}
-
                                 {/* Secondary Button: Xem chi tiết */}
                                 <button
                                   type="button"
@@ -1436,16 +1455,17 @@ export default function CustomerPortalPage() {
                                 )}
 
                                 {/* Verified Review Button if Completed */}
-                                {isCompleted && !hasReturnRequest && (
+                                {getCustomerOrderActions(order).review && (
                                   <button
                                     type="button"
                                     onClick={() => setReviewOrder(order)}
                                     className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
-                                    <Sparkles className="w-[14px] h-[14px] text-[#B88E4F]" />
-                                    <span>Đánh giá</span>
+                                    <Star className="w-[14px] h-[14px] text-[#B88E4F]" />
+                                    <span>Đánh giá sản phẩm</span>
                                   </button>
                                 )}
+                                {isCompleted && !hasReturnRequest && Boolean(order.productReviews?.length) && !getCustomerOrderActions(order).review && <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E]"><Star size={14} className="text-[#C59B58]" />Đã đánh giá{order.productReviews?.some(review => review.status === 'PENDING') ? ' · Sàn đang kiểm tra' : order.productReviews?.some(review => ['HIDDEN', 'REJECTED'].includes(review.status || '')) ? ' · Có nội dung bị sàn ẩn' : ''}</span>}
                               </div>
                             </div>
                           </div>
@@ -1997,16 +2017,16 @@ export default function CustomerPortalPage() {
                 {selectedOrderDetails.orderItems.map((item) => (
                   <div key={item.id} className="p-3 flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-12 h-12 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0">
+                      <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} onNavigate={() => setSelectedOrderDetails(null)} className="w-12 h-12 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0">
                         <img
                           src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
                           alt={item.product?.title || 'Sản phẩm'}
                           className="w-full h-full object-cover"
                         />
-                      </div>
+                      </OrderProductLink>
                       <div className="min-w-0">
                         <strong className="block text-xs font-medium text-[#1A1612] truncate">
-                          {item.product?.title}
+                          <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} onNavigate={() => setSelectedOrderDetails(null)} className="hover:underline">{item.product?.title}</OrderProductLink>
                         </strong>
                         {item.variant?.name && (
                           <span className="text-[11px] text-[#7D715E] block">
@@ -2062,12 +2082,8 @@ export default function CustomerPortalPage() {
             <CustomerOrderDetailActions
               order={selectedOrderDetails}
               trackingStatus={selectedGhnStatus}
-              confirming={confirmingOrderId === selectedOrderDetails.id}
-              onClose={() => setSelectedOrderDetails(null)}
               onChat={() => { handleOpenChat(selectedOrderDetails); setSelectedOrderDetails(null); }}
               onCancel={() => { setCancellingOrderId(selectedOrderDetails.id); setSelectedOrderDetails(null); }}
-              onConfirm={() => { void handleConfirmReceipt(selectedOrderDetails); }}
-              onReturn={() => { setReturnOrder(selectedOrderDetails); setSelectedOrderDetails(null); }}
               onReview={() => { setReviewOrder(selectedOrderDetails); setSelectedOrderDetails(null); }}
               onReorder={() => { handleReorder(selectedOrderDetails); setSelectedOrderDetails(null); }}
             />
@@ -2080,51 +2096,8 @@ export default function CustomerPortalPage() {
       {/* MODAL: HỦY ĐƠN HÀNG KHI PENDING */}
       {/* ========================================================= */}
       {cancellingOrderId && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 text-left animate-in fade-in zoom-in-95">
-            <div>
-              <strong className="text-base font-black text-rose-600 flex items-center gap-1.5">
-                <AlertCircle className="w-5 h-5" />
-                <span>Xác nhận hủy đơn hàng</span>
-              </strong>
-              <p className="text-xs text-[#7D715E] mt-1 m-0">
-                Đơn hàng đang chờ Shop xác nhận. Bạn có thể hủy ngay mà không mất phí.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                Lý do hủy đơn (Tùy chọn)
-              </label>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="VD: Muốn thay đổi địa chỉ, đổi ý không mua nữa..."
-                rows={3}
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] focus:bg-white focus:border-rose-400 outline-none transition"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setCancellingOrderId(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-bold text-[#7D715E] transition cursor-pointer"
-              >
-                Giữ lại đơn
-              </button>
-              <button
-                type="button"
-                disabled={isCancelling}
-                onClick={handleCancelOrder}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {isCancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Xác nhận hủy</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <CustomerCancelOrderModal key={cancellingOrderId} busy={isCancelling}
+          onClose={() => setCancellingOrderId(null)} onConfirm={handleCancelOrder} />
       )}
 
       {/* ========================================================= */}
@@ -2233,8 +2206,8 @@ export default function CustomerPortalPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveAddress} className="flex flex-col min-h-0 overflow-hidden">
-              <div className="flex flex-col gap-[12px] max-[419px]:gap-[10px] min-h-0 p-[16px_18px] max-[419px]:p-[12px] overflow-y-auto [overscroll-behavior:contain] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
+            <form onSubmit={handleSaveAddress} className="flex flex-1 flex-col min-h-0 overflow-hidden">
+              <div className="flex flex-1 flex-col gap-[12px] max-[419px]:gap-[10px] min-h-0 p-[16px_18px] max-[419px]:p-[12px] overflow-y-auto [&>*]:shrink-0 [overscroll-behavior:contain] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
                 <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] max-[419px]:grid-cols-[minmax(0,1fr)] gap-[12px] max-[419px]:gap-[10px]">
                   <div className="min-w-0">
                     <label htmlFor="address-recipient-name" className="text-[11px] font-[550] leading-[1.5] text-[#1A1612] block mb-1">
@@ -2432,7 +2405,6 @@ export default function CustomerPortalPage() {
           store={activeCheckoutProduct.store}
           onOrderPlaced={() => {
             setActiveCheckoutProduct(null);
-            toast.success('Đặt hàng thành công!');
             fetchOrders();
             fetchProfile();
           }}

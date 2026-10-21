@@ -64,6 +64,7 @@ const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHu
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
 const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
+const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
@@ -283,6 +284,7 @@ function AppRoutes() {
               <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
               <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
               <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
+              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
               <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />

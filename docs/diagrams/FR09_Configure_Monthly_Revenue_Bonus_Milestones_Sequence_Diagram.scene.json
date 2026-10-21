@@ -1,0 +1,1327 @@
+{
+  "width": 2840,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-09 Configure Monthly Revenue Bonus Milestones — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2750,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Create a monthly revenue bonus milestone",
+      "x": 45,
+      "y": 73,
+      "w": 2750,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 82,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Shop Manager",
+      "x": -10,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CommissionRulesController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CommissionRulesService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 2525,
+      "y": 135,
+      "w": 210,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Database",
+      "x": 2533,
+      "y": 143,
+      "w": 194,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          100,
+          193
+        ],
+        [
+          100,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2630,
+          193
+        ],
+        [
+          2630,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 95,
+      "y": 245,
+      "w": 10,
+      "h": 2252
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2252
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 309,
+      "w": 10,
+      "h": 2060
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 373,
+      "w": 10,
+      "h": 1932
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 437,
+      "w": 10,
+      "h": 204
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 757,
+      "w": 10,
+      "h": 1484
+    },
+    {
+      "type": "rect",
+      "x": 1571,
+      "y": 885,
+      "w": 10,
+      "h": 1160
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 501,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 821,
+      "w": 10,
+      "h": 18
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 1013,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 1269,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 1589,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 1845,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "rect",
+      "x": 2625,
+      "y": 2101,
+      "w": 10,
+      "h": 82
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          105,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Enter milestone details; select Save",
+      "x": 112,
+      "y": 196,
+      "w": 336,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          309
+        ],
+        [
+          1025,
+          309
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. POST /api/stores/:storeId/commission-rules",
+      "x": 472,
+      "y": 260,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          373
+        ],
+        [
+          1565,
+          373
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. create(storeId, dto, userId, ipAddress)",
+      "x": 1042,
+      "y": 324,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          437
+        ],
+        [
+          2105,
+          437
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. store.findUnique({ where: { id: storeId } })",
+      "x": 1582,
+      "y": 388,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          501
+        ],
+        [
+          2625,
+          501
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. SELECT Store by storeId",
+      "x": 2122,
+      "y": 452,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          565
+        ],
+        [
+          2115,
+          565
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "6. Store record",
+      "x": 2122,
+      "y": 516,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          629
+        ],
+        [
+          1575,
+          629
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "7. Store record",
+      "x": 1582,
+      "y": 580,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          693
+        ],
+        [
+          1620,
+          693
+        ],
+        [
+          1620,
+          712
+        ],
+        [
+          1575,
+          712
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. Validate name, money, percentage and effective dates",
+      "x": 1632,
+      "y": 667,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          757
+        ],
+        [
+          2105,
+          757
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. $transaction(callback)",
+      "x": 1582,
+      "y": 708,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          821
+        ],
+        [
+          2625,
+          821
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. BEGIN",
+      "x": 2122,
+      "y": 772,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          885
+        ],
+        [
+          1575,
+          885
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. callback(tx)",
+      "x": 1582,
+      "y": 836,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          949
+        ],
+        [
+          2105,
+          949
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "12. tx.$executeRawUnsafe(Store advisory lock)",
+      "x": 1582,
+      "y": 900,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1013
+        ],
+        [
+          2625,
+          1013
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. SELECT pg_advisory_xact_lock(Store hash)",
+      "x": 2122,
+      "y": 964,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          1077
+        ],
+        [
+          2115,
+          1077
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. Lock acquired",
+      "x": 2122,
+      "y": 1028,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1141
+        ],
+        [
+          1575,
+          1141
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "15. Lock acquired",
+      "x": 1582,
+      "y": 1092,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1205
+        ],
+        [
+          2105,
+          1205
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. tx.commissionRule.findFirst(); findMany()",
+      "x": 1582,
+      "y": 1156,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1269
+        ],
+        [
+          2625,
+          1269
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. SELECT non-deleted rules for this Store",
+      "x": 2122,
+      "y": 1220,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          1333
+        ],
+        [
+          2115,
+          1333
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "18. Existing threshold and percentage records",
+      "x": 2122,
+      "y": 1284,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1397
+        ],
+        [
+          1575,
+          1397
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Existing rules",
+      "x": 1582,
+      "y": 1348,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1461
+        ],
+        [
+          1620,
+          1461
+        ],
+        [
+          1620,
+          1480
+        ],
+        [
+          1575,
+          1480
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "20. Reject duplicate threshold or decreasing percentage",
+      "x": 1632,
+      "y": 1435,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1525
+        ],
+        [
+          2105,
+          1525
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "21. tx.commissionRule.create({ data })",
+      "x": 1582,
+      "y": 1476,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1589
+        ],
+        [
+          2625,
+          1589
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "22. INSERT CommissionRule (version = 1)",
+      "x": 2122,
+      "y": 1540,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          1653
+        ],
+        [
+          2115,
+          1653
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. Created rule record",
+      "x": 2122,
+      "y": 1604,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1717
+        ],
+        [
+          1575,
+          1717
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. Created CommissionRule",
+      "x": 1582,
+      "y": 1668,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1781
+        ],
+        [
+          2105,
+          1781
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "25. tx.auditLog.create(CREATE_COMMISSION_RULE)",
+      "x": 1582,
+      "y": 1732,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1845
+        ],
+        [
+          2625,
+          1845
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "26. INSERT AuditLog",
+      "x": 2122,
+      "y": 1796,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          1909
+        ],
+        [
+          2115,
+          1909
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "27. Audit record created",
+      "x": 2122,
+      "y": 1860,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1973
+        ],
+        [
+          1575,
+          1973
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "28. Audit write completed",
+      "x": 1582,
+      "y": 1924,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          2037
+        ],
+        [
+          2105,
+          2037
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "29. Return serialized rule from transaction callback",
+      "x": 1582,
+      "y": 1988,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          2101
+        ],
+        [
+          2625,
+          2101
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "30. COMMIT",
+      "x": 2122,
+      "y": 2052,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2625,
+          2165
+        ],
+        [
+          2115,
+          2165
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "31. Commit completed",
+      "x": 2122,
+      "y": 2116,
+      "w": 496,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2229
+        ],
+        [
+          1575,
+          2229
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "32. Transaction result",
+      "x": 1582,
+      "y": 2180,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2293
+        ],
+        [
+          1035,
+          2293
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "33. CommissionRuleResponseDto",
+      "x": 1042,
+      "y": 2244,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2357
+        ],
+        [
+          465,
+          2357
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "34. 201 Created: configured milestone",
+      "x": 472,
+      "y": 2308,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2421
+        ],
+        [
+          510,
+          2421
+        ],
+        [
+          510,
+          2440
+        ],
+        [
+          465,
+          2440
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "35. Close dialog; reset form; loadRules(storeId)",
+      "x": 522,
+      "y": 2395,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          105,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "36. Show success; refresh milestone list",
+      "x": 112,
+      "y": 2436,
+      "w": 336,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = CommissionRulesPage + commissionRulesService HTTP adapter. Core class names match the class diagram.",
+      "x": 45,
+      "y": 2595,
+      "w": 2750,
+      "h": 38,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Before controller execution: StoreOwnerGuard checks JWT, active user and Store ownership; ParseUUIDPipe and DTO validation run in the NestJS request pipeline.",
+      "x": 45,
+      "y": 2645,
+      "w": 2750,
+      "h": 42,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Invalid input: 400; unauthorized/forbidden: 401/403; missing Store: 404; duplicate threshold: 409. Failure stops the flow; transaction errors roll back rule and audit.",
+      "x": 45,
+      "y": 2700,
+      "w": 2750,
+      "h": 42,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Main create flow shown. Edit, activation and soft delete use the same controller/service chain; preview is read-only. No horizontal fragments or object-destruction marks.",
+      "x": 45,
+      "y": 2755,
+      "w": 2750,
+      "h": 42,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

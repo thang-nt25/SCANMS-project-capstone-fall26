@@ -31,6 +31,12 @@ function fixture(environment = 'TEST', status = 'SHIPPING') {
     $transaction: jest.fn(async (callback) => callback(tx)),
     order: {
       findFirst: jest.fn(async () => ({ rawPayload: order.rawPayload })),
+      findMany: jest.fn(async () => order.status === 'SHIPPING'
+        ? [{ id: order.id, rawPayload: order.rawPayload }] : []),
+      updateMany: jest.fn(async ({ data }) => {
+        Object.assign(order, data);
+        return { count: 1 };
+      }),
     },
   };
   return { service: new GhnService(db as any, {} as any), order, db, tx };
@@ -169,14 +175,21 @@ describe('explicit GHN TEST delivery completion', () => {
     // The real interactive transaction rolls both writes back; no error is swallowed.
   });
 
-  it('advertises disabled/TEST/LIVE capabilities and never completes an order during public tracking', async () => {
-    const { service, tx } = fixture();
+  it('advertises disabled/TEST/LIVE capabilities and reconciles delivery without completing or settling an order during public tracking', async () => {
+    const { service, tx, db, order } = fixture();
     const provider = jest
       .spyOn(service as any, 'ghnFetch')
       .mockResolvedValue({ code: 200, data: { status: 'picked', log: [] } });
     await expect(
       service.trackOrder('TEST-ORDER', GhnEnvironment.TEST),
     ).resolves.toMatchObject({ isSimulation: true, simulationAvailable: true });
+    expect(db.order.updateMany).toHaveBeenCalledTimes(1);
+    expect(db.order.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { status: 'DELIVERED', deliveredAt: new Date(startedAt + 240_000) },
+    }));
+    expect(order.status).toBe('DELIVERED');
+    expect(order.rawPayload.paymentStatus).toBe('UNPAID');
+    expect(order).not.toHaveProperty('completedAt');
     process.env.SHIPPING_SIMULATION_ENABLED = 'false';
     await expect(
       service.trackOrder('TEST-ORDER', GhnEnvironment.TEST),
@@ -186,6 +199,8 @@ describe('explicit GHN TEST delivery completion', () => {
       service.trackOrder('LIVE-ORDER', GhnEnvironment.LIVE),
     ).resolves.toMatchObject({ simulationAvailable: false });
     expect(provider).toHaveBeenCalledTimes(2);
+    expect(db.order.updateMany).toHaveBeenCalledTimes(1);
     expect(tx.order.update).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
   });
 });

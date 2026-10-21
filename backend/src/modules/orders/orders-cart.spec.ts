@@ -17,7 +17,8 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
   let mail: { sendOrderConfirmation: jest.Mock };
 
   beforeEach(async () => {
-    mail = { sendOrderConfirmation: jest.fn().mockResolvedValue(true) };
+    // Simulate SMTP that never responds: checkout must still finish.
+    mail = { sendOrderConfirmation: jest.fn(() => new Promise(() => {})) };
     prisma = {
       product: {
         findMany: jest.fn(),
@@ -268,15 +269,13 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     expect(Number(savedOrderData.finalAmount)).toBe(745000);
     expect(savedOrderData.orderItems.create[0].unitPrice).toBe(220000);
     expect(savedOrderData.orderItems.create[1].unitPrice).toBe(250000);
-    expect(result.confirmationEmailStatus).toBe('SENT');
-    expect(result.confirmationEmailQueued).toBe(false);
-    expect(mail.sendOrderConfirmation).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'customer@example.test', publicOrderCode: 'ORD-TEST-123', subtotalAmount: 720000, shippingFee: 25000, finalAmount: 745000,
-      items: expect.arrayContaining([expect.objectContaining({ variantName: 'Size M', quantity: 1, unitPrice: 220000 }), expect.objectContaining({ variantName: 'Size L', quantity: 2, unitPrice: 250000 })]),
-    }));
+    expect(result.confirmationEmailStatus).toBe('QUEUED');
+    expect(result.confirmationEmailQueued).toBe(true);
+    expect(savedOrderData.rawPayload.confirmationEmailStatus).toBe('QUEUED');
+    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
   });
 
-  it.each(['buyer-a@gmail.com', 'buyer-b@gmail.com'])('automatically sends each committed shop order to the current buyer %s', async email => {
+  it.each(['buyer-a@gmail.com', 'buyer-b@gmail.com'])('returns committed shop orders without waiting for SMTP for %s', async email => {
     const products = [0, 1].map(index => ({
       id: `00000000-0000-4000-8000-00000000000${index}`, storeId: `00000000-0000-4000-8000-00000000001${index}`,
       title: `Product ${index}`, sku: `SKU-${index}`, price: 100000, stockQuantity: 10, isActive: true, isDeleted: false, moderationStatus: 'APPROVED',
@@ -292,21 +291,21 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
       order: {
         externalOrderSn: `DH-${context.store.slug}`, storeId: context.store.id, store: context.store,
         status: 'PENDING', createdAt: new Date('2026-10-18T00:00:00Z'), subtotalAmount: 100000, discountAmount: 0, shippingFee: 29001, finalAmount: 129001,
-        rawPayload: { paymentMethod: 'WALLET', paymentStatus: 'PAID' },
+        rawPayload: { paymentMethod: 'WALLET', paymentStatus: 'PAID', confirmationEmailStatus: 'QUEUED' },
         orderItems: [{ quantity: 1, unitPrice: 100000, productId: context.dbProducts[0].id, product: context.dbProducts[0] }],
       },
     }));
-    mail.sendOrderConfirmation.mockImplementation(async () => { expect(committed).toBe(true); return true; });
     const result = await service.createOrder({
       customerName: 'Nguyễn Văn A', customerPhone: '0901234567', customerEmail: email,
       shippingAddress: '123 Nguyễn Trãi, Thanh Xuân, Hà Nội', paymentMethod: PaymentMethod.WALLET,
       idempotencyKey: `auto-email-${email}`, policyAccepted: true, items: products.map(product => ({ productId: product.id, quantity: 1 })),
     });
-    expect(mail.sendOrderConfirmation).toHaveBeenCalledTimes(2);
-    for (const product of products) expect(mail.sendOrderConfirmation).toHaveBeenCalledWith(expect.objectContaining({
-      email, storeName: product.store.name, publicOrderCode: `DH-${product.store.slug}`, items: [expect.objectContaining({ title: product.title })],
-    }));
-    expect(result.confirmationEmailStatus).toBe('SENT');
+    expect(committed).toBe(true);
+    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
+    expect(result.confirmationEmailStatus).toBe('QUEUED');
+    if (!('orders' in result)) throw new Error('Expected multi-store response');
+    expect(result.orders).toHaveLength(2);
+    expect(result.orders.every(order => order.confirmationEmailQueued)).toBe(true);
   });
 
   it('createOrder for multi-store cart executes within a single atomic $transaction and rolls back if any shop fails', async () => {

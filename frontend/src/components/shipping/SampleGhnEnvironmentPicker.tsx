@@ -1,6 +1,5 @@
 import { useId, useState } from 'react';
 import { CheckCircle2, ChevronDown, CreditCard, FlaskConical, Loader2, Truck } from 'lucide-react';
-import './SampleShippingPayment.css';
 import api from '../../services/api';
 import { SandboxSampleReceipt } from './SandboxSampleReceipt';
 import { sandboxSampleStatusLabel, useSandboxSampleState } from './useSandboxSampleState';
@@ -45,18 +44,18 @@ function SandboxShippingPayment({ code, amount, role }: { code: string; amount?:
       setError(Array.isArray(message) ? message.join(' ') : String(message));
     } finally { setBusy(false); }
   }
-  return <div aria-label="Phí vận chuyển hàng mẫu" className="sample-freight">
-    <div className="sample-freight__row">
-      <dl className="sample-freight__amounts">
+  return <div aria-label="Phí vận chuyển hàng mẫu" className="sample-freight mt-3 border-t border-[#EAE4D7] pt-3 text-[#7D715E] [&_dl]:m-0">
+    <div className="sample-freight__row flex flex-wrap items-center gap-x-5 gap-y-3.5 rounded-[10px] bg-[#FAF8F5] px-3.5 py-3 [@media(max-width:480px)]:gap-2.5 [@media(max-width:480px)]:p-[11px]">
+      <dl className="sample-freight__amounts grid min-w-[230px] flex-1 grid-cols-2 gap-3 [&>div]:min-w-0 [&>div+div]:border-l [&>div+div]:border-[#EAE4D7] [&>div+div]:pl-4 [&_dt]:text-[10px] [&_dt]:leading-[1.5] [&_dd]:mx-0 [&_dd]:mb-0 [&_dd]:mt-[3px] [&_dd]:text-[15px] [&_dd]:font-bold [&_dd]:leading-[1.4] [&_dd]:text-[#231D15] [&_dd]:tabular-nums [&_dd>span]:text-[11px] [&_dd>span]:font-medium [@media(max-width:480px)]:basis-full [@media(max-width:480px)]:min-w-0 [@media(max-width:480px)]:[&_dt]:text-[9px] [@media(max-width:480px)]:[&_dd]:text-[14px] [&_dd[class*='unknown']]:text-[11px] [&_dd[class*='unknown']]:font-medium">
         <div><dt>Shop chịu 100% phí ship</dt><dd className={!knownFee ? 'sample-freight__unknown' : undefined}>{role === 'shop' ? knownFee ? <>{fee.toLocaleString('vi-VN')} <span>đ</span></> : 'Chờ GHN xác nhận cước' : 'Shop thanh toán'}</dd></div>
         <div><dt>Thu hộ COD từ KOL</dt><dd>0 <span>đ</span></dd></div>
       </dl>
-      {role === 'shop' && !paid && <button type="button" onClick={() => void pay()} disabled={busy || !state || Boolean(trackingError) || !knownFee} className="sample-freight__pay">{busy ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}{busy ? 'Đang lưu…' : 'Thanh toán cước thử'}</button>}
-      {paid && <p role="status" className="sample-freight__paid"><CheckCircle2 size={15} />Shop đã thanh toán cước mô phỏng</p>}
+      {role === 'shop' && !paid && <button type="button" onClick={() => void pay()} disabled={busy || !state || Boolean(trackingError) || !knownFee} className="sample-freight__pay inline-flex min-h-[38px] shrink-0 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EEDFC6] bg-[#FBF5EB] px-[13px] py-[9px] text-[11px] font-semibold leading-[1.4] text-[#231D15] transition-[background,border-color] duration-150 ease-[ease] hover:border-[#C59B58] hover:bg-[#F3EFE6] [&>svg]:text-[#8C6B32] focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#B88E4F] disabled:cursor-default disabled:opacity-50 [@media(max-width:480px)]:w-full">{busy ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}{busy ? 'Đang lưu…' : 'Thanh toán cước thử'}</button>}
+      {paid && <p role="status" className="sample-freight__paid m-0 flex max-w-[170px] items-center gap-1.5 text-[10px] font-semibold leading-[1.5] text-[#795A2D] [&>svg]:shrink-0 [@media(max-width:480px)]:max-w-none"><CheckCircle2 size={15} />Shop đã thanh toán cước mô phỏng</p>}
     </div>
-    {paid && <p className="sample-freight__reference">Mã xác nhận: <code>{payment.reference}</code><span>{new Date(payment.paidAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span></p>}
-    {role !== 'shop' && <p className="sample-freight__note"><FlaskConical size={12} aria-hidden="true" /><span>Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.</span></p>}
-    {error && <p role="alert" className="sample-freight__error">{error}</p>}
+    {paid && <p className="sample-freight__reference mt-2 mb-0 mx-0 flex flex-wrap items-baseline gap-x-[5px] gap-y-[3px] text-[9px] leading-[1.6] [&_code]:[overflow-wrap:anywhere] [&>span]:ml-auto [@media(max-width:480px)]:[&>span]:ml-0 [@media(max-width:480px)]:[&>span]:basis-full">Mã xác nhận: <code>{payment.reference}</code><span>{new Date(payment.paidAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span></p>}
+    {role !== 'shop' && <p className="sample-freight__note mt-2 mb-0 mx-0 flex items-start gap-[5px] text-[9px] leading-[1.6] [&>svg]:mt-px [&>svg]:shrink-0 [&>svg]:text-[#8C6B32]"><FlaskConical size={12} aria-hidden="true" /><span>Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.</span></p>}
+    {error && <p role="alert" className="sample-freight__error mt-2 mb-0 mx-0 text-[11px] leading-[1.5] text-[#DC2626]">{error}</p>}
   </div>;
 }
 

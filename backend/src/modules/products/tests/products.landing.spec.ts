@@ -31,12 +31,20 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
       findMany: jest.fn(),
     },
     productReview: {
+      count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockImplementation(async () => {
+        const rows = await mockPrismaService.productReview.findMany();
+        const counts = new Map<number, number>();
+        for (const row of rows || []) counts.set(row.rating, (counts.get(row.rating) || 0) + 1);
+        return [...counts].map(([rating, count]) => ({ rating, _count: { _all: count } }));
+      }),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
     },
     auditLog: {
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     attributionSession: {
       findUnique: jest.fn(),
@@ -251,6 +259,11 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     expect(result.reviews.averageRating).toBe(4.5);
     expect(result.reviews.starDistribution[5]).toBe(1);
     expect(result.reviews.starDistribution[4]).toBe(1);
+    expect(result.reviews.photoReviewCount).toBe(0);
+    expect(mockPrismaService.productReview.count).toHaveBeenCalledWith({ where: {
+      productId: result.product.id, isApproved: true,
+      OR: [{ images: { isEmpty: false } }, { AND: [{ reviewImageUrl: { not: null } }, { reviewImageUrl: { not: '' } }] }],
+    } });
 
     // Tên phải được che một phần theo chuẩn FR-15
     const rev1 = result.reviews.items.find((i: any) => i.id === 'rev-1');
@@ -396,7 +409,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
 
       const result = await service.moderateReview(
         'owner-uuid-1',
-        UserRole.SHOP_MANAGER,
+        UserRole.SYSTEM_ADMIN,
         'rev-uuid-1',
         { status: ReviewStatus.APPROVED },
       );
@@ -438,7 +451,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
 
       const result = await service.moderateReview(
         'owner-uuid-1',
-        UserRole.SHOP_MANAGER,
+        UserRole.SYSTEM_ADMIN,
         'rev-uuid-1',
         {
           status: ReviewStatus.REJECTED,

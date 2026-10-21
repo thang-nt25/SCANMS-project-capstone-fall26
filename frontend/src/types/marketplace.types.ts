@@ -21,6 +21,7 @@ export interface Product {
   createdAt?: string;
   soldCount?: number;
   viewCount?: number;
+  matchKind?: 'direct' | 'related';
   commissionRate?: number;
   commissionAmount?: number;
   variants?: Array<{

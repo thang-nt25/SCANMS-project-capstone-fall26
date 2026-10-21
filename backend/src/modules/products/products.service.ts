@@ -23,12 +23,16 @@ import {
   UserRole,
   ReviewStatus,
   ProductModerationStatus,
+  Prisma,
 } from '@prisma/client';
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { validateProductPackage } from './product-package';
 import * as crypto from 'crypto';
 import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
+import { catalogCountQuery, catalogSuggestionsQuery, type CatalogSuggestionRow } from './utils/catalog-query';
+import { ReviewReplyDto, ReviewReportDto, ResolveReviewReportDto } from './dto/review-actions.dto';
+import { reviewContentIssue } from './review-content-policy';
 
 @Injectable()
 export class ProductsService {
@@ -528,7 +532,7 @@ export class ProductsService {
     let storeId: string | undefined;
     let minPrice: number | undefined;
     let maxPrice: number | undefined;
-    let sortBy = 'newest';
+    let sortBy = '';
     let page = pageArg;
     let limit = limitArg;
 
@@ -538,13 +542,16 @@ export class ProductsService {
       storeId = queryOrSearch.storeId;
       minPrice = queryOrSearch.minPrice;
       maxPrice = queryOrSearch.maxPrice;
-      sortBy = queryOrSearch.sortBy || 'newest';
+      sortBy = queryOrSearch.sortBy || '';
       page = queryOrSearch.page || 1;
       limit = queryOrSearch.limit || 24;
     } else if (typeof queryOrSearch === 'string') {
       search = queryOrSearch;
     }
 
+    if (typeof search !== 'string') throw new BadRequestException('Từ khóa tìm kiếm không hợp lệ');
+    search = search.trim().replace(/\s+/g, ' ').slice(0, 80);
+    sortBy ||= search ? 'relevance' : 'newest';
     const safePage = Number.isFinite(Number(page)) ? Math.max(1, Math.floor(Number(page) || 1)) : 1;
     const safeLimit = Math.min(48, Math.max(1, Math.floor(Number(limit) || 24)));
 
@@ -557,19 +564,9 @@ export class ProductsService {
         isActive: true,
         isVerified: true,
         onboardingStatus: 'VERIFIED',
-        owner: { isActive: true },
+        owner: { isActive: true, isDeleted: false },
       },
     };
-
-    if (search?.trim()) {
-      const literalSearch = search.trim().replace(/[\\%_]/g, '\\$&');
-      where.OR = [
-        { title: { contains: literalSearch, mode: 'insensitive' } },
-        { sku: { contains: literalSearch, mode: 'insensitive' } },
-        { categoryName: { contains: literalSearch, mode: 'insensitive' } },
-        { store: { name: { contains: literalSearch, mode: 'insensitive' } } },
-      ];
-    }
 
     if (category && category !== 'all') {
       where.categoryName = { equals: category.trim(), mode: 'insensitive' };
@@ -587,8 +584,10 @@ export class ProductsService {
         where.price.lte = maxPrice;
     }
 
+    const options = { search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit };
     const [total, ranked] = await Promise.all([
-      this.prisma.product.count({ where }),
+      search ? this.prisma.$queryRaw<{ total: bigint }[]>(catalogCountQuery(options)).then(rows => Number(rows[0]?.total || 0))
+        : this.prisma.product.count({ where }),
       this.prisma.$queryRaw<CatalogRankingRow[]>(catalogRankingQuery({
         search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit,
       })),
@@ -644,7 +643,7 @@ export class ProductsService {
     return {
       items: ranked.flatMap((row) => {
         const item = itemsById.get(row.id);
-        return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount) }] : [];
+        return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount), matchKind: row.matchKind || 'direct' }] : [];
       }),
       pagination: {
         total,
@@ -658,6 +657,14 @@ export class ProductsService {
   /**
    * Lấy danh sách danh mục sản phẩm thực tế trên Marketplace
    */
+  async getSearchSuggestions(search: string) {
+    if (typeof search !== 'string') throw new BadRequestException('Từ khóa tìm kiếm không hợp lệ');
+    const query = search.trim().replace(/\s+/g, ' ').slice(0, 80);
+    if (query.length < 2) return [];
+    const products = await this.prisma.$queryRaw<CatalogSuggestionRow[]>(catalogSuggestionsQuery(query));
+    return products.map(product => ({ ...product, price: Number(product.price) }));
+  }
+
   async getPublicCategories() {
     const products = await this.prisma.product.findMany({
       where: {
@@ -735,25 +742,99 @@ export class ProductsService {
    * Danh sách đánh giá chờ kiểm duyệt (Dành cho Shop Manager hoặc Admin)
    */
   async listReviewsForModeration(userId: string, role: UserRole) {
+    if (![UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN].includes(role as any)) throw new ForbiddenException('Không có quyền xem quản lý đánh giá');
     const where: any = {};
     if (role === UserRole.SHOP_MANAGER) {
       where.product = { store: { ownerId: userId, isDeleted: false } };
     }
-    return this.prisma.productReview.findMany({
+    const include = { product: { select: { id: true, title: true, sku: true, storeId: true, imageUrl: true } }, order: { select: { id: true, status: true } } } as const;
+    const [recent, openReports] = await Promise.all([
+    this.prisma.productReview.findMany({
       where,
       include: {
         product: {
-          select: { id: true, title: true, sku: true, storeId: true },
+          select: { id: true, title: true, sku: true, storeId: true, imageUrl: true },
         },
         order: { select: { id: true, status: true } },
       },
       orderBy: [{ isApproved: 'asc' }, { createdAt: 'desc' }],
       take: 100,
+    }),
+    // Keep old reported reviews reachable even when newer reviews fill the list.
+    this.prisma.$queryRaw<{ reviewId: string }[]>(Prisma.sql`
+      SELECT latest.review_id AS "reviewId" FROM (
+        SELECT DISTINCT ON (a.details->>'reviewId') a.details->>'reviewId' AS review_id, a.action
+        FROM audit_logs a JOIN product_reviews r ON r.id::text = a.details->>'reviewId'
+        JOIN products p ON p.id = r.product_id JOIN stores s ON s.id = p.store_id
+        WHERE a.action IN ('PRODUCT_REVIEW_REPORTED', 'PRODUCT_REVIEW_REPORT_RESOLVED')
+          ${role === UserRole.SHOP_MANAGER ? Prisma.sql`AND s.owner_id::text = ${userId} AND s.is_deleted = false` : Prisma.empty}
+        ORDER BY a.details->>'reviewId', a.created_at DESC, a.id DESC
+      ) latest WHERE latest.action = 'PRODUCT_REVIEW_REPORTED'`),
+    ]);
+    const reported = openReports.length ? await this.prisma.productReview.findMany({ where: { ...where, id: { in: openReports.map(row => row.reviewId) } }, include }) : [];
+    const reviews = [...new Map([...reported, ...recent].map(review => [review.id, review])).values()];
+    const events = reviews.length ? await this.prisma.auditLog.findMany({
+      where: { action: { in: ['PRODUCT_REVIEW_REPORTED', 'PRODUCT_REVIEW_REPORT_RESOLVED', 'PRODUCT_REVIEW_REPLY'] },
+        OR: reviews.map(review => ({ details: { path: ['reviewId'], equals: review.id } })) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    }) : [];
+    return reviews.map(review => {
+      const related = events.filter(event => (event.details as any)?.reviewId === review.id);
+      const reports = related.filter(event => event.action === 'PRODUCT_REVIEW_REPORTED');
+      const resolution = related.find(event => event.action === 'PRODUCT_REVIEW_REPORT_RESOLVED');
+      const reply = related.find(event => event.action === 'PRODUCT_REVIEW_REPLY');
+      return { ...review, reply: reply ? { comment: (reply.details as any).comment, createdAt: reply.createdAt } : null,
+        reports: reports.map(event => ({ id: event.id, createdAt: event.createdAt, ...(event.details as any),
+          resolved: Boolean(resolution && resolution.createdAt >= event.createdAt) })),
+        resolution: resolution ? resolution.details : null };
     });
   }
 
+  private async ownedReview(userId: string, reviewId: string) {
+    const review = await this.prisma.productReview.findUnique({ where: { id: reviewId }, include: { product: { include: { store: true } } } });
+    if (!review) throw new NotFoundException('Không tìm thấy đánh giá');
+    if (review.product.store.ownerId !== userId) throw new ForbiddenException('Bạn không quản lý gian hàng này');
+    return review;
+  }
+
+  async replyToReview(userId: string, reviewId: string, dto: ReviewReplyDto) {
+    const review = await this.ownedReview(userId, reviewId);
+    if (!review.isApproved) throw new BadRequestException('Chỉ trả lời đánh giá đang công khai');
+    if (reviewContentIssue(dto.comment)) throw new BadRequestException('Phản hồi chứa nội dung cần kiểm tra. Vui lòng dùng lời lẽ lịch sự, không đưa thông tin cá nhân.');
+    await this.prisma.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPLY', details: { reviewId, productId: review.productId, comment: dto.comment.trim() } } });
+    await this.invalidateLandingCache(review.productId);
+    return { message: 'Đã đăng phản hồi của Shop' };
+  }
+
+  async reportReview(userId: string, reviewId: string, dto: ReviewReportDto) {
+    const review = await this.ownedReview(userId, reviewId);
+    const history = await this.prisma.auditLog.findMany({ where: { action: { in: ['PRODUCT_REVIEW_REPORTED', 'PRODUCT_REVIEW_REPORT_RESOLVED'] },
+      details: { path: ['reviewId'], equals: reviewId } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1 });
+    if (history[0]?.action === 'PRODUCT_REVIEW_REPORTED') throw new BadRequestException('Báo cáo trước đang chờ sàn xử lý');
+    // A report never changes status/isApproved or the product rating.
+    await this.prisma.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORTED',
+      details: { reviewId, productId: review.productId, reason: dto.reason, details: dto.details, evidence: dto.evidence || [] } } });
+    return { message: 'Đã gửi báo cáo tới sàn. Đánh giá vẫn hiển thị trong khi chờ xử lý.' };
+  }
+
+  async resolveReviewReport(userId: string, role: UserRole, reviewId: string, dto: ResolveReviewReportDto) {
+    if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(role as any)) throw new ForbiddenException('Chỉ sàn được xử lý báo cáo');
+    if (!dto.reason?.trim() || dto.reason.trim().length < 10) throw new BadRequestException('Cần lý do và căn cứ xử lý ít nhất 10 ký tự');
+    if (!['KEEP', 'HIDE'].includes(dto.decision)) throw new BadRequestException('Quyết định không hợp lệ');
+    const review = await this.prisma.productReview.findUnique({ where: { id: reviewId } });
+    if (!review) throw new NotFoundException('Không tìm thấy đánh giá');
+    await this.prisma.$transaction(async tx => {
+      await tx.productReview.update({ where: { id: reviewId }, data: { status: dto.decision === 'KEEP' ? ReviewStatus.APPROVED : ReviewStatus.HIDDEN,
+        isApproved: dto.decision === 'KEEP', reviewedBy: userId, reviewedAt: new Date(), rejectionReason: dto.decision === 'HIDE' ? dto.reason : null } });
+      await tx.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORT_RESOLVED', details: { reviewId, productId: review.productId,
+        decision: dto.decision, reason: dto.reason, previousStatus: review.status } } });
+    });
+    await this.invalidateLandingCache(review.productId);
+    return { message: dto.decision === 'KEEP' ? 'Đã giữ đánh giá và kết thúc xử lý' : 'Đã ẩn nội dung vi phạm và lưu quyết định' };
+  }
+
   /**
-   * Phê duyệt hoặc từ chối đánh giá sản phẩm
+   * Sàn kiểm duyệt đánh giá; Shop không có quyền quyết định hiển thị.
    */
   async moderateReview(
     userId: string,
@@ -761,21 +842,15 @@ export class ProductsService {
     reviewId: string,
     dto: ModerateProductReviewDto,
   ) {
+    if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(role as any)) {
+      throw new ForbiddenException('Shop chỉ được trả lời hoặc báo cáo; quyền kiểm duyệt thuộc sàn');
+    }
     const review = await this.prisma.productReview.findUnique({
       where: { id: reviewId },
       include: { product: { include: { store: true } } },
     });
 
     if (!review) throw new NotFoundException('Không tìm thấy đánh giá');
-    if (
-      role === UserRole.SHOP_MANAGER &&
-      review.product.store.ownerId !== userId
-    ) {
-      throw new ForbiddenException(
-        'Bạn không có quyền kiểm duyệt đánh giá của Shop khác',
-      );
-    }
-
     let targetStatus: ReviewStatus = ReviewStatus.APPROVED;
     if (dto.status) {
       targetStatus = dto.status;
@@ -790,6 +865,7 @@ export class ProductsService {
       targetStatus === ReviewStatus.HIDDEN
         ? dto.reason || null
         : null;
+    if (!isApproved && (!dto.reason || dto.reason.trim().length < 10)) throw new BadRequestException('Sàn cần ghi lý do kiểm duyệt ít nhất 10 ký tự');
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.productReview.update({
@@ -2181,7 +2257,17 @@ export class ProductsService {
       take: 50,
     });
 
-    const totalReviews = reviews.length;
+    const visibleWhere = { productId: product.id, isApproved: true };
+    const [reviewStats, replyEvents, photoReviewCount] = await Promise.all([
+      this.prisma.productReview.groupBy({ by: ['rating'], where: visibleWhere, _count: { _all: true } }),
+      reviews.length ? this.prisma.auditLog.findMany({ where: { action: 'PRODUCT_REVIEW_REPLY', details: { path: ['productId'], equals: product.id } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }) : Promise.resolve([]),
+      this.prisma.productReview.count({ where: { ...visibleWhere, OR: [
+        { images: { isEmpty: false } },
+        { AND: [{ reviewImageUrl: { not: null } }, { reviewImageUrl: { not: '' } }] },
+      ] } }),
+    ]);
+    const totalReviews = reviewStats.reduce((sum, row) => sum + row._count._all, 0);
     const starDistribution: Record<number, number> = {
       1: 0,
       2: 0,
@@ -2190,16 +2276,17 @@ export class ProductsService {
       5: 0,
     };
     let sumRating = 0;
+    reviewStats.forEach(row => { starDistribution[row.rating] = row._count._all; sumRating += row.rating * row._count._all; });
 
     const formattedReviews = reviews.map((r) => {
       const star = Math.min(5, Math.max(1, r.rating || 5));
-      starDistribution[star] = (starDistribution[star] || 0) + 1;
-      sumRating += star;
 
       const isVerifiedBuyer = Boolean(
         (r.orderId || (r as any).order?.id) && r.order?.status === 'COMPLETED',
       );
 
+      const reply = replyEvents.find(event => (event.details as any)?.reviewId === r.id);
+      const reviewImages = [...new Set([...(r.images || []), r.reviewImageUrl].filter((url): url is string => Boolean(url) && this.isSafeUrl(url)))].slice(0, 5);
       return {
         id: r.id,
         customerName: this.maskCustomerName(r.customerName),
@@ -2208,6 +2295,8 @@ export class ProductsService {
         reviewImageUrl: this.isSafeUrl(r.reviewImageUrl)
           ? r.reviewImageUrl
           : null,
+        images: reviewImages,
+        reply: reply ? { comment: String((reply.details as any).comment), createdAt: reply.createdAt.toISOString() } : null,
         isVerifiedBuyer,
         createdAt: r.createdAt,
       };
@@ -2325,6 +2414,7 @@ export class ProductsService {
       reviews: {
         averageRating,
         totalReviews,
+        photoReviewCount,
         starDistribution,
         items: formattedReviews,
       },
@@ -2494,6 +2584,7 @@ export class ProductsService {
     lowStock: boolean;
     lowStockThreshold: number;
     status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+    variants: Array<{ id: string; stockQuantity: number; isActive: boolean }>;
   }> {
     const trimmed = idOrSlug.trim();
     const isUuid =
@@ -2514,15 +2605,24 @@ export class ProductsService {
         stockQuantity: true,
         isActive: true,
         isDeleted: true,
+        moderationStatus: true,
+        store: { select: { isActive: true, isDeleted: true, isVerified: true, onboardingStatus: true, owner: { select: { isActive: true } } } },
+        variants: { select: { id: true, stockQuantity: true, isActive: true } },
       },
     });
 
-    if (!product) {
+    if (!product || product.moderationStatus !== 'APPROVED' || !product.store?.isActive || product.store.isDeleted ||
+      !product.store.isVerified || product.store.onboardingStatus !== 'VERIFIED' || !product.store.owner.isActive) {
       throw new NotFoundException('Sản phẩm không tồn tại hoặc đã bị xóa.');
     }
 
     const LOW_STOCK_THRESHOLD = 5;
-    const qty = product.stockQuantity ?? 0;
+    const variants = product.variants.map(variant => ({ ...variant,
+      stockQuantity: product.isActive && variant.isActive ? Math.max(0, variant.stockQuantity) : 0,
+    }));
+    const qty = !product.isActive ? 0 : variants.length
+      ? variants.reduce((sum, variant) => sum + variant.stockQuantity, 0)
+      : Math.max(0, product.stockQuantity ?? 0);
     const inStock = qty > 0 && product.isActive && !product.isDeleted;
     const lowStock = inStock && qty <= LOW_STOCK_THRESHOLD;
 
@@ -2539,6 +2639,7 @@ export class ProductsService {
       lowStock,
       lowStockThreshold: LOW_STOCK_THRESHOLD,
       status,
+      variants,
     };
   }
 

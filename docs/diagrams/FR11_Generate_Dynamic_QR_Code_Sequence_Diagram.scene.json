@@ -1,0 +1,959 @@
+{
+  "width": 2910,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-11 Generate Dynamic QR Code — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2820,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: local preview → authorized QR download → cached or rendered PNG/SVG.",
+      "x": 45,
+      "y": 73,
+      "w": 2820,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "KOL",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CollaboratorReferralLinksController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ReferralLinksService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CacheService",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 968,
+      "w": 10,
+      "h": 106
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1281,
+      "w": 10,
+      "h": 106
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1473,
+      "w": 10,
+      "h": 107
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1787,
+      "w": 10,
+      "h": 106
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1979,
+      "w": 10,
+      "h": 107
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 751,
+      "w": 10,
+      "h": 1431
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 654,
+      "w": 10,
+      "h": 1624
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Open QR modal",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          341
+        ],
+        [
+          510,
+          341
+        ],
+        [
+          510,
+          360
+        ],
+        [
+          465,
+          360
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. useQrDataUrl(): generate local QR preview",
+      "x": 522,
+      "y": 315,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          462
+        ],
+        [
+          115,
+          462
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "3. Show local preview; no API request",
+      "x": 122,
+      "y": 413,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          558
+        ],
+        [
+          455,
+          558
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. Choose PNG/SVG and size; Download",
+      "x": 122,
+      "y": 509,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          654
+        ],
+        [
+          1025,
+          654
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. GET /api/referral-links/:id/qr?download=true",
+      "x": 472,
+      "y": 605,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          751
+        ],
+        [
+          1565,
+          751
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. generateQrCode(id, user, options, ip)",
+      "x": 1042,
+      "y": 702,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          847
+        ],
+        [
+          1620,
+          847
+        ],
+        [
+          1620,
+          866
+        ],
+        [
+          1575,
+          866
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. Validate format and size",
+      "x": 1632,
+      "y": 821,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          968
+        ],
+        [
+          2105,
+          968
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. Find non-deleted link with Store and collaborator",
+      "x": 1582,
+      "y": 919,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1064
+        ],
+        [
+          1575,
+          1064
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "9. Link and ownership data",
+      "x": 1582,
+      "y": 1015,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1160
+        ],
+        [
+          1620,
+          1160
+        ],
+        [
+          1620,
+          1179
+        ],
+        [
+          1575,
+          1179
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. Check authenticated role and link ownership",
+      "x": 1632,
+      "y": 1134,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1281
+        ],
+        [
+          2645,
+          1281
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. checkRateLimit(download key, 20, 60)",
+      "x": 1582,
+      "y": 1232,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1377
+        ],
+        [
+          1575,
+          1377
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. Rate-limit decision",
+      "x": 1582,
+      "y": 1328,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1473
+        ],
+        [
+          2645,
+          1473
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. get(qr_render:linkId:format:size)",
+      "x": 1582,
+      "y": 1424,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1570
+        ],
+        [
+          1575,
+          1570
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. Cached image or null",
+      "x": 1582,
+      "y": 1521,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1666
+        ],
+        [
+          1620,
+          1666
+        ],
+        [
+          1620,
+          1685
+        ],
+        [
+          1575,
+          1685
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. [miss] Render PNG or render and sanitize SVG",
+      "x": 1632,
+      "y": 1640,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1787
+        ],
+        [
+          2645,
+          1787
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. [miss] set(cacheKey, rendered image, 86400)",
+      "x": 1582,
+      "y": 1738,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1883
+        ],
+        [
+          1575,
+          1883
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "17. [miss] Cache write completed",
+      "x": 1582,
+      "y": 1834,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1979
+        ],
+        [
+          2105,
+          1979
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. Increment qrDownloadCount (best effort)",
+      "x": 1582,
+      "y": 1930,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2076
+        ],
+        [
+          1575,
+          2076
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Counter result; failure does not block image",
+      "x": 1582,
+      "y": 2027,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2172
+        ],
+        [
+          1035,
+          2172
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. Image, content type and filename",
+      "x": 1042,
+      "y": 2123,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2268
+        ],
+        [
+          465,
+          2268
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. 200 image; Content-Disposition: attachment",
+      "x": 472,
+      "y": 2219,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2365
+        ],
+        [
+          510,
+          2365
+        ],
+        [
+          510,
+          2384
+        ],
+        [
+          465,
+          2384
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "22. Blob → object URL → download anchor",
+      "x": 522,
+      "y": 2339,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. Start QR file download",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = ReferralLinksPage + useQrDataUrl + HTTP adapter. JWT and role guards precede the controller; KOL downloads their own link. API inline preview is a separate 60/minute path.",
+      "x": 45,
+      "y": 2595,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Cache hit reuses the image; only cache miss renders/writes cache. PNG uses renderQrPng; SVG uses QRCode.toString and sanitization. Invalid options, ownership or rate-limit checks stop the request.",
+      "x": 45,
+      "y": 2645,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Cache TTL is 86400 seconds. Redis download counter and Shop/Admin support audit are summarized in FR11_CODE_ANALYSIS.md. Generating/downloading a QR records no affiliate click.",
+      "x": 45,
+      "y": 2700,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

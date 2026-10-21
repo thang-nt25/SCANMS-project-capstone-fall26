@@ -1,0 +1,478 @@
+{
+  "fr": "FR15",
+  "stem": "FR15_Product_Landing_Video_Review",
+  "title": "FR-15 Product Landing Page and KOL Video Reviews",
+  "classes": [
+    {
+      "id": "PublicProductsController",
+      "name": "PublicProductsController",
+      "attrs": [
+        "- productsService: ProductsService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ getLandingPage(idOrSlug, req?): Promise<ProductLandingResponseDto>"
+      ]
+    },
+    {
+      "id": "ProductsService",
+      "name": "ProductsService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- configService: ConfigService",
+        "- cacheService: CacheService"
+      ],
+      "ops": [
+        "+ getLandingPageData(idOrSlug, attributionCookie?): Promise<ProductLandingResponseDto>",
+        "- resolveLandingImageUrl(url?): string | null",
+        "- isSafeUrl(url?): boolean"
+      ]
+    },
+    {
+      "id": "CacheService",
+      "name": "CacheService",
+      "attrs": [
+        "- redisClient: Redis | null",
+        "- memoryCache: Map<string, CacheEntry>"
+      ],
+      "ops": [
+        "+ get<T>(key: string): Promise<T | null>",
+        "+ set(key, value, ttlSeconds): Promise<void>"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "Product",
+      "name": "Product",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ sku, title: string",
+        "+ price: Decimal",
+        "+ stockQuantity: number",
+        "+ isActive, isDeleted: boolean",
+        "+ moderationStatus: ProductModerationStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id: string",
+        "+ ownerId: string",
+        "+ name, slug: string",
+        "+ isActive, isVerified, isDeleted: boolean",
+        "+ onboardingStatus: ShopOnboardingStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "MediaAsset",
+      "name": "MediaAsset",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ productId, collaboratorId: string | null",
+        "+ assetType: AssetType",
+        "+ urlOrContent: string",
+        "+ posterUrl, caption: string | null",
+        "+ status: MediaAssetStatus",
+        "+ isFeatured, isDeleted: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ProductVariant",
+      "name": "ProductVariant",
+      "attrs": [
+        "+ id: string",
+        "+ productId: string",
+        "+ name: string",
+        "+ price: Decimal | null",
+        "+ stockQuantity: number",
+        "+ isActive: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ProductReview",
+      "name": "ProductReview",
+      "attrs": [
+        "+ id: string",
+        "+ productId: string",
+        "+ orderId: string | null",
+        "+ customerName, comment: string | null",
+        "+ rating: number",
+        "+ isApproved: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ product: Prisma.ProductDelegate",
+        "+ mediaAsset: Prisma.MediaAssetDelegate",
+        "+ productReview: Prisma.ProductReviewDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "PublicProductsController",
+      "ProductsService",
+      "reference",
+      "productsService"
+    ],
+    [
+      "ProductsService",
+      "CacheService",
+      "reference",
+      "cacheService"
+    ],
+    [
+      "ProductsService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "Product",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "MediaAsset",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "ProductReview",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "Store",
+      "Product",
+      "association",
+      "products",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "MediaAsset",
+      "association",
+      "mediaAssets",
+      "1",
+      "0..*"
+    ],
+    [
+      "Product",
+      "MediaAsset",
+      "association",
+      "mediaAssets",
+      "0..1",
+      "0..*"
+    ],
+    [
+      "Product",
+      "ProductVariant",
+      "association",
+      "variants",
+      "1",
+      "0..*"
+    ],
+    [
+      "Product",
+      "ProductReview",
+      "association",
+      "productReviews",
+      "1",
+      "0..*"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "ProductVariant",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "ctrl",
+      "name": ":PublicProductsController"
+    },
+    {
+      "id": "svc",
+      "name": ":ProductsService"
+    },
+    {
+      "id": "cache",
+      "name": ":CacheService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    },
+    {
+      "id": "video",
+      "name": ":HTMLVideoElement"
+    }
+  ],
+  "messages": [
+    [
+      "customer",
+      "browser",
+      "Open /products/:slug"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "GET /api/public/products/:slug/landing"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "getLandingPageData(slug, attributionCookie)"
+    ],
+    [
+      "svc",
+      "db",
+      "Find approved Product, active variants, Store and owner"
+    ],
+    [
+      "db",
+      "svc",
+      "Product and Store eligibility data",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Validate Product and Store eligibility"
+    ],
+    [
+      "svc",
+      "cache",
+      "get(landing key for product and visitor)"
+    ],
+    [
+      "cache",
+      "svc",
+      "Cached payload or null",
+      "return"
+    ],
+    [
+      "svc",
+      "db",
+      "[miss] Read session priority, approved media/reviews and sold quantity"
+    ],
+    [
+      "db",
+      "svc",
+      "[miss] Media with KOL/profile data, reviews and sold count",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "[miss] Build public payload; order videos; compute availability"
+    ],
+    [
+      "svc",
+      "cache",
+      "[miss] set(cacheKey, landing payload, 30)"
+    ],
+    [
+      "cache",
+      "svc",
+      "[miss] Cache write completed",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "ProductLandingResponseDto",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "200: product, Shop, media, reviews and policies",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "Merge matching local videos; deduplicate; featured first"
+    ],
+    [
+      "browser",
+      "customer",
+      "Show product and KOL reviews",
+      "return"
+    ],
+    [
+      "customer",
+      "browser",
+      "Choose video; select Play"
+    ],
+    [
+      "browser",
+      "video",
+      "play() using videoUrl and poster"
+    ],
+    [
+      "video",
+      "browser",
+      "Playback starts or play() rejects",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "[first play + consent] Send video_start analytics (best effort)"
+    ],
+    [
+      "customer",
+      "browser",
+      "Choose variant/quantity; Buy now"
+    ],
+    [
+      "browser",
+      "browser",
+      "handleBuyNow(): open GuestCheckoutModal; checkout=1"
+    ],
+    [
+      "browser",
+      "customer",
+      "Show checkout form; no Order created yet",
+      "return"
+    ]
+  ],
+  "subtitle": "Main flow: public product landing → KOL review playback → open the checkout form.",
+  "classNote": "Video review = MediaAsset; customer rating/comment = ProductReview. KOL User/profile, attribution, SEO and analytics models are described separately; checkout creation belongs to FR16.",
+  "notes": [
+    "Browser = ProductDetailPage + api client + checkout rendering. Product/Store checks occur BEFORE cache lookup. Primary request failure retries /api/products/:slug/landing via ProductsController (omitted).",
+    "Server videos are APPROVED/non-deleted, with URL checks and KOL/profile data. Browser also merges matching locally approved submissions from localStorage, then sorts featured first; local data is not proof of server approval.",
+    "Cache TTL is 30 seconds. Native HTML video plays/pause; analytics requires consent and does not block playback. Inactive/out-of-stock products may remain visible with canPurchase=false. Order/payment details: FR16."
+  ],
+  "classLayout": {
+    "controller": "PublicProductsController",
+    "service": "ProductsService",
+    "supports": [
+      [
+        "CacheService",
+        150
+      ]
+    ],
+    "models": [
+      "Store",
+      "Product",
+      "ProductVariant",
+      "MediaAsset",
+      "ProductReview"
+    ],
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "modelPositions": {
+      "Store": [
+        1930,
+        150,
+        620
+      ],
+      "Product": [
+        1930,
+        650,
+        620
+      ],
+      "ProductVariant": [
+        1930,
+        1117,
+        620
+      ],
+      "MediaAsset": [
+        1930,
+        1557,
+        620
+      ],
+      "ProductReview": [
+        1930,
+        2051,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v3",
+    "order": [
+      "customer",
+      "browser",
+      "ctrl",
+      "svc",
+      "db",
+      "cache",
+      "video"
+    ]
+  },
+  "activations": [
+    [
+      "browser",
+      0,
+      16
+    ],
+    [
+      "browser",
+      17,
+      20
+    ],
+    [
+      "browser",
+      21,
+      23
+    ]
+  ]
+}

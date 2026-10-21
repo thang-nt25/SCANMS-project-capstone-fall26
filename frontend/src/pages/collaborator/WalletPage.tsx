@@ -35,7 +35,6 @@ import { toast } from "../../utils/toast";
 import { cn } from "../../utils/cn";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
-import './WalletPage.css';
 import { WalletCooperationStores } from '../../components/wallet/WalletCooperationStores';
 import { WalletSectionHeader } from '../../components/ui/WalletSectionHeader';
 
@@ -371,7 +370,7 @@ export default function WalletPage() {
   }
 
   return (
-    <div id="kol-wallet-page" data-active-tab={activeTab} className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left">
+    <div id="kol-wallet-page" data-active-tab={activeTab} className="flex flex-col gap-4 w-full min-w-0 pb-12 text-[#1A1612] text-left [&#kol-wallet-page[data-active-tab='wallet']]:bg-[color-mix(in_srgb,_#FFFFFF_75%,_#FAF8F5)]! [&#kol-wallet-page[data-active-tab='wallet']]:rounded-[16px]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FAF8F5]']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FAF8F5]/40']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FAF8F5]/50']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FAF8F5]/80']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FAF8F5]/90']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#F3EFE6]']]:bg-[#FFFFFF]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='bg-[#FBF5EB]']]:bg-[color-mix(in_srgb,_#FFFFFF_65%,_#FBF5EB)]! [&#kol-wallet-page[data-active-tab='wallet']_[class~='border-[#EAE4D7]']]:border-[color-mix(in_srgb,_#FFFFFF_25%,_#EAE4D7)]! [&#kol-wallet-page[data-active-tab='wallet']_button:not(:disabled):hover]:[--wallet-hover-surface:color-mix(in_srgb,_#FFFFFF_50%,_#FBF5EB)]! [&#kol-wallet-page[data-active-tab='wallet']_button[class~='hover:bg-[#F3EFE6]']:not(:disabled):hover]:bg-[var(--wallet-hover-surface)]! [&#kol-wallet-page[data-active-tab='wallet']_button[class~='hover:bg-[#FAF8F5]']:not(:disabled):hover]:bg-[var(--wallet-hover-surface)]!">
       {/* Top Unified Hub Navigation Bar */}
       <div className="p-1.5 sm:p-2 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
         <nav className="grid grid-cols-2 lg:grid-cols-4 items-stretch gap-2 w-full" aria-label="Ví và hồ sơ">
@@ -500,9 +499,9 @@ export default function WalletPage() {
 
 
       {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (TIKTOK SHOP & SHOPEE CREATOR COMPACT STYLE) */}
-      <section className="wallet-payout-stack">
+      <section className="wallet-payout-stack grid! grid-cols-[minmax(260px,_.7fr)_minmax(0,_1.3fr)]! items-stretch! gap-[16px]! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ">
         {/* Cột 1: Quản lý tài khoản ngân hàng thụ hưởng (VietQR) */}
-        <div className="wallet-bank-row">
+        <div className="wallet-bank-row [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_>_div]:grid! [&_>_div]:grid-cols-[minmax(0,1fr)]! [&_>_div]:gap-[14px]! [&_>_div_>_div:first-child]:flex-row! [&_>_div_>_div:first-child]:items-center! [&_>_div_>_div:first-child]:justify-between! [&_>_div_>_div:first-child]:gap-[8px]! [&_>_div_>_div:first-child]:[border-top:0]! [&_>_div_>_div:first-child]:[border-right:0]! [&_>_div_>_div:first-child]:[border-left:0]! [&_>_div_>_div:first-child]:[border-bottom:1px_solid_#eae4d7]! [&_>_div_>_div:first-child]:p-[0_0_12px]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! [@media(max-width:639px)]:p-[14px]! ">
           <div>
             {/* Header: Tiêu đề + Badge bảo mật */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
@@ -522,7 +521,7 @@ export default function WalletPage() {
 
             {/* Khi ĐÃ có tài khoản ngân hàng */}
             {wallet?.bankAccount && !showAddBankForm && (
-              <div className="wallet-bank-summary">
+              <div className="wallet-bank-summary grid! grid-cols-[minmax(0,1fr)]! items-center! gap-[5px_18px]! [&_>_div:first-child]:col-[1]! ">
                 {(() => {
                   const bankMatch = findBankByQuery(wallet.bankAccount.bankName);
                   return (
@@ -572,8 +571,8 @@ export default function WalletPage() {
                       </div>
 
                       {/* Phân cách & Nút Thao tác */}
-                      <p className="wallet-bank-caption">Nhận tiền sau khi yêu cầu rút được xử lý.</p>
-                      <details className="wallet-bank-manage">
+                      <p className="wallet-bank-caption col-[1]! m-[0]! pl-[52px]! text-[length:11px]! text-[#7d715e]! leading-[17px]! [@media(max-width:639px)]:pl-[0]! ">Nhận tiền sau khi yêu cầu rút được xử lý.</p>
+                      <details className="wallet-bank-manage col-[1]! row-[auto]! mt-[8px]! [align-self:center]! text-[#7d715e]! text-[length:11px]! [&_summary]:min-h-[36px]! [&_summary]:p-[9px_11px]! [&_summary]:[border:1px_solid_#eae4d7]! [&_summary]:rounded-[10px]! [&_summary]:bg-[#faf8f5]! ">
                         <summary className="flex items-center justify-between gap-2 py-1 font-medium text-[#7D715E] cursor-pointer hover:text-[#1A1612]">Quản lý tài khoản <ChevronDown size={14} /></summary>
                         <p className="my-2 text-[11px] break-all">{wallet.bankAccount.bankName}{bankMatch?.bin ? ` · BIN ${bankMatch.bin}` : ''}</p>
                         <div className="flex items-center gap-3 font-semibold">
@@ -748,9 +747,9 @@ export default function WalletPage() {
         <form
           aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
-          className="kol-wallet-transfer wallet-withdraw-row rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between"
+          className="kol-wallet-transfer wallet-withdraw-row rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! flex! flex-col! gap-[12px]! min-w-0! [@media(max-width:639px)]:p-[14px]! "
         >
-          <div className="wallet-withdraw-fields">
+          <div className="wallet-withdraw-fields min-w-0! [&_>_div:first-child]:pb-[12px]! [&_>_div:first-child]:[border-bottom:0]! ">
             {/* Header: Tiêu đề + Giới hạn rút tối thiểu */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
               <div className="flex items-center gap-2">
@@ -766,7 +765,7 @@ export default function WalletPage() {
               </span>
             </div>
 
-            <div className="wallet-withdraw-inputs">
+            <div className="wallet-withdraw-inputs grid! grid-cols-[1fr_1fr]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:639px)]:grid-cols-[1fr]! [@media(max-width:639px)]:gap-[12px]! ">
             {/* Shop phụ trách chi trả */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -896,7 +895,7 @@ export default function WalletPage() {
           </div>
 
           {/* Nút gửi yêu cầu & Chú thích */}
-          <div className="wallet-withdraw-actions">
+          <div className="wallet-withdraw-actions pt-[0]! w-full! [&_>_button]:h-[42px]! [&_>_button]:[border:1px_solid_#c59b58]! [&_>_button]:bg-[#c59b58]! [&_>_button]:text-[#1a1612]! [&_>_button]:text-[length:12px]! [&_>_button]:font-[600]! [&_>_button:not(:disabled):hover]:bg-[#b88e4f]! [&_>_button:disabled]:bg-[#f3efe6]! [&_>_button:disabled]:border-[#eae4d7]! [&_>_button:disabled]:text-[#7d715e]! [&_>_button:disabled]:opacity-[.7]! [&_>_div]:[border:0]! [&_>_div]:p-[0]! [&_>_div]:bg-[transparent]! [&_>_div]:text-[length:10px]! [&_>_div]:leading-[16px]! ">
             <button
               type="submit"
               disabled={submitting || loading || !selectedStoreCanWithdraw}

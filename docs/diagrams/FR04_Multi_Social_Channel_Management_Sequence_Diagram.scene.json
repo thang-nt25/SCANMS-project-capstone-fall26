@@ -1,0 +1,980 @@
+{
+  "width": 2840,
+  "height": 2905,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-04 Multi-Social-Channel Management — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2750,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Add another TikTok / Facebook / YouTube / Threads channel with followers → optionally mark primary → recalculate total followers → refresh list. No configured channel-count cap.",
+      "x": 45,
+      "y": 73,
+      "w": 2750,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "KOL",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":SocialChannelsController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":SocialChannelsService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 455,
+      "w": 10,
+      "h": 1153
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 548,
+      "w": 10,
+      "h": 967
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 642,
+      "w": 10,
+      "h": 103
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 828,
+      "w": 10,
+      "h": 104
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1132,
+      "w": 10,
+      "h": 103
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1318,
+      "w": 10,
+      "h": 104
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 1808,
+      "w": 10,
+      "h": 477
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 1902,
+      "w": 10,
+      "h": 290
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1995,
+      "w": 10,
+      "h": 103
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Enter channel + followers; select primary; Add",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          338
+        ],
+        [
+          510,
+          338
+        ],
+        [
+          510,
+          357
+        ],
+        [
+          465,
+          357
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. Validate form fields; convert followerCount with Number()",
+      "x": 522,
+      "y": 312,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          455
+        ],
+        [
+          1025,
+          455
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. POST /api/social-channels { platformName, channelUrl, followerCount, isPrimary: true, ... }",
+      "x": 472,
+      "y": 406,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          548
+        ],
+        [
+          1565,
+          548
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. addChannel(userId from JWT, dto)",
+      "x": 1042,
+      "y": 499,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          642
+        ],
+        [
+          2105,
+          642
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. [isPrimary] updateMany({ collaboratorId, isPrimary: true }, { isPrimary: false })",
+      "x": 1582,
+      "y": 593,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          735
+        ],
+        [
+          1575,
+          735
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "6. Previous primary flags cleared",
+      "x": 1582,
+      "y": 686,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          828
+        ],
+        [
+          2105,
+          828
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. collaboratorSocialChannel.create(): owner, platform, trimmed fields, followers, primary",
+      "x": 1582,
+      "y": 779,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          922
+        ],
+        [
+          1575,
+          922
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "8. New social channel",
+      "x": 1582,
+      "y": 873,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1015
+        ],
+        [
+          1620,
+          1015
+        ],
+        [
+          1620,
+          1034
+        ],
+        [
+          1575,
+          1034
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. recalculateTotalFollowers(collaboratorId)",
+      "x": 1632,
+      "y": 989,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1132
+        ],
+        [
+          2105,
+          1132
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. collaboratorSocialChannel.aggregate({ collaboratorId }, _sum.followerCount)",
+      "x": 1582,
+      "y": 1083,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1225
+        ],
+        [
+          1575,
+          1225
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "11. Follower sum for all channels of this User",
+      "x": 1582,
+      "y": 1176,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1318
+        ],
+        [
+          2105,
+          1318
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "12. collaboratorProfile.updateMany({ userId }, { totalFollowers: sum || 0 })",
+      "x": 1582,
+      "y": 1269,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1412
+        ],
+        [
+          1575,
+          1412
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. Profile update count (may be 0 if profile is absent)",
+      "x": 1582,
+      "y": 1363,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1505
+        ],
+        [
+          1035,
+          1505
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. { message, channel } after follower recalculation",
+      "x": 1042,
+      "y": 1456,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          1598
+        ],
+        [
+          465,
+          1598
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "15. 201 Created: channel result in response envelope",
+      "x": 472,
+      "y": 1549,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1692
+        ],
+        [
+          510,
+          1692
+        ],
+        [
+          510,
+          1711
+        ],
+        [
+          465,
+          1711
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. Show success; close modal; reset form; loadChannels(true)",
+      "x": 522,
+      "y": 1666,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1808
+        ],
+        [
+          1025,
+          1808
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. GET /api/social-channels (x-skip-cache: true)",
+      "x": 472,
+      "y": 1759,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1902
+        ],
+        [
+          1565,
+          1902
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. getMyChannels(userId from JWT)",
+      "x": 1042,
+      "y": 1853,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1995
+        ],
+        [
+          2105,
+          1995
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "19. findMany({ collaboratorId }, orderBy: isPrimary desc, createdAt desc)",
+      "x": 1582,
+      "y": 1946,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2088
+        ],
+        [
+          1575,
+          2088
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. Owned channel list including the new row",
+      "x": 1582,
+      "y": 2039,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2182
+        ],
+        [
+          1035,
+          2182
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. Channel list",
+      "x": 1042,
+      "y": 2133,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2275
+        ],
+        [
+          465,
+          2275
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. 200: channels",
+      "x": 472,
+      "y": 2226,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2368
+        ],
+        [
+          510,
+          2368
+        ],
+        [
+          510,
+          2387
+        ],
+        [
+          465,
+          2387
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "23. Replace list; sum followers; apply local search/platform filters",
+      "x": 522,
+      "y": 2342,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. Show all owned channels, primary badge and follower totals",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = SocialChannelsPage + socialService + Axios (/collaborator/profile?tab=social; also WalletPage). Initial GET is omitted. JWT runs before controller; DTO checks platform, integer followers >= 0 and boolean primary. No RolesGuard or KYC gate is bound here.",
+      "x": 45,
+      "y": 2595,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Expanded path adds a new primary channel. If isPrimary is false, skip clearing old flags. Multiple channels on one platform are allowed; no count cap or unique URL/platform constraint is defined. Followers are entered manually; no OAuth/platform follower lookup or channel-ownership verification runs.",
+      "x": 45,
+      "y": 2645,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Profile total is recalculated using SUM over all owned rows after add/delete; absent profile is not created (updateMany count 0). Channel, primary reset and aggregate/profile writes are separate, not a transaction. A later failure can leave earlier writes committed; concurrent calls do not guarantee one primary.",
+      "x": 45,
+      "y": 2700,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "DELETE /social-channels/:id and PATCH /:id/primary read the channel, return 404 if absent or 403 for another owner. Delete is permanent, recalculates totals and does not choose a replacement primary. setPrimary clears old flags then marks the selected row; general URL/follower editing has no endpoint here.",
+      "x": 45,
+      "y": 2755,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "UI offers TikTok, Facebook, YouTube, Instagram, Threads and Zalo; the API enum also accepts Telegram, Shopee Video, Lemon8 and Other. First-row display fallback is not a stored primary flag. Channel rows reference User; no Profile-to-channel foreign key exists. Duplicate rows can double-count followers.",
+      "x": 45,
+      "y": 2810,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

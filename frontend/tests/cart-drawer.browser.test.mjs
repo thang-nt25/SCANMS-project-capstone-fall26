@@ -90,14 +90,18 @@ test('bright cart drawer preserves selection, variants, quantity, scrolling, che
     assert.equal(await page.$eval('.scanms-cart-shop__header input', el => el.indeterminate), true);
     await page.click('.scanms-cart-selection input');
     assert.equal(await amount(), 670000);
-    for (const width of [390, 320]) {
+    for (const width of [1440, 390, 320]) {
       await page.setViewport({ width, height: 740 });
       assert.equal(await page.$eval('.scanms-cart-panel', el => el.scrollWidth <= el.clientWidth), true);
+      await page.$eval('.scanms-cart-panel', el => { el.scrollTop = 0; });
       const before = await page.$eval('.scanms-cart-close', el => el.getBoundingClientRect().top);
-      await page.$eval('.scanms-cart-body', el => { el.scrollTop = el.scrollHeight; });
-      assert.equal(await page.$eval('.scanms-cart-close', el => el.getBoundingClientRect().top), before);
+      assert.ok(await page.$eval('.scanms-cart-checkout', el => el.getBoundingClientRect().top >= innerHeight), 'checkout is after the items, not pinned over them');
+      await page.$eval('.scanms-cart-panel', el => { el.scrollTop = el.scrollHeight; });
+      assert.ok(await page.$eval('.scanms-cart-close', el => el.getBoundingClientRect().top < 0), 'header scrolls away with content');
       assert.ok(await page.$eval('.scanms-cart-checkout', el => el.getBoundingClientRect().bottom <= innerHeight));
-      await page.$eval('.scanms-cart-body', el => { el.scrollTop = 0; });
+      assert.equal(await page.$eval('.scanms-cart-body', el => getComputedStyle(el).overflowY), 'visible', 'no nested item scrollbar');
+      await page.$eval('.scanms-cart-panel', el => { el.scrollTop = 0; });
+      assert.equal(await page.$eval('.scanms-cart-close', el => el.getBoundingClientRect().top), before);
       if (width === 390) await page.screenshot({ path: join(tmpdir(), 'scanms-cart-redesign-mobile.png') });
     }
     await page.keyboard.press('Tab');

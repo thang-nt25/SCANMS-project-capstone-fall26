@@ -216,6 +216,8 @@ export class LandingReviewItemDto {
 
   @ApiPropertyOptional({ example: null, description: 'URL ảnh chụp đánh giá' })
   reviewImageUrl?: string | null;
+  images?: string[];
+  reply?: { comment: string; createdAt: string } | null;
 
   @ApiProperty({
     example: true,
@@ -242,6 +244,9 @@ export class LandingReviewsDto {
     description: 'Tổng số lượt đánh giá đã phê duyệt',
   })
   totalReviews: number;
+
+  @ApiProperty({ example: 8, description: 'Số đánh giá công khai có ảnh khách đính kèm' })
+  photoReviewCount: number;
 
   @ApiProperty({
     example: { 1: 0, 2: 1, 3: 2, 4: 5, 5: 17 },

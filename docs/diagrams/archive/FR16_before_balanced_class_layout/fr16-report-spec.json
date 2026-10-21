@@ -1,0 +1,496 @@
+{
+  "fr": "FR16",
+  "stem": "FR16_Guest_Checkout",
+  "title": "FR-16 Quick Checkout and Stock Deduction",
+  "classes": [
+    {
+      "id": "OrdersController",
+      "name": "OrdersController",
+      "attrs": [
+        "- ordersService: OrdersService"
+      ],
+      "ops": [
+        "+ createOrder(dto: CreateOrderDto, req, userId, accountEmail?)"
+      ]
+    },
+    {
+      "id": "OrdersService",
+      "name": "OrdersService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- couponsService: CouponsService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ createOrder(dto: CreateOrderDto, clientContext?)",
+        "- executeStoreOrderInTransaction(tx, params)"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "CouponsService",
+      "name": "CouponsService",
+      "attrs": [
+        "- prisma: PrismaService"
+      ],
+      "ops": [
+        "+ validateCoupon(dto: ValidateCouponDto, ipAddress?, sessionId?, userId?)"
+      ]
+    },
+    {
+      "id": "Product",
+      "name": "Product",
+      "attrs": [
+        "+ id, storeId: string",
+        "+ title: string",
+        "+ price: Decimal",
+        "+ stockQuantity: number",
+        "+ isActive, isDeleted: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ProductVariant",
+      "name": "ProductVariant",
+      "attrs": [
+        "+ id, productId: string",
+        "+ sku: string {unique}",
+        "+ price: Decimal | null",
+        "+ stockQuantity: number",
+        "+ isActive: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Order",
+      "name": "Order",
+      "attrs": [
+        "+ id, storeId: string",
+        "+ externalOrderSn: string",
+        "+ idempotencyKey: string | null {unique}",
+        "+ customerName, customerPhone, shippingAddress: string | null",
+        "+ finalAmount: Decimal",
+        "+ status: OrderStatus",
+        "+ couponId: string | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "OrderItem",
+      "name": "OrderItem",
+      "attrs": [
+        "+ id, orderId, productId: string",
+        "+ variantId: string | null",
+        "+ quantity: number",
+        "+ unitPrice: Decimal"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Coupon",
+      "name": "Coupon",
+      "attrs": [
+        "+ id, storeId, collaboratorId: string",
+        "+ codeNormalized: string {unique}",
+        "+ status: CouponStatus",
+        "+ usageCount: number",
+        "+ usageLimitTotal: number | null",
+        "+ budgetUsed: Decimal"
+      ],
+      "ops": []
+    },
+    {
+      "id": "CouponRedemption",
+      "name": "CouponRedemption",
+      "attrs": [
+        "+ id, couponId: string",
+        "+ orderId: string {unique}",
+        "+ status: CouponRedemptionStatus",
+        "+ discountAmount: Decimal",
+        "+ couponCodeSnapshot: string"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ product: Prisma.ProductDelegate",
+        "+ productVariant: Prisma.ProductVariantDelegate",
+        "+ order: Prisma.OrderDelegate",
+        "+ orderItem: Prisma.OrderItemDelegate",
+        "+ coupon: Prisma.CouponDelegate",
+        "+ couponRedemption: Prisma.CouponRedemptionDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "OrdersController",
+      "OrdersService",
+      "reference",
+      "ordersService"
+    ],
+    [
+      "OrdersService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "OrdersService",
+      "CouponsService",
+      "reference",
+      "couponsService"
+    ],
+    [
+      "CouponsService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "Product",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Order",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Coupon",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "Product",
+      "ProductVariant",
+      "association",
+      "variants",
+      "1",
+      "0..*"
+    ],
+    [
+      "Product",
+      "OrderItem",
+      "association",
+      "orderItems",
+      "1",
+      "0..*"
+    ],
+    [
+      "ProductVariant",
+      "OrderItem",
+      "association",
+      "orderItems",
+      "0..1",
+      "0..*"
+    ],
+    [
+      "Order",
+      "OrderItem",
+      "association",
+      "orderItems",
+      "1",
+      "0..*"
+    ],
+    [
+      "Order",
+      "Coupon",
+      "association",
+      "coupon",
+      "0..*",
+      "0..1"
+    ],
+    [
+      "Coupon",
+      "CouponRedemption",
+      "association",
+      "redemptions",
+      "1",
+      "0..*"
+    ],
+    [
+      "Order",
+      "CouponRedemption",
+      "association",
+      "couponRedemption",
+      "1",
+      "0..1"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "ProductVariant",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "OrderItem",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "CouponRedemption",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "messages": [
+    [
+      "customer",
+      "browser",
+      "Enter checkout details; select Place order"
+    ],
+    [
+      "browser",
+      "controller",
+      "POST /api/orders (CreateOrderDto + JWT)"
+    ],
+    [
+      "controller",
+      "service",
+      "createOrder(dto, clientContext)"
+    ],
+    [
+      "service",
+      "prisma",
+      "Read idempotency key, Product/variant data and DB prices"
+    ],
+    [
+      "prisma",
+      "service",
+      "New request; current product/variant data",
+      "return"
+    ],
+    [
+      "service",
+      "service",
+      "Validate inputs and items"
+    ],
+    [
+      "service",
+      "coupons",
+      "[coupon] validateCoupon(dto)"
+    ],
+    [
+      "coupons",
+      "service",
+      "[coupon] Validated coupon; no quota consumed",
+      "return"
+    ],
+    [
+      "service",
+      "prisma",
+      "[shipping quote obtained] $transaction(callback)"
+    ],
+    [
+      "prisma",
+      "service",
+      "callback(tx): executeStoreOrderInTransaction(...)"
+    ],
+    [
+      "service",
+      "prisma",
+      "Recheck Store/parcel; conditionally deduct Product or variant stock"
+    ],
+    [
+      "prisma",
+      "service",
+      "Stock updated; insufficient stock aborts transaction",
+      "return"
+    ],
+    [
+      "service",
+      "prisma",
+      "[coupon] Lock coupon; revalidate and update usage/budget"
+    ],
+    [
+      "prisma",
+      "service",
+      "[coupon] Coupon checks passed",
+      "return"
+    ],
+    [
+      "service",
+      "service",
+      "Calculate totals and attribution/policy snapshots"
+    ],
+    [
+      "service",
+      "prisma",
+      "tx.order.create(PENDING, nested OrderItems)"
+    ],
+    [
+      "prisma",
+      "service",
+      "Created Order and OrderItems",
+      "return"
+    ],
+    [
+      "service",
+      "prisma",
+      "Persist related writes; [coupon] create USED redemption"
+    ],
+    [
+      "prisma",
+      "service",
+      "Related writes completed",
+      "return"
+    ],
+    [
+      "service",
+      "prisma",
+      "Return order from callback",
+      "return"
+    ],
+    [
+      "prisma",
+      "service",
+      "COMMIT; transaction result",
+      "return"
+    ],
+    [
+      "service",
+      "controller",
+      "Created order response",
+      "return"
+    ],
+    [
+      "controller",
+      "browser",
+      "201 Created: public order code and totals",
+      "return"
+    ],
+    [
+      "browser",
+      "customer",
+      "Display order confirmation",
+      "return"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "controller",
+      "name": ":OrdersController"
+    },
+    {
+      "id": "service",
+      "name": ":OrdersService"
+    },
+    {
+      "id": "coupons",
+      "name": ":CouponsService"
+    },
+    {
+      "id": "prisma",
+      "name": ":PrismaService"
+    }
+  ],
+  "classNote": "Main checkout members only. ProductVariant stock is used when selected, otherwise Product. Order, OrderItems and stock/coupon writes commit or roll back together. JWT, shipping, email and payment details are documented separately.",
+  "classLayout": {
+    "controller": "OrdersController",
+    "service": "OrdersService",
+    "supports": [
+      [
+        "CouponsService",
+        150
+      ]
+    ],
+    "models": [
+      "Product",
+      "ProductVariant",
+      "Order",
+      "OrderItem",
+      "Coupon",
+      "CouponRedemption"
+    ],
+    "reference": "FR09",
+    "version": "fr09-word-proportions-v2"
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v1"
+  },
+  "subtitle": "Main flow: submit checkout → validate → create order and deduct stock atomically → confirm.",
+  "notes": [
+    "Precondition: signed-in customer, valid form and one Store. JWT/DTO checks and rate limiting run before createOrder. Browser = GuestCheckoutModal + api client.",
+    "Insufficient stock or any coupon/order transaction error rolls back all stock and order writes. Matching idempotency replay returns the existing order; a changed payload returns 409.",
+    "Shipping, attribution and post-commit email are summarized. Payment QR/link, wallet debit and multi-Store details are described separately. Order confirmation does not imply payment is complete."
+  ],
+  "activations": [
+    [
+      "browser",
+      0,
+      23
+    ],
+    [
+      "controller",
+      1,
+      22
+    ],
+    [
+      "service",
+      2,
+      21
+    ],
+    [
+      "prisma",
+      3,
+      4
+    ],
+    [
+      "coupons",
+      6,
+      7
+    ],
+    [
+      "prisma",
+      8,
+      20
+    ],
+    [
+      "service",
+      9,
+      19,
+      1
+    ]
+  ]
+}

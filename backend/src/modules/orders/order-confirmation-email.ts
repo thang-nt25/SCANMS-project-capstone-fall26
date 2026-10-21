@@ -1,6 +1,25 @@
 import type { OrderConfirmationEmailInput } from '../auth/order-confirmation-email';
 
 type Money = number | string | { toString(): string };
+export type ConfirmationEmailStatus = 'QUEUED' | 'SENDING' | 'SENT' | 'FAILED' | 'PARTIAL' | 'NOT_REQUESTED' | 'UNKNOWN';
+
+export function confirmationEmailState(rawPayload: unknown, email?: string | null) {
+  const raw = (rawPayload || {}) as Record<string, unknown>;
+  const status = (typeof raw.confirmationEmailStatus === 'string'
+    ? raw.confirmationEmailStatus : email ? 'UNKNOWN' : 'NOT_REQUESTED') as ConfirmationEmailStatus;
+  return { confirmationEmailStatus: status, confirmationEmailQueued: status === 'QUEUED' || status === 'SENDING' };
+}
+
+export function combinedConfirmationEmailState(states: ReturnType<typeof confirmationEmailState>[]) {
+  const statuses = states.map(state => state.confirmationEmailStatus);
+  const queued = states.some(state => state.confirmationEmailQueued);
+  const status: ConfirmationEmailStatus = queued ? 'QUEUED'
+    : statuses.every(status => status === 'SENT') ? 'SENT'
+    : statuses.some(status => status === 'SENT') ? 'PARTIAL'
+    : statuses.every(status => status === 'NOT_REQUESTED') ? 'NOT_REQUESTED'
+    : statuses.some(status => status === 'UNKNOWN') ? 'UNKNOWN' : 'FAILED';
+  return { confirmationEmailQueued: queued, confirmationEmailStatus: status };
+}
 export interface OrderConfirmationSnapshot {
   externalOrderSn: string;
   createdAt: Date;

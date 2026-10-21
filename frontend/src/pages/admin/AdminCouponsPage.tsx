@@ -23,7 +23,6 @@ import {
 import { toast } from '../../utils/toast';
 import { AdminVoucherIssuer } from './AdminVoucherIssuer';
 import { AdminVoucherSettlements } from './AdminVoucherSettlements';
-import './AdminCouponsPage.css';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -202,12 +201,12 @@ export const AdminCouponsPage: React.FC = () => {
   const totalRedemptions = coupons.reduce((acc, curr) => acc + (curr.usageCount || 0), 0);
 
   return (
-    <div className="admin-voucher-workspace w-full min-w-0 text-[#1A1612]">
+    <div className="admin-voucher-workspace pb-[24px] w-full min-w-0 text-[#1A1612]">
       <div className="grid gap-4 min-w-0">
 
-        <header className="av-workspace-heading">
-          <div><span className="av-eyebrow">QUẢN LÝ ƯU ĐÃI</span><h2>Voucher toàn sàn</h2><p>Phát hành ưu đãi, kiểm soát mã và theo dõi khoản tài trợ cho Shop.</p></div>
-          <button type="button" className="av-button av-button-primary" onClick={() => setIssuerOpen(true)}><Plus size={17} />Phát hành voucher sàn</button>
+        <header className="av-workspace-heading flex items-center justify-between gap-[20px] pt-[5px] pb-[8px] px-[2px] [&_h2]:my-[4px] [&_h2]:mx-0 [&_h2]:text-[23px] [&_h2]:font-bold [&_h2]:tracking-[-.025em] [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:mt-[4px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:leading-[1.6] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:flex-col [@media(max-width:760px)]:gap-[13px]">
+          <div><span className="av-eyebrow text-[#B88E4F] text-[10px] font-bold tracking-[.12em]">QUẢN LÝ ƯU ĐÃI</span><h2>Voucher toàn sàn</h2><p>Phát hành ưu đãi, kiểm soát mã và theo dõi khoản tài trợ cho Shop.</p></div>
+          <button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px] av-button-primary [&.av-button-primary]:bg-[#C59B58] [&.av-button-primary]:border-[#C59B58] [&.av-button-primary]:text-[#1A1612] [&.av-button-primary:hover]:bg-[#B88E4F]" onClick={() => setIssuerOpen(true)}><Plus size={17} />Phát hành voucher sàn</button>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -245,12 +244,12 @@ export const AdminCouponsPage: React.FC = () => {
         </div>
 
 
-        <div className="av-workspace-navigation"><div role="tablist" aria-label="Quản lý voucher">
+        <div className="av-workspace-navigation [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-[#B88E4F] [&_button:focus-visible]:outline-offset-[3px] flex items-center justify-between gap-[10px] pt-0 pb-[10px] px-0 border-b border-b-[#EAE4D7] [&_[role=tablist]]:flex [&_[role=tablist]]:flex-wrap [&_[role=tablist]]:gap-[6px] [&_[role=tab]]:inline-flex [&_[role=tab]]:items-center [&_[role=tab]]:gap-[8px] [&_[role=tab]]:py-[10px] [&_[role=tab]]:px-[13px] [&_[role=tab]]:border [&_[role=tab]]:border-[transparent] [&_[role=tab]]:rounded-[9px] [&_[role=tab]]:text-[12px] [&_[role=tab]]:font-semibold [&_[role=tab]]:text-[#7D715E] [&_[role=tab]]:cursor-pointer [&_[role=tab][aria-selected=true]]:bg-[#FBF5EB] [&_[role=tab][aria-selected=true]]:border-[#EEDFC6] [&_[role=tab][aria-selected=true]]:text-[#1A1612] [&_[role=tab]_svg]:text-[#B88E4F] [&_[role=tab]_span]:bg-[#F3EFE6] [&_[role=tab]_span]:text-[10px] [&_[role=tab]_span]:py-[1px] [&_[role=tab]_span]:px-[6px] [&_[role=tab]_span]:rounded-[5px] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:[&_[role=tab]]:p-[8px] [@media(max-width:760px)]:[&_[role=tab]]:text-[11px]"><div role="tablist" aria-label="Quản lý voucher">
           <button id="av-coupons-tab" type="button" role="tab" aria-selected={view === 'coupons'} aria-controls="av-coupons-panel" onClick={() => setView('coupons')}><Tag size={16} />Danh sách voucher<span>{totalCount}</span></button>
           <button id="av-settlements-tab" type="button" role="tab" aria-selected={view === 'settlements'} aria-controls="av-settlements-panel" onClick={() => setView('settlements')}><Wallet size={16} />Đối soát với Shop</button>
-        </div><button type="button" className="av-button" onClick={() => void fetchCoupons()} disabled={loading}><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Làm mới</button></div>
+        </div><button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px]" onClick={() => void fetchCoupons()} disabled={loading}><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Làm mới</button></div>
 
-        {view === 'settlements' ? <div role="tabpanel" id="av-settlements-panel" aria-labelledby="av-settlements-tab"><AdminVoucherSettlements items={platformSubsidies} loading={loading} error={subsidyError} onUpdated={() => void fetchCoupons()} /></div> : <div role="tabpanel" id="av-coupons-panel" aria-labelledby="av-coupons-tab" className="av-coupon-panel">
+        {view === 'settlements' ? <div role="tabpanel" id="av-settlements-panel" aria-labelledby="av-settlements-tab"><AdminVoucherSettlements items={platformSubsidies} loading={loading} error={subsidyError} onUpdated={() => void fetchCoupons()} /></div> : <div role="tabpanel" id="av-coupons-panel" aria-labelledby="av-coupons-tab" className="av-coupon-panel grid gap-[14px] min-w-0">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 border border-[#EAE4D7] rounded-xl bg-white">
           <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -286,12 +285,12 @@ export const AdminCouponsPage: React.FC = () => {
               </button>
             ))}
 
-            <select aria-label="Lọc nguồn tài trợ" value={fundingFilter} onChange={event => setFundingFilter(event.target.value)} className="av-funding-filter"><option value="ALL">Tất cả nguồn tài trợ</option><option value="SHOP_FUNDED">Shop tài trợ</option><option value="PLATFORM_FUNDED">SCANMS tài trợ</option><option value="CO_FUNDED">Đồng tài trợ</option></select>
+            <select aria-label="Lọc nguồn tài trợ" value={fundingFilter} onChange={event => setFundingFilter(event.target.value)} className="av-funding-filter h-[35px] border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] rounded-[8px] text-[11px] py-0 px-[8px] max-w-full"><option value="ALL">Tất cả nguồn tài trợ</option><option value="SHOP_FUNDED">Shop tài trợ</option><option value="PLATFORM_FUNDED">SCANMS tài trợ</option><option value="CO_FUNDED">Đồng tài trợ</option></select>
           </div>
         </div>
 
 
-        {loadError ? <p className="av-error" role="alert">{loadError}</p> : loading ? (
+        {loadError ? <p className="av-error flex gap-[8px] items-start border border-[#F5D3CC] rounded-[8px] p-[12px] bg-[#FFF7F5] text-[#DC2626] text-[12px] leading-[1.6] [&_button]:underline [&_button]:cursor-pointer" role="alert">{loadError}</p> : loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F] mx-auto mb-3" />
             <p className="text-sm text-[#7D715E]">Đang tải danh sách coupon toàn sàn...</p>
@@ -303,8 +302,8 @@ export const AdminCouponsPage: React.FC = () => {
             <p className="text-xs text-[#7D715E] mt-1">Thử thay đổi từ khóa hoặc bộ lọc trạng thái để tra cứu.</p>
           </div>
         ) : (
-          <div className="av-coupon-table border border-[#EAE4D7] rounded-xl bg-white overflow-hidden">
-            <div className="av-table-caption"><h3>Danh sách mã giảm giá</h3><span>{filteredCoupons.length} mã phù hợp</span></div>
+          <div className="av-coupon-table [&_table_th]:whitespace-nowrap [&_table_th]:text-[11px] [&_table_td]:tabular-nums border border-[#EAE4D7] rounded-xl bg-white overflow-hidden">
+            <div className="av-table-caption flex justify-between gap-[10px] items-center py-[15px] px-[17px] border-b border-b-[#EAE4D7] [&_h3]:text-[13px] [&_h3]:font-bold [&_h3]:m-0 [&_span]:text-[#7D715E] [&_span]:text-[11px]"><h3>Danh sách mã giảm giá</h3><span>{filteredCoupons.length} mã phù hợp</span></div>
             <div className="w-full overflow-x-auto">
               <table className="w-full min-w-[950px] border-collapse text-left text-xs">
                 <colgroup><col style={{width: 165}} /><col style={{width: "22%"}} /><col /><col style={{width: 95}} /><col style={{width: 125}} /><col style={{width: 85}} /><col style={{width: 120}} /><col style={{width: 110}} /></colgroup>
@@ -329,7 +328,7 @@ export const AdminCouponsPage: React.FC = () => {
                     return (
                       <tr key={coupon.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
                         <td data-label="Mã giảm giá" className="py-3.5 px-4 font-mono font-bold text-[#1A1612]">
-                          <span className="av-table-code">
+                          <span className="av-table-code inline-block max-w-[190px] wrap-anywhere leading-[1.5] text-[11px] font-semibold text-[#1A1612] py-[4px] px-[7px] border border-[#EAE4D7] rounded-[6px] bg-[#FAF8F5]">
                             {coupon.displayCode}
                           </span>
                         </td>
@@ -375,7 +374,7 @@ export const AdminCouponsPage: React.FC = () => {
                         </td>
                         <td data-label="Trạng thái" className="py-3.5 px-4">
                           <span
-                            className={`admin-coupon-status is-${coupon.status.toLowerCase()}`}
+                            className={`admin-coupon-status inline-flex whitespace-nowrap items-center py-[4px] px-[7px] border border-[#EAE4D7] rounded-[6px] text-[#7D715E] bg-[#FAF8F5] text-[10px] [&.is-active]:text-[#795A2D] [&.is-active]:border-[#EEDFC6] [&.is-active]:bg-[#FBF5EB] [&.is-blocked]:text-[#DC2626] [&.is-blocked]:bg-[#FFF7F5] [&.is-blocked]:border-[#F5D3CC] is-${coupon.status.toLowerCase()}`}
                           >
                             {statusCfg.label}
                           </span>
@@ -394,7 +393,7 @@ export const AdminCouponsPage: React.FC = () => {
                               <button
                                 onClick={() => handleUnblock(coupon)}
                                 disabled={unblockLoading}
-                                className="admin-coupon-unblock"
+                                className="admin-coupon-unblock inline-flex items-center gap-[5px] whitespace-nowrap border border-[#EAE4D7] py-[7px] px-[9px] rounded-[7px] text-[11px] font-semibold cursor-pointer text-[#795A2D] bg-[#FBF5EB]"
                                 title="Mở khóa coupon"
                               >
                                 <Unlock className="w-3 h-3" />
@@ -407,7 +406,7 @@ export const AdminCouponsPage: React.FC = () => {
                                   setBlockReason('');
                                   setBlockError(null);
                                 }}
-                                className="admin-coupon-block"
+                                className="admin-coupon-block inline-flex items-center gap-[5px] whitespace-nowrap border py-[7px] px-[9px] rounded-[7px] text-[11px] font-semibold cursor-pointer text-[#DC2626] border-[#F5D3CC] bg-white hover:bg-[#FFF7F5]"
                                 title="Khóa coupon"
                               >
                                 <Lock className="w-3 h-3" />
