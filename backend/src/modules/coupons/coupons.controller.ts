@@ -100,7 +100,7 @@ export class PublicCouponsController {
     description: 'Danh sách mã giảm giá còn hiệu lực',
   })
   async getAvailableStoreCoupons(
-    @Param('storeId', new ParseUUIDPipe({ version: '4' })) storeId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
     @Query('productId', new ParseUUIDPipe({ optional: true })) productId?: string,
   ) {
     return this.service.getPublicStoreCoupons(storeId, productId);

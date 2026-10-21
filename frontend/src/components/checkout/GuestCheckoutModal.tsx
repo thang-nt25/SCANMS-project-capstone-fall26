@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PayosOrderPayment } from './PayosOrderPayment';
+import { CheckoutVoucherPicker } from './CheckoutVoucherPicker';
+import type { PublicStoreCoupon } from '@/services/coupon.service';
+import { voucherSlot } from '@/utils/voucher-intent';
 import {
   X,
   ShoppingBag,
@@ -563,6 +566,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const targetVoucherStoreId = voucherTargetStoreId || itemsGroupedByShop[0]?.store.id || store?.id || '';
   const targetVoucherSubtotal = itemsGroupedByShop.find((group) => group.store.id === targetVoucherStoreId)?.subtotal || 0;
   const voucherBasisKey = activeItems.map((item) => `${item.store.id}:${item.productId}:${item.variantId || ''}:${item.quantity}:${item.price}`).join('|') + `:${customerPhone.trim()}`;
+  const voucherValidationBasis = `${targetVoucherStoreId}:${voucherBasisKey}:${shippingFeesByStore[targetVoucherStoreId] || 0}`;
+  const voucherValidationBasisRef = useRef(voucherValidationBasis);
+  voucherValidationBasisRef.current = voucherValidationBasis;
   const previousVoucherBasis = useRef(voucherBasisKey);
   useEffect(() => {
     if (previousVoucherBasis.current !== voucherBasisKey) {
@@ -608,9 +614,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const finalTotal = Math.max(0, rawSubtotal - discountAmount - (appliedPlatformCoupon?.discountAmount || 0)) + Math.max(0, (shippingFee || 0) - (appliedShippingCoupon?.discountAmount || 0));
 
-  const applyStackedCoupon = async (benefitType: 'GOODS' | 'SHIPPING') => {
-    const code = benefitType === 'GOODS' ? platformCouponCode : shippingCouponCode;
+  const applyStackedCoupon = async (benefitType: 'GOODS' | 'SHIPPING', selectedCode?: string) => {
+    const code = selectedCode ?? (benefitType === 'GOODS' ? platformCouponCode : shippingCouponCode);
     if (!code.trim()) return;
+    const basis = voucherValidationBasisRef.current;
+    if (benefitType === 'GOODS') setAppliedPlatformCoupon(null);
+    else setAppliedShippingCoupon(null);
     try {
       setStackedCouponBusy(benefitType);
       const response: any = await api.post('/coupons/preview-stacked', {
@@ -619,8 +628,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code || undefined, customerPhone: customerPhone.trim() || undefined,
       });
       const result = response?.data || response;
+      if (basis !== voucherValidationBasisRef.current) return;
       if (benefitType === 'GOODS') setAppliedPlatformCoupon(result);
       else setAppliedShippingCoupon(result);
+      setCouponMessage({ type: 'success', text: `Đã áp dụng ${result.code}, giảm ${formatMoney(Number(result.discountAmount) || 0)}.` });
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Voucher không hợp lệ.'); }
     finally { setStackedCouponBusy(null); }
   };
@@ -1050,14 +1061,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     !email.trim() || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim());
 
   // Validate coupon
-  const handleValidateCoupon = async () => {
-    if (!couponCode.trim()) return;
+  const handleValidateCoupon = async (selectedCode?: string) => {
+    const code = selectedCode ?? couponCode;
+    if (!code.trim()) return;
+    const basis = voucherValidationBasisRef.current;
     setCouponLoading(true);
     setCouponMessage(null);
     try {
       const targetStoreId = targetVoucherStoreId;
       const res: any = await api.post('/coupons/validate', {
-        code: couponCode.trim(),
+        code: code.trim(),
         storeId: targetStoreId,
         customerPhone: customerPhone.trim() || undefined,
         items: activeItems.filter((item) => item.store.id === targetStoreId).map((item) => ({
@@ -1072,6 +1085,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       });
 
       const data = res?.data || res;
+      if (basis !== voucherValidationBasisRef.current) return;
       setAppliedCoupon({
         code: data.code,
         discountAmount: Number(data.discountAmount) || 0,
@@ -1100,6 +1114,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setAppliedPlatformCoupon(null);
     setCouponCode('');
     setCouponMessage(null);
+  };
+
+  const chooseCheckoutVoucher = async (voucher: PublicStoreCoupon) => {
+    if (couponLoading || stackedCouponBusy || extraVoucherBusy) return;
+    const slot = voucherSlot(voucher);
+    if (slot === 'SHOP') {
+      setAutoCouponDismissed(true);
+      setCouponCode(voucher.code);
+      await handleValidateCoupon(voucher.code);
+    } else {
+      setExtraVoucherDismissed(true);
+      if (slot === 'PLATFORM') setPlatformCouponCode(voucher.code);
+      else setShippingCouponCode(voucher.code);
+      await applyStackedCoupon(slot === 'PLATFORM' ? 'GOODS' : 'SHIPPING', voucher.code);
+    }
   };
 
   const liveCouponCodes = [...new Set(activeItems.map((item) => item.liveCouponCode).filter(Boolean))];
@@ -2327,8 +2356,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             <div className="bg-white rounded-lg p-5 sm:p-6 shadow-xs border border-gray-200 text-left space-y-4">
               {/* Voucher sàn SCANMS */}
               {itemsGroupedByShop.length > 1 && <label className="block text-xs font-semibold text-[#1A1612]">Áp dụng voucher cho gian hàng
-                <select value={targetVoucherStoreId} onChange={(event) => { setVoucherTargetStoreId(event.target.value); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }} className="block w-full mt-2 border border-[#EAE4D7] rounded-lg p-2 bg-white">{itemsGroupedByShop.map((group) => <option key={group.store.id} value={group.store.id}>{group.store.name}</option>)}</select>
+                <select value={targetVoucherStoreId} disabled={couponLoading || !!stackedCouponBusy || extraVoucherBusy} onChange={(event) => { setVoucherTargetStoreId(event.target.value); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }} className="block w-full mt-2 border border-[#EAE4D7] rounded-lg p-2 bg-white">{itemsGroupedByShop.map((group) => <option key={group.store.id} value={group.store.id}>{group.store.name}</option>)}</select>
               </label>}
+              <CheckoutVoucherPicker key={targetVoucherStoreId} storeId={targetVoucherStoreId}
+                productIds={activeItems.filter((item) => item.store.id === targetVoucherStoreId).map((item) => item.productId)}
+                goodsSubtotal={targetVoucherSubtotal} shippingFee={shippingFeesByStore[targetVoucherStoreId] || 0}
+                busy={couponLoading || !!stackedCouponBusy || extraVoucherBusy}
+                selected={{ SHOP: appliedCoupon?.code, PLATFORM: appliedPlatformCoupon?.code, SHIPPING: appliedShippingCoupon?.code }}
+                onApply={(voucher) => { void chooseCheckoutVoucher(voucher); }} />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1A1612]">
                   <Tag className="w-4 h-4 text-[#B88E4F]" />
@@ -2340,7 +2375,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     type="text"
                     placeholder="Nhập mã Shop hoặc KOL (VD: MAIANH5)"
                     value={couponCode}
-                    disabled={!!appliedCoupon}
+                    disabled={!!appliedCoupon || couponLoading || !!stackedCouponBusy || extraVoucherBusy}
                     onChange={(e) => {
                       setCouponCode(e.target.value.toUpperCase());
                       setAutoCouponDismissed(true);
@@ -2361,8 +2396,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   ) : (
                     <button
                       type="button"
-                      disabled={!couponCode.trim() || couponLoading}
-                      onClick={handleValidateCoupon}
+                      disabled={!couponCode.trim() || couponLoading || !!stackedCouponBusy || extraVoucherBusy}
+                      onClick={() => void handleValidateCoupon()}
                       className="px-4 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] disabled:opacity-50 font-bold text-xs rounded transition cursor-pointer shrink-0"
                     >
                       {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Áp Dụng'}

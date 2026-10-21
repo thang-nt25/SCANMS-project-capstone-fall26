@@ -347,6 +347,8 @@ export default function ProductDetailPage() {
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [availableStoreCoupons, setAvailableStoreCoupons] = useState<PublicStoreCoupon[]>([]);
+  const [couponDiscoveryStatus, setCouponDiscoveryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [couponRefresh, setCouponRefresh] = useState(0);
   const [selectedExtraVoucher, setSelectedExtraVoucher] = useState<PublicStoreCoupon | null>(null);
   const couponRequest = useRef(0);
 
@@ -355,19 +357,22 @@ export default function ProductDetailPage() {
     let active = true;
     setAvailableStoreCoupons([]);
     if (data?.store?.id) {
+      setCouponDiscoveryStatus('loading');
       couponService
         .getPublicStoreCoupons(data.store.id, data.product.id)
         .then((coupons) => {
           if (active && Array.isArray(coupons)) {
             setAvailableStoreCoupons(coupons);
+            setCouponDiscoveryStatus('ready');
           }
         })
         .catch((e) => {
+          if (active) setCouponDiscoveryStatus('error');
           console.warn('Cannot fetch public store coupons:', e);
         });
     }
     return () => { active = false; };
-  }, [data?.store?.id, data?.product?.id]);
+  }, [data?.store?.id, data?.product?.id, couponRefresh]);
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1620,6 +1625,12 @@ export default function ProductDetailPage() {
 
               {/* Coupon Voucher Input (Compact) */}
               <ProductVoucherShelf vouchers={availableStoreCoupons} selected={selectedExtraVoucher?.code || appliedCoupon?.code} busy={couponLoading} onApply={chooseProductVoucher} />
+              <div className="my-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[#7D715E]" aria-live="polite">
+                <span className={couponDiscoveryStatus === 'error' ? 'text-[#DC2626]' : ''}>
+                  {couponDiscoveryStatus === 'loading' ? 'Đang tìm voucher cho sản phẩm này…' : couponDiscoveryStatus === 'error' ? 'Chưa tải được voucher. Vui lòng thử lại.' : availableStoreCoupons.length ? `${availableStoreCoupons.length} voucher áp dụng theo điều kiện · Không cần lưu mã` : 'Hiện chưa có voucher phù hợp với sản phẩm này.'}
+                </span>
+                <button type="button" disabled={couponDiscoveryStatus === 'loading'} onClick={() => setCouponRefresh((value) => value + 1)} className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 font-semibold text-[#B88E4F] disabled:opacity-50">{couponDiscoveryStatus === 'error' ? 'Thử lại' : 'Làm mới voucher'}</button>
+              </div>
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
                 <form onSubmit={handleApplyCoupon} className="flex gap-1.5 max-w-sm">
                   <div className="relative flex-1">
