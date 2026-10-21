@@ -69,6 +69,10 @@ test('public search suggests real products with debounce, keyboard, mobile, empt
     assert.ok(queryTimes[0] - started < 280, 'starts fetching promptly after typing instead of waiting 280ms');
     assert.match(await page.$eval('.product-search-popup', el => el.textContent), /Sora Skin/);
     assert.match(await page.$eval('.product-search-price', el => el.textContent), /250[.,]000/);
+    assert.deepEqual(await page.$eval('.product-search-submit', el => {
+      const style = getComputedStyle(el); return [style.width, style.height];
+    }), ['52px', '36px'], 'desktop search sizing survives the Tailwind migration');
+    assert.equal(await page.$eval('.product-search-popup', el => getComputedStyle(el).position), 'absolute');
     await page.keyboard.press('Escape');
     assert.equal(await page.$('.product-search-popup'), null);
     await page.click('body', { offset: { x: 5, y: 500 } });
@@ -83,6 +87,7 @@ test('public search suggests real products with debounce, keyboard, mobile, empt
     await page.type(desktop, 'serum'); await page.waitForSelector('.product-search-option');
     await page.keyboard.press('ArrowDown');
     assert.ok(await page.$eval(desktop, el => el.getAttribute('aria-activedescendant')));
+    assert.equal(await page.$eval('.product-search-option[aria-selected="true"]', el => getComputedStyle(el).backgroundColor), 'rgb(251, 245, 235)', 'keyboard selection remains visible');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => location.pathname === '/products/QA-SERUM');
 
@@ -101,6 +106,9 @@ test('public search suggests real products with debounce, keyboard, mobile, empt
     await page.type(mobile, 'nothing');
     await page.waitForFunction(() => document.querySelector('.product-search-status')?.textContent.includes('Chưa có sản phẩm'));
     assert.ok(await page.$eval('.product-search-popup', el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }));
+    assert.deepEqual(await page.$eval('.scanms-site-header > div:last-child .product-search-submit', el => {
+      const style = getComputedStyle(el); return [style.width, style.height];
+    }), ['40px', '32px'], 'mobile search keeps the compact button sizing');
     await fill(mobile, 'error');
     await page.waitForFunction(() => document.querySelector('.product-search-status')?.textContent.includes('Chưa tải được'));
     await fill(mobile, 'serum'); await page.waitForSelector('.product-search-option');

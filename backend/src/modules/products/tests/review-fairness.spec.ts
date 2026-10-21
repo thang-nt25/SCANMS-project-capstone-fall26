@@ -1,7 +1,6 @@
 import { CustomerService } from '../../customer/customer.service';
 import { ProductsService } from '../products.service';
 import { UserRole } from '@prisma/client';
-import { reviewContentIssue } from '../review-content-policy';
 
 describe('fair verified reviews and platform moderation', () => {
   const cache = () => ({ delPrefix: jest.fn().mockResolvedValue(undefined) });
@@ -26,12 +25,11 @@ describe('fair verified reviews and platform moderation', () => {
     expect(result.review).toMatchObject({ rating, images, isApproved: true, status: 'APPROVED', rejectionReason: null });
     expect(prisma.productReview.create.mock.calls[0][0].data.reviewImageUrl).toBe(images[0]);
   });
-  it('queues suspicious language for platform review without considering the rating', async () => {
+  it.each([1, 5])('publishes even flagged text immediately at %s stars; only later platform moderation can hide it', async rating => {
     const { customer } = fixture();
-    const result = await customer.createVerifiedReview('buyer', 'order', { productId: 'product', rating: 5, comment: 'fuck you, lời đe dọa' });
-    expect(result.review).toMatchObject({ status: 'PENDING', isApproved: false });
-    expect(result.message).toContain('sàn');
-    expect(reviewContentIssue('Sản phẩm tệ, đóng gói kém, không đáng tiền.')).toBeNull();
+    const result = await customer.createVerifiedReview('buyer', 'order', { productId: 'product', rating, comment: 'fuck you, lời đe dọa' });
+    expect(result.review).toMatchObject({ rating, status: 'APPROVED', isApproved: true, rejectionReason: null });
+    expect(result.message).toBe('Đánh giá đã được đăng');
   });
   it.each(['APPROVED', 'HIDDEN', 'REJECTED'])('blocks even the owning Shop from setting review status to %s', async status => {
     const { service, prisma } = fixture();

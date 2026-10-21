@@ -105,7 +105,6 @@ export function VerifiedReviewModal({ order, onClose, onSubmitted }: Props) {
             </div>)}{images.length < 5 && <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[#C59B58] bg-[#FBF5EB] text-[#8C6B32]"><ImagePlus size={22} /><span className="text-[11px]">Thêm ảnh</span><input disabled={submitting} aria-label="Thêm ảnh đánh giá" type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={event => { chooseImages(Array.from(event.target.files || [])); event.target.value = ''; }} /></label>}</div>
           </div>
         </div>}
-        <p className="mt-4 text-xs leading-relaxed text-[#7D715E]">Đánh giá hợp lệ được công khai, kể cả 1–2 sao. Nội dung có dấu hiệu vi phạm sẽ do sàn kiểm tra. Mỗi sản phẩm trong đơn được đánh giá một lần.</p>
         <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#EAE4D7]"><button type="button" disabled={submitting} onClick={onClose} className="py-3 rounded-xl bg-[#F3EFE6] text-xs font-bold text-[#7D715E]">Để sau</button>{products.length > 0 && <button type="submit" disabled={submitting || !productId || rating === 0 || comment.trim().length < 10} className="py-3 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#1A1612] text-xs font-bold flex justify-center items-center gap-2">{submitting && <Loader2 className="w-4 h-4 animate-spin" />}Gửi đánh giá</button>}</div>
       </form>
     </div>

@@ -26,7 +26,6 @@ import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
 import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
 import { CacheService } from '../../core/cache/cache.service';
-import { reviewContentIssue } from '../products/review-content-policy';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -657,7 +656,6 @@ export class CustomerService {
       );
     }
 
-    const issue = reviewContentIssue(dto.comment);
     const review = await this.prisma.productReview.create({
       data: {
         orderId,
@@ -667,13 +665,13 @@ export class CustomerService {
         comment: dto.comment.trim(),
         images: dto.images || [],
         reviewImageUrl: dto.images?.[0] || null,
-        status: issue ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
-        isApproved: !issue,
-        rejectionReason: issue,
+        status: ReviewStatus.APPROVED,
+        isApproved: true,
+        rejectionReason: null,
       },
     });
     await this.cacheService.delPrefix(`landing:v2:${dto.productId}:`).catch(() => undefined);
-    return { message: issue ? 'Đã gửi đánh giá, sàn đang kiểm tra nội dung' : 'Đánh giá đã được đăng', review };
+    return { message: 'Đánh giá đã được đăng', review };
   }
 
   async getCart(userId: string) {

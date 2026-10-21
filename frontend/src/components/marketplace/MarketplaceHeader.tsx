@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PublicHeader } from '../layout/PublicHeader';
 import { MarketplaceShortcuts } from './MarketplaceShortcuts';
-import './MarketplaceHeader.css';
 
 export function MarketplaceHeader({ onOpenTracking, onOpenLive }: {
   onOpenTracking: () => void;
@@ -22,8 +21,8 @@ export function MarketplaceHeader({ onOpenTracking, onOpenLive }: {
     return () => { window.removeEventListener('scroll', scroll); cancelAnimationFrame(frame); };
   }, []);
 
-  return <div className="marketplace-header sticky top-0 z-40 bg-white" data-compact={compact}>
+  return <div className="marketplace-header sticky top-0 z-40 bg-white shadow-[0_2px_8px_rgb(35_29_21/4%)]" data-compact={compact}>
     <PublicHeader sticky={false} onOpenTracking={onOpenTracking} />
-    <MarketplaceShortcuts onOpenLive={onOpenLive} />
+    <MarketplaceShortcuts onOpenLive={onOpenLive} compact={compact} />
   </div>;
 }
