@@ -191,8 +191,8 @@ export interface CouponFilterParams {
 
 export const couponService = {
 
-  getPublicStoreCoupons: async (storeId: string, productId?: string): Promise<PublicStoreCoupon[]> => {
-    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, headers: { 'x-skip-cache': '1' } });
+  getPublicStoreCoupons: async (storeId: string, productId?: string, signal?: AbortSignal): Promise<PublicStoreCoupon[]> => {
+    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, signal, headers: { 'x-skip-cache': '1' } });
     const payload = res?.data?.data ?? res?.data ?? res;
     if (Array.isArray(payload)) return payload;
     return Array.isArray(payload?.items) ? payload.items : [];
