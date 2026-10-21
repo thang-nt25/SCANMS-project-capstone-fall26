@@ -1,5 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type UIEvent } from 'react';
+import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
+import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
+import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
@@ -34,6 +38,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import api from '../../services/api';
+import { getChatSocket } from '../../services/chat-socket.service';
 import { kycService, type KycProfile } from '../../services/kyc.service';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { type MediaAsset } from '../../services/media.service';
@@ -223,6 +228,7 @@ export default function ShopCollaborationPage() {
   const [sampleRecipientPhone, setSampleRecipientPhone] = useState('');
   const [sampleRecipientPhoneConfirmed, setSampleRecipientPhoneConfirmed] = useState(false);
   const [shippingAddress, setShippingAddress] = useState('');
+  const [sampleLocation, setSampleLocation] = useState<AddressLocationResult | null>(null);
   const [sampleProvinces, setSampleProvinces] = useState<Array<{ ProvinceID: number; ProvinceName: string }>>([]);
   const [sampleDistricts, setSampleDistricts] = useState<Array<{ DistrictID: number; DistrictName: string }>>([]);
   const [sampleWards, setSampleWards] = useState<Array<{ WardCode: string; WardName: string }>>([]);
@@ -241,6 +247,7 @@ export default function ShopCollaborationPage() {
     if (!requestSampleModalProduct) return;
     let active = true;
     const editing = requestSampleModalProduct._editingRequest;
+    setSampleLocation(null);
     setSampleProvinceId(editing?.ghnProvinceId ? String(editing.ghnProvinceId) : '');
     setSampleDistrictId(editing?.ghnDistrictId ? String(editing.ghnDistrictId) : '');
     setSampleWardCode(editing?.ghnWardCode || '');
@@ -298,10 +305,11 @@ export default function ShopCollaborationPage() {
   // Modal 5: Đề xuất Deal hoa hồng riêng kèm cam kết (KOL -> Shop)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [dealModalProduct, setDealModalProduct] = useState<any | null>(null);
+  const [dealPickerStoreId, setDealPickerStoreId] = useState<string | null>(null);
   const [dealModalProducts, setDealModalProducts] = useState<any[]>([]);
   const [dealProposedRate, setDealProposedRate] = useState<number>(11);
   const [dealDurationMonths, setDealDurationMonths] = useState<number>(3);
-  const [dealOrderCommitment, setDealOrderCommitment] = useState<number>(100);
+  const [dealOrderCommitment, setDealOrderCommitment] = useState<number | ''>(100);
   const [dealRevenueCommitment, setDealRevenueCommitment] = useState<string>('25.000.000');
   const [dealContentPlan, setDealContentPlan] = useState<string>('3 Video TikTok/Reels chuyên sâu + 1 Phiên Livestream đẩy số');
   const [dealTermsAccepted, setDealTermsAccepted] = useState(false);
@@ -579,6 +587,18 @@ export default function ShopCollaborationPage() {
   const selectedStore = useMemo(() => {
     return stores.find((s) => s.id === selectedStoreId) || stores[0] || null;
   }, [stores, selectedStoreId]);
+  const [compactContext, setCompactContext] = useState(false);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setCompactContext(false);
+    if (tabScrollRef.current) tabScrollRef.current.scrollTop = 0;
+  }, [selectedStore?.id, activeTab]);
+  const handleContentScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.closest('[data-collaboration-content]') ||
+      target.matches('textarea, input') || target.scrollHeight <= target.clientHeight) return;
+    setCompactContext(previous => target.scrollTop > (previous ? 8 : 48));
+  };
 
   const [tabCounts, setTabCounts] = useState<{
     storeId: string; messages: number | null; products: number | null;
@@ -608,17 +628,45 @@ export default function ShopCollaborationPage() {
       setTabCounts({
         storeId,
         messages: conversations ? conversations.filter((item: any) => (item.storeId || item.store?.id) === storeId)
-          .reduce((sum: number, item: any) => sum + Number(item._count?.chatMessages || 0), 0) : null,
+          .reduce((sum: number, item: any) => sum + Number(item.messageCount || 0), 0) : null,
         products: typeof data[1]?.pagination?.total === 'number' ? data[1].pagination.total : null,
         samples: requests ? requests.filter((item: any) => item.product?.storeId === storeId).length : null,
         media: typeof data[3]?.pagination?.total === 'number' ? data[3].pagination.total : null,
       });
     };
     void refresh();
+    let messageTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshingMessages = false;
+    const refreshMessageCount = async () => {
+      if (!active || refreshingMessages) return;
+      refreshingMessages = true;
+      try {
+        const response: any = await api.get('/chat/conversations', { headers: { 'x-skip-cache': 'true' } });
+        const rows = response?.data ?? response;
+        if (!active || !Array.isArray(rows)) return;
+        const total = rows.filter((item: any) => (item.storeId || item.store?.id) === storeId)
+          .reduce((sum: number, item: any) => sum + Number(item.messageCount || 0), 0);
+        setTabCounts(previous => previous.storeId === storeId ? { ...previous, messages: total } : previous);
+      } finally {
+        refreshingMessages = false;
+      }
+    };
+    const onMessage = () => {
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(() => { void refreshMessageCount().catch(() => undefined); }, 200);
+    };
+    const socket = getChatSocket();
+    socket.on('new_message', onMessage);
     const timer = window.setInterval(() => void refresh(), 30000);
     window.addEventListener('focus', refresh);
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
-  }, [selectedStore.id, activeTab]);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      clearTimeout(messageTimer);
+      socket.off('new_message', onMessage);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [selectedStore?.id, activeTab]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
     if (store.slug) {
@@ -708,8 +756,9 @@ export default function ShopCollaborationPage() {
   }, [selectedStore?.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
 
   useEffect(() => {
-    if (activeTab !== 'products') return;
-    const refresh = () => { if (!document.hidden) void loadStoreProducts(selectedStore.id, true); };
+    const storeId = selectedStore?.id;
+    if (activeTab !== 'products' || !storeId) return;
+    const refresh = () => { if (!document.hidden) void loadStoreProducts(storeId, true); };
     const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -720,7 +769,7 @@ export default function ShopCollaborationPage() {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [activeTab, selectedStore.id, loadStoreProducts]);
+  }, [activeTab, selectedStore?.id, loadStoreProducts]);
 
   // Chọn / bỏ chọn sản phẩm để tạo gói deal
   const handleToggleProductSelection = (productId: string) => {
@@ -798,7 +847,7 @@ export default function ShopCollaborationPage() {
     try {
       const isBundle = items.length > 1;
       const commitmentSummary = isBundle
-        ? `[GÓI DEAL ${items.length} SẢN PHẨM] Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`
+        ? `[ĐỀ XUẤT ${items.length} DEAL] Kỳ hạn: ${dealDurationMonths * 30} ngày | Cam kết mỗi sản phẩm: ${dealOrderCommitment} đơn | Doanh số ước tính: ${dealRevenueCommitment} ₫ | Kế hoạch: ${dealContentPlan.trim()}`
         : `Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`;
 
       // Gửi proposal cho từng sản phẩm trong gói
@@ -808,6 +857,8 @@ export default function ShopCollaborationPage() {
           productId: item.id,
           proposedCommissionRate: rate,
           salesCommitment: commitmentSummary,
+          targetOrders: typeof dealOrderCommitment === 'number' ? dealOrderCommitment : Number(dealOrderCommitment) || 10,
+          commitmentDays: dealDurationMonths * 30,
         });
       }
 
@@ -950,12 +1001,12 @@ setActiveTab('samples');
         setRequestSampleModalProduct(null);
         setActiveTab('samples');
         setSampleStatusFilter('ALL');
-        updateUrl(selectedStore.id, 'samples');
+        if (selectedStore?.id) updateUrl(selectedStore.id, 'samples');
         toast.error(editingRequest ? message : 'Bạn đã có yêu cầu cho sản phẩm này. Xem tại tab Hàng mẫu.');
       } else {
         toast.error(message);
       }
-      void loadStoreSamples(selectedStore.id);
+      if (selectedStore?.id) void loadStoreSamples(selectedStore.id);
     } finally {
       sampleSubmissionInFlight.current = false;
       setSubmittingSample(false);
@@ -976,8 +1027,9 @@ setActiveTab('samples');
   const handleConnectStore = async (store: any) => {
     setConnectingStoreId(store.id);
     try {
+      await api.post('/store-collaborators/request', { storeId: store.id });
       await api.post('/chat/conversations', { storeId: store.id });
-      toast.success(`Đã kết nối thành công với ${store.name}!`);
+      toast.success(`Đã gửi yêu cầu hợp tác tới ${store.name}, chờ Shop duyệt.`);
       setShowDiscoverModal(false);
       await loadConversationsAndStores();
       setSelectedStoreId(store.id);
@@ -1030,7 +1082,7 @@ setActiveTab('samples');
 
   return (
     <div
-      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px]"
+      className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px] [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:flex-1! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:h-[auto]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:min-h-[0]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:max-h-[none]!"
       id="partner-collaboration-workspace"
     >
       {/* Top Warning Banner nếu KOL chưa xác minh */}
@@ -1295,7 +1347,7 @@ setActiveTab('samples');
         </div>
 
         {/* RIGHT COLUMN: Không Gian Làm Việc 1-1 Với Shop */}
-        <div className="collaboration-chat-pane flex-1 h-full flex flex-col min-w-0 bg-white overflow-hidden">
+        <div className="collaboration-chat-pane flex-1 h-full min-h-0 flex flex-col min-w-0 bg-white overflow-hidden" onScrollCapture={handleContentScroll}>
           {!selectedStore ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
               <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
@@ -1320,6 +1372,7 @@ setActiveTab('samples');
           ) : (
             <>
               {/* Shop Context Header Bar */}
+              <div className="collaboration-context-bar sticky! top-[0]! z-[20]! shrink-0! bg-[#fff]! [&_.collaboration-shop-heading]:[transition:padding_.16s_ease]! [&[data-compact=true]]:[box-shadow:0_4px_12px_#7D715E0D]! [&[data-compact=true]_.collaboration-shop-heading]:flex-row! [&[data-compact=true]_.collaboration-shop-heading]:items-center! [&[data-compact=true]_.collaboration-shop-heading]:p-[7px_14px]! [&[data-compact=true]_.collaboration-shop-heading]:gap-[10px]! [&[data-compact=true]_.collaboration-context-avatar]:w-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:h-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-name]:text-[length:13px]! [&[data-compact=true]_.collaboration-context-meta]:hidden! [&[data-compact=true]_.collaboration-verified-label]:hidden! [&[data-compact=true]_.collaboration-context-cooperation>div]:pt-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:pb-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs]:p-[6px_12px]! [&[data-compact=true]_.collaboration-context-tabs]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button]:min-h-[32px]! [&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs>button]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:min-w-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:h-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:p-[0_4px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:grid-cols-[repeat(4,minmax(0,1fr))]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:p-[6px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button>svg]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:overflow-hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:text-ellipsis! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:whitespace-nowrap! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link>span]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link]:p-[7px]! motion-reduce:[&&]:[&_.collaboration-shop-heading]:[transition:none]! " data-compact={compactContext}>
               <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
@@ -1332,7 +1385,7 @@ setActiveTab('samples');
                     <StoreAvatar
                       name={selectedStore.ownerName || selectedStore.name}
                       logoUrl={selectedStore.ownerAvatarUrl || selectedStore.logoUrl}
-                      className="w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm"
+                      className="collaboration-context-avatar w-10 h-10 rounded-xl border border-[#EAE4D7] shadow-2xs text-sm [transition:width_.16s_ease,height_.16s_ease]! motion-reduce:[&&]:[transition:none]! "
                     />
                   </button>
 
@@ -1341,17 +1394,17 @@ setActiveTab('samples');
                       <button
                         type="button"
                         onClick={() => openStorefront(selectedStore)}
-                        className="text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
+                        className="collaboration-context-name text-sm font-extrabold text-[#1A1612] truncate m-0 p-0 bg-transparent border-0 hover:text-[#B88E4F] cursor-pointer"
                         title={`Mở gian hàng ${selectedStore.name}`}
                       >
                         {selectedStore.name}
                       </button>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                        <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /> Đã xác minh
+                        <CheckCircle2 className="w-3 h-3 text-[#B88E4F]" /><span className="collaboration-verified-label">Đã xác minh</span>
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
+                    <div className="collaboration-context-meta flex flex-wrap items-center gap-2 text-[11px] text-[#7D715E] mt-0.5">
                       <span className="flex items-center gap-1 text-[#B88E4F] font-semibold">
                         <Star className="w-3 h-3 fill-[#C59B58] text-[#B88E4F]" />
                         <span>{selectedStore.rating || 4.9}</span>
@@ -1378,7 +1431,8 @@ setActiveTab('samples');
                   : `/marketplace?shop=${encodeURIComponent(selectedStore.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer group shrink-0 select-none"
+                className="collaboration-store-link inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer group shrink-0 select-none"
+                aria-label={`Xem gian hàng ${selectedStore.name}`}
                 title={`Xem gian hàng ${selectedStore.name} trên Sàn`}
               >
                 <span>Xem gian hàng</span>
@@ -1388,8 +1442,9 @@ setActiveTab('samples');
           </div>
 
           {/* Sub-Tabs Bar: Vừa Vặn 100%, Nhãn Ngắn Gọn, Không Bị Tràn Chữ */}
+          <div className="collaboration-context-cooperation"><StoreCooperationPanel key={selectedStoreId} mode="kol" storeId={selectedStoreId || undefined} /></div>
           <div
-            className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-[#EAE4D7] bg-white grid grid-cols-2 sm:grid-cols-4 items-stretch gap-2"
+            className="collaboration-context-tabs shrink-0 px-3 sm:px-4 py-2.5 border-b border-[#EAE4D7] bg-white grid grid-cols-2 sm:grid-cols-4 items-stretch gap-2 [&[role=tablist]>button]:[transition:padding_.16s_ease,min-height_.16s_ease,background-color_.16s_ease]! motion-reduce:[&&]:[&[role=tablist]>button]:[transition:none]! "
             role="tablist"
             aria-label="Nội dung hợp tác với gian hàng"
           >
@@ -1409,6 +1464,7 @@ setActiveTab('samples');
                   id={`subtab-${tab.id}`}
                   type="button"
                   role="tab"
+                  title={tab.label}
                   aria-selected={isActive}
                   onClick={() => {
                     setActiveTab(tab.id as any);
@@ -1421,19 +1477,20 @@ setActiveTab('samples');
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>{tab.label}</span>
+                  <span className="collaboration-tab-label">{tab.label}</span>
                   <span className="inline-flex min-w-[24px] h-6 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
-                    aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn chưa đọc' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}
-                    title={tab.id === 'messages' ? 'Số tin nhắn chưa đọc' : 'Tổng số của gian hàng đang chọn'}>
+                    aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn trong cuộc trò chuyện' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}
+                    title={tab.id === 'messages' ? 'Tổng số tin nhắn, gồm cả tin đã đọc và thẻ deal' : 'Tổng số của gian hàng đang chọn'}>
                     {count === null ? '—' : count}
                   </span>
                 </button>
               );
             })}
           </div>
+          </div>
 
           {/* SUB-TAB CONTENTS */}
-          <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
+          <div data-collaboration-content className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
             {/* 1. CHAT TAB */}
             {activeTab === 'messages' && (
               <div className="h-full w-full overflow-hidden animate-in fade-in-50 duration-200 flex flex-col">
@@ -1448,7 +1505,7 @@ setActiveTab('samples');
                   </div>
                   <button
                     type="button"
-                    onClick={() => navigate('/collaborator/marketing?tab=links')}
+                    onClick={() => setDealPickerStoreId(selectedStore.id)}
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
                   >
                     <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
@@ -1471,7 +1528,7 @@ setActiveTab('samples');
 
             {/* Các Tab còn lại */}
             {activeTab !== 'messages' && (
-              <div className={`h-full w-full overflow-y-auto ${activeTab === 'products' ? 'p-4' : 'p-5 space-y-4'}`}>
+              <div ref={tabScrollRef} className={`collaboration-tab-scroll h-full w-full overflow-y-auto  [overscroll-behavior-y:contain]! [scrollbar-width:thin]! [scrollbar-color:#C59B5880_transparent]! ${activeTab === 'products' ? 'p-4' : 'p-5 space-y-4'}`}>
                 {/* 2. PRODUCTS & SMART REFERRAL LINKS */}
                 {activeTab === 'products' && (
                   <div className="grid content-start gap-3.5 min-w-0 animate-in fade-in-50 duration-200">
@@ -2515,7 +2572,8 @@ setActiveTab('samples');
                 <label id="sample-address-label" className="text-[11px] font-bold text-[#1A1612] block mb-1">
                   Địa chỉ nhận hàng GHN <span className="text-rose-600">*</span>
                 </label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="sm:col-span-2"><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Tỉnh / Thành phố</span>
                   <Select
                     placement="top"
                     searchable
@@ -2524,7 +2582,7 @@ setActiveTab('samples');
                     value={sampleProvinceId}
                     aria-label="Tỉnh/Thành phố nhận hàng"
                     placeholder="Tỉnh / Thành"
-                    className={`w-full text-xs h-9 py-0 px-2 ${sampleAddressError && !sampleProvinceId ? 'rounded-xl ring-1 ring-[#DC2626]' : ''}`}
+                    className={`w-full text-xs h-10 py-0 px-3 ${sampleAddressError && !sampleProvinceId ? 'rounded-xl ring-1 ring-[#DC2626]' : ''}`}
                     options={[
                       { value: '', label: 'Tỉnh / Thành', disabled: true },
                       ...sampleProvinces.map((item) => ({
@@ -2541,7 +2599,8 @@ setActiveTab('samples');
                       setSampleWardCode('');
                     }}
                   />
-
+                  </label>
+                  <label><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Quận / Huyện</span>
                   <Select
                     placement="top"
                     searchable
@@ -2565,7 +2624,8 @@ setActiveTab('samples');
                       setSampleWardCode('');
                     }}
                   />
-
+                  </label>
+                  <label><span className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Phường / Xã</span>
                   <Select
                     placement="top"
                     align="right"
@@ -2585,12 +2645,15 @@ setActiveTab('samples');
                     ]}
                     onChange={(e) => { setSampleWardCode(e.target.value); setSampleAddressError(''); }}
                   />
+                  </label>
                 </div>
               </div>
 
               {/* Row 4: Địa chỉ chi tiết */}
               <div>
+                <label htmlFor="sample-street-address" className="mb-1.5 block text-[11px] font-medium text-[#7D715E]">Địa chỉ chi tiết <span className="font-normal">· Số nhà, tên đường, tòa nhà, căn hộ</span></label>
                 <input
+                  id="sample-street-address"
                   type="text"
                   required
                   minLength={5}
@@ -2604,6 +2667,17 @@ setActiveTab('samples');
                     {sampleAddressError}
                   </p>
                 )}
+              </div>
+
+              <div className="relative isolate z-0">
+                <AddressLocationPicker nationwide latitude={sampleLocation?.latitude} longitude={sampleLocation?.longitude}
+                  addressQuery={[shippingAddress, sampleWards.find(item => item.WardCode === sampleWardCode)?.WardName, sampleDistricts.find(item => String(item.DistrictID) === sampleDistrictId)?.DistrictName, sampleProvinces.find(item => String(item.ProvinceID) === sampleProvinceId)?.ProvinceName, 'Việt Nam'].filter(Boolean).join(', ')}
+                  onChange={(location) => {
+                    setSampleLocation(location);
+                    if (location.detailAddress) setShippingAddress(location.detailAddress);
+                    toast.info('Đã chọn vị trí. Kiểm tra lại tỉnh, quận/huyện và phường/xã GHN trước khi gửi.');
+                  }} />
+                <p className="mt-2 text-[10px] leading-relaxed text-[#7D715E]">Ghim hỗ trợ xác định địa chỉ chi tiết; vận đơn sử dụng địa chỉ và mã khu vực GHN bạn chọn ở trên. Vui lòng kiểm tra trước khi gửi.</p>
               </div>
 
               </fieldset>
@@ -2782,7 +2856,7 @@ setActiveTab('samples');
                               className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#B88E4F] text-[11px] font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                             >
                               {connectingStoreId === ms.id ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                              <span>{connectingStoreId === ms.id ? 'Đang kết nối' : 'Kết nối'}</span>
+                              <span>{connectingStoreId === ms.id ? 'Đang gửi' : 'Gửi yêu cầu hợp tác'}</span>
                             </button>
                           )}
                         </div>
@@ -2800,6 +2874,11 @@ setActiveTab('samples');
       )}
 
       {/* MODAL 5: ĐỀ XUẤT DEAL HOA HỒNG RIÊNG (KOL -> SHOP) */}
+      {selectedStore && dealPickerStoreId === selectedStore.id && (
+        <DealProductPicker key={selectedStore.id} storeId={selectedStore.id} storeName={selectedStore.name}
+          onClose={() => setDealPickerStoreId(null)}
+          onSelect={(product) => { setDealPickerStoreId(null); handleOpenDealModal(product); }} />
+      )}
       {(dealModalProduct || dealModalProducts.length > 0) && (() => {
         const isBundle = dealModalProducts.length > 1;
         const currentProducts = isBundle ? dealModalProducts : [dealModalProduct];
@@ -2844,7 +2923,7 @@ setActiveTab('samples');
                     </h3>
                     <p className="text-[11px] text-[#7D715E] m-0 truncate">
                       {isBundle
-                        ? `Đàm phán mức hoa hồng VIP chung cho danh mục sản phẩm kèm cam kết tổng doanh số.`
+                        ? `Đề xuất cùng mức hoa hồng VIP cho nhiều sản phẩm. Mỗi sản phẩm có KPI riêng.`
                         : 'Thương thảo mức hoa hồng VIP và gửi cam kết doanh số vào khung Chat.'}
                     </p>
                   </div>
@@ -2994,7 +3073,7 @@ setActiveTab('samples');
                   <div className="space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
                       <Handshake className="w-4 h-4 text-[#B88E4F]" />
-                      <span>{isBundle ? `Cam kết doanh số toàn Gói (${currentProducts.length} sản phẩm)` : 'Cam kết doanh số & Kế hoạch hợp tác'}</span>
+                      <span>{isBundle ? `Cam kết riêng cho từng sản phẩm (${currentProducts.length} Deal)` : 'Cam kết doanh số & Kế hoạch hợp tác'}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -3017,29 +3096,41 @@ setActiveTab('samples');
 
                       {/* Số đơn cam kết */}
                       <div>
-                        <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
-                          {isBundle ? 'Mục tiêu tổng số đơn cả gói' : 'Mục tiêu số đơn tối thiểu'}
+                        <label htmlFor="deal-order-commitment" className="block text-[11px] font-semibold text-[#7D715E] mb-1">
+                          {isBundle ? 'Mục tiêu số đơn cho mỗi sản phẩm' : 'Mục tiêu số đơn tối thiểu'}
                         </label>
-                        <div className="relative">
+                        <div className="flex items-stretch gap-2">
                           <input
+                            id="deal-order-commitment"
                             type="number"
-                            min={10}
-                            step={10}
+                            min={1}
+                            step={1}
                             value={dealOrderCommitment}
                             onChange={(e) => {
-                              const count = Number(e.target.value);
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setDealOrderCommitment('');
+                                setDealRevenueCommitment('');
+                                return;
+                              }
+                              const count = Number(raw);
                               setDealOrderCommitment(count);
-                              const rev = Math.round(avgPrice * count).toLocaleString('vi-VN');
+                              const rev = count > 0 ? Math.round(avgPrice * count).toLocaleString('vi-VN') : '';
                               setDealRevenueCommitment(rev);
                             }}
-                            className="w-full px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
+                            aria-invalid={dealOrderCommitment !== '' && dealOrderCommitment < 10}
+                            aria-describedby={dealOrderCommitment !== '' && dealOrderCommitment < 10 ? 'deal-order-commitment-error' : undefined}
+                            className="min-w-0 flex-1 px-3 py-2 bg-white border border-[#EAE4D7] rounded-xl text-xs font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
                             required
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#7D715E]">đơn</span>
+                          <span className="inline-flex min-w-12 items-center justify-center rounded-xl border border-[#EAE4D7] bg-[#FBF5EB] px-2 text-xs font-semibold text-[#7D715E]">đơn</span>
                         </div>
+                        {dealOrderCommitment !== '' && dealOrderCommitment < 10 && <p id="deal-order-commitment-error" className="mt-1.5 text-[11px] leading-relaxed text-[#DC2626]" role="alert">Số đơn cam kết tối thiểu là 10.</p>}
                       </div>
                     </div>
 
+                    <p className="text-xs text-[#7D715E]">Kỳ thực hiện bắt đầu khi Shop duyệt. Một tháng quy đổi 30 ngày; sau kỳ có 14 ngày đối soát. Chỉ đơn hoàn tất, chưa hoàn tiền được tính. Với nhiều sản phẩm, mỗi Deal có mục tiêu riêng như trên.</p>
+                    <DealDemoPanel />
                     {/* Doanh thu cam kết */}
                     <div>
                       <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">

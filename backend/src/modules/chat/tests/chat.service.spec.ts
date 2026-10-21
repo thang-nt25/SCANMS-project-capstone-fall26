@@ -68,6 +68,7 @@ describe('ChatService (FR-25)', () => {
         update: jest.fn(),
       },
       chatMessage: {
+        groupBy: jest.fn().mockResolvedValue([]),
         findMany: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -108,6 +109,10 @@ describe('ChatService (FR-25)', () => {
 
       expect(res.id).toBe(mockConversationId);
       expect(prisma.conversation.create).not.toHaveBeenCalled();
+      expect(prisma.storeCollaborator.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        update: {},
+        create: { storeId: mockStoreId, collaboratorId: mockCollaboratorId, status: 'PENDING', requestedByKol: true },
+      }));
     });
 
     it('should resolve storeId when shop manager initiates chat with collaboratorId', async () => {
@@ -248,6 +253,33 @@ describe('ChatService (FR-25)', () => {
       await expect(
         service.getConversationById(mockNonExistentConvId, mockCollaboratorId),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('conversation message totals', () => {
+    it('keeps the full message total separate from the unread count', async () => {
+      prisma.conversation.findMany.mockResolvedValue([
+        { ...mockConversation, _count: { chatMessages: 0 } },
+      ]);
+      prisma.chatMessage.groupBy.mockResolvedValue([
+        { conversationId: mockConversationId, _count: { _all: 125 } },
+      ]);
+
+      const result = await service.getConversationsByUser(mockCollaboratorId);
+
+      expect(result[0].messageCount).toBe(125);
+      expect(result[0]._count.chatMessages).toBe(0);
+      expect(prisma.chatMessage.groupBy).toHaveBeenCalledWith({
+        by: ['conversationId'],
+        where: { conversationId: { in: [mockConversationId] } },
+        _count: { _all: true },
+      });
+    });
+
+    it('does not count messages outside an empty conversation list', async () => {
+      prisma.conversation.findMany.mockResolvedValue([]);
+      expect(await service.getConversationsByUser(mockCollaboratorId)).toEqual([]);
+      expect(prisma.chatMessage.groupBy).not.toHaveBeenCalled();
     });
   });
 

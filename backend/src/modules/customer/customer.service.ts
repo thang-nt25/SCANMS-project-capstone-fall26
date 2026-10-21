@@ -24,6 +24,8 @@ import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { CreateCustomerReviewDto } from './dto/create-customer-review.dto';
 import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
+import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
+import { CacheService } from '../../core/cache/cache.service';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -39,6 +41,7 @@ export class CustomerService {
     private readonly mailService: MailService,
     private readonly authService: AuthService,
     private readonly identities: CustomerIdentityService,
+    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -306,6 +309,8 @@ export class CustomerService {
       OR: orderFilterOr,
     };
 
+    await syncCustomerGhnSimulations(this.prisma, { OR: orderFilterOr });
+
     if (query.status) {
       if (query.status === 'RETURNED') {
         where.status = { in: ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'] };
@@ -391,6 +396,11 @@ export class CustomerService {
       select: { email: true, phoneNumber: true },
     });
 
+    await syncCustomerGhnSimulations(this.prisma, { id: orderId, OR: [
+      { customerId: userId },
+      ...(user?.email ? [{ customerEmail: user.email.toLowerCase() }] : []),
+      ...(user?.phoneNumber ? [{ customerPhone: user.phoneNumber.trim() }] : []),
+    ] });
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -622,6 +632,9 @@ export class CustomerService {
     dto: CreateCustomerReviewDto,
   ) {
     const order = await this.getOrderDetails(userId, orderId);
+    if (order.customerId && order.customerId !== userId) {
+      throw new ForbiddenException('Bạn chỉ được đánh giá đơn hàng của mình');
+    }
     if (order.status !== OrderStatus.COMPLETED) {
       throw new BadRequestException(
         "Bạn cần bấm 'Đã nhận hàng - Hoàn tất' trước khi đánh giá",
@@ -652,11 +665,13 @@ export class CustomerService {
         comment: dto.comment.trim(),
         images: dto.images || [],
         reviewImageUrl: dto.images?.[0] || null,
-        status: ReviewStatus.PENDING,
-        isApproved: false,
+        status: ReviewStatus.APPROVED,
+        isApproved: true,
+        rejectionReason: null,
       },
     });
-    return { message: 'Đã gửi đánh giá xác minh, đang chờ Shop duyệt', review };
+    await this.cacheService.delPrefix(`landing:v2:${dto.productId}:`).catch(() => undefined);
+    return { message: 'Đánh giá đã được đăng', review };
   }
 
   async getCart(userId: string) {

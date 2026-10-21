@@ -1,0 +1,461 @@
+{
+  "fr": "FR13",
+  "stem": "FR13_Last_Click_Tracking_Cookie",
+  "title": "FR-13 Last-Click Tracking and Cookie",
+  "classes": [
+    {
+      "id": "RedirectController",
+      "name": "RedirectController",
+      "attrs": [
+        "- service: ReferralLinksService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ handleRedirect(shortCode, req, res, userAgent?, referer?)",
+        "- isAllowedDestination(destination, publicAppUrl): boolean"
+      ]
+    },
+    {
+      "id": "ReferralLinksService",
+      "name": "ReferralLinksService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- configService: ConfigService",
+        "- cacheService: CacheService",
+        "- clickQueue?: ClickQueueService"
+      ],
+      "ops": [
+        "+ handleRedirect(shortCode: string, clientInfo: ClientTrackingInfo)"
+      ]
+    },
+    {
+      "id": "OrdersController",
+      "name": "OrdersController",
+      "attrs": [
+        "- ordersService: OrdersService"
+      ],
+      "ops": [
+        "+ createOrder(dto: CreateOrderDto, req, userId, accountEmail?)"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "OrdersService",
+      "name": "OrdersService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- couponsService: CouponsService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ createOrder(dto: CreateOrderDto, clientContext?)",
+        "- executeStoreOrderInTransaction(tx, params)"
+      ]
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id: string",
+        "+ name: string",
+        "+ attributionWindowDays: number",
+        "+ deletedAt: Date | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ReferralLink",
+      "name": "ReferralLink",
+      "attrs": [
+        "+ id: string",
+        "+ shortCode: string {unique}",
+        "+ storeId: string",
+        "+ collaboratorId: string",
+        "+ status: ReferralLinkStatus",
+        "+ expiresAt, deletedAt: Date | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "AttributionSession",
+      "name": "AttributionSession",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ collaboratorId: string",
+        "+ referralLinkId: string",
+        "+ visitorIdHash: string",
+        "+ latestClickId: string | null",
+        "+ firstClickedAt, lastClickedAt: Date",
+        "+ expiresAt: Date",
+        "+ status: string"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Order",
+      "name": "Order",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ attributedCollaboratorId: string | null",
+        "+ referralLinkId: string | null",
+        "+ attributionMethod: AttributionMethod | null",
+        "+ attributionSessionId, clickId: string | null",
+        "+ attributionSnapshot: JsonValue | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ referralLink: Prisma.ReferralLinkDelegate",
+        "+ attributionSession: Prisma.AttributionSessionDelegate",
+        "+ order: Prisma.OrderDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "RedirectController",
+      "ReferralLinksService",
+      "reference",
+      "service"
+    ],
+    [
+      "OrdersController",
+      "OrdersService",
+      "reference",
+      "ordersService"
+    ],
+    [
+      "ReferralLinksService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "OrdersService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "AttributionSession",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Order",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "Store",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "AttributionSession",
+      "association",
+      "attributionSessions",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "Order",
+      "association",
+      "orders",
+      "1",
+      "0..*"
+    ],
+    [
+      "ReferralLink",
+      "AttributionSession",
+      "association",
+      "attributionSessions",
+      "1",
+      "0..*"
+    ],
+    [
+      "ReferralLink",
+      "Order",
+      "association",
+      "orders",
+      "0..1",
+      "0..*"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "ReferralLink",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "redirect",
+      "name": ":RedirectController"
+    },
+    {
+      "id": "ref",
+      "name": ":ReferralLinksService"
+    },
+    {
+      "id": "orderctrl",
+      "name": ":OrdersController"
+    },
+    {
+      "id": "orders",
+      "name": ":OrdersService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    }
+  ],
+  "messages": [
+    [
+      "customer",
+      "browser",
+      "Open KOL B link after valid KOL A click"
+    ],
+    [
+      "browser",
+      "redirect",
+      "GET /r/codeB with existing visitor cookie"
+    ],
+    [
+      "redirect",
+      "redirect",
+      "Verify visitor identity; read trusted IP/UA and privacy flags"
+    ],
+    [
+      "redirect",
+      "ref",
+      "handleRedirect(codeB, clientInfo)"
+    ],
+    [
+      "ref",
+      "ref",
+      "Check rate limit; prepare tracking context"
+    ],
+    [
+      "ref",
+      "db",
+      "[link cache miss] Read B link with Product, Store and KOL"
+    ],
+    [
+      "db",
+      "ref",
+      "[miss] Link and eligibility records",
+      "return"
+    ],
+    [
+      "ref",
+      "db",
+      "[eligible] Upsert same Store/visitor session: replace A with B"
+    ],
+    [
+      "db",
+      "ref",
+      "B is current KOL/link; preserve firstClickedAt; renew expiry",
+      "return"
+    ],
+    [
+      "ref",
+      "ref",
+      "[queue available] Enqueue click job asynchronously"
+    ],
+    [
+      "ref",
+      "redirect",
+      "Destination, session and visitor result",
+      "return"
+    ],
+    [
+      "redirect",
+      "redirect",
+      "[eligible session] Sign opaque visitor token; set cookies"
+    ],
+    [
+      "redirect",
+      "browser",
+      "Safe destination: 302 + eligible Set-Cookie",
+      "return"
+    ],
+    [
+      "browser",
+      "customer",
+      "Display product page",
+      "return"
+    ],
+    [
+      "customer",
+      "browser",
+      "Submit checkout"
+    ],
+    [
+      "browser",
+      "orderctrl",
+      "POST /api/orders + JWT + visitor cookie"
+    ],
+    [
+      "orderctrl",
+      "orders",
+      "createOrder(dto, clientContext)"
+    ],
+    [
+      "orders",
+      "db",
+      "$transaction: read current Store/visitor session and link/KOL"
+    ],
+    [
+      "db",
+      "orders",
+      "Valid session points to KOL B",
+      "return"
+    ],
+    [
+      "orders",
+      "orders",
+      "Resolve COUPON > COOKIE > FINGERPRINT > ORGANIC"
+    ],
+    [
+      "orders",
+      "db",
+      "Same transaction: create Order with winner and attribution snapshot"
+    ],
+    [
+      "db",
+      "orders",
+      "Commit Order; B via COOKIE if no overriding coupon",
+      "return"
+    ],
+    [
+      "orders",
+      "orderctrl",
+      "Created order response",
+      "return"
+    ],
+    [
+      "orderctrl",
+      "browser",
+      "201: public order confirmation",
+      "return"
+    ],
+    [
+      "browser",
+      "customer",
+      "Show order success",
+      "return"
+    ]
+  ],
+  "subtitle": "Main example: valid KOL A session → later valid KOL B click in the same Shop → checkout.",
+  "classNote": "Unique AttributionSession(storeId, visitorIdHash) stores the winning KOL/link. Cookie contains signed visitor identity; Order session/click IDs are scalars, not invented foreign keys.",
+  "notes": [
+    "Precondition: a prior valid A click created the visitor session; the diagram expands the later B click. Different Stores keep separate sessions. Window defaults to 30 days, configurable per Store from 1 to 365.",
+    "Browser = RedirectHandlerPage + checkout UI. Traffic limiter, link cache, independent click worker and fingerprint fallback internals are summarized in FR13_CODE_ANALYSIS.md. Ineligible clicks do not replace the session.",
+    "Checkout reads and writes occur within the same order transaction; the separate read/write arrows summarize its callback. Active, unexpired session/link/KOL checks apply. Cookie is not a trusted KOL ID supplied by the client."
+  ],
+  "activations": [
+    [
+      "db",
+      17,
+      21
+    ]
+  ],
+  "classLayout": {
+    "controller": "RedirectController",
+    "service": "ReferralLinksService",
+    "supports": [
+      [
+        "OrdersController",
+        150
+      ],
+      [
+        "OrdersService",
+        700
+      ]
+    ],
+    "models": [
+      "Store",
+      "ReferralLink",
+      "AttributionSession",
+      "Order"
+    ],
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "modelPositions": {
+      "Store": [
+        1930,
+        150,
+        620
+      ],
+      "ReferralLink": [
+        1930,
+        650,
+        620
+      ],
+      "AttributionSession": [
+        1930,
+        1090,
+        620
+      ],
+      "Order": [
+        1930,
+        1611,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v1"
+  }
+}

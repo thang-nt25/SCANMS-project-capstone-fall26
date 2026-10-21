@@ -17,11 +17,23 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import { StorePresenceService } from './store-presence.service';
 
 @ApiTags('Store Settings')
 @Controller('stores')
 export class StoresController {
-  constructor(private readonly storesService: StoresService) {}
+  constructor(private readonly storesService: StoresService, private readonly presence: StorePresenceService) {}
+
+  @Post('my-store/presence')
+  @UseGuards(JwtAuthGuard)
+  heartbeat(@CurrentUser('id') userId: string) {
+    return this.presence.heartbeat(userId);
+  }
+
+  @Get('public/id/:storeId/presence')
+  getPresence(@Param('storeId', ParseUUIDPipe) storeId: string) {
+    return this.presence.getPublicPresence(storeId);
+  }
 
   @Get('public/id/:storeId')
   getPublicStoreById(@Param('storeId', ParseUUIDPipe) storeId: string) {

@@ -1,0 +1,185 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR32 - Class Diagram" id="FR32---Class-Diagram">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1640" pageHeight="1180">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-32 Comprehensive Audit Logs - Class Diagram">
+          <mxGeometry y="20" width="1580" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="page" value="AuditLogsPage">
+          <mxGeometry y="90" width="390" as="geometry" height="280" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-fields" value="&lt;&lt;React functional component&gt;&gt;&#xA;- logs: AuditLogItem[]&#xA;- stats: AuditStats | null&#xA;- selectedLog: AuditLogItem | null&#xA;- selectedCategory, selectedSeverity: string&#xA;- searchKeyword, selectedTimeframe: string&#xA;- currentPage: number">
+          <mxGeometry y="30" width="390" as="geometry" height="165" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="shape=line;strokeColor=#000000;" id="page-line" value="">
+          <mxGeometry y="195" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-methods" value="+ loadLogs()&#xA;+ loadStatsAndActions()&#xA;+ handleExportCsv()">
+          <mxGeometry y="195" width="390" as="geometry" height="85" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="client" value="auditService &lt;&lt;object&gt;&gt;">
+          <mxGeometry y="500" width="390" as="geometry" height="210" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-fields" value="&lt;&lt;HTTP API client&gt;&gt;">
+          <mxGeometry y="30" width="390" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="shape=line;strokeColor=#000000;" id="client-line" value="">
+          <mxGeometry y="65" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-methods" value="+ getAuditLogs(params?)&#xA;+ getAuditStats(timeframe?)&#xA;+ getAvailableActions()&#xA;+ getAuditLogById(id)&#xA;+ exportAuditLogsCsv(params?)">
+          <mxGeometry y="65" width="390" as="geometry" height="145" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="safety" value="audit-safety &lt;&lt;module&gt;&gt;">
+          <mxGeometry y="850" width="390" as="geometry" height="170" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="safety-fields" value="&lt;&lt;Pure utility functions&gt;&gt;">
+          <mxGeometry y="30" width="390" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="shape=line;strokeColor=#000000;" id="safety-line" value="">
+          <mxGeometry y="70" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="safety-methods" value="+ sanitizeAuditDetails(value, depth?, visited?)&#xA;+ auditCsvCell(value)">
+          <mxGeometry y="70" width="390" as="geometry" height="100" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="controller" value="AuditController">
+          <mxGeometry y="90" width="450" as="geometry" height="240" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-fields" value="- auditService: AuditService">
+          <mxGeometry y="30" width="450" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="shape=line;strokeColor=#000000;" id="controller-line" value="">
+          <mxGeometry y="70" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-methods" value="+ getAuditLogs(query, currentUser)&#xA;+ getAuditStats(timeframe)&#xA;+ getAvailableActions()&#xA;+ getAuditLogById(id)&#xA;+ exportAuditLogs(query, res)">
+          <mxGeometry y="70" width="450" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="service" value="AuditService">
+          <mxGeometry y="430" width="450" as="geometry" height="310" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-fields" value="- prisma: PrismaService">
+          <mxGeometry y="30" width="450" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="shape=line;strokeColor=#000000;" id="service-line" value="">
+          <mxGeometry y="70" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-methods" value="+ recordAuditLog(userId, action, details, ip?, eventId?)&#xA;+ getAuditLogs(query, currentUser?)&#xA;+ getAuditLogById(id)&#xA;+ getAuditStats(timeframe)&#xA;+ getAvailableActions()&#xA;+ exportAuditLogsCsv(query)&#xA;+ resolveActionMeta(actionCode)&#xA;- buildAuditWhere(query)">
+          <mxGeometry y="70" width="450" as="geometry" height="240" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="prisma" value="PrismaService">
+          <mxGeometry y="850" width="450" as="geometry" height="170" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-fields" value="- pool: Pool&#xA;- configService?: ConfigService">
+          <mxGeometry y="30" width="450" as="geometry" height="60" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="shape=line;strokeColor=#000000;" id="prisma-line" value="">
+          <mxGeometry y="90" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-methods" value="+ onModuleInit(): Promise&lt;void&gt;&#xA;+ onModuleDestroy(): Promise&lt;void&gt;">
+          <mxGeometry y="90" width="450" as="geometry" height="80" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="interceptor" value="AuditInterceptor">
+          <mxGeometry y="90" width="580" as="geometry" height="180" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="interceptor" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="interceptor-fields" value="- audit: AuditService">
+          <mxGeometry y="30" width="580" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="interceptor" style="shape=line;strokeColor=#000000;" id="interceptor-line" value="">
+          <mxGeometry y="70" width="580" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="interceptor" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="interceptor-methods" value="+ intercept(context, next): Observable&lt;unknown&gt;&#xA;HTTP POST / PUT / PATCH / DELETE only&#xA;Record handler outcome, status, duration and sanitized input">
+          <mxGeometry y="70" width="580" as="geometry" height="110" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="user" value="User">
+          <mxGeometry y="480" width="270" as="geometry" height="200" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="user" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="user-fields" value="+ id: string&#xA;+ fullName: string&#xA;+ email: string&#xA;+ role: UserRole">
+          <mxGeometry y="30" width="270" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="audit" value="AuditLog">
+          <mxGeometry y="480" width="250" as="geometry" height="240" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="audit" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="audit-fields" value="+ id: string&#xA;+ eventId: string | null {unique}&#xA;+ userId: string | null&#xA;+ action: string&#xA;+ details: Json | null&#xA;+ ipAddress: string | null&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="210" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="base" value="PrismaClient">
+          <mxGeometry y="850" width="580" as="geometry" height="170" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="base-fields" value="+ auditLog: Prisma.AuditLogDelegate&#xA;+ user: Prisma.UserDelegate">
+          <mxGeometry y="30" width="580" as="geometry" height="60" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="shape=line;strokeColor=#000000;" id="base-line" value="">
+          <mxGeometry y="90" width="580" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="base-methods" value="+ $connect(): Promise&lt;void&gt;&#xA;+ $disconnect(): Promise&lt;void&gt;">
+          <mxGeometry y="90" width="580" as="geometry" height="80" x="0" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e1" value="uses" source="page" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.2;entryX=0;entryY=0.7;" edge="1" id="e2" value="HTTP GET" source="client" target="controller">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="542" />
+              <mxPoint x="455" y="258" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e3" value="auditService" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e4" value="prisma" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=1;entryY=0.1;" edge="1" id="e5" value="audit" source="interceptor" target="service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="360" />
+              <mxPoint x="975" y="360" />
+              <mxPoint x="975" y="461" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.2;" edge="1" id="e6" value="uses" source="service" target="safety">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="678" />
+              <mxPoint x="455" y="884" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=block;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" id="e7" value="extends" source="prisma" target="base">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=0.8;exitY=0;entryX=0.5;entryY=1;" edge="1" id="e8" value="reads / writes" source="base" target="audit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1494" y="790" />
+              <mxPoint x="1485" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=0.2;exitY=0;entryX=0.5;entryY=1;" edge="1" id="e9" value="reads" source="base" target="user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1146" y="790" />
+              <mxPoint x="1165" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="e10" value="actor 0..1 : logs 0..*" source="user" target="audit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="755" />
+              <mxPoint x="1485" y="755" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="footer" value="Scope: JWT + RolesGuard restrict audit queries to SYSTEM_ADMIN / SYSTEM_MANAGER. Category and severity are derived from action metadata.&#xA;AuditModule registers a global HTTP interceptor. Recording is fail-safe; sensitive details are redacted. CSV export uses the same filters, capped at 2,000 rows.">
+          <mxGeometry y="1100" width="1580" as="geometry" height="55" x="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -64,6 +64,7 @@ const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHu
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
 const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
+const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
@@ -89,6 +90,7 @@ import { CartDrawer } from '../components/cart/CartDrawer';
 import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
+import { StorePresenceHeartbeat } from '../components/store/StorePresenceHeartbeat';
 
 function GlobalCheckoutModal() {
   const { isCheckoutOpen, closeCheckout, checkoutItems, checkoutCouponCode } = useCart();
@@ -125,6 +127,7 @@ function AppRoutes() {
   return (
     <Router>
       <CartProvider>
+        <StorePresenceHeartbeat />
         <ScanmsChatProvider>
           <ErrorBoundary>
             <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
@@ -281,6 +284,7 @@ function AppRoutes() {
               <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
               <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
               <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
+              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
               <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />

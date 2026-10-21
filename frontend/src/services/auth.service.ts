@@ -1,4 +1,5 @@
 import api from './api';
+import { productLoginUrl } from '../utils/login-return';
 
 export interface UserProfile {
   id: string;
@@ -112,13 +113,17 @@ export const authService = {
   },
 
   async getMe(): Promise<UserProfile> {
+    const token = localStorage.getItem('token');
     const res: any = await api.get('/auth/me');
+    if (token !== localStorage.getItem('token')) throw new Error('Phiên đăng nhập đã thay đổi.');
     const user = res?.data || res;
     if (user && user.id) {
+      const previousUserId = this.getCurrentUser()?.id;
       localStorage.setItem('user', JSON.stringify(user));
       if (user.stores?.[0]?.id) {
         localStorage.setItem('current_store_id', user.stores[0].id);
       }
+      if (previousUserId !== user.id) window.dispatchEvent(new Event('auth-user-updated'));
     }
     return user;
   },
@@ -134,8 +139,7 @@ export const authService = {
     return res?.data || res;
   },
 
-  logout() {
-    window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: null } }));
+  logout(returnTo?: string) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');
@@ -146,8 +150,9 @@ export const authService = {
     localStorage.removeItem('scanms_cart_guest');
     localStorage.removeItem('scanms_cart_selected_guest');
     localStorage.removeItem('scanms_pending_checkout');
+    window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: null } }));
     window.dispatchEvent(new Event('auth-user-updated'));
-    window.location.href = '/login';
+    window.location.href = returnTo ? productLoginUrl(returnTo) : '/login';
   },
 
   getCurrentUser(): UserProfile | null {

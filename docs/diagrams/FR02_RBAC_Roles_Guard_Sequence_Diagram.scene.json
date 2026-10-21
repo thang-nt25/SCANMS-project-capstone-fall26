@@ -1,0 +1,957 @@
+{
+  "width": 3450,
+  "height": 2960,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-02 Role-Based Access Control (RBAC Guard) — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 3360,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Guarded Shop approval example: verify JWT → reload active User → check @Roles → validate Store ownership → execute endpoint. Role mismatch stops with 403.",
+      "x": 45,
+      "y": 73,
+      "w": 3360,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Account holder",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "NestJS request pipeline",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":JwtAuthGuard",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":RolesGuard",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":Reflector",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2975,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":StoreCouponsController",
+      "x": 2983,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3190,
+          193
+        ],
+        [
+          3190,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 485,
+      "w": 10,
+      "h": 1903
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 592,
+      "w": 10,
+      "h": 650
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1338,
+      "w": 10,
+      "h": 730
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1445,
+      "w": 10,
+      "h": 117
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 2165,
+      "w": 10,
+      "h": 117
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Approve a KOL coupon proposal in Shop workspace",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          352
+        ],
+        [
+          510,
+          352
+        ],
+        [
+          510,
+          371
+        ],
+        [
+          465,
+          371
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. Axios attaches the stored access token as Authorization: Bearer",
+      "x": 522,
+      "y": 326,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          485
+        ],
+        [
+          1025,
+          485
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. PATCH /api/stores/:storeId/coupons/:id/approve + Bearer JWT",
+      "x": 472,
+      "y": 436,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          592
+        ],
+        [
+          1565,
+          592
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. canActivate(context): first guard",
+      "x": 1042,
+      "y": 543,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          698
+        ],
+        [
+          1620,
+          698
+        ],
+        [
+          1620,
+          717
+        ],
+        [
+          1575,
+          717
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. super.canActivate(): Passport verifies JWT signature and expiry",
+      "x": 1632,
+      "y": 672,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          832
+        ],
+        [
+          1620,
+          832
+        ],
+        [
+          1620,
+          851
+        ],
+        [
+          1575,
+          851
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. Delegate JwtStrategy.validate(): reload User through Prisma (summarized)",
+      "x": 1632,
+      "y": 806,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          965
+        ],
+        [
+          1620,
+          965
+        ],
+        [
+          1620,
+          984
+        ],
+        [
+          1575,
+          984
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. Strategy rejects absent/inactive/deleted User with 401 (summarized)",
+      "x": 1632,
+      "y": 939,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1098
+        ],
+        [
+          1620,
+          1098
+        ],
+        [
+          1620,
+          1117
+        ],
+        [
+          1575,
+          1117
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. Passport guard calls handleRequest(); assigns request.user",
+      "x": 1632,
+      "y": 1072,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1232
+        ],
+        [
+          1035,
+          1232
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "9. true: authenticated request",
+      "x": 1042,
+      "y": 1183,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1338
+        ],
+        [
+          2105,
+          1338
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. canActivate(context): second guard",
+      "x": 1042,
+      "y": 1289,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1445
+        ],
+        [
+          2645,
+          1445
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. getAllAndOverride(ROLES_KEY, [handler, controller])",
+      "x": 2122,
+      "y": 1396,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1552
+        ],
+        [
+          2115,
+          1552
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. [SHOP_MANAGER]: method metadata overrides controller roles",
+      "x": 2122,
+      "y": 1503,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1658
+        ],
+        [
+          2160,
+          1658
+        ],
+        [
+          2160,
+          1677
+        ],
+        [
+          2115,
+          1677
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. If requiredRoles is absent or empty, return true immediately",
+      "x": 2172,
+      "y": 1632,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1792
+        ],
+        [
+          2160,
+          1792
+        ],
+        [
+          2160,
+          1811
+        ],
+        [
+          2115,
+          1811
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "14. Read request.user; missing User throws ForbiddenException (403)",
+      "x": 2172,
+      "y": 1766,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1925
+        ],
+        [
+          2160,
+          1925
+        ],
+        [
+          2160,
+          1944
+        ],
+        [
+          2115,
+          1944
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. requiredRoles.includes(user.role); false throws 403 and stops",
+      "x": 2172,
+      "y": 1899,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2058
+        ],
+        [
+          1035,
+          2058
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "16. [SHOP_MANAGER] true; other roles never reach endpoint",
+      "x": 1042,
+      "y": 2009,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          2165
+        ],
+        [
+          3185,
+          2165
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. [guards passed + valid DTO] approveCoupon(storeId, id, userId, role, dto, ip)",
+      "x": 1582,
+      "y": 2116,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          2272
+        ],
+        [
+          1035,
+          2272
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "18. Approval result after CouponsService ownership/policy checks (see FR12)",
+      "x": 1582,
+      "y": 2223,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2378
+        ],
+        [
+          465,
+          2378
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. 200: approval result in response envelope",
+      "x": 472,
+      "y": 2329,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. Show approval result and refresh coupon list",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = ShopCouponsPage + couponService + Axios. Account holder may have any role; the expanded successful request is SHOP_MANAGER. A denied request stops immediately: later messages belong only to the permitted path. Errors return through NestJS exception handling; no controller call occurs after guard rejection.",
+      "x": 45,
+      "y": 2595,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "NestJS pipeline is a framework participant. JWT self-messages summarize Passport + JwtStrategy + Prisma delegation. Invalid/missing/expired JWT or absent/inactive/deleted User: 401 before RolesGuard. Passport sets request.user from the reloaded User; its database role governs access.",
+      "x": 45,
+      "y": 2645,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "@Roles stores metadata under ROLES_KEY = roles. Reflector reads handler first, then controller. Missing metadata or an empty role array returns true immediately; RolesGuard alone does not authenticate. Non-empty roles plus missing request.user or role mismatch: 403. No role hierarchy or automatic Admin bypass exists.",
+      "x": 45,
+      "y": 2700,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Actual coupon RBAC examples: Admin createPlatformCoupon = SYSTEM_ADMIN or SYSTEM_MANAGER; Shop createStoreCoupon / approveCoupon = SHOP_MANAGER; KOL proposeCoupon = COLLABORATOR. Store controller metadata also allows Admin/Manager for inherited methods, but approveCoupon overrides that list to SHOP_MANAGER only.",
+      "x": 45,
+      "y": 2755,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Controller delegates to CouponsService (see FR12): recheck SHOP_MANAGER; require Store.ownerId = userId; apply approval policy and writes. Another Shop owner gets 403; missing Store gets 404. Service internals are omitted. RolesGuard itself performs no DB query, ownership check or KYC check.",
+      "x": 45,
+      "y": 2810,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Selected protected route only: guards are bound explicitly by @UseGuards, not a universal application-wide policy. FR9 uses its own StoreOwnerGuard. Frontend RoleGuard controls workspace navigation; backend guards enforce API access independently. Library base classes and DTO/pipes/interceptor internals are omitted.",
+      "x": 45,
+      "y": 2865,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

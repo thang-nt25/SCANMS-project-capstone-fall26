@@ -62,7 +62,7 @@ const ROUTE_DATA_PREFETCH: Record<string, () => Promise<any>> = {
   '/admin/fraud-sentinel': () => api.get('/audit/fraud-alerts'),
   '/admin/product-moderation': () => api.get('/products', { params: { status: 'PENDING_APPROVAL' } }),
   '/customer/orders': () => api.get('/customer/orders'),
-  '/marketplace': () => api.get('/products'),
+  '/marketplace': () => api.get('/public/products', { params: { limit: 48, sortBy: 'newest' } }),
 };
 
 const preloadedRoutes = new Set<string>();

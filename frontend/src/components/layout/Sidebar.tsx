@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
+import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
@@ -8,6 +8,8 @@ import { orderService } from '../../services/order.service';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from '../../utils/toast';
 import { handleRouteHover, cancelRouteHover, prewarmCoreRoutes } from '../../utils/route-preloader.utils';
+import { useCustomerVouchers } from '../../hooks/useCustomerVouchers';
+import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 
 export interface SidebarProps {
   currentUser: UserProfile | null;
@@ -20,6 +22,8 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
 
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
+  const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
+  const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -102,6 +106,16 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   }, [role]);
 
   const getItemBadge = (path: string, staticBadge?: string) => {
+    if (path === '/customer/wishlist') {
+      return !wishlistInventory.loading && !wishlistInventory.error
+        ? { text: String(wishlistInventory.count), isHighlight: false }
+        : null;
+    }
+    if (path === '/customer/vouchers') {
+      return !voucherInventory.loading && !voucherInventory.error
+        ? { text: String(voucherInventory.vouchers.length), isHighlight: false }
+        : null;
+    }
     if (staticBadge) {
       return { text: staticBadge, isHighlight: false };
     }
@@ -424,10 +438,12 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
             {/* Sàn Mua Sắm Link */}
             <Link
               to="/marketplace"
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[40px] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
+              className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[44px] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
               title="Quay lại Sàn Mua Sắm SCANMS"
+              aria-label="Quay lại Sàn Mua Sắm SCANMS"
             >
-              <Store className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" />
+              <ArrowLeft className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
+              <Store className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
               <span className="flex-1 truncate tracking-tight">Sàn Mua Sắm</span>
             </Link>
 

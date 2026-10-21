@@ -3,7 +3,7 @@ import { toast } from '../utils/toast';
 import { authService } from '../services/auth.service';
 import api from '../services/api';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import { customerService } from '../services/customer.service';
+import { customerService, type CartSessionRequest } from '../services/customer.service';
 import { mergeCartItems } from '@/utils/cart-merge.utils';
 import { normalizeOrderVariantId } from '@/utils/order-variant.utils';
 import type {
@@ -33,7 +33,7 @@ export type {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const getInitialUserId = () => authService.getCurrentUser()?.id || null;
+  const getInitialUserId = () => localStorage.getItem('token') ? authService.getCurrentUser()?.id || null : null;
   const [activeUserId, setActiveUserId] = useState<string | null>(getInitialUserId);
 
   // 1. Initialize user-scoped cart from LocalStorage
@@ -56,18 +56,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const userIdRef = useRef(activeUserId);
   const loadingUserRef = useRef<string | null>(null);
   const authRevisionRef = useRef(0);
+  const sessionRef = useRef<CartSessionRequest | null>(null);
   cartRef.current = cart;
   selectedRef.current = selectedItemIds;
 
   useEffect(() => {
     let mounted = true;
+    let sessionController: AbortController | null = null;
     const syncIdentity = () => {
       const user = authService.getCurrentUser();
-      const nextId = localStorage.getItem('token') && user?.id ? user.id : null;
+      const token = localStorage.getItem('token');
+      const nextId = token && user?.id ? user.id : null;
       const previousId = userIdRef.current;
-      if (nextId === previousId && (hydratedUserRef.current === nextId || loadingUserRef.current === nextId)) return;
+      if (nextId === previousId && (!nextId || token === sessionRef.current?.token) &&
+          (hydratedUserRef.current === nextId || loadingUserRef.current === nextId)) return;
+      // Cancel work for the previous session before loading another owner's basket.
+      sessionController?.abort();
+      sessionController = new AbortController();
+      const session = nextId && token ? { token, signal: sessionController.signal } : null;
+      sessionRef.current = session;
       const revision = ++authRevisionRef.current;
-      const isCurrent = () => mounted && userIdRef.current === nextId && authRevisionRef.current === revision;
+      const isCurrent = () => mounted && userIdRef.current === nextId && authRevisionRef.current === revision &&
+        localStorage.getItem('token') === token && !session?.signal.aborted;
+
+      if (previousId !== nextId) {
+        skipNextPushRef.current = false;
+        setIsCartOpen(false);
+        setIsValidatingStock(false);
+        if (previousId) {
+          setIsCheckoutOpen(false);
+          setCheckoutItems([]);
+          setCheckoutCouponCode('');
+          localStorage.removeItem(PENDING_CHECKOUT_KEY);
+        }
+      }
 
       // Capture the guest basket before changing ownership; both auth events can fire together.
       const guest = !previousId && nextId ? cartRef.current : [];
@@ -95,13 +117,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hydratedUserRef.current = null;
       loadingUserRef.current = nextId;
       setCartSyncedAt(null);
-      if (!nextId) {
+      if (!nextId || !session) {
         setIsCartSyncing(false);
         return;
       }
 
       setIsCartSyncing(true);
-      void customerService.getCart().then(async (remote) => {
+      void customerService.getCart(session).then(async (remote) => {
         if (!isCurrent()) return;
         const account = mergeCartItems(remote.items || [], accountCache);
         const combined = mergeCartItems(account, guest, true);
@@ -124,7 +146,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (guest.length || accountCache.length) {
           const synced = await customerService.syncCart(next.map((item) => ({
             productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
-          })));
+          })), session);
           if (isCurrent()) setCartSyncedAt(synced.syncedAt || new Date().toISOString());
         }
       }).catch(() => {
@@ -144,6 +166,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('focus', syncIdentity);
     return () => {
       mounted = false;
+      sessionController?.abort();
       authRevisionRef.current += 1;
       loadingUserRef.current = null;
       window.removeEventListener('scanms_auth_changed', syncIdentity);
@@ -155,25 +178,31 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!activeUserId || hydratedUserRef.current !== activeUserId) return;
+    const session = sessionRef.current;
+    if (!session || session.signal.aborted) return;
     if (skipNextPushRef.current) {
       skipNextPushRef.current = false;
       return;
     }
     const userId = activeUserId;
+    const isCurrent = () => userIdRef.current === userId && sessionRef.current === session &&
+      !session.signal.aborted && localStorage.getItem('token') === session.token;
     const timer = window.setTimeout(() => {
+      if (!isCurrent()) return;
       setIsCartSyncing(true);
       customerService.syncCart(cart.map((item) => ({
         productId: item.productId, variantId: normalizeOrderVariantId(item.variantId), quantity: item.quantity,
-      })))
-        .then((result) => { if (userIdRef.current === userId) setCartSyncedAt(result.syncedAt || new Date().toISOString()); })
-        .catch(() => toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.'))
-        .finally(() => { if (userIdRef.current === userId) setIsCartSyncing(false); });
+      })), session)
+        .then((result) => { if (isCurrent()) setCartSyncedAt(result.syncedAt || new Date().toISOString()); })
+        .catch(() => { if (isCurrent()) toast.error('Chưa thể đồng bộ giỏ hàng. Sản phẩm vẫn được giữ trên thiết bị.'); })
+        .finally(() => { if (isCurrent()) setIsCartSyncing(false); });
     }, 250);
     return () => window.clearTimeout(timer);
   }, [cart, activeUserId]);
 
   // Sync cart to active user's localStorage
   useEffect(() => {
+    if (activeUserId !== userIdRef.current) return;
     try {
       const key = getCartStorageKey(activeUserId);
       localStorage.setItem(key, JSON.stringify(cart));
@@ -184,6 +213,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync selectedItemIds to active user's localStorage
   useEffect(() => {
+    if (activeUserId !== userIdRef.current) return;
     try {
       const key = getSelectedStorageKey(activeUserId);
       localStorage.setItem(key, JSON.stringify(selectedItemIds));
@@ -249,10 +279,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Ensure selectedItemIds only contains items currently in cart
   useEffect(() => {
-    const existingIds = new Set(cart.map((i) => i.cartItemId));
     setSelectedItemIds((prev) => {
+      // A previous render's effect can run after another account has hydrated.
+      const existingIds = new Set(cartRef.current.map((i) => i.cartItemId));
       const filtered = prev.filter((id) => existingIds.has(id));
-      return filtered;
+      return filtered.length === prev.length ? prev : filtered;
     });
   }, [cart]);
 
@@ -567,49 +598,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Toggle selection for all items in a store
   const toggleSelectStore = useCallback((storeId: string, forceSelect?: boolean) => {
-    setCart((currentCart) => {
-      const storeItems = currentCart.filter(
-        (i) => i.store.id === storeId && i.isActive && i.stockQuantity > 0,
-      );
-      const storeItemIds = storeItems.map((i) => i.cartItemId);
-
-      setSelectedItemIds((prev) => {
-        const allCurrentlySelected = storeItemIds.every((id) => prev.includes(id));
-        const shouldSelect = forceSelect !== undefined ? forceSelect : !allCurrentlySelected;
-
-        if (shouldSelect) {
-          const next = new Set([...prev, ...storeItemIds]);
-          return Array.from(next);
-        } else {
-          return prev.filter((id) => !storeItemIds.includes(id));
-        }
-      });
-
-      return currentCart;
+    const storeItemIds = cart
+      .filter((item) => item.store.id === storeId && item.isActive && item.stockQuantity > 0)
+      .map((item) => item.cartItemId);
+    setSelectedItemIds((prev) => {
+      const allCurrentlySelected = storeItemIds.length > 0 && storeItemIds.every((id) => prev.includes(id));
+      const shouldSelect = forceSelect !== undefined ? forceSelect : !allCurrentlySelected;
+      return shouldSelect ? Array.from(new Set([...prev, ...storeItemIds])) : prev.filter((id) => !storeItemIds.includes(id));
     });
-  }, []);
+  }, [cart]);
 
   // Toggle select all across the entire cart
   const toggleSelectAll = useCallback((forceSelect?: boolean) => {
-    setCart((currentCart) => {
-      const selectableIds = currentCart
-        .filter((i) => i.isActive && i.stockQuantity > 0)
-        .map((i) => i.cartItemId);
-
-      setSelectedItemIds((prev) => {
-        const allSelected = selectableIds.length > 0 && selectableIds.every((id) => prev.includes(id));
-        const shouldSelect = forceSelect !== undefined ? forceSelect : !allSelected;
-
-        if (shouldSelect) {
-          return selectableIds;
-        } else {
-          return [];
-        }
-      });
-
-      return currentCart;
+    const selectableIds = cart
+      .filter((item) => item.isActive && item.stockQuantity > 0)
+      .map((item) => item.cartItemId);
+    setSelectedItemIds((prev) => {
+      const allSelected = selectableIds.length > 0 && selectableIds.every((id) => prev.includes(id));
+      const shouldSelect = forceSelect !== undefined ? forceSelect : !allSelected;
+      return shouldSelect ? selectableIds : [];
     });
-  }, []);
+  }, [cart]);
 
   // Clear entire cart
   const clearCart = useCallback(() => {
@@ -783,6 +792,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Real-time stock & price validation (Requirement 6)
   const refreshCartStock = useCallback(async () => {
     if (cart.length === 0) return;
+    const revision = authRevisionRef.current;
     setIsValidatingStock(true);
     try {
       const res: any = await api.post('/orders/validate-cart', {
@@ -793,6 +803,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clientPrice: i.price,
         })),
       });
+
+      if (authRevisionRef.current !== revision) return;
 
       const data = res?.data || res;
       if (data?.items && Array.isArray(data.items)) {
@@ -821,7 +833,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // Backend validation silent fallback
     } finally {
-      setIsValidatingStock(false);
+      if (authRevisionRef.current === revision) setIsValidatingStock(false);
     }
   }, [cart]);
 

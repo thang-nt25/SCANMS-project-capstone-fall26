@@ -1,8 +1,17 @@
 # FR-13 - Tracking Last-Click và Cookie
 
-Sequence đã đổi theo ảnh mẫu: participant, lifeline, activation và mũi tên; không có khung ngang ghi chú/ref/opt. Luồng thành công được thể hiện chính, các điều kiện ghi trên mũi tên và chi tiết lỗi nằm trong tài liệu/chú thích cuối trang.
+Cập nhật theo lựa chọn của người dùng ngày 2026-10-20: **giữ nguyên toàn bộ lớp, thành viên và quan hệ; chỉ đổi cách dàn hình và tỷ lệ hiển thị**. Class FR10–FR16 cùng khổ 2800 × 2240, font Arial 20/18 và trục Controller → Service → PrismaService tại x=850 như FR9. Các model liên quan được phân nhóm sang cột trái khi phù hợp, tránh dồn tất cả vào một cột bên phải. Hộp trục xử lý rộng 830, cột trái 560, model bên phải 620, PrismaClient 650. Không bổ sung guard hoặc lớp mới. Xem [bố cục và đối chiếu FR9](diagrams/FR09_WORD_CLASS_COMPARISON.md).
 
-Đối chiếu mã nguồn hiện tại ngày 2026-10-16. Hai file riêng: class diagram có bố cục rộng và sequence diagram gộp một trang (click/cookie → queue/log → attribution khi đặt hàng). Lifeline giao diện/controller/service nhóm các thành phần theo vai trò; tên cụ thể ghi ở cuối trang. Queue chạy bất đồng bộ, có thể xen kẽ checkout; vị trí minh họa trên trang không yêu cầu queue hoàn tất trước khi đặt hàng. Nền trắng đen, chữ không có nền trắng riêng; bội số quan hệ đặt gần đầu dây. Sơ đồ mô tả những thành phần liên quan FR-13, không phải toàn bộ module referral-links/orders.
+Sequence dùng chung generator `report-uml-layout.cjs`: actor bên trái, Browser kế tiếp rồi các đối tượng thực tế; hộp Browser rộng 250, các hộp đối tượng rộng 430, cùng cao 58; tiêu đề 28, tên đối tượng 20, thông điệp 18. Khoảng cách và thanh thực thi, lời gọi nội bộ, mũi tên gọi/trả về, số thứ tự và ba chú thích cuối hình được đồng bộ. Giữ nhịp 64 px của FR9, thêm 8 px sau lời gọi nội bộ để không che vòng trả về. Giữ nguyên thành phần, nội dung và thứ tự thông điệp của bản rút gọn; số cột tùy chức năng. Không thêm khung bao hoặc khung chia nhánh.
+
+
+Đối chiếu mã nguồn ngày 2026-10-19. **Bản báo cáo rút gọn hiện tại: 10 lớp/model, 25 thông điệp sequence.** Hai hình dùng đen trắng, class ba ngăn và `+`/`-`, connector có source/target thật và bội số đúng schema; sequence có actor, lifeline, activation và mũi tên, không có khung bao/chia nhánh. Điều kiện ghi trên nhãn. Phong cách theo FR9 và mẫu Word đã tham khảo.
+
+Ví dụ đã có phiên từ click hợp lệ của KOL A; hình mở rộng click KOL B cùng Shop, cập nhật phiên Last-Click, cookie định danh và attribution khi đặt đơn. Limiter, cache và worker log được tóm tắt; fingerprint fallback được giải thích trong văn bản.
+
+Các lớp/model được vẽ: `RedirectController`, `ReferralLinksService`, `OrdersController`, `PrismaService`, `OrdersService`, `Store`, `ReferralLink`, `AttributionSession`, `Order`, `PrismaClient`. Chỉ chọn thành viên liên quan; model không có phương thức tự khai báo giữ ngăn operation trống. Không dựng Repository/UnitOfWork hoặc service giả. PrismaService kế thừa PrismaClient trong mã và được vẽ bằng tam giác rỗng hướng tới hộp PrismaClient ở phía dưới bên trái, giống FR9.
+
+Hai XML không có đuôi mở rộng: `docs/review 2/FR13 - Class Diagram` và `docs/review 2/FR13 - Sequence Diagram`. Bản `.drawio`, `.scene.json`, PNG có tiền tố `FR13_Last_Click_Tracking_Cookie` trong `docs/diagrams`; XML để dán là `FR13_Class_Paste.xml` và `FR13_Sequence_Paste.xml`. PNG là preview từ cùng geometry, không phải export trực tiếp diagrams.net. Bản chi tiết cũ, gồm tài liệu mô tả hình cũ, được lưu tại `docs/diagrams/archive/FR13_detailed`.
 
 ## 1. Luồng vào link và thu thập tín hiệu
 
@@ -87,3 +96,20 @@ Nguồn đối chiếu:
 - backend/prisma/schema.prisma
 
 Tái tạo hai file draw.io: `node docs/diagrams/build-fr13-diagrams.cjs`.
+
+## 7. File bàn giao và kiểm tra
+
+- Hai file XML không có đuôi mở rộng: `docs/review 2/FR13 - Class Diagram` và `docs/review 2/FR13 - Sequence Diagram`, cùng tiền tố để nằm cạnh nhau khi sắp xếp theo tên.
+- Bản `.drawio`, `.scene.json`, PNG và XML để dán nằm trong `docs/diagrams`, với tiền tố `FR13_Last_Click_Tracking_Cookie` hoặc `FR13_Class_Paste`/`FR13_Sequence_Paste`.
+- Generator bản báo cáo: `build-report-diagrams.cjs` + `fr13-report-spec.json` + `report-uml-layout.cjs`, dùng chung helper UML của FR9. Các entry point FR13 đều chuyển tới bản báo cáo.
+- Đã render và xem cả hai ảnh; bộ kiểm tra chiều cao chữ không báo tràn. Kiểm tra đường nối class không xuyên qua phần trong của lớp và không chồng đoạn thẳng cùng hướng.
+- Hai suite unit có sẵn `referral-links.service.spec.ts` và `client-ip.util.spec.ts`: **48/48 test đạt**, chạy với `test/jest-unit.config.cjs`. Đây là kiểm tra unit liên quan, không phải xác nhận end-to-end trên DB/Redis thật.
+- Chỉ cập nhật tài liệu/sơ đồ; không sửa logic tracking, cookie hoặc order của ứng dụng.
+
+## Kiểm tra bản báo cáo rút gọn
+
+Tái tạo: `node docs/diagrams/build-fr13-diagrams.cjs` hoặc `node docs/diagrams/build-report-diagrams.cjs 13`. Đặc tả nằm trong `fr13-report-spec.json`; bộ bố cục dùng `report-uml-layout.cjs` và helper UML của FR9.
+
+Kiểm tra 10 cặp ngăn class, 25 thông điệp, một trang mỗi file, ID/tham chiếu, giới hạn canvas, đường nối không xuyên lớp hoặc chồng đoạn thẳng cùng hướng; render/xem hai PNG và kiểm tra tràn chữ. Review và XML paste phải khớp bản gốc. Chỉ thay sơ đồ/tài liệu, không thay logic ứng dụng. Kết quả unit test bên trên thuộc lượt đối chiếu trước; không chạy lại test nghiệp vụ cho lần rút gọn này.
+
+Kiểm tra bằng `docs/diagrams/validate-report-diagrams.ps1`: XML một trang, ID/tham chiếu, review/paste, khổ hình và vị trí các khối, bội số và kiểu mũi tên. So với mốc `docs/diagrams/archive/FR13_before_balanced_class_layout`, danh sách lớp/thành viên và toàn bộ mảng quan hệ khớp nguyên vẹn; sequence/drawio/scene/PNG/paste khớp hash. Đã render và xem PNG class, không tràn chữ; nhãn không che dây. Bản mốc trước còn được giữ trong các thư mục `FR13_before_word_class_alignment`, `FR13_before_fr09_sequence_layout` và `FR13_compact_before_fr09_layout`.

@@ -87,6 +87,12 @@ export class PublicProductsController {
     );
   }
 
+  @Get('suggestions')
+  @ApiOperation({ summary: 'Gợi ý sản phẩm công khai khi nhập từ khóa, tối đa 6 kết quả' })
+  getSearchSuggestions(@Query('search') search = '') {
+    return this.productsService.getSearchSuggestions(search);
+  }
+
   @Get('categories')
   @ApiOperation({
     summary: 'Lấy danh sách các danh mục ngành hàng có sản phẩm thực tế',
@@ -101,6 +107,12 @@ export class PublicProductsController {
   })
   async getStores() {
     return this.productsService.getPublicStores();
+  }
+
+  @Get(':idOrSlug/stock')
+  @ApiOperation({ summary: 'Số lượng có sẵn của sản phẩm và từng phân loại, không dùng cache landing' })
+  getStock(@Param('idOrSlug') idOrSlug: string) {
+    return this.productsService.getRealtimeStock(idOrSlug);
   }
 
   @Get(':idOrSlug/landing')

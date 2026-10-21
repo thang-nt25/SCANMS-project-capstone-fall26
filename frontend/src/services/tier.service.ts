@@ -11,7 +11,9 @@ export interface TierStatus {
   currentTier: TierPolicy;
   currentRevenue: number;
   totalOrders: number;
-  revenueBasis: 'LIFETIME';
+  revenueBasis: 'PREVIOUS_MONTH_VIETNAM';
+  assessmentPeriod?: { startsAt: string; endsAt: string };
+  nextEvaluationAt?: string;
   qualifiedTier: TierPolicy;
   nextTier: TierPolicy | null;
   progressPercentage: number;
@@ -20,12 +22,12 @@ export interface TierStatus {
 
 export const tierService = {
   async getAllTiers(): Promise<TierPolicy[]> {
-    const res: any = await api.get('/tiers');
+    const res: any = await api.get('/tiers', { headers: { 'x-skip-cache': 'true' } });
     return res.data;
   },
 
   async getMyTierStatus(): Promise<TierStatus> {
-    const res: any = await api.get('/tiers/my-status');
+    const res: any = await api.get('/tiers/my-status', { headers: { 'x-skip-cache': 'true' } });
     return res.data;
   },
 

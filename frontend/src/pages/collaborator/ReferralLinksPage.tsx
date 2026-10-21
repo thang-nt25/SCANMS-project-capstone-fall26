@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { DealKpiProgress } from '@/components/affiliate/DealKpiProgress';
+import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -808,6 +810,10 @@ export default function ReferralLinksPage() {
   };
 
   const handleDeleteDeal = (deal: any) => {
+    if (deal.status === 'APPROVED' || deal.closedAt) {
+      toast.error('Deal đã duyệt được giữ làm lịch sử đối soát. Hãy trao đổi với Shop để xem xét KPI thay vì xoá.');
+      return;
+    }
     setDealToDelete(deal);
   };
 
@@ -867,6 +873,8 @@ export default function ReferralLinksPage() {
         productId: dealProposalProduct.id,
         proposedCommissionRate: proposedRate,
         salesCommitment: dealSalesCommitment.trim(),
+        targetOrders: dealTargetOrders,
+        commitmentDays: dealTimeframeDays,
       });
       setDealProposals((current) => [proposal, ...current.filter((item) => item.id !== proposal.id)]);
       toast.success('Đã gửi đề xuất qua Chat cho Shop.');
@@ -1198,6 +1206,7 @@ export default function ReferralLinksPage() {
                     className="kol-deal-card rounded-xl border border-[#EAE4D7] bg-white hover:border-[#C59B58]/60 hover:bg-white p-3.5 transition-all shadow-2xs flex flex-col justify-between"
                   >
                     <div>
+                      <DealKpiProgress id={deal.id} />
                       {/* Tiêu đề & Trạng thái */}
                       <div className="kol-deal-card-heading flex items-start justify-between gap-2.5">
                         <div className="min-w-0 flex-1">
@@ -3166,6 +3175,8 @@ export default function ReferralLinksPage() {
                   </button>
                 </div>
 
+                <DealDemoPanel />
+                <p className="text-xs text-[#7D715E]">KPI bắt đầu khi Shop duyệt, có 14 ngày đối soát sau kỳ. Chỉ đơn hoàn tất và chưa hoàn tiền được ghi nhận.</p>
                 {/* 1. Chu kỳ cam kết */}
                 <div className="kol-commitment-group">
                   <label className="block text-xs font-bold text-[#7D715E] mb-1.5">

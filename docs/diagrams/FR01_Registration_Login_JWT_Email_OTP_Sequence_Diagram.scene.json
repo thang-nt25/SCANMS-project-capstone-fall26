@@ -1,0 +1,1421 @@
+{
+  "width": 3450,
+  "height": 3072,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-01 Registration, Login JWT and Email OTP — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 3360,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Current web flow: CUSTOMER registration with email OTP → automatic password login → JWT. Login OTP 2FA is not implemented.",
+      "x": 45,
+      "y": 73,
+      "w": 3360,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "User",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":AuthController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":AuthService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":JwtService (@nestjs/jwt)",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2975,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":MailService",
+      "x": 2983,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3190,
+          193
+        ],
+        [
+          3190,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2362
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 517,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 725,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 453,
+      "w": 10,
+      "h": 410
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 389,
+      "w": 10,
+      "h": 538
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1317,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1525,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 1173,
+      "w": 10,
+      "h": 490
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 1109,
+      "w": 10,
+      "h": 618
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1989,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 2197,
+      "w": 10,
+      "h": 10
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 2261,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 1925,
+      "w": 10,
+      "h": 474
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 1861,
+      "w": 10,
+      "h": 602
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2362
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Enter registration details; accept terms; Register",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          309
+        ],
+        [
+          510,
+          309
+        ],
+        [
+          510,
+          328
+        ],
+        [
+          465,
+          328
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. Require matching passwords (8+ characters) and terms",
+      "x": 522,
+      "y": 283,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          389
+        ],
+        [
+          1025,
+          389
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. POST /api/auth/send-otp { email }",
+      "x": 472,
+      "y": 340,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          453
+        ],
+        [
+          1565,
+          453
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. sendRegistrationOtp(dto)",
+      "x": 1042,
+      "y": 404,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          517
+        ],
+        [
+          2105,
+          517
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. Normalize email; user.findUnique({ email })",
+      "x": 1582,
+      "y": 468,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          581
+        ],
+        [
+          1575,
+          581
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "6. No existing non-deleted account",
+      "x": 1582,
+      "y": 532,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          645
+        ],
+        [
+          1620,
+          645
+        ],
+        [
+          1620,
+          664
+        ],
+        [
+          1575,
+          664
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. Generate random 6-digit OTP; cache by email for 5 minutes",
+      "x": 1632,
+      "y": 619,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          725
+        ],
+        [
+          3185,
+          725
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. sendRegistrationOtp(email, otp)",
+      "x": 2122,
+      "y": 676,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          789
+        ],
+        [
+          1575,
+          789
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "9. Dispatcher completes: SMTP or console fallback",
+      "x": 2122,
+      "y": 740,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          853
+        ],
+        [
+          1035,
+          853
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "10. success and message; never return OTP",
+      "x": 1042,
+      "y": 804,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          917
+        ],
+        [
+          465,
+          917
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "11. 201: request accepted (no HttpCode override)",
+      "x": 472,
+      "y": 868,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          981
+        ],
+        [
+          115,
+          981
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. Show OTP modal; 60-second resend countdown",
+      "x": 122,
+      "y": 932,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          1045
+        ],
+        [
+          455,
+          1045
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. Read issued code; enter email OTP; Confirm",
+      "x": 122,
+      "y": 996,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1109
+        ],
+        [
+          1025,
+          1109
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "14. POST /api/auth/register (CUSTOMER, details, password, otp)",
+      "x": 472,
+      "y": 1060,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1173
+        ],
+        [
+          1565,
+          1173
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. register(dto)",
+      "x": 1042,
+      "y": 1124,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1237
+        ],
+        [
+          1620,
+          1237
+        ],
+        [
+          1620,
+          1256
+        ],
+        [
+          1575,
+          1256
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. Validate public role; assertOtp; consume OTP before DB writes",
+      "x": 1632,
+      "y": 1211,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1317
+        ],
+        [
+          2105,
+          1317
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. Recheck normalized email uniqueness",
+      "x": 1582,
+      "y": 1268,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1381
+        ],
+        [
+          1575,
+          1381
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "18. Email available",
+      "x": 1582,
+      "y": 1332,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1445
+        ],
+        [
+          1620,
+          1445
+        ],
+        [
+          1620,
+          1464
+        ],
+        [
+          1575,
+          1464
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "19. hashPassword(): Argon2id; bcrypt fallback on hash failure",
+      "x": 1632,
+      "y": 1419,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1525
+        ],
+        [
+          2105,
+          1525
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "20. user.create(CUSTOMER, passwordHash, normalized details)",
+      "x": 1582,
+      "y": 1476,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1589
+        ],
+        [
+          1575,
+          1589
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. Selected user fields; no passwordHash",
+      "x": 1582,
+      "y": 1540,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1653
+        ],
+        [
+          1035,
+          1653
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. User and registration message; no access token",
+      "x": 1042,
+      "y": 1604,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          1717
+        ],
+        [
+          465,
+          1717
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. 201: registration completed",
+      "x": 472,
+      "y": 1668,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1781
+        ],
+        [
+          510,
+          1781
+        ],
+        [
+          510,
+          1800
+        ],
+        [
+          465,
+          1800
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "24. RegisterPage automatically calls authService.login()",
+      "x": 522,
+      "y": 1755,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1861
+        ],
+        [
+          1025,
+          1861
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "25. POST /api/auth/login { identifier: email, password }",
+      "x": 472,
+      "y": 1812,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1925
+        ],
+        [
+          1565,
+          1925
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "26. login(dto, { ipAddress, userAgent })",
+      "x": 1042,
+      "y": 1876,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1989
+        ],
+        [
+          2105,
+          1989
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "27. findLoginUser(email): User + Stores/Profile/tier/Wallet",
+      "x": 1582,
+      "y": 1940,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2053
+        ],
+        [
+          1575,
+          2053
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "28. Account and stored passwordHash",
+      "x": 1582,
+      "y": 2004,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          2117
+        ],
+        [
+          1620,
+          2117
+        ],
+        [
+          1620,
+          2136
+        ],
+        [
+          1575,
+          2136
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "29. Require active account; verifyPassword; upgrade bcrypt if needed",
+      "x": 1632,
+      "y": 2091,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          2197
+        ],
+        [
+          3185,
+          2197
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "30. [mail configured] sendLoginSecurityAlert(); catch failure",
+      "x": 2122,
+      "y": 2148,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          2261
+        ],
+        [
+          2645,
+          2261
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "31. sign({ sub: user.id, email, role })",
+      "x": 1582,
+      "y": 2212,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          2325
+        ],
+        [
+          1575,
+          2325
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "32. Access JWT; configured expiry (default 7d)",
+      "x": 1582,
+      "y": 2276,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2389
+        ],
+        [
+          1035,
+          2389
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "33. accessToken, safeUser, securityAlertQueued",
+      "x": 1042,
+      "y": 2340,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2453
+        ],
+        [
+          465,
+          2453
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "34. 200: login response in success/statusCode/data envelope",
+      "x": 472,
+      "y": 2404,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2517
+        ],
+        [
+          510,
+          2517
+        ],
+        [
+          510,
+          2536
+        ],
+        [
+          465,
+          2536
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "35. Save token/user/workspace in localStorage; emit auth events",
+      "x": 522,
+      "y": 2491,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2597
+        ],
+        [
+          115,
+          2597
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "36. Navigate to safe return path or /customer/orders",
+      "x": 122,
+      "y": 2548,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = RegisterPage + LoginPage + frontend authService + Axios. Public RegisterPage sends CUSTOMER; backend also handles COLLABORATOR and SHOP_MANAGER requests. Global DTO validation runs before controller methods.",
+      "x": 45,
+      "y": 2707,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "OTP verifies registration email, not a second login factor. It is held in a per-process Map for 5 minutes, removed after 5 wrong guesses or successful assertion. Resend replaces the cached code; the 60-second resend countdown is enforced by UI.",
+      "x": 45,
+      "y": 2757,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Expanded happy path is CUSTOMER. KOL requests create profile/tier lookup and Wallet; Shop requests create an inactive DRAFT Store while the User starts as CUSTOMER. These are separate writes, not a registration transaction; OTP is already consumed.",
+      "x": 45,
+      "y": 2812,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "MailService encapsulates Nodemailer SMTP. Missing configuration or ordinary send failure can fall back to console; success response is not proof of inbox delivery. Login alert is unawaited and never a blocking OTP challenge. No real email was sent for this diagram.",
+      "x": 45,
+      "y": 2867,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Existing-account login also accepts a uniquely resolved Vietnamese phone number. Invalid credentials: 401; disabled account: 403; invalid/expired OTP or DTO: 400; duplicate email: 409. JWT_SECRET is required; no refresh-token flow or login 2FA endpoint exists in the inspected auth code.",
+      "x": 45,
+      "y": 2922,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Protected routes use JwtAuthGuard + JwtStrategy to verify Bearer signature/expiry and reload active User; GET /api/auth/me returns safe account data. Those later calls, Google OAuth and password recovery are documented separately. Auto-login failure after registration returns UI to /login.",
+      "x": 45,
+      "y": 2977,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

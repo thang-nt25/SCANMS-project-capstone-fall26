@@ -1,0 +1,402 @@
+{
+  "fr": "FR14",
+  "stem": "FR14_Redis_Click_Rate_Limit",
+  "title": "FR-14 Redis Click Spam Protection",
+  "classes": [
+    {
+      "id": "RedirectController",
+      "name": "RedirectController",
+      "attrs": [
+        "- service: ReferralLinksService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ handleRedirect(shortCode, req, res, userAgent?, referer?)"
+      ]
+    },
+    {
+      "id": "ReferralLinksService",
+      "name": "ReferralLinksService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- cacheService: CacheService",
+        "- clickQueue?: ClickQueueService"
+      ],
+      "ops": [
+        "+ handleRedirect(shortCode: string, clientInfo: ClientTrackingInfo)"
+      ]
+    },
+    {
+      "id": "CacheService",
+      "name": "CacheService",
+      "attrs": [
+        "- redisClient: Redis | null",
+        "- isConnectedToRedis: boolean",
+        "- fallbackSlidingWindowMap: Map<string, {timestamps: number[]; lastSeen: number}>",
+        "- clickRateLimitLuaScript: string"
+      ],
+      "ops": [
+        "+ checkClickRateLimitAtomic(params)",
+        "+ recordClickSpike(metadata)",
+        "+ isRedisActive(): boolean"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "ClickQueueService",
+      "name": "ClickQueueService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- cacheService?: CacheService",
+        "- queue: EnqueuedClickJob[]"
+      ],
+      "ops": [
+        "+ enqueue(job: EnqueuedClickJob): void",
+        "+ processQueue(): Promise<void>",
+        "- processSingleJob(job: EnqueuedClickJob): Promise<void>"
+      ]
+    },
+    {
+      "id": "Redis",
+      "name": "Redis (ioredis library)",
+      "attrs": [
+        "+ status: RedisStatus"
+      ],
+      "ops": [
+        "+ eval(script, numberOfKeys, ...args)"
+      ]
+    },
+    {
+      "id": "ReferralLink",
+      "name": "ReferralLink",
+      "attrs": [
+        "+ id: string",
+        "+ shortCode: string {unique}",
+        "+ storeId, collaboratorId, productId: string",
+        "+ status: ReferralLinkStatus",
+        "+ totalClicks, uniqueClicks: number"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ClickTrafficLog",
+      "name": "ClickTrafficLog",
+      "attrs": [
+        "+ id: string",
+        "+ eventId: string | null {unique}",
+        "+ referralLinkId: string",
+        "+ isValid, isUnique: boolean",
+        "+ riskReason: string | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ referralLink: Prisma.ReferralLinkDelegate",
+        "+ clickTrafficLog: Prisma.ClickTrafficLogDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "RedirectController",
+      "ReferralLinksService",
+      "reference",
+      "service"
+    ],
+    [
+      "ReferralLinksService",
+      "CacheService",
+      "reference",
+      "cacheService"
+    ],
+    [
+      "ReferralLinksService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "ReferralLinksService",
+      "ClickQueueService",
+      "reference",
+      "clickQueue"
+    ],
+    [
+      "ClickQueueService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "ClickQueueService",
+      "CacheService",
+      "reference",
+      "cacheService"
+    ],
+    [
+      "CacheService",
+      "Redis",
+      "reference",
+      "redisClient"
+    ],
+    [
+      "PrismaService",
+      "ReferralLink",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "ClickTrafficLog",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "ReferralLink",
+      "ClickTrafficLog",
+      "association",
+      "clickTrafficLogs",
+      "1",
+      "0..*"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "redirect",
+      "name": ":RedirectController"
+    },
+    {
+      "id": "ref",
+      "name": ":ReferralLinksService"
+    },
+    {
+      "id": "cache",
+      "name": ":CacheService"
+    },
+    {
+      "id": "redis",
+      "name": ":Redis (ioredis)"
+    },
+    {
+      "id": "queue",
+      "name": ":ClickQueueService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    }
+  ],
+  "messages": [
+    [
+      "customer",
+      "browser",
+      "Open affiliate short link"
+    ],
+    [
+      "browser",
+      "redirect",
+      "GET /r/:shortCode"
+    ],
+    [
+      "redirect",
+      "redirect",
+      "Extract trusted client IP and visitor context"
+    ],
+    [
+      "redirect",
+      "ref",
+      "handleRedirect(shortCode, clientInfo)"
+    ],
+    [
+      "ref",
+      "ref",
+      "Normalize IP; HMAC rate-limit identity"
+    ],
+    [
+      "ref",
+      "cache",
+      "checkClickRateLimitAtomic(ipHash, limits, timeout)"
+    ],
+    [
+      "cache",
+      "redis",
+      "[ready] EVAL rolling 1s/60s Lua script"
+    ],
+    [
+      "redis",
+      "redis",
+      "Prune old timestamps; test second then minute limit"
+    ],
+    [
+      "redis",
+      "redis",
+      "[allowed] ZADD both windows; EXPIRE keys"
+    ],
+    [
+      "redis",
+      "cache",
+      "[completed] Allow or deny SEC/MIN",
+      "return"
+    ],
+    [
+      "cache",
+      "cache",
+      "[Redis unavailable/error/timeout] Apply local RAM windows"
+    ],
+    [
+      "cache",
+      "ref",
+      "Decision, counts and isDegraded",
+      "return"
+    ],
+    [
+      "ref",
+      "db",
+      "[link cache miss] Read link and eligibility records"
+    ],
+    [
+      "db",
+      "ref",
+      "[miss] Link with related data",
+      "return"
+    ],
+    [
+      "ref",
+      "ref",
+      "Apply link checks; denied click disables new attribution"
+    ],
+    [
+      "ref",
+      "queue",
+      "[queue available] enqueue(validity, riskReason, eventId)",
+      "async"
+    ],
+    [
+      "ref",
+      "redirect",
+      "Safe destination; allowAttribution result",
+      "return"
+    ],
+    [
+      "redirect",
+      "browser",
+      "302; denied click receives no new attribution cookie",
+      "return"
+    ],
+    [
+      "browser",
+      "customer",
+      "Show product page",
+      "return"
+    ],
+    [
+      "queue",
+      "queue",
+      "[independent worker] processQueue / processSingleJob"
+    ],
+    [
+      "queue",
+      "db",
+      "Check eventId; new event: transaction counters + click log"
+    ],
+    [
+      "db",
+      "queue",
+      "Commit new event; duplicate skipped",
+      "return"
+    ],
+    [
+      "queue",
+      "queue",
+      "ACK; limited events keep isValid/isUnique=false"
+    ]
+  ],
+  "subtitle": "Main flow: atomic rolling rate-limit decision → safe redirect → independent click logging.",
+  "classNote": "Defaults: 10 accepted clicks/second and 60/minute per IP hash across links. Redis Lua windows and local RAM fallback are caches, not Prisma tables; monitoring is documented separately.",
+  "notes": [
+    "Lua atomically prunes, counts and inserts allowed requests; denied requests are not inserted. Rolling windows are 1s/60s; key cleanup TTLs are 3s/70s. These are different durations.",
+    "Redis failure/timeout uses per-process RAM and sets isDegraded=true; it is not a shared multi-instance limiter. Caller timeout defaults to 50ms. Denial suppresses new attribution, not safe product navigation.",
+    "Regular browser and safe available link shown. Worker may run before or after redirect. New invalid logs increment totalClicks, never uniqueClicks; eventId prevents repeated writes. Full details: FR14_CODE_ANALYSIS.md."
+  ],
+  "activations": [
+    [
+      "queue",
+      19,
+      22
+    ]
+  ],
+  "classLayout": {
+    "controller": "RedirectController",
+    "service": "ReferralLinksService",
+    "supports": [
+      [
+        "CacheService",
+        150
+      ],
+      [
+        "Redis",
+        700
+      ],
+      [
+        "ClickQueueService",
+        1150
+      ]
+    ],
+    "models": [
+      "ReferralLink",
+      "ClickTrafficLog"
+    ],
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "modelPositions": {
+      "ReferralLink": [
+        1930,
+        150,
+        620
+      ],
+      "ClickTrafficLog": [
+        1930,
+        650,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v1"
+  }
+}

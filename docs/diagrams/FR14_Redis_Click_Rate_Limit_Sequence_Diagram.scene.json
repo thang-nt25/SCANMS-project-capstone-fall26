@@ -1,0 +1,1056 @@
+{
+  "width": 4240,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-14 Redis Click Spam Protection — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 4150,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: atomic rolling rate-limit decision → safe redirect → independent click logging.",
+      "x": 45,
+      "y": 73,
+      "w": 4150,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Customer",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":RedirectController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ReferralLinksService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CacheService",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2975,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":Redis (ioredis)",
+      "x": 2983,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3190,
+          193
+        ],
+        [
+          3190,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 3515,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ClickQueueService",
+      "x": 3523,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3730,
+          193
+        ],
+        [
+          3730,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 1849
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 858,
+      "w": 10,
+      "h": 340
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 764,
+      "w": 10,
+      "h": 646
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1495,
+      "w": 10,
+      "h": 104
+    },
+    {
+      "type": "rect",
+      "x": 3725,
+      "y": 1801,
+      "w": 10,
+      "h": 10
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 552,
+      "w": 10,
+      "h": 1354
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 339,
+      "w": 10,
+      "h": 1661
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 2296,
+      "w": 10,
+      "h": 105
+    },
+    {
+      "type": "rect",
+      "x": 3725,
+      "y": 2178,
+      "w": 10,
+      "h": 336
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 1849
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Open affiliate short link",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          339
+        ],
+        [
+          1025,
+          339
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. GET /r/:shortCode",
+      "x": 472,
+      "y": 290,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          434
+        ],
+        [
+          1080,
+          434
+        ],
+        [
+          1080,
+          453
+        ],
+        [
+          1035,
+          453
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. Extract trusted client IP and visitor context",
+      "x": 1092,
+      "y": 408,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          552
+        ],
+        [
+          1565,
+          552
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. handleRedirect(shortCode, clientInfo)",
+      "x": 1042,
+      "y": 503,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          646
+        ],
+        [
+          1620,
+          646
+        ],
+        [
+          1620,
+          665
+        ],
+        [
+          1575,
+          665
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. Normalize IP; HMAC rate-limit identity",
+      "x": 1632,
+      "y": 620,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          764
+        ],
+        [
+          2645,
+          764
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. checkClickRateLimitAtomic(ipHash, limits, timeout)",
+      "x": 1582,
+      "y": 715,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2655,
+          858
+        ],
+        [
+          3185,
+          858
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. [ready] EVAL rolling 1s/60s Lua script",
+      "x": 2662,
+      "y": 809,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3195,
+          952
+        ],
+        [
+          3240,
+          952
+        ],
+        [
+          3240,
+          971
+        ],
+        [
+          3195,
+          971
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. Prune old timestamps; test second then minute limit",
+      "x": 3252,
+      "y": 926,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3195,
+          1070
+        ],
+        [
+          3240,
+          1070
+        ],
+        [
+          3240,
+          1089
+        ],
+        [
+          3195,
+          1089
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. [allowed] ZADD both windows; EXPIRE keys",
+      "x": 3252,
+      "y": 1044,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          1188
+        ],
+        [
+          2655,
+          1188
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "10. [completed] Allow or deny SEC/MIN",
+      "x": 2662,
+      "y": 1139,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2655,
+          1282
+        ],
+        [
+          2700,
+          1282
+        ],
+        [
+          2700,
+          1301
+        ],
+        [
+          2655,
+          1301
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. [Redis unavailable/error/timeout] Apply local RAM windows",
+      "x": 2712,
+      "y": 1256,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1400
+        ],
+        [
+          1575,
+          1400
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. Decision, counts and isDegraded",
+      "x": 1582,
+      "y": 1351,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1495
+        ],
+        [
+          2105,
+          1495
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. [link cache miss] Read link and eligibility records",
+      "x": 1582,
+      "y": 1446,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1589
+        ],
+        [
+          1575,
+          1589
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. [miss] Link with related data",
+      "x": 1582,
+      "y": 1540,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1683
+        ],
+        [
+          1620,
+          1683
+        ],
+        [
+          1620,
+          1702
+        ],
+        [
+          1575,
+          1702
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. Apply link checks; denied click disables new attribution",
+      "x": 1632,
+      "y": 1657,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1801
+        ],
+        [
+          3725,
+          1801
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "16. [queue available] enqueue(validity, riskReason, eventId)",
+      "x": 2122,
+      "y": 1752,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1896
+        ],
+        [
+          1035,
+          1896
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "17. Safe destination; allowAttribution result",
+      "x": 1042,
+      "y": 1847,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          1990
+        ],
+        [
+          465,
+          1990
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "18. 302; denied click receives no new attribution cookie",
+      "x": 472,
+      "y": 1941,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2084
+        ],
+        [
+          115,
+          2084
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Show product page",
+      "x": 122,
+      "y": 2035,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3735,
+          2178
+        ],
+        [
+          3780,
+          2178
+        ],
+        [
+          3780,
+          2197
+        ],
+        [
+          3735,
+          2197
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "20. [independent worker] processQueue / processSingleJob",
+      "x": 3792,
+      "y": 2152,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3725,
+          2296
+        ],
+        [
+          2115,
+          2296
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "21. Check eventId; new event: transaction counters + click log",
+      "x": 2662,
+      "y": 2247,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          2391
+        ],
+        [
+          3725,
+          2391
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. Commit new event; duplicate skipped",
+      "x": 2662,
+      "y": 2342,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3735,
+          2485
+        ],
+        [
+          3780,
+          2485
+        ],
+        [
+          3780,
+          2504
+        ],
+        [
+          3735,
+          2504
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "23. ACK; limited events keep isValid/isUnique=false",
+      "x": 3792,
+      "y": 2459,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Lua atomically prunes, counts and inserts allowed requests; denied requests are not inserted. Rolling windows are 1s/60s; key cleanup TTLs are 3s/70s. These are different durations.",
+      "x": 45,
+      "y": 2595,
+      "w": 4150,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Redis failure/timeout uses per-process RAM and sets isDegraded=true; it is not a shared multi-instance limiter. Caller timeout defaults to 50ms. Denial suppresses new attribution, not safe product navigation.",
+      "x": 45,
+      "y": 2645,
+      "w": 4150,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Regular browser and safe available link shown. Worker may run before or after redirect. New invalid logs increment totalClicks, never uniqueClicks; eventId prevents repeated writes. Full details: FR14_CODE_ANALYSIS.md.",
+      "x": 45,
+      "y": 2700,
+      "w": 4150,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

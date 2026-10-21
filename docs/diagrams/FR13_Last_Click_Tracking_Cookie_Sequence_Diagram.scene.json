@@ -1,0 +1,1044 @@
+{
+  "width": 3450,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-13 Last-Click Tracking and Cookie — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 3360,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main example: valid KOL A session → later valid KOL B click in the same Shop → checkout.",
+      "x": 45,
+      "y": 73,
+      "w": 3360,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Customer",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":RedirectController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ReferralLinksService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":OrdersController",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":OrdersService",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2975,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 2983,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3190,
+          193
+        ],
+        [
+          3190,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 733,
+      "w": 10,
+      "h": 99
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 910,
+      "w": 10,
+      "h": 99
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 533,
+      "w": 10,
+      "h": 676
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 334,
+      "w": 10,
+      "h": 1074
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1753,
+      "w": 10,
+      "h": 565
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1664,
+      "w": 10,
+      "h": 742
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 1842,
+      "w": 10,
+      "h": 387
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Open KOL B link after valid KOL A click",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          334
+        ],
+        [
+          1025,
+          334
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. GET /r/codeB with existing visitor cookie",
+      "x": 472,
+      "y": 285,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          422
+        ],
+        [
+          1080,
+          422
+        ],
+        [
+          1080,
+          441
+        ],
+        [
+          1035,
+          441
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. Verify visitor identity; read trusted IP/UA and privacy flags",
+      "x": 1092,
+      "y": 396,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          533
+        ],
+        [
+          1565,
+          533
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. handleRedirect(codeB, clientInfo)",
+      "x": 1042,
+      "y": 484,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          622
+        ],
+        [
+          1620,
+          622
+        ],
+        [
+          1620,
+          641
+        ],
+        [
+          1575,
+          641
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. Check rate limit; prepare tracking context",
+      "x": 1632,
+      "y": 596,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          733
+        ],
+        [
+          3185,
+          733
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. [link cache miss] Read B link with Product, Store and KOL",
+      "x": 2122,
+      "y": 684,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          822
+        ],
+        [
+          1575,
+          822
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "7. [miss] Link and eligibility records",
+      "x": 2122,
+      "y": 773,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          910
+        ],
+        [
+          3185,
+          910
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. [eligible] Upsert same Store/visitor session: replace A with B",
+      "x": 2122,
+      "y": 861,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          999
+        ],
+        [
+          1575,
+          999
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "9. B is current KOL/link; preserve firstClickedAt; renew expiry",
+      "x": 2122,
+      "y": 950,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1088
+        ],
+        [
+          1620,
+          1088
+        ],
+        [
+          1620,
+          1107
+        ],
+        [
+          1575,
+          1107
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. [queue available] Enqueue click job asynchronously",
+      "x": 1632,
+      "y": 1062,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1199
+        ],
+        [
+          1035,
+          1199
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "11. Destination, session and visitor result",
+      "x": 1042,
+      "y": 1150,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1287
+        ],
+        [
+          1080,
+          1287
+        ],
+        [
+          1080,
+          1306
+        ],
+        [
+          1035,
+          1306
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "12. [eligible session] Sign opaque visitor token; set cookies",
+      "x": 1092,
+      "y": 1261,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          1398
+        ],
+        [
+          465,
+          1398
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. Safe destination: 302 + eligible Set-Cookie",
+      "x": 472,
+      "y": 1349,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          1487
+        ],
+        [
+          115,
+          1487
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. Display product page",
+      "x": 122,
+      "y": 1438,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          1576
+        ],
+        [
+          455,
+          1576
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. Submit checkout",
+      "x": 122,
+      "y": 1527,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1664
+        ],
+        [
+          2105,
+          1664
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. POST /api/orders + JWT + visitor cookie",
+      "x": 1042,
+      "y": 1615,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2115,
+          1753
+        ],
+        [
+          2645,
+          1753
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. createOrder(dto, clientContext)",
+      "x": 2122,
+      "y": 1704,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2655,
+          1842
+        ],
+        [
+          3185,
+          1842
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. $transaction: read current Store/visitor session and link/KOL",
+      "x": 2662,
+      "y": 1793,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          1931
+        ],
+        [
+          2655,
+          1931
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Valid session points to KOL B",
+      "x": 2662,
+      "y": 1882,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2655,
+          2019
+        ],
+        [
+          2700,
+          2019
+        ],
+        [
+          2700,
+          2038
+        ],
+        [
+          2655,
+          2038
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "20. Resolve COUPON > COOKIE > FINGERPRINT > ORGANIC",
+      "x": 2712,
+      "y": 1993,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2655,
+          2130
+        ],
+        [
+          3185,
+          2130
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "21. Same transaction: create Order with winner and attribution snapshot",
+      "x": 2662,
+      "y": 2081,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          2219
+        ],
+        [
+          2655,
+          2219
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. Commit Order; B via COOKIE if no overriding coupon",
+      "x": 2662,
+      "y": 2170,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          2308
+        ],
+        [
+          2115,
+          2308
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. Created order response",
+      "x": 2122,
+      "y": 2259,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2396
+        ],
+        [
+          465,
+          2396
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. 201: public order confirmation",
+      "x": 1042,
+      "y": 2347,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "25. Show order success",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Precondition: a prior valid A click created the visitor session; the diagram expands the later B click. Different Stores keep separate sessions. Window defaults to 30 days, configurable per Store from 1 to 365.",
+      "x": 45,
+      "y": 2595,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = RedirectHandlerPage + checkout UI. Traffic limiter, link cache, independent click worker and fingerprint fallback internals are summarized in FR13_CODE_ANALYSIS.md. Ineligible clicks do not replace the session.",
+      "x": 45,
+      "y": 2645,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Checkout reads and writes occur within the same order transaction; the separate read/write arrows summarize its callback. Active, unexpired session/link/KOL checks apply. Cookie is not a trusted KOL ID supplied by the client.",
+      "x": 45,
+      "y": 2700,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

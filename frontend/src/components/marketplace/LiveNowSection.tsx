@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Eye, Gift, Radio, Play, User } from 'lucide-react';
+import { ArrowRight, CalendarDays, Eye, Gift, Radio, RotateCcw, Play, User } from 'lucide-react';
 import api from '@/services/api';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 
@@ -44,21 +44,32 @@ export function LiveNowSection({ onOpenHub }: { onOpenHub: () => void }) {
   const sessions = data.filter((session) => session.status === 'LIVE' && Date.parse(session.endsAt) > now);
 
   return (
-    <section id="live" aria-labelledby="live-now-title" className="scroll-mt-36 border-y border-[#EAE4D7] bg-white py-8 text-left sm:py-10">
+    <section id="live" aria-labelledby="live-now-title" className="scroll-mt-36 bg-[#FAF8F5] py-5 text-left sm:py-7">
       <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-        <div className="mb-5 flex items-end justify-between gap-3">
-          <div>
+        <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <p className="mb-1 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#7D715E]">{sessions.length > 0 && <span className="h-2 w-2 rounded-full bg-[#DC2626] motion-safe:animate-pulse" />}SCANMS LIVE COMMERCE</p>
             <h2 id="live-now-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Phiên Live KOC đang diễn ra</h2>
           </div>
-          <button type="button" onClick={onOpenHub} className="inline-flex shrink-0 items-center gap-1 py-2 text-xs font-bold text-[#7D715E] hover:text-[#B88E4F]">Lịch Live<ArrowRight size={15} /></button>
+          <button type="button" onClick={onOpenHub} className="ml-auto inline-flex shrink-0 items-center gap-1 py-2 text-xs font-bold text-[#7D715E] hover:text-[#B88E4F]">Lịch Live<ArrowRight size={15} /></button>
         </div>
         {isLoading ? (
           <div aria-label="Đang tải phiên Live" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-[#F3EFE6]" />)}</div>
         ) : sessions.length === 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-[#EEDFC6] bg-[#FBF5EB] p-6">
-            <div className="flex items-center gap-4"><Radio className="shrink-0 text-[#B88E4F]" size={32} /><div><p className="m-0 text-sm font-bold">{isError ? 'Chưa tải được các phiên Live' : 'Chưa có phiên đang phát ngay lúc này'}</p><p className="mb-0 mt-1 text-xs leading-5 text-[#7D715E]">{isError ? 'Bạn có thể thử tải lại trong giây lát.' : 'Khám phá lịch phát sóng và gặp gỡ KOC trong phiên tiếp theo.'}</p></div></div>
-            <button type="button" disabled={isError && isFetching} onClick={isError ? () => void refetch() : onOpenHub} className="min-h-11 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-60">{isError ? 'Thử lại' : 'Xem lịch phát sóng'}</button>
+          <div className="flex flex-col gap-5 rounded-2xl border border-[#EEDFC6] bg-white p-5 shadow-[0_4px_20px_rgba(75,57,34,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
+            <div className="flex min-w-0 items-start gap-3.5 sm:items-center sm:gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] sm:h-14 sm:w-14" aria-hidden="true"><Radio size={26} strokeWidth={1.6} /></span>
+              <div className="min-w-0">
+                <p className="m-0 text-sm font-semibold leading-6 text-[#1A1612] sm:text-base">{isError ? 'Chưa tải được các phiên Live' : 'Chưa có phiên Live đang diễn ra'}</p>
+                <p className="mb-0 mt-1 text-xs leading-5 text-[#7D715E] sm:text-[13px]">{isError ? 'Bạn có thể thử tải lại trong giây lát.' : 'Khám phá lịch phát sóng và gặp gỡ KOC trong phiên tiếp theo.'}</p>
+              </div>
+            </div>
+            <button type="button" disabled={isError && isFetching} onClick={isError ? () => void refetch() : onOpenHub} className="group inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3 text-xs font-semibold text-[#231D15] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
+              {isError ? <RotateCcw size={16} className="text-[#B88E4F]" aria-hidden="true" /> : <CalendarDays size={16} className="text-[#B88E4F]" aria-hidden="true" />}
+              {isError ? 'Thử lại' : 'Xem lịch phát sóng'}
+              {!isError && <ArrowRight size={15} className="text-[#B88E4F]" aria-hidden="true" />}
+            </button>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -90,6 +101,7 @@ export function LiveNowSection({ onOpenHub }: { onOpenHub: () => void }) {
             })}
           </div>
         )}
+        </div>
       </div>
     </section>
   );

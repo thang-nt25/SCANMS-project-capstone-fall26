@@ -1,6 +1,15 @@
 # FR-16 — Đặt hàng nhanh, tạo đơn và trừ tồn kho
 
-Đối chiếu mã nguồn ngày 2026-10-16. Hai file riêng trong `docs/diagrams`: `FR16_Guest_Checkout_Class_Diagram.drawio` và `FR16_Guest_Checkout_Sequence_Diagram.drawio`. Generator `build-fr16-diagrams.cjs` tạo class trước, sequence sau. Mỗi file có một diagram; sequence một trang, tiếng Anh, trắng đen, không dùng khung ngang ref/alt. Các điều kiện/nhánh tùy chọn ghi trên mũi tên; chúng không phải các bước luôn thực hiện trong mọi request.
+Cập nhật theo lựa chọn của người dùng ngày 2026-10-20: **giữ nguyên toàn bộ lớp, thành viên và quan hệ; chỉ đổi cách dàn hình và tỷ lệ hiển thị**. Class FR10–FR16 cùng khổ 2800 × 2240, font Arial 20/18 và trục Controller → Service → PrismaService tại x=850 như FR9. Các model liên quan được phân nhóm sang cột trái khi phù hợp, tránh dồn tất cả vào một cột bên phải. Hộp trục xử lý rộng 830, cột trái 560, model bên phải 620, PrismaClient 650. Không bổ sung guard hoặc lớp mới. Xem [bố cục và đối chiếu FR9](diagrams/FR09_WORD_CLASS_COMPARISON.md).
+
+Sequence dùng chung generator `report-uml-layout.cjs`: actor bên trái, Browser kế tiếp rồi các đối tượng thực tế; hộp Browser rộng 250, các hộp đối tượng rộng 430, cùng cao 58; tiêu đề 28, tên đối tượng 20, thông điệp 18. Khoảng cách và thanh thực thi, lời gọi nội bộ, mũi tên gọi/trả về, số thứ tự và ba chú thích cuối hình được đồng bộ. Giữ nhịp 64 px của FR9, thêm 8 px sau lời gọi nội bộ để không che vòng trả về. Giữ nguyên thành phần, nội dung và thứ tự thông điệp của bản rút gọn; số cột tùy chức năng. Không thêm khung bao hoặc khung chia nhánh.
+
+
+Đối chiếu mã nguồn ngày 2026-10-19. Hai file XML không có đuôi mở rộng: `docs/review 2/FR16 - Class Diagram` và `docs/review 2/FR16 - Sequence Diagram`, cùng tiền tố để nằm cạnh nhau khi sắp theo tên. Bản `.drawio`, `.scene.json`, PNG trong `docs/diagrams` có tiền tố `FR16_Guest_Checkout_`; XML để dán là `FR16_Class_Paste.xml` và `FR16_Sequence_Paste.xml`.
+
+Generator `build-fr16-diagrams.cjs` gọi `fr16-report-diagrams.cjs`, dùng chung helper UML của FR9, tạo class trước rồi sequence. Bản báo cáo gồm 11 lớp/model sau khi bổ sung hộp PrismaClient để thống nhất bố cục FR9, giữ ba ngăn tên/thuộc tính/phương thức và `+`/`-`; sequence rút từ 57 xuống 24 thông điệp trên một trang, với Customer, Browser, OrdersController, OrdersService, CouponsService và PrismaService. Không có khung bao `sd`, khung ngang `ref`/`alt`/`opt`/`break` hay đường chia nhánh. Điều kiện ghi trên thông điệp; nhãn nền trắng để lifeline không cắt chữ. Hình đen trắng theo FR9 và quy ước UML từ Word tham khảo; nội dung lấy từ SCANMS hiện tại.
+
+Sequence chọn luồng tạo đơn một Shop, coupon Shop/KOL tùy chọn, kết thúc ở xác nhận đã tạo đơn. Giữ kiểm tra dữ liệu, giá từ DB, coupon, trừ kho và tạo Order/OrderItems trong cùng transaction, commit và phản hồi. Shipping, rate limit, attribution, email sau commit, thanh toán và đa Shop được giải thích trong tài liệu này; không thêm service giả để thay thế. Bản chi tiết cũ được giữ tại `docs/diagrams/archive/FR16_detailed`. PNG là preview từ cùng geometry, không phải export trực tiếp của diagrams.net.
 
 ## 1. Khác biệt quan trọng so với tên Guest Checkout
 
@@ -20,7 +29,7 @@ Khi mở form:
 - Tạo idempotencyKey mới cho lần mở modal; giữ key cho các lần thử lại trong cùng lần mở.
 - Gọi `/orders/validate-cart` với productId, variantId, quantity, clientPrice để nhận cảnh báo giá/tồn/tính khả dụng. Đây là precheck; không giữ hàng và không thay thế kiểm tra backend lúc tạo đơn.
 - `loadShippingAddresses` từ order-address.service tải cấu trúc tỉnh/huyện/xã bằng fetch tới nguồn địa chỉ cấu hình; mặc định provinces.open-api.vn depth=3. Đây không phải API danh mục của OrdersController.
-- Tải chính sách Shop và trạng thái khả dụng PayOS. Khi địa chỉ đủ, gọi `/shipping/ghn/quote-address` cho từng Shop để preview phí; weight tối thiểu 500g, quy đổi 500g mỗi sản phẩm.
+- Tải chính sách Shop và trạng thái khả dụng PayOS. Khi địa chỉ đủ, gọi `/shipping/ghn/quote-address` cho từng Shop để preview phí. Phí chính thức lúc tạo đơn được backend báo giá lại từ kiện hàng tính bằng `buildShippingPackage` theo thông số đóng gói trong DB; không xem phí client hoặc quy đổi cố định theo số lượng là nguồn chính thức.
 
 Submit chặn khi chưa đăng nhập, coupon đang kiểm tra, PayOS chưa sẵn sàng, tên quá ngắn, điện thoại/email sai, thiếu địa chỉ hoặc tỉnh/huyện/xã, chưa tính được phí GHN, chưa tải/đồng ý chính sách, số lượng vượt tồn trên client. UI hiện lựa chọn **PAYOS hoặc WALLET**, mặc định PAYOS. Enum backend vẫn hỗ trợ COD và VIETQR; không vẽ COD là lựa chọn UI đang hiển thị.
 
@@ -46,14 +55,14 @@ Service lấy Product chưa xóa, yêu cầu isActive và moderationStatus APPRO
 
 Đọc Product/Variant và phần lớn dữ liệu giá diễn ra trước transaction; không vẽ thành mọi giá đều được SELECT FOR UPDATE bên trong transaction. Điều kiện tồn kho khi UPDATE mới là kiểm tra cuối có tác dụng chống âm kho.
 
-Nếu có mã coupon, service prevalidate bằng CouponsService. Backend gọi `quoteCheckoutShipping` qua GhnService.quoteAddress để lấy phí lần nữa; không dùng số phí preview phía client làm nguồn chính thức. Constructor cho phép ghnService optional để phục vụ legacy isolated tests, helper trả null nếu thiếu; trong nhánh này phí sẽ thành 0, không khẳng định mọi lời gọi service độc lập đều liên hệ GHN.
+Nếu có mã coupon, service prevalidate bằng CouponsService. Backend gọi `quoteCheckoutShipping` qua GhnService.quoteAddress để lấy phí lần nữa từ địa chỉ, giá trị hàng và kích thước/cân nặng của kiện hàng; không dùng số phí preview phía client làm nguồn chính thức. Dù constructor đánh dấu ghnService optional, helper hiện ném InternalServerErrorException khi thiếu dịch vụ; không fallback phí ship 0. `requireShippingFee` kiểm tra phí trước khi xử lý transaction.
 
 ## 5. Transaction trừ kho và tạo Order
 
 Đơn một Shop dùng Prisma `$transaction`, isolation ReadCommitted, timeout **15 giây**, gọi `executeStoreOrderInTransaction(tx, params)`.
 
 1. Kiểm tra lại trạng thái Store trong transaction bằng findUnique. Comment code dùng từ khóa hàng nhưng tại đoạn này không có SELECT FOR UPDATE cho Store; sơ đồ không vẽ khóa Store giả định.
-2. Với item có variantId: UPDATE product_variants, stock_quantity = stock_quantity - quantity, chỉ thành công khi stock >= quantity và is_active=true.
+2. Nếu có shippingPackage, khóa các hàng Product theo ID đã sắp xếp bằng SELECT ... FOR UPDATE, đọc lại packageWeight/Length/Width/Height và tính lại kiện hàng. Thông số khác báo giá thì trả 409 và rollback. Đây là khóa hàng Product để kiểm tra kiện, không phải SELECT FOR UPDATE Store hoặc khóa mọi giá trong transaction. Sau đó, với item có variantId: UPDATE product_variants, stock_quantity = stock_quantity - quantity, chỉ thành công khi stock >= quantity và is_active=true.
 3. Không có variantId: UPDATE products với điều kiện tương tự, thêm is_deleted=false.
 4. UPDATE ảnh hưởng 0 dòng thì ném PRODUCT_OUT_OF_STOCK, rollback. Code hiện ném BadRequestException **400**, dù Swagger liệt kê 422.
 5. Nếu có coupon: SELECT coupon FOR UPDATE, kiểm tra lại hiệu lực, scope, stacking, quota/ngân sách, cập nhật usageCount/budgetUsed. Có xử lý platform/shipping stacked vouchers và livestream/campaign liên quan.
@@ -76,7 +85,7 @@ Top-level paymentStatus trong response multi-Store hiện có giá trị UNPAID,
 
 ## 7. Sau commit và giao diện thành công
 
-Nếu có email và MailService, service gọi sendOrderConfirmation bất đồng bộ sau commit. Email lỗi được log, không rollback đơn đã commit. Cờ confirmationEmailQueued thể hiện đã lên lịch lời gọi, không chứng minh mail tới hộp thư.
+Sau commit, service await `sendConfirmationEmail`; helper gọi MailService.sendOrderConfirmation khi có email/service, catch lỗi và trả SENT/FAILED/NOT_REQUESTED. `confirmationEmailQueued` hiện trả false; không mô tả đây là email queue đã lên lịch. SENT phản ánh kết quả service chấp nhận gửi, không chứng minh người nhận đã nhận/đọc email. Lỗi mail không rollback đơn đã commit.
 
 Response trả publicOrderCode, totals, status, paymentMethod/paymentStatus, trackingUrl, items, Store; có cancellationToken cho đơn mới. Replay có dữ liệu phục hồi khác, không nhất thiết trả lại token ban đầu. Không đưa toàn bộ raw Order/PII vào diagram response.
 
@@ -88,10 +97,14 @@ Frontend unwrap response, chỉ removeItems các cartItemId đã đặt, lưu re
 
 `PayosOrderPayment` được mount theo mã đơn. Component POST `/orders/payos/:code/link`, tạo QR từ qrCode do server trả, và GET `/orders/payos/:code/status` lặp khoảng 5 giây khi chưa kết thúc. Hai endpoint có JwtAuthGuard, PayosPaymentService kiểm tra đơn thuộc người mua. Cập nhật UI theo paymentStatus server, không coi quét QR hoặc mở link là thanh toán thành công.
 
-PayOS link/poll chạy sau response tạo Order; không giữ transaction trừ kho mở trong lúc khách chuyển tiền. Webhook và hoàn tiền/hủy đơn là nghiệp vụ kế tiếp, không mở rộng toàn bộ vào sequence FR-16. Sequence nhóm các support service trên một lifeline và ghi rõ tên ở cuối trang; Shipping/Coupon preview đi controller riêng, không qua OrdersController.
+PayOS link/poll chạy sau response tạo Order; không giữ transaction trừ kho mở trong lúc khách chuyển tiền. Webhook và hoàn tiền/hủy đơn là nghiệp vụ kế tiếp, không mở rộng toàn bộ vào sequence FR-16. Bản sequence báo cáo kết thúc trước bước tạo link/QR; GhnService và PayosPaymentService không mở rộng thành lifeline trong hình này. CouponsService vẫn có lifeline riêng để thể hiện kiểm tra coupon. Shipping/Coupon preview của UI đi controller riêng, không qua OrdersController; đây là các bước chuẩn bị được tóm tắt.
 
 ## 9. Class diagram và kiểm tra tài liệu
 
-Các model chính: Store, Product, ProductVariant, Order, OrderItem, User, Coupon, CouponRedemption. Order có 0..* OrderItem theo schema; service tạo mới yêu cầu ít nhất một item. Mỗi OrderItem thuộc một Product, optional một variant. Order có tối đa một CouponRedemption chính nhờ orderId unique; stacked redemption là quan hệ khác. Một Coupon có nhiều redemption. Order.customerId, couponId, referralLinkId là FK; attributionSessionId/clickId là scalar, không vẽ FK cho chúng.
+Class diagram gồm năm lớp OrdersController, OrdersService, CouponsService, PrismaService, PrismaClient và sáu model Product, ProductVariant, Order, OrderItem, Coupon, CouponRedemption. Đã vẽ bảy association: Product–ProductVariant/OrderItem; ProductVariant–OrderItem; Order–OrderItem/Coupon/CouponRedemption; Coupon–CouponRedemption. Store/User không mở rộng thành hộp trong hình; các liên kết tương ứng vẫn tồn tại trong mã/schema. PrismaClient được vẽ thành hộp và có mũi tên kế thừa từ PrismaService, đúng mã nguồn. Order có 0..* OrderItem theo schema; service tạo mới yêu cầu ít nhất một item. Mỗi OrderItem thuộc một Product, optional một variant. Order có tối đa một CouponRedemption chính nhờ orderId unique; stacked redemption là quan hệ khác. Một Coupon có nhiều redemption. Order.customerId, couponId, referralLinkId là FK; attributionSessionId/clickId là scalar, không vẽ FK cho chúng. CouponRedemption chỉ khai báo relation coupon/order trong schema; các storeId/collaboratorId/customerId trên redemption không tự biến thành association.
 
-Đã đọc test hiện có orders-cart.spec.ts (giá/variant/tồn, atomic multi-Store) và order-hardening.spec.ts, đối chiếu với implementation. Không thay đổi code nghiệp vụ, .env hoặc chạy luồng đặt đơn thật. Xác minh tài liệu bằng parse XML, kiểm tra mỗi file một diagram/ID không trùng, render PNG và kiểm tra bố cục. PNG là preview từ geometry, không phải export trực tiếp diagrams.net.
+Đã chạy ba suite unit có sẵn `orders-cart.spec.ts`, `order-hardening.spec.ts`, `order-confirmation-email.spec.ts` với `test/jest-unit.config.cjs`: **16/16 test đạt**, gồm kiểm tra giá/variant, atomic multi-Store và mail sau commit. Đây là unit với mock, không phải kiểm chứng race condition/khóa DB hoặc giao dịch GHN/PayOS thật.
+
+Không sửa logic nghiệp vụ, không đọc `.env` hoặc tạo đơn thật. Khi rút gọn chỉ thay đổi sơ đồ và tài liệu, không chạy lại unit test nghiệp vụ. Kiểm tra đường nối không xuyên phần trong của lớp/không chồng đoạn thẳng cùng hướng; render và xem hai PNG, kiểm tra tràn chữ và giới hạn canvas; parse XML kiểm tra ID/tham chiếu, mỗi file một trang, ba ngăn cho 11 lớp/model và 24 thông điệp không có fragment frame. Bản review và XML paste phải khớp bản gốc.
+
+Kiểm tra bằng `docs/diagrams/validate-report-diagrams.ps1`: XML một trang, ID/tham chiếu, review/paste, khổ hình và vị trí các khối, bội số và kiểu mũi tên. So với mốc `docs/diagrams/archive/FR16_before_balanced_class_layout`, danh sách lớp/thành viên và toàn bộ mảng quan hệ khớp nguyên vẹn; sequence/drawio/scene/PNG/paste khớp hash. Đã render và xem PNG class, không tràn chữ; nhãn không che dây. Bản mốc trước còn được giữ trong các thư mục `FR16_before_word_class_alignment`, `FR16_before_fr09_sequence_layout` và `FR16_compact_before_fr09_layout`.

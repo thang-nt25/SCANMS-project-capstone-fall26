@@ -15,6 +15,7 @@ import {
 import { CouponStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { chatNotificationPreview } from './chat-notification';
+import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -130,7 +131,7 @@ export class ChatService {
         await this.prisma.storeCollaborator.upsert({
           where: { storeId_collaboratorId: { storeId, collaboratorId } },
           update: {},
-          create: { storeId, collaboratorId, status: 'APPROVED' },
+          create: { storeId, collaboratorId, status: 'PENDING', requestedByKol: actor.role === 'COLLABORATOR' },
         });
       } catch {}
     }
@@ -282,11 +283,23 @@ export class ChatService {
       },
       orderBy: { lastMessageAt: 'desc' },
     });
-    if (!isCustomer) return conversations;
+    const messageCounts = conversations.length
+      ? await this.prisma.chatMessage.groupBy({
+          by: ['conversationId'],
+          where: { conversationId: { in: conversations.map(item => item.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const totals = new Map(messageCounts.map(item => [item.conversationId, item._count._all]));
+    const conversationsWithTotals = conversations.map(conversation => ({
+      ...conversation,
+      messageCount: totals.get(conversation.id) || 0,
+    }));
+    if (!isCustomer) return conversationsWithTotals;
 
     // Protect against legacy/malformed customer conversations that contain a
     // private deal card, including the conversation-list preview payload.
-    return conversations.map((conversation) => ({
+    return conversationsWithTotals.map((conversation) => ({
       ...conversation,
       chatMessages: conversation.chatMessages.map((message) =>
         isExclusiveDealMessage(message.messageText)
@@ -543,6 +556,41 @@ export class ChatService {
           (message) => !isExclusiveDealMessage(message.messageText),
         )
       : orderedMessages;
+  }
+
+  async exploreMessages(conversationId: string, userId: string, query: ChatExplorerQuery) {
+    const conversation = await this.getConversationById(conversationId, userId);
+    const where = buildExplorerWhere(conversationId, userId, query);
+    // A cursor from another conversation must never influence this query.
+    if (query.cursor) {
+      const anchor = await this.prisma.chatMessage.findFirst({
+        where: { id: query.cursor, conversationId },
+        select: { id: true, createdAt: true },
+      });
+      if (!anchor) throw new BadRequestException('Mốc tin nhắn không còn tồn tại');
+      where.AND = [{ OR: [
+        { createdAt: { lt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, id: { lt: anchor.id } },
+      ] }];
+    }
+    const rows = await this.prisma.chatMessage.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 31,
+      select: {
+        id: true, conversationId: true, senderId: true, messageText: true,
+        mediaUrl: true, mediaType: true, mediaName: true, createdAt: true, isRead: true,
+        sender: { select: { id: true, fullName: true, role: true } },
+      },
+    });
+    const page = rows.slice(0, 30);
+    const customer = conversation.customerId === userId ||
+      (conversation.collaboratorId === userId && conversation.collaborator?.role === 'CUSTOMER');
+    return {
+      items: customer ? page.filter((row) => !isExclusiveDealMessage(row.messageText)) : page,
+      // Advance using scanned rows even if private cards were omitted.
+      nextCursor: rows.length > 30 ? page[page.length - 1].id : null,
+    };
   }
 
   async markRead(conversationId: string, userId: string) {

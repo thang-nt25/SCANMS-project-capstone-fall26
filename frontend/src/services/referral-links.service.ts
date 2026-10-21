@@ -91,6 +91,9 @@ export interface CreateReferralLinkPayload {
 }
 
 export interface ExclusiveDealProposal {
+  targetOrders?: number | null;
+  commitmentDays?: number | null;
+  closedAt?: string | null;
   id: string;
   productId: string;
   storeId: string;
@@ -122,6 +125,10 @@ export interface QueryReferralLinksParams {
 }
 
 export const referralLinksService = {
+  async getDealProgress(id: string): Promise<DealKpiProgress> {
+    const res = await api.get(`/affiliate-deals/${id}/progress`, { headers: { 'x-skip-cache': '1' } });
+    return res.data;
+  },
 
   async getMyExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
     const res: any = await api.get('/affiliate-deals/mine');
@@ -134,6 +141,8 @@ export const referralLinksService = {
     productId: string;
     proposedCommissionRate: number;
     salesCommitment: string;
+    targetOrders: number;
+    commitmentDays: number;
   }): Promise<ExclusiveDealProposal> {
     const res: any = await api.post('/affiliate-deals/proposals', payload);
     return res?.data?.data || res?.data || res;
@@ -286,5 +295,19 @@ export const referralLinksService = {
     setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
   },
 };
+
+export interface DealKpiProgress {
+  state: 'PENDING' | 'ACTIVE' | 'SETTLING' | 'ACHIEVED' | 'REVIEW_REQUIRED' | 'CLOSED' | 'LEGACY' | 'REJECTED';
+  targetOrders: number | null;
+  completedOrders: number;
+  pendingOrders: number;
+  missingOrders: number;
+  percent: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  settlementEndsAt: string | null;
+  serverTime: string;
+  canTerminate: boolean;
+}
 
 export default referralLinksService;

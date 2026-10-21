@@ -1,0 +1,366 @@
+{
+  "fr": "FR11",
+  "stem": "FR11_Generate_Dynamic_QR_Code",
+  "title": "FR-11 Generate Dynamic QR Code",
+  "classes": [
+    {
+      "id": "CollaboratorReferralLinksController",
+      "name": "CollaboratorReferralLinksController",
+      "attrs": [
+        "- service: ReferralLinksService"
+      ],
+      "ops": [
+        "+ getQrCode(id, user, format, size, download, ip, res)"
+      ]
+    },
+    {
+      "id": "ReferralLinksService",
+      "name": "ReferralLinksService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- configService: ConfigService",
+        "- cacheService: CacheService"
+      ],
+      "ops": [
+        "+ generateQrCode(linkIdOrCode, user, options, ipAddress?)",
+        "- getPublicAppUrl(): string"
+      ]
+    },
+    {
+      "id": "CacheService",
+      "name": "CacheService",
+      "attrs": [
+        "- redisClient: Redis | null",
+        "- memoryCache: Map<string, CacheEntry>"
+      ],
+      "ops": [
+        "+ get<T>(key: string): Promise<T | null>",
+        "+ set(key, value, ttlSeconds): Promise<void>",
+        "+ checkRateLimit(key, maxRequests, windowSeconds)"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id: string",
+        "+ ownerId: string",
+        "+ name: string"
+      ],
+      "ops": []
+    },
+    {
+      "id": "User",
+      "name": "User",
+      "attrs": [
+        "+ id: string",
+        "+ fullName: string",
+        "+ role: UserRole"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ReferralLink",
+      "name": "ReferralLink",
+      "attrs": [
+        "+ id: string",
+        "+ collaboratorId: string",
+        "+ storeId: string",
+        "+ shortCode: string {unique}",
+        "+ deletedAt: Date | null",
+        "+ qrDownloadCount: number"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ referralLink: Prisma.ReferralLinkDelegate",
+        "+ auditLog: Prisma.AuditLogDelegate"
+      ],
+      "ops": [
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "CollaboratorReferralLinksController",
+      "ReferralLinksService",
+      "reference",
+      "service"
+    ],
+    [
+      "ReferralLinksService",
+      "CacheService",
+      "reference",
+      "cacheService"
+    ],
+    [
+      "ReferralLinksService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "ReferralLink",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "Store",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "User",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "User",
+      "association",
+      "owner / stores",
+      "0..*",
+      "1"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "User",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "kol",
+      "name": "KOL",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "ctrl",
+      "name": ":CollaboratorReferralLinksController"
+    },
+    {
+      "id": "svc",
+      "name": ":ReferralLinksService"
+    },
+    {
+      "id": "cache",
+      "name": ":CacheService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    }
+  ],
+  "messages": [
+    [
+      "kol",
+      "browser",
+      "Open QR modal"
+    ],
+    [
+      "browser",
+      "browser",
+      "useQrDataUrl(): generate local QR preview"
+    ],
+    [
+      "browser",
+      "kol",
+      "Show local preview; no API request",
+      "return"
+    ],
+    [
+      "kol",
+      "browser",
+      "Choose PNG/SVG and size; Download"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "GET /api/referral-links/:id/qr?download=true"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "generateQrCode(id, user, options, ip)"
+    ],
+    [
+      "svc",
+      "svc",
+      "Validate format and size"
+    ],
+    [
+      "svc",
+      "db",
+      "Find non-deleted link with Store and collaborator"
+    ],
+    [
+      "db",
+      "svc",
+      "Link and ownership data",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Check authenticated role and link ownership"
+    ],
+    [
+      "svc",
+      "cache",
+      "checkRateLimit(download key, 20, 60)"
+    ],
+    [
+      "cache",
+      "svc",
+      "Rate-limit decision",
+      "return"
+    ],
+    [
+      "svc",
+      "cache",
+      "get(qr_render:linkId:format:size)"
+    ],
+    [
+      "cache",
+      "svc",
+      "Cached image or null",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "[miss] Render PNG or render and sanitize SVG"
+    ],
+    [
+      "svc",
+      "cache",
+      "[miss] set(cacheKey, rendered image, 86400)"
+    ],
+    [
+      "cache",
+      "svc",
+      "[miss] Cache write completed",
+      "return"
+    ],
+    [
+      "svc",
+      "db",
+      "Increment qrDownloadCount (best effort)"
+    ],
+    [
+      "db",
+      "svc",
+      "Counter result; failure does not block image",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "Image, content type and filename",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "200 image; Content-Disposition: attachment",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "Blob → object URL → download anchor"
+    ],
+    [
+      "browser",
+      "kol",
+      "Start QR file download",
+      "return"
+    ]
+  ],
+  "subtitle": "Main flow: local preview → authorized QR download → cached or rendered PNG/SVG.",
+  "classNote": "QR encodes the stable affiliate short URL with via=qr. Preview is generated in Browser; imported rendering functions and support-access audit details are documented separately.",
+  "notes": [
+    "Browser = ReferralLinksPage + useQrDataUrl + HTTP adapter. JWT and role guards precede the controller; KOL downloads their own link. API inline preview is a separate 60/minute path.",
+    "Cache hit reuses the image; only cache miss renders/writes cache. PNG uses renderQrPng; SVG uses QRCode.toString and sanitization. Invalid options, ownership or rate-limit checks stop the request.",
+    "Cache TTL is 86400 seconds. Redis download counter and Shop/Admin support audit are summarized in FR11_CODE_ANALYSIS.md. Generating/downloading a QR records no affiliate click."
+  ],
+  "classLayout": {
+    "controller": "CollaboratorReferralLinksController",
+    "service": "ReferralLinksService",
+    "supports": [
+      [
+        "CacheService",
+        150
+      ]
+    ],
+    "models": [
+      "Store",
+      "User",
+      "ReferralLink"
+    ],
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "modelPositions": {
+      "Store": [
+        1930,
+        150,
+        620
+      ],
+      "User": [
+        1930,
+        650,
+        620
+      ],
+      "ReferralLink": [
+        1930,
+        1009,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v1"
+  }
+}

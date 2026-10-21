@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Pause, Play, Store, ShieldCheck, Radio } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Store, ShieldCheck, Radio } from 'lucide-react';
 
 interface BannerStore {
   id: string;
@@ -10,7 +10,6 @@ interface BannerStore {
 
 export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[]; onOpenLive: () => void }) {
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const partner = stores.find((store) => store.activeCampaign && Date.parse(store.activeCampaign.endsAt) > Date.now());
@@ -51,12 +50,12 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   }, []);
 
   useEffect(() => {
-    if (paused || interacting || reducedMotion) return;
+    if (interacting || reducedMotion) return;
     const timer = window.setInterval(() => {
       if (!document.hidden) setActive((previous) => (previous + 1) % 3);
-    }, 6000);
+    }, 4000);
     return () => window.clearInterval(timer);
-  }, [paused, interacting, reducedMotion]);
+  }, [interacting, reducedMotion]);
 
   return (
     <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-7">
@@ -100,9 +99,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
               <button type="button" onClick={() => move(-1)} aria-label="Banner trước" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowLeft size={16} /></button>
               {slides.map((slide, index) => <button type="button" key={slide.image} onClick={() => setActive(index)} aria-label={`Xem banner ${index + 1}`} aria-current={index === active ? 'true' : undefined} className="flex h-10 w-8 items-center justify-center"><span className={`h-1.5 rounded-full ${index === active ? 'w-6 bg-[#C59B58]' : 'w-2 bg-[#EAE4D7]'}`} /></button>)}
               <button type="button" onClick={() => move(1)} aria-label="Banner tiếp theo" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowRight size={16} /></button>
-              <button type="button" onClick={() => setPaused((value) => !value)} aria-label={paused ? 'Tự động chuyển banner' : 'Tạm dừng banner'} aria-pressed={paused} className="rounded-full p-3 hover:bg-[#F3EFE6]">{paused || reducedMotion ? <Play size={15} /> : <Pause size={15} />}</button>
             </div>
-            <span aria-live={paused || interacting ? 'polite' : 'off'} className="text-xs tabular-nums text-[#7D715E]">{active + 1} / {slides.length}</span>
           </div>
         </div>
       </div>

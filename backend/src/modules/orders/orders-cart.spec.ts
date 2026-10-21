@@ -9,12 +9,16 @@ import { CouponsService } from '../coupons/coupons.service';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { PaymentMethod } from './dto/create-order.dto';
 import { GhnService } from '../shipping/ghn.service';
+import { MailService } from '../auth/mail.service';
 
 describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
   let service: OrdersService;
   let prisma: any;
+  let mail: { sendOrderConfirmation: jest.Mock };
 
   beforeEach(async () => {
+    // Simulate SMTP that never responds: checkout must still finish.
+    mail = { sendOrderConfirmation: jest.fn(() => new Promise(() => {})) };
     prisma = {
       product: {
         findMany: jest.fn(),
@@ -45,6 +49,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
         { provide: GhnService, useValue: {
           quoteAddress: jest.fn().mockResolvedValue({ totalFee: 25000, districtId: 1484, wardCode: '1A0114' }),
         } },
+        { provide: MailService, useValue: mail },
       ],
     }).compile();
 
@@ -211,6 +216,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
                 id: 'order-123',
                 storeId,
                 externalOrderSn: 'ORD-TEST-123',
+                createdAt: new Date('2026-10-18T00:00:00Z'),
                 subtotalAmount: data.subtotalAmount,
                 discountAmount: data.discountAmount,
                 shippingFee: data.shippingFee,
@@ -242,6 +248,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
 
     const result = await service.createOrder({
       customerName: 'Nguyễn Văn A',
+      customerEmail: 'customer@example.test',
       customerPhone: '0987654321',
       shippingAddress:
         '123 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
@@ -262,6 +269,43 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     expect(Number(savedOrderData.finalAmount)).toBe(745000);
     expect(savedOrderData.orderItems.create[0].unitPrice).toBe(220000);
     expect(savedOrderData.orderItems.create[1].unitPrice).toBe(250000);
+    expect(result.confirmationEmailStatus).toBe('QUEUED');
+    expect(result.confirmationEmailQueued).toBe(true);
+    expect(savedOrderData.rawPayload.confirmationEmailStatus).toBe('QUEUED');
+    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
+  });
+
+  it.each(['buyer-a@gmail.com', 'buyer-b@gmail.com'])('returns committed shop orders without waiting for SMTP for %s', async email => {
+    const products = [0, 1].map(index => ({
+      id: `00000000-0000-4000-8000-00000000000${index}`, storeId: `00000000-0000-4000-8000-00000000001${index}`,
+      title: `Product ${index}`, sku: `SKU-${index}`, price: 100000, stockQuantity: 10, isActive: true, isDeleted: false, moderationStatus: 'APPROVED',
+      packageWeight: 500, packageLength: 15, packageWidth: 10, packageHeight: 5,
+      store: { id: `00000000-0000-4000-8000-00000000001${index}`, name: `Shop ${index}`, slug: `shop-${index}`, isActive: true, isDeleted: false },
+    }));
+    prisma.product.findMany.mockResolvedValue(products);
+    prisma.order.findUnique.mockResolvedValue(null);
+    prisma.order.findMany = jest.fn().mockResolvedValue([]);
+    let committed = false;
+    prisma.$transaction = jest.fn(async callback => { const result = await callback({}); committed = true; return result; });
+    jest.spyOn(service as any, 'executeStoreOrderInTransaction').mockImplementation(async (_tx: unknown, context: any) => ({
+      order: {
+        externalOrderSn: `DH-${context.store.slug}`, storeId: context.store.id, store: context.store,
+        status: 'PENDING', createdAt: new Date('2026-10-18T00:00:00Z'), subtotalAmount: 100000, discountAmount: 0, shippingFee: 29001, finalAmount: 129001,
+        rawPayload: { paymentMethod: 'WALLET', paymentStatus: 'PAID', confirmationEmailStatus: 'QUEUED' },
+        orderItems: [{ quantity: 1, unitPrice: 100000, productId: context.dbProducts[0].id, product: context.dbProducts[0] }],
+      },
+    }));
+    const result = await service.createOrder({
+      customerName: 'Nguyễn Văn A', customerPhone: '0901234567', customerEmail: email,
+      shippingAddress: '123 Nguyễn Trãi, Thanh Xuân, Hà Nội', paymentMethod: PaymentMethod.WALLET,
+      idempotencyKey: `auto-email-${email}`, policyAccepted: true, items: products.map(product => ({ productId: product.id, quantity: 1 })),
+    });
+    expect(committed).toBe(true);
+    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
+    expect(result.confirmationEmailStatus).toBe('QUEUED');
+    if (!('orders' in result)) throw new Error('Expected multi-store response');
+    expect(result.orders).toHaveLength(2);
+    expect(result.orders.every(order => order.confirmationEmailQueued)).toBe(true);
   });
 
   it('createOrder for multi-store cart executes within a single atomic $transaction and rolls back if any shop fails', async () => {
@@ -371,6 +415,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
 
     expect(transactionExecuted).toBe(true);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
   });
 
   it('rejects a package change after quotation, before stock or order writes', async () => {

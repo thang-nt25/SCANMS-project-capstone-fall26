@@ -22,7 +22,14 @@ if (-not $LogPath) {
 $mutexName = "Local\SCANMS-$ServiceName-dev-watcher"
 $mutex = [System.Threading.Mutex]::new($false, $mutexName)
 
-if (-not $mutex.WaitOne(0, $false)) {
+$hasMutex = $false
+try {
+  $hasMutex = $mutex.WaitOne(0, $false)
+} catch [System.Threading.AbandonedMutexException] {
+  $hasMutex = $true
+}
+
+if (-not $hasMutex) {
   exit 0
 }
 

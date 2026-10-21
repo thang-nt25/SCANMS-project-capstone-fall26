@@ -3,9 +3,44 @@ import { OrderStatus } from '@prisma/client';
 import { CustomerService } from './customer.service';
 
 describe('Customer shopping rules', () => {
+  it('does not let a shared recipient contact review another account order', async () => {
+    const prisma = { productReview: { create: jest.fn() } };
+    const service = serviceWith(prisma);
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({ customerId: 'other-buyer', status: OrderStatus.COMPLETED } as any);
+    await expect(service.createVerifiedReview('buyer', 'order', { productId: 'product', rating: 5, comment: 'Sản phẩm dùng rất tốt' })).rejects.toMatchObject({ status: 403 });
+    expect(prisma.productReview.create).not.toHaveBeenCalled();
+  });
+  it('publishes a valid completed-order review without Shop approval', async () => {
+    const prisma = { productReview: { create: jest.fn().mockResolvedValue({ id: 'review' }) } };
+    const service = serviceWith(prisma);
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      status: OrderStatus.COMPLETED, customerName: 'Buyer', returnRequest: null,
+      orderItems: [{ productId: 'product' }], productReviews: [],
+    } as any);
+    await service.createVerifiedReview('buyer', 'order', { productId: 'product', rating: 4, comment: '  Sản phẩm dùng rất tốt  ' });
+    expect(prisma.productReview.create).toHaveBeenCalledWith({ data: expect.objectContaining({ orderId: 'order', productId: 'product', rating: 4, comment: 'Sản phẩm dùng rất tốt', isApproved: true, status: 'APPROVED' }) });
+  });
+  it.each(['PENDING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'RETURNED'])('rejects reviews before successful completion: %s', async status => {
+    const prisma = { productReview: { create: jest.fn() } };
+    const service = serviceWith(prisma);
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({ status } as any);
+    await expect(service.createVerifiedReview('buyer', 'order', { productId: 'product', rating: 5, comment: 'Sản phẩm dùng rất tốt' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.productReview.create).not.toHaveBeenCalled();
+  });
+  it.each(['foreign-product', 'duplicate', 'return'])('blocks ineligible completed-order review: %s', async reason => {
+    const prisma = { productReview: { create: jest.fn() } };
+    const service = serviceWith(prisma);
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({ status: OrderStatus.COMPLETED,
+      returnRequest: reason === 'return' ? {} : null, orderItems: [{ productId: 'product' }],
+      productReviews: reason === 'duplicate' ? [{ productId: 'product' }] : [],
+    } as any);
+    await expect(service.createVerifiedReview('buyer', 'order', { productId: reason === 'foreign-product' ? 'other' : 'product', rating: 5, comment: 'Sản phẩm dùng rất tốt' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.productReview.create).not.toHaveBeenCalled();
+  });
   function serviceWith(prisma: object) {
     return Object.assign(Object.create(CustomerService.prototype), {
       prisma,
+      cacheService: { delPrefix: jest.fn().mockResolvedValue(undefined) },
     }) as CustomerService;
   }
 

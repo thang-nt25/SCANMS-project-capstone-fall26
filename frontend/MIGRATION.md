@@ -30,7 +30,7 @@ Trên PowerShell chặn `npm.ps1`, dùng `npm.cmd` thay `npm`.
 - Chọn/sao chép mã, giỏ hàng, tăng/giảm số lượng, tính giảm có điều kiện và giới hạn.
 - Checkout/tra cứu đơn demo trong bộ nhớ phiên. Không gửi đơn, không thanh toán, không lưu PII vào localStorage.
 - Dữ liệu mẫu có kiểu trong `src/features/marketplace/marketplaceData.ts`, tách khỏi component.
-- CSS nền tái sử dụng bản thiết kế; component React có stylesheet riêng.
+- Component React dùng utility Tailwind trực tiếp trong TSX, gồm responsive, trạng thái và hiệu ứng. `src/index.css` là điểm vào Tailwind, chứa token và keyframe dùng chung; bản đồ vẫn dùng stylesheet chính thức của Leaflet.
 
 ## Trạng thái chuyển đổi
 

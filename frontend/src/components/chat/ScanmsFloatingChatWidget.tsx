@@ -295,6 +295,7 @@ export function ScanmsFloatingChatWidget() {
     }
   }, [isOpen, isAuthRoute, isAuthenticated, closeChat]);
   const [searchLeftQuery, setSearchLeftQuery] = useState('');
+  const [conversationFilter, setConversationFilter] = useState('ALL');
   const [isProductSelectOpen, setIsProductSelectOpen] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -472,9 +473,11 @@ export function ScanmsFloatingChatWidget() {
   }, [activeConversation?.messages, canSeeAffiliateDeals]);
 
   // Filter conversations in left list
-  const filteredConversations = conversations.filter((c) =>
-    c.store.name.toLowerCase().includes(searchLeftQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((conversation) => {
+    const matchesName = conversation.store.name.toLocaleLowerCase('vi').includes(searchLeftQuery.trim().toLocaleLowerCase('vi'));
+    const unread = (conversation.unreadCount || 0) > 0;
+    return matchesName && (conversationFilter === 'ALL' || (conversationFilter === 'UNREAD' ? unread : !unread));
+  });
 
   // The API is already store-scoped; keep an exact store ID guard and never
   // substitute demo products or fabricated sales/discount figures.
@@ -990,17 +993,18 @@ export function ScanmsFloatingChatWidget() {
                 className="w-full text-xs text-[#1A1612] placeholder:text-[#999999] outline-none border-none bg-transparent"
               />
             </div>
-            <div className="text-xs text-[#757575] flex items-center gap-0.5 cursor-pointer shrink-0 hover:text-[#1A1612]">
-              <span>Tất cả</span>
-              <ChevronDown className="w-3 h-3" />
-            </div>
+            <select aria-label="Lọc cuộc trò chuyện" value={conversationFilter} onChange={event => setConversationFilter(event.target.value)} className="max-w-[90px] shrink-0 cursor-pointer rounded border border-[#EAE4D7] bg-white py-1 text-xs text-[#7D715E] outline-none focus:border-[#C59B58]">
+              <option value="ALL">Tất cả</option>
+              <option value="UNREAD">Chưa đọc</option>
+              <option value="READ">Đã đọc</option>
+            </select>
           </div>
 
           {/* Danh sách hội thoại cuộn dọc (Chuẩn Ảnh 1) */}
           <div className="flex-1 overflow-y-auto divide-y divide-[#F5F5F5]">
             {filteredConversations.length === 0 ? (
               <div className="p-6 text-center text-xs text-[#7D715E]">
-                <p>Chưa có cuộc trò chuyện nào.</p>
+                <p>{conversations.length ? 'Không có cuộc trò chuyện phù hợp với bộ lọc.' : 'Chưa có cuộc trò chuyện nào.'}</p>
               </div>
             ) : (
               filteredConversations.map((c) => {

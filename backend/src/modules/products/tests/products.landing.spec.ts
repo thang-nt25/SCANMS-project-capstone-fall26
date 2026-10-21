@@ -16,6 +16,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
   let configService: ConfigService;
 
   const mockPrismaService = {
+    orderItem: { aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }) },
     product: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -30,12 +31,20 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
       findMany: jest.fn(),
     },
     productReview: {
+      count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockImplementation(async () => {
+        const rows = await mockPrismaService.productReview.findMany();
+        const counts = new Map<number, number>();
+        for (const row of rows || []) counts.set(row.rating, (counts.get(row.rating) || 0) + 1);
+        return [...counts].map(([rating, count]) => ({ rating, _count: { _all: count } }));
+      }),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
     },
     auditLog: {
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     attributionSession: {
       findUnique: jest.fn(),
@@ -250,6 +259,11 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     expect(result.reviews.averageRating).toBe(4.5);
     expect(result.reviews.starDistribution[5]).toBe(1);
     expect(result.reviews.starDistribution[4]).toBe(1);
+    expect(result.reviews.photoReviewCount).toBe(0);
+    expect(mockPrismaService.productReview.count).toHaveBeenCalledWith({ where: {
+      productId: result.product.id, isApproved: true,
+      OR: [{ images: { isEmpty: false } }, { AND: [{ reviewImageUrl: { not: null } }, { reviewImageUrl: { not: '' } }] }],
+    } });
 
     // Tên phải được che một phần theo chuẩn FR-15
     const rev1 = result.reviews.items.find((i: any) => i.id === 'rev-1');
@@ -272,6 +286,37 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
     expect(result.videos[0].videoUrl).toBe(
       'https://cdn.scanms.vn/videos/review-1.mp4',
     );
+  });
+
+  it.each([
+    ['http://localhost:5173/assets/products/real/cleanser.jpg', '/assets/products/real/cleanser.jpg'],
+    ['/assets/products/real/cleanser.jpg', '/assets/products/real/cleanser.jpg'],
+    ['https://cdn.scanms.vn/products/cleanser.jpg', 'https://cdn.scanms.vn/products/cleanser.jpg'],
+    ['http://localhost:3000/assets/products/real/cleanser.jpg', null],
+    ['http://localhost:5173/admin/private-image', null],
+    ['http://192.168.1.2/assets/products/real/cleanser.jpg', null],
+    ['//untrusted.example/image.jpg', null],
+    ['javascript:alert(1)', null],
+  ])('keeps supported product images without allowing arbitrary local URLs: %s', async (imageUrl, expected) => {
+    mockConfigService.get.mockImplementation((key: string) => {
+      if (key === 'FRONTEND_URL') return 'http://localhost:5173';
+      if (key === 'JWT_SECRET') return 'unit-test-jwt-secret-key-12345';
+      return null;
+    });
+    mockPrismaService.product.findFirst.mockResolvedValue({
+      id: 'product-images', sku: 'IMAGE-TEST', title: 'Product image test',
+      price: 160000, stockQuantity: 10, isActive: true, isDeleted: false,
+      imageUrl,
+      variants: [{ id: 'variant-image', name: '100 ml', sku: 'IMAGE-100', imageUrl, stockQuantity: 10, isActive: true }],
+      store: { id: 'store-images', name: 'Store', isActive: true, isDeleted: false,
+        isVerified: true, onboardingStatus: 'VERIFIED', owner: { id: 'owner', isActive: true } },
+    });
+    mockPrismaService.mediaAsset.findMany.mockResolvedValue([{ id: 'media-image', assetType: 'IMAGE', urlOrContent: imageUrl }]);
+    mockPrismaService.productReview.findMany.mockResolvedValue([]);
+    const result = await service.getLandingPageData('IMAGE-TEST');
+    expect(result.product.imageUrl).toBe(expected);
+    expect(result.product.variants?.[0].imageUrl).toBe(expected);
+    expect(result.images).toEqual(expected ? [expected] : []);
   });
 
   it('nên trả averageRating = null khi sản phẩm chưa có review nào (Mục 11)', async () => {
@@ -364,7 +409,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
 
       const result = await service.moderateReview(
         'owner-uuid-1',
-        UserRole.SHOP_MANAGER,
+        UserRole.SYSTEM_ADMIN,
         'rev-uuid-1',
         { status: ReviewStatus.APPROVED },
       );
@@ -406,7 +451,7 @@ describe('FR-15: Products Landing Page & Video Reviews (Unit Tests)', () => {
 
       const result = await service.moderateReview(
         'owner-uuid-1',
-        UserRole.SHOP_MANAGER,
+        UserRole.SYSTEM_ADMIN,
         'rev-uuid-1',
         {
           status: ReviewStatus.REJECTED,

@@ -20,7 +20,6 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
 import { RegisterShowcase } from '../../components/auth/RegisterShowcase';
-import './RegisterPage.css';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -195,8 +194,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="scanms-register-page selection:bg-[#EEDFC6] selection:text-[#1A1612]">
-      <header className="register-page-header">
+    <div className="scanms-register-page selection:bg-[#EEDFC6] selection:text-[#1A1612] flex min-h-svh flex-col gap-2.5 bg-canvas px-8 pt-2 pb-4 text-ink max-[1100px]:px-[22px] max-[800px]:gap-[18px] max-[800px]:p-4 max-[480px]:p-3 register-compact:gap-2 register-compact:pt-[5px] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-brand-strong [&_button:focus-visible]:outline-offset-3 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-brand-strong [&_a:focus-visible]:outline-offset-3 motion-reduce:[&_*]:animate-none motion-reduce:[&_*]:transition-none">
+      <header className="register-page-header mx-auto flex min-h-14 w-full max-w-[1280px] items-center justify-between gap-4 register-compact:min-h-12 max-[800px]:[&>a:first-child]:max-w-[62%] max-[800px]:[&>a:last-child]:text-[11px] max-[800px]:[&>a:last-child]:whitespace-nowrap">
         <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
@@ -210,12 +209,12 @@ export default function RegisterPage() {
         </Link>
       </header>
 
-      <main className="register-page-main">
-        <div className="register-experience">
+      <main className="register-page-main mx-auto mt-0 mb-auto w-full max-w-[1280px]">
+        <div className="register-experience grid grid-cols-[1.06fr_1fr] overflow-hidden rounded-[30px] border border-line bg-white shadow-[0_20px_64px_rgb(125_113_94/9%)] max-[800px]:grid-cols-1 max-[800px]:rounded-3xl">
           <RegisterShowcase name={fullName} />
-          <div className="register-form-panel">
-            <div className="register-form-heading">
-              <div className="register-steps" aria-label="Các bước đăng ký">
+          <div className="register-form-panel flex min-w-0 flex-col gap-[18px] px-10 py-6 max-[1100px]:px-[26px] max-[800px]:gap-[19px] max-[800px]:p-[30px] max-[480px]:gap-[17px] max-[480px]:px-5 max-[480px]:py-[25px] register-compact:gap-3.5 register-compact:pt-5 register-compact:pb-[18px] [&_input]:accent-brand-strong [&_input::placeholder]:text-muted [&_input::placeholder]:font-normal">
+            <div className="register-form-heading [&>h2]:mt-[13px] [&>h2]:mb-2 [&>h2]:text-[32px] [&>h2]:leading-[1.2] [&>h2]:font-bold [&>h2]:tracking-[-.7px] [&>h2>span]:text-brand-strong [&>p]:m-0 [&>p]:text-[13px] [&>p]:leading-[1.6] [&>p]:text-muted max-[480px]:[&>h2]:text-[29px] register-compact:[&>h2]:mt-3 register-compact:[&>h2]:mb-[7px] register-compact:[&>h2]:text-[29px]">
+              <div className="register-steps flex items-center gap-3 text-[11px] text-muted [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 [&_b]:grid [&_b]:size-5 [&_b]:place-items-center [&_b]:rounded-full [&_b]:border [&_b]:border-line [&_b]:text-[10px] [&_[aria-current]]:text-[#90682F] [&_[aria-current]_b]:border-brand-strong [&_[aria-current]_b]:bg-brand-strong [&_[aria-current]_b]:text-white [&>i]:h-px [&>i]:w-7 [&>i]:bg-line" aria-label="Các bước đăng ký">
                 <span aria-current={showOtpModal ? undefined : 'step'}><b>1</b> Tạo tài khoản</span><i aria-hidden="true" />
                 <span aria-current={showOtpModal ? 'step' : undefined}><b>2</b> Xác thực email</span>
               </div>
@@ -233,7 +232,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Divider */}
-            <div className="register-email-divider relative flex items-center justify-center my-0.5">
+            <div className="register-email-divider relative flex items-center justify-center my-0.5 min-h-4">
               <div className="border-t border-[#EAE4D7] w-full" />
               <span className="bg-white px-3 text-[11px] font-medium text-[#7D715E] uppercase tracking-wider absolute">
                 hoặc email
@@ -247,10 +246,10 @@ export default function RegisterPage() {
             )}
 
             {/* Form inputs */}
-            <form onSubmit={handleSubmit} className="space-y-2.5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-[800px]:gap-[13px] register-compact:gap-3">
               {/* Họ và tên */}
               <div>
-              <label className="register-field-label" htmlFor="register-name">Họ và tên</label>
+              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-name">Họ và tên</label>
               <div className="relative flex items-center">
                 <input
                   id="register-name" name="name" autoComplete="name"
@@ -259,7 +258,7 @@ export default function RegisterPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   placeholder="Họ và tên của bạn"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                 />
                 <User className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
@@ -267,7 +266,7 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div>
-              <label className="register-field-label" htmlFor="register-email">Địa chỉ email</label>
+              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-email">Địa chỉ email</label>
               <div className="relative flex items-center">
                 <input
                   id="register-email" name="email" autoComplete="email"
@@ -276,7 +275,7 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="Địa chỉ Email"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                 />
                 <Mail className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
@@ -284,7 +283,7 @@ export default function RegisterPage() {
 
               {/* Số điện thoại */}
               <div>
-              <label className="register-field-label" htmlFor="register-phone">Số điện thoại <small>(tùy chọn)</small></label>
+              <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-phone">Số điện thoại <small>(tùy chọn)</small></label>
               <div className="relative flex items-center">
                 <input
                   id="register-phone" name="phone" autoComplete="tel"
@@ -292,16 +291,16 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Số điện thoại của bạn"
-                  className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                  className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-10 pr-4 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                 />
                 <Phone className="w-4 h-4 text-[#A69986] absolute left-3.5 pointer-events-none" />
               </div>
               </div>
 
               {/* Password & Confirm Password */}
-              <div className="register-password-pair grid grid-cols-2 gap-3">
+              <div className="register-password-pair grid grid-cols-2 gap-3 max-[480px]:grid-cols-1 max-[480px]:gap-[13px]">
                 <div>
-                <label className="register-field-label" htmlFor="register-password">Mật khẩu</label>
+                <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-password">Mật khẩu</label>
                 <div className="relative flex items-center">
                   <input
                     id="register-password" name="password" autoComplete="new-password" aria-describedby="register-password-note"
@@ -310,7 +309,7 @@ export default function RegisterPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="Mật khẩu"
-                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                    className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                   />
                   <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
                   <button
@@ -325,7 +324,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                <label className="register-field-label" htmlFor="register-confirm">Xác nhận mật khẩu</label>
+                <label className="register-field-label leading-[1.5] mb-1.5 block text-xs font-semibold text-ink [&_small]:text-[11px] [&_small]:font-normal [&_small]:text-muted" htmlFor="register-confirm">Xác nhận mật khẩu</label>
                 <div className="relative flex items-center">
                   <input
                     id="register-confirm" name="confirmPassword" autoComplete="new-password"
@@ -334,7 +333,7 @@ export default function RegisterPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Nhập lại mật khẩu"
-                    className="w-full h-10.5 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                    className="w-full h-11 register-compact:h-10 bg-white border border-[#EAE4D7] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:ring-4 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-8 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                   />
                   <Lock className="w-3.5 h-3.5 text-[#A69986] absolute left-3 pointer-events-none" />
                   <button
@@ -348,7 +347,7 @@ export default function RegisterPage() {
                 </div>
                 </div>
               </div>
-              <p className="register-password-note" id="register-password-note">Mật khẩu cần tối thiểu 8 ký tự.</p>
+              <p className="register-password-note -mt-[3px] text-[11px] leading-[1.6] text-muted" id="register-password-note">Mật khẩu cần tối thiểu 8 ký tự.</p>
 
               {/* Mã giới thiệu đối tác (Collapsible) */}
               <div className="pt-0.5">
@@ -369,7 +368,7 @@ export default function RegisterPage() {
                       value={referralCode}
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                       placeholder="Mã giới thiệu đối tác (Tùy chọn)"
-                      className="w-full h-9 bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:bg-white focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-3 text-xs font-medium text-[#1A1612] outline-hidden transition placeholder:text-[#9E917F]"
+                      className="w-full h-11 register-compact:h-10 bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:bg-white focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-3 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
                     />
                     <Gift className="w-3.5 h-3.5 text-[#C59B58] absolute left-3 pointer-events-none" />
                   </div>
@@ -396,7 +395,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="register-submit"
+                className="register-submit leading-[1.5] flex min-h-[47px] cursor-pointer items-center justify-center gap-3 rounded-xl border border-brand-strong bg-(--color-brand) px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-[0_4px_12px_rgb(197_155_88/15%)] transition-[transform,background] duration-180 enabled:hover:-translate-y-px enabled:hover:bg-[#D0AA6D] disabled:cursor-wait disabled:opacity-60 register-compact:min-h-[42px]"
               >
                 <span>{loading ? 'Đang gửi mã xác thực...' : 'Đăng ký tài khoản'}</span>
                 <ArrowRight size={17} aria-hidden="true" />
@@ -404,7 +403,7 @@ export default function RegisterPage() {
             </form>
 
             {/* Bottom switch link */}
-            <div className="register-login-link">
+            <div className="register-login-link leading-[1.5] pt-1.5 text-center text-xs text-muted [&_a]:font-semibold [&_a]:text-[#90682F]">
               Đã có tài khoản?{' '}
               <Link to={loginUrl} className="font-bold text-[#B88E4F] hover:underline">
                 Đăng nhập ngay →
@@ -489,7 +488,7 @@ export default function RegisterPage() {
         </form>
       </Modal>
 
-      <footer className="max-w-[1240px] mx-auto w-full pt-3 text-center text-xs text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
+      <footer className="max-w-[1240px] mx-auto mt-0 w-full pt-3 text-center text-[11px] text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
         <span>© 2026 SCANMS Corporation</span>
         <span>•</span>
         <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>

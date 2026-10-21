@@ -18,14 +18,14 @@ export class CartItemValidateDto {
     example: 'prod-uuid-1',
   })
   @IsNotEmpty()
-  @IsUUID('4', { message: 'productId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'productId phải là UUID hợp lệ' })
   productId: string;
 
   @ApiPropertyOptional({
     description: 'ID SKU/biến thể trong giỏ nếu sản phẩm có phân loại',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'variantId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'variantId phải là UUID hợp lệ' })
   variantId?: string;
 
   // Backward compatibility for product-detail clients that include these
@@ -36,7 +36,7 @@ export class CartItemValidateDto {
       'ID gian hàng từ client cũ; chỉ để tương thích, backend tự xác định gian hàng',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 
   @ApiPropertyOptional({
@@ -73,7 +73,7 @@ export class ValidateCouponDto {
     example: 'store-uuid-1',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 
   @ApiPropertyOptional({

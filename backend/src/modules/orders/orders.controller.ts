@@ -137,9 +137,12 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @Req() req: Request,
     @CurrentUser('id') userId: string,
+    @CurrentUser('email') accountEmail?: string,
   ) {
     // Never trust a customerId supplied by the browser.
     dto.customerId = userId;
+    // A signed-in buyer still receives confirmation when the optional email field is left blank.
+    dto.customerEmail = dto.customerEmail?.trim().toLowerCase() || accountEmail?.trim().toLowerCase();
     if (dto.paymentMethod === 'PAYOS') this.payosPaymentService.assertReady();
     const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
     await this.ordersService.checkCreateOrderRateLimit(
@@ -400,6 +403,17 @@ export class OrdersController {
       manager.role,
       dto,
     );
+  }
+
+  @Get('track/mine')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tra cứu đơn mua của tài khoản đang đăng nhập bằng mã đơn hoặc SĐT nhận hàng' })
+  async trackMyOrder(
+    @CurrentUser('id') userId: string,
+    @Query() query: TrackOrderQueryDto,
+  ) {
+    return this.ordersService.trackCustomerOrder(userId, query.orderSn || '', query.phone || '');
   }
 
   @Get('track')

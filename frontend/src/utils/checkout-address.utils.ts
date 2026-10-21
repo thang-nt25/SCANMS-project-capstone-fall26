@@ -87,6 +87,30 @@ export function resolveSavedShippingAddress(
   };
 }
 
+/** Geocoder names must resolve within one province/district; never reuse old codes. */
+export function resolveMapShippingAddress(
+  address: { provinceName: string; districtName: string; wardName: string },
+  provinces: ShippingProvince[],
+) {
+  const matches = provinces.filter(province => administrativeNamesMatch(province.name, address.provinceName));
+  const province = matches.length === 1 ? matches[0] : undefined;
+  const districts = province?.districts.filter(district => administrativeNamesMatch(district.name, address.districtName)) || [];
+  let district = districts.length === 1 ? districts[0] : undefined;
+  // Some reverse geocoders omit the old district level. Accept a ward only
+  // when its name identifies exactly one district in the matched province.
+  if (province && !district && !address.districtName) {
+    const candidates = province.districts.filter(candidate => candidate.wards.some(ward => administrativeNamesMatch(ward.name, address.wardName)));
+    if (candidates.length === 1) district = candidates[0];
+  }
+  const wards = district?.wards.filter(ward => administrativeNamesMatch(ward.name, address.wardName)) || [];
+  const ward = wards.length === 1 ? wards[0] : undefined;
+  return {
+    provinceCode: province ? String(province.code) : '',
+    districtCode: district ? String(district.code) : '',
+    wardCode: ward ? String(ward.code) : '',
+  };
+}
+
 export function formatSavedAddressOption(
   address: CustomerAddress,
   provinces: ShippingProvince[],

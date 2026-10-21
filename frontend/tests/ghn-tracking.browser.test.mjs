@@ -68,7 +68,7 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
       await page.waitForSelector(`${section} a[href="tel:0900000000"]`);
       assert.match(await page.$eval(section, el => el.innerText), /Bưu tá kiểm thử/);
       assert.match(await page.$eval(section, el => el.innerText), /Shipper đang đi giao/);
-      assert.match(await page.$eval(section, el => el.innerText), /GHN Staging · Môi trường thử nghiệm/);
+      assert.match(await page.$eval(section, el => el.innerText), /Trạng thái bưu kiện/);
       assert.equal(requestedEnvironments[0], 'TEST', 'public tracking explicitly requests the order environment');
       await page.waitForFunction(sel => document.querySelector(sel)?.querySelectorAll('ol[aria-label="Lịch sử chi tiết"] li').length === 4, {}, section);
       const stopped = polls; await delay(1200); assert.equal(polls, stopped, 'terminal deliveries stop polling');
@@ -77,7 +77,7 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
       await page.goto(`${base}/customer/orders?orderId=${id}`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(`${section} a[href="tel:0900000000"]`);
       assert.match(await page.$eval(section, el => el.innerText), /Shipper đang đi giao/);
-      assert.match(await page.$eval(section, el => el.innerText), /GHN Staging · Môi trường thử nghiệm/);
+      assert.match(await page.$eval(section, el => el.innerText), /Trạng thái bưu kiện/);
       assert.equal(requestedEnvironments.at(-1), 'TEST', 'customer order details explicitly request the same environment');
       await page.screenshot({ path: join(tmpdir(), 'scanms-ghn-tracking-desktop.png'), fullPage: true });
       assert.ok(polls > 0, 'customer details call the same GHN endpoint');
@@ -86,7 +86,7 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
       await page.setViewport({ width: 390, height: 844 });
       await page.goto(`${base}/tracking?phone=0900000000&sn=QA-TRACKING`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector(`${section} ol[aria-label="Các mốc giao hàng"]`);
-      assert.equal(await page.$$eval(`${section} ol[aria-label="Các mốc giao hàng"] li`, els => els.length), 4);
+      assert.equal(await page.$$eval(`${section} ol[aria-label="Các mốc giao hàng"] li`, els => els.length), 5);
       assert.equal(await page.$$eval(`${section} a[href^="tel:"]`, els => els.length), 0);
       assert.match(await page.$eval(section, el => el.innerText), /Chưa có xác nhận từ GHN/);
       assert.equal(await page.$eval(section, el => el.scrollWidth <= el.clientWidth + 1), true);
@@ -98,7 +98,7 @@ test('GHN tracking works in both screens, polls, shows driver contact and handle
         stage = status;
         for (const route of [`/tracking?phone=0900000000&sn=QA-TRACKING`, `/customer/orders?orderId=${id}`]) {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
-          await page.waitForFunction(sel => document.querySelector(sel)?.innerText.includes('Hành trình mô phỏng'), {}, section);
+          await page.waitForFunction(sel => document.querySelector(sel)?.innerText.includes('Trạng thái mô phỏng'), {}, section);
           assert.equal(await page.$$eval(`${section} ol[aria-label="Các mốc giao hàng"] li`, els => els.length), 5);
           assert.equal(await page.$$eval(`${section} ol[aria-label="Lịch sử chi tiết"] li`, els => els.length), simulationStates.indexOf(status) + 1);
           assert.match(await page.$eval(section, el => el.innerText), new RegExp(labels[status]));

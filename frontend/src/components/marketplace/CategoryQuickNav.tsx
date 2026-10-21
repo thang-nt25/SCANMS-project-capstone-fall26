@@ -11,8 +11,9 @@ const categories = [
 
 export function CategoryQuickNav() {
   return (
-    <section aria-labelledby="category-quick-nav-title" className="border-b border-[#EAE4D7] bg-white py-7 text-left">
+    <section aria-labelledby="category-quick-nav-title" className="bg-[#FAF8F5] py-5 text-left sm:py-7">
       <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+        <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div><p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">BẮT ĐẦU TỪ ĐIỀU BẠN THÍCH</p><h2 id="category-quick-nav-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Mua sắm theo ngành hàng</h2></div>
           <Link to="/search" className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#7D715E] hover:text-[#B88E4F]">Tất cả<ArrowRight size={15} /></Link>
@@ -25,6 +26,7 @@ export function CategoryQuickNav() {
             </Link>
           ))}
         </nav>
+        </div>
       </div>
     </section>
   );

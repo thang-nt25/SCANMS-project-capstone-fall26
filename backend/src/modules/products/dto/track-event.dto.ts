@@ -7,6 +7,7 @@ export enum LandingAnalyticsEvent {
   VIDEO_PROGRESS = 'video_progress',
   VIDEO_COMPLETE = 'video_complete',
   CTA_CLICK = 'cta_click',
+  ADD_TO_CART = 'add_to_cart',
   CHECKOUT_START = 'checkout_start',
   ORDER_COMPLETE = 'order_complete',
 }
@@ -28,7 +29,7 @@ export class TrackAnalyticsEventDto {
 
   @ApiPropertyOptional({ example: 'prod-uuid-1', description: 'ID sản phẩm' })
   @IsOptional()
-  @IsUUID('4', { message: 'productId phải là UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'productId phải là UUID hợp lệ' })
   productId?: string;
 
   @ApiPropertyOptional({
@@ -36,7 +37,7 @@ export class TrackAnalyticsEventDto {
     description: 'Mã hoặc slug gian hàng',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 
   @ApiPropertyOptional({

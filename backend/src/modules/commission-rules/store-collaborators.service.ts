@@ -12,6 +12,40 @@ import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto'
 export class StoreCollaboratorsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async requestCooperation(collaboratorId: string, storeId: string) {
+    const store = await this.prisma.store.findFirst({ where: { id: storeId, isDeleted: false, isActive: true } });
+    if (!store) throw new NotFoundException('Gian hàng không hoạt động');
+    const existing = await this.prisma.storeCollaborator.findUnique({ where: { storeId_collaboratorId: { storeId, collaboratorId } } });
+    if (existing?.status === 'APPROVED' || (existing?.status === 'PENDING' && existing.requestedByKol)) return existing;
+    if (existing?.status === 'PENDING') throw new BadRequestException('Shop đã mời bạn. Hãy chấp nhận lời mời của Shop.');
+    if (existing) {
+      const changed = await this.prisma.storeCollaborator.updateMany({
+        where: { id: existing.id, status: 'REJECTED' },
+        data: { requestedByKol: true, status: 'PENDING', approvedAt: null },
+      });
+      if (!changed.count) throw new BadRequestException('Trạng thái hợp tác đã thay đổi. Vui lòng tải lại.');
+      return this.prisma.storeCollaborator.findUnique({ where: { id: existing.id } });
+    }
+    try {
+      return await this.prisma.storeCollaborator.create({ data: { storeId, collaboratorId, requestedByKol: true, status: 'PENDING' } });
+    } catch (error: any) {
+      if (error?.code === 'P2002') throw new BadRequestException('Yêu cầu đã được tạo. Vui lòng tải lại.');
+      throw error;
+    }
+  }
+
+  async reviewRequest(ownerId: string, id: string, accept: boolean) {
+    const request = await this.prisma.storeCollaborator.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Yêu cầu không tồn tại');
+    await this.getOwnedStore(ownerId, request.storeId);
+    const changed = await this.prisma.storeCollaborator.updateMany({
+      where: { id, requestedByKol: true, status: 'PENDING' },
+      data: { status: accept ? 'APPROVED' : 'REJECTED', approvedAt: accept ? new Date() : null },
+    });
+    if (!changed.count) throw new BadRequestException('Yêu cầu đã xử lý hoặc không phải yêu cầu do KOL gửi');
+    return this.prisma.storeCollaborator.findUnique({ where: { id } });
+  }
+
   private async getOwnedStore(ownerId: string, storeId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: ownerId },
@@ -123,11 +157,13 @@ export class StoreCollaboratorsService {
         collaboratorId: collaborator.id,
         status: StoreCollaboratorStatus.PENDING,
         note: dto.note?.trim() || null,
+        requestedByKol: false,
       },
       update: {
         status: StoreCollaboratorStatus.PENDING,
         approvedAt: null,
         note: dto.note?.trim() || null,
+        requestedByKol: false,
       },
     });
     return {
@@ -155,15 +191,20 @@ export class StoreCollaboratorsService {
     if (invitation.collaboratorId !== collaboratorId) {
       throw new ForbiddenException('Bạn không có quyền xử lý lời mời này');
     }
+    if (invitation.requestedByKol) throw new ForbiddenException('Yêu cầu này phải do Shop duyệt');
     if (invitation.status !== StoreCollaboratorStatus.PENDING) {
       throw new BadRequestException('Lời mời này đã được xử lý');
     }
     const status = accept
       ? StoreCollaboratorStatus.APPROVED
       : StoreCollaboratorStatus.REJECTED;
-    return this.prisma.storeCollaborator.update({
-      where: { id: invitationId },
+    const changed = await this.prisma.storeCollaborator.updateMany({
+      where: { id: invitationId, status: 'PENDING', requestedByKol: false },
       data: { status, approvedAt: accept ? new Date() : null },
+    });
+    if (!changed.count) throw new BadRequestException('Lời mời này đã được xử lý');
+    return this.prisma.storeCollaborator.findUnique({
+      where: { id: invitationId },
       include: { store: { select: { id: true, name: true, logoUrl: true } } },
     });
   }

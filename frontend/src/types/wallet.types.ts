@@ -1,6 +1,16 @@
 export type PayoutStatus = "PENDING" | "PROCESSING" | "APPROVED" | "REJECTED";
 
 export interface WalletSummary {
+  cooperationStores?: {
+    storeId: string;
+    storeName: string;
+    logoUrl: string | null;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'BLOCKED';
+    requestedByKol: boolean;
+    availableBalance: string;
+    pendingBalance: string;
+    hasWallet: boolean;
+  }[];
   stores: {
     storeId: string;
     storeName: string;

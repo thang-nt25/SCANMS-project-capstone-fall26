@@ -1,0 +1,191 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR25 - Class Diagram" id="FR25---Class-Diagram">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1500" pageHeight="1020">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;" id="title" value="FR-25 Real-Time One-to-One Chat — Class Diagram">
+          <mxGeometry y="20" width="1400" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="controller" value="ChatController">
+          <mxGeometry y="90" width="380" as="geometry" height="220" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-fields" value="- chatService: ChatService&#xA;- chatGateway: ChatGateway">
+          <mxGeometry y="30" width="380" as="geometry" height="50" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="shape=line;strokeColor=#000000;" id="controller-line" value="">
+          <mxGeometry y="80" width="380" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-methods" value="+ getOrCreate(...)&#xA;+ getMyConversations(...)&#xA;+ getMessages(...)&#xA;+ uploadAttachment(...)&#xA;+ markRead(...)">
+          <mxGeometry y="80" width="380" as="geometry" height="140" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="gateway" value="ChatGateway">
+          <mxGeometry y="400" width="380" as="geometry" height="220" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="gateway" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="gateway-fields" value="- chatService: ChatService&#xA;- jwtService: JwtService&#xA;+ server: Server">
+          <mxGeometry y="30" width="380" as="geometry" height="70" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="gateway" style="shape=line;strokeColor=#000000;" id="gateway-line" value="">
+          <mxGeometry y="100" width="380" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="gateway" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="gateway-methods" value="+ handleConnection(...)&#xA;+ handleJoinConversation(...)&#xA;+ handleSendMessage(...)&#xA;+ broadcastToConversation(...)&#xA;+ emitToUser(...)">
+          <mxGeometry y="100" width="380" as="geometry" height="120" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="service" value="ChatService">
+          <mxGeometry y="260" width="400" as="geometry" height="270" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-fields" value="- prisma: PrismaService&#xA;- cloudinary: CloudinaryService">
+          <mxGeometry y="30" width="400" as="geometry" height="50" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="shape=line;strokeColor=#000000;" id="service-line" value="">
+          <mxGeometry y="80" width="400" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-methods" value="+ getOrCreateConversation(...)&#xA;+ getConversationsByUser(...)&#xA;+ getConversationById(...)&#xA;+ getMessages(...)&#xA;+ saveMessage(...)&#xA;+ uploadAttachment(...)&#xA;+ markRead(...)">
+          <mxGeometry y="80" width="400" as="geometry" height="190" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="cloud" value="CloudinaryService">
+          <mxGeometry y="740" width="380" as="geometry" height="160" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="cloud" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="cloud-fields" value="- configService: ConfigService">
+          <mxGeometry y="30" width="380" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="cloud" style="shape=line;strokeColor=#000000;" id="cloud-line" value="">
+          <mxGeometry y="65" width="380" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="cloud" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="cloud-methods" value="+ uploadImage(...)&#xA;+ uploadDocument(...)&#xA;+ uploadVideo(...)">
+          <mxGeometry y="65" width="380" as="geometry" height="95" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="prisma" value="PrismaService">
+          <mxGeometry y="740" width="400" as="geometry" height="160" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-fields" value="«extends PrismaClient»&#xA;+ conversation: Prisma.ConversationDelegate&#xA;+ chatMessage: Prisma.ChatMessageDelegate&#xA;+ notification: Prisma.NotificationDelegate&#xA;+ $transaction(...)">
+          <mxGeometry y="30" width="400" as="geometry" height="130" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="user" value="User">
+          <mxGeometry y="90" width="210" as="geometry" height="115" x="990" />
+        </mxCell>
+        <mxCell vertex="1" parent="user" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="user-fields" value="+ id: string&#xA;+ fullName: string&#xA;+ role: UserRole">
+          <mxGeometry y="30" width="210" as="geometry" height="85" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="store" value="Store">
+          <mxGeometry y="90" width="210" as="geometry" height="115" x="1250" />
+        </mxCell>
+        <mxCell vertex="1" parent="store" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="store-fields" value="+ id: string&#xA;+ ownerId: string&#xA;+ name: string">
+          <mxGeometry y="30" width="210" as="geometry" height="85" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="conversation" value="Conversation">
+          <mxGeometry y="330" width="210" as="geometry" height="170" x="990" />
+        </mxCell>
+        <mxCell vertex="1" parent="conversation" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="conversation-fields" value="+ id: string&#xA;+ storeId: string&#xA;+ collaboratorId: string | null&#xA;+ lastMessageAt: Date&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="210" as="geometry" height="140" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="message" value="ChatMessage">
+          <mxGeometry y="330" width="210" as="geometry" height="250" x="1250" />
+        </mxCell>
+        <mxCell vertex="1" parent="message" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="message-fields" value="+ id: string&#xA;+ conversationId: string&#xA;+ senderId: string&#xA;+ messageText: string&#xA;+ mediaUrl: string | null&#xA;+ mediaType: string | null&#xA;+ mediaName: string | null&#xA;+ isRead: boolean&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="210" as="geometry" height="220" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="notification" value="Notification">
+          <mxGeometry y="740" width="210" as="geometry" height="160" x="1250" />
+        </mxCell>
+        <mxCell vertex="1" parent="notification" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="notification-fields" value="+ id: string&#xA;+ userId: string&#xA;+ type: string&#xA;+ data: Json | null&#xA;+ isRead: boolean">
+          <mxGeometry y="30" width="210" as="geometry" height="130" x="0" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e1" value="chatGateway" source="controller" target="gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.2;" edge="1" id="e2" value="chatService" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="200" />
+              <mxPoint x="450" y="314" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.8;" edge="1" id="e3" value="chatService" source="gateway" target="service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="510" />
+              <mxPoint x="450" y="476" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.2;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e4" value="cloudinary" source="service" target="cloud">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="680" />
+              <mxPoint x="220" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e5" value="prisma" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.25;entryX=0;entryY=0.75;" edge="1" id="e6" value="«uses»" source="prisma" target="conversation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="780" />
+              <mxPoint x="940" y="458" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.5;entryX=0.5;entryY=1;" edge="1" id="e7" value="«uses»" source="prisma" target="message">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="820" />
+              <mxPoint x="960" y="650" />
+              <mxPoint x="1355" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.75;entryX=0;entryY=0.75;" edge="1" id="e8" value="«uses»" source="prisma" target="notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=0;entryX=0.5;entryY=0;" edge="1" id="a1" value="1  owns  0..*" source="user" target="store">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1095" y="70" />
+              <mxPoint x="1355" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.8;entryY=0;" edge="1" id="a2" value="1 Store / 0..* conversations" source="store" target="conversation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1355" y="255" />
+              <mxPoint x="1158" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.25;exitY=1;entryX=0.25;entryY=0;" edge="1" id="a3" value="0..1 collaborator / 0..* conversations" source="user" target="conversation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=1;exitY=0.65;entryX=0;entryY=0.442;" edge="1" id="a4" value="1 / 0..* messages" source="conversation" target="message">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" id="a5" value="1 sender / 0..* messages" source="user" target="message">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1225" y="148" />
+              <mxPoint x="1225" y="290" />
+              <mxPoint x="1355" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0;exitY=0.7;entryX=0;entryY=0.25;" edge="1" id="a6" value="1 recipient / 0..* notifications" source="user" target="notification">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="970" y="171" />
+              <mxPoint x="970" y="600" />
+              <mxPoint x="1220" y="600" />
+              <mxPoint x="1220" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;whiteSpace=wrap;fontSize=12;" id="scope" value="Scope: Shop–KOL conversations. Only relevant members are shown. (...) denotes omitted parameters. Prisma delegates and $transaction are inherited from PrismaClient.">
+          <mxGeometry y="950" width="1430" as="geometry" height="35" x="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,1032 @@
+{
+  "width": 3450,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-15 Product Landing Page and KOL Video Reviews — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 3360,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: public product landing → KOL review playback → open the checkout form.",
+      "x": 45,
+      "y": 73,
+      "w": 3360,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Customer",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PublicProductsController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ProductsService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CacheService",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2975,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":HTMLVideoElement",
+      "x": 2983,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3190,
+          193
+        ],
+        [
+          3190,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 522,
+      "w": 10,
+      "h": 102
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 822,
+      "w": 10,
+      "h": 103
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1007,
+      "w": 10,
+      "h": 102
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 1307,
+      "w": 10,
+      "h": 103
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 430,
+      "w": 10,
+      "h": 1072
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 337,
+      "w": 10,
+      "h": 1257
+    },
+    {
+      "type": "rect",
+      "x": 3185,
+      "y": 1977,
+      "w": 10,
+      "h": 102
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 1557
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 1885,
+      "w": 10,
+      "h": 306
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 2277,
+      "w": 10,
+      "h": 218
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Open /products/:slug",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          337
+        ],
+        [
+          1025,
+          337
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. GET /api/public/products/:slug/landing",
+      "x": 472,
+      "y": 288,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          430
+        ],
+        [
+          1565,
+          430
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. getLandingPageData(slug, attributionCookie)",
+      "x": 1042,
+      "y": 381,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          522
+        ],
+        [
+          2105,
+          522
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. Find approved Product, active variants, Store and owner",
+      "x": 1582,
+      "y": 473,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          614
+        ],
+        [
+          1575,
+          614
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "5. Product and Store eligibility data",
+      "x": 1582,
+      "y": 565,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          707
+        ],
+        [
+          1620,
+          707
+        ],
+        [
+          1620,
+          726
+        ],
+        [
+          1575,
+          726
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. Validate Product and Store eligibility",
+      "x": 1632,
+      "y": 681,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          822
+        ],
+        [
+          2645,
+          822
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. get(landing key for product and visitor)",
+      "x": 1582,
+      "y": 773,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          915
+        ],
+        [
+          1575,
+          915
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "8. Cached payload or null",
+      "x": 1582,
+      "y": 866,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1007
+        ],
+        [
+          2105,
+          1007
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. [miss] Read session priority, approved media/reviews and sold quantity",
+      "x": 1582,
+      "y": 958,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1099
+        ],
+        [
+          1575,
+          1099
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "10. [miss] Media with KOL/profile data, reviews and sold count",
+      "x": 1582,
+      "y": 1050,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1192
+        ],
+        [
+          1620,
+          1192
+        ],
+        [
+          1620,
+          1211
+        ],
+        [
+          1575,
+          1211
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. [miss] Build public payload; order videos; compute availability",
+      "x": 1632,
+      "y": 1166,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1307
+        ],
+        [
+          2645,
+          1307
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "12. [miss] set(cacheKey, landing payload, 30)",
+      "x": 1582,
+      "y": 1258,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          1400
+        ],
+        [
+          1575,
+          1400
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. [miss] Cache write completed",
+      "x": 1582,
+      "y": 1351,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          1492
+        ],
+        [
+          1035,
+          1492
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. ProductLandingResponseDto",
+      "x": 1042,
+      "y": 1443,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          1584
+        ],
+        [
+          465,
+          1584
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "15. 200: product, Shop, media, reviews and policies",
+      "x": 472,
+      "y": 1535,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1677
+        ],
+        [
+          510,
+          1677
+        ],
+        [
+          510,
+          1696
+        ],
+        [
+          465,
+          1696
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. Merge matching local videos; deduplicate; featured first",
+      "x": 522,
+      "y": 1651,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          1792
+        ],
+        [
+          115,
+          1792
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "17. Show product and KOL reviews",
+      "x": 122,
+      "y": 1743,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          1885
+        ],
+        [
+          455,
+          1885
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. Choose video; select Play",
+      "x": 122,
+      "y": 1836,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1977
+        ],
+        [
+          3185,
+          1977
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "19. play() using videoUrl and poster",
+      "x": 1582,
+      "y": 1928,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          3185,
+          2069
+        ],
+        [
+          465,
+          2069
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. Playback starts or play() rejects",
+      "x": 1582,
+      "y": 2020,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2162
+        ],
+        [
+          510,
+          2162
+        ],
+        [
+          510,
+          2181
+        ],
+        [
+          465,
+          2181
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "21. [first play + consent] Send video_start analytics (best effort)",
+      "x": 522,
+      "y": 2136,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          2277
+        ],
+        [
+          455,
+          2277
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "22. Choose variant/quantity; Buy now",
+      "x": 122,
+      "y": 2228,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2370
+        ],
+        [
+          510,
+          2370
+        ],
+        [
+          510,
+          2389
+        ],
+        [
+          465,
+          2389
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "23. handleBuyNow(): open GuestCheckoutModal; checkout=1",
+      "x": 522,
+      "y": 2344,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. Show checkout form; no Order created yet",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = ProductDetailPage + api client + checkout rendering. Product/Store checks occur BEFORE cache lookup. Primary request failure retries /api/products/:slug/landing via ProductsController (omitted).",
+      "x": 45,
+      "y": 2595,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Server videos are APPROVED/non-deleted, with URL checks and KOL/profile data. Browser also merges matching locally approved submissions from localStorage, then sorts featured first; local data is not proof of server approval.",
+      "x": 45,
+      "y": 2645,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Cache TTL is 30 seconds. Native HTML video plays/pause; analytics requires consent and does not block playback. Inactive/out-of-stock products may remain visible with canPurchase=false. Order/payment details: FR16.",
+      "x": 45,
+      "y": 2700,
+      "w": 3360,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

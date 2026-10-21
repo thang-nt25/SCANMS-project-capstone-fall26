@@ -1,0 +1,411 @@
+{
+  "fr": "FR10",
+  "stem": "FR10_Create_Short_Affiliate_Link",
+  "title": "FR-10 Create Short Affiliate Link",
+  "classes": [
+    {
+      "id": "CollaboratorReferralLinksController",
+      "name": "CollaboratorReferralLinksController",
+      "attrs": [
+        "- service: ReferralLinksService"
+      ],
+      "ops": [
+        "+ getEligibleProducts(collaboratorId, search?, storeId?, page?, limit?)",
+        "+ createLink(collaboratorId, dto: CreateReferralLinkDto, ip)"
+      ]
+    },
+    {
+      "id": "ReferralLinksService",
+      "name": "ReferralLinksService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- configService: ConfigService"
+      ],
+      "ops": [
+        "+ getEligibleProducts(collaboratorId, query)",
+        "+ createReferralLink(collaboratorId, dto: CreateReferralLinkDto, ipAddress?)",
+        "- getPublicAppUrl(): string"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "User",
+      "name": "User",
+      "attrs": [
+        "+ id: string",
+        "+ role: UserRole",
+        "+ isActive: boolean",
+        "+ deletedAt: Date | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "CollaboratorProfile",
+      "name": "CollaboratorProfile",
+      "attrs": [
+        "+ id: string",
+        "+ userId: string",
+        "+ kycStatus: KycStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id: string",
+        "+ name: string",
+        "+ isActive: boolean",
+        "+ deletedAt: Date | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "ReferralLink",
+      "name": "ReferralLink",
+      "attrs": [
+        "+ id: string",
+        "+ collaboratorId: string",
+        "+ storeId: string",
+        "+ productId: string",
+        "+ shortCode: string {unique}",
+        "+ destinationPath: string",
+        "+ status: ReferralLinkStatus",
+        "+ expiresAt: Date | null"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Product",
+      "name": "Product",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ title: string",
+        "+ isActive: boolean",
+        "+ isAffiliateEnabled: boolean",
+        "+ moderationStatus: ProductModerationStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ user: Prisma.UserDelegate",
+        "+ product: Prisma.ProductDelegate",
+        "+ referralLink: Prisma.ReferralLinkDelegate",
+        "+ auditLog: Prisma.AuditLogDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "CollaboratorReferralLinksController",
+      "ReferralLinksService",
+      "reference",
+      "service"
+    ],
+    [
+      "ReferralLinksService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "ReferralLink",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "User",
+      "CollaboratorProfile",
+      "association",
+      "collaboratorProfile",
+      "1",
+      "0..1"
+    ],
+    [
+      "User",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "Product",
+      "association",
+      "products",
+      "1",
+      "0..*"
+    ],
+    [
+      "Product",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "ReferralLink",
+      "association",
+      "referralLinks",
+      "1",
+      "0..*"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "Product",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "User",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "CollaboratorProfile",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "kol",
+      "name": "KOL",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "ctrl",
+      "name": ":CollaboratorReferralLinksController"
+    },
+    {
+      "id": "svc",
+      "name": ":ReferralLinksService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    }
+  ],
+  "messages": [
+    [
+      "kol",
+      "browser",
+      "Open Create Affiliate Link"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "GET /api/collaborator/referral-links/products"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "getEligibleProducts(collaboratorId, query)"
+    ],
+    [
+      "svc",
+      "db",
+      "Read KOL/KYC and eligible affiliate products"
+    ],
+    [
+      "db",
+      "svc",
+      "Eligible products in active Stores",
+      "return"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "Product choices",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "200: eligible products",
+      "return"
+    ],
+    [
+      "browser",
+      "kol",
+      "Display product choices",
+      "return"
+    ],
+    [
+      "kol",
+      "browser",
+      "Choose product; enter link details; Create"
+    ],
+    [
+      "browser",
+      "ctrl",
+      "POST /api/collaborator/referral-links"
+    ],
+    [
+      "ctrl",
+      "svc",
+      "createReferralLink(collaboratorId, dto, ip)"
+    ],
+    [
+      "svc",
+      "db",
+      "Read KOL/KYC, Product/Store, optional campaign and quotas"
+    ],
+    [
+      "db",
+      "svc",
+      "Eligibility records and quota counts",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Validate eligibility, expiry, campaign and quotas"
+    ],
+    [
+      "svc",
+      "svc",
+      "Generate 8-character code; sanitize fields"
+    ],
+    [
+      "svc",
+      "db",
+      "$transaction: create ACTIVE ReferralLink and creation AuditLog"
+    ],
+    [
+      "db",
+      "svc",
+      "Commit new link; rollback on write failure",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Build shortUrl = publicAppUrl + /r/ + shortCode"
+    ],
+    [
+      "svc",
+      "ctrl",
+      "Created link and shortUrl",
+      "return"
+    ],
+    [
+      "ctrl",
+      "browser",
+      "201 Created: ReferralLinkItem",
+      "return"
+    ],
+    [
+      "browser",
+      "browser",
+      "Refresh list; keep success modal open"
+    ],
+    [
+      "browser",
+      "kol",
+      "Show short URL and Copy action",
+      "return"
+    ]
+  ],
+  "subtitle": "Main flow: choose an eligible product → create and audit affiliate link → show short URL.",
+  "classNote": "Scope: ordinary KOL link creation. DTO, AuditLog, campaign/deal models and imported code-generation helpers are described in FR10_CODE_ANALYSIS.md.",
+  "notes": [
+    "Browser = ReferralLinksPage + HTTP adapter. JWT/role/DTO checks precede controller calls; collaboratorId comes from JWT. Campaign invitation loading is a separate request.",
+    "Quota counts are read before the transaction: 10 links/minute, 500 ACTIVE links, 20 non-deleted links/product. Optional campaign/deal checks and failures are documented separately.",
+    "Prisma P2002 retries the write with a new code/UUID, at most 5 attempts. Coupon is stored as a string; QR rendering, click tracking and checkout are separate interactions."
+  ],
+  "classLayout": {
+    "controller": "CollaboratorReferralLinksController",
+    "service": "ReferralLinksService",
+    "supports": [],
+    "models": [
+      "Store",
+      "Product",
+      "ReferralLink",
+      "User",
+      "CollaboratorProfile"
+    ],
+    "reference": "FR09",
+    "version": "fr09-balanced-v3",
+    "modelPositions": {
+      "User": [
+        60,
+        150,
+        560
+      ],
+      "CollaboratorProfile": [
+        60,
+        700,
+        560
+      ],
+      "Store": [
+        1930,
+        150,
+        620
+      ],
+      "Product": [
+        1930,
+        650,
+        620
+      ],
+      "ReferralLink": [
+        1930,
+        1150,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v3",
+    "order": [
+      "kol",
+      "browser",
+      "ctrl",
+      "svc",
+      "db"
+    ]
+  }
+}

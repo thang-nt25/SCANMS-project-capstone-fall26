@@ -12,6 +12,8 @@ import {
   Lock,
   Unlock,
   RefreshCw,
+  Plus,
+  Wallet,
 } from 'lucide-react';
 import {
   couponService,
@@ -19,7 +21,8 @@ import {
   type CouponStatus,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
-import api from '../../services/api';
+import { AdminVoucherIssuer } from './AdminVoucherIssuer';
+import { AdminVoucherSettlements } from './AdminVoucherSettlements';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -69,47 +72,14 @@ const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: str
 export const AdminCouponsPage: React.FC = () => {
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [platformSubsidies, setPlatformSubsidies] = useState<Awaited<ReturnType<typeof couponService.getPlatformSubsidies>>>([]);
-  const [reimbursementOrderId, setReimbursementOrderId] = useState('');
-  const [bankReference, setBankReference] = useState('');
-  const [recordingReimbursement, setRecordingReimbursement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [issuing, setIssuing] = useState(false);
-  const [issueForm, setIssueForm] = useState({ storeId: '', code: '', benefitType: 'GOODS' as 'GOODS' | 'SHIPPING', discountType: 'FIXED_AMOUNT' as 'FIXED_AMOUNT' | 'PERCENTAGE', discountValue: 30000, minimumOrderAmount: 0, budgetTotal: 3000000, usageLimitTotal: 100, maximumDiscountAmount: 30000 });
-  const [issueStores, setIssueStores] = useState<Array<{ id: string; name: string }>>([]);
-
-  useEffect(() => { api.get('/stores/marketplace').then((res: any) => {
-    const data = res?.data?.data || res?.data || res;
-    setIssueStores(Array.isArray(data) ? data : data?.items || []);
-  }).catch(() => setIssueStores([])); }, []);
-
-  const issueVoucher = async (event: React.FormEvent) => {
-    event.preventDefault();
-    try {
-      setIssuing(true);
-      await couponService.createPlatformCoupon(issueForm);
-      toast.success('Đã phát hành voucher sàn.');
-      setIssueForm((value) => ({ ...value, code: '' }));
-      await fetchCoupons();
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Không phát hành được voucher.'); }
-    finally { setIssuing(false); }
-  };
-
-  const recordReimbursement = async (event: React.FormEvent, orderId: string, amount: number) => {
-    event.preventDefault();
-    if (!bankReference.trim() || amount <= 0) return;
-    try {
-      setRecordingReimbursement(true);
-      await couponService.recordPlatformReimbursement(orderId, amount, bankReference.trim());
-      toast.success('Đã ghi nhận khoản chuyển hoàn cho Shop.');
-      setReimbursementOrderId('');
-      setBankReference('');
-      await fetchCoupons();
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Không ghi nhận được giao dịch.'); }
-    finally { setRecordingReimbursement(false); }
-  };
-
+  const [fundingFilter, setFundingFilter] = useState('ALL');
+  const [view, setView] = useState<'coupons' | 'settlements'>('coupons');
+  const [issuerOpen, setIssuerOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [subsidyError, setSubsidyError] = useState('');
 
   const [detailCoupon, setDetailCoupon] = useState<CouponItem | null>(null);
 
@@ -122,7 +92,7 @@ export const AdminCouponsPage: React.FC = () => {
 
   const [unblockLoading, setUnblockLoading] = useState(false);
 
-  const hasOpenModal = detailCoupon !== null || blockTarget !== null;
+  const hasOpenModal = issuerOpen || detailCoupon !== null || blockTarget !== null;
   useEffect(() => {
     if (!hasOpenModal) return;
     const dismiss = (event: KeyboardEvent) => {
@@ -166,16 +136,15 @@ export const AdminCouponsPage: React.FC = () => {
   }, []);
 
   const fetchCoupons = async () => {
-    try {
-      setLoading(true);
-      const res = await couponService.getAdminCoupons();
-      setCoupons(res.data || []);
-      setPlatformSubsidies(await couponService.getPlatformSubsidies());
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách coupon toàn sàn:', err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setLoadError(''); setSubsidyError('');
+    const [couponResult, subsidyResult] = await Promise.allSettled([
+      couponService.getAdminCoupons(), couponService.getPlatformSubsidies(),
+    ]);
+    if (couponResult.status === 'fulfilled') setCoupons(couponResult.value.data || []);
+    else setLoadError('Chưa tải được danh sách voucher. Vui lòng bấm Làm mới để thử lại.');
+    if (subsidyResult.status === 'fulfilled') setPlatformSubsidies(subsidyResult.value);
+    else setSubsidyError('Chưa tải được dữ liệu đối soát. Vui lòng bấm Làm mới để thử lại.');
+    setLoading(false);
   };
 
   const handleBlockSubmit = async (e: React.FormEvent) => {
@@ -222,7 +191,7 @@ export const AdminCouponsPage: React.FC = () => {
       (c.collaborator?.fullName && c.collaborator.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (c.collaborator?.email && c.collaborator.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchStatus = statusFilter === 'ALL' ? true : c.status === statusFilter;
-    return matchSearch && matchStatus;
+    return matchSearch && matchStatus && (fundingFilter === 'ALL' || c.fundingSource === fundingFilter);
   });
 
 
@@ -232,36 +201,13 @@ export const AdminCouponsPage: React.FC = () => {
   const totalRedemptions = coupons.reduce((acc, curr) => acc + (curr.usageCount || 0), 0);
 
   return (
-    <div className="w-full min-w-0 text-[#1A1612]">
+    <div className="admin-voucher-workspace pb-[24px] w-full min-w-0 text-[#1A1612]">
       <div className="grid gap-4 min-w-0">
 
-        <div className="bg-white border border-[#EAE4D7] rounded-xl p-4 mb-5 text-sm">
-          <h2 className="font-bold text-[#1A1612] mb-2">Đối soát voucher sàn theo gian hàng</h2>
-          {platformSubsidies.length === 0 ? <p className="text-[#7D715E]">Chưa có đơn hoàn tất sử dụng ngân sách voucher sàn.</p> : <div className="space-y-3">{platformSubsidies.map((item) => <div key={item.storeId} className="border-b border-[#EAE4D7] pb-3">
-            <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">{item.storeName} · {item.orderCount} đơn</span><span>Phải hoàn: <strong>{item.amount.toLocaleString('vi-VN')}₫</strong> · Đã ghi nhận: <strong>{item.paidAmount.toLocaleString('vi-VN')}₫</strong> · Còn lại: <strong className="text-[#B88E4F]">{item.outstandingAmount.toLocaleString('vi-VN')}₫</strong></span></div>
-            {!item.reimbursementReady && <p className="mt-1 text-[#DC2626]">Cần áp dụng migration đối soát voucher trước khi ghi nhận chuyển hoàn.</p>}
-            <div className="mt-2 space-y-2">{item.orders.map((order) => <div key={order.orderId} className="rounded-lg bg-[#FAF8F5] p-2 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2"><span>Đơn {order.orderCode}: {order.amount.toLocaleString('vi-VN')}₫ · đã ghi nhận {order.paidAmount.toLocaleString('vi-VN')}₫</span>{item.reimbursementReady && order.outstandingAmount > 0 && <button type="button" onClick={() => { setReimbursementOrderId(order.orderId); setBankReference(''); }} className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 font-semibold text-[#1A1612]">Ghi nhận đã chuyển {order.outstandingAmount.toLocaleString('vi-VN')}₫</button>}</div>
-              {order.paidAmount > order.amount && <p className="mt-1 text-[#DC2626]">Đã hoàn vượt {Math.round(order.paidAmount - order.amount).toLocaleString('vi-VN')}₫ sau điều chỉnh/hoàn đơn; cần đối soát lại với Shop.</p>}
-              {order.payments.map((payment, index) => <p key={`${payment.bankReference}-${index}`} className="mt-1 text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</p>)}
-              {reimbursementOrderId === order.orderId && <form onSubmit={(event) => void recordReimbursement(event, order.orderId, order.outstandingAmount)} className="mt-2 flex flex-wrap items-center gap-2"><label className="text-[#7D715E]">Mã giao dịch ngân hàng <input required minLength={3} maxLength={100} value={bankReference} onChange={(event) => setBankReference(event.target.value)} className="ml-1 rounded border border-[#EAE4D7] bg-white px-2 py-1 text-[#1A1612]" /></label><button disabled={recordingReimbursement} className="rounded bg-[#C59B58] px-2 py-1 font-bold text-[#1A1612] disabled:opacity-50">Xác nhận đã chuyển ngoài hệ thống</button><button type="button" onClick={() => setReimbursementOrderId('')} className="px-2 py-1">Hủy</button></form>}
-            </div>)}</div>
-          </div>)}</div>}
-        </div>
-
-        <form onSubmit={issueVoucher} className="bg-white border border-[#EAE4D7] rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-          <h2 className="font-bold text-[#1A1612] col-span-full">Phát hành voucher do sàn tài trợ</h2>
-          <select required value={issueForm.storeId} onChange={(e) => setIssueForm({ ...issueForm, storeId: e.target.value })} className="border border-[#EAE4D7] rounded-lg p-2 bg-white"><option value="">Chọn gian hàng</option>{issueStores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-          <input required placeholder="Mã voucher" value={issueForm.code} onChange={(e) => setIssueForm({ ...issueForm, code: e.target.value.toUpperCase() })} className="border border-[#EAE4D7] rounded-lg p-2" />
-          <select value={issueForm.benefitType} onChange={(e) => setIssueForm({ ...issueForm, benefitType: e.target.value as 'GOODS' | 'SHIPPING' })} className="border border-[#EAE4D7] rounded-lg p-2"><option value="GOODS">Giảm tiền hàng</option><option value="SHIPPING">Giảm cước GHN</option></select>
-          <select value={issueForm.discountType} onChange={(e) => setIssueForm({ ...issueForm, discountType: e.target.value as 'FIXED_AMOUNT' | 'PERCENTAGE' })} className="border border-[#EAE4D7] rounded-lg p-2"><option value="FIXED_AMOUNT">Số tiền</option><option value="PERCENTAGE">Phần trăm</option></select>
-          <label>Mức giảm<input required type="number" min="1" value={issueForm.discountValue} onChange={(e) => setIssueForm({ ...issueForm, discountValue: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
-          <label>Giảm tối đa<input type="number" min="1" value={issueForm.maximumDiscountAmount} onChange={(e) => setIssueForm({ ...issueForm, maximumDiscountAmount: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
-          <label>Đơn tối thiểu<input type="number" min="0" value={issueForm.minimumOrderAmount} onChange={(e) => setIssueForm({ ...issueForm, minimumOrderAmount: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
-          <label>Ngân sách<input required type="number" min="1" value={issueForm.budgetTotal} onChange={(e) => setIssueForm({ ...issueForm, budgetTotal: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
-          <label>Lượt dùng tối đa<input required type="number" min="1" value={issueForm.usageLimitTotal} onChange={(e) => setIssueForm({ ...issueForm, usageLimitTotal: Number(e.target.value) })} className="w-full border border-[#EAE4D7] rounded-lg p-2" /></label>
-          <button disabled={issuing} className="bg-[#C59B58] text-[#1A1612] font-bold rounded-lg p-2 disabled:opacity-50">{issuing ? 'Đang phát hành…' : 'Phát hành'}</button>
-        </form>
+        <header className="av-workspace-heading flex items-center justify-between gap-[20px] pt-[5px] pb-[8px] px-[2px] [&_h2]:my-[4px] [&_h2]:mx-0 [&_h2]:text-[23px] [&_h2]:font-bold [&_h2]:tracking-[-.025em] [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:mt-[4px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:leading-[1.6] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:flex-col [@media(max-width:760px)]:gap-[13px]">
+          <div><span className="av-eyebrow text-[#B88E4F] text-[10px] font-bold tracking-[.12em]">QUẢN LÝ ƯU ĐÃI</span><h2>Voucher toàn sàn</h2><p>Phát hành ưu đãi, kiểm soát mã và theo dõi khoản tài trợ cho Shop.</p></div>
+          <button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px] av-button-primary [&.av-button-primary]:bg-[#C59B58] [&.av-button-primary]:border-[#C59B58] [&.av-button-primary]:text-[#1A1612] [&.av-button-primary:hover]:bg-[#B88E4F]" onClick={() => setIssuerOpen(true)}><Plus size={17} />Phát hành voucher sàn</button>
+        </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
@@ -298,6 +244,12 @@ export const AdminCouponsPage: React.FC = () => {
         </div>
 
 
+        <div className="av-workspace-navigation [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-[#B88E4F] [&_button:focus-visible]:outline-offset-[3px] flex items-center justify-between gap-[10px] pt-0 pb-[10px] px-0 border-b border-b-[#EAE4D7] [&_[role=tablist]]:flex [&_[role=tablist]]:flex-wrap [&_[role=tablist]]:gap-[6px] [&_[role=tab]]:inline-flex [&_[role=tab]]:items-center [&_[role=tab]]:gap-[8px] [&_[role=tab]]:py-[10px] [&_[role=tab]]:px-[13px] [&_[role=tab]]:border [&_[role=tab]]:border-[transparent] [&_[role=tab]]:rounded-[9px] [&_[role=tab]]:text-[12px] [&_[role=tab]]:font-semibold [&_[role=tab]]:text-[#7D715E] [&_[role=tab]]:cursor-pointer [&_[role=tab][aria-selected=true]]:bg-[#FBF5EB] [&_[role=tab][aria-selected=true]]:border-[#EEDFC6] [&_[role=tab][aria-selected=true]]:text-[#1A1612] [&_[role=tab]_svg]:text-[#B88E4F] [&_[role=tab]_span]:bg-[#F3EFE6] [&_[role=tab]_span]:text-[10px] [&_[role=tab]_span]:py-[1px] [&_[role=tab]_span]:px-[6px] [&_[role=tab]_span]:rounded-[5px] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:[&_[role=tab]]:p-[8px] [@media(max-width:760px)]:[&_[role=tab]]:text-[11px]"><div role="tablist" aria-label="Quản lý voucher">
+          <button id="av-coupons-tab" type="button" role="tab" aria-selected={view === 'coupons'} aria-controls="av-coupons-panel" onClick={() => setView('coupons')}><Tag size={16} />Danh sách voucher<span>{totalCount}</span></button>
+          <button id="av-settlements-tab" type="button" role="tab" aria-selected={view === 'settlements'} aria-controls="av-settlements-panel" onClick={() => setView('settlements')}><Wallet size={16} />Đối soát với Shop</button>
+        </div><button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px]" onClick={() => void fetchCoupons()} disabled={loading}><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Làm mới</button></div>
+
+        {view === 'settlements' ? <div role="tabpanel" id="av-settlements-panel" aria-labelledby="av-settlements-tab"><AdminVoucherSettlements items={platformSubsidies} loading={loading} error={subsidyError} onUpdated={() => void fetchCoupons()} /></div> : <div role="tabpanel" id="av-coupons-panel" aria-labelledby="av-coupons-tab" className="av-coupon-panel grid gap-[14px] min-w-0">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 border border-[#EAE4D7] rounded-xl bg-white">
           <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -333,21 +285,12 @@ export const AdminCouponsPage: React.FC = () => {
               </button>
             ))}
 
-            <button
-              type="button"
-              onClick={fetchCoupons}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#1A1612] border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-50 shrink-0"
-              title="Làm mới dữ liệu"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
+            <select aria-label="Lọc nguồn tài trợ" value={fundingFilter} onChange={event => setFundingFilter(event.target.value)} className="av-funding-filter h-[35px] border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] rounded-[8px] text-[11px] py-0 px-[8px] max-w-full"><option value="ALL">Tất cả nguồn tài trợ</option><option value="SHOP_FUNDED">Shop tài trợ</option><option value="PLATFORM_FUNDED">SCANMS tài trợ</option><option value="CO_FUNDED">Đồng tài trợ</option></select>
           </div>
         </div>
 
 
-        {loading ? (
+        {loadError ? <p className="av-error flex gap-[8px] items-start border border-[#F5D3CC] rounded-[8px] p-[12px] bg-[#FFF7F5] text-[#DC2626] text-[12px] leading-[1.6] [&_button]:underline [&_button]:cursor-pointer" role="alert">{loadError}</p> : loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F] mx-auto mb-3" />
             <p className="text-sm text-[#7D715E]">Đang tải danh sách coupon toàn sàn...</p>
@@ -359,14 +302,15 @@ export const AdminCouponsPage: React.FC = () => {
             <p className="text-xs text-[#7D715E] mt-1">Thử thay đổi từ khóa hoặc bộ lọc trạng thái để tra cứu.</p>
           </div>
         ) : (
-          <div className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden">
+          <div className="av-coupon-table [&_table_th]:whitespace-nowrap [&_table_th]:text-[11px] [&_table_td]:tabular-nums border border-[#EAE4D7] rounded-xl bg-white overflow-hidden">
+            <div className="av-table-caption flex justify-between gap-[10px] items-center py-[15px] px-[17px] border-b border-b-[#EAE4D7] [&_h3]:text-[13px] [&_h3]:font-bold [&_h3]:m-0 [&_span]:text-[#7D715E] [&_span]:text-[11px]"><h3>Danh sách mã giảm giá</h3><span>{filteredCoupons.length} mã phù hợp</span></div>
             <div className="w-full overflow-x-auto">
               <table className="w-full min-w-[950px] border-collapse text-left text-xs">
                 <colgroup><col style={{width: 165}} /><col style={{width: "22%"}} /><col /><col style={{width: 95}} /><col style={{width: 125}} /><col style={{width: 85}} /><col style={{width: 120}} /><col style={{width: 110}} /></colgroup>
                 <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[#7D715E] font-semibold">
                   <tr>
                     <th scope="col" className="py-3 px-4">Mã giảm giá</th>
-                    <th scope="col" className="py-3 px-4">KOL / CTV</th>
+                    <th scope="col" className="py-3 px-4">Người phát hành</th>
                     <th scope="col" className="py-3 px-4">Gian hàng</th>
                     <th scope="col" className="py-3 px-4">Ưu đãi</th>
                     <th scope="col" className="py-3 px-4">Tài trợ</th>
@@ -384,11 +328,11 @@ export const AdminCouponsPage: React.FC = () => {
                     return (
                       <tr key={coupon.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
                         <td data-label="Mã giảm giá" className="py-3.5 px-4 font-mono font-bold text-[#1A1612]">
-                          <span className="bg-[#FAF8F5] px-2.5 py-1 rounded-md border border-[#EAE4D7] text-[#B88E4F]">
+                          <span className="av-table-code inline-block max-w-[190px] wrap-anywhere leading-[1.5] text-[11px] font-semibold text-[#1A1612] py-[4px] px-[7px] border border-[#EAE4D7] rounded-[6px] bg-[#FAF8F5]">
                             {coupon.displayCode}
                           </span>
                         </td>
-                        <td data-label="KOL / CTV" className="py-3.5 px-4">
+                        <td data-label="Người phát hành" className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
                             <User className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
                             <div>
@@ -430,7 +374,7 @@ export const AdminCouponsPage: React.FC = () => {
                         </td>
                         <td data-label="Trạng thái" className="py-3.5 px-4">
                           <span
-                            className={`admin-coupon-status is-${coupon.status.toLowerCase()}`}
+                            className={`admin-coupon-status inline-flex whitespace-nowrap items-center py-[4px] px-[7px] border border-[#EAE4D7] rounded-[6px] text-[#7D715E] bg-[#FAF8F5] text-[10px] [&.is-active]:text-[#795A2D] [&.is-active]:border-[#EEDFC6] [&.is-active]:bg-[#FBF5EB] [&.is-blocked]:text-[#DC2626] [&.is-blocked]:bg-[#FFF7F5] [&.is-blocked]:border-[#F5D3CC] is-${coupon.status.toLowerCase()}`}
                           >
                             {statusCfg.label}
                           </span>
@@ -449,7 +393,7 @@ export const AdminCouponsPage: React.FC = () => {
                               <button
                                 onClick={() => handleUnblock(coupon)}
                                 disabled={unblockLoading}
-                                className="admin-coupon-unblock"
+                                className="admin-coupon-unblock inline-flex items-center gap-[5px] whitespace-nowrap border border-[#EAE4D7] py-[7px] px-[9px] rounded-[7px] text-[11px] font-semibold cursor-pointer text-[#795A2D] bg-[#FBF5EB]"
                                 title="Mở khóa coupon"
                               >
                                 <Unlock className="w-3 h-3" />
@@ -462,7 +406,7 @@ export const AdminCouponsPage: React.FC = () => {
                                   setBlockReason('');
                                   setBlockError(null);
                                 }}
-                                className="admin-coupon-block"
+                                className="admin-coupon-block inline-flex items-center gap-[5px] whitespace-nowrap border py-[7px] px-[9px] rounded-[7px] text-[11px] font-semibold cursor-pointer text-[#DC2626] border-[#F5D3CC] bg-white hover:bg-[#FFF7F5]"
                                 title="Khóa coupon"
                               >
                                 <Lock className="w-3 h-3" />
@@ -479,8 +423,10 @@ export const AdminCouponsPage: React.FC = () => {
             </div>
           </div>
         )}
+        </div>}
       </div>
 
+      {issuerOpen && <AdminVoucherIssuer onClose={() => setIssuerOpen(false)} onIssued={() => { setIssuerOpen(false); setView('coupons'); toast.success('Đã phát hành voucher sàn.'); void fetchCoupons(); }} />}
 
       {detailCoupon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/35 backdrop-blur-xs">
@@ -510,7 +456,7 @@ export const AdminCouponsPage: React.FC = () => {
                 <span className="font-bold text-[#1A1612]">{detailCoupon.store?.name}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#FAF8F5]">
-                <span>KOL sở hữu:</span>
+                <span>Người phát hành:</span>
                 <span className="font-bold text-[#1A1612]">{detailCoupon.collaborator?.fullName} ({detailCoupon.collaborator?.email})</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#FAF8F5]">

@@ -1,4 +1,11 @@
 import api from './api';
+import { authService } from './auth.service';
+
+function notifyWishlistChanged(userId: string | undefined, token: string | null) {
+  if (userId && token === localStorage.getItem('token')) {
+    window.dispatchEvent(new CustomEvent('customer-wishlist-changed', { detail: { userId } }));
+  }
+}
 
 export interface CustomerStats {
   totalOrders: number;
@@ -128,6 +135,11 @@ export interface SyncedCartItem {
   }>;
 }
 
+export interface CartSessionRequest {
+  token: string;
+  signal: AbortSignal;
+}
+
 export interface CustomerAddress {
   id: string;
   userId: string;
@@ -214,7 +226,7 @@ export const customerService = {
 
   // 2. Orders
   async getOrders(params?: { status?: string; search?: string }): Promise<{ total: number; orders: CustomerOrder[] }> {
-    const res: any = await api.get('/customer/orders', { params });
+    const res: any = await api.get('/customer/orders', { params, headers: { 'x-skip-cache': 'true' } });
     const payload = res?.data?.data || res?.data || res;
     return {
       total: payload?.total || (payload?.orders?.length ?? 0),
@@ -223,7 +235,7 @@ export const customerService = {
   },
 
   async getOrderDetails(orderId: string): Promise<CustomerOrder> {
-    const res: any = await api.get(`/customer/orders/${orderId}`);
+    const res: any = await api.get(`/customer/orders/${orderId}`, { headers: { 'x-skip-cache': 'true' } });
     return res?.data?.data || res?.data || res;
   },
 
@@ -266,15 +278,22 @@ export const customerService = {
     return res?.data?.data || res?.data || res;
   },
 
-  async getCart(): Promise<{ items: SyncedCartItem[]; syncedAt: string }> {
-    const res: any = await api.get('/customer/cart', { headers: { 'x-skip-cache': 'true' } });
+  async getCart(session?: CartSessionRequest): Promise<{ items: SyncedCartItem[]; syncedAt: string }> {
+    const res: any = await api.get('/customer/cart', {
+      signal: session?.signal,
+      headers: { 'x-skip-cache': 'true', ...(session ? { Authorization: `Bearer ${session.token}` } : {}) },
+    });
     return res?.data?.data || res?.data || res;
   },
 
   async syncCart(
     items: Array<{ productId: string; variantId?: string; quantity: number }>,
+    session?: CartSessionRequest,
   ): Promise<{ items: SyncedCartItem[]; warnings?: string[]; syncedAt: string }> {
-    const res: any = await api.put('/customer/cart', { items });
+    const res: any = await api.put('/customer/cart', { items }, {
+      signal: session?.signal,
+      ...(session ? { headers: { Authorization: `Bearer ${session.token}` } } : {}),
+    });
     return res?.data?.data || res?.data || res;
   },
 
@@ -306,19 +325,28 @@ export const customerService = {
   },
 
   // 4. Wishlist
-  async getWishlist(): Promise<CustomerWishlistItem[]> {
-    const res: any = await api.get('/customer/wishlist');
+  async getWishlist(signal?: AbortSignal): Promise<CustomerWishlistItem[]> {
+    const token = localStorage.getItem('token');
+    const res: any = await api.get('/customer/wishlist', { signal,
+      headers: { 'x-skip-cache': 'true', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
     const payload = res?.data?.data || res?.data || res;
     return Array.isArray(payload) ? payload : [];
   },
 
   async toggleWishlist(productId: string): Promise<{ wishlisted: boolean; message: string }> {
+    const userId = authService.getCurrentUser()?.id;
+    const token = localStorage.getItem('token');
     const res: any = await api.post(`/customer/wishlist/${productId}/toggle`);
+    notifyWishlistChanged(userId, token);
     return res?.data?.data || res?.data || res;
   },
 
   async removeFromWishlist(productId: string): Promise<any> {
+    const userId = authService.getCurrentUser()?.id;
+    const token = localStorage.getItem('token');
     const res: any = await api.delete(`/customer/wishlist/${productId}`);
+    notifyWishlistChanged(userId, token);
     return res?.data?.data || res?.data || res;
   },
 };

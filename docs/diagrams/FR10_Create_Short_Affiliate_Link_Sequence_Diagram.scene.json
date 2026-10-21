@@ -1,0 +1,892 @@
+{
+  "width": 2840,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-10 Create Short Affiliate Link — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2750,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: choose an eligible product → create and audit affiliate link → show short URL.",
+      "x": 45,
+      "y": 73,
+      "w": 2750,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "KOL",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CollaboratorReferralLinksController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":ReferralLinksService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 550,
+      "w": 10,
+      "h": 112
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 449,
+      "w": 10,
+      "h": 315
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 347,
+      "w": 10,
+      "h": 519
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1365,
+      "w": 10,
+      "h": 112
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1823,
+      "w": 10,
+      "h": 112
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 1263,
+      "w": 10,
+      "h": 901
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 1161,
+      "w": 10,
+      "h": 1105
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Open Create Affiliate Link",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          347
+        ],
+        [
+          1025,
+          347
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. GET /api/collaborator/referral-links/products",
+      "x": 472,
+      "y": 298,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          449
+        ],
+        [
+          1565,
+          449
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. getEligibleProducts(collaboratorId, query)",
+      "x": 1042,
+      "y": 400,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          550
+        ],
+        [
+          2105,
+          550
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. Read KOL/KYC and eligible affiliate products",
+      "x": 1582,
+      "y": 501,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          652
+        ],
+        [
+          1575,
+          652
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "5. Eligible products in active Stores",
+      "x": 1582,
+      "y": 603,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          754
+        ],
+        [
+          1035,
+          754
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "6. Product choices",
+      "x": 1042,
+      "y": 705,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          856
+        ],
+        [
+          465,
+          856
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "7. 200: eligible products",
+      "x": 472,
+      "y": 807,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          958
+        ],
+        [
+          115,
+          958
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "8. Display product choices",
+      "x": 122,
+      "y": 909,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          1060
+        ],
+        [
+          455,
+          1060
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. Choose product; enter link details; Create",
+      "x": 122,
+      "y": 1011,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          1161
+        ],
+        [
+          1025,
+          1161
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. POST /api/collaborator/referral-links",
+      "x": 472,
+      "y": 1112,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          1263
+        ],
+        [
+          1565,
+          1263
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. createReferralLink(collaboratorId, dto, ip)",
+      "x": 1042,
+      "y": 1214,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1365
+        ],
+        [
+          2105,
+          1365
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "12. Read KOL/KYC, Product/Store, optional campaign and quotas",
+      "x": 1582,
+      "y": 1316,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1467
+        ],
+        [
+          1575,
+          1467
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. Eligibility records and quota counts",
+      "x": 1582,
+      "y": 1418,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1569
+        ],
+        [
+          1620,
+          1569
+        ],
+        [
+          1620,
+          1588
+        ],
+        [
+          1575,
+          1588
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "14. Validate eligibility, expiry, campaign and quotas",
+      "x": 1632,
+      "y": 1543,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1696
+        ],
+        [
+          1620,
+          1696
+        ],
+        [
+          1620,
+          1715
+        ],
+        [
+          1575,
+          1715
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. Generate 8-character code; sanitize fields",
+      "x": 1632,
+      "y": 1670,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1823
+        ],
+        [
+          2105,
+          1823
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. $transaction: create ACTIVE ReferralLink and creation AuditLog",
+      "x": 1582,
+      "y": 1774,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1925
+        ],
+        [
+          1575,
+          1925
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "17. Commit new link; rollback on write failure",
+      "x": 1582,
+      "y": 1876,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          2027
+        ],
+        [
+          1620,
+          2027
+        ],
+        [
+          1620,
+          2046
+        ],
+        [
+          1575,
+          2046
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. Build shortUrl = publicAppUrl + /r/ + shortCode",
+      "x": 1632,
+      "y": 2001,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2154
+        ],
+        [
+          1035,
+          2154
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Created link and shortUrl",
+      "x": 1042,
+      "y": 2105,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2256
+        ],
+        [
+          465,
+          2256
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. 201 Created: ReferralLinkItem",
+      "x": 472,
+      "y": 2207,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          2358
+        ],
+        [
+          510,
+          2358
+        ],
+        [
+          510,
+          2377
+        ],
+        [
+          465,
+          2377
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "21. Refresh list; keep success modal open",
+      "x": 522,
+      "y": 2332,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. Show short URL and Copy action",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser = ReferralLinksPage + HTTP adapter. JWT/role/DTO checks precede controller calls; collaboratorId comes from JWT. Campaign invitation loading is a separate request.",
+      "x": 45,
+      "y": 2595,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Quota counts are read before the transaction: 10 links/minute, 500 ACTIVE links, 20 non-deleted links/product. Optional campaign/deal checks and failures are documented separately.",
+      "x": 45,
+      "y": 2645,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Prisma P2002 retries the write with a new code/UUID, at most 5 attempts. Coupon is stored as a string; QR rendering, click tracking and checkout are separate interactions.",
+      "x": 45,
+      "y": 2700,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

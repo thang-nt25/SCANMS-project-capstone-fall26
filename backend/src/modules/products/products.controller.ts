@@ -32,6 +32,7 @@ import { ModerateProductReviewDto } from './dto/moderate-product-review.dto';
 import { ModerateProductDto } from './dto/moderate-product.dto';
 import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy.dto';
 import { SyncProductVariantsDto } from './dto/sync-product-variants.dto';
+import { ReviewReplyDto, ReviewReportDto, ResolveReviewReportDto } from './dto/review-actions.dto';
 
 @ApiTags('Products Management')
 @Controller('products')
@@ -97,7 +98,7 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Danh sách review chờ Shop/Admin kiểm duyệt' })
+  @ApiOperation({ summary: 'Đánh giá và báo cáo; Shop chỉ xem đánh giá của mình' })
   async listReviewsForModeration(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
@@ -107,9 +108,9 @@ export class ProductsController {
 
   @Patch('reviews/:reviewId/moderation')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Shop/Admin duyệt, từ chối hoặc ẩn review' })
+  @ApiOperation({ summary: 'Sàn kiểm duyệt nội dung đánh giá' })
   async moderateReview(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
@@ -117,6 +118,28 @@ export class ProductsController {
     @Body() dto: ModerateProductReviewDto,
   ) {
     return this.productsService.moderateReview(userId, role, reviewId, dto);
+  }
+
+  @Post('reviews/:reviewId/reply')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER)
+  replyReview(@CurrentUser('id') userId: string, @Param('reviewId') reviewId: string, @Body() dto: ReviewReplyDto) {
+    return this.productsService.replyToReview(userId, reviewId, dto);
+  }
+
+  @Post('reviews/:reviewId/report')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER)
+  reportReview(@CurrentUser('id') userId: string, @Param('reviewId') reviewId: string, @Body() dto: ReviewReportDto) {
+    return this.productsService.reportReview(userId, reviewId, dto);
+  }
+
+  @Post('reviews/:reviewId/resolve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  resolveReview(@CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole,
+    @Param('reviewId') reviewId: string, @Body() dto: ResolveReviewReportDto) {
+    return this.productsService.resolveReviewReport(userId, role, reviewId, dto);
   }
 
   @Get('moderation')

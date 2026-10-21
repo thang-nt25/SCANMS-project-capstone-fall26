@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, Check, Loader2, MessageSquare, ShieldAlert, Sparkles, X } from 'lucide-react';
 import { referralLinksService } from '../../services/referral-links.service';
 import { Select } from '../ui/Select';
+import { DealKpiProgress } from './DealKpiProgress';
 
 export interface ExclusiveDealInboxProps {
   onChat?: (item: any) => void;
@@ -67,6 +68,19 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
     } finally {
       setSubmittingTerminate(false);
     }
+  };
+
+  const reviewTermination = async (item: any) => {
+    setBusyId(item.id);
+    try {
+      const progress = await referralLinksService.getDealProgress(item.id);
+      if (!progress.canTerminate) {
+        setFeedback('Chưa thể chế tài: Deal chưa hết đối soát, đã đạt KPI hoặc chưa có KPI cấu trúc.');
+        return;
+      }
+      setSelectedDealToTerminate(item);
+    } catch { setFeedback('Không kiểm tra được KPI. Hãy tải lại và thử sau.'); }
+    finally { setBusyId(null); }
   };
 
   const handleChat = (e: React.MouseEvent, item: any) => {
@@ -149,7 +163,7 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
                     {([
                       ['discountPercent', 'Giảm (%)', 1], ['minimumOrderAmount', 'Đơn tối thiểu (₫)', 0],
                       ['maximumDiscountAmount', 'Giảm tối đa (₫)', 1], ['usageLimitTotal', 'Tổng lượt dùng', 1],
-                      ['budgetTotal', 'Ngân sách Shop (₫)', 1], ['validDays', 'Hiệu lực (ngày)', 1],
+                      ['budgetTotal', 'Ngân sách Shop (₫)', 1], ['validDays', 'Hiệu lực voucher (ngày)', 1],
                     ] as const).map(([key, label, min]) => <label key={key} className="flex flex-col gap-1 text-[11px] font-medium text-[#7D715E]">{label}<input type="number" min={min} max={key === 'discountPercent' ? 20 : key === 'validDays' ? 365 : undefined} value={terms[key]} onChange={(e) => setVoucherTermsById((current) => ({ ...current, [item.id]: { ...terms, [key]: Number(e.target.value) } }))} className="w-full rounded-md border border-[#EAE4D7] bg-white px-2 py-1 text-[#1A1612]" /></label>)}
                   </div>}
                   {item.vipVoucherCode && <span className="text-[#B88E4F] font-bold">Mã VIP: {item.vipVoucherCode}</span>}
@@ -180,7 +194,8 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedDealToTerminate(item)}
+                        disabled={busyId === item.id || !!item.closedAt}
+                        onClick={() => void reviewTermination(item)}
                         className="inline-flex items-center gap-1 rounded-lg border border-[#DC2626]/30 bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#DC2626] hover:bg-[#DC2626]/10 transition cursor-pointer"
                         title="Đóng deal riêng do KOL không đạt cam kết doanh số"
                       >
@@ -189,6 +204,7 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
                     </span>
                   )}
                 </div>
+                <DealKpiProgress id={item.id} />
                 {item.shopResponse && (
                   <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E] bg-white p-2 rounded-lg border border-[#EAE4D7]">
                     <strong>Phản hồi:</strong> {item.shopResponse}

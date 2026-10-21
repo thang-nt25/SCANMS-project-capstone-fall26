@@ -1,6 +1,17 @@
 # FR-14 — Chống click spam qua Redis Rate Limit
 
-Đối chiếu mã nguồn ngày 2026-10-16. Hai file riêng trong `docs/diagrams`: `FR14_Redis_Click_Rate_Limit_Class_Diagram.drawio` và `FR14_Redis_Click_Rate_Limit_Sequence_Diagram.drawio`. Class được tạo trước sequence bằng `node docs/diagrams/build-fr14-diagrams.cjs`. Sequence một trang, tiếng Anh, trắng đen, không có khung ref/alt/opt ngang; điều kiện được ghi trên từng mũi tên. PNG là bản preview từ geometry, không phải export trực tiếp của diagrams.net.
+Cập nhật theo lựa chọn của người dùng ngày 2026-10-20: **giữ nguyên toàn bộ lớp, thành viên và quan hệ; chỉ đổi cách dàn hình và tỷ lệ hiển thị**. Class FR10–FR16 cùng khổ 2800 × 2240, font Arial 20/18 và trục Controller → Service → PrismaService tại x=850 như FR9. Các model liên quan được phân nhóm sang cột trái khi phù hợp, tránh dồn tất cả vào một cột bên phải. Hộp trục xử lý rộng 830, cột trái 560, model bên phải 620, PrismaClient 650. Không bổ sung guard hoặc lớp mới. Xem [bố cục và đối chiếu FR9](diagrams/FR09_WORD_CLASS_COMPARISON.md).
+
+Sequence dùng chung generator `report-uml-layout.cjs`: actor bên trái, Browser kế tiếp rồi các đối tượng thực tế; hộp Browser rộng 250, các hộp đối tượng rộng 430, cùng cao 58; tiêu đề 28, tên đối tượng 20, thông điệp 18. Khoảng cách và thanh thực thi, lời gọi nội bộ, mũi tên gọi/trả về, số thứ tự và ba chú thích cuối hình được đồng bộ. Giữ nhịp 64 px của FR9, thêm 8 px sau lời gọi nội bộ để không che vòng trả về. Giữ nguyên thành phần, nội dung và thứ tự thông điệp của bản rút gọn; số cột tùy chức năng. Không thêm khung bao hoặc khung chia nhánh.
+
+
+Đối chiếu mã nguồn ngày 2026-10-19. **Bản báo cáo rút gọn hiện tại: 9 lớp/model, 23 thông điệp sequence.** Hai hình dùng đen trắng, class ba ngăn và `+`/`-`, connector có source/target thật và bội số đúng schema; sequence có actor, lifeline, activation và mũi tên, không có khung bao/chia nhánh. Điều kiện ghi trên nhãn. Phong cách theo FR9 và mẫu Word đã tham khảo.
+
+Quyết định giới hạn nguyên tử bằng Redis Lua, fallback RAM, chuyển hướng an toàn và log bất đồng bộ. Health/dashboard và chi tiết metrics nằm trong văn bản; không ghép request quản trị vào luồng click của khách.
+
+Các lớp/model được vẽ: `RedirectController`, `ReferralLinksService`, `CacheService`, `PrismaService`, `ClickQueueService`, `Redis (ioredis library)`, `ReferralLink`, `ClickTrafficLog`, `PrismaClient`. Chỉ chọn thành viên liên quan; model không có phương thức tự khai báo giữ ngăn operation trống. Không dựng Repository/UnitOfWork hoặc service giả. PrismaService kế thừa PrismaClient trong mã và được vẽ bằng tam giác rỗng hướng tới hộp PrismaClient ở phía dưới bên trái, giống FR9.
+
+Hai XML không có đuôi mở rộng: `docs/review 2/FR14 - Class Diagram` và `docs/review 2/FR14 - Sequence Diagram`. Bản `.drawio`, `.scene.json`, PNG có tiền tố `FR14_Redis_Click_Rate_Limit` trong `docs/diagrams`; XML để dán là `FR14_Class_Paste.xml` và `FR14_Sequence_Paste.xml`. PNG là preview từ cùng geometry, không phải export trực tiếp diagrams.net. Bản chi tiết cũ, gồm tài liệu mô tả hình cũ, được lưu tại `docs/diagrams/archive/FR14_detailed`.
 
 ## Hành vi trên web hiện tại
 
@@ -30,7 +41,7 @@ Nguồn: `CacheService.checkClickRateLimitAtomic` và `clickRateLimitLuaScript` 
 - Score là timestamp do ứng dụng gửi, member là timestamp cộng UUID để các click cùng millisecond không bị ghi đè.
 - Một lần EVAL xóa timestamp ngoài cửa sổ 1.000ms/60.000ms rồi ZCARD. Kiểm tra ngưỡng giây trước, phút sau. Nếu đã đạt ngưỡng thì trả SEC/MIN và không thêm request bị từ chối vào ZSET.
 - Nếu được chấp nhận, ZADD vào cả hai tập rồi EXPIRE lần lượt 3 giây và 70 giây. TTL này dọn key, không phải độ dài cửa sổ.
-- Kết quả gồm allowed, limitedBy, currentSec/currentMin, remainingSec/remainingMin, resetTimeSec/resetTimeMin, isDegraded. Các kiểu options/result được khai báo inline trong method, không có DTO/class độc lập trong code; sơ đồ đặt tên mô tả cho dễ đọc.
+- Kết quả gồm allowed, limitedBy, currentSec/currentMin, remainingSec/remainingMin, resetTimeSec/resetTimeMin, isDegraded. Các kiểu options/result được khai báo inline trong method, không có DTO/class độc lập trong code; sơ đồ liệt kê trong ghi chú, không thêm lớp mang tên mô tả.
 - Lua đảm bảo tính nguyên tử khi nhiều request/instance dùng cùng Redis. Đây không phải bộ đếm INCR với fixed window.
 
 `resetTime*` trong nhánh Redis được tính từ TTL của key, không phải thời điểm chính xác timestamp cũ nhất trượt khỏi cửa sổ. Sơ đồ không diễn giải giá trị này thành Retry-After chính xác.
@@ -55,10 +66,20 @@ ClickTrafficLog.referralLinkId là FK tới ReferralLink: một link có 0..* lo
 
 ## Giám sát
 
-`ReferralLinksController.getRateLimitDashboard` có GET `rate-limit/dashboard`, giới hạn SYSTEM_ADMIN/SYSTEM_MANAGER; gọi `ReferralLinksService.getRateLimitDashboard` rồi `CacheService.getHealthStatus`. Service cũng có `getRateLimitHealth`, không suy ra một route public riêng chỉ từ method này.
+`AdminReferralLinksController.getRateLimitDashboard` có GET `/api/admin/referral-links/rate-limit/dashboard`, giới hạn SYSTEM_ADMIN/SYSTEM_MANAGER; gọi `ReferralLinksService.getRateLimitDashboard` rồi `CacheService.getHealthStatus`. `RedirectController.getRateLimitHealth` khai báo GET `/r/rate-limit/health` và `/api/referral-links/rate-limit/health`; đây là route thực tế đã đọc trong controller. Hai request giám sát được thể hiện ở mức lớp, không ghép vào sequence click của khách.
 
 Health chứa backend Redis/RAM, ngưỡng cấu hình, metrics allowed/blockedSec/blockedMin/degraded, latency/error/timeout, blocked IP, spike và cảnh báo tỷ lệ chặn. Dashboard suy ra HEALTHY/WARNING/DEGRADED. Các bộ đếm request trong CacheService là cục bộ theo process; một số thống kê IP/spike được đồng bộ Redis theo timer, không coi toàn bộ metrics là tổng phân tán chính xác.
 
 ## Kiểm tra tài liệu
 
-Đã đối chiếu implementation, đọc test có sẵn `backend/src/modules/referral-links/tests/click-rate-limit.spec.ts` (ngưỡng giây/phút, cạnh cửa sổ, concurrency, multi-instance, fallback). Chưa chạy integration test vì việc này chỉ tạo tài liệu và test yêu cầu Redis thật. Kiểm tra thay đổi bằng parse XML, xác nhận mỗi file có một diagram và xem ảnh render để kiểm tra bố cục. Không thay đổi code nghiệp vụ hoặc cấu hình runtime.
+Đã đối chiếu implementation, đọc test có sẵn `backend/src/modules/referral-links/tests/click-rate-limit.spec.ts` (ngưỡng giây/phút, cạnh cửa sổ, concurrency, multi-instance, fallback). Suite này dùng Redis thật nên không chạy với Redis dùng chung trong tác vụ tài liệu.
+
+Đã chạy hai suite unit có sẵn `referral-links.service.spec.ts` và `client-ip.util.spec.ts` bằng `test/jest-unit.config.cjs`: **48/48 test đạt**. Kết quả này kiểm tra unit liên quan, không thay thế kiểm chứng Lua/multi-instance end-to-end trên Redis thật.
+
+## Kiểm tra bản báo cáo rút gọn
+
+Tái tạo: `node docs/diagrams/build-fr14-diagrams.cjs` hoặc `node docs/diagrams/build-report-diagrams.cjs 14`. Đặc tả nằm trong `fr14-report-spec.json`; bộ bố cục dùng `report-uml-layout.cjs` và helper UML của FR9.
+
+Kiểm tra 9 cặp ngăn class, 23 thông điệp, một trang mỗi file, ID/tham chiếu, giới hạn canvas, đường nối không xuyên lớp hoặc chồng đoạn thẳng cùng hướng; render/xem hai PNG và kiểm tra tràn chữ. Review và XML paste phải khớp bản gốc. Chỉ thay sơ đồ/tài liệu, không thay logic ứng dụng. Kết quả unit test bên trên thuộc lượt đối chiếu trước; không chạy lại test nghiệp vụ cho lần rút gọn này.
+
+Kiểm tra bằng `docs/diagrams/validate-report-diagrams.ps1`: XML một trang, ID/tham chiếu, review/paste, khổ hình và vị trí các khối, bội số và kiểu mũi tên. So với mốc `docs/diagrams/archive/FR14_before_balanced_class_layout`, danh sách lớp/thành viên và toàn bộ mảng quan hệ khớp nguyên vẹn; sequence/drawio/scene/PNG/paste khớp hash. Đã render và xem PNG class, không tràn chữ; nhãn không che dây. Bản mốc trước còn được giữ trong các thư mục `FR14_before_word_class_alignment`, `FR14_before_fr09_sequence_layout` và `FR14_compact_before_fr09_layout`.
