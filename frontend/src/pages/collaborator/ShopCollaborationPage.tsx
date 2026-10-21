@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -798,7 +799,7 @@ export default function ShopCollaborationPage() {
     try {
       const isBundle = items.length > 1;
       const commitmentSummary = isBundle
-        ? `[GÓI DEAL ${items.length} SẢN PHẨM] Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`
+        ? `[ĐỀ XUẤT ${items.length} DEAL] Kỳ hạn: ${dealDurationMonths * 30} ngày | Cam kết mỗi sản phẩm: ${dealOrderCommitment} đơn | Doanh số ước tính: ${dealRevenueCommitment} ₫ | Kế hoạch: ${dealContentPlan.trim()}`
         : `Kỳ hạn: ${dealDurationMonths} tháng | Cam kết: ${dealOrderCommitment} đơn (Mục tiêu ~${dealRevenueCommitment} ₫) | Kế hoạch: ${dealContentPlan.trim()}`;
 
       // Gửi proposal cho từng sản phẩm trong gói
@@ -808,6 +809,8 @@ export default function ShopCollaborationPage() {
           productId: item.id,
           proposedCommissionRate: rate,
           salesCommitment: commitmentSummary,
+          targetOrders: dealOrderCommitment,
+          commitmentDays: dealDurationMonths * 30,
         });
       }
 
@@ -2844,7 +2847,7 @@ setActiveTab('samples');
                     </h3>
                     <p className="text-[11px] text-[#7D715E] m-0 truncate">
                       {isBundle
-                        ? `Đàm phán mức hoa hồng VIP chung cho danh mục sản phẩm kèm cam kết tổng doanh số.`
+                        ? `Đề xuất cùng mức hoa hồng VIP cho nhiều sản phẩm. Mỗi sản phẩm có KPI riêng.`
                         : 'Thương thảo mức hoa hồng VIP và gửi cam kết doanh số vào khung Chat.'}
                     </p>
                   </div>
@@ -2994,7 +2997,7 @@ setActiveTab('samples');
                   <div className="space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
                       <Handshake className="w-4 h-4 text-[#B88E4F]" />
-                      <span>{isBundle ? `Cam kết doanh số toàn Gói (${currentProducts.length} sản phẩm)` : 'Cam kết doanh số & Kế hoạch hợp tác'}</span>
+                      <span>{isBundle ? `Cam kết riêng cho từng sản phẩm (${currentProducts.length} Deal)` : 'Cam kết doanh số & Kế hoạch hợp tác'}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -3018,13 +3021,13 @@ setActiveTab('samples');
                       {/* Số đơn cam kết */}
                       <div>
                         <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">
-                          {isBundle ? 'Mục tiêu tổng số đơn cả gói' : 'Mục tiêu số đơn tối thiểu'}
+                          {isBundle ? 'Mục tiêu số đơn cho mỗi sản phẩm' : 'Mục tiêu số đơn tối thiểu'}
                         </label>
                         <div className="relative">
                           <input
                             type="number"
-                            min={10}
-                            step={10}
+                            min={1}
+                            step={1}
                             value={dealOrderCommitment}
                             onChange={(e) => {
                               const count = Number(e.target.value);
@@ -3040,6 +3043,8 @@ setActiveTab('samples');
                       </div>
                     </div>
 
+                    <p className="text-xs text-[#7D715E]">Kỳ thực hiện bắt đầu khi Shop duyệt. Một tháng quy đổi 30 ngày; sau kỳ có 14 ngày đối soát. Chỉ đơn hoàn tất, chưa hoàn tiền được tính. Với nhiều sản phẩm, mỗi Deal có mục tiêu riêng như trên.</p>
+                    <DealDemoPanel />
                     {/* Doanh thu cam kết */}
                     <div>
                       <label className="block text-[11px] font-semibold text-[#7D715E] mb-1">

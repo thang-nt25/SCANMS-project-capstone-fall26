@@ -109,7 +109,7 @@ export class ReferralLinksService {
     if (!uniquePairs.length) return new Map<string, any>();
 
     const deals = await this.prisma.exclusiveDealProposal.findMany({
-      where: { status: 'APPROVED', OR: uniquePairs },
+      where: { status: 'APPROVED', closedAt: null, OR: uniquePairs },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -349,7 +349,7 @@ export class ReferralLinksService {
       });
       if (
         !deal ||
-        deal.status !== 'APPROVED' ||
+        deal.status !== 'APPROVED' || deal.closedAt ||
         deal.collaboratorId !== collaboratorId ||
         deal.storeId !== product.storeId ||
         deal.productId !== product.id
@@ -2470,12 +2470,13 @@ export class ReferralLinksService {
             collaboratorId: link.collaboratorId,
             productId: link.productId,
             status: 'APPROVED',
+            closedAt: null,
           },
           orderBy: { createdAt: 'desc' },
           select: { status: true, approvedCommissionRate: true },
         })
       ;
-    const effectiveDeal = currentDeal ?? link.exclusiveDeal;
+    const effectiveDeal = currentDeal ?? (link.exclusiveDeal?.closedAt ? null : link.exclusiveDeal);
 
     // A renewed deal applies to new orders through every VIP link; existing
     // orders retain their immutable OrderItem commission snapshots.

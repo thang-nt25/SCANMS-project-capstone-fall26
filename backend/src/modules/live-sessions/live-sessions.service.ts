@@ -123,7 +123,7 @@ export class LiveSessionsService {
       }),
       this.prisma.store.findUnique({ where: { id: storeId }, select: { defaultCommissionRate: true } }),
       this.prisma.exclusiveDealProposal.findMany({
-        where: { storeId, status: 'APPROVED', approvedCommissionRate: { not: null } },
+        where: { storeId, status: 'APPROVED', closedAt: null, approvedCommissionRate: { not: null } },
         select: {
           collaboratorId: true,
           approvedCommissionRate: true,

@@ -68,6 +68,16 @@ export class AffiliateDealsController {
     return this.service.getShopProposals(userId, role);
   }
 
+  @Get(':id/progress')
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  getProgress(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.getProgress(id, userId, role);
+  }
+
   @Patch(':id/approve')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({

@@ -1673,6 +1673,7 @@ export class OrdersService {
               in: [...new Set(dto.items.map((item) => item.productId))],
             },
             status: 'APPROVED',
+            closedAt: null,
           },
           orderBy: { createdAt: 'desc' },
           select: {
