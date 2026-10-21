@@ -18,8 +18,9 @@ import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton
 import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { ShoppingScene } from '../../components/auth/ShoppingScene';
 import { AnimatedPasswordField, type PasswordAuthState } from '../../components/auth/AnimatedPasswordField';
-import './LoginPage.css';
 import { getDemoLogin } from '../../utils/demo-login';
+import { getRememberedIdentifier, getRememberedLoginRole, rememberLoginIdentifier } from '../../utils/remembered-login';
+import { safeLoginReturn } from '../../utils/login-return';
 
 type RoleType = 'customer' | 'kol' | 'shop' | 'manager' | 'admin';
 
@@ -47,18 +48,18 @@ export default function LoginPage() {
   const requestedRedirect = searchParams.get('redirect');
   const registeredProvider = searchParams.get('registered');
   const registeredEmail = searchParams.get('email');
-  const returnTo =
-    requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
-      ? requestedRedirect
-      : null;
+  const returnTo = safeLoginReturn(requestedRedirect);
   const registerUrl = returnTo ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register';
 
-  const [role, setRole] = useState<RoleType>('customer');
+  const [role, setRole] = useState<RoleType>(() => {
+    const requestedRole = searchParams.get('role')?.toLowerCase();
+    const normalizedRole = requestedRole === 'collaborator' ? 'kol' : requestedRole;
+    if (ROLES.some(option => option.id === normalizedRole)) return normalizedRole as RoleType;
+    return registeredEmail ? 'customer' : getRememberedLoginRole();
+  });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const demoLogin = getDemoLogin(role);
-  const [identifier, setIdentifier] = useState(() => registeredEmail || getDemoLogin('customer')?.identifier || '');
-  const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin('customer')?.password || '');
-  const [identifierEditable, setIdentifierEditable] = useState(false);
+  const [identifier, setIdentifier] = useState(() => registeredEmail || getRememberedIdentifier(role) || getDemoLogin(role)?.identifier || '');
+  const [password, setPassword] = useState(() => registeredEmail || getRememberedIdentifier(role) ? '' : getDemoLogin(role)?.password || '');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -80,9 +81,9 @@ export default function LoginPage() {
     if (loading || passwordAuthState === 'success') return;
     if (selectedRole !== role) {
       const account = getDemoLogin(selectedRole);
-      setIdentifier(account?.identifier || '');
-      setPassword(account?.password || '');
-      setIdentifierEditable(false);
+      const remembered = getRememberedIdentifier(selectedRole);
+      setIdentifier(remembered || account?.identifier || '');
+      setPassword(remembered ? '' : account?.password || '');
     }
     setPasswordAuthState('idle');
     setRole(selectedRole);
@@ -114,10 +115,15 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     setPasswordAuthState('checking');
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const submittedIdentifier = String(formData.get('username') || identifier).trim();
+    const submittedPassword = String(formData.get('password') || password);
 
     try {
-      const res: any = await authService.login(identifier, password);
+      const res: any = await authService.login(submittedIdentifier, submittedPassword);
       const user = res?.data?.user || res?.user;
+      const loginRole: RoleType = ({ CUSTOMER: 'customer', COLLABORATOR: 'kol', SHOP_MANAGER: 'shop', SYSTEM_MANAGER: 'manager', SYSTEM_ADMIN: 'admin' } as Record<string, RoleType>)[user?.role] || role;
+      rememberLoginIdentifier(loginRole, submittedIdentifier, rememberMe);
       setPasswordAuthState('success');
       toast.success(`Đăng nhập thành công! Chào mừng ${user?.fullName || user?.email}`);
 
@@ -163,8 +169,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="scanms-login-page selection:bg-[#EEDFC6] selection:text-[#1A1612]">
-      <header className="login-page-header">
+    <div className="scanms-login-page selection:bg-[#EEDFC6] selection:text-[#1A1612] flex min-h-dvh flex-col gap-[18px] bg-canvas px-10 pt-4 pb-3.5 text-ink [color-scheme:light] max-[1050px]:gap-[22px] max-[1050px]:px-6 max-[1050px]:py-[18px] login-compact:gap-3 login-compact:py-2.5 max-[760px]:gap-[18px] max-[760px]:px-4 max-[760px]:pt-3.5 max-[760px]:pb-5 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-brand-strong [&_button:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-brand-strong [&_a:focus-visible]:outline-offset-4 motion-reduce:[&_*]:animate-none! motion-reduce:[&_*]:transition-none! motion-reduce:[&_*]:scroll-auto! motion-reduce:[&_*::before]:animate-none! motion-reduce:[&_*::before]:transition-none! motion-reduce:[&_*::after]:animate-none! motion-reduce:[&_*::after]:transition-none!">
+      <header className="login-page-header mx-auto mt-auto flex min-h-14 w-full max-w-[1240px] items-center justify-between gap-4 min-[1500px]:max-w-[1320px] login-compact:min-h-11 max-[760px]:min-h-12 max-[760px]:[&>a:first-child]:max-w-[61%] max-[760px]:[&>a:last-child]:px-2.5 max-[760px]:[&>a:last-child]:py-2 max-[760px]:[&>a:last-child]:text-[11px] max-[760px]:[&>a:last-child]:whitespace-nowrap">
         <Link to="/marketplace" className="hover:opacity-95 transition-opacity">
           <ScanMSLogo size="md" showSubtitle={true} />
         </Link>
@@ -178,18 +184,18 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      <main className="login-page-main">
-        <div className="login-experience">
-          <section className="login-showcase" aria-label="Kết nối mua sắm cùng SCANMS">
-            <div className="login-showcase-copy">
-              <div className="login-showcase-eyebrow"><Sparkles size={14} /><span>Sàn Thương Mại Đối Tác</span></div>
+      <main className="login-page-main mx-auto mt-0 mb-auto w-full max-w-[1240px] min-[1500px]:max-w-[1320px]">
+        <div className="login-experience relative isolate grid grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] overflow-clip rounded-[30px] border-2 border-brand-border p-0 bg-[linear-gradient(to_right,transparent_72%,#FAF8F0_91%),radial-gradient(ellipse_at_20%_18%,#FFFDF7_2%,transparent_55%),linear-gradient(135deg,#EEDFC6,#FBF5EB_52%,#EEDFC6)] shadow-[0_20px_65px_-30px_rgb(125_113_94/28%),0_2px_6px_rgb(125_113_94/3%)] before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:content-[''] before:[background:url('/assets/auth_luxury_card_inner.jpg')_center/100%_100%_no-repeat] before:[mask:url('/assets/login-gold-curve-mask.svg')_center/100%_100%_no-repeat] before:[transform:scaleX(.8)] before:origin-[55%_center] after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-[''] after:bg-[linear-gradient(to_right,transparent_86%,#FAF8F0_91%)] max-[760px]:grid-cols-[minmax(0,1fr)] max-[760px]:rounded-[22px] max-[760px]:before:bg-[linear-gradient(160deg,transparent_10%,#FFFEF9_65%,#FBF5EB)] max-[760px]:before:[mask:none] max-[760px]:before:[transform:none] max-[760px]:after:hidden">
+          <section className="login-showcase relative flex min-w-0 flex-col overflow-hidden rounded-none bg-transparent max-[760px]:grid max-[760px]:min-h-[175px] max-[760px]:grid-cols-[1.05fr_1fr]" aria-label="Kết nối mua sắm cùng SCANMS">
+            <div className="login-showcase-copy relative z-1 px-[42px] pt-10 pb-0 animate-[login-content-enter_600ms_both] min-[1500px]:px-[38px] min-[1500px]:pt-[34px] max-[1050px]:px-[22px] max-[1050px]:pt-[26px] login-compact:pt-6 max-[760px]:self-center max-[760px]:pt-6 max-[760px]:pr-0 max-[760px]:pb-[22px] max-[760px]:pl-[22px] [&_h1]:mt-[19px] [&_h1]:mb-0 [&_h1]:pb-[5px] [&_h1]:text-[clamp(30px,3vw,40px)] [&_h1]:font-semibold [&_h1]:italic [&_h1]:leading-[1.2] [&_h1]:tracking-[-1px] [&_h1_span]:text-brand-strong max-[1050px]:[&_h1]:text-[32px] max-[1050px]:[&_h1]:tracking-[-1.1px] max-[760px]:[&_h1]:mt-2.5 max-[760px]:[&_h1]:text-[clamp(20px,4.3vw,29px)] max-[760px]:[&_h1]:tracking-[-.7px] max-[760px]:[&_h1]:leading-[1.25] max-[760px]:[&_p]:hidden">
+              <div className="login-showcase-eyebrow inline-flex items-center gap-[9px] rounded-full border border-brand-border bg-white/90 px-4 py-2 text-xs font-bold leading-[1.5] text-ink shadow-[0_2px_6px_rgb(125_113_94/6%)] [&_svg]:shrink-0 [&_svg]:text-brand-strong max-[760px]:gap-1 max-[760px]:px-2 max-[760px]:py-[5px] max-[760px]:text-[9px] max-[760px]:[&_svg]:hidden"><Sparkles size={14} /><span>Sàn Thương Mại Đối Tác</span></div>
               <h1 className="font-display">Kết nối gian hàng,<br /><span>lan tỏa giá trị.</span></h1>
             </div>
             <ShoppingScene quiet={isForgotPasswordOpen} />
           </section>
 
-          <div className="login-form-panel">
-            <div className="login-form-heading">
+          <div className="login-form-panel relative flex min-h-[580px] min-w-0 flex-col justify-between gap-[25px] rounded-none border-0 bg-transparent pt-7 pr-8 pb-[26px] pl-[100px] shadow-none min-[1500px]:pr-9 min-[1500px]:pl-[108px] max-[1050px]:pt-[26px] max-[1050px]:pr-6 max-[1050px]:pb-6 max-[1050px]:pl-[74px] login-compact:min-h-[540px] login-compact:gap-[22px] login-compact:py-6 max-[760px]:min-h-[490px] max-[760px]:gap-6 max-[760px]:px-6 max-[760px]:py-[26px] [&_input:not([type=checkbox])]:min-h-11 [&_input:not([type=checkbox])]:text-[13px] [&_button.h-11]:min-h-11 [&_button.h-11]:text-[13px] [&_input::placeholder]:text-muted [&_label]:font-medium [&_form]:flex [&_form]:flex-col [&_form]:gap-3 [&_form>*]:my-0 max-[760px]:[&_input:not([type=checkbox])]:[font-size:16px]">
+            <div className="login-form-heading mb-2 text-center [&_h2]:m-0 [&_h2]:text-[34px] [&_h2]:font-black [&_h2]:tracking-[-1px] [&_h2]:leading-[1.25] [&_h2>span]:text-brand-strong login-compact:[&_h2]:text-[32px] max-[760px]:[&_h2]:text-[28px]">
               <h2 className="font-display">Đăng <span>nhập</span></h2>
             </div>
 
@@ -233,7 +239,7 @@ export default function LoginPage() {
                     className="fixed inset-0 z-40"
                     onClick={() => setIsRoleDropdownOpen(false)}
                   />
-                  <div id="login-role-options" onKeyDown={(e) => { if (e.key === 'Escape') { setIsRoleDropdownOpen(false); document.querySelector<HTMLButtonElement>('[aria-controls="login-role-options"]')?.focus(); } }} className="login-role-options absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-[#EAE4D7] rounded-xl shadow-[0_16px_40px_rgba(26,22,18,0.12)] p-1.5 space-y-1">
+                  <div id="login-role-options" onKeyDown={(e) => { if (e.key === 'Escape') { setIsRoleDropdownOpen(false); document.querySelector<HTMLButtonElement>('[aria-controls="login-role-options"]')?.focus(); } }} className="login-role-options absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-[#EAE4D7] rounded-xl shadow-[0_16px_40px_rgba(26,22,18,0.12)] p-1.5 space-y-1 max-h-[280px] overflow-y-auto">
                     {ROLES.map((r) => {
                       const isSelected = role === r.id;
                       const Icon = r.icon;
@@ -302,16 +308,17 @@ export default function LoginPage() {
             )}
 
             {/* Form inputs */}
-            <form key={role} name={`scanms-login-${role}`} autoComplete={demoLogin ? 'off' : 'on'} onSubmit={handleSubmit} className="space-y-3">
+            {searchParams.get('sessionChanged') === '1' && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
+              Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
+            </p>}
+            <form key={role} name="scanms-login" autoComplete="on" onSubmit={handleSubmit} className="space-y-3">
               <div className="relative flex items-center">
                 <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
                 <input
                   id="login-identifier"
-                  name={`username-${role}`}
+                  name="username"
                   type="text"
-                  autoComplete={demoLogin ? 'off' : `section-${role} username`}
-                  readOnly={Boolean(demoLogin) && !identifierEditable}
-                  onFocus={() => setIdentifierEditable(true)}
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -327,9 +334,8 @@ export default function LoginPage() {
 
               <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
               <AnimatedPasswordField
-                autoComplete={demoLogin ? 'new-password' : `section-${role} current-password`}
-                name={`password-${role}`}
-                readOnlyUntilFocus={Boolean(demoLogin)}
+                autoComplete="current-password"
+                name="password"
                 value={password}
                 state={passwordAuthState}
                 onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}
@@ -357,14 +363,14 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || passwordAuthState === 'success'}
-                className="login-submit disabled:opacity-50"
+                className="login-submit disabled:opacity-50 flex min-h-[46px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border border-brand-border bg-brand-soft px-[18px] py-3 text-sm font-semibold leading-[1.5] text-brand-dark shadow-[inset_0_1px_0_rgb(255_255_255/55%)] transition-[background,transform,box-shadow] duration-180 enabled:hover:-translate-y-px enabled:hover:border-brand enabled:hover:bg-surface-sand enabled:hover:shadow-[0_6px_16px_rgb(197_155_88/15%)] enabled:active:translate-y-0 disabled:cursor-wait my-0"
               >
                 <span>{loading ? 'Đang xác thực...' : 'Đăng nhập an toàn'}</span>
               </button>
             </form>
 
             {/* Bottom switch link */}
-            <div className="login-register-link">
+            <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">
               Chưa có tài khoản đối tác?{' '}
               <Link to={registerUrl} className="font-bold text-[#B88E4F] hover:underline">
                 Đăng ký ngay →
@@ -374,7 +380,7 @@ export default function LoginPage() {
         </div>
       </main>
 
-      <footer className="max-w-[1240px] mx-auto w-full pt-3 text-center text-xs text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
+      <footer className="max-w-[1240px] mx-auto w-full pt-0 text-center text-[11px] leading-4 max-[760px]:text-[10px] max-[760px]:gap-x-3 max-[760px]:gap-y-2 text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
         <span>© 2026 SCANMS Corporation</span>
         <span>•</span>
         <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>

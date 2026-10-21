@@ -1,0 +1,1160 @@
+{
+  "width": 2800,
+  "height": 2240,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-11 Generate Dynamic QR Code — Class Diagram",
+      "x": 50,
+      "y": 24,
+      "w": 2540,
+      "h": 48,
+      "size": 30,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 150,
+      "w": 830,
+      "h": 138
+    },
+    {
+      "type": "text",
+      "value": "CollaboratorReferralLinksController",
+      "x": 858,
+      "y": 154,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          192
+        ],
+        [
+          1680,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          239
+        ],
+        [
+          1680,
+          239
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- service: ReferralLinksService",
+      "x": 862,
+      "y": 202,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ getQrCode(id, user, format, size, download, ip, res)",
+      "x": 862,
+      "y": 249,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 700,
+      "w": 830,
+      "h": 221
+    },
+    {
+      "type": "text",
+      "value": "ReferralLinksService",
+      "x": 858,
+      "y": 704,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          742
+        ],
+        [
+          1680,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          843
+        ],
+        [
+          1680,
+          843
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 862,
+      "y": 752,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService: ConfigService",
+      "x": 862,
+      "y": 779,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- cacheService: CacheService",
+      "x": 862,
+      "y": 806,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ generateQrCode(linkIdOrCode, user, options, ipAddress?)",
+      "x": 862,
+      "y": 853,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- getPublicAppUrl(): string",
+      "x": 862,
+      "y": 882,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 1280,
+      "w": 830,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaService",
+      "x": 858,
+      "y": 1284,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1322
+        ],
+        [
+          1680,
+          1322
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1396
+        ],
+        [
+          1680,
+          1396
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- pool: Pool",
+      "x": 862,
+      "y": 1332,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService?: ConfigService",
+      "x": 862,
+      "y": 1359,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleInit(): Promise<void>",
+      "x": 862,
+      "y": 1406,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleDestroy(): Promise<void>",
+      "x": 862,
+      "y": 1435,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 150,
+      "w": 560,
+      "h": 223
+    },
+    {
+      "type": "text",
+      "value": "CacheService",
+      "x": 68,
+      "y": 154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          192
+        ],
+        [
+          620,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          266
+        ],
+        [
+          620,
+          266
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- redisClient: Redis | null",
+      "x": 72,
+      "y": 202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- memoryCache: Map<string, CacheEntry>",
+      "x": 72,
+      "y": 229,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ get<T>(key: string): Promise<T | null>",
+      "x": 72,
+      "y": 276,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ set(key, value, ttlSeconds): Promise<void>",
+      "x": 72,
+      "y": 305,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ checkRateLimit(key, maxRequests, windowSeconds)",
+      "x": 72,
+      "y": 334,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1700,
+      "w": 650,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaClient",
+      "x": 68,
+      "y": 1704,
+      "w": 634,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1742
+        ],
+        [
+          710,
+          1742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1816
+        ],
+        [
+          710,
+          1816
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ referralLink: Prisma.ReferralLinkDelegate",
+      "x": 72,
+      "y": 1752,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ auditLog: Prisma.AuditLogDelegate",
+      "x": 72,
+      "y": 1779,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $connect(): Promise<void>",
+      "x": 72,
+      "y": 1826,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $disconnect(): Promise<void>",
+      "x": 72,
+      "y": 1855,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 150,
+      "w": 620,
+      "h": 179
+    },
+    {
+      "type": "text",
+      "value": "Store",
+      "x": 1938,
+      "y": 154,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          192
+        ],
+        [
+          2550,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          293
+        ],
+        [
+          2550,
+          293
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 202,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ ownerId: string",
+      "x": 1942,
+      "y": 229,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ name: string",
+      "x": 1942,
+      "y": 256,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 650,
+      "w": 620,
+      "h": 179
+    },
+    {
+      "type": "text",
+      "value": "User",
+      "x": 1938,
+      "y": 654,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          692
+        ],
+        [
+          2550,
+          692
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          793
+        ],
+        [
+          2550,
+          793
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 702,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ fullName: string",
+      "x": 1942,
+      "y": 729,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ role: UserRole",
+      "x": 1942,
+      "y": 756,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1009,
+      "w": 620,
+      "h": 260
+    },
+    {
+      "type": "text",
+      "value": "ReferralLink",
+      "x": 1938,
+      "y": 1013,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1051
+        ],
+        [
+          2550,
+          1051
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1233
+        ],
+        [
+          2550,
+          1233
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1061,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorId: string",
+      "x": 1942,
+      "y": 1088,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId: string",
+      "x": 1942,
+      "y": 1115,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ shortCode: string {unique}",
+      "x": 1942,
+      "y": 1142,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ deletedAt: Date | null",
+      "x": 1942,
+      "y": 1169,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ qrDownloadCount: number",
+      "x": 1942,
+      "y": 1196,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          288
+        ],
+        [
+          1265,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          921
+        ],
+        [
+          1265,
+          1280
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1474
+        ],
+        [
+          1265,
+          1620
+        ],
+        [
+          385,
+          1620
+        ],
+        [
+          385,
+          1700
+        ]
+      ],
+      "dash": false,
+      "arrow": "triangle"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          727.625
+        ],
+        [
+          660,
+          727.625
+        ],
+        [
+          660,
+          345.125
+        ],
+        [
+          620,
+          345.125
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1304.25
+        ],
+        [
+          1890,
+          1304.25
+        ],
+        [
+          1890,
+          1236.5
+        ],
+        [
+          1930,
+          1236.5
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          306.625
+        ],
+        [
+          2630,
+          306.625
+        ],
+        [
+          2630,
+          1041.5
+        ],
+        [
+          2550,
+          1041.5
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2007.5,
+          829
+        ],
+        [
+          2007.5,
+          1009
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2162.5,
+          329
+        ],
+        [
+          2162.5,
+          650
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1328.5
+        ],
+        [
+          1860,
+          1328.5
+        ],
+        [
+          1860,
+          306.625
+        ],
+        [
+          1930,
+          306.625
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1352.75
+        ],
+        [
+          1832,
+          1352.75
+        ],
+        [
+          1832,
+          806.625
+        ],
+        [
+          1930,
+          806.625
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 314.625,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1049.5,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2019.5,
+      "y": 837,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2019.5,
+      "y": 975,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2174.5,
+      "y": 337,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2174.5,
+      "y": 616,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "service",
+      "x": 1275,
+      "y": 479,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 1275,
+      "y": 1085.5,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "extends",
+      "x": 779,
+      "y": 1577,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "cacheService",
+      "x": 670,
+      "y": 521.375,
+      "w": 144,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1749.5,
+      "y": 1261.25,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "referralLinks",
+      "x": 2640,
+      "y": 659.0625,
+      "w": 155,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "referralLinks",
+      "x": 2017.5,
+      "y": 904,
+      "w": 155,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "owner / stores",
+      "x": 2172.5,
+      "y": 474.5,
+      "w": 165,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1870,
+      "y": 853.65625,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1751,
+      "y": 1064.6875,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ public member     - private member     Solid arrow: retained reference     Dashed arrow: dependency",
+      "x": 60,
+      "y": 2065,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Hollow triangle: actual inheritance (PrismaService extends PrismaClient)     Solid line with multiplicities: model association",
+      "x": 60,
+      "y": 2105,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "QR encodes the stable affiliate short URL with via=qr. Preview is generated in Browser; imported rendering functions and support-access audit details are documented separately.",
+      "x": 60,
+      "y": 2150,
+      "w": 2500,
+      "h": 60,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

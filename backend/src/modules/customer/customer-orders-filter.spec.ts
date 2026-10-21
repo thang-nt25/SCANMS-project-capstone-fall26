@@ -40,7 +40,7 @@ describe('Customer order status filters', () => {
 
   it.each(['0912345678', '0912 345 678', '+84 912 345 678'])('searches recipient phone %s within the customer account', async (search) => {
     await service.getOrders('customer-1', { search });
-    const where = prisma.order.findMany.mock.calls[0][0].where;
+    const where = prisma.order.findMany.mock.calls.at(-1)[0].where;
     expect(where.OR).toEqual([{ customerId: 'customer-1' }]);
     expect(where.AND[0].OR).toContainEqual({ customerPhone: { contains: '0912345678' } });
     expect(where.AND[0].OR).toContainEqual({ customerPhone: { contains: '+84912345678' } });
@@ -48,7 +48,7 @@ describe('Customer order status filters', () => {
 
   it('combines phone search with the selected order status and retains product search', async () => {
     await service.getOrders('customer-1', { search: '0912345678', status: OrderStatus.COMPLETED });
-    const where = prisma.order.findMany.mock.calls[0][0].where;
+    const where = prisma.order.findMany.mock.calls.at(-1)[0].where;
     expect(where.status).toBe('COMPLETED');
     expect(where.AND[0].OR).toContainEqual({ externalOrderSn: { contains: '0912345678', mode: 'insensitive' } });
     expect(where.AND[0].OR).toContainEqual({ orderItems: { some: { product: { title: { contains: '0912345678', mode: 'insensitive' } } } } });

@@ -1,8 +1,8 @@
 import type { SponsoredPlacementConfig } from '../../src/modules/stores/sponsored-placement.config';
-import { ADMIN_ID, assertSeed, daysFrom, seedId } from './seed.helpers';
+import { assertSeed, daysFrom, seedId } from './seed.helpers';
 import type { SeedContext, SeedDataset } from './seed.types';
 
-/** Free test grants backed by database rows, never fabricated payment confirmations. */
+/** Requests for two sponsored slots; approval requires real payment evidence. */
 export function buildSponsoredFixtures(data: SeedDataset, context: SeedContext): void {
   for (const index of [0, 1]) {
     data.sponsoredPlacements.push({
@@ -10,15 +10,10 @@ export function buildSponsoredFixtures(data: SeedDataset, context: SeedContext):
       requestKey: seedId(`sponsored-request:${index}`),
       storeId: seedId(`store:${index}`),
       requestedById: seedId(`shop-owner:${index}`),
-      reviewedById: ADMIN_ID,
       headline: `[TEST] Gian hàng tài trợ ${data.stores[index].name}`,
       startsAt: daysFrom(context, -1),
       endsAt: daysFrom(context, 14),
-      status: 'APPROVED',
-      fundingType: 'PLATFORM_GRANT',
-      amount: 0,
-      reviewNote: 'Gói sàn cấp miễn phí để nghiệm thu Capstone; không có giao dịch thanh toán quảng cáo thật.',
-      reviewedAt: context.referenceDate,
+      status: 'REQUESTED',
       createdAt: context.referenceDate,
     });
   }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { OrderConfirmationDeliveryService } from './order-confirmation-delivery.service';
 import { PrismaModule } from '../../core/database/prisma.module';
 import { OrderWebhookNormalizerService } from './normalizers/order-webhook-normalizer.service';
 import { ManualOrdersService } from './manual-orders.service';
@@ -28,6 +29,7 @@ import { ShippingModule } from '../shipping/shipping.module';
   controllers: [OrdersController],
   providers: [
     OrdersService,
+    OrderConfirmationDeliveryService,
     OrderWebhookNormalizerService,
     ManualOrdersService,
     ExcelOrderImportService,

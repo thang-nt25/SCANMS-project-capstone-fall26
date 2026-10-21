@@ -3,7 +3,6 @@ import {
   Wallet,
   Plus,
   RefreshCw,
-  ShoppingBag,
   Clock,
   ChevronDown,
   ChevronLeft,
@@ -15,7 +14,6 @@ import { walletService, type WalletSummary, type LedgerEntry, type LedgerHistory
 import CustomerPayosTopUp from './CustomerPayosTopUp';
 import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
-import { Link } from 'react-router-dom';
 
 const QUICK_AMOUNTS = [100000, 200000, 500000, 1000000, 2000000, 5000000];
 
@@ -108,38 +106,7 @@ export const CustomerWalletTab: React.FC = () => {
   };
 
   return (
-    <section className="@container/wallet grid gap-[14px] w-full max-w-[1120px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-labelledby="customer-wallet-title">
-      <header className="flex items-center flex-wrap gap-[10px_12px] pt-[4px] pb-[14px] border-b border-[#EAE4D7]">
-        <div className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true">
-          <Wallet size={21} />
-        </div>
-        <div className="flex-1 min-w-[220px] @max-[599px]:min-w-0">
-          <h1 id="customer-wallet-title" className="m-0 font-inherit text-[20px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612] @max-[599px]:text-[19px]">
-            Ví mua sắm
-          </h1>
-          <p className="m-[3px_0_0] text-[12px] leading-[1.5] text-[#7D715E] @max-[599px]:text-[11px]">
-            Quản lý số dư, nạp tiền và theo dõi giao dịch.
-          </p>
-        </div>
-        <div className="flex items-center gap-[8px] @max-[599px]:gap-[6px] @max-[599px]:w-full @max-[599px]:ml-[52px] @max-[599px]:flex-wrap">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-[6px] min-h-[34px] px-[12px] py-[7px] border border-[#EAE4D7] rounded-[8px] bg-white text-[#1A1612] text-[12px] font-[550] no-underline cursor-pointer whitespace-nowrap hover:border-[#C59B58] hover:bg-[#FBF5EB] disabled:opacity-50 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] @max-[599px]:px-[9px] @max-[599px]:py-[7px] @max-[599px]:text-[11px]"
-            disabled={loading}
-            onClick={() => void fetchWalletData()}
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin text-[#B88E4F]' : 'text-[#B88E4F]'} aria-hidden="true" />
-            <span>Làm mới</span>
-          </button>
-          <Link
-            to="/marketplace"
-            className="inline-flex items-center justify-center gap-[6px] min-h-[34px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[550] no-underline cursor-pointer whitespace-nowrap hover:border-[#C59B58] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] @max-[599px]:px-[9px] @max-[599px]:py-[7px] @max-[599px]:text-[11px]"
-          >
-            <ShoppingBag size={14} className="text-[#B88E4F]" aria-hidden="true" />
-            <span>Mua sắm</span>
-          </Link>
-        </div>
-      </header>
+    <section className="@container/wallet grid gap-[14px] w-full max-w-[1120px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-label="Ví mua sắm">
 
       <section
         className="relative grid grid-cols-[minmax(0,1fr)_240px] items-center gap-[20px] p-[18px_20px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_3px_12px_#231D1504] before:content-[''] before:absolute before:top-[-1px] before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58] @max-[599px]:grid-cols-[minmax(0,1fr)] @max-[599px]:gap-[14px] @max-[599px]:p-[16px]"
@@ -171,21 +138,16 @@ export const CustomerWalletTab: React.FC = () => {
         </div>
       </section>
 
-      <details className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden [&[open]>summary]:border-b [&[open]>summary]:border-[#EAE4D7] [&[open]>summary_.cw-chevron]:rotate-180 [&[open]>summary_.cw-action-arrow]:rotate-180">
-        <summary className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] cursor-pointer list-none hover:bg-[#FAF8F5] transition-colors select-none [&::-webkit-details-marker]:none @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px] @max-[599px]:grid @max-[599px]:grid-cols-[34px_minmax(0,1fr)_auto]">
+      <section aria-labelledby="customer-topup-title" className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden">
+        <header className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] border-b border-[#EAE4D7] @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px]">
           <span className="inline-flex items-center justify-center shrink-0 w-[34px] h-[34px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
             <Plus size={17} />
           </span>
           <span className="grid gap-[3px] min-w-0 text-left">
-            <strong className="text-[14px] font-[600] text-[#1A1612] @max-[599px]:text-[13px]">Nạp tiền vào ví</strong>
+            <strong id="customer-topup-title" className="text-[14px] font-[600] text-[#1A1612] @max-[599px]:text-[13px]">Nạp tiền vào ví</strong>
             <small className="text-[11px] text-[#7D715E] @max-[599px]:text-[10px] @max-[599px]:max-w-[185px]">Chọn số tiền và phương thức nạp</small>
           </span>
-          <span className="flex items-center gap-[7px] ml-auto p-[7px_10px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[550] whitespace-nowrap @max-[599px]:col-start-3 @max-[599px]:row-start-1 @max-[599px]:ml-0 @max-[599px]:p-[6px]">
-            <span className="[[details[open]>&]:hidden">Nạp tiền</span>
-            <span className="hidden [[details[open]>&]:inline">Thu gọn</span>
-            <ChevronDown size={14} className="cw-action-arrow text-[#B88E4F] transition-transform duration-200" />
-          </span>
-        </summary>
+        </header>
         <div className="grid gap-[12px] p-[16px] max-w-[860px] text-left @max-[599px]:p-[14px_12px]">
           <div className="flex gap-[4px] w-fit max-w-full p-[3px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] @max-[599px]:w-full" role="group" aria-label="Phương thức nạp tiền">
             <button
@@ -262,7 +224,7 @@ export const CustomerWalletTab: React.FC = () => {
             <CustomerPayosTopUp onPaid={fetchWalletData} />
           )}
         </div>
-      </details>
+      </section>
 
       <details className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden [&[open]>summary]:border-b [&[open]>summary]:border-[#EAE4D7] [&[open]>summary_.cw-chevron]:rotate-180">
         <summary className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] cursor-pointer list-none hover:bg-[#FAF8F5] transition-colors select-none [&::-webkit-details-marker]:none @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px]">

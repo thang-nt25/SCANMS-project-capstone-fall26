@@ -1,0 +1,954 @@
+{
+  "width": 2910,
+  "height": 2835,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-16 Quick Checkout and Stock Deduction — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2820,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Main flow: submit checkout → validate → create order and deduct stock atomically → confirm.",
+      "x": 45,
+      "y": 73,
+      "w": 2820,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Customer",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 335,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 343,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          460,
+          193
+        ],
+        [
+          460,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 815,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":OrdersController",
+      "x": 823,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1030,
+          193
+        ],
+        [
+          1030,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1355,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":OrdersService",
+      "x": 1363,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1570,
+          193
+        ],
+        [
+          1570,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2435,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":CouponsService",
+      "x": 2443,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2650,
+          193
+        ],
+        [
+          2650,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1895,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 1903,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2110,
+          193
+        ],
+        [
+          2110,
+          2555
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 455,
+      "y": 245,
+      "w": 10,
+      "h": 2250
+    },
+    {
+      "type": "rect",
+      "x": 1025,
+      "y": 340,
+      "w": 10,
+      "h": 2060
+    },
+    {
+      "type": "rect",
+      "x": 1565,
+      "y": 436,
+      "w": 10,
+      "h": 1868
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 531,
+      "w": 10,
+      "h": 105
+    },
+    {
+      "type": "rect",
+      "x": 2645,
+      "y": 841,
+      "w": 10,
+      "h": 105
+    },
+    {
+      "type": "rect",
+      "x": 2105,
+      "y": 1031,
+      "w": 10,
+      "h": 1178
+    },
+    {
+      "type": "rect",
+      "x": 1571,
+      "y": 1127,
+      "w": 10,
+      "h": 987
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          455,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Enter checkout details; select Place order",
+      "x": 122,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          465,
+          340
+        ],
+        [
+          1025,
+          340
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. POST /api/orders (CreateOrderDto + JWT)",
+      "x": 472,
+      "y": 291,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1035,
+          436
+        ],
+        [
+          1565,
+          436
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. createOrder(dto, clientContext)",
+      "x": 1042,
+      "y": 387,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          531
+        ],
+        [
+          2105,
+          531
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. Read idempotency key, Product/variant data and DB prices",
+      "x": 1582,
+      "y": 482,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          626
+        ],
+        [
+          1575,
+          626
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "5. New request; current product/variant data",
+      "x": 1582,
+      "y": 577,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          722
+        ],
+        [
+          1620,
+          722
+        ],
+        [
+          1620,
+          741
+        ],
+        [
+          1575,
+          741
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. Validate inputs and items",
+      "x": 1632,
+      "y": 696,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          841
+        ],
+        [
+          2645,
+          841
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "7. [coupon] validateCoupon(dto)",
+      "x": 1582,
+      "y": 792,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2645,
+          936
+        ],
+        [
+          1575,
+          936
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "8. [coupon] Validated coupon; no quota consumed",
+      "x": 1582,
+      "y": 887,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1575,
+          1031
+        ],
+        [
+          2105,
+          1031
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. [shipping quote obtained] $transaction(callback)",
+      "x": 1582,
+      "y": 982,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1127
+        ],
+        [
+          1581,
+          1127
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "10. callback(tx): executeStoreOrderInTransaction(...)",
+      "x": 1582,
+      "y": 1078,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          1222
+        ],
+        [
+          2105,
+          1222
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. Recheck Store/parcel; conditionally deduct Product or variant stock",
+      "x": 1582,
+      "y": 1173,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1317
+        ],
+        [
+          1581,
+          1317
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. Stock updated; insufficient stock aborts transaction",
+      "x": 1582,
+      "y": 1268,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          1413
+        ],
+        [
+          2105,
+          1413
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "13. [coupon] Lock coupon; revalidate and update usage/budget",
+      "x": 1582,
+      "y": 1364,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1508
+        ],
+        [
+          1581,
+          1508
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. [coupon] Coupon checks passed",
+      "x": 1582,
+      "y": 1459,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          1603
+        ],
+        [
+          1626,
+          1603
+        ],
+        [
+          1626,
+          1622
+        ],
+        [
+          1581,
+          1622
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "15. Calculate totals and attribution/policy snapshots",
+      "x": 1638,
+      "y": 1577,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          1722
+        ],
+        [
+          2105,
+          1722
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. tx.order.create(PENDING, nested OrderItems)",
+      "x": 1582,
+      "y": 1673,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          1818
+        ],
+        [
+          1581,
+          1818
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "17. Created Order and OrderItems",
+      "x": 1582,
+      "y": 1769,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          1913
+        ],
+        [
+          2105,
+          1913
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. Persist related writes; [coupon] create USED redemption",
+      "x": 1582,
+      "y": 1864,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2008
+        ],
+        [
+          1581,
+          2008
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "19. Related writes completed",
+      "x": 1582,
+      "y": 1959,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1581,
+          2104
+        ],
+        [
+          2105,
+          2104
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. Return order from callback",
+      "x": 1582,
+      "y": 2055,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2105,
+          2199
+        ],
+        [
+          1575,
+          2199
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. COMMIT; transaction result",
+      "x": 1582,
+      "y": 2150,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1565,
+          2294
+        ],
+        [
+          1035,
+          2294
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. Created order response",
+      "x": 1042,
+      "y": 2245,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1025,
+          2390
+        ],
+        [
+          465,
+          2390
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. 201 Created: public order code and totals",
+      "x": 472,
+      "y": 2341,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          455,
+          2485
+        ],
+        [
+          115,
+          2485
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "24. Display order confirmation",
+      "x": 122,
+      "y": 2436,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Precondition: signed-in customer, valid form and one Store. JWT/DTO checks and rate limiting run before createOrder. Browser = GuestCheckoutModal + api client.",
+      "x": 45,
+      "y": 2595,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Insufficient stock or any coupon/order transaction error rolls back all stock and order writes. Matching idempotency replay returns the existing order; a changed payload returns 409.",
+      "x": 45,
+      "y": 2645,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Shipping, attribution and post-commit email are summarized. Payment QR/link, wallet debit and multi-Store details are described separately. Order confirmation does not imply payment is complete.",
+      "x": 45,
+      "y": 2700,
+      "w": 2820,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

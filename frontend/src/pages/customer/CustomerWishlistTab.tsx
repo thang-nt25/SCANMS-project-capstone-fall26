@@ -50,31 +50,19 @@ export function CustomerWishlistTab({
   };
 
   return (
-    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1020px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-labelledby="customer-wishlist-title">
-      <header className="flex items-center gap-[10px] p-[4px_0_14px] border-b border-[#EAE4D7]">
-        <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true">
-          <Heart size={18} />
-        </span>
-        <div>
-          <h1 id="customer-wishlist-title" className="m-0 font-inherit text-[20px] @max-[339px]:text-[17px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Sản phẩm yêu thích</h1>
-          <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Những sản phẩm bạn đã lưu để mua khi cần.</p>
-        </div>
-      </header>
+    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1020px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-label="Sản phẩm yêu thích">
       <div className="flex items-center justify-between flex-wrap gap-[10px] @max-[599px]:gap-[8px] p-[10px_12px] @max-[599px]:p-[8px_10px] border border-[#EAE4D7] rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)]">
         <div className="flex items-center flex-wrap gap-[8px] min-h-[30px] @max-[599px]:min-h-[26px]" aria-live="polite" aria-atomic="true">
           <span className="grid place-items-center w-[28px] h-[28px] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true">
             <Bookmark size={15} />
           </span>
           <h2 className="m-0 font-inherit text-[12px] font-[600] text-[#1A1612]" id="wishlist-list-heading">Danh sách đã lưu</h2>
-          <span className="inline-flex items-center px-[6px] py-[2px] rounded-[5px] border border-[#EEDFC6] bg-[#FBF5EB] text-[#7D715E] text-[10px] leading-[1.5]">
-            {loading ? 'Đang tải…' : `${items.length} sản phẩm`}
-          </span>
           {!loading && search && (
             <span className="pl-[8px] border-l border-[#EAE4D7] text-[10px] text-[#7D715E] leading-[1.5]">{filteredItems.length} kết quả</span>
           )}
         </div>
-        <div className="flex items-center justify-end flex-wrap gap-[8px] @max-[899px]:flex-1 @max-[599px]:basis-full min-w-0 max-w-full">
-          <div className="flex items-center gap-[6px] w-[230px] @max-[899px]:flex-[1_1_180px] max-w-full h-[36px] px-[10px] rounded-[8px] border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:bg-white focus-within:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] bg-[#FAF8F5] text-[#7D715E] transition-colors">
+        <div className="ml-auto flex w-[300px] max-w-full shrink-0 items-center @max-[599px]:w-full min-w-0">
+          <div className="flex items-center gap-[8px] w-full min-w-0 h-[36px] px-[10px] rounded-[8px] border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:bg-white focus-within:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] bg-[#FAF8F5] text-[#7D715E] transition-colors">
             <Search size={15} aria-hidden="true" className="shrink-0" />
             <input
               aria-label="Tìm trong sản phẩm yêu thích"
@@ -94,13 +82,6 @@ export function CustomerWishlistTab({
               </button>
             )}
           </div>
-          <Link
-            to="/marketplace"
-            className="inline-flex items-center justify-center gap-[7px] min-h-[36px] px-[10px] py-[7px] rounded-[8px] border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[550] hover:border-[#C59B58] whitespace-nowrap @max-[599px]:flex-[1_1_auto] transition-colors"
-          >
-            <span>Tiếp tục mua sắm</span>
-            <ArrowRight size={14} className="text-[#B88E4F]" />
-          </Link>
         </div>
       </div>
 

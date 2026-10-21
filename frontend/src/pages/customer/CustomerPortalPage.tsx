@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { OrderProductLink } from '../../components/customer/OrderProductLink';
+import OrderTrackingPage from '../public/OrderTrackingPage';
 import { useSearchParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -8,7 +10,6 @@ import {
   CheckCircle2,
   Clock,
   ArrowLeft,
-  ArrowRight,
   Plus,
   Trash2,
   Edit2,
@@ -17,18 +18,14 @@ import {
   Store as StoreIcon,
   ShieldCheck,
   RotateCcw,
-  Sparkles,
+  Star,
   X,
   XCircle,
   Camera,
   MessageCircle,
   User,
-  HelpCircle,
-  Shield,
   Mail,
   KeyRound,
-  Lock,
-  ChevronDown,
 } from 'lucide-react';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -40,7 +37,6 @@ import {
   type CustomerOrder,
   type CustomerOrderItem,
   type CustomerAddress,
-  type CustomerWishlistItem,
 } from '../../services/customer.service';
 import {
   loadShippingAddresses,
@@ -53,6 +49,15 @@ import { Topbar } from '../../components/layout/Topbar';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { CustomerWishlistTab } from './CustomerWishlistTab';
+import { CustomerAddressCard } from './CustomerAddressCard';
+import { CustomerIdentityForm } from './CustomerIdentityForm';
+import { CustomerSecurityMethod } from './CustomerSecurityMethod';
+import { CustomerOrderSummary } from './CustomerOrderSummary';
+import { CustomerOrderTotals } from './CustomerOrderTotals';
+import { CustomerOrderProgress } from './CustomerOrderProgress';
+import { CustomerOrderDetailActions } from './CustomerOrderDetailActions';
+import { getCustomerOrderActions } from '../../utils/customer-order-actions';
+import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 import { CustomerVouchersTab } from './CustomerVouchersTab';
 import { CustomerNotificationsTab } from './CustomerNotificationsTab';
 import { CustomerWalletTab } from './CustomerWalletTab';
@@ -65,6 +70,7 @@ import {
   type NotificationCategory,
 } from '../../services/notifications.service';
 import { ReturnRequestModal } from '../../components/customer/ReturnRequestModal';
+import { CustomerCancelOrderModal } from '../../components/customer/CustomerCancelOrderModal';
 import { VerifiedReviewModal } from '../../components/customer/VerifiedReviewModal';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
@@ -101,6 +107,10 @@ const administrativeNamesMatch = (left: string, right: string) => {
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const placedOrderCodes: string[] = Array.isArray(location.state?.placedOrderCodes)
+    ? location.state.placedOrderCodes.filter((code: unknown): code is string => typeof code === 'string' && code.length <= 100)
+    : [];
+  const revealedCheckoutOrders = useRef(new Set<string>());
   const [searchParams] = useSearchParams();
   const isProfilePath =
     location.pathname.includes('/customer/profile') ||
@@ -185,16 +195,23 @@ export default function CustomerPortalPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(false);
-  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>('ALL');
+  const ordersRequestSequence = useRef(0);
+  const refreshOrdersRef = useRef<() => void>(() => {});
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderFilterStatus>(() => placedOrderCodes.length ? 'PENDING' : 'ALL');
   const [orderSearch, setOrderSearch] = useState('');
+  const [showOrderLookup, setShowOrderLookup] = useState(false);
   const [appliedOrderSearch, setAppliedOrderSearch] = useState('');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<CustomerOrder | null>(null);
+  const [liveGhnTracking, setLiveGhnTracking] = useState<{ orderId: string; status: string } | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
-  const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
   const [returnOrder, setReturnOrder] = useState<CustomerOrder | null>(null);
   const [reviewOrder, setReviewOrder] = useState<CustomerOrder | null>(null);
+  const selectedGhnStatus = selectedOrderDetails && liveGhnTracking?.orderId === selectedOrderDetails.id
+    ? liveGhnTracking.status
+    : null;
+
 
 
   // Tab 2: Addresses State
@@ -222,8 +239,7 @@ export default function CustomerPortalPage() {
   const [isDeletingAddress, setIsDeletingAddress] = useState(false);
 
   // Tab 3: Wishlist State
-  const [wishlist, setWishlist] = useState<CustomerWishlistItem[]>([]);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const { items: wishlist, loading: wishlistLoading, remove: removeWishlistItem } = useCustomerWishlist(currentUser?.id);
 
   // Tab 4: Profile & Password Form (SCANMS Standard)
   const [nameInput, setNameInput] = useState('');
@@ -345,13 +361,52 @@ export default function CustomerPortalPage() {
   // Handle Tab changes
   useEffect(() => {
     if (currentTab === 'orders') fetchOrders();
-    if (currentTab === 'wishlist') fetchWishlist();
     if (currentTab === 'profile') {
       fetchProfile();
       fetchAddresses();
       fetchIdentity();
     }
   }, [currentTab, orderStatusFilter]);
+
+  useEffect(() => {
+    if (!placedOrderCodes.length) return;
+    setOrderStatusFilter('PENDING');
+    setOrderSearch('');
+    setAppliedOrderSearch('');
+    setSelectedOrderDetails(null);
+    // Refresh a repeat purchase on the current tab; switching from another
+    // filter triggers the normal fetch effect with PENDING and a cleared search.
+    if (orderStatusFilter === 'PENDING') void fetchOrders('');
+    void fetchProfile();
+  }, [location.key]);
+
+  useEffect(() => {
+    if (currentTab !== 'orders') return;
+    const refresh = () => { if (!document.hidden) refreshOrdersRef.current(); };
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [currentTab]);
+
+  useEffect(() => {
+    const id = selectedOrderDetails?.id;
+    if (!id) return;
+    let active = true;
+    const refresh = async () => {
+      if (document.hidden) return;
+      try {
+        const order = await customerService.getOrderDetails(id);
+        if (active) setSelectedOrderDetails(current => current?.id === id ? order : current);
+      } catch { /* Keep the open order visible during a temporary connection failure. */ }
+    };
+    const timer = window.setInterval(() => void refresh(), 10000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selectedOrderDetails?.id]);
 
   useEffect(() => {
     if (currentTab === 'profile') {
@@ -669,10 +724,10 @@ export default function CustomerPortalPage() {
     }
   };
 
-  const fetchOrders = async (searchOverride?: string) => {
+  const fetchOrders = async (searchOverride?: string, silent = false) => {
     const search = (searchOverride ?? orderSearch).trim();
-    setOrdersLoading(true);
-    setOrdersError(false);
+    const sequence = ++ordersRequestSequence.current;
+    if (!silent) { setOrdersLoading(true); setOrdersError(false); }
     try {
       const statusParam = orderStatusFilter === 'ALL' ? undefined : orderStatusFilter;
 
@@ -681,7 +736,10 @@ export default function CustomerPortalPage() {
         search: search || undefined,
       });
       const loadedOrders = res.orders || [];
+      if (sequence !== ordersRequestSequence.current) return;
       setOrders(loadedOrders);
+      setOrdersError(false);
+      setSelectedOrderDetails(current => current ? loadedOrders.find(order => order.id === current.id) || current : current);
       setAppliedOrderSearch(search);
 
       const targetOrderId = searchParams.get('orderId');
@@ -692,22 +750,23 @@ export default function CustomerPortalPage() {
         }
       }
     } catch (err: any) {
+      if (sequence !== ordersRequestSequence.current || silent) return;
       console.error('Fetch orders error:', err);
       setOrdersError(true);
       toast.error('Không thể tải danh sách đơn hàng');
     } finally {
-      setOrdersLoading(false);
+      if (sequence === ordersRequestSequence.current) setOrdersLoading(false);
     }
   };
+  refreshOrdersRef.current = () => { void fetchOrders(appliedOrderSearch, true); };
 
-  const handleCancelOrder = async () => {
-    if (!cancellingOrderId) return;
+  const handleCancelOrder = async (cancelReason: string) => {
+    if (!cancellingOrderId || isCancelling || !cancelReason.trim()) return;
     setIsCancelling(true);
     try {
       await customerService.cancelOrder(cancellingOrderId, cancelReason);
       toast.success('Hủy đơn hàng thành công');
       setCancellingOrderId(null);
-      setCancelReason('');
       fetchOrders();
       fetchProfile();
       if (selectedOrderDetails?.id === cancellingOrderId) {
@@ -724,7 +783,13 @@ export default function CustomerPortalPage() {
     setConfirmingOrderId(order.id);
     try {
       await customerService.confirmReceipt(order.id);
+      const updatedOrder = await customerService.getOrderDetails(order.id);
+      setSelectedOrderDetails(current => current?.id === updatedOrder.id ? updatedOrder : current);
       toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
+      if (getCustomerOrderActions(updatedOrder).review) {
+        setSelectedOrderDetails(null);
+        setReviewOrder(updatedOrder);
+      }
       await Promise.all([fetchOrders(), fetchProfile()]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
@@ -861,23 +926,10 @@ export default function CustomerPortalPage() {
     }
   };
 
-  const fetchWishlist = async () => {
-    setWishlistLoading(true);
-    try {
-      const data = await customerService.getWishlist();
-      setWishlist(data);
-    } catch (err: any) {
-      console.error('Fetch wishlist error:', err);
-    } finally {
-      setWishlistLoading(false);
-    }
-  };
-
   const handleRemoveWishlist = async (productId: string) => {
     try {
-      await customerService.removeFromWishlist(productId);
+      await removeWishlistItem(productId);
       toast.success('Đã xóa khỏi danh sách yêu thích');
-      setWishlist((prev) => prev.filter((item) => item.product.id !== productId));
       fetchProfile();
     } catch {
       toast.error('Lỗi khi xóa sản phẩm yêu thích');
@@ -1079,7 +1131,7 @@ export default function CustomerPortalPage() {
                     })}
                   </div>
 
-                  {/* 2. Order Search Bar & Tiếp tục mua sắm */}
+                  {/* 2. Order Search Bar */}
                   <div className="p-2.5 sm:p-3 bg-white">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
                       {/* Thanh tìm kiếm nhỏ gọn, cân xứng, đẹp mắt */}
@@ -1119,26 +1171,14 @@ export default function CustomerPortalPage() {
                           Tìm kiếm
                         </button>
                       </form>
-
-                      {/* Nút Tiếp tục mua sắm đưa từ header xuống */}
-                      <Link
-                        to="/marketplace"
-                        className="inline-flex items-center justify-center shrink-0 gap-2 h-9 px-3.5 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold leading-none no-underline whitespace-nowrap transition shadow-2xs group"
-                      >
-                        <span>Tiếp tục mua sắm</span>
-                        <ArrowRight size={14} className="text-[#B88E4F] group-hover:translate-x-0.5 transition-transform" />
-                      </Link>
+                      <button type="button" aria-expanded={showOrderLookup} aria-controls="customer-order-lookup" onClick={() => setShowOrderLookup(value => !value)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-xs font-semibold text-[#B88E4F] hover:bg-[#F3EFE6]">
+                        <Truck size={16} />{showOrderLookup ? 'Thu gọn tra cứu' : 'Tra cứu đơn hàng'}
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                {!ordersLoading && !ordersError && (
-                  <div className="flex items-center justify-between gap-[10px] py-[2px] text-[#7D715E]">
-                    <h2 className="m-0 font-[600] text-[12px] text-[#1A1612]">Danh sách đơn hàng</h2>
-                    <span className="text-[11px]">{orders.length} đơn hiển thị</span>
-                  </div>
-                )}
-
+                {showOrderLookup && <div id="customer-order-lookup"><OrderTrackingPage embedded /></div>}
                 {/* 3. Orders List */}
                 {ordersLoading ? (
                   <div className="flex flex-col items-center justify-center gap-[12px] min-h-[190px] p-[24px_16px] bg-white border border-[#EAE4D7] rounded-[12px] text-[#7D715E]">
@@ -1192,71 +1232,37 @@ export default function CustomerPortalPage() {
                   <div className="grid gap-[12px]">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
+                      const awaitingPayment = isPending && order.rawPayload?.paymentMethod === 'PAYOS' && order.rawPayload?.paymentStatus !== 'PAID';
                       const isShipping = order.status === 'SHIPPING';
                       const isDelivered = order.status === 'DELIVERED';
                       const isCompleted = order.status === 'COMPLETED';
                       const isCancelled = order.status === 'CANCELLED';
                       const isReturned = order.status === 'RETURNED' || order.status === 'RETURN_REQUESTED';
                       const hasReturnRequest = Boolean(order.returnRequest) || ['RETURN_REQUESTED', 'DISPUTED', 'RETURNED'].includes(order.status);
-                      const returnAnchor = new Date(order.deliveredAt || order.completedAt || 0).getTime();
-                      const canRequestReturn =
-                        (isDelivered || isCompleted) &&
-                        !hasReturnRequest &&
-                        Date.now() <= returnAnchor + 14 * 24 * 60 * 60 * 1000;
-                      const previewItem = order.orderItems[0];
-                      const productCount = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+                      const canRequestReturn = getCustomerOrderActions(order).requestReturn;
                       const statusLabel = hasReturnRequest
                         ? order.returnRequest?.status === 'SHOP_APPROVED' ? 'Shop đã duyệt · chờ xử lý tiền/hàng'
                           : order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop đã từ chối đổi trả'
                           : order.returnRequest?.status === 'REFUNDED' ? 'Đã hoàn tiền'
                           : 'Đang xử lý trả hàng'
                         : isCancelled ? 'Đã hủy đơn' : isCompleted ? 'Hoàn thành' : isDelivered ? 'Đã giao hàng'
-                        : isShipping ? 'Đang vận chuyển' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
+                        : isShipping ? 'Đang vận chuyển' : awaitingPayment ? 'Chờ thanh toán' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
                       const StatusIcon = hasReturnRequest ? RotateCcw : isCancelled ? XCircle : isCompleted || isDelivered ? CheckCircle2 : isShipping ? Truck : Clock;
 
                       return (
                         <details
                           key={order.id}
-                          className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden group/order"
+                          data-order-code={order.externalOrderSn}
+                          ref={element => {
+                            const key = `${location.key}:${order.id}`;
+                            if (!element || !placedOrderCodes.includes(order.externalOrderSn) || revealedCheckoutOrders.current.has(key)) return;
+                            revealedCheckoutOrders.current.add(key);
+                            if (awaitingPayment) element.open = true;
+                            if (order.externalOrderSn === placedOrderCodes[0]) element.scrollIntoView({ block: 'nearest' });
+                          }}
+                          className="customer-order-card group/order"
                         >
-                          <summary className="grid grid-cols-[56px_minmax(0,1fr)_170px_130px_28px] @max-[849px]:grid-cols-[52px_minmax(0,1fr)_110px_28px] @max-[499px]:grid-cols-[44px_minmax(0,1fr)_28px] items-center gap-[10px_14px] @max-[849px]:gap-[10px_12px] @max-[499px]:gap-[8px_10px] min-h-[88px] p-[12px_14px] @max-[499px]:p-[12px] list-none cursor-pointer outline-none bg-white hover:bg-[#FAF8F5] group-open/order:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[-3px] transition-colors [&::-webkit-details-marker]:hidden">
-                            <span className="grid place-items-center w-[56px] h-[56px] @max-[499px]:w-[44px] @max-[499px]:h-[44px] @max-[849px]:row-span-2 @max-[499px]:row-span-1 @max-[499px]:self-start overflow-hidden border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]" aria-hidden="true">
-                              <img
-                                src={getSafeProductImageUrl(previewItem?.product?.imageUrl, previewItem?.product?.title)}
-                                alt=""
-                                className="w-full h-full object-contain p-[3px]"
-                                onError={event => {
-                                  if (!event.currentTarget.dataset.hasFallback) {
-                                    event.currentTarget.dataset.hasFallback = 'true';
-                                    event.currentTarget.src = getSafeProductImageUrl(null, previewItem?.product?.title);
-                                  }
-                                }}
-                              />
-                            </span>
-                            <span className="flex flex-col gap-[3px] min-w-0 @max-[849px]:col-start-2">
-                              <strong className="text-[#1A1612] text-[14px] @max-[499px]:text-[13px] font-[600] leading-[1.4] break-words">{order.store?.name || 'Gian hàng đối tác'}</strong>
-                              <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-[#7D715E] text-[12px] leading-[1.5]" title={previewItem?.product?.title}>{previewItem?.product?.title || 'Sản phẩm trong đơn hàng'}{order.orderItems.length > 1 && ` · +${order.orderItems.length - 1} sản phẩm khác`}</span>
-                              <span className="flex flex-wrap gap-[3px_10px] text-[#7D715E] text-[11px] @max-[499px]:text-[10px] leading-[1.5] break-words [&>span+span]:border-l [&>span+span]:border-[#EAE4D7] [&>span+span]:pl-[10px]">
-                                <span>#{order.externalOrderSn}</span>
-                                <span>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
-                              </span>
-                              <span className="flex flex-wrap gap-x-[10px] gap-y-[2px] text-[11px] @max-[499px]:text-[10px] leading-[1.5] text-[#7D715E]">
-                                <span className="min-w-0 break-words">Người nhận: <span className="text-[#1A1612]">{order.customerName?.trim() || 'Chưa có thông tin'}</span></span>
-                                <span>SĐT: <span className="text-[#1A1612] tabular-nums">{order.customerPhone?.trim() || 'Chưa có thông tin'}</span></span>
-                              </span>
-                            </span>
-                            <span data-status={order.status} className={`inline-flex items-center gap-[5px] px-[9px] py-[5px] border rounded-[7px] text-[11px] font-[500] leading-[1.5] justify-self-end @max-[849px]:col-start-2 @max-[849px]:row-start-2 @max-[849px]:justify-self-start @max-[499px]:col-start-2 @max-[499px]:row-start-3 @max-[499px]:max-w-full ${isCancelled ? 'bg-white border-[#FECACA] text-[#DC2626]' : isCompleted || isDelivered ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]' : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#B88E4F]'}`}>
-                              <StatusIcon size={13} className="shrink-0" aria-hidden="true" />
-                              <span>{statusLabel}</span>
-                            </span>
-                            <span className="flex flex-col gap-[4px] min-w-0 text-right @max-[849px]:col-start-3 @max-[849px]:row-span-2 @max-[499px]:col-start-2 @max-[499px]:row-start-2 @max-[499px]:flex-row @max-[499px]:items-baseline @max-[499px]:flex-wrap @max-[499px]:gap-[5px_8px] @max-[499px]:text-left">
-                              <strong className="text-[#1A1612] text-[18px] @max-[499px]:text-[17px] font-[600] leading-[1.3] font-mono tabular-nums break-words">{formatMoney(order.finalAmount)}</strong>
-                              <small className="text-[#7D715E] text-[11px] leading-[1.4]">{productCount} sản phẩm</small>
-                            </span>
-                            <span className="grid place-items-center w-[28px] h-[28px] border border-[#EAE4D7] rounded-full text-[#7D715E] bg-white @max-[849px]:col-start-4 @max-[849px]:row-span-2 @max-[499px]:col-start-3 @max-[499px]:row-span-3" aria-label="Mở hoặc thu gọn đơn hàng">
-                              <ChevronDown size={16} className="text-[#B88E4F] group-open/order:rotate-180 transition-transform" aria-hidden="true" />
-                            </span>
-                          </summary>
+                          <CustomerOrderSummary order={order} statusLabel={statusLabel} statusIcon={StatusIcon} />
 
                           <div className="border-t border-[#EAE4D7]">
                             {/* Order Card Header Actions */}
@@ -1272,7 +1278,7 @@ export default function CustomerPortalPage() {
                                   <span>Chat</span>
                                 </button>
                                 <Link
-                                  to={`/shop/${order.store?.slug || order.storeId}`}
+                                  to={`/shops/${order.store?.slug || order.storeId}`}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-[#EAE4D7] rounded-[7px] bg-white text-[#7D715E] text-[11px] font-[500] hover:border-[#C59B58] hover:text-[#1A1612] no-underline"
                                 >
                                   <StoreIcon className="w-[13px] h-[13px] text-[#B88E4F]" />
@@ -1298,7 +1304,7 @@ export default function CustomerPortalPage() {
                             <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
                                 <div key={item.id} className="grid grid-cols-[64px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[56px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-[12px] @max-[499px]:gap-[8px_10px] py-[14px] @max-[499px]:py-[12px]">
-                                  <div className="w-[64px] h-[64px] @max-[499px]:w-[56px] @max-[499px]:h-[56px] @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] flex items-center justify-center shrink-0 overflow-hidden">
+                                  <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} className="w-[64px] h-[64px] @max-[499px]:w-[56px] @max-[499px]:h-[56px] @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] flex items-center justify-center shrink-0 overflow-hidden">
                                     <img
                                       src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
                                       alt={item.product?.title || 'Sản phẩm'}
@@ -1311,11 +1317,11 @@ export default function CustomerPortalPage() {
                                         }
                                       }}
                                     />
-                                  </div>
+                                  </OrderProductLink>
 
                                   <div className="min-w-0">
                                     <strong className="block text-[14px] @max-[499px]:text-[13px] font-[550] leading-[1.45] text-[#1A1612] line-clamp-2">
-                                      {item.product?.title || 'Sản phẩm chính hãng SCANMS'}
+                                      <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} className="hover:underline">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
                                     </strong>
                                     {item.variant?.name && (
                                       <span className="block text-[12px] text-[#7D715E] leading-[1.45] mt-[2px]">
@@ -1398,26 +1404,11 @@ export default function CustomerPortalPage() {
                             )}
 
                             {/* Order Footer: Summary & Action Buttons */}
-                            <div className="flex flex-row items-center justify-between flex-wrap gap-[12px] p-[12px_16px] @max-[499px]:p-[12px] border-t border-[#EAE4D7] bg-[#FAF8F5]">
-                              <div className="flex items-baseline gap-[8px] @max-[499px]:w-full @max-[499px]:justify-between">
-                                <span className="text-[12px] text-[#7D715E]">Thành tiền:</span>
-                                <strong className="text-[21px] @max-[499px]:text-[20px] font-[650] tracking-[-0.02em] font-mono tabular-nums leading-[1.3] text-[#1A1612]">
-                                  {formatMoney(order.finalAmount)}
-                                </strong>
-                              </div>
+                            <div className="customer-order-details-footer">
+                              <CustomerOrderTotals order={order} />
 
                               {/* Action Buttons Row */}
                               <div className="flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {/* Chỉ mua lại khi đơn đã kết thúc */}
-                                {(isCompleted || isCancelled) && <button
-                                  type="button"
-                                  onClick={() => handleReorder(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
-                                >
-                                  <RotateCcw className="w-[14px] h-[14px]" />
-                                  <span>Mua lại</span>
-                                </button>}
-
                                 {/* Secondary Button: Xem chi tiết */}
                                 <button
                                   type="button"
@@ -1464,16 +1455,17 @@ export default function CustomerPortalPage() {
                                 )}
 
                                 {/* Verified Review Button if Completed */}
-                                {isCompleted && !hasReturnRequest && (
+                                {getCustomerOrderActions(order).review && (
                                   <button
                                     type="button"
                                     onClick={() => setReviewOrder(order)}
                                     className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
-                                    <Sparkles className="w-[14px] h-[14px] text-[#B88E4F]" />
-                                    <span>Đánh giá</span>
+                                    <Star className="w-[14px] h-[14px] text-[#B88E4F]" />
+                                    <span>Đánh giá sản phẩm</span>
                                   </button>
                                 )}
+                                {isCompleted && !hasReturnRequest && Boolean(order.productReviews?.length) && !getCustomerOrderActions(order).review && <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E]"><Star size={14} className="text-[#C59B58]" />Đã đánh giá{order.productReviews?.some(review => review.status === 'PENDING') ? ' · Sàn đang kiểm tra' : order.productReviews?.some(review => ['HIDDEN', 'REJECTED'].includes(review.status || '')) ? ' · Có nội dung bị sàn ẩn' : ''}</span>}
                               </div>
                             </div>
                           </div>
@@ -1515,23 +1507,16 @@ export default function CustomerPortalPage() {
             {/* TAB: HỒ SƠ CÁ NHÂN (TÍCH HỢP ĐỊA CHỈ, ĐỊNH DANH CCCD, BẢO MẬT) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
-              <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-labelledby="customer-profile-title">
-                <header className="flex items-center gap-[10px] pt-[4px] pb-[14px] border-b border-[#EAE4D7]">
-                  <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={18} /></span>
-                  <div>
-                    <h1 id="customer-profile-title" className="m-0 text-[20px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Hồ sơ cá nhân</h1>
-                  </div>
-                </header>
-
+              <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
-                <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7] w-full" aria-label="Phân mục hồ sơ cá nhân">
+                <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
                       activeProfileSubTab === 'info'
-                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
-                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
                     <User size={15} className={activeProfileSubTab === 'info' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
@@ -1543,8 +1528,8 @@ export default function CustomerPortalPage() {
                     onClick={() => handleSelectProfileSubTab('addresses')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
                       activeProfileSubTab === 'addresses'
-                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
-                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
                     <MapPin size={15} className={activeProfileSubTab === 'addresses' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
@@ -1553,7 +1538,7 @@ export default function CustomerPortalPage() {
                       <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
                         activeProfileSubTab === 'addresses'
                           ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]'
-                          : 'bg-[#EAE4D7] text-[#7D715E]'
+                          : 'bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]'
                       }`}>
                         {addresses.length}
                       </span>
@@ -1565,8 +1550,8 @@ export default function CustomerPortalPage() {
                     onClick={() => handleSelectProfileSubTab('identity')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
                       activeProfileSubTab === 'identity'
-                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
-                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
                     <ShieldCheck size={15} className={activeProfileSubTab === 'identity' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
@@ -1574,7 +1559,7 @@ export default function CustomerPortalPage() {
                     <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
                       cccdVerified
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-[#FBF5EB] text-[#8A642C] border border-[#EEDFC6]'
                     }`}>
                       {cccdVerified ? 'Đã xác thực' : 'Chưa xác thực'}
                     </span>
@@ -1585,8 +1570,8 @@ export default function CustomerPortalPage() {
                     onClick={() => handleSelectProfileSubTab('security')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
                       activeProfileSubTab === 'security'
-                        ? 'bg-white text-[#1A1612] shadow-xs border border-[#EEDFC6] font-bold'
-                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/60 border border-transparent'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
                     <KeyRound size={15} className={activeProfileSubTab === 'security' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
@@ -1701,10 +1686,7 @@ export default function CustomerPortalPage() {
                 {/* SubTab 2: Địa chỉ nhận hàng */}
                 {activeProfileSubTab === 'addresses' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
-                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
-                      <div>
-                        <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Sổ địa chỉ nhận hàng</h2>
-                      </div>
+                    <div className="flex items-center justify-end flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
                       <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
                         <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
                         <span>Thêm địa chỉ</span>
@@ -1730,62 +1712,13 @@ export default function CustomerPortalPage() {
                     ) : (
                       <div className="grid grid-cols-2 @max-[719px]:grid-cols-1 items-stretch gap-[14px]">
                         {addresses.map((addr) => (
-                          <article key={addr.id} className={`relative grid grid-cols-[38px_minmax(0,1fr)] content-start gap-[12px] min-w-0 p-[20px_20px_12px] border rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] text-left transition-colors ${addr.isDefault ? 'border-[#EEDFC6] before:content-[\'\'] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]' : 'border-[#EAE4D7] hover:border-[#EEDFC6]'}`}>
-                            <span className="grid place-items-center w-[38px] h-[42px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><MapPin size={19} /></span>
-                            <div className="flex flex-col gap-[5px] min-w-0">
-                              <div className="flex justify-between items-start flex-wrap gap-[6px_8px] mb-[3px]">
-                                <div className="flex flex-col items-start gap-[2px] min-w-0">
-                                  <strong className="text-[#1A1612] text-[16px] font-[650] leading-[1.4] break-words">{addr.fullName}</strong>
-                                  <span className="text-[#7D715E] text-[12px] leading-[1.5] font-mono tabular-nums">{addr.phoneNumber}</span>
-                                </div>
-                                {addr.isDefault && (
-                                  <span className="inline-flex items-center gap-[4px] shrink-0 px-[6px] py-[3px] rounded-[5px] bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-[550] leading-[1.5] whitespace-nowrap"><CheckCircle2 size={11} aria-hidden="true" />Mặc định</span>
-                                )}
-                              </div>
-                              <p className="m-0 text-[#1A1612] font-[500] text-[12px] leading-[1.6] break-words">{addr.detailAddress}</p>
-                              <p className="m-0 text-[#7D715E] text-[12px] leading-[1.6] break-words">{addr.wardName}, {addr.districtName}, {addr.provinceName}</p>
-                            </div>
-
-                            <div className="col-span-full flex items-center justify-between flex-wrap gap-[6px] mt-[1px] pt-[10px] border-t border-[#EAE4D7]">
-                              {!addr.isDefault ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetDefaultAddress(addr.id)}
-                                  className="min-h-[30px] py-[5px] border-0 bg-transparent text-[#B88E4F] text-[11px] font-[550] text-left cursor-pointer hover:underline hover:underline-offset-[3px] transition-colors"
-                                >
-                                  Đặt làm mặc định
-                                </button>
-                              ) : (
-                                <span className="inline-flex items-center gap-[5px] text-[#7D715E] text-[11px] leading-[1.5]">
-                                  <CheckCircle2 size={14} className="text-[#059669] shrink-0" aria-hidden="true" />
-                                  <span>Giao đến địa chỉ này</span>
-                                </span>
-                              )}
-
-                              <div className="flex items-center shrink-0 gap-[4px]">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditAddressModal(addr)}
-                                  title="Sửa địa chỉ"
-                                  aria-label={`Sửa địa chỉ của ${addr.fullName}`}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#1A1612] transition-colors"
-                                >
-                                  <Edit2 size={15} className="text-[#B88E4F]" aria-hidden="true" />
-                                  <span>Sửa</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setAddressPendingDeletion(addr)}
-                                  title="Xóa địa chỉ"
-                                  aria-label={`Xóa địa chỉ của ${addr.fullName}`}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[30px] px-[8px] py-[5px] border border-transparent rounded-[7px] bg-transparent text-[#7D715E] text-[11px] font-[550] cursor-pointer hover:border-[#EAE4D7] hover:bg-[#FAF8F5] hover:text-[#DC2626] transition-colors"
-                                >
-                                  <Trash2 size={15} aria-hidden="true" />
-                                  <span>Xóa</span>
-                                </button>
-                              </div>
-                            </div>
-                          </article>
+                          <CustomerAddressCard
+                            key={addr.id}
+                            address={addr}
+                            onEdit={openEditAddressModal}
+                            onDelete={setAddressPendingDeletion}
+                            onSetDefault={handleSetDefaultAddress}
+                          />
                         ))}
                       </div>
                     )}
@@ -1795,109 +1728,32 @@ export default function CustomerPortalPage() {
                 {/* SubTab 3: Định danh CCCD */}
                 {activeProfileSubTab === 'identity' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
-                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
-                      <div>
-                        <div className="flex items-center flex-wrap gap-[8px]">
-                          <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Xác minh định danh CCCD</h2>
-                          {cccdVerified && (
-                            <span className="inline-flex items-center gap-[4px] px-[6px] py-[2px] border border-[#EEDFC6] rounded-[5px] bg-[#FBF5EB] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
-                              <CheckCircle2 size={12} className="text-[#059669] shrink-0" aria-hidden="true" />
-                              Đã xác thực
-                            </span>
-                          )}
-                        </div>
+                    {cccdVerified && (
+                      <div className="flex items-center">
+                        <span className="inline-flex items-center gap-[4px] px-[6px] py-[2px] border border-[#EEDFC6] rounded-[5px] bg-[#FBF5EB] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
+                          <CheckCircle2 size={12} className="text-[#059669] shrink-0" aria-hidden="true" />
+                          Đã xác thực
+                        </span>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
+                    <div className="customer-identity-card">
                       {loadingIdentity ? (
                         <div className="flex flex-col items-center justify-center gap-[10px] min-h-[140px] text-[#7D715E] text-[12px]" aria-live="polite">
                           <Loader2 className="animate-spin text-[#B88E4F]" size={24} aria-hidden="true" />
                           <span>Đang tải thông tin cá nhân…</span>
                         </div>
                       ) : (
-                        <form onSubmit={handleSubmitIdentity} className="grid grid-cols-2 @max-[519px]:grid-cols-1 gap-[16px] @max-[519px]:gap-[12px] p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
-                          <div className="flex flex-col gap-[6px] min-w-0">
-                            <label htmlFor="customer-identity-name" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Họ và tên <span className="text-[#B88E4F]">*</span></label>
-                            <div className="relative min-w-0">
-                              <User size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                              <input
-                                id="customer-identity-name"
-                                type="text"
-                                autoComplete="name"
-                                aria-describedby="customer-identity-name-hint"
-                                value={cccdFullName}
-                                onChange={(e) => setCccdFullName(e.target.value)}
-                                placeholder="Nhập họ và tên trên CCCD"
-                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                              />
-                            </div>
-                            <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-name-hint">Họ tên đầy đủ theo giấy tờ.</span>
-                          </div>
-
-                          <div className="flex flex-col gap-[6px] min-w-0">
-                            <label htmlFor="customer-identity-number" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Số CCCD <span className="text-[#B88E4F]">*</span></label>
-                            <div className="relative min-w-0">
-                              <Shield size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                              <input
-                                id="customer-identity-number"
-                                type="text"
-                                inputMode="numeric"
-                                autoComplete="off"
-                                maxLength={12}
-                                aria-describedby="customer-identity-number-hint"
-                                value={cccdIdNumber}
-                                onChange={(e) => setCccdIdNumber(e.target.value.replace(/\D/g, ''))}
-                                placeholder="Nhập 12 chữ số trên CCCD"
-                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                              />
-                            </div>
-                            <span className="text-[#7D715E] text-[11px] leading-[1.5]" id="customer-identity-number-hint">Số định danh cá nhân trên CCCD.</span>
-                          </div>
-
-                          <div className="col-span-2 @max-[519px]:col-auto flex flex-col gap-[6px] min-w-0">
-                            <div className="flex items-center justify-between gap-[10px]">
-                              <label htmlFor="customer-identity-address" className="text-[#1A1612] text-[12px] font-[550] leading-[1.5]">Địa chỉ thường trú <span className="text-[#B88E4F]">*</span></label>
-                              <span className="text-[#7D715E] text-[11px] leading-[1.5] tabular-nums whitespace-nowrap" id="customer-identity-address-count">
-                                {cccdAddress.length}/200
-                              </span>
-                            </div>
-                            <div className="relative min-w-0">
-                              <MapPin size={15} className="absolute top-1/2 left-[11px] -translate-y-1/2 text-[#B88E4F] pointer-events-none" aria-hidden="true" />
-                              <input
-                                id="customer-identity-address"
-                                type="text"
-                                autoComplete="street-address"
-                                maxLength={200}
-                                value={cccdAddress}
-                                onChange={(e) => setCccdAddress(e.target.value)}
-                                placeholder="Nhập địa chỉ thường trú trên CCCD"
-                                aria-describedby="customer-identity-address-count"
-                                className="w-full min-w-0 h-[42px] box-border p-[8px_10px_8px_34px] border border-[#EAE4D7] rounded-[8px] outline-none bg-[#FAF8F5] text-[#1A1612] font-inherit text-[13px] leading-[1.5] placeholder:text-[#7D715E] placeholder:opacity-80 hover:border-[#EEDFC6] focus:border-[#C59B58] focus:bg-white focus:shadow-[0_0_0_2px_rgba(197,155,88,0.12)] transition-colors"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="col-span-2 @max-[519px]:col-auto flex items-center justify-between flex-wrap @max-[519px]:flex-col-reverse @max-[519px]:items-stretch gap-[10px] m-[2px_-20px_0] @max-[519px]:m-[2px_-16px_0] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
-                            <span className="inline-flex items-center gap-[6px] max-w-[310px] @max-[519px]:max-w-none @max-[519px]:justify-center text-[#7D715E] text-[11px] @max-[519px]:text-[10px] leading-[1.6]">
-                              <Lock size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                              Thông tin được bảo mật theo chính sách SCANMS.
-                            </span>
-                            <button
-                              type="submit"
-                              disabled={
-                                submittingIdentity ||
-                                !cccdFullName.trim() ||
-                                !cccdIdNumber.trim() ||
-                                !cccdAddress.trim()
-                              }
-                              className="w-auto @max-[519px]:w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[7px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[3px] disabled:border-[#EAE4D7] disabled:bg-white disabled:text-[#7D715E] disabled:opacity-65 disabled:cursor-not-allowed transition-colors"
-                            >
-                              {submittingIdentity ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <ShieldCheck size={14} className="text-[#B88E4F]" aria-hidden="true" />}
-                              <span>{submittingIdentity ? 'Đang xác nhận…' : 'Xác nhận thông tin'}</span>
-                            </button>
-                          </div>
-                        </form>
+                        <CustomerIdentityForm
+                          fullName={cccdFullName}
+                          idNumber={cccdIdNumber}
+                          address={cccdAddress}
+                          submitting={submittingIdentity}
+                          onNameChange={setCccdFullName}
+                          onIdNumberChange={setCccdIdNumber}
+                          onAddressChange={setCccdAddress}
+                          onSubmit={handleSubmitIdentity}
+                        />
                       )}
                     </div>
                   </div>
@@ -1906,46 +1762,13 @@ export default function CustomerPortalPage() {
                 {/* SubTab 4: Bảo mật & Mật khẩu */}
                 {activeProfileSubTab === 'security' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
-                    <div className="flex items-center justify-between flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
-                      <div>
-                        <h2 className="m-0 text-[16px] font-[650] leading-[1.4] text-[#1A1612]">Bảo mật tài khoản & Mật khẩu</h2>
-                      </div>
-                    </div>
-
                     {securityMode === 'VERIFY_METHOD' && (
-                      <div className="grid grid-cols-[minmax(0,1fr)_264px] @max-[659px]:grid-cols-[minmax(0,1fr)] items-start gap-[14px]">
-                        <section className="relative min-w-0 p-[20px] @max-[379px]:p-[16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] flex flex-col gap-[12px] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]" aria-labelledby="security-method-title">
-                          <div className="flex items-center gap-[9px]">
-                            <span className="grid place-items-center shrink-0 w-[36px] h-[38px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Mail size={17} /></span>
-                            <div>
-                              <h3 id="security-method-title" className="m-0 font-inherit text-[16px] font-[600] leading-[1.4]">Xác minh qua email</h3>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between flex-wrap gap-[4px_10px] p-[10px_12px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5] text-[12px] leading-[1.5]">
-                            <span className="text-[#7D715E] text-[11px]">Email nhận mã</span>
-                            <strong className="text-[12px] font-[550] break-all">{maskedSecurityEmail || maskEmail(currentUser?.email)}</strong>
-                          </div>
-                          <button type="button" onClick={handleSendSecurityOtp} disabled={sendingSecurityOtp} className="w-full inline-flex items-center justify-center gap-[6px] min-h-[40px] p-[8px_12px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] font-inherit text-[12px] font-[600] leading-[1.5] cursor-pointer hover:not-disabled:border-[#C59B58] hover:not-disabled:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] disabled:opacity-60 disabled:cursor-wait transition-colors">
-                            {sendingSecurityOtp ? <Loader2 className="animate-spin text-[#B88E4F]" size={14} aria-hidden="true" /> : <Mail size={14} className="text-[#B88E4F] shrink-0" aria-hidden="true" />}
-                            <span>{sendingSecurityOtp ? 'Đang gửi mã xác minh…' : 'Gửi mã xác minh qua email'}</span>
-                          </button>
-                          <div className="flex items-center gap-[6px] pt-[10px] border-t border-[#EAE4D7]">
-                            <Lock size={13} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                            <button type="button" onClick={() => setSecurityMode('DIRECT_CHANGE')} className="inline-flex items-center justify-between flex-1 gap-[6px] p-[3px_0] border-0 bg-transparent text-[#7D715E] hover:text-[#B88E4F] font-inherit text-[11px] font-[550] leading-[1.5] text-left cursor-pointer transition-colors">Đổi bằng mật khẩu hiện tại <ArrowLeft size={13} className="rotate-180" aria-hidden="true" /></button>
-                          </div>
-                        </section>
-                        <aside className="min-w-0 p-[14px_16px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-none" aria-labelledby="security-help-title">
-                          <h3 id="security-help-title" className="flex items-center gap-[6px] m-0 mb-[8px] font-inherit text-[13px] font-[600] leading-[1.5]"><HelpCircle size={15} className="text-[#B88E4F]" aria-hidden="true" /> Trợ giúp xác minh</h3>
-                          <details className="border-t border-[#EAE4D7] first:border-t-0 group">
-                            <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Vì sao cần xác minh? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
-                            <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">SCANMS xác minh email trước khi cho phép thiết lập mật khẩu mới để bảo vệ tài khoản của bạn.</p>
-                          </details>
-                          <details className="border-t border-[#EAE4D7] first:border-t-0 group">
-                            <summary className="flex items-center justify-between gap-[6px] p-[10px_0] list-none text-[11px] font-[500] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px] select-none [&::-webkit-details-marker]:hidden">Chưa nhận được email? <ChevronDown size={13} className="shrink-0 text-[#7D715E] transition-transform duration-200 group-open:rotate-180" aria-hidden="true" /></summary>
-                            <p className="m-0 pb-[10px] text-[#7D715E] text-[11px] leading-[1.7]">Kiểm tra thư mục Spam. Nếu vẫn chưa nhận được, hãy liên hệ CSKH qua Chat hỗ trợ.</p>
-                          </details>
-                        </aside>
-                      </div>
+                      <CustomerSecurityMethod
+                        email={maskedSecurityEmail || maskEmail(currentUser?.email)}
+                        sending={sendingSecurityOtp}
+                        onSendCode={handleSendSecurityOtp}
+                        onUsePassword={() => setSecurityMode('DIRECT_CHANGE')}
+                      />
                     )}
 
                     {securityMode === 'AWAIT_OTP' && (
@@ -2047,25 +1870,26 @@ export default function CustomerPortalPage() {
       {/* ========================================================= */}
       {selectedOrderDetails && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-4 text-left animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
+          <div role="dialog" aria-modal="true" aria-labelledby="customer-order-detail-title" className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col text-left animate-in fade-in zoom-in-95">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#EAE4D7] bg-white px-6 py-5">
               <div>
-                <strong className="text-base font-black text-[#1A1612] block">
+                <strong id="customer-order-detail-title" className="text-base font-black text-[#1A1612] block break-words">
                   Chi Tiết Đơn Hàng #{selectedOrderDetails.externalOrderSn}
                 </strong>
                 <span className="text-xs text-[#7D715E]">
-                  Đặt lúc: {new Date(selectedOrderDetails.createdAt).toLocaleString('vi-VN')}
+                  Đặt lúc: {new Date(selectedOrderDetails.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                className="w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
+                aria-label="Đóng chi tiết đơn hàng" className="shrink-0 w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
+            <div className="min-h-0 overflow-y-auto p-6 flex flex-col gap-4 [&>*]:shrink-0">
             {/* Store Info Banner */}
             <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -2092,57 +1916,10 @@ export default function CustomerPortalPage() {
               </div>
             </div>
 
-            {/* Timeline Stepper */}
-            <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] flex items-center justify-between text-center text-xs">
-              <div className="flex flex-col items-center gap-1">
-                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-                  ✓
-                </div>
-                <span className="font-bold text-[#1A1612]">Đặt hàng</span>
-              </div>
-              <div className="h-0.5 flex-1 bg-[#EAE4D7] mx-2" />
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                    selectedOrderDetails.status !== 'CANCELLED'
-                      ? 'bg-[#C59B58] text-white'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  {selectedOrderDetails.status === 'PENDING' ? '⏳' : '✓'}
-                </div>
-                <span className="font-bold text-[#1A1612]">Xác nhận</span>
-              </div>
-              <div className="h-0.5 flex-1 bg-[#EAE4D7] mx-2" />
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                    selectedOrderDetails.status === 'SHIPPING' ||
-                    selectedOrderDetails.status === 'DELIVERED' ||
-                    selectedOrderDetails.status === 'COMPLETED'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  🚚
-                </div>
-                <span className="font-bold text-[#1A1612]">Đang giao</span>
-              </div>
-              <div className="h-0.5 flex-1 bg-[#EAE4D7] mx-2" />
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                    selectedOrderDetails.status === 'DELIVERED' ||
-                    selectedOrderDetails.status === 'COMPLETED'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  ★
-                </div>
-                <span className="font-bold text-[#1A1612]">Hoàn tất</span>
-              </div>
-            </div>
+            <CustomerOrderProgress
+              status={selectedOrderDetails.status}
+              trackingStatus={selectedGhnStatus || (selectedOrderDetails.status === 'SHIPPING' && getGhnTrackingCode(selectedOrderDetails.rawPayload) ? 'ready_to_pick' : null)}
+            />
 
             {getGhnTrackingCode(selectedOrderDetails.rawPayload) && (
               isGeneratedGhnTestTrackingCode(getGhnTrackingCode(selectedOrderDetails.rawPayload)) ? (
@@ -2155,7 +1932,9 @@ export default function CustomerPortalPage() {
               ) : (
                 <GhnTrackingTimeline
                   orderCode={getGhnTrackingCode(selectedOrderDetails.rawPayload)!}
-                  orderStatus={selectedOrderDetails.status}
+                  onTrackingStatusChange={(status, isFresh) => {
+                    if (isFresh) setLiveGhnTracking({ orderId: selectedOrderDetails.id, status });
+                  }}
                   environment={selectedOrderDetails.rawPayload?.ghnEnvironment === 'TEST' || selectedOrderDetails.rawPayload?.ghnEnvironment === 'LIVE'
                     ? selectedOrderDetails.rawPayload.ghnEnvironment
                     : undefined}
@@ -2238,16 +2017,16 @@ export default function CustomerPortalPage() {
                 {selectedOrderDetails.orderItems.map((item) => (
                   <div key={item.id} className="p-3 flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-12 h-12 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0">
+                      <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} onNavigate={() => setSelectedOrderDetails(null)} className="w-12 h-12 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] overflow-hidden shrink-0">
                         <img
                           src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
                           alt={item.product?.title || 'Sản phẩm'}
                           className="w-full h-full object-cover"
                         />
-                      </div>
+                      </OrderProductLink>
                       <div className="min-w-0">
                         <strong className="block text-xs font-medium text-[#1A1612] truncate">
-                          {item.product?.title}
+                          <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} onNavigate={() => setSelectedOrderDetails(null)} className="hover:underline">{item.product?.title}</OrderProductLink>
                         </strong>
                         {item.variant?.name && (
                           <span className="text-[11px] text-[#7D715E] block">
@@ -2300,44 +2079,14 @@ export default function CustomerPortalPage() {
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
-              <button
-                type="button"
-                onClick={() => setSelectedOrderDetails(null)}
-                className="px-4 py-2 rounded-lg bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-semibold text-[#1A1612] transition cursor-pointer"
-              >
-                Đóng
-              </button>
-
-              {/* Return button if eligible */}
-              {selectedOrderDetails.status !== 'CANCELLED' && selectedOrderDetails.status !== 'RETURNED' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const ord = selectedOrderDetails;
-                    setSelectedOrderDetails(null);
-                    setReturnOrder(ord);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Yêu Cầu Trả Hàng / Hoàn Tiền</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  const order = selectedOrderDetails;
-                  setSelectedOrderDetails(null);
-                  handleReorder(order);
-                }}
-                className="px-5 py-2 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Mua Lại Đơn Này</span>
-              </button>
+            <CustomerOrderDetailActions
+              order={selectedOrderDetails}
+              trackingStatus={selectedGhnStatus}
+              onChat={() => { handleOpenChat(selectedOrderDetails); setSelectedOrderDetails(null); }}
+              onCancel={() => { setCancellingOrderId(selectedOrderDetails.id); setSelectedOrderDetails(null); }}
+              onReview={() => { setReviewOrder(selectedOrderDetails); setSelectedOrderDetails(null); }}
+              onReorder={() => { handleReorder(selectedOrderDetails); setSelectedOrderDetails(null); }}
+            />
             </div>
           </div>
         </div>
@@ -2347,51 +2096,8 @@ export default function CustomerPortalPage() {
       {/* MODAL: HỦY ĐƠN HÀNG KHI PENDING */}
       {/* ========================================================= */}
       {cancellingOrderId && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 text-left animate-in fade-in zoom-in-95">
-            <div>
-              <strong className="text-base font-black text-rose-600 flex items-center gap-1.5">
-                <AlertCircle className="w-5 h-5" />
-                <span>Xác nhận hủy đơn hàng</span>
-              </strong>
-              <p className="text-xs text-[#7D715E] mt-1 m-0">
-                Đơn hàng đang chờ Shop xác nhận. Bạn có thể hủy ngay mà không mất phí.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                Lý do hủy đơn (Tùy chọn)
-              </label>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="VD: Muốn thay đổi địa chỉ, đổi ý không mua nữa..."
-                rows={3}
-                className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 text-xs text-[#1A1612] focus:bg-white focus:border-rose-400 outline-none transition"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setCancellingOrderId(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-bold text-[#7D715E] transition cursor-pointer"
-              >
-                Giữ lại đơn
-              </button>
-              <button
-                type="button"
-                disabled={isCancelling}
-                onClick={handleCancelOrder}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {isCancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Xác nhận hủy</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <CustomerCancelOrderModal key={cancellingOrderId} busy={isCancelling}
+          onClose={() => setCancellingOrderId(null)} onConfirm={handleCancelOrder} />
       )}
 
       {/* ========================================================= */}
@@ -2500,8 +2206,8 @@ export default function CustomerPortalPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveAddress} className="flex flex-col min-h-0 overflow-hidden">
-              <div className="flex flex-col gap-[12px] max-[419px]:gap-[10px] min-h-0 p-[16px_18px] max-[419px]:p-[12px] overflow-y-auto [overscroll-behavior:contain] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
+            <form onSubmit={handleSaveAddress} className="flex flex-1 flex-col min-h-0 overflow-hidden">
+              <div className="flex flex-1 flex-col gap-[12px] max-[419px]:gap-[10px] min-h-0 p-[16px_18px] max-[419px]:p-[12px] overflow-y-auto [&>*]:shrink-0 [overscroll-behavior:contain] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
                 <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] max-[419px]:grid-cols-[minmax(0,1fr)] gap-[12px] max-[419px]:gap-[10px]">
                   <div className="min-w-0">
                     <label htmlFor="address-recipient-name" className="text-[11px] font-[550] leading-[1.5] text-[#1A1612] block mb-1">
@@ -2699,7 +2405,6 @@ export default function CustomerPortalPage() {
           store={activeCheckoutProduct.store}
           onOrderPlaced={() => {
             setActiveCheckoutProduct(null);
-            toast.success('Đặt hàng thành công!');
             fetchOrders();
             fetchProfile();
           }}

@@ -1,0 +1,1427 @@
+{
+  "width": 2800,
+  "height": 2240,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-12 Assign Personal Coupon — Class Diagram",
+      "x": 50,
+      "y": 24,
+      "w": 2540,
+      "h": 48,
+      "size": 30,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 150,
+      "w": 830,
+      "h": 167
+    },
+    {
+      "type": "text",
+      "value": "CollaboratorCouponsController",
+      "x": 858,
+      "y": 154,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          192
+        ],
+        [
+          1680,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          239
+        ],
+        [
+          1680,
+          239
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- service: CouponsService",
+      "x": 862,
+      "y": 202,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ getEligibleStores(collaboratorId: string)",
+      "x": 862,
+      "y": 249,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ proposeCoupon(collaboratorId, dto: CreateCouponDto, ipAddress)",
+      "x": 862,
+      "y": 278,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 700,
+      "w": 830,
+      "h": 223
+    },
+    {
+      "type": "text",
+      "value": "CouponsService",
+      "x": 858,
+      "y": 704,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          742
+        ],
+        [
+          1680,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          816
+        ],
+        [
+          1680,
+          816
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 862,
+      "y": 752,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- cacheService: CacheService",
+      "x": 862,
+      "y": 779,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ getEligibleStores(collaboratorId: string)",
+      "x": 862,
+      "y": 826,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ proposeCoupon(collaboratorId, dto: CreateCouponDto, ipAddress?)",
+      "x": 862,
+      "y": 855,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ approveCoupon(storeId, couponId, userId, role, dto, ipAddress?)",
+      "x": 862,
+      "y": 884,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 1280,
+      "w": 830,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaService",
+      "x": 858,
+      "y": 1284,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1322
+        ],
+        [
+          1680,
+          1322
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1396
+        ],
+        [
+          1680,
+          1396
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- pool: Pool",
+      "x": 862,
+      "y": 1332,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService?: ConfigService",
+      "x": 862,
+      "y": 1359,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleInit(): Promise<void>",
+      "x": 862,
+      "y": 1406,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleDestroy(): Promise<void>",
+      "x": 862,
+      "y": 1435,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 150,
+      "w": 560,
+      "h": 138
+    },
+    {
+      "type": "text",
+      "value": "StoreCouponsController",
+      "x": 68,
+      "y": 154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          192
+        ],
+        [
+          620,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          239
+        ],
+        [
+          620,
+          239
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- service: CouponsService",
+      "x": 72,
+      "y": 202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ approveCoupon(storeId, id, userId, role, dto, ipAddress)",
+      "x": 72,
+      "y": 249,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1700,
+      "w": 650,
+      "h": 277
+    },
+    {
+      "type": "text",
+      "value": "PrismaClient",
+      "x": 68,
+      "y": 1704,
+      "w": 634,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1742
+        ],
+        [
+          710,
+          1742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1870
+        ],
+        [
+          710,
+          1870
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ user: Prisma.UserDelegate",
+      "x": 72,
+      "y": 1752,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ store: Prisma.StoreDelegate",
+      "x": 72,
+      "y": 1779,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeCollaborator: Prisma.StoreCollaboratorDelegate",
+      "x": 72,
+      "y": 1806,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ coupon: Prisma.CouponDelegate",
+      "x": 72,
+      "y": 1833,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $transaction(callback): Promise<T>",
+      "x": 72,
+      "y": 1880,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $connect(): Promise<void>",
+      "x": 72,
+      "y": 1909,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $disconnect(): Promise<void>",
+      "x": 72,
+      "y": 1938,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 150,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "Store",
+      "x": 1938,
+      "y": 154,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          192
+        ],
+        [
+          2550,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          347
+        ],
+        [
+          2550,
+          347
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 202,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ ownerId: string",
+      "x": 1942,
+      "y": 229,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ name: string",
+      "x": 1942,
+      "y": 256,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isDeleted: boolean",
+      "x": 1942,
+      "y": 283,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ defaultCommissionRate: Decimal",
+      "x": 1942,
+      "y": 310,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 650,
+      "w": 620,
+      "h": 206
+    },
+    {
+      "type": "text",
+      "value": "User",
+      "x": 1938,
+      "y": 654,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          692
+        ],
+        [
+          2550,
+          692
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          820
+        ],
+        [
+          2550,
+          820
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 702,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ role: UserRole",
+      "x": 1942,
+      "y": 729,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive: boolean",
+      "x": 1942,
+      "y": 756,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isDeleted: boolean",
+      "x": 1942,
+      "y": 783,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1036,
+      "w": 620,
+      "h": 206
+    },
+    {
+      "type": "text",
+      "value": "StoreCollaborator",
+      "x": 1938,
+      "y": 1040,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1078
+        ],
+        [
+          2550,
+          1078
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1206
+        ],
+        [
+          2550,
+          1206
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1088,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId: string",
+      "x": 1942,
+      "y": 1115,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorId: string",
+      "x": 1942,
+      "y": 1142,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ status: StoreCollaboratorStatus",
+      "x": 1942,
+      "y": 1169,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1422,
+      "w": 620,
+      "h": 341
+    },
+    {
+      "type": "text",
+      "value": "Coupon",
+      "x": 1938,
+      "y": 1426,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1464
+        ],
+        [
+          2550,
+          1464
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1727
+        ],
+        [
+          2550,
+          1727
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1474,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ codeNormalized: string {unique}",
+      "x": 1942,
+      "y": 1501,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorId: string",
+      "x": 1942,
+      "y": 1528,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId: string",
+      "x": 1942,
+      "y": 1555,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ status: CouponStatus",
+      "x": 1942,
+      "y": 1582,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ discountType: DiscountType",
+      "x": 1942,
+      "y": 1609,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ discountValue: Decimal",
+      "x": 1942,
+      "y": 1636,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ startsAt, expiresAt: Date | null",
+      "x": 1942,
+      "y": 1663,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ fundingSource: CouponFundingSource",
+      "x": 1942,
+      "y": 1690,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          317
+        ],
+        [
+          1265,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          923
+        ],
+        [
+          1265,
+          1280
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1474
+        ],
+        [
+          1265,
+          1620
+        ],
+        [
+          385,
+          1620
+        ],
+        [
+          385,
+          1700
+        ]
+      ],
+      "dash": false,
+      "arrow": "triangle"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          620,
+          270.75
+        ],
+        [
+          810,
+          270.75
+        ],
+        [
+          810,
+          727.875
+        ],
+        [
+          850,
+          727.875
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1449.75
+        ],
+        [
+          1890,
+          1449.75
+        ],
+        [
+          1890,
+          1464.625
+        ],
+        [
+          1930,
+          1464.625
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          830.25
+        ],
+        [
+          2630,
+          830.25
+        ],
+        [
+          2630,
+          1464.625
+        ],
+        [
+          2550,
+          1464.625
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          353.875
+        ],
+        [
+          2660,
+          353.875
+        ],
+        [
+          2660,
+          1507.25
+        ],
+        [
+          2550,
+          1507.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2085,
+          856
+        ],
+        [
+          2085,
+          1036
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          324.75
+        ],
+        [
+          2690,
+          324.75
+        ],
+        [
+          2690,
+          1061.75
+        ],
+        [
+          2550,
+          1061.75
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1304.25
+        ],
+        [
+          1890,
+          1304.25
+        ],
+        [
+          1890,
+          353.875
+        ],
+        [
+          1930,
+          353.875
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1328.5
+        ],
+        [
+          1860,
+          1328.5
+        ],
+        [
+          1860,
+          830.25
+        ],
+        [
+          1930,
+          830.25
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1352.75
+        ],
+        [
+          1832,
+          1352.75
+        ],
+        [
+          1832,
+          1216.25
+        ],
+        [
+          1930,
+          1216.25
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 838.25,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1472.625,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 361.875,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1515.25,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2097,
+      "y": 864,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2097,
+      "y": 1002,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 288.75,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1069.75,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "service",
+      "x": 1275,
+      "y": 493.5,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 1275,
+      "y": 1086.5,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "extends",
+      "x": 779,
+      "y": 1577,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "service",
+      "x": 820,
+      "y": 484.3125,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1749.5,
+      "y": 1406.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "coupons",
+      "x": 2556,
+      "y": 787.25,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "coupons",
+      "x": 2670,
+      "y": 1088.56875,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "storeCollaborations",
+      "x": 2095,
+      "y": 931,
+      "w": 218,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "collaborators",
+      "x": 2591.5,
+      "y": 281.75,
+      "w": 155,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1900,
+      "y": 861.58125,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1779,
+      "y": 1064.375,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1720.5,
+      "y": 1365.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ public member     - private member     Solid arrow: retained reference     Dashed arrow: dependency",
+      "x": 60,
+      "y": 2065,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Hollow triangle: actual inheritance (PrismaService extends PrismaClient)     Solid line with multiplicities: model association",
+      "x": 60,
+      "y": 2105,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Scope: assign and activate a personal KOL coupon. Discount preview and transactional redemption at checkout are described in FR12_CODE_ANALYSIS.md and the FR16 checkout flow.",
+      "x": 60,
+      "y": 2150,
+      "w": 2500,
+      "h": 60,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import {
   Ip,
   HttpStatus,
   HttpCode,
+  Header,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +25,8 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
+import { ProductCouponQueryDto } from './dto/product-coupon-query.dto';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -50,6 +53,18 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
 
+  @Get('stores/:storeId/product-eligible')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Header('Cache-Control', 'private, no-store')
+  getEligibleProductCoupons(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Query() query: ProductCouponQueryDto,
+    @CurrentUser('id') userId?: string,
+    @Ip() ip?: string,
+  ) {
+    return this.service.getEligibleProductCoupons(storeId, query, userId, ip);
+  }
+
   @Post('preview-stacked')
   @HttpCode(HttpStatus.OK)
   previewStacked(@Body() dto: PreviewStackedVoucherDto) {
@@ -74,6 +89,14 @@ export class PublicCouponsController {
   @Get('saved/details')
   getSavedAvailableCoupons(@CurrentUser('id') userId: string) {
     return this.service.getSavedAvailableCoupons(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Get('saved/expired')
+  @ApiOperation({ summary: 'Voucher đã lưu của tài khoản đã quá thời hạn sử dụng' })
+  getSavedExpiredCoupons(@CurrentUser('id') userId: string) {
+    return this.service.getSavedExpiredCoupons(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -140,6 +163,7 @@ export class PublicCouponsController {
     status: 500,
     description: 'Lỗi máy chủ nội bộ',
   })
+  @UseGuards(OptionalJwtAuthGuard)
   async validateCoupon(
     @Body() dto: ValidateCouponDto,
     @Ip() ipAddress: string,

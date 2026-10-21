@@ -131,7 +131,7 @@ export class ChatService {
         await this.prisma.storeCollaborator.upsert({
           where: { storeId_collaboratorId: { storeId, collaboratorId } },
           update: {},
-          create: { storeId, collaboratorId, status: 'APPROVED' },
+          create: { storeId, collaboratorId, status: 'PENDING', requestedByKol: actor.role === 'COLLABORATOR' },
         });
       } catch {}
     }
@@ -283,11 +283,23 @@ export class ChatService {
       },
       orderBy: { lastMessageAt: 'desc' },
     });
-    if (!isCustomer) return conversations;
+    const messageCounts = conversations.length
+      ? await this.prisma.chatMessage.groupBy({
+          by: ['conversationId'],
+          where: { conversationId: { in: conversations.map(item => item.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const totals = new Map(messageCounts.map(item => [item.conversationId, item._count._all]));
+    const conversationsWithTotals = conversations.map(conversation => ({
+      ...conversation,
+      messageCount: totals.get(conversation.id) || 0,
+    }));
+    if (!isCustomer) return conversationsWithTotals;
 
     // Protect against legacy/malformed customer conversations that contain a
     // private deal card, including the conversation-list preview payload.
-    return conversations.map((conversation) => ({
+    return conversationsWithTotals.map((conversation) => ({
       ...conversation,
       chatMessages: conversation.chatMessages.map((message) =>
         isExclusiveDealMessage(message.messageText)

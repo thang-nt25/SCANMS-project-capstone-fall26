@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Search,
   ShoppingCart,
   Package,
   User,
@@ -15,11 +14,10 @@ import {
   ShoppingBag,
   MapPin,
   Heart,
-  SlidersHorizontal,
-  X,
   Camera,
   Loader2,
 } from 'lucide-react';
+import { ProductSearchBox } from './ProductSearchBox';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -27,8 +25,10 @@ import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { productLoginUrl } from '../../utils/login-return';
 
 export interface PublicHeaderProps {
+  sticky?: boolean;
   cartCount?: number;
   onOpenCart?: () => void;
   onOpenTracking?: () => void;
@@ -38,6 +38,7 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({
+  sticky = true,
   cartCount,
   onOpenCart,
   onOpenTracking,
@@ -47,6 +48,7 @@ export function PublicHeader({
 }: PublicHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const loginUrl = productLoginUrl(`${location.pathname}${location.search}${location.hash}`);
   const { totalCount, openCart } = useCart();
 
   const effectiveCartCount = cartCount !== undefined ? cartCount : totalCount;
@@ -97,14 +99,10 @@ export function PublicHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (onSearchSubmit) {
-      onSearchSubmit(query);
-    } else {
-      navigate(`/search?q=${encodeURIComponent(query)}`);
-    }
+  const handleSearch = (value: string) => {
+    const query = value.trim();
+    if (onSearchSubmit) onSearchSubmit(query);
+    else navigate('/search?q=' + encodeURIComponent(query));
   };
 
   const handleFilterClick = () => {
@@ -117,7 +115,7 @@ export function PublicHeader({
 
   const handleLogout = () => {
     setIsUserMenuOpen(false);
-    authService.logout();
+    authService.logout(`${location.pathname}${location.search}${location.hash}`);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +172,7 @@ export function PublicHeader({
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
 
   return (
-    <header className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+    <header className={`scanms-site-header ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs`}>
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
@@ -183,43 +181,9 @@ export function PublicHeader({
           </Link>
         </div>
 
-        {/* Center: Search Form - SCANMS Standard Minimalist with Gold Tone */}
-        <form
-          onSubmit={handleSearch}
-          className="hidden lg:flex min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[3px] shadow-2xs transition-all duration-200 focus-within:border-[#C59B58]"
-        >
-          <div className="flex min-w-0 flex-1 items-center px-3.5">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm sản phẩm, thương hiệu..."
-              aria-label="Tìm kiếm sản phẩm"
-              className="min-w-0 w-full bg-transparent text-xs sm:text-sm font-normal text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  if (onSearchSubmit) onSearchSubmit('');
-                }}
-                className="shrink-0 rounded p-1 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer mr-1"
-                aria-label="Xóa nội dung tìm kiếm"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="w-14 sm:w-16 h-8 sm:h-9 rounded-[2px] bg-[#C59B58] hover:bg-[#B88E4F] text-white flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0 shadow-2xs"
-            title="Tìm kiếm"
-            aria-label="Tìm kiếm"
-          >
-            <Search className="w-4 h-4 text-white" />
-          </button>
-        </form>
+        <ProductSearchBox value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch}
+          onClear={() => onSearchSubmit?.('')}
+          className="hidden lg:block min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2" />
 
         <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
           {/* Quick Tracking Button */}
@@ -396,7 +360,7 @@ export function PublicHeader({
                         </Link>
                       )}
 
-                      {!isCustomer && (
+                      {!isCustomer && !isShop && !isKol && (
                         <button
                           type="button"
                           onClick={() => {
@@ -429,14 +393,6 @@ export function PublicHeader({
 
                       {isKol && (
                         <>
-                          <Link
-                            to="/collaborator/collaboration?tab=messages"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <MessageSquare className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Tin nhắn & Hợp tác Shop</span>
-                          </Link>
                           <Link
                             to="/collaborator/wallet"
                             onClick={() => setIsUserMenuOpen(false)}
@@ -481,6 +437,7 @@ export function PublicHeader({
                       )}
                     </div>
 
+
                     {/* Explicit Logout Button */}
                     <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
                       <button
@@ -499,75 +456,21 @@ export function PublicHeader({
           ) : (
             /* Guest (Not Logged In) Authentication Actions */
             <div className="flex items-center gap-1.5">
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                <User className="w-3.5 h-3.5 text-[#B88E4F]" />
-                <span>Khách mua sắm</span>
-              </span>
-
               <Link
-                to="/login"
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-white/95 border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58]/70 transition-all duration-200 shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                to={loginUrl}
+                className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
               >
-                Đăng nhập
-              </Link>
-
-              <Link
-                to="/register"
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1A1612] bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] hover:to-[#A77D3E] transition-all duration-200 shadow-sm shadow-[#C59B58]/20 active:scale-[0.98]"
-              >
-                Đăng ký đối tác
+                <User className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
+                Đăng nhập / Đăng ký
               </Link>
             </div>
           )}
         </div>
       </div>
 
-      {/* Search row for mobile and tablet */}
       <div className="lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC] relative z-10">
-        <form
-          onSubmit={handleSearch}
-          className="flex min-w-0 items-center rounded-[3px] border border-[#EAE4D7] bg-white p-[2px] shadow-2xs focus-within:border-[#C59B58]"
-        >
-          <div className="flex min-w-0 flex-1 items-center px-2.5">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm sản phẩm, thương hiệu..."
-              aria-label="Tìm kiếm sản phẩm"
-              className="min-w-0 w-full bg-transparent text-xs font-normal text-[#1A1612] placeholder:text-[#8C7D6B] outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  if (onSearchSubmit) onSearchSubmit('');
-                }}
-                className="shrink-0 rounded p-1 text-[#7D715E] transition hover:bg-[#F3EFE6] hover:text-[#1A1612] cursor-pointer mr-1"
-                aria-label="Xóa nội dung tìm kiếm"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleFilterClick}
-            className="shrink-0 p-1.5 rounded-[2px] border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] hover:bg-[#F3EFE6] cursor-pointer mr-1"
-            title="Bộ lọc"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="submit"
-            className="w-11 h-8 rounded-[2px] bg-[#C59B58] hover:bg-[#B88E4F] text-white flex items-center justify-center transition cursor-pointer shrink-0"
-            title="Tìm kiếm"
-            aria-label="Tìm kiếm"
-          >
-            <Search className="w-3.5 h-3.5 text-white" />
-          </button>
-        </form>
+        <ProductSearchBox value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch}
+          onClear={() => onSearchSubmit?.('')} onFilter={handleFilterClick} />
       </div>
     </header>
   );

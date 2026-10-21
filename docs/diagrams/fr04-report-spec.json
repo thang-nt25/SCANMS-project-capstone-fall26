@@ -1,0 +1,81 @@
+{
+  "fr":"FR04",
+  "stem":"FR04_Multi_Social_Channel_Management",
+  "title":"FR-04 Multi-Social-Channel Management",
+  "classes":[
+    {"id":"SocialChannelsController","name":"SocialChannelsController","attrs":["- channelsService: SocialChannelsService"],"ops":["+ getMyChannels(userId: string)","+ addChannel(userId, dto: CreateChannelDto)","+ deleteChannel(userId, channelId)","+ setPrimary(userId, channelId)"]},
+    {"id":"SocialChannelsService","name":"SocialChannelsService","attrs":["- prisma: PrismaService"],"ops":["+ getMyChannels(collaboratorId: string)","+ addChannel(collaboratorId, dto: CreateChannelDto)","+ deleteChannel(collaboratorId, channelId)","+ setPrimary(collaboratorId, channelId)","- recalculateTotalFollowers(collaboratorId)"]},
+    {"id":"PrismaService","name":"PrismaService","attrs":["- pool: Pool","- configService?: ConfigService"],"ops":["+ onModuleInit(): Promise<void>","+ onModuleDestroy(): Promise<void>"]},
+    {"id":"PrismaClient","name":"PrismaClient","attrs":["+ collaboratorSocialChannel: Prisma.CollaboratorSocialChannelDelegate","+ collaboratorProfile: Prisma.CollaboratorProfileDelegate"],"ops":["+ $connect(): Promise<void>","+ $disconnect(): Promise<void>"]},
+    {"id":"JwtAuthGuard","name":"JwtAuthGuard","attrs":[],"ops":["+ canActivate(context: ExecutionContext)","+ handleRequest(err: any, user: any)"]},
+    {"id":"CreateChannelDto","name":"CreateChannelDto","attrs":["+ platformName: SocialPlatform","+ channelName?: string","+ channelUrl: string","+ followerCount?: number = 0","+ isPrimary?: boolean = false"],"ops":[]},
+    {"id":"User","name":"User","attrs":["+ id: string","+ email: string {unique}","+ fullName: string","+ role: UserRole","+ isActive, isDeleted: boolean"],"ops":[]},
+    {"id":"CollaboratorSocialChannel","name":"CollaboratorSocialChannel","attrs":["+ id: string","+ collaboratorId: string","+ platformName: SocialPlatform","+ channelName: string | null","+ channelUrl: string","+ followerCount: number","+ isPrimary: boolean","+ createdAt: Date"],"ops":[]},
+    {"id":"CollaboratorProfile","name":"CollaboratorProfile","attrs":["+ id: string","+ userId: string {unique}","+ totalFollowers: number","+ kycStatus: KycStatus","+ updatedAt: Date"],"ops":[]},
+    {"id":"SocialPlatform","name":"SocialPlatform «enumeration»","attrs":["TIKTOK","FACEBOOK","YOUTUBE","INSTAGRAM","THREADS","ZALO","TELEGRAM","SHOPEE_VIDEO","LEMON8","OTHER"],"ops":[]}
+  ],
+  "relations":[
+    ["SocialChannelsController","SocialChannelsService","reference","channelsService"],
+    ["SocialChannelsService","PrismaService","reference","prisma"],
+    ["PrismaService","PrismaClient","inheritance","extends"],
+    ["SocialChannelsController","JwtAuthGuard","dependency","«use»"],
+    ["SocialChannelsController","CreateChannelDto","dependency","«use»"],
+    ["SocialChannelsService","CreateChannelDto","dependency","«use»"],
+    ["PrismaService","CollaboratorSocialChannel","dependency","«use»"],
+    ["PrismaService","CollaboratorProfile","dependency","«use»"],
+    ["User","CollaboratorSocialChannel","association","socialChannels","1","0..*"],
+    ["User","CollaboratorProfile","association","collaboratorProfile","1","0..1"],
+    ["CollaboratorSocialChannel","SocialPlatform","dependency","«use»"]
+  ],
+  "classLayout":{
+    "reference":"FR09","version":"fr09-model-columns-v4",
+    "controller":"SocialChannelsController","service":"SocialChannelsService",
+    "supports":[["JwtAuthGuard",150],["CreateChannelDto",700]],
+    "models":["User","CollaboratorSocialChannel","CollaboratorProfile","SocialPlatform"],
+    "modelPositions":{"User":[1930,150,620],"CollaboratorSocialChannel":[1930,650,620],"CollaboratorProfile":[1930,1110,620],"SocialPlatform":[1930,1510,620]}
+  },
+  "classNote":"Selected existing members. Channels belong to User, not directly to CollaboratorProfile. Followers are user-entered; service updates Profile.totalFollowers after add/delete. No channel-count cap or unique channel URL/platform constraint exists. SocialPlatform is an enum, not an ORM model. JWT guard only; see FR04_CODE_ANALYSIS.md.",
+  "subtitle":"Add another TikTok / Facebook / YouTube / Threads channel with followers → optionally mark primary → recalculate total followers → refresh list. No configured channel-count cap.",
+  "lanes":[
+    {"id":"kol","name":"KOL","actor":true},
+    {"id":"browser","name":"Browser"},
+    {"id":"ctrl","name":":SocialChannelsController"},
+    {"id":"svc","name":":SocialChannelsService"},
+    {"id":"prisma","name":":PrismaService"}
+  ],
+  "sequenceLayout":{"reference":"FR09","version":"fr09-sequence-v3","order":["kol","browser","ctrl","svc","prisma"]},
+  "messages":[
+    ["kol","browser","Enter channel + followers; select primary; Add"],
+    ["browser","browser","Validate form fields; convert followerCount with Number()"],
+    ["browser","ctrl","POST /api/social-channels { platformName, channelUrl, followerCount, isPrimary: true, ... }"],
+    ["ctrl","svc","addChannel(userId from JWT, dto)"],
+    ["svc","prisma","[isPrimary] updateMany({ collaboratorId, isPrimary: true }, { isPrimary: false })"],
+    ["prisma","svc","Previous primary flags cleared","return"],
+    ["svc","prisma","collaboratorSocialChannel.create(): owner, platform, trimmed fields, followers, primary"],
+    ["prisma","svc","New social channel","return"],
+    ["svc","svc","recalculateTotalFollowers(collaboratorId)"],
+    ["svc","prisma","collaboratorSocialChannel.aggregate({ collaboratorId }, _sum.followerCount)"],
+    ["prisma","svc","Follower sum for all channels of this User","return"],
+    ["svc","prisma","collaboratorProfile.updateMany({ userId }, { totalFollowers: sum || 0 })"],
+    ["prisma","svc","Profile update count (may be 0 if profile is absent)","return"],
+    ["svc","ctrl","{ message, channel } after follower recalculation","return"],
+    ["ctrl","browser","201 Created: channel result in response envelope","return"],
+    ["browser","browser","Show success; close modal; reset form; loadChannels(true)"],
+    ["browser","ctrl","GET /api/social-channels (x-skip-cache: true)"],
+    ["ctrl","svc","getMyChannels(userId from JWT)"],
+    ["svc","prisma","findMany({ collaboratorId }, orderBy: isPrimary desc, createdAt desc)"],
+    ["prisma","svc","Owned channel list including the new row","return"],
+    ["svc","ctrl","Channel list","return"],
+    ["ctrl","browser","200: channels","return"],
+    ["browser","browser","Replace list; sum followers; apply local search/platform filters"],
+    ["browser","kol","Show all owned channels, primary badge and follower totals","return"]
+  ],
+  "activations":[["browser",0,23],["ctrl",2,14],["svc",3,13],["prisma",4,5],["prisma",6,7],["prisma",9,10],["prisma",11,12],["ctrl",16,21],["svc",17,20],["prisma",18,19]],
+  "notes":[
+    "Browser = SocialChannelsPage + socialService + Axios (/collaborator/profile?tab=social; also WalletPage). Initial GET is omitted. JWT runs before controller; DTO checks platform, integer followers >= 0 and boolean primary. No RolesGuard or KYC gate is bound here.",
+    "Expanded path adds a new primary channel. If isPrimary is false, skip clearing old flags. Multiple channels on one platform are allowed; no count cap or unique URL/platform constraint is defined. Followers are entered manually; no OAuth/platform follower lookup or channel-ownership verification runs.",
+    "Profile total is recalculated using SUM over all owned rows after add/delete; absent profile is not created (updateMany count 0). Channel, primary reset and aggregate/profile writes are separate, not a transaction. A later failure can leave earlier writes committed; concurrent calls do not guarantee one primary.",
+    "DELETE /social-channels/:id and PATCH /:id/primary read the channel, return 404 if absent or 403 for another owner. Delete is permanent, recalculates totals and does not choose a replacement primary. setPrimary clears old flags then marks the selected row; general URL/follower editing has no endpoint here.",
+    "UI offers TikTok, Facebook, YouTube, Instagram, Threads and Zalo; the API enum also accepts Telegram, Shopee Video, Lemon8 and Other. First-row display fallback is not a stored primary flag. Channel rows reference User; no Profile-to-channel foreign key exists. Duplicate rows can double-count followers."
+  ]
+}

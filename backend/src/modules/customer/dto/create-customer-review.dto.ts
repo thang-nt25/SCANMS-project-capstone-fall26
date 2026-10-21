@@ -15,7 +15,7 @@ import {
 } from 'class-validator';
 
 export class CreateCustomerReviewDto {
-  @IsUUID('4')
+  @IsUUID('all')
   productId: string;
 
   @IsInt()

@@ -50,6 +50,8 @@ export class LiveGovernanceService {
       );
     if ((dto.evidence?.length || 0) > 10)
       throw new BadRequestException('Tối đa 10 liên kết bằng chứng.');
+    if (['SHOP_END', 'EMERGENCY_STOP', 'KOL_EXPLAIN', 'COMPLAIN', 'EXPLAIN'].includes(dto.action) && !dto.evidence?.length)
+      throw new BadRequestException('Phải cung cấp ít nhất một ảnh, video hoặc liên kết bằng chứng.');
     let stopped = false;
     const result = await this.prisma.$transaction(
       async (tx) => {
@@ -127,6 +129,7 @@ export class LiveGovernanceService {
             at,
             reason: g.request?.reason || dto.reason,
             message,
+            evidence: dto.evidence || [],
           };
           g.preserveOrderTerms = true;
           g.snapshot = {
@@ -164,7 +167,16 @@ export class LiveGovernanceService {
           await tx.liveSessionViewer.updateMany({ where: { sessionId: id, leftAt: null }, data: { leftAt: now } });
         };
         switch (dto.action) {
+          case 'END_BY_KOL':
+            requireRole(kol);
+            if (!active || !['LIVE', 'PAUSED'].includes(session.status))
+              throw new BadRequestException('Chỉ kết thúc phiên đang phát hoặc đang tạm dừng.');
+            g.request = { status: 'HOST_ENDED', reason: dto.reason || 'OTHER', message, actorId: userId, at };
+            await stop('HOST_ENDED');
+            recipients.push(...(await staff()));
+            break;
           case 'REQUEST_END':
+          case 'SHOP_END':
           case 'EMERGENCY_STOP':
             requireRole(shop);
             if (!active)
@@ -188,13 +200,13 @@ export class LiveGovernanceService {
             } else {
               // An earlier request must not replace the emergency reason.
               g.request = {
-                status: 'EMERGENCY',
+                status: dto.action === 'SHOP_END' ? 'SHOP_ENDED' : 'EMERGENCY',
                 reason: dto.reason,
                 message,
                 actorId: userId,
                 at,
               };
-              await stop('EMERGENCY');
+              await stop(dto.action === 'SHOP_END' ? 'SHOP_ENDED' : 'EMERGENCY');
             }
             break;
           case 'ACCEPT_END':
@@ -209,13 +221,19 @@ export class LiveGovernanceService {
             g.request.response = { userId, message, at };
             if (dto.action === 'ACCEPT_END') await stop('AGREED');
             break;
+          case 'KOL_EXPLAIN':
           case 'COMPLAIN':
             requireRole(kol);
             if (!g.stop)
               throw new BadRequestException(
                 'Chỉ khiếu nại việc dừng phiên đã được ghi nhận.',
               );
-            if (dispute)
+            if (dispute?.initiatedBy === 'SHOP' && ['OPEN', 'ESCALATED'].includes(dispute.status) && !dispute.kolStatement) {
+              dispute.kolStatement = { userId, message, evidence: dto.evidence, at };
+              recipients.push(...(await staff()));
+              break;
+            }
+            if (dto.action === 'KOL_EXPLAIN' || dispute)
               throw new BadRequestException('Phiên đã có hồ sơ khiếu nại.');
             g.dispute = {
               status: 'OPEN',
@@ -280,6 +298,8 @@ export class LiveGovernanceService {
             if (appeal) requireRole(superAdmin);
             if (!dto.outcome)
               throw new BadRequestException('Phải chọn kết luận.');
+            if (dispute.initiatedBy === 'SHOP' && (!dispute.explanation?.evidence?.length || !dispute.kolStatement?.evidence?.length))
+              throw new BadRequestException('Cần giải trình và bằng chứng của cả Shop và KOL trước khi kết luận.');
             const sanction = dto.sanction || 'NONE';
             if (['RESTRICT', 'BLOCK', 'LIFT'].includes(sanction))
               requireRole(superAdmin);
@@ -352,6 +372,15 @@ export class LiveGovernanceService {
           }
           default:
             throw new BadRequestException('Thao tác không hợp lệ.');
+        }
+        if (stopped && shop) {
+          g.stop.evidence = dto.evidence || [];
+          g.dispute = {
+            status: 'OPEN', initiatedBy: 'SHOP', submittedAt: at,
+            message: 'Shop đã chủ động kết thúc phiên. Chờ KOL gửi giải trình và bằng chứng đối chiếu.',
+            explanation: { userId, message, evidence: dto.evidence, at },
+          };
+          recipients.push(...(await staff()));
         }
         const event = {
           action: dto.action,

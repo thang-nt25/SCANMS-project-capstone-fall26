@@ -8,7 +8,6 @@ import {
   readPersistedCounts,
 } from './seed.database';
 import { DATASET_VERSION, jsonObject, seedId } from './seed.helpers';
-import { activeSponsoredPlacements } from '../../src/modules/stores/sponsored-placement.config';
 import type { DatabaseTarget } from './seed.config';
 import type { SeedDataset, SeedTable } from './seed.types';
 
@@ -236,10 +235,13 @@ export async function auditSeedDatabase(
       }).length;
       const now = new Date();
       const booked = await tx.sponsoredPlacement.findMany({
-        where: { status: 'APPROVED', startsAt: { lte: now }, endsAt: { gt: now } },
+        where: { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 },
+          paymentReference: { not: null }, paymentProofUrl: { not: null },
+          reviewedById: { not: null }, reviewedAt: { not: null },
+          startsAt: { lte: now }, endsAt: { gt: now } },
         select: { storeId: true },
       });
-      const configured = [...booked, ...activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS)];
+      const configured = booked;
       const eligible = await tx.store.findMany({
         where: {
           id: { in: configured.map((row) => row.storeId) },

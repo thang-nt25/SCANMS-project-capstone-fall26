@@ -16,6 +16,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { SponsorshipService } from './sponsorship.service';
+import { SPONSORSHIP_PRICING } from './sponsorship-pricing';
 import {
   CancelSponsorshipDto,
   RequestSponsorshipDto,
@@ -29,6 +30,12 @@ import {
 @Controller('sponsored-placements')
 export class SponsorshipController {
   constructor(private readonly service: SponsorshipService) {}
+
+  @Get('pricing')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  pricing() {
+    return SPONSORSHIP_PRICING;
+  }
 
   @Get()
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)

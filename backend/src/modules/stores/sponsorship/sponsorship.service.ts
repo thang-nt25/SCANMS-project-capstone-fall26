@@ -13,6 +13,7 @@ import {
   SponsorshipListDto,
 } from './sponsorship.dto';
 import { hasSponsorshipCapacity } from './sponsorship-capacity';
+import { sponsorshipQuote } from './sponsorship-pricing';
 export { hasSponsorshipCapacity } from './sponsorship-capacity';
 
 const include = {
@@ -20,6 +21,10 @@ const include = {
 } as const;
 const admin = (role: UserRole) =>
   role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER;
+
+export function sponsorshipHasExpired(row: { status: string; endsAt: Date }, now = new Date()) {
+  return ['REQUESTED', 'APPROVED'].includes(row.status) && row.endsAt <= now;
+}
 
 export function validateSponsorshipWindow(
   startsAt: Date,
@@ -46,9 +51,14 @@ export class SponsorshipService {
   async list(userId: string, role: UserRole, query: SponsorshipListDto) {
     if (!admin(role) && role !== UserRole.SHOP_MANAGER)
       throw new ForbiddenException('Không có quyền truy cập tài trợ.');
+    const now = new Date();
+    const lifecycle: Prisma.SponsoredPlacementWhereInput = query.status === 'EXPIRED'
+      ? { status: { in: ['REQUESTED', 'APPROVED'] }, endsAt: { lte: now } }
+      : query.status ? { status: query.status,
+          ...(['REQUESTED', 'APPROVED'].includes(query.status) ? { endsAt: { gt: now } } : {}) } : {};
     const where: Prisma.SponsoredPlacementWhereInput = {
       ...(admin(role) ? {} : { store: { ownerId: userId } }),
-      ...(query.status ? { status: query.status } : {}),
+      ...lifecycle,
     };
     const [total, items] = await this.prisma.$transaction([
       this.prisma.sponsoredPlacement.count({ where }),
@@ -64,7 +74,7 @@ export class SponsorshipService {
       total,
       page: query.page,
       totalPages: Math.ceil(total / 20),
-      items,
+      items: items.map(row => ({ ...row, status: sponsorshipHasExpired(row, now) ? 'EXPIRED' : row.status })),
     };
   }
 
@@ -76,6 +86,9 @@ export class SponsorshipService {
     const startsAt = new Date(dto.startsAt),
       endsAt = new Date(dto.endsAt);
     validateSponsorshipWindow(startsAt, endsAt);
+    const quote = sponsorshipQuote(startsAt, endsAt);
+    if (dto.quotedAmount !== quote.amount)
+      throw new BadRequestException('Phí quảng cáo đã thay đổi hoặc không đúng lịch chạy. Vui lòng tải lại bảng phí.');
     try {
       return await this.prisma.$transaction(async (tx) => {
         const store = await tx.store.findFirst({
@@ -104,6 +117,7 @@ export class SponsorshipService {
             existing.headline !== dto.headline.trim() ||
             existing.startsAt.getTime() !== startsAt.getTime() ||
             existing.endsAt.getTime() !== endsAt.getTime()
+            || Number(existing.amount) !== quote.amount
           ) {
             throw new ConflictException(
               'Khóa gửi yêu cầu đã được dùng cho nội dung khác.',
@@ -111,10 +125,22 @@ export class SponsorshipService {
           }
           return existing;
         }
+        if (dto.renewsPlacementId) {
+          const previous = await tx.sponsoredPlacement.findFirst({
+            where: { id: dto.renewsPlacementId, storeId: store.id },
+          });
+          if (!previous || !sponsorshipHasExpired(previous))
+            throw new BadRequestException('Chỉ có thể gia hạn gói đã hết hạn của Shop.');
+          if (startsAt.getTime() < Date.now())
+            throw new BadRequestException('Lịch gia hạn phải bắt đầu từ thời điểm hiện tại trở đi.');
+        }
         const overlap = await tx.sponsoredPlacement.findFirst({
           where: {
             storeId: store.id,
-            status: { in: ['REQUESTED', 'APPROVED'] },
+            OR: [
+              { status: 'REQUESTED' },
+              { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 } },
+            ],
             startsAt: { lt: endsAt },
             endsAt: { gt: startsAt },
           },
@@ -131,13 +157,15 @@ export class SponsorshipService {
             headline: dto.headline.trim(),
             startsAt,
             endsAt,
+            amount: quote.amount,
+            fundingType: 'PAID',
           },
         });
         await tx.auditLog.create({
           data: {
             userId,
-            action: 'SPONSORSHIP_REQUESTED',
-            details: { placementId: row.id, storeId: store.id },
+            action: dto.renewsPlacementId ? 'SPONSORSHIP_RENEWAL_REQUESTED' : 'SPONSORSHIP_REQUESTED',
+            details: { placementId: row.id, storeId: store.id, ...(dto.renewsPlacementId ? { renewsPlacementId: dto.renewsPlacementId } : {}) },
           },
         });
         return row;
@@ -173,18 +201,15 @@ export class SponsorshipService {
           !Number.isInteger(dto.amount) ||
           !dto.amount ||
           dto.amount < 1 ||
-          !dto.paymentReference?.trim() ||
-          !dto.paymentProofUrl
+          (dto.paymentReference?.trim().length ?? 0) < 6 ||
+          !dto.paymentProofUrl?.startsWith('https://')
         )
           throw new BadRequestException(
             'Gói có thu phí cần số tiền, mã đối soát và chứng từ đã kiểm tra.',
           );
-      } else if (
-        dto.fundingType !== SponsoredPlacementFunding.PLATFORM_GRANT ||
-        dto.amount !== 0
-      ) {
+      } else {
         throw new BadRequestException(
-          'Gói sàn cấp miễn phí phải chọn đúng hình thức và số tiền 0.',
+          'Vị trí quảng cáo chỉ dành cho gói trả phí đã được đối soát.',
         );
       }
     }
@@ -212,6 +237,11 @@ export class SponsorshipService {
           throw new ConflictException('Yêu cầu đã được xử lý.');
         if (dto.decision === 'APPROVE') {
           validateSponsorshipWindow(row.startsAt, row.endsAt);
+          const expectedAmount = row.amount == null
+            ? sponsorshipQuote(row.startsAt, row.endsAt).amount
+            : Number(row.amount);
+          if (dto.amount !== expectedAmount)
+            throw new BadRequestException(`Phí cần đối soát là ${expectedAmount.toLocaleString('vi-VN')} ₫. Số tiền xác minh phải khớp phí đăng ký.`);
           if (
             !row.store.isActive ||
             row.store.isDeleted ||
@@ -225,6 +255,8 @@ export class SponsorshipService {
           const booked = await tx.sponsoredPlacement.findMany({
             where: {
               status: 'APPROVED',
+              fundingType: 'PAID',
+              amount: { gt: 0 },
               startsAt: { lt: row.endsAt },
               endsAt: { gt: row.startsAt },
             },
@@ -312,6 +344,8 @@ export class SponsorshipService {
         throw new NotFoundException('Không tìm thấy gói tài trợ của bạn.');
       if (!['REQUESTED', 'APPROVED'].includes(row.status))
         throw new ConflictException('Không thể hủy gói ở trạng thái hiện tại.');
+      if (sponsorshipHasExpired(row))
+        throw new ConflictException('Gói đã hết hạn, không cần hủy. Hãy đăng ký gia hạn nếu muốn tiếp tục quảng cáo.');
       const changed = await tx.sponsoredPlacement.updateMany({
         where: { id, status: row.status },
         data: { status: 'CANCELLED' },

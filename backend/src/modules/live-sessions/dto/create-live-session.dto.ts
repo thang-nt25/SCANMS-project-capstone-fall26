@@ -28,13 +28,18 @@ export class ExternalLiveChannelDto {
 }
 
 export class GenerateLiveLinkCodeDto {
-  @IsUUID('4') storeId: string;
-  @IsUUID('4') creatorId: string;
+  @IsUUID() storeId: string;
+  @IsUUID() creatorId: string;
+}
+
+export class ReleaseLiveVoucherDto {
+  @IsUUID() couponId: string;
+  @IsInt() @Min(1) @Max(10000) quantity: number;
 }
 
 export class CreateLiveSessionDto {
-  @IsUUID('4') storeId: string;
-  @IsUUID('4') creatorId: string;
+  @IsUUID() storeId: string;
+  @IsUUID() creatorId: string;
   @IsString() @IsNotEmpty() @MaxLength(200) title: string;
   @IsEnum(LiveSessionPlatform) platform: LiveSessionPlatform;
   @IsUrl({ require_protocol: true, require_tld: false })
@@ -48,8 +53,8 @@ export class CreateLiveSessionDto {
   externalChannels?: ExternalLiveChannelDto[];
   @IsDateString() startsAt: string;
   @IsDateString() endsAt: string;
-  @IsArray() @ArrayNotEmpty() @IsUUID('4', { each: true }) productIds: string[];
-  @IsOptional() @IsArray() @IsUUID('4', { each: true }) variantIds?: string[];
+  @IsArray() @ArrayNotEmpty() @IsUUID('all', { each: true }) productIds: string[];
+  @IsOptional() @IsArray() @IsUUID('all', { each: true }) variantIds?: string[];
 
   @IsOptional() @IsString() @MaxLength(1000) coverImageUrl?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;

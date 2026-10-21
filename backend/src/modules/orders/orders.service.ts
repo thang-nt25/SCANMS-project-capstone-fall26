@@ -17,6 +17,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
+import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
 import { buildShippingPackage, type ShippingPackage } from '../shipping/shipping-package';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
@@ -97,6 +98,7 @@ const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
 
 import { MailService } from '../auth/mail.service';
 import { GhnService } from '../shipping/ghn.service';
+import { confirmationEmailState, combinedConfirmationEmailState } from './order-confirmation-email';
 
 @Injectable()
 export class OrdersService {
@@ -706,7 +708,7 @@ export class OrdersService {
         canRequestCancellationOtp: true,
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?sn=${existingOrder.externalOrderSn}`,
-        confirmationEmailQueued: false,
+        ...confirmationEmailState(rawPayload, existingOrder.customerEmail),
         items: existingOrder.orderItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId || undefined,
@@ -910,26 +912,6 @@ export class OrdersService {
 
     const raw = (order.rawPayload as Record<string, any>) || {};
 
-    let confirmationEmailQueued = false;
-    if (customerEmail && this.mailService) {
-      confirmationEmailQueued = true;
-      void this.mailService
-        .sendOrderConfirmation({
-          email: customerEmail,
-          customerName,
-          publicOrderCode: order.externalOrderSn,
-          finalAmount: Number(order.finalAmount),
-          paymentMethod: raw.paymentMethod || 'COD',
-          paymentStatus: raw.paymentStatus,
-          storeName: order.store.name,
-        })
-        .catch((error: unknown) => {
-          this.logger.error(
-            `Không thể gửi email xác nhận đơn ${order.externalOrderSn}: ${this.getErrorMessage(error)}`,
-          );
-        });
-    }
-
     const singleResult = {
       message: 'Đơn hàng đã được tạo.',
       publicOrderCode: order.externalOrderSn,
@@ -944,7 +926,7 @@ export class OrdersService {
       vietqr: raw.vietqr || null,
       cancellationToken: rawCancellationToken,
       trackingUrl: `/tracking?sn=${order.externalOrderSn}`,
-      confirmationEmailQueued,
+      ...confirmationEmailState(raw, customerEmail),
       items: order.orderItems.map((item) => ({
         productId: item.productId,
         variantId: item.variantId || undefined,
@@ -1833,6 +1815,7 @@ export class OrdersService {
         shippingFee: new Prisma.Decimal(shippingFee),
         finalAmount: new Prisma.Decimal(orderFinalAmount),
         rawPayload: {
+          confirmationEmailStatus: customerEmail ? 'QUEUED' : 'NOT_REQUESTED',
           liveSessionIds,
           campaignBonusReservations: Object.fromEntries(campaignBonusReservations),
           stackedVouchers: stackedVouchers.map(({ code, benefitType, discount, shopFunded, platformFunded }) => ({ code, benefitType, discount, shopFunded, platformFunded })),
@@ -2137,7 +2120,7 @@ export class OrdersService {
         canRequestCancellationOtp: true,
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?sn=${existingSubOrders[0]?.externalOrderSn}`,
-        confirmationEmailQueued: false,
+        ...combinedConfirmationEmailState(existingSubOrders.map(order => confirmationEmailState(order.rawPayload, order.customerEmail))),
         orders: existingSubOrders.map((o) => {
           const raw = (o.rawPayload as Record<string, any>) || {};
           return {
@@ -2148,6 +2131,7 @@ export class OrdersService {
             shippingFee: Number(o.shippingFee),
             finalAmount: Number(o.finalAmount),
             vietqr: raw.vietqr || null,
+            ...confirmationEmailState(raw, o.customerEmail),
             items: o.orderItems.map((item) => ({
               productId: item.productId,
               variantId: item.variantId || undefined,
@@ -2396,28 +2380,9 @@ export class OrdersService {
       throw error;
     }
 
-    // 3. Post-Transaction Email Queue & Kết xuất dữ liệu đơn hàng
-    for (const res of createdResults) {
-      if (customerEmail && this.mailService) {
-        void this.mailService
-          .sendOrderConfirmation({
-            email: customerEmail,
-            customerName,
-            publicOrderCode: res.order.externalOrderSn,
-            finalAmount: Number(res.order.finalAmount),
-            paymentMethod: normalizedPaymentMethod,
-            paymentStatus: (res.order.rawPayload as Record<string, any>)?.paymentStatus,
-            storeName: res.order.store.name,
-          })
-          .catch((error: unknown) => {
-            this.logger.error(
-              `Không thể gửi email xác nhận đơn ${res.order.externalOrderSn}: ${this.getErrorMessage(error)}`,
-            );
-          });
-      }
-    }
-
-    const createdOrders = createdResults.map((res) => ({
+    // Email delivery is handled by the durable post-commit worker.
+    const emailStates = createdResults.map(result => confirmationEmailState(result.order.rawPayload, customerEmail));
+    const createdOrders = createdResults.map((res, index) => ({
       message: 'Đơn hàng đã được tạo.',
       publicOrderCode: res.order.externalOrderSn,
       status: res.order.status,
@@ -2433,7 +2398,7 @@ export class OrdersService {
       vietqr: res.vietqrData,
       cancellationToken: res.rawCancellationToken,
       trackingUrl: `/tracking?sn=${res.order.externalOrderSn}`,
-      confirmationEmailQueued: Boolean(customerEmail && this.mailService),
+      ...emailStates[index],
       items: res.order.orderItems.map((item: any) => ({
         productId: item.productId,
         variantId: item.variantId || undefined,
@@ -2490,7 +2455,7 @@ export class OrdersService {
       canRequestCancellationOtp: true,
       cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
       trackingUrl: `/tracking?sn=${createdOrders[0]?.publicOrderCode}`,
-      confirmationEmailQueued: Boolean(customerEmail && this.mailService),
+      ...combinedConfirmationEmailState(emailStates),
       orders: createdOrders,
       items: createdOrders.flatMap((o) => o.items || []),
       store: {
@@ -3249,11 +3214,41 @@ export class OrdersService {
     }
     if (orderSn?.trim()) {
       whereConditions.externalOrderSn = {
-        equals: orderSn.trim(),
+        equals: orderSn.trim().replace(/^#+\s*/, ''),
         mode: 'insensitive',
       };
     }
 
+    return this.lookupTrackedOrders(whereConditions, true);
+  }
+
+  async trackCustomerOrder(userId: string, inputCode: string, inputPhone = '') {
+    const orderSn = inputCode.trim().replace(/^#+\s*/, '');
+    if (!orderSn && !inputPhone.trim()) throw new BadRequestException('Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu.');
+    const recipientPhone = inputPhone.trim() ? normalizeCustomerPhone(inputPhone) : null;
+    if (!userId) throw new ForbiddenException('Vui lòng đăng nhập để tra cứu đơn mua.');
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }, select: { email: true, phoneNumber: true },
+    });
+    if (!user) throw new ForbiddenException('Tài khoản không còn khả dụng.');
+    const guestContacts: Prisma.OrderWhereInput[] = [];
+    if (user.email?.trim()) guestContacts.push({ customerEmail: { equals: user.email.trim(), mode: 'insensitive' } });
+    const phone = user.phoneNumber?.trim().replace(/[()\s-]/g, '').replace(/^\+84/, '0');
+    if (phone && /^0\d{9}$/.test(phone)) {
+      guestContacts.push({ customerPhone: { in: [phone, `+84${phone.slice(1)}`] } });
+    }
+    const ownership: Prisma.OrderWhereInput[] = [{ customerId: userId }];
+    // Match historical guest purchases too, but never another account's order
+    // just because it was sent to the same recipient/contact.
+    if (guestContacts.length) ownership.push({ customerId: null, OR: guestContacts });
+    const where: Prisma.OrderWhereInput = { OR: ownership };
+    if (orderSn) where.externalOrderSn = { equals: orderSn, mode: 'insensitive' };
+    if (recipientPhone) where.customerPhone = { in: [recipientPhone, `+84${recipientPhone.slice(1)}`] };
+    return this.lookupTrackedOrders(where, true);
+  }
+
+  private async lookupTrackedOrders(whereConditions: Prisma.OrderWhereInput, showDetails: boolean) {
+    await syncCustomerGhnSimulations(this.prisma, whereConditions);
     const orders = await this.prisma.order.findMany({
       where: whereConditions,
       orderBy: { createdAt: 'desc' },
@@ -3332,17 +3327,17 @@ export class OrdersService {
       return {
         id: order.id,
         externalOrderSn: order.externalOrderSn,
-        customerName: phone && orderSn ? order.customerName : 'Khách hàng',
+        customerName: showDetails ? order.customerName : 'Khách hàng',
         customerPhone:
-          phone && orderSn
+          showDetails
             ? order.customerPhone
             : order.customerPhone?.replace(/.(?=.{3})/g, '*'),
         shippingAddress:
-          phone && orderSn
+          showDetails
             ? order.shippingAddress
             : 'Xác minh mã đơn và SĐT để xem địa chỉ',
         reviewToken:
-          phone && orderSn
+          showDetails
             ? createReviewToken(this.configService, order.id)
             : undefined,
         subtotalAmount: Number(order.subtotalAmount),
@@ -3818,6 +3813,7 @@ export class OrdersService {
       }
     }
 
+    await syncCustomerGhnSimulations(this.prisma, targetStoreId ? { storeId: targetStoreId } : {});
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;

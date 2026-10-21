@@ -1,0 +1,1689 @@
+{
+  "width": 2800,
+  "height": 2531,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-15 Product Landing Page and KOL Video Reviews — Class Diagram",
+      "x": 50,
+      "y": 24,
+      "w": 2540,
+      "h": 48,
+      "size": 30,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 150,
+      "w": 830,
+      "h": 165
+    },
+    {
+      "type": "text",
+      "value": "PublicProductsController",
+      "x": 858,
+      "y": 154,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          192
+        ],
+        [
+          1680,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          266
+        ],
+        [
+          1680,
+          266
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- productsService: ProductsService",
+      "x": 862,
+      "y": 202,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService: ConfigService",
+      "x": 862,
+      "y": 229,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ getLandingPage(idOrSlug, req?): Promise<ProductLandingResponseDto>",
+      "x": 862,
+      "y": 276,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 700,
+      "w": 830,
+      "h": 250
+    },
+    {
+      "type": "text",
+      "value": "ProductsService",
+      "x": 858,
+      "y": 704,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          742
+        ],
+        [
+          1680,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          843
+        ],
+        [
+          1680,
+          843
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 862,
+      "y": 752,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService: ConfigService",
+      "x": 862,
+      "y": 779,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- cacheService: CacheService",
+      "x": 862,
+      "y": 806,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ getLandingPageData(idOrSlug, attributionCookie?): Promise<ProductLandingResponseDto>",
+      "x": 862,
+      "y": 853,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- resolveLandingImageUrl(url?): string | null",
+      "x": 862,
+      "y": 882,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- isSafeUrl(url?): boolean",
+      "x": 862,
+      "y": 911,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 1280,
+      "w": 830,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaService",
+      "x": 858,
+      "y": 1284,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1322
+        ],
+        [
+          1680,
+          1322
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1396
+        ],
+        [
+          1680,
+          1396
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- pool: Pool",
+      "x": 862,
+      "y": 1332,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService?: ConfigService",
+      "x": 862,
+      "y": 1359,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleInit(): Promise<void>",
+      "x": 862,
+      "y": 1406,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleDestroy(): Promise<void>",
+      "x": 862,
+      "y": 1435,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 150,
+      "w": 560,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "CacheService",
+      "x": 68,
+      "y": 154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          192
+        ],
+        [
+          620,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          266
+        ],
+        [
+          620,
+          266
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- redisClient: Redis | null",
+      "x": 72,
+      "y": 202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- memoryCache: Map<string, CacheEntry>",
+      "x": 72,
+      "y": 229,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ get<T>(key: string): Promise<T | null>",
+      "x": 72,
+      "y": 276,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ set(key, value, ttlSeconds): Promise<void>",
+      "x": 72,
+      "y": 305,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1700,
+      "w": 650,
+      "h": 250
+    },
+    {
+      "type": "text",
+      "value": "PrismaClient",
+      "x": 68,
+      "y": 1704,
+      "w": 634,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1742
+        ],
+        [
+          710,
+          1742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1843
+        ],
+        [
+          710,
+          1843
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ product: Prisma.ProductDelegate",
+      "x": 72,
+      "y": 1752,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ mediaAsset: Prisma.MediaAssetDelegate",
+      "x": 72,
+      "y": 1779,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ productReview: Prisma.ProductReviewDelegate",
+      "x": 72,
+      "y": 1806,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $transaction(callback): Promise<T>",
+      "x": 72,
+      "y": 1853,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $connect(): Promise<void>",
+      "x": 72,
+      "y": 1882,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $disconnect(): Promise<void>",
+      "x": 72,
+      "y": 1911,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 150,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "Store",
+      "x": 1938,
+      "y": 154,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          192
+        ],
+        [
+          2550,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          347
+        ],
+        [
+          2550,
+          347
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 202,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ ownerId: string",
+      "x": 1942,
+      "y": 229,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ name, slug: string",
+      "x": 1942,
+      "y": 256,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive, isVerified, isDeleted: boolean",
+      "x": 1942,
+      "y": 283,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onboardingStatus: ShopOnboardingStatus",
+      "x": 1942,
+      "y": 310,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 650,
+      "w": 620,
+      "h": 287
+    },
+    {
+      "type": "text",
+      "value": "Product",
+      "x": 1938,
+      "y": 654,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          692
+        ],
+        [
+          2550,
+          692
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          901
+        ],
+        [
+          2550,
+          901
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 702,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId: string",
+      "x": 1942,
+      "y": 729,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sku, title: string",
+      "x": 1942,
+      "y": 756,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ price: Decimal",
+      "x": 1942,
+      "y": 783,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ stockQuantity: number",
+      "x": 1942,
+      "y": 810,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive, isDeleted: boolean",
+      "x": 1942,
+      "y": 837,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ moderationStatus: ProductModerationStatus",
+      "x": 1942,
+      "y": 864,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1117,
+      "w": 620,
+      "h": 260
+    },
+    {
+      "type": "text",
+      "value": "ProductVariant",
+      "x": 1938,
+      "y": 1121,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1159
+        ],
+        [
+          2550,
+          1159
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1341
+        ],
+        [
+          2550,
+          1341
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1169,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ productId: string",
+      "x": 1942,
+      "y": 1196,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ name: string",
+      "x": 1942,
+      "y": 1223,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ price: Decimal | null",
+      "x": 1942,
+      "y": 1250,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ stockQuantity: number",
+      "x": 1942,
+      "y": 1277,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive: boolean",
+      "x": 1942,
+      "y": 1304,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1557,
+      "w": 620,
+      "h": 314
+    },
+    {
+      "type": "text",
+      "value": "MediaAsset",
+      "x": 1938,
+      "y": 1561,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1599
+        ],
+        [
+          2550,
+          1599
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1835
+        ],
+        [
+          2550,
+          1835
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1609,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId: string",
+      "x": 1942,
+      "y": 1636,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ productId, collaboratorId: string | null",
+      "x": 1942,
+      "y": 1663,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ assetType: AssetType",
+      "x": 1942,
+      "y": 1690,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ urlOrContent: string",
+      "x": 1942,
+      "y": 1717,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ posterUrl, caption: string | null",
+      "x": 1942,
+      "y": 1744,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ status: MediaAssetStatus",
+      "x": 1942,
+      "y": 1771,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isFeatured, isDeleted: boolean",
+      "x": 1942,
+      "y": 1798,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 2051,
+      "w": 620,
+      "h": 260
+    },
+    {
+      "type": "text",
+      "value": "ProductReview",
+      "x": 1938,
+      "y": 2055,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          2093
+        ],
+        [
+          2550,
+          2093
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          2275
+        ],
+        [
+          2550,
+          2275
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 2103,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ productId: string",
+      "x": 1942,
+      "y": 2130,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ orderId: string | null",
+      "x": 1942,
+      "y": 2157,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ customerName, comment: string | null",
+      "x": 1942,
+      "y": 2184,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ rating: number",
+      "x": 1942,
+      "y": 2211,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isApproved: boolean",
+      "x": 1942,
+      "y": 2238,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          315
+        ],
+        [
+          1265,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          950
+        ],
+        [
+          1265,
+          1280
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1474
+        ],
+        [
+          1265,
+          1620
+        ],
+        [
+          385,
+          1620
+        ],
+        [
+          385,
+          1700
+        ]
+      ],
+      "dash": false,
+      "arrow": "triangle"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          731.25
+        ],
+        [
+          660,
+          731.25
+        ],
+        [
+          660,
+          319.75
+        ],
+        [
+          620,
+          319.75
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1304.25
+        ],
+        [
+          1890,
+          1304.25
+        ],
+        [
+          1890,
+          901.125
+        ],
+        [
+          1930,
+          901.125
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1449.75
+        ],
+        [
+          1890,
+          1449.75
+        ],
+        [
+          1890,
+          1596.25
+        ],
+        [
+          1930,
+          1596.25
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1425.5
+        ],
+        [
+          1860,
+          1425.5
+        ],
+        [
+          1860,
+          2083.5
+        ],
+        [
+          1930,
+          2083.5
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2162.5,
+          383
+        ],
+        [
+          2162.5,
+          650
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          353.875
+        ],
+        [
+          2630,
+          353.875
+        ],
+        [
+          2630,
+          1596.25
+        ],
+        [
+          2550,
+          1596.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          901.125
+        ],
+        [
+          2660,
+          901.125
+        ],
+        [
+          2660,
+          1635.5
+        ],
+        [
+          2550,
+          1635.5
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2317.5,
+          937
+        ],
+        [
+          2317.5,
+          1117
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          865.25
+        ],
+        [
+          2690,
+          865.25
+        ],
+        [
+          2690,
+          2083.5
+        ],
+        [
+          2550,
+          2083.5
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1328.5
+        ],
+        [
+          1860,
+          1328.5
+        ],
+        [
+          1860,
+          353.875
+        ],
+        [
+          1930,
+          353.875
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1352.75
+        ],
+        [
+          1890,
+          1352.75
+        ],
+        [
+          1890,
+          1344.5
+        ],
+        [
+          1930,
+          1344.5
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2174.5,
+      "y": 391,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2174.5,
+      "y": 616,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 361.875,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1604.25,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..1",
+      "x": 2560,
+      "y": 909.125,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 1643.5,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2329.5,
+      "y": 945,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2329.5,
+      "y": 1083,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 829.25,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2560,
+      "y": 2091.5,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "productsService",
+      "x": 1275,
+      "y": 492.5,
+      "w": 176,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 1275,
+      "y": 1100,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "extends",
+      "x": 779,
+      "y": 1577,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "cacheService",
+      "x": 670,
+      "y": 510.5,
+      "w": 144,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1900,
+      "y": 1067.53125,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1749.5,
+      "y": 1462.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1779,
+      "y": 1739.5,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "products",
+      "x": 2172.5,
+      "y": 501.5,
+      "w": 102,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "mediaAssets",
+      "x": 2640,
+      "y": 773.70625,
+      "w": 134,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "mediaAssets",
+      "x": 2488.5,
+      "y": 946.125,
+      "w": 134,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "variants",
+      "x": 2327.5,
+      "y": 1012,
+      "w": 102,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "productReviews",
+      "x": 2515,
+      "y": 1885.7625,
+      "w": 165,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1779,
+      "y": 826.1875,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1749.5,
+      "y": 1365.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ public member     - private member     Solid arrow: retained reference     Dashed arrow: dependency",
+      "x": 60,
+      "y": 2356,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Hollow triangle: actual inheritance (PrismaService extends PrismaClient)     Solid line with multiplicities: model association",
+      "x": 60,
+      "y": 2396,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Video review = MediaAsset; customer rating/comment = ProductReview. KOL User/profile, attribution, SEO and analytics models are described separately; checkout creation belongs to FR16.",
+      "x": 60,
+      "y": 2441,
+      "w": 2500,
+      "h": 60,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

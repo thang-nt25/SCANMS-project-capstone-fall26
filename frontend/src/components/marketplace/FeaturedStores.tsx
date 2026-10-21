@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Star, Store } from 'lucide-react';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
+import { useLoopingStoreRail } from './useLoopingStoreRail';
 
 export function StoreLogo({ store, className = 'h-16 w-16' }: { store: MarketplaceStore; className?: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -16,19 +17,20 @@ export function StoreLogo({ store, className = 'h-16 w-16' }: { store: Marketpla
 }
 
 export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: MarketplaceStore[]; loading: boolean; failed: boolean; onRetry: () => void }) {
-  const rail = useRef<HTMLDivElement>(null);
-  const scroll = (direction: number) => rail.current?.scrollBy({ left: direction * rail.current.clientWidth * 0.85, behavior: 'smooth' });
+  const looping = stores.length > 1;
+  const { rail, scroll, interactionProps, railProps } = useLoopingStoreRail(looping && !loading, stores.map(store => store.id).join('|'));
+  const items = looping ? Array.from({ length:Math.max(1, Math.ceil(4 / stores.length)) }, () => stores).flat() : stores;
 
   return (
-    <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-8 text-left sm:py-10">
+    <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-5 text-left sm:py-7">
       <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
-        <div className="mb-5 flex items-end justify-between gap-3">
-          <div>
+        <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7" {...interactionProps}>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">THƯƠNG HIỆU TRÊN SCANMS</p>
             <h2 id="featured-stores-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Gian hàng đối tác tiêu biểu</h2>
-            <p className="mb-0 mt-2 text-xs leading-5 text-[#7D715E]">Mỗi gian hàng một lựa chọn mới. Khám phá thương hiệu phù hợp với bạn.</p>
           </div>
-          <div className="flex shrink-0 gap-1">
+          <div className="ml-auto flex shrink-0 gap-1">
             <button type="button" onClick={() => scroll(-1)} aria-label="Gian hàng trước" className="rounded-full border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]"><ArrowLeft size={16} /></button>
             <button type="button" onClick={() => scroll(1)} aria-label="Gian hàng tiếp theo" className="rounded-full border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]"><ArrowRight size={16} /></button>
           </div>
@@ -42,13 +44,16 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
             {failed && <button type="button" onClick={onRetry} className="mt-3 rounded-lg bg-[#C59B58] px-4 py-2 text-xs font-bold text-[#231D15]">Thử lại</button>}
           </div>
         ) : (
-          <div ref={rail} role="region" aria-label="Danh sách gian hàng, vuốt để xem thêm" tabIndex={0} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 focus-visible:outline-[#C59B58]">
-            {stores.map((store) => (
-              <article key={store.id} className="flex w-[85%] max-w-[350px] shrink-0 snap-start flex-col rounded-2xl border border-[#EAE4D7] bg-white p-5 transition hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(75,57,34,0.08)] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
+          <div ref={rail} role="region" aria-label="Danh sách gian hàng, vuốt để xem thêm" tabIndex={0} className="featured-store-rail [container-type:inline-size] flex overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] cursor-grab [touch-action:pan-x_pan-y] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:size-0 data-[dragging=true]:cursor-grabbing data-[dragging=true]:select-none [&[data-dragging=true]_a]:cursor-grabbing no-scrollbar focus-visible:outline-[#C59B58]" {...railProps}>
+            {(looping ? [0, 1, 2] : [1]).map(copy => <div key={copy} className="featured-store-group flex shrink-0 items-stretch gap-4 pr-4" aria-hidden={copy !== 1 || undefined}>
+            {items.map((store, index) => {
+              const duplicate = copy !== 1 || index >= stores.length;
+              return (
+              <article key={`${store.id}-${index}`} aria-hidden={duplicate || undefined} className="featured-store-card w-[min(350px,85cqw)] sm:w-[min(350px,calc((100cqw_-_16px)/2))] lg:w-[min(350px,calc((100cqw_-_32px)/3))] flex shrink-0 flex-col rounded-2xl border border-[#EAE4D7] bg-white p-5 transition hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(75,57,34,0.08)]">
                 <div className="flex items-center gap-3">
                   <StoreLogo store={store} />
                   <div className="min-w-0">
-                    <h3 className="m-0 flex items-center gap-1 text-sm font-black"><Link to={`/shops/${store.id}`} className="truncate hover:text-[#B88E4F]">{store.name}</Link>{store.isVerified && <BadgeCheck size={16} className="shrink-0 text-[#B88E4F]" aria-label="Đã xác minh" />}</h3>
+                    <h3 className="m-0 flex items-center gap-1 text-sm font-black"><Link to={`/shops/${store.id}`} tabIndex={duplicate ? -1 : undefined} className="truncate hover:text-[#B88E4F]">{store.name}</Link>{store.isVerified && <BadgeCheck size={16} className="shrink-0 text-[#B88E4F]" aria-label="Đã xác minh" />}</h3>
                     <p className="mt-1 truncate text-[11px] text-[#7D715E]">{store.category || 'Đối tác SCANMS'}</p>
                   </div>
                 </div>
@@ -57,11 +62,13 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
                   <span>{store.totalProducts ?? 0} sản phẩm</span>
                 </div>
                 <p className="mb-4 mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-[#7D715E]">{store.description || 'Khám phá danh mục sản phẩm và thông tin trực tiếp từ gian hàng.'}</p>
-                <Link to={`/shops/${store.id}`} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-bold text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6]">Ghé thăm gian hàng<ArrowRight size={15} /></Link>
+                <Link to={`/shops/${store.id}`} tabIndex={duplicate ? -1 : undefined} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-bold text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6]">Ghé thăm gian hàng<ArrowRight size={15} /></Link>
               </article>
-            ))}
+            );})}
+            </div>)}
           </div>
         )}
+        </div>
       </div>
     </section>
   );

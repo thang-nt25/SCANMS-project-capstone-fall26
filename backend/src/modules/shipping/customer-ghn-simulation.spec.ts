@@ -151,7 +151,10 @@ describe('customer purchase GHN simulation', () => {
   });
   it('serves saved simulation through the existing tracking API without contacting GHN or changing order finances', async () => {
     const prisma: any = {
-      order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }) },
+      order: {
+        findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
     const service = new GhnService(prisma, {} as any);
     const fetch = jest.spyOn(service as any, 'ghnFetch');
@@ -212,6 +215,7 @@ describe('customer purchase GHN simulation', () => {
         $transaction: (callback: any) => callback(tx),
         order: {
           findFirst: jest.fn().mockResolvedValue({ rawPayload: saved }),
+          findMany: jest.fn().mockResolvedValue([]),
         },
       } as any,
       {} as any,
@@ -265,7 +269,10 @@ describe('customer purchase GHN simulation', () => {
   });
   it('does not process carrier callbacks against simulated purchases', async () => {
     const prisma: any = {
-      order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }) },
+      order: {
+        findFirst: jest.fn().mockResolvedValue({ rawPayload: raw() }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
     const service = new GhnService(prisma, {} as any);
     expect(

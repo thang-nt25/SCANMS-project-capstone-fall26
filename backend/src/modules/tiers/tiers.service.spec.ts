@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TiersService } from './tiers.service';
 
@@ -21,24 +21,26 @@ describe('TiersService applied tier and previous-month progression', () => {
       collaboratorTier: { findMany: jest.fn().mockResolvedValue(policies) },
       collaboratorProfile: {
         findUnique: jest.fn().mockResolvedValue({ id: 'profile', userId: 'creator', tier: bronze }),
-        findMany: jest.fn(), update: jest.fn(),
+        findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       order: { findMany: jest.fn().mockResolvedValue([{
         id: 'order-1', subtotalAmount: new Prisma.Decimal(1_261_000), couponDiscountAmount: new Prisma.Decimal(100_000),
         finalAmount: new Prisma.Decimal(1_200_000), refundedAmount: new Prisma.Decimal(0),
       }]) },
     };
+    prisma.notification = { create: jest.fn() };
+    prisma.$transaction = jest.fn(callback => callback(prisma));
     service = new TiersService(prisma);
   });
 
-  it('uses the assigned tier that the leaderboard and commissions apply', async () => {
-    prisma.collaboratorProfile.findUnique.mockResolvedValue({ tier: gold });
+  it('repairs a stale assigned tier in storage before returning the GMV-based status', async () => {
+    prisma.collaboratorProfile.findUnique.mockResolvedValue({ id: 'profile', userId: 'creator', tier: gold });
     const status = await service.getMyTierStatus('creator');
-    expect(status.currentTier).toMatchObject({ id: 'gold', extraBonusPercentage: 2 });
+    expect(status.currentTier).toMatchObject({ id: 'bronze', extraBonusPercentage: 0 });
     expect(status.qualifiedTier.id).toBe('bronze');
-    expect(status.nextTier?.id).toBe('diamond');
-    expect(status.revenueNeeded).toBe(98_839_000);
-    expect(status.progressPercentage).toBe(0);
+    expect(status.nextTier?.id).toBe('silver');
+    expect(status.revenueNeeded).toBe(18_839_000);
+    expect(status.progressPercentage).toBe(6);
     expect(status.revenueBasis).toBe('PREVIOUS_MONTH_VIETNAM');
     expect(status.currentRevenue).toBe(1_161_000);
     expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -50,6 +52,8 @@ describe('TiersService applied tier and previous-month progression', () => {
       }),
     }));
     expect(prisma.collaboratorProfile.update).not.toHaveBeenCalled();
+    expect(prisma.collaboratorProfile.updateMany).toHaveBeenCalledWith({ where: { id: 'profile', tierId: 'gold' }, data: { tierId: 'bronze' } });
+    expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'creator', type: 'TIER_UPDATED' }) });
   });
 
   it('collapses identical policies without changing their stored IDs', async () => {
@@ -66,21 +70,36 @@ describe('TiersService applied tier and previous-month progression', () => {
     expect(status.revenueNeeded).toBe(18_839_000);
   });
 
-  it('reports eligibility without granting a new commission rate on a read', async () => {
+  it('persists a missed promotion and returns the same applied and qualified tier', async () => {
     prisma.order.findMany.mockResolvedValue([{ id: 'order-2', subtotalAmount: 50_000_000, couponDiscountAmount: 0, finalAmount: 50_000_000, refundedAmount: 0 }]);
     const status = await service.getMyTierStatus('creator');
-    expect(status.currentTier.id).toBe('bronze');
+    expect(status.currentTier.id).toBe('gold');
     expect(status.qualifiedTier.id).toBe('gold');
-    expect(status.progressPercentage).toBe(100);
-    expect(status.revenueNeeded).toBe(0);
+    expect(status.nextTier?.id).toBe('diamond');
+    expect(status.progressPercentage).toBe(50);
+    expect(status.revenueNeeded).toBe(50_000_000);
     expect(prisma.collaboratorProfile.update).not.toHaveBeenCalled();
   });
 
-  it('returns no next tier only for the highest applied threshold', async () => {
+  it('returns no next tier when the GMV qualifies for the highest threshold', async () => {
     prisma.collaboratorProfile.findUnique.mockResolvedValue({ tier: diamond });
+    prisma.order.findMany.mockResolvedValue([{ id: 'gmv', subtotalAmount: 100_000_000, couponDiscountAmount: 0,
+      finalAmount: 100_000_000, refundedAmount: 0 }]);
     const status = await service.getMyTierStatus('creator');
     expect(status.nextTier).toBeNull();
     expect(status.progressPercentage).toBe(100);
+  });
+
+  it('shows Bronze and the Silver milestone for the reported 960,000 VND example', async () => {
+    prisma.collaboratorProfile.findUnique.mockResolvedValue({ id: 'profile', userId: 'creator', tier: gold });
+    prisma.collaboratorTier.findMany.mockResolvedValue([bronze, { ...silver, minRevenueThreshold: new Prisma.Decimal(5_000_000) }, { ...gold, minRevenueThreshold: new Prisma.Decimal(20_000_000) }, { ...diamond, minRevenueThreshold: new Prisma.Decimal(50_000_000) }]);
+    prisma.order.findMany.mockResolvedValue([{ id: 'gmv', subtotalAmount: 960000, couponDiscountAmount: 0, finalAmount: 960000, refundedAmount: 0 }]);
+    const status = await service.getMyTierStatus('creator');
+    expect(status.currentTier.id).toBe('bronze');
+    expect(status.qualifiedTier.id).toBe('bronze');
+    expect(status.nextTier?.id).toBe('silver');
+    expect(status.progressPercentage).toBe(19); // 960,000 / 5,000,000
+    expect(status.revenueNeeded).toBe(4_040_000);
   });
 
   it('reduces prior-month goods GMV proportionally after a partial refund', async () => {
@@ -129,6 +148,8 @@ describe('TiersService applied tier and previous-month progression', () => {
         discountAmount: 150000, couponDiscountAmount: 50000, finalAmount: 850000, refundedAmount: 0 }]);
       const status = await service.getMyTierStatus('creator');
       expect(status.currentRevenue).toBe(950000);
+      expect(status.assessmentPeriod).toEqual({ startsAt: '2026-08-31T17:00:00.000Z', endsAt: '2026-09-30T17:00:00.000Z' });
+      expect(status.nextEvaluationAt).toBe('2026-09-30T17:15:00.000Z');
       expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
         createdAt: { gte: new Date('2026-08-31T17:00:00Z'), lt: new Date('2026-09-30T17:00:00Z') },
       }) }));
@@ -143,7 +164,69 @@ describe('TiersService applied tier and previous-month progression', () => {
       ? [{ id: 'gmv', subtotalAmount: 50000000, finalAmount: 50000000, refundedAmount: 0 }]
       : []);
     await service.evaluateAllCollaborators();
-    expect(prisma.collaboratorProfile.update).toHaveBeenCalledWith({ where: { id: 'new-gold' }, data: { tierId: 'gold' } });
-    expect(prisma.collaboratorProfile.update).toHaveBeenCalledWith({ where: { id: 'new-bronze' }, data: { tierId: 'bronze' } });
+    expect(prisma.collaboratorProfile.updateMany).toHaveBeenCalledWith({ where: { id: 'new-gold', tierId: 'bronze' }, data: { tierId: 'gold' } });
+    expect(prisma.collaboratorProfile.updateMany).toHaveBeenCalledWith({ where: { id: 'new-bronze', tierId: 'diamond' }, data: { tierId: 'bronze' } });
+    expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      userId: 'up', title: 'Bạn đã lên hạng Vàng (Gold)', type: 'TIER_UPDATED',
+      data: expect.objectContaining({ actionUrl: '/collaborator/tiers', oldTier: bronze.name, newTier: gold.name,
+        previousBonus: 0, newBonus: 2, revenue: 50000000, threshold: 50000000 }),
+    }) });
+    expect(prisma.notification.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('schedules the next month correctly after the monthly run, including a 31-day month', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-18T12:00:00+07:00'));
+    try {
+      const status = await service.getMyTierStatus('creator');
+      expect(status.nextEvaluationAt).toBe('2026-10-31T17:15:00.000Z');
+    } finally { jest.useRealTimers(); }
+  });
+
+  it('does not notify twice if another evaluation already changed the assigned tier', async () => {
+    prisma.collaboratorProfile.findMany.mockResolvedValue([{ id: 'profile', userId: 'up', tier: diamond }]);
+    prisma.collaboratorProfile.updateMany.mockResolvedValue({ count: 0 });
+    const result = await service.evaluateAllCollaborators();
+    expect(result.updatedCount).toBe(0);
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('catches up the previous-month evaluation when the server starts after the monthly schedule', async () => {
+    const evaluation = jest.spyOn(service, 'evaluateAllCollaborators').mockResolvedValue({ message: 'done', updatedCount: 0, details: [] });
+    await service.onApplicationBootstrap();
+    expect(evaluation).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rewrite the profile or notify again when the saved rank already matches GMV', async () => {
+    await service.getMyTierStatus('creator');
+    await service.getMyTierStatus('creator');
+    expect(prisma.collaboratorProfile.updateMany).not.toHaveBeenCalled();
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('uses a concurrently repaired rank without duplicating its notification', async () => {
+    prisma.collaboratorProfile.findUnique.mockResolvedValueOnce({ id: 'profile', userId: 'creator', tier: gold })
+      .mockResolvedValueOnce({ id: 'profile', userId: 'creator', tier: bronze });
+    prisma.collaboratorProfile.updateMany.mockResolvedValue({ count: 0 });
+    const status = await service.getMyTierStatus('creator');
+    expect(status.currentTier.id).toBe('bronze');
+    expect(status.qualifiedTier.id).toBe('bronze');
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable conflict rather than a tier inconsistent with persisted commission data', async () => {
+    prisma.collaboratorProfile.findUnique.mockResolvedValue({ id: 'profile', userId: 'creator', tier: gold });
+    prisma.collaboratorProfile.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.getMyTierStatus('creator')).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [0, 'bronze'], [19_999_999, 'bronze'], [20_000_000, 'silver'],
+    [49_999_999, 'silver'], [50_000_000, 'gold'], [100_000_000, 'diamond'],
+  ])('persists the rank at the exact configured GMV boundary %s', async (amount, tierId) => {
+    prisma.order.findMany.mockResolvedValue([{ id: 'boundary', subtotalAmount: amount, finalAmount: amount, refundedAmount: 0 }]);
+    const status = await service.getMyTierStatus('creator');
+    expect(status.currentTier.id).toBe(tierId);
+    expect(status.qualifiedTier.id).toBe(tierId);
   });
 });

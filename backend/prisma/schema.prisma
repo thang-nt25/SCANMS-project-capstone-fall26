@@ -487,6 +487,7 @@ model StoreCollaborator {
   storeId        String                  @map("store_id") @db.Uuid
   collaboratorId String                  @map("collaborator_id") @db.Uuid
   status         StoreCollaboratorStatus @default(PENDING)
+  requestedByKol Boolean                 @default(false) @map("requested_by_kol")
   approvedAt     DateTime?               @map("approved_at") @db.Timestamptz(6)
   note           String?                 @db.VarChar(255)
   createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)

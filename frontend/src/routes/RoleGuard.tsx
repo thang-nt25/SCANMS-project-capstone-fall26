@@ -31,7 +31,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ requiredWorkspace }) => {
 
   // 1. Chưa đăng nhập -> Chuyển về trang đăng nhập kèm returnTo
   if (!user || !token) {
-    return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname)}`} replace />;
+    return <Navigate to={`/login?role=${requiredWorkspace}&redirect=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`} replace />;
   }
 
   // 2. Không có quyền -> Chuyển hướng

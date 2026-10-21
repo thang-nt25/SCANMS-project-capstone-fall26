@@ -7,12 +7,15 @@ import {
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { authService } from "../../services/auth.service";
+import { ClipboardList, Megaphone, RefreshCw } from 'lucide-react';
+import { SponsoredBookingForm, sponsorshipMoney } from './SponsoredBookingForm';
 
 const labels = {
   REQUESTED: "Chờ duyệt",
   APPROVED: "Đã duyệt",
   REJECTED: "Từ chối",
   CANCELLED: "Đã hủy",
+  EXPIRED: 'Đã hết hạn',
 };
 const inputClass =
   "w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612] focus:outline-[#C59B58]";
@@ -27,17 +30,17 @@ export function SponsoredPlacementsPanel({
   const cache = useQueryClient();
   const user = authService.getCurrentUser();
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("REQUESTED");
+  const [status, setStatus] = useState(admin ? 'REQUESTED' : '');
   const [selected, setSelected] = useState<{
     row: Sponsorship;
     cancel: boolean;
   } | null>(null);
   const [decision, setDecision] = useState<"APPROVE" | "REJECT">("APPROVE");
-  const [funding, setFunding] = useState<"PLATFORM_GRANT" | "PAID">(
-    "PLATFORM_GRANT",
-  );
   const [note, setNote] = useState("");
   const [clientError, setClientError] = useState("");
+  const [successMessage, setSuccessMessage] = useState('');
+  const [renewal, setRenewal] = useState<(Sponsorship & { formStartsAt: string; formEndsAt: string }) | null>(null);
+  const bookingSection = useRef<HTMLDivElement>(null);
   // Reuse a key for a retry of the identical payload, but never for an edited submission.
   const pendingRequest = useRef<{ payload: string; key: string } | null>(null);
   const reviewPanel = useRef<HTMLElement>(null);
@@ -54,7 +57,29 @@ export function SponsoredPlacementsPanel({
     queryKey: ["sponsorships", user?.id, admin, page, status],
     queryFn: () => sponsorshipService.list(page, status),
     enabled: !!user && ['SHOP_MANAGER', 'SYSTEM_ADMIN', 'SYSTEM_MANAGER'].includes(user.role),
+    refetchInterval: 15000,
   });
+  const pricing = useQuery({
+    queryKey: ['sponsorship-pricing'], queryFn: sponsorshipService.pricing,
+    enabled: !!user && ['SHOP_MANAGER', 'SYSTEM_ADMIN', 'SYSTEM_MANAGER'].includes(user.role),
+    staleTime: 60000,
+  });
+  useEffect(() => {
+    const nextExpiry = Math.min(...(query.data?.items ?? [])
+      .filter(row => ['REQUESTED', 'APPROVED'].includes(row.status))
+      .map(row => Date.parse(row.endsAt)).filter(time => time > Date.now()));
+    if (!Number.isFinite(nextExpiry)) return;
+    const timer = window.setTimeout(() => void query.refetch(), Math.min(2147483647, Math.max(100, nextExpiry - Date.now() + 100)));
+    return () => window.clearTimeout(timer);
+  }, [query.data, query.refetch]);
+  function startRenewal(row: Sponsorship) {
+    const start = new Date(Date.now() + 3600000);
+    const duration = Math.min(31, Math.max(1, Math.ceil((Date.parse(row.endsAt) - Date.parse(row.startsAt)) / 86400000))) * 86400000;
+    const local = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setRenewal({ ...row, formStartsAt: local(start), formEndsAt: local(new Date(start.getTime() + duration)) });
+    setSuccessMessage(''); setClientError(''); mutation.reset();
+    bookingSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   const mutation = useMutation({
     mutationFn: async ({
       form,
@@ -71,6 +96,8 @@ export function SponsoredPlacementsPanel({
           headline: String(data.get("headline")).trim(),
           startsAt,
           endsAt,
+          quotedAmount: Number(data.get('quotedAmount')),
+          ...(renewal ? { renewsPlacementId: renewal.id } : {}),
         };
         const duration = Date.parse(endsAt) - Date.parse(startsAt);
         if (
@@ -101,23 +128,24 @@ export function SponsoredPlacementsPanel({
           note: note.trim(),
           ...(decision === "APPROVE"
             ? {
-                fundingType: funding,
-                amount: funding === "PAID" ? Number(data.get("amount")) : 0,
-                ...(funding === "PAID"
-                  ? {
-                      paymentReference: String(data.get("reference")).trim(),
-                      paymentProofUrl: String(data.get("proof")).trim(),
-                    }
-                  : {}),
+                fundingType: "PAID",
+                amount: Number(data.get("amount")),
+                paymentReference: String(data.get("reference")).trim(),
+                paymentProofUrl: String(data.get("proof")).trim(),
               }
             : {}),
         });
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_, { action }) => {
+      setRenewal(null);
+      setPage(1);
+      setStatus(action === 'request' ? 'REQUESTED' : action === 'cancel' ? 'CANCELLED' : decision === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+      setSuccessMessage(action === 'request' ? (renewal ? 'Đã gửi đăng ký gia hạn. Phí mới đã được lưu, chờ thanh toán và Admin duyệt lại.' : 'Đã gửi đăng ký. Phí đã được lưu, chờ Admin hướng dẫn thanh toán và xét duyệt.') : 'Đã cập nhật đăng ký quảng cáo.');
       setSelected(null);
       setNote("");
       await cache.invalidateQueries({ queryKey: ["sponsorships"] });
+      await cache.invalidateQueries({ queryKey: ["marketplace-sponsored-placements"] });
     },
   });
   function submit(
@@ -127,20 +155,22 @@ export function SponsoredPlacementsPanel({
     event.preventDefault();
     if (mutation.isPending) return;
     setClientError("");
+    setSuccessMessage('');
     if (action !== "request" && note.trim().length < 5) {
       setClientError("Vui lòng nhập căn cứ/lý do tối thiểu 5 ký tự.");
       return;
     }
     mutation.mutate({ form: event.currentTarget, action });
   }
-  const error = clientError || mutation.error?.message || query.error?.message;
+  const error = clientError || mutation.error?.message || query.error?.message || pricing.error?.message;
   return (
-    <Card className="mt-5 p-4 sm:p-6 text-[#1A1612]">
-      <h2 className="text-lg font-bold">Gian hàng tài trợ trên SCANMS</h2>
-      <p className="mt-2 text-sm text-[#7D715E]">
-        Chỉ gói đã duyệt và còn hạn mới hiển thị. Tối đa 6 vị trí đồng thời.
-        Không tự thu phí hoặc tự hoàn phí.
-      </p>
+    <Card className="sp-workspace mt-5 p-4 sm:p-6 text-[#1A1612]">
+      <div className="sp-heading flex items-center gap-[12px] mb-[20px] [&_h2]:m-0 [&_h2]:text-[20px] [&_h2]:leading-[1.4] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[13px] [&_p]:text-[#7D715E] [@media(max-width:520px)]:[&_h2]:text-[17px]">
+        <span className="sp-heading-icon grid place-items-center w-[44px] h-[44px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] shrink-0"><Megaphone size={21} /></span>
+        <div><h2>Quảng bá gian hàng</h2>
+        <p>{admin ? 'Đối soát thanh toán và duyệt lịch quảng cáo trên trang chủ.' : 'Đưa thương hiệu đến gần khách mua sắm trên SCANMS.'}</p></div>
+      </div>
+      {successMessage && <p role="status" className="mb-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm text-[#1A1612]">{successMessage}</p>}
       {error && (
         <p
           role="alert"
@@ -149,51 +179,22 @@ export function SponsoredPlacementsPanel({
           {error}
         </p>
       )}
-      {!admin && (
-        <form
-          onSubmit={(event) => submit(event, "request")}
-          className="mt-4 grid gap-3 rounded-xl bg-[#FBF5EB] p-4 sm:grid-cols-2"
-        >
-          <label className="sm:col-span-2 text-sm">
-            Tiêu đề hiển thị
-            <input
-              name="headline"
-              required
-              minLength={5}
-              maxLength={160}
-              className={inputClass}
-            />
-          </label>
-          <label className="text-sm">
-            Bắt đầu (giờ địa phương)
-            <input
-              name="startsAt"
-              type="datetime-local"
-              required
-              className={inputClass}
-            />
-          </label>
-          <label className="text-sm">
-            Kết thúc
-            <input
-              name="endsAt"
-              type="datetime-local"
-              required
-              className={inputClass}
-            />
-          </label>
-          <Button type="submit" variant="gold" loading={mutation.isPending}>
-            Gửi đăng ký
-          </Button>
-        </form>
-      )}
-      <div className="my-4 flex flex-wrap items-center justify-between gap-3">
-        <label className="text-sm">
-          Trạng thái{" "}
+      {!admin && <div ref={bookingSection}><SponsoredBookingForm key={renewal?.id ?? 'new'} pricing={pricing.data} pending={mutation.isPending}
+        renewal={renewal ? { headline: renewal.headline, startsAt: renewal.formStartsAt, endsAt: renewal.formEndsAt } : null}
+        onCancelRenewal={() => setRenewal(null)} onSubmit={(event) => submit(event, "request")} /></div>}
+      <div className="sp-history-toolbar flex items-center justify-between gap-[16px] mt-[22px] mb-[12px] mx-0 pt-[18px] border-t border-t-[#EAE4D7] [@media(max-width:640px)]:flex-wrap [@media(max-width:640px)]:gap-[12px]">
+        <div className="sp-history-heading flex items-center gap-[8px] min-w-0 [&>svg]:text-[#B88E4F] [&>svg]:shrink-0 [&_h3]:m-0 [&_h3]:text-[15px] [&_h3]:font-bold">
+          <ClipboardList size={18} aria-hidden="true" />
+          <h3>{admin ? 'Đăng ký cần xử lý' : 'Lịch sử đăng ký'}</h3>
+          {query.data && <span className="sp-history-count grid place-items-center min-w-[23px] h-[23px] py-0 px-[6px] bg-[#F3EFE6] rounded-[6px] text-[#7D715E] text-[11px] font-semibold">{query.data.total}</span>}
+        </div>
+        <div className="sp-history-controls flex items-center gap-[8px] [&_label]:flex [&_label]:items-center [&_label]:gap-[9px] [&_label]:text-[#7D715E] [&_label]:text-[12px] [&_label>span]:flex [&_label>span]:items-center [&_label>span]:min-h-[36px] [&_label>span]:leading-[20px] [&_.sp-history-refresh]:h-[36px] [&_.sp-history-refresh]:rounded-[9px] [&_.sp-history-refresh]:shadow-none [&_.sp-history-refresh]:whitespace-nowrap [@media(max-width:640px)]:w-full [@media(max-width:640px)]:[&_label]:flex-1 [@media(max-width:640px)]:[&_label]:justify-between">
+        <label>
+          <span>Trạng thái</span>
           <select
             aria-label="Lọc trạng thái tài trợ"
             value={status}
-            className="rounded-xl border border-[#EAE4D7] p-2"
+            className="sp-history-filter [&:is(select)]:inline-flex [&:is(select)]:items-center [&:is(select)]:justify-between [&:is(select)]:gap-[12px] [&:is(select)]:box-border [&:is(select)]:h-[36px] [&:is(select)]:min-h-[36px] [&:is(select)]:max-w-full [&:is(select)]:border [&:is(select)]:border-[#EAE4D7] [&:is(select)]:rounded-[9px] [&:is(select)]:py-0 [&:is(select)]:px-[11px] [&:is(select)]:leading-[20px] [&:is(select)]:bg-white [&:is(select)]:text-[#1A1612] [&:is(select)]:text-[12px] [&:is(select)]:scheme-light [&:is(select)]:cursor-pointer [&::picker-icon]:self-center focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px]"
             onChange={(event) => {
               setStatus(event.target.value);
               setPage(1);
@@ -209,15 +210,23 @@ export function SponsoredPlacementsPanel({
         </label>
         <Button
           variant="outline"
+          size="sm"
+          className="sp-history-refresh"
+          icon={<RefreshCw size={14} className={query.isFetching ? 'animate-spin' : ''} />}
           onClick={() => void query.refetch()}
           disabled={query.isFetching}
         >
           Tải lại
         </Button>
+        </div>
       </div>
-      {query.isLoading && <p role="status">Đang tải đăng ký…</p>}
+      {query.isLoading && <p className="sp-history-loading m-0 p-[18px] text-[#7D715E] text-[12px]" role="status">Đang tải đăng ký…</p>}
       {!query.isLoading && query.data?.items.length === 0 && (
-        <p className="text-sm text-[#7D715E]">Chưa có đăng ký phù hợp.</p>
+        <div className="sp-history-empty flex items-center justify-center gap-[12px] p-[18px] border border-dashed border-[#EAE4D7] rounded-[12px] bg-[#FAF8F5] [&_strong]:block [&_strong]:text-[13px] [&_strong]:font-semibold [&_strong]:text-[#1A1612] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:leading-[1.5] [@media(max-width:640px)]:justify-start [@media(max-width:640px)]:p-[14px]" role="status">
+          <span className="sp-history-empty-icon grid place-items-center w-[38px] h-[38px] shrink-0 border border-[#EEDFC6] rounded-[10px] bg-white text-[#B88E4F]"><ClipboardList size={21} aria-hidden="true" /></span>
+          <div><strong>Chưa có đăng ký phù hợp</strong>
+          <p>{status ? 'Thử chọn trạng thái khác để xem các đăng ký.' : 'Các đăng ký quảng cáo sẽ xuất hiện tại đây.'}</p></div>
+        </div>
       )}
       <div className="space-y-3">
         {query.data?.items.map((row) => (
@@ -238,8 +247,8 @@ export function SponsoredPlacementsPanel({
             {row.fundingType && (
               <p className="mt-2 text-sm">
                 {row.fundingType === "PLATFORM_GRANT"
-                  ? "Sàn cấp miễn phí"
-                  : `Có thu phí: ${Number(row.amount).toLocaleString("vi-VN")} ₫ · ${row.paymentReference}`}
+                  ? "Gói miễn phí cũ — không đủ điều kiện hiển thị quảng cáo"
+                  : `${row.paymentReference ? 'Đã đối soát' : 'Phí đăng ký'}: ${sponsorshipMoney(Number(row.amount))}${row.paymentReference ? ` · ${row.paymentReference}` : ''}`}
               </p>
             )}
             {row.reviewNote && (
@@ -247,7 +256,9 @@ export function SponsoredPlacementsPanel({
                 Phản hồi: {row.reviewNote}
               </p>
             )}
+            {row.status === 'EXPIRED' && <div className="sp-expired-notice mt-[12px] py-[12px] px-[14px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[12px] leading-[1.6] [&_strong]:text-[#795A2D] [&_strong]:text-[12px] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[#7D715E]"><strong>Gói đã hết hạn lúc {when(row.endsAt)}</strong><p>Gói này không còn hiển thị trên trang chủ.{!admin && ' Bạn có muốn gia hạn để tiếp tục quảng bá gian hàng?'}</p></div>}
             <div className="mt-3 flex flex-wrap gap-2">
+              {!admin && row.status === 'EXPIRED' && <Button variant="gold" disabled={mutation.isPending} onClick={() => startRenewal(row)}>Gia hạn gói</Button>}
               {admin && row.status === "REQUESTED" && (
                 <Button
                   variant="gold"
@@ -258,7 +269,6 @@ export function SponsoredPlacementsPanel({
                     setSelected({ row, cancel: false });
                     setNote("");
                     setDecision("APPROVE");
-                    setFunding("PLATFORM_GRANT");
                   }}
                 >
                   Xét duyệt
@@ -339,22 +349,9 @@ export function SponsoredPlacementsPanel({
                 </label>
                 {decision === "APPROVE" && (
                   <>
-                    <label className="block text-sm">
-                      Hình thức
-                      <select
-                        className={inputClass}
-                        value={funding}
-                        onChange={(event) =>
-                          setFunding(event.target.value as typeof funding)
-                        }
-                      >
-                        <option value="PLATFORM_GRANT">
-                          Sàn cấp miễn phí (0 ₫)
-                        </option>
-                        <option value="PAID">Có thu phí — đã đối soát</option>
-                      </select>
-                    </label>
-                    {funding === "PAID" && (
+                    <p className="text-sm text-[#7D715E]">
+                      Chỉ duyệt sau khi kiểm tra tiền đã nhận và chứng từ thanh toán quảng cáo.
+                    </p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="text-sm">
                           Số tiền đã xác minh (₫)
@@ -366,6 +363,7 @@ export function SponsoredPlacementsPanel({
                             min={1}
                             max={1000000000}
                             step={1}
+                            defaultValue={selected.row.amount ?? (pricing.data ? Math.ceil((Date.parse(selected.row.endsAt) - Date.parse(selected.row.startsAt)) / 86400000) * pricing.data.dailyRate : '')}
                           />
                         </label>
                         <label className="text-sm">
@@ -390,7 +388,6 @@ export function SponsoredPlacementsPanel({
                           />
                         </label>
                       </div>
-                    )}
                   </>
                 )}
               </>

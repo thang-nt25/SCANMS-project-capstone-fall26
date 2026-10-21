@@ -14,6 +14,7 @@ describe('Live governance and dispute permissions', () => {
     service.act(user, role, 'session', {
       action,
       message: 'Nội dung đối chiếu đầy đủ',
+      ...(['EMERGENCY_STOP', 'SHOP_END', 'COMPLAIN', 'EXPLAIN', 'KOL_EXPLAIN'].includes(action) ? { evidence: ['https://example.com/proof.jpg'] } : {}),
       ...extra,
     });
 
@@ -81,6 +82,39 @@ describe('Live governance and dispute permissions', () => {
     );
   });
 
+  it('lets only the assigned KOL end an active session and closes the coupon', async () => {
+    await act('kol', kol, 'END_BY_KOL');
+    expect(session.status).toBe('ENDED');
+    expect(session.governance.stop.mode).toBe('HOST_ENDED');
+    expect(tx.coupon.updateMany).toHaveBeenCalledWith({ where: { liveSessionId: 'session' }, data: { status: 'EXPIRED' } });
+    expect(tx.order.update).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
+    expect(gateway.endSession).toHaveBeenCalledWith('session');
+  });
+  it('prevents another KOL and the shop from using host end', async () => {
+    await expect(act('other-kol', kol, 'END_BY_KOL')).rejects.toThrow();
+    await expect(act('shop', shop, 'END_BY_KOL')).rejects.toThrow();
+    expect(gateway.endSession).not.toHaveBeenCalled();
+  });
+  it.each(['PERSONAL', 'HEALTH', 'TECHNICAL'])('retains KOL end reason %s and uploaded images for Shop and Admin review', async reason => {
+    const evidence = ['https://res.cloudinary.com/demo/image/upload/proof.jpg', 'https://example.com/incident.png'];
+    await act('kol', kol, 'END_BY_KOL', { reason, evidence });
+    expect(session.governance.stop).toMatchObject({ reason, evidence, mode: 'HOST_ENDED' });
+    expect(session.governance.timeline.at(-1)).toMatchObject({ action: 'END_BY_KOL', reason, evidence });
+    expect(tx.auditLog.create.mock.calls[0][0].data.details.event.evidence).toEqual(evidence);
+    expect(tx.notification.createMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.arrayContaining([
+      expect.objectContaining({ userId: 'shop' }), expect.objectContaining({ userId: 'staff' }),
+    ]) }));
+    expect(tx.order.update).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
+  });
+  it('rejects host end for a scheduled session or an already ended session', async () => {
+    session.status = 'SCHEDULED';
+    await expect(act('kol', kol, 'END_BY_KOL')).rejects.toThrow();
+    session.status = 'ENDED';
+    await expect(act('kol', kol, 'END_BY_KOL')).rejects.toThrow();
+    expect(gateway.endSession).not.toHaveBeenCalled();
+  });
   it('requesting an end preserves broadcasting until the KOL accepts', async () => {
     await act('shop', shop, 'REQUEST_END', { reason: 'OUT_OF_STOCK' });
     expect(session.status).toBe('LIVE');
@@ -89,6 +123,28 @@ describe('Live governance and dispute permissions', () => {
     await act('kol', kol, 'REJECT_END');
     expect(session.status).toBe('LIVE');
     expect(session.governance.request.status).toBe('REJECTED');
+  });
+
+  it('shop cannot end without a reason and evidence', async () => {
+    await expect(act('shop', shop, 'SHOP_END', { reason: 'OTHER', evidence: [] })).rejects.toThrow('bằng chứng');
+    await expect(act('shop', shop, 'SHOP_END')).rejects.toThrow('lý do');
+    expect(session.status).toBe('LIVE');
+  });
+
+  it('opens an admin case on shop end, requires KOL evidence, and preserves order terms', async () => {
+    await act('shop', shop, 'SHOP_END', { reason: 'TECHNICAL' });
+    expect(session.status).toBe('ENDED');
+    expect(session.governance.dispute).toEqual(expect.objectContaining({ status: 'OPEN', initiatedBy: 'SHOP', explanation: expect.objectContaining({ evidence: ['https://example.com/proof.jpg'] }) }));
+    expect(tx.notification.createMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ userId: 'staff' }), expect.objectContaining({ userId: 'kol' })]) }));
+    await expect(act('staff', manager, 'DECIDE', { outcome: 'NO_FAULT' })).rejects.toThrow('cả Shop và KOL');
+    await expect(act('kol', kol, 'KOL_EXPLAIN', { evidence: [] })).rejects.toThrow('bằng chứng');
+    await expect(act('other-kol', kol, 'KOL_EXPLAIN')).rejects.toThrow('quyền');
+    await act('kol', kol, 'KOL_EXPLAIN');
+    expect(session.governance.dispute.kolStatement.evidence).toHaveLength(1);
+    await act('staff', manager, 'DECIDE', { outcome: 'NO_FAULT' });
+    expect(session.governance.dispute.status).toBe('RESOLVED');
+    expect(tx.order.update).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
   });
 
   it('accepting ends the stream and snapshots existing terms without mutating orders', async () => {

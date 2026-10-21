@@ -5,7 +5,6 @@ import {
 import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsEnum,
   IsIn,
   IsInt,
   IsOptional,
@@ -23,13 +22,15 @@ export class RequestSponsorshipDto {
   @IsString() @MinLength(5) @MaxLength(160) headline: string;
   @IsDateString() startsAt: string;
   @IsDateString() endsAt: string;
+  @IsInt() @Min(1) @Max(1000000000) quotedAmount: number;
+  @IsOptional() @IsUUID() renewsPlacementId?: string;
 }
 
 export class ReviewSponsorshipDto {
   @IsIn(['APPROVE', 'REJECT']) decision: 'APPROVE' | 'REJECT';
   @IsString() @MinLength(5) @MaxLength(2000) note: string;
   @IsOptional()
-  @IsEnum(SponsoredPlacementFunding)
+  @IsIn([SponsoredPlacementFunding.PAID])
   fundingType?: SponsoredPlacementFunding;
   @IsOptional() @IsInt() @Min(0) @Max(1000000000) amount?: number;
   @IsOptional()
@@ -45,8 +46,8 @@ export class ReviewSponsorshipDto {
 
 export class SponsorshipListDto {
   @IsOptional()
-  @IsEnum(SponsoredPlacementStatus)
-  status?: SponsoredPlacementStatus;
+  @IsIn([...Object.values(SponsoredPlacementStatus), 'EXPIRED'])
+  status?: SponsoredPlacementStatus | 'EXPIRED';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
 }
 

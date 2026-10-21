@@ -31,6 +31,7 @@ import {
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
+import { CreateCampaignModal } from '../../components/common/CreateCampaignModal';
 
 export interface CustomSandSelectOption<T extends string> {
   value: T;
@@ -158,6 +159,7 @@ export const ShopCouponsPage: React.FC = () => {
 
   // Modal: Phát hành Voucher Gian Hàng (Store-issued Voucher)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStoreCouponPayload>({
     code: '',
     discountType: 'PERCENTAGE',
@@ -370,6 +372,7 @@ export const ShopCouponsPage: React.FC = () => {
         setCreateForm((prev) => ({
           ...prev,
           code: `SHOP10K${codeSuffix}`,
+          benefitType: 'GOODS',
           discountType: 'PERCENTAGE',
           discountValue: 10,
           maximumDiscountAmount: 30000,
@@ -383,6 +386,7 @@ export const ShopCouponsPage: React.FC = () => {
         setCreateForm((prev) => ({
           ...prev,
           code: `SUPER20K${codeSuffix}`,
+          benefitType: 'GOODS',
           discountType: 'PERCENTAGE',
           discountValue: 20,
           maximumDiscountAmount: 60000,
@@ -396,6 +400,7 @@ export const ShopCouponsPage: React.FC = () => {
         setCreateForm((prev) => ({
           ...prev,
           code: `GIAM50K${codeSuffix}`,
+          benefitType: 'GOODS',
           discountType: 'FIXED_AMOUNT',
           discountValue: 50000,
           maximumDiscountAmount: undefined,
@@ -409,6 +414,7 @@ export const ShopCouponsPage: React.FC = () => {
         setCreateForm((prev) => ({
           ...prev,
           code: `SHIP25K${codeSuffix}`,
+          benefitType: 'SHIPPING',
           discountType: 'FIXED_AMOUNT',
           discountValue: 25000,
           maximumDiscountAmount: undefined,
@@ -422,6 +428,7 @@ export const ShopCouponsPage: React.FC = () => {
         setCreateForm((prev) => ({
           ...prev,
           code: `VIP100K${codeSuffix}`,
+          benefitType: 'GOODS',
           discountType: 'FIXED_AMOUNT',
           discountValue: 100000,
           maximumDiscountAmount: undefined,
@@ -620,6 +627,7 @@ export const ShopCouponsPage: React.FC = () => {
     const matchesSearch =
       (c.codeNormalized && c.codeNormalized.includes(searchTerm.trim().toUpperCase())) ||
       (c.displayCode && c.displayCode.toUpperCase().includes(searchTerm.trim().toUpperCase())) ||
+      (c.campaign?.name && c.campaign.name.toLowerCase().includes(searchTerm.trim().toLowerCase())) ||
       (c.collaborator?.fullName && c.collaborator.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return matchesSearch;
@@ -658,6 +666,14 @@ export const ShopCouponsPage: React.FC = () => {
                   <Store className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate">{storeName}</span>
                 </span>
               )}
+            <button
+              type="button"
+              onClick={() => setIsCampaignModalOpen(true)}
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 text-xs font-semibold text-[#1A1612] transition-colors hover:bg-[#F3EFE6] cursor-pointer"
+            >
+              <Calendar className="h-4 w-4 text-[#B88E4F]" />
+              Tạo chiến dịch
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -982,6 +998,8 @@ export const ShopCouponsPage: React.FC = () => {
                         <Layers className="w-3 h-3" />
                         {coupon.scopeType === 'STORE_WIDE'
                           ? 'Toàn gian hàng'
+                          : coupon.scopeType === 'CAMPAIGN'
+                          ? `Chiến dịch: ${coupon.campaign?.name || storeCampaigns.find(item => item.id === coupon.campaignId)?.name || 'Chiến dịch Sale'}`
                           : coupon.scopeType === 'PRODUCTS'
                           ? `${coupon.couponProducts?.length || 0} Sản phẩm chọn lọc`
                           : 'Danh mục chỉ định'}
@@ -1154,48 +1172,47 @@ export const ShopCouponsPage: React.FC = () => {
               <div className="p-4 sm:p-5 md:col-span-7 space-y-4">
                 {/* Presets Quick-Select */}
                 <div className="p-3 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-1.5">
                     <span className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
                       <Zap className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      Gợi ý mẫu ưu đãi thịnh hành
+                      Mẫu ưu đãi nhanh
                     </span>
                     <span className="text-[10px] text-[#7D715E]">Bấm để áp dụng nhanh</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => applyPreset('DISCOUNT_10')}
-                      className="px-2.5 py-2 bg-white hover:bg-[#FAF0DC] text-[#1A1612] border border-[#EEDFC6] rounded-lg text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="text-xs font-bold text-[#1A1612] group-hover:text-[#8C6B32]">Giảm 10%</div>
-                      <div className="text-[10px] text-[#7D715E]">Tối đa 30K · Đơn từ 150K</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPreset('DISCOUNT_20')}
-                      className="px-2.5 py-2 bg-white hover:bg-[#FAF0DC] text-[#1A1612] border border-[#EEDFC6] rounded-lg text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="text-xs font-bold text-[#1A1612] group-hover:text-[#8C6B32]">Giảm 20%</div>
-                      <div className="text-[10px] text-[#7D715E]">Tối đa 60K · Đơn từ 300K</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPreset('FLAT_50K')}
-                      className="px-2.5 py-2 bg-white hover:bg-[#FAF0DC] text-[#1A1612] border border-[#EEDFC6] rounded-lg text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="text-xs font-bold text-[#1A1612] group-hover:text-[#8C6B32]">Giảm 50.000₫</div>
-                      <div className="text-[10px] text-[#7D715E]">Số tiền cố định · Đơn 250K</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPreset('FREESHIP')}
-                      className="px-2.5 py-2 bg-white hover:bg-[#FAF0DC] text-[#1A1612] border border-[#EEDFC6] rounded-lg text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="text-xs font-bold text-[#1A1612] group-hover:text-[#8C6B32]">Freeship 25K</div>
-                      <div className="text-[10px] text-[#7D715E]">Hỗ trợ ship · Đơn 120K</div>
-                    </button>
-                    {createForm.benefitType !== 'SHIPPING' && <button type="button" aria-pressed={createForm.scopeType === 'CAMPAIGN'} onClick={() => setCreateForm({ ...createForm, scopeType: 'CAMPAIGN', productIds: [] })}><Calendar className="w-4 h-4" /><span>Chiến dịch Sale</span></button>}
+                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mẫu ưu đãi nhanh">
+                    {([
+                      { id: 'DISCOUNT_10', title: 'Giảm 10%', note: 'Tối đa 30K · Đơn từ 150K', value: 10, minimum: 150000, maximum: 30000, type: 'PERCENTAGE', shipping: false, icon: Percent },
+                      { id: 'DISCOUNT_20', title: 'Giảm 20%', note: 'Tối đa 60K · Đơn từ 300K', value: 20, minimum: 300000, maximum: 60000, type: 'PERCENTAGE', shipping: false, icon: Percent },
+                      { id: 'FLAT_50K', title: 'Giảm 50.000đ', note: 'Giảm trực tiếp · Đơn từ 250K', value: 50000, minimum: 250000, maximum: undefined, type: 'FIXED_AMOUNT', shipping: false, icon: Coins },
+                      { id: 'FREESHIP', title: 'Freeship 25K', note: 'Hỗ trợ ship · Đơn từ 120K', value: 25000, minimum: 120000, maximum: undefined, type: 'FIXED_AMOUNT', shipping: true, icon: Gift },
+                    ] as const).map(preset => {
+                      const selected = createForm.discountType === preset.type && Number(createForm.discountValue) === preset.value
+                        && Number(createForm.minimumOrderAmount) === preset.minimum
+                        && (Number(createForm.maximumDiscountAmount) || 0) === (preset.maximum || 0)
+                        && (createForm.benefitType === 'SHIPPING') === preset.shipping;
+                      const Icon = preset.icon;
+                      return (
+                        <button key={preset.id} type="button" aria-pressed={selected} onClick={() => applyPreset(preset.id)}
+                          className={`relative flex min-w-0 items-start gap-2 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${selected ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'}`}>
+                          <Icon className="mt-0.5 hidden h-4 w-4 shrink-0 text-[#B88E4F] sm:block" />
+                          <span className="min-w-0 flex-1 pr-3">
+                            <span className="block text-xs font-semibold leading-5 text-[#1A1612]">{preset.title}</span>
+                            <span className="block text-[10px] leading-4 text-[#7D715E]">{preset.note}</span>
+                          </span>
+                          {selected && <Check className="absolute right-2 top-2 h-3.5 w-3.5 text-[#B88E4F]" />}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {createForm.benefitType !== 'SHIPPING' && (
+                    <button type="button" aria-pressed={createForm.scopeType === 'CAMPAIGN'}
+                      onClick={() => setCreateForm(previous => ({ ...previous, scopeType: previous.scopeType === 'CAMPAIGN' ? 'STORE_WIDE' : 'CAMPAIGN', productIds: [], campaignId: previous.scopeType === 'CAMPAIGN' ? undefined : previous.campaignId }))}
+                      className={`mt-3 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${createForm.scopeType === 'CAMPAIGN' ? 'border-[#C59B58] bg-white' : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'}`}>
+                      <Calendar className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                      <span className="flex-1"><span className="block text-xs font-semibold text-[#1A1612]">Chiến dịch Sale</span><span className="mt-0.5 block text-[10px] leading-4 text-[#7D715E]">Gắn voucher với chiến dịch của gian hàng</span></span>
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${createForm.scopeType === 'CAMPAIGN' ? 'border-[#C59B58] bg-[#C59B58] text-white' : 'border-[#EAE4D7]'}`}>{createForm.scopeType === 'CAMPAIGN' && <Check size={12} />}</span>
+                    </button>
+                  )}
                 </div>
 
                 <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="space-y-4">
@@ -1634,6 +1651,8 @@ export const ShopCouponsPage: React.FC = () => {
                         <span className="font-bold text-[#1A1612]">
                           {createForm.scopeType === 'STORE_WIDE'
                             ? 'Toàn gian hàng'
+                            : createForm.scopeType === 'CAMPAIGN'
+                            ? (storeCampaigns.find(item => item.id === createForm.campaignId)?.name || 'Chưa chọn chiến dịch')
                             : `${createForm.productIds?.length || 0} sản phẩm chỉ định`}
                         </span>
                       </div>
@@ -1937,6 +1956,18 @@ export const ShopCouponsPage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {isCampaignModalOpen && (
+        <CreateCampaignModal
+          onClose={() => setIsCampaignModalOpen(false)}
+          onSuccess={(campaign) => {
+            if (campaign?.id && campaign.storeId === storeId && campaign.isActive && new Date(campaign.endDate) > new Date()) {
+              setStoreCampaigns(previous => [campaign, ...previous.filter(item => item.id !== campaign.id)]);
+              setCreateForm(previous => ({ ...previous, scopeType: 'CAMPAIGN', campaignId: campaign.id, productIds: [], startsAt: campaign.startDate, expiresAt: campaign.endDate }));
+            }
+            toast.success('Đã tạo chiến dịch. Bạn có thể phát hành voucher cho chiến dịch này.');
+          }}
+        />
       )}
     </div>
   );

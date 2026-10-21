@@ -1,0 +1,436 @@
+{
+  "fr": "FR12",
+  "stem": "FR12_Assign_Personal_Coupon",
+  "title": "FR-12 Assign Personal Coupon",
+  "classes": [
+    {
+      "id": "CollaboratorCouponsController",
+      "name": "CollaboratorCouponsController",
+      "attrs": [
+        "- service: CouponsService"
+      ],
+      "ops": [
+        "+ getEligibleStores(collaboratorId: string)",
+        "+ proposeCoupon(collaboratorId, dto: CreateCouponDto, ipAddress)"
+      ]
+    },
+    {
+      "id": "CouponsService",
+      "name": "CouponsService",
+      "attrs": [
+        "- prisma: PrismaService",
+        "- cacheService: CacheService"
+      ],
+      "ops": [
+        "+ getEligibleStores(collaboratorId: string)",
+        "+ proposeCoupon(collaboratorId, dto: CreateCouponDto, ipAddress?)",
+        "+ approveCoupon(storeId, couponId, userId, role, dto, ipAddress?)"
+      ]
+    },
+    {
+      "id": "StoreCouponsController",
+      "name": "StoreCouponsController",
+      "attrs": [
+        "- service: CouponsService"
+      ],
+      "ops": [
+        "+ approveCoupon(storeId, id, userId, role, dto, ipAddress)"
+      ]
+    },
+    {
+      "id": "PrismaService",
+      "name": "PrismaService",
+      "attrs": [
+        "- pool: Pool",
+        "- configService?: ConfigService"
+      ],
+      "ops": [
+        "+ onModuleInit(): Promise<void>",
+        "+ onModuleDestroy(): Promise<void>"
+      ]
+    },
+    {
+      "id": "User",
+      "name": "User",
+      "attrs": [
+        "+ id: string",
+        "+ role: UserRole",
+        "+ isActive: boolean",
+        "+ isDeleted: boolean"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Store",
+      "name": "Store",
+      "attrs": [
+        "+ id: string",
+        "+ ownerId: string",
+        "+ name: string",
+        "+ isDeleted: boolean",
+        "+ defaultCommissionRate: Decimal"
+      ],
+      "ops": []
+    },
+    {
+      "id": "Coupon",
+      "name": "Coupon",
+      "attrs": [
+        "+ id: string",
+        "+ codeNormalized: string {unique}",
+        "+ collaboratorId: string",
+        "+ storeId: string",
+        "+ status: CouponStatus",
+        "+ discountType: DiscountType",
+        "+ discountValue: Decimal",
+        "+ startsAt, expiresAt: Date | null",
+        "+ fundingSource: CouponFundingSource"
+      ],
+      "ops": []
+    },
+    {
+      "id": "StoreCollaborator",
+      "name": "StoreCollaborator",
+      "attrs": [
+        "+ id: string",
+        "+ storeId: string",
+        "+ collaboratorId: string",
+        "+ status: StoreCollaboratorStatus"
+      ],
+      "ops": []
+    },
+    {
+      "id": "PrismaClient",
+      "name": "PrismaClient",
+      "attrs": [
+        "+ user: Prisma.UserDelegate",
+        "+ store: Prisma.StoreDelegate",
+        "+ storeCollaborator: Prisma.StoreCollaboratorDelegate",
+        "+ coupon: Prisma.CouponDelegate"
+      ],
+      "ops": [
+        "+ $transaction(callback): Promise<T>",
+        "+ $connect(): Promise<void>",
+        "+ $disconnect(): Promise<void>"
+      ]
+    }
+  ],
+  "relations": [
+    [
+      "CollaboratorCouponsController",
+      "CouponsService",
+      "reference",
+      "service"
+    ],
+    [
+      "StoreCouponsController",
+      "CouponsService",
+      "reference",
+      "service"
+    ],
+    [
+      "CouponsService",
+      "PrismaService",
+      "reference",
+      "prisma"
+    ],
+    [
+      "PrismaService",
+      "Coupon",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "User",
+      "Coupon",
+      "association",
+      "coupons",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "Coupon",
+      "association",
+      "coupons",
+      "1",
+      "0..*"
+    ],
+    [
+      "User",
+      "StoreCollaborator",
+      "association",
+      "storeCollaborations",
+      "1",
+      "0..*"
+    ],
+    [
+      "Store",
+      "StoreCollaborator",
+      "association",
+      "collaborators",
+      "1",
+      "0..*"
+    ],
+    [
+      "PrismaService",
+      "PrismaClient",
+      "inheritance",
+      "extends"
+    ],
+    [
+      "PrismaService",
+      "Store",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "User",
+      "dependency",
+      "«use»"
+    ],
+    [
+      "PrismaService",
+      "StoreCollaborator",
+      "dependency",
+      "«use»"
+    ]
+  ],
+  "lanes": [
+    {
+      "id": "kol",
+      "name": "KOL",
+      "actor": true
+    },
+    {
+      "id": "shop",
+      "name": "Shop Manager",
+      "actor": true
+    },
+    {
+      "id": "browser",
+      "name": "Browser"
+    },
+    {
+      "id": "kolctrl",
+      "name": ":CollaboratorCouponsController"
+    },
+    {
+      "id": "shopctrl",
+      "name": ":StoreCouponsController"
+    },
+    {
+      "id": "svc",
+      "name": ":CouponsService"
+    },
+    {
+      "id": "db",
+      "name": ":PrismaService"
+    }
+  ],
+  "messages": [
+    [
+      "kol",
+      "browser",
+      "Choose Shop; propose personal code"
+    ],
+    [
+      "browser",
+      "kolctrl",
+      "POST /api/collaborator/coupons"
+    ],
+    [
+      "kolctrl",
+      "svc",
+      "proposeCoupon(collaboratorId, dto, ip)"
+    ],
+    [
+      "svc",
+      "svc",
+      "Check rate limit; normalize and validate code"
+    ],
+    [
+      "svc",
+      "db",
+      "Read User, Store, APPROVED partnership, policy and quotas"
+    ],
+    [
+      "db",
+      "svc",
+      "Eligibility and code uniqueness data",
+      "return"
+    ],
+    [
+      "svc",
+      "db",
+      "Create Coupon(PENDING_APPROVAL)"
+    ],
+    [
+      "db",
+      "svc",
+      "Proposed coupon",
+      "return"
+    ],
+    [
+      "svc",
+      "db",
+      "Write COUPON_PROPOSED audit; notify Store owner"
+    ],
+    [
+      "db",
+      "svc",
+      "Related write results (separate writes)",
+      "return"
+    ],
+    [
+      "svc",
+      "kolctrl",
+      "Proposed coupon response",
+      "return"
+    ],
+    [
+      "kolctrl",
+      "browser",
+      "201: pending coupon",
+      "return"
+    ],
+    [
+      "browser",
+      "kol",
+      "Show pending approval",
+      "return"
+    ],
+    [
+      "shop",
+      "browser",
+      "Review code; enter discount policy; Approve"
+    ],
+    [
+      "browser",
+      "shopctrl",
+      "PATCH /api/stores/:storeId/coupons/:id/approve"
+    ],
+    [
+      "shopctrl",
+      "svc",
+      "approveCoupon(storeId, id, userId, role, dto, ip)"
+    ],
+    [
+      "svc",
+      "db",
+      "Read Store ownership and pending coupon"
+    ],
+    [
+      "db",
+      "svc",
+      "Owner and PENDING_APPROVAL coupon",
+      "return"
+    ],
+    [
+      "svc",
+      "svc",
+      "Require owning SHOP_MANAGER; validate SHOP_FUNDED policy"
+    ],
+    [
+      "svc",
+      "db",
+      "$transaction: update policy/scope; set ACTIVE and approval data"
+    ],
+    [
+      "db",
+      "svc",
+      "Committed ACTIVE coupon; concurrent change → 409",
+      "return"
+    ],
+    [
+      "svc",
+      "db",
+      "After commit: COUPON_APPROVED audit and KOL notification"
+    ],
+    [
+      "db",
+      "svc",
+      "Post-commit write results",
+      "return"
+    ],
+    [
+      "svc",
+      "shopctrl",
+      "Approved coupon",
+      "return"
+    ],
+    [
+      "shopctrl",
+      "browser",
+      "200: ACTIVE coupon",
+      "return"
+    ],
+    [
+      "browser",
+      "shop",
+      "Show approval result; refresh list",
+      "return"
+    ]
+  ],
+  "subtitle": "Main flow: KOL proposes a personal code → owning Shop approves the discount policy.",
+  "classNote": "Scope: assign and activate a personal KOL coupon. Discount preview and transactional redemption at checkout are described in FR12_CODE_ANALYSIS.md and the FR16 checkout flow.",
+  "notes": [
+    "Browser groups KolCouponsPage and ShopCouponsPage. JWT/role/DTO guards precede protected calls. KOL proposes the code; the owning SHOP_MANAGER sets the discount policy.",
+    "Proposal requires an APPROVED partnership and commission policy. Coupon, proposal audit and notification are separate writes. Approval policy/scope changes use one transaction; approval audit/notification follow commit.",
+    "Coupon owner determines KOL attribution when redeemed. Preview consumes no quota; checkout locks/revalidates coupon and writes usage, Order and redemption atomically. These later interactions are documented separately."
+  ],
+  "classLayout": {
+    "controller": "CollaboratorCouponsController",
+    "service": "CouponsService",
+    "supports": [
+      [
+        "StoreCouponsController",
+        150
+      ]
+    ],
+    "models": [
+      "Store",
+      "User",
+      "StoreCollaborator",
+      "Coupon"
+    ],
+    "reference": "FR09",
+    "version": "fr09-model-columns-v4",
+    "modelPositions": {
+      "Store": [
+        1930,
+        150,
+        620
+      ],
+      "User": [
+        1930,
+        650,
+        620
+      ],
+      "StoreCollaborator": [
+        1930,
+        1036,
+        620
+      ],
+      "Coupon": [
+        1930,
+        1422,
+        620
+      ]
+    }
+  },
+  "sequenceLayout": {
+    "reference": "FR09",
+    "version": "fr09-sequence-v3",
+    "order": [
+      "kol",
+      "shop",
+      "browser",
+      "kolctrl",
+      "shopctrl",
+      "svc",
+      "db"
+    ]
+  }
+}

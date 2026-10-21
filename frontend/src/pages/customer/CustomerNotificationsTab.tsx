@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Bell,
-  Check,
   CheckCheck,
-  Clock,
   Loader2,
   Package,
   Ticket,
@@ -14,6 +12,7 @@ import type {
   AppNotification,
   NotificationCategory,
 } from '../../services/notifications.service';
+import { CustomerNotificationCard } from './CustomerNotificationCard';
 
 type SpecificCategory = Exclude<NotificationCategory, 'ALL'>;
 interface CustomerNotificationsTabProps {
@@ -46,19 +45,15 @@ const categories = [
 const headings = {
   ALL: {
     title: 'Thông báo',
-    description: 'Theo dõi đơn mua, ưu đãi và cập nhật tài khoản.',
   },
   ORDER: {
     title: 'Thông báo đơn hàng',
-    description: 'Cập nhật tiến trình xử lý và vận chuyển đơn mua.',
   },
   PROMOTION: {
     title: 'Ưu đãi & khuyến mãi',
-    description: 'Mã giảm giá và ưu đãi từ các gian hàng đối tác.',
   },
   SYSTEM: {
     title: 'Cập nhật SCANMS',
-    description: 'Thông tin tài khoản, hồ sơ đối tác và cập nhật từ sàn.',
   },
 };
 
@@ -82,8 +77,6 @@ export function CustomerNotificationsTab({
   const [markingAll, setMarkingAll] = useState(false);
   const [markingIds, setMarkingIds] = useState<string[]>([]);
   const heading = headings[category] || headings.ALL;
-  const currentUnread =
-    category === 'ALL' ? unreadCount : categoryUnread[category];
 
   const markAll = async () => {
     setMarkingAll(true);
@@ -105,42 +98,10 @@ export function CustomerNotificationsTab({
   return (
     <section
       className="@container/notifications grid gap-[14px] w-full max-w-[1040px] min-w-0 text-left text-[#1A1612] max-md:pb-[64px]"
-      aria-labelledby="customer-notifications-heading"
+      aria-label={heading.title}
     >
-      <div className="flex items-center justify-between flex-wrap @max-[899px]:flex-col @max-[899px]:items-stretch gap-[12px_20px] p-[4px_0_14px] border-b border-[#EAE4D7]">
-        <header className="flex flex-1 min-w-[300px] @max-[899px]:min-w-0 @max-[449px]:flex-wrap items-center justify-between gap-[12px] @max-[449px]:gap-[10px]">
-          <div className="flex items-center gap-[10px] @max-[449px]:gap-[8px] min-w-0">
-            <span className="grid place-items-center shrink-0 w-[36px] h-[38px] @max-[449px]:w-[32px] @max-[449px]:h-[34px] border border-[#EEDFC6] rounded-[11px] @max-[449px]:rounded-[9px] bg-white text-[#B88E4F]" aria-hidden="true">
-              <Bell size={18} />
-            </span>
-            <div>
-              <div className="flex flex-wrap items-center gap-[8px]">
-                <h1 id="customer-notifications-heading" className="m-0 font-inherit text-[18px] @max-[449px]:text-[17px] font-[650] leading-[1.4] tracking-[-0.3px] text-[#1A1612]">{heading.title}</h1>
-                {currentUnread > 0 && (
-                  <span className="p-[2px_7px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#7D715E] text-[10px] leading-[1.5] whitespace-nowrap">{currentUnread} chưa đọc</span>
-                )}
-              </div>
-              <p className="m-0 mt-[3px] text-[11px] @max-[449px]:text-[10px] text-[#7D715E] leading-[1.5]">{heading.description}</p>
-            </div>
-          </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center shrink-0 gap-[5px] min-h-[32px] @max-[449px]:min-h-[28px] @max-[449px]:ml-[40px] px-[9px] py-[6px] border border-[#EAE4D7] rounded-[7px] bg-white text-[#7D715E] text-[11px] @max-[449px]:text-[10px] font-[500] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] transition disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
-              disabled={markingAll || loading}
-              onClick={() => void markAll()}
-            >
-              {markingAll ? (
-                <Loader2 size={14} className="animate-spin text-[#B88E4F]" />
-              ) : (
-                <CheckCheck size={14} className="text-[#B88E4F]" />
-              )}
-              Đọc tất cả
-            </button>
-          )}
-        </header>
-
-        <nav className="grid grid-cols-4 @max-[449px]:grid-cols-2 shrink-0 gap-[3px] p-[4px] border border-[#EAE4D7] rounded-[9px] bg-[#F3EFE6] @max-[899px]:self-start @max-[449px]:self-stretch" aria-label="Lọc thông báo">
+      <div className="flex w-full min-w-0 items-center flex-wrap gap-[12px] p-[10px_12px] @max-[449px]:p-[8px] border border-[#EAE4D7] rounded-[12px] bg-white shadow-[0_2px_6px_rgba(35,29,21,0.02)]">
+        <nav className="grid flex-1 min-w-0 grid-cols-4 @max-[699px]:basis-full @max-[449px]:grid-cols-2 gap-[6px]" aria-label="Lọc thông báo">
           {categories.map(({ key, label, icon: Icon }) => {
             const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
             const isActive = category === key;
@@ -149,7 +110,7 @@ export function CustomerNotificationsTab({
                 type="button"
                 key={key}
                 aria-pressed={isActive}
-                className={`inline-flex items-center justify-center min-w-0 gap-[6px] min-h-[32px] @max-[449px]:min-h-[30px] px-[10px] @max-[449px]:p-[6px] py-[6px] border rounded-[7px] text-[11px] font-[500] leading-[1.4] cursor-pointer transition focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2 ${isActive ? 'bg-white border-[#EEDFC6] text-[#1A1612] font-[600]' : 'border-transparent text-[#7D715E] hover:bg-white hover:text-[#B88E4F]'}`}
+                className={`inline-flex items-center justify-center min-w-0 gap-[6px] min-h-[40px] px-[10px] @max-[449px]:px-[6px] py-[8px] border rounded-[8px] text-[12px] font-[500] leading-[1.4] cursor-pointer transition focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2 ${isActive ? 'bg-[#FBF5EB] border-[#EEDFC6] text-[#1A1612] font-[600]' : 'bg-white border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'}`}
                 onClick={() => onSelectCategory(key)}
               >
                 <Icon size={14} className={isActive ? 'text-[#B88E4F]' : ''} />
@@ -159,6 +120,21 @@ export function CustomerNotificationsTab({
             );
           })}
         </nav>
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            className="ml-auto inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[40px] px-[12px] py-[8px] border border-[#EEDFC6] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[12px] font-[500] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] transition disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
+            disabled={markingAll || loading}
+            onClick={() => void markAll()}
+          >
+            {markingAll ? (
+              <Loader2 size={14} className="animate-spin text-[#B88E4F]" aria-hidden="true" />
+            ) : (
+              <CheckCheck size={14} className="text-[#B88E4F]" aria-hidden="true" />
+            )}
+            Đọc tất cả
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -193,110 +169,13 @@ export function CustomerNotificationsTab({
           )}
         </div>
       ) : (
-        <div className="grid gap-[10px]">
-          {items.map((item) => {
-            const itemCategory = getCategory(item.type);
-            const Icon =
-              itemCategory === 'ORDER'
-                ? Package
-                : itemCategory === 'PROMOTION'
-                  ? Ticket
-                  : Bell;
-            const categoryLabel =
-              itemCategory === 'ORDER'
-                ? 'Đơn hàng'
-                : itemCategory === 'PROMOTION'
-                  ? 'Ưu đãi'
-                  : 'SCANMS';
-            const busy = markingIds.includes(item.id) || markingAll;
-            const date = new Date(item.createdAt);
-            const validDate = !Number.isNaN(date.getTime());
-            return (
-              <article
-                className={`relative grid grid-cols-[32px_minmax(0,1fr)_auto] @max-[699px]:grid-cols-[32px_minmax(0,1fr)] items-start gap-[10px] @max-[449px]:gap-[8px] p-[12px_14px] @max-[449px]:p-[12px_10px] border rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] hover:border-[#EEDFC6] transition ${!item.isRead ? 'border-[#EEDFC6] before:content-[\'\'] before:absolute before:left-0 before:top-[12px] before:bottom-[12px] before:w-[3px] before:rounded-[0_3px_3px_0] before:bg-[#C59B58]' : 'border-[#EAE4D7]'}`}
-                key={item.id}
-              >
-                <span className="grid place-items-center shrink-0 w-[32px] h-[34px] border border-[#EEDFC6] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F] mt-[2px]" aria-hidden="true">
-                  <Icon size={16} />
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-[5px_8px] mb-[5px] text-[10px] @max-[449px]:text-[9px] text-[#7D715E] leading-[1.4]">
-                    <span className="p-[2px_5px] rounded-[4px] bg-[#FBF5EB] text-[9px] font-[550] text-[#B88E4F]">{categoryLabel}</span>
-                    {validDate && (
-                      <time dateTime={item.createdAt} className="inline-flex items-center gap-[4px] tabular-nums text-[9px]">
-                        <Clock size={11} aria-hidden="true" />
-                        {date.toLocaleString('vi-VN', {
-                          timeZone: 'Asia/Ho_Chi_Minh',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
-                      </time>
-                    )}
-                    {!item.isRead && (
-                      <span className="inline-flex items-center gap-[4px] text-[#B88E4F] text-[9px]">
-                        <i aria-hidden="true" className="w-[4px] h-[4px] rounded-full bg-[#C59B58] not-italic inline-block" />
-                        Chưa đọc
-                      </span>
-                    )}
-                  </div>
-                  <h3 className={`m-0 font-inherit text-[13px] @max-[449px]:text-[12px] leading-[1.5] text-[#1A1612] ${!item.isRead ? 'font-[650]' : 'font-[550]'}`}>
-                    <button type="button" className="block p-0 border-0 bg-transparent text-inherit text-left hover:text-[#B88E4F] transition break-words cursor-pointer focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2" onClick={() => void onOpen(item)}>
-                      {item.title}
-                    </button>
-                  </h3>
-                  <p className="m-0 mt-[4px] text-[11px] text-[#7D715E] leading-[1.6] break-words whitespace-pre-line">{item.message}</p>
-                  {(item.data?.orderSn ||
-                    item.data?.trackingNumber ||
-                    item.data?.voucherCode) && (
-                    <div className="flex flex-wrap gap-[5px] mt-[7px]">
-                      {item.data?.orderSn && (
-                        <span className="p-[2px_6px] border border-[#EAE4D7] rounded-[5px] bg-[#FAF8F5] text-[#7D715E] text-[10px] leading-[1.4] break-words">Mã đơn: {item.data.orderSn}</span>
-                      )}
-                      {item.data?.trackingNumber && (
-                        <span className="p-[2px_6px] border border-[#EAE4D7] rounded-[5px] bg-[#FAF8F5] text-[#7D715E] text-[10px] leading-[1.4] break-words">Vận đơn: {item.data.trackingNumber}</span>
-                      )}
-                      {item.data?.voucherCode && (
-                        <span className="p-[2px_6px] border border-[#EAE4D7] rounded-[5px] bg-[#FAF8F5] text-[#7D715E] text-[10px] leading-[1.4] break-words">Mã: {item.data.voucherCode}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-end @max-[699px]:col-start-2 @max-[699px]:justify-start @max-[699px]:mt-[2px] self-center gap-[6px]">
-                  {!item.isRead && (
-                    <button
-                      type="button"
-                      className="grid place-items-center shrink-0 w-[30px] h-[30px] border border-[#EAE4D7] rounded-[7px] bg-white text-[#B88E4F] hover:border-[#C59B58] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
-                      title="Đánh dấu đã đọc"
-                      aria-label={`Đánh dấu đã đọc: ${item.title}`}
-                      disabled={busy}
-                      onClick={(event) => void markRead(event, item)}
-                    >
-                      {busy ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Check size={14} />
-                      )}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-[5px] min-h-[30px] p-[6px_9px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[10px] font-[500] leading-[1.4] hover:border-[#C59B58] transition cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
-                    onClick={() => void onOpen(item)}
-                  >
-                    {itemCategory === 'ORDER'
-                      ? 'Xem đơn mua'
-                      : itemCategory === 'PROMOTION'
-                        ? 'Xem ưu đãi'
-                        : 'Xem chi tiết'}
-                    <ArrowRight size={13} className="text-[#B88E4F]" />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+        <div className="customer-notification-list [container:notification-list_/_inline-size]! grid! gap-[12px]! min-w-0! [&_.customer-notification-card]:min-w-0! [&_.customer-notification-card]:overflow-hidden! [&_.customer-notification-card]:[border:1px_solid_#EAE4D7]! [&_.customer-notification-card]:rounded-[16px]! [&_.customer-notification-card]:bg-[#FFFFFF]! [&_.customer-notification-card]:shadow-[0_2px_8px_rgb(35_29_21_/_2%)]! [&_.customer-notification-card]:[transition:border-color_160ms,box-shadow_160ms]! [&_.customer-notification-card[data-read='false']]:border-[#EEDFC6]! [&_.customer-notification-card:hover:hover]:border-[#C59B58]! [&_.customer-notification-card:hover:hover]:shadow-[0_4px_16px_rgb(35_29_21_/_4%)]! [&_.customer-notification-main]:grid! [&_.customer-notification-main]:grid-cols-[44px_minmax(0,1fr)]! [&_.customer-notification-main]:[align-items:start]! [&_.customer-notification-main]:gap-[14px]! [&_.customer-notification-main]:p-[18px_20px_14px]! [&_.customer-notification-icon]:grid! [&_.customer-notification-icon]:place-items-center! [&_.customer-notification-icon]:w-[44px]! [&_.customer-notification-icon]:h-[44px]! [&_.customer-notification-icon]:[border:1px_solid_#EEDFC6]! [&_.customer-notification-icon]:rounded-[13px]! [&_.customer-notification-icon]:bg-[#FBF5EB]! [&_.customer-notification-icon]:text-[#B88E4F]! [&_.customer-notification-card[data-read='true']_.customer-notification-icon]:border-[#EAE4D7]! [&_.customer-notification-card[data-read='true']_.customer-notification-icon]:bg-[#FAF8F5]! [&_.customer-notification-card[data-read='true']_.customer-notification-icon]:text-[#7D715E]! [&_.customer-notification-content]:min-w-0! [&_.customer-notification-meta]:flex! [&_.customer-notification-meta]:items-center! [&_.customer-notification-meta]:flex-wrap! [&_.customer-notification-meta]:gap-[8px_12px]! [&_.customer-notification-meta]:min-h-[22px]! [&_.customer-notification-meta]:mb-[5px]! [&_.customer-notification-meta]:text-[11px]! [&_.customer-notification-meta]:leading-[1.5]! [&_.customer-notification-category]:text-[#7D715E]! [&_.customer-notification-category]:text-[12px]! [&_.customer-notification-category]:font-[600]! [&_.customer-notification-unread]:inline-flex! [&_.customer-notification-unread]:items-center! [&_.customer-notification-unread]:gap-[5px]! [&_.customer-notification-read]:inline-flex! [&_.customer-notification-read]:items-center! [&_.customer-notification-read]:gap-[5px]! [&_.customer-notification-unread]:p-[2px_7px]! [&_.customer-notification-unread]:[border:1px_solid_#EEDFC6]! [&_.customer-notification-unread]:rounded-[6px]! [&_.customer-notification-unread]:bg-[#FBF5EB]! [&_.customer-notification-unread]:text-[#8A642C]! [&_.customer-notification-unread]:text-[10px]! [&_.customer-notification-unread_i]:w-[4px]! [&_.customer-notification-unread_i]:h-[4px]! [&_.customer-notification-unread_i]:rounded-[50%]! [&_.customer-notification-unread_i]:bg-[#C59B58]! [&_.customer-notification-read]:text-[#7D715E]! [&_.customer-notification-read]:text-[10px]! [&_.customer-notification-card_h3]:m-0! [&_.customer-notification-card_h3]:text-[#1A1612]! [&_.customer-notification-card_h3]:[font-family:inherit]! [&_.customer-notification-card_h3]:text-[15px]! [&_.customer-notification-card_h3]:font-[650]! [&_.customer-notification-card_h3]:leading-[1.5]! [&_.customer-notification-card_h3]:tracking-[-.15px]! [&_.customer-notification-card[data-read='true']_h3]:font-[550]! [&_.customer-notification-card_h3_button]:block! [&_.customer-notification-card_h3_button]:max-w-full! [&_.customer-notification-card_h3_button]:m-0! [&_.customer-notification-card_h3_button]:p-0! [&_.customer-notification-card_h3_button]:border-0! [&_.customer-notification-card_h3_button]:[border-style:none]! [&_.customer-notification-card_h3_button]:bg-[transparent]! [&_.customer-notification-card_h3_button]:text-[inherit]! [&_.customer-notification-card_h3_button]:[font-family:inherit]! [&_.customer-notification-card_h3_button]:[font-style:inherit]! [&_.customer-notification-card_h3_button]:[font-variant:inherit]! [&_.customer-notification-card_h3_button]:[font-stretch:inherit]! [&_.customer-notification-card_h3_button]:leading-[inherit]! [&_.customer-notification-card_h3_button]:text-left! [&_.customer-notification-card_h3_button]:[overflow-wrap:anywhere]! [&_.customer-notification-card_h3_button]:cursor-pointer! [&_.customer-notification-card_h3_button]:[transition:color_160ms]! [&_.customer-notification-card_h3_button:hover]:text-[#8A642C]! [&_.customer-notification-message]:m-[6px_0_0]! [&_.customer-notification-message]:text-[#7D715E]! [&_.customer-notification-message]:text-[13px]! [&_.customer-notification-message]:leading-[1.7]! [&_.customer-notification-message]:whitespace-pre-line! [&_.customer-notification-message]:[overflow-wrap:anywhere]! [&_.customer-notification-references]:flex! [&_.customer-notification-references]:flex-wrap! [&_.customer-notification-references]:gap-[6px]! [&_.customer-notification-references]:mt-[10px]! [&_.customer-notification-references_>_span]:min-w-0! [&_.customer-notification-references_>_span]:max-w-full! [&_.customer-notification-references_>_span]:p-[4px_8px]! [&_.customer-notification-references_>_span]:[border:1px_solid_#EAE4D7]! [&_.customer-notification-references_>_span]:rounded-[6px]! [&_.customer-notification-references_>_span]:bg-[#FAF8F5]! [&_.customer-notification-references_>_span]:text-[#7D715E]! [&_.customer-notification-references_>_span]:text-[11px]! [&_.customer-notification-references_>_span]:leading-[1.5]! [&_.customer-notification-references_>_span]:[overflow-wrap:anywhere]! [&_.customer-notification-references_strong]:text-[#4A3F33]! [&_.customer-notification-references_strong]:font-[550]! [&_.customer-notification-footer]:flex! [&_.customer-notification-footer]:items-center! [&_.customer-notification-footer]:justify-between! [&_.customer-notification-footer]:flex-wrap! [&_.customer-notification-footer]:gap-[10px_16px]! [&_.customer-notification-footer]:m-[0_20px_0_78px]! [&_.customer-notification-footer]:p-[10px_0_14px]! [&_.customer-notification-footer]:[border-top:1px_solid_#F3EFE6]! [&_.customer-notification-time]:inline-flex! [&_.customer-notification-time]:items-center! [&_.customer-notification-time]:flex-wrap! [&_.customer-notification-time]:gap-[6px]! [&_.customer-notification-time]:min-w-0! [&_.customer-notification-time]:text-[#7D715E]! [&_.customer-notification-time]:text-[11px]! [&_.customer-notification-time]:leading-[1.5]! [&_.customer-notification-time]:tabular-nums! [&_.customer-notification-time_svg]:shrink-0! [&_.customer-notification-actions]:flex! [&_.customer-notification-actions]:items-center! [&_.customer-notification-actions]:justify-end! [&_.customer-notification-actions]:gap-[8px]! [&_.customer-notification-actions]:ml-auto! [&_.customer-notification-actions_button]:inline-flex! [&_.customer-notification-actions_button]:items-center! [&_.customer-notification-actions_button]:justify-center! [&_.customer-notification-actions_button]:gap-[7px]! [&_.customer-notification-actions_button]:min-h-[40px]! [&_.customer-notification-actions_button]:p-[9px_12px]! [&_.customer-notification-actions_button]:[border:1px_solid_transparent]! [&_.customer-notification-actions_button]:rounded-[9px]! [&_.customer-notification-actions_button]:[font-family:inherit]! [&_.customer-notification-actions_button]:text-[12px]! [&_.customer-notification-actions_button]:font-[550]! [&_.customer-notification-actions_button]:leading-[1.5]! [&_.customer-notification-actions_button]:whitespace-nowrap! [&_.customer-notification-actions_button]:cursor-pointer! [&_.customer-notification-actions_button]:[transition:background_160ms,border-color_160ms,color_160ms]! [&_.customer-notification-actions_button_svg]:shrink-0! [&_.customer-notification-actions_button_svg]:text-[#B88E4F]! [&_.customer-notification-actions_.customer-notification-mark]:bg-[#FFFFFF]! [&_.customer-notification-actions_.customer-notification-mark]:text-[#7D715E]! [&_.customer-notification-actions_.customer-notification-mark:hover]:border-[#EAE4D7]! [&_.customer-notification-actions_.customer-notification-mark:hover]:bg-[#FAF8F5]! [&_.customer-notification-actions_.customer-notification-mark:hover]:text-[#1A1612]! [&_.customer-notification-actions_.customer-notification-open]:min-w-[116px]! [&_.customer-notification-actions_.customer-notification-open]:border-[#EEDFC6]! [&_.customer-notification-actions_.customer-notification-open]:bg-[#FBF5EB]! [&_.customer-notification-actions_.customer-notification-open]:text-[#1A1612]! [&_.customer-notification-actions_.customer-notification-open:hover]:border-[#C59B58]! [&_.customer-notification-actions_.customer-notification-open:hover]:bg-[#F3EFE6]! [&_.customer-notification-actions_button:disabled]:opacity-[.55]! [&_.customer-notification-actions_button:disabled]:cursor-wait! [&_.customer-notification-card_button:focus-visible]:[outline:2px_solid_#C59B58]! [&_.customer-notification-card_button:focus-visible]:outline-offset-[3px]! [&_.customer-notification-spinner]:animate-[customer-notification-spin_.8s_linear_infinite]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-main]:grid-cols-[40px_minmax(0,1fr)]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-main]:gap-[12px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-main]:p-[16px_16px_12px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-icon]:w-[40px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-icon]:h-[40px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-icon]:rounded-[11px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-card_h3]:text-[14px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-message]:text-[12px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-footer]:m-[0_16px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-footer]:p-[12px_0]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-actions_button]:min-h-[44px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:absolute! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:w-[1px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:h-[1px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:p-0! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:m-[-1px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:overflow-hidden! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:[clip:rect(0,0,0,0)]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:whitespace-nowrap! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:border-0! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-mark_span]:[border-style:none]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-actions_.customer-notification-mark]:w-[44px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-actions_.customer-notification-mark]:p-[10px]! [@container_notification-list_(max-width:620px)]:[&_.customer-notification-actions_.customer-notification-mark]:border-[#EAE4D7]! [@container_notification-list_(max-width:400px)]:[&_.customer-notification-footer]:gap-[10px]! [@container_notification-list_(max-width:400px)]:[&_.customer-notification-time]:[flex-basis:100%]! [@container_notification-list_(max-width:400px)]:[&_.customer-notification-actions]:w-full! [@container_notification-list_(max-width:400px)]:[&_.customer-notification-actions_.customer-notification-open]:min-w-0! [@container_notification-list_(max-width:400px)]:[&_.customer-notification-actions_.customer-notification-open]:flex-[1]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-notification-card]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-notification-card_h3_button]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-notification-actions_button]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-notification-spinner]:animate-none!">
+          {items.map((item) => (
+            <CustomerNotificationCard key={item.id} item={item}
+              category={getCategory(item.type)} busy={markingIds.includes(item.id) || markingAll}
+              onOpen={() => void onOpen(item)}
+              onMarkRead={(event) => void markRead(event, item)} />
+          ))}
         </div>
       )}
       {!loading && items.length > 0 && error && (

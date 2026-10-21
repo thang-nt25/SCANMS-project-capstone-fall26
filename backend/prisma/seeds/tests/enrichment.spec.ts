@@ -73,16 +73,16 @@ describe('non-destructive seed enrichment and public creator references', () => 
     };
     expect(missingFixturePackage(current, data.products[0])).toEqual({});
   });
-  it('seeds exactly two explicitly free TEST sponsorships, not fictitious paid receipts', () => {
+  it('seeds two TEST requests awaiting paid approval, not fictitious receipts', () => {
     expect(data.sponsoredPlacements).toHaveLength(2);
     for (const row of data.sponsoredPlacements) {
       expect(row).toMatchObject({
-        fundingType: 'PLATFORM_GRANT',
-        amount: 0,
-        status: 'APPROVED',
+        status: 'REQUESTED',
       });
       expect(row.headline).toMatch(/^\[TEST\]/);
       expect(row.paymentReference).toBeUndefined();
+      expect(row.fundingType).toBeUndefined();
+      expect(row.reviewedById).toBeUndefined();
       expect(row.paymentProofUrl).toBeUndefined();
       expect(data.stores.map((store) => store.id)).toContain(row.storeId);
     }

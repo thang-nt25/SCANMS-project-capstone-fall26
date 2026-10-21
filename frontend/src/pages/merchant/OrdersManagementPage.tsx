@@ -22,7 +22,6 @@ import {
   Phone,
   Users,
   Printer,
-  Zap,
   ChevronDown,
   MoreHorizontal,
   Info,
@@ -61,7 +60,6 @@ import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
 import { StatCard } from '../../components/ui/StatCard';
 import ShopSampleManagementTab from './ShopSampleManagementTab';
-import './ShippingDispatchModal.css';
 
 export type OrderSearchField = "ALL" | "ORDER_SN" | "CUSTOMER_NAME" | "PHONE" | "TRACKING" | "PRODUCT";
 
@@ -356,6 +354,20 @@ export default function OrdersManagementPage({
       active = false;
     };
   }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (!document.hidden) setOrdersRefreshCount(count => count + 1);
+    };
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   // Deep-linking: Tự động mở chi tiết đơn hàng khi URL có ?orderId=... hoặc ?search=...
   useEffect(() => {
@@ -1599,9 +1611,9 @@ export default function OrdersManagementPage({
 
       {/* Modal Cập nhật Vận đơn Bưu cục (Shipping) */}
       {shippingModalOrder && (
-        <div className="shipping-dispatch-overlay">
+        <div className="shipping-dispatch-overlay fixed inset-0 z-[50] grid place-items-center p-[20px] bg-[rgb(35_29_21_/_36%)] backdrop-blur-[4px] [@media(max-width:540px)]:p-[10px]">
           <div
-            className="shipping-dispatch-modal"
+            className="shipping-dispatch-modal flex flex-col w-[min(100%,_660px)] max-h-[calc(100dvh_-_40px)] overflow-hidden border border-[#EAE4D7] rounded-[24px] bg-white text-[#1A1612] text-left shadow-[0_24px_80px_rgb(35_29_21_/_16%)] [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-50 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-[#B88E4F] [&_button:focus-visible]:outline-offset-[3px] [@media(max-width:540px)]:max-h-[calc(100dvh_-_20px)] [@media(max-width:540px)]:rounded-[18px]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="shipping-dispatch-title"
@@ -1612,17 +1624,17 @@ export default function OrdersManagementPage({
               }
             }}
           >
-            <div className="shipping-dispatch-header">
+            <div className="shipping-dispatch-header flex items-center justify-between shrink-0 gap-[16px] py-[24px] px-[28px] border-b border-b-[#EAE4D7] [@media(max-width:540px)]:p-[18px]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0">
                   <Truck className="w-5 h-5 text-[#B88E4F]" />
                 </div>
                 <div>
-                  <p className="shipping-dispatch-eyebrow">XỬ LÝ GIAO HÀNG</p>
-                  <h3 id="shipping-dispatch-title" className="shipping-dispatch-title">
+                  <p className="shipping-dispatch-eyebrow mt-0 mb-[4px] mx-0 text-[#7D715E] text-[10px] font-semibold tracking-[.12em]">XỬ LÝ GIAO HÀNG</p>
+                  <h3 id="shipping-dispatch-title" className="shipping-dispatch-title m-0 text-[21px] leading-[1.35] font-bold tracking-[-.025em] [@media(max-width:540px)]:text-[18px]">
                     Tạo & cập nhật vận đơn
                   </h3>
-                  <p className="shipping-dispatch-order">
+                  <p className="shipping-dispatch-order mt-[6px] mb-0 mx-0 text-[#7D715E] text-[12px] wrap-anywhere [&_span]:text-[#1A1612] [&_span]:font-medium">
                     Đơn <span>#{shippingModalOrder.externalOrderSn}</span>
                   </p>
                 </div>
@@ -1633,15 +1645,15 @@ export default function OrdersManagementPage({
                 aria-label="Đóng cửa sổ giao hàng"
                 disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                 onClick={() => setShippingModalOrder(null)}
-                className="shipping-dispatch-close"
+                className="shipping-dispatch-close grid place-items-center w-[36px] h-[36px] shrink-0 border border-[#EAE4D7] rounded-full bg-white text-[#7D715E] cursor-pointer hover:bg-[#FAF8F5]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="shipping-dispatch-body">
+            <div className="shipping-dispatch-body min-h-0 overflow-y-auto overscroll-contain py-[24px] px-[28px] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent] [@media(max-width:540px)]:py-[20px] [@media(max-width:540px)]:px-[18px]">
               {/* --- 1-Click GHN API Dispatch Card --- */}
-              <div className="shipping-dispatch-api">
+              <div className="shipping-dispatch-api p-0">
                 <div className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                     <Truck className="h-5 w-5" />
@@ -1652,24 +1664,24 @@ export default function OrdersManagementPage({
                     </div>
                   </div>
                 </div>
-                <div className="shipping-dispatch-choices" role="group" aria-label="Chọn cách tạo vận đơn GHN">
+                <div className="shipping-dispatch-choices grid grid-cols-[1fr_1fr] gap-[12px] mt-[18px] [@media(max-width:540px)]:grid-cols-[1fr] [@media(max-width:540px)]:gap-[10px]" role="group" aria-label="Chọn cách tạo vận đơn GHN">
                   <button
                     type="button"
                     disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                     onClick={() => handleCreateGhnShippingOrder("TEST")}
-                    className="shipping-dispatch-choice shipping-dispatch-choice-test"
+                    className="shipping-dispatch-choice flex items-center gap-[12px] min-h-[88px] p-[16px] border border-[#EAE4D7] rounded-[14px] bg-white text-[#1A1612] text-left cursor-pointer transition-[border-color,background] duration-[150ms] ease-[ease] [&>_svg]:shrink-0 [&>_svg]:w-[21px] [&>_svg]:h-[21px] [&>_svg]:text-[#B88E4F] hover:border-[#C59B58] hover:bg-[#FBF5EB] [@media(max-width:540px)]:min-h-[76px] [@media(max-width:540px)]:p-[14px] shipping-dispatch-choice-test"
                     title="Tạo vận đơn trên máy chủ thử nghiệm GHN, không điều phối giao hàng thật"
                   >
                     {creatingGhnEnvironment === "TEST" ? (
                       <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-[#B88E4F]" />
                     ) : (
-                      <Zap className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                      <Truck className="h-4 w-4 shrink-0 text-[#B88E4F]" />
                     )}
                     <span className="min-w-0">
-                      <span className="shipping-dispatch-choice-title">
+                      <span className="shipping-dispatch-choice-title block text-[13px] font-bold leading-[1.45]">
                         {creatingGhnEnvironment === "TEST" ? "Đang tạo vận đơn sandbox…" : "Tạo vận đơn GHN sandbox"}
                       </span>
-                      <span className="shipping-dispatch-choice-description">
+                      <span className="shipping-dispatch-choice-description block mt-[5px] text-[#7D715E] text-[11px] leading-[1.5]">
                         Môi trường test · Trạng thái lấy từ GHN
                       </span>
                     </span>
@@ -1678,7 +1690,7 @@ export default function OrdersManagementPage({
                     type="button"
                     disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                     onClick={() => handleCreateGhnShippingOrder("LIVE")}
-                    className="shipping-dispatch-choice shipping-dispatch-choice-live"
+                    className="shipping-dispatch-choice flex items-center gap-[12px] min-h-[88px] p-[16px] border border-[#EAE4D7] rounded-[14px] bg-white text-[#1A1612] text-left cursor-pointer transition-[border-color,background] duration-[150ms] ease-[ease] [&>_svg]:shrink-0 [&>_svg]:w-[21px] [&>_svg]:h-[21px] [&>_svg]:text-[#B88E4F] hover:border-[#C59B58] hover:bg-[#FBF5EB] [@media(max-width:540px)]:min-h-[76px] [@media(max-width:540px)]:p-[14px] shipping-dispatch-choice-live [&.shipping-dispatch-choice-live]:border-[#EEDFC6] [&.shipping-dispatch-choice-live]:bg-[#FBF5EB] [&.shipping-dispatch-choice-live:hover]:bg-[#F3EFE6] [&.shipping-dispatch-choice-live:hover]:border-[#C59B58]"
                     title="Tạo vận đơn thật trên GHN Production"
                   >
                     {creatingGhnEnvironment === "LIVE" ? (
@@ -1687,16 +1699,16 @@ export default function OrdersManagementPage({
                       <Truck className="h-4 w-4 shrink-0" />
                     )}
                     <span className="min-w-0">
-                      <span className="shipping-dispatch-choice-title">
+                      <span className="shipping-dispatch-choice-title block text-[13px] font-bold leading-[1.45]">
                         {creatingGhnEnvironment === "LIVE" ? "Đang tạo vận đơn…" : "Tạo vận đơn GHN thật"}
                       </span>
-                      <span className="shipping-dispatch-choice-description">
+                      <span className="shipping-dispatch-choice-description block mt-[5px] text-[#7D715E] text-[11px] leading-[1.5]">
                         Production · Giao hàng thực tế
                       </span>
                     </span>
                   </button>
                 </div>
-                <div className="shipping-dispatch-note">
+                <div className="shipping-dispatch-note flex items-start gap-[8px] mt-[12px] py-0 px-[2px] [&_p]:m-0">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                   <p className="m-0 text-[11px] leading-relaxed text-[#7D715E]">
                     Chọn đúng môi trường trước khi tạo. GHN thật sẽ nhận thông tin người nhận để xử lý giao hàng.
@@ -1718,11 +1730,10 @@ export default function OrdersManagementPage({
                 )}
               </div>
 
-              <div className="shipping-dispatch-divider"><span>Đã có mã GHN? Nhập thủ công</span></div>
-              <p className="mb-3 text-[11px] leading-relaxed text-[#7D715E]">Chỉ nhập bên dưới nếu bạn đã tạo vận đơn trên GHN và có mã sẵn. Hai nút phía trên tự tạo và lưu mã, không cần nhập lại.</p>
-              <div className="shipping-dispatch-fields">
+              <div className="shipping-dispatch-divider flex items-center gap-[14px] my-[22px] mx-0 text-[#7D715E] text-[11px] before:content-[''] before:h-[1px] before:bg-[#EAE4D7] before:flex-1 after:content-[''] after:h-[1px] after:bg-[#EAE4D7] after:flex-1"><span>Đã có mã GHN? Nhập thủ công</span></div>
+              <div className="shipping-dispatch-fields grid grid-cols-[1fr_1fr] gap-[20px_16px] [&>_div]:min-w-0 [@media(max-width:540px)]:grid-cols-[1fr] [@media(max-width:540px)]:gap-[16px]">
               <div>
-                <label htmlFor="dispatch-carrier" className="shipping-dispatch-label">
+                <label htmlFor="dispatch-carrier" className="shipping-dispatch-label flex items-center gap-[4px] mb-[8px] text-[12px] font-semibold text-[#1A1612]">
                   Đơn vị vận chuyển <span className="text-[#DC2626]">*</span>
                 </label>
                 <Select
@@ -1730,14 +1741,14 @@ export default function OrdersManagementPage({
                   value={shippingCarrier}
                   disabled={creatingGhnEnvironment !== null || updatingFulfillment}
                   onChange={(e) => setShippingCarrier(e.target.value)}
-                  className="shipping-dispatch-input"
+                  className="shipping-dispatch-input w-full min-h-[44px] py-[11px] px-[12px] border border-[#EAE4D7] rounded-[10px] [&.shipping-dispatch-input]:bg-white text-[#1A1612] [font-family:inherit] [&.shipping-dispatch-input]:text-[12px] leading-[1.5] outline-none transition-[border-color,box-shadow] duration-[150ms] ease-[ease] [&:is(textarea)]:block [&:is(textarea)]:min-h-[76px] [&:is(textarea)]:resize-y placeholder:text-[#7D715E] placeholder:opacity-100 focus:border-[#C59B58] focus:[box-shadow:0_0_0_3px_rgb(197_155_88_/_12%)] [&[aria-invalid='true']]:border-[#DC2626]"
                 >
                   <option value="GHN">Giao Hàng Nhanh (GHN)</option>
                 </Select>
               </div>
 
               <div>
-                <label htmlFor="dispatch-tracking" className="shipping-dispatch-label">
+                <label htmlFor="dispatch-tracking" className="shipping-dispatch-label flex items-center gap-[4px] mb-[8px] text-[12px] font-semibold text-[#1A1612]">
                   Mã vận đơn bưu cục <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
@@ -1752,7 +1763,7 @@ export default function OrdersManagementPage({
                     setShippingTrackingNumber(e.target.value);
                     if (shippingError) setShippingError(null);
                   }}
-                  className={`shipping-dispatch-input ${
+                  className={`shipping-dispatch-input w-full min-h-[44px] py-[11px] px-[12px] border border-[#EAE4D7] rounded-[10px] [&.shipping-dispatch-input]:bg-white text-[#1A1612] [font-family:inherit] [&.shipping-dispatch-input]:text-[12px] leading-[1.5] outline-none transition-[border-color,box-shadow] duration-[150ms] ease-[ease] [&:is(textarea)]:block [&:is(textarea)]:min-h-[76px] [&:is(textarea)]:resize-y placeholder:text-[#7D715E] placeholder:opacity-100 focus:border-[#C59B58] focus:[box-shadow:0_0_0_3px_rgb(197_155_88_/_12%)] [&[aria-invalid='true']]:border-[#DC2626] ${
                     shippingError
                       ? 'border-[#DC2626] bg-[#FEF2F2]/40 ring-2 ring-[#DC2626]/20'
                       : ''
@@ -1766,9 +1777,9 @@ export default function OrdersManagementPage({
                 )}
               </div>
 
-              <div className="shipping-dispatch-field-wide">
-                <label htmlFor="dispatch-note" className="shipping-dispatch-label">
-                  Ghi chú giao hàng <span className="shipping-dispatch-optional">Không bắt buộc</span>
+              <div className="shipping-dispatch-field-wide col-span-full">
+                <label htmlFor="dispatch-note" className="shipping-dispatch-label flex items-center gap-[4px] mb-[8px] text-[12px] font-semibold text-[#1A1612]">
+                  Ghi chú giao hàng <span className="shipping-dispatch-optional ml-auto text-[10px] font-normal text-[#7D715E]">Không bắt buộc</span>
                 </label>
                 <textarea
                   id="dispatch-note"
@@ -1777,13 +1788,13 @@ export default function OrdersManagementPage({
                   placeholder="Ví dụ: Gọi trước khi giao, lưu ý hàng dễ vỡ…"
                   value={shippingNote}
                   onChange={(e) => setShippingNote(e.target.value)}
-                  className="shipping-dispatch-input"
+                  className="shipping-dispatch-input w-full min-h-[44px] py-[11px] px-[12px] border border-[#EAE4D7] rounded-[10px] [&.shipping-dispatch-input]:bg-white text-[#1A1612] [font-family:inherit] [&.shipping-dispatch-input]:text-[12px] leading-[1.5] outline-none transition-[border-color,box-shadow] duration-[150ms] ease-[ease] [&:is(textarea)]:block [&:is(textarea)]:min-h-[76px] [&:is(textarea)]:resize-y placeholder:text-[#7D715E] placeholder:opacity-100 focus:border-[#C59B58] focus:[box-shadow:0_0_0_3px_rgb(197_155_88_/_12%)] [&[aria-invalid='true']]:border-[#DC2626]"
                 />
               </div>
               </div>
             </div>
 
-            <div className="shipping-dispatch-footer">
+            <div className="shipping-dispatch-footer flex items-center justify-between shrink-0 gap-[12px] py-[18px] px-[28px] border-t border-t-[#EAE4D7] bg-white [@media(max-width:540px)]:flex-wrap [@media(max-width:540px)]:py-[14px] [@media(max-width:540px)]:px-[18px] [@media(max-width:540px)]:gap-[10px] [@media(max-width:540px)]:[&>_div]:flex-1 [@media(max-width:540px)]:[&>_div]:justify-end">
               <button
                 type="button"
                 disabled={!shippingTrackingNumber.trim()}
@@ -1798,7 +1809,7 @@ export default function OrdersManagementPage({
                     );
                   }
                 }}
-                className="shipping-dispatch-print"
+                className="shipping-dispatch-print inline-flex items-center justify-center gap-[7px] min-h-[42px] py-[10px] px-[14px] border border-[#EAE4D7] rounded-[10px] bg-white text-[#7D715E] [font-family:inherit] text-[12px] font-semibold whitespace-nowrap cursor-pointer transition-[background,border-color] duration-[150ms] ease-[ease] hover:bg-[#FAF8F5]"
               >
                 <Printer className="w-3.5 h-3.5" />
                 In phiếu A6
@@ -1808,7 +1819,7 @@ export default function OrdersManagementPage({
                   type="button"
                   onClick={() => setShippingModalOrder(null)}
                   disabled={creatingGhnEnvironment !== null || updatingFulfillment}
-                  className="shipping-dispatch-cancel"
+                  className="shipping-dispatch-cancel inline-flex items-center justify-center gap-[7px] min-h-[42px] py-[10px] px-[14px] border border-[#EAE4D7] rounded-[10px] bg-white text-[#1A1612] [font-family:inherit] text-[12px] font-semibold whitespace-nowrap cursor-pointer transition-[background,border-color] duration-[150ms] ease-[ease] hover:bg-[#FAF8F5]"
                 >
                   Đóng
                 </button>
@@ -1816,7 +1827,7 @@ export default function OrdersManagementPage({
                   type="button"
                   disabled={updatingFulfillment || creatingGhnEnvironment !== null}
                   onClick={handleSubmitShipping}
-                  className="shipping-dispatch-submit"
+                  className="shipping-dispatch-submit inline-flex items-center justify-center gap-[7px] min-h-[42px] py-[10px] px-[14px] border rounded-[10px] bg-[#FBF5EB] text-[#1A1612] [font-family:inherit] text-[12px] font-semibold whitespace-nowrap cursor-pointer transition-[background,border-color] duration-[150ms] ease-[ease] border-[#EEDFC6] hover:border-[#C59B58] hover:bg-[#F3EFE6]"
                 >
                   {updatingFulfillment ? (
                     <>

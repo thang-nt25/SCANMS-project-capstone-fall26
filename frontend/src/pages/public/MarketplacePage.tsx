@@ -18,8 +18,7 @@ import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { LiveCommerceHubModal } from '../../components/marketplace/LiveCommerceHubModal';
-import { PublicHeader } from '../../components/layout/PublicHeader';
-import { MarketplaceShortcuts } from '../../components/marketplace/MarketplaceShortcuts';
+import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeader';
 import { OrderTrackingShortcut } from '../../components/marketplace/OrderTrackingShortcut';
 import { QuickCustomerAuth } from '../../components/marketplace/QuickCustomerAuth';
 import { MarketplaceProductCard } from '../../components/marketplace/MarketplaceProductCard';
@@ -73,6 +72,9 @@ export default function MarketplacePage() {
           price: rawPrice,
           image: img,
           stockQuantity: Number(dbP.stockQuantity || 0),
+          createdAt: dbP.createdAt,
+          soldCount: Number(dbP.soldCount ?? 0),
+          viewCount: Number(dbP.viewCount ?? 0),
           variants: Array.isArray(dbP.variants) ? dbP.variants : [],
           commissionRate: commRate,
           commissionAmount: commAmt,
@@ -97,7 +99,7 @@ export default function MarketplacePage() {
   const marketplaceStores = featuredStores;
 
   // Cart & Gateways
-  const { openCart, addItem, buyNow, cart, startCheckout } = useCart();
+  const { openCart, addItem, cart, startCheckout } = useCart();
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
@@ -203,6 +205,10 @@ export default function MarketplacePage() {
   }, [isGuideOpen]);
 
   const handlePurchase = (product: Product, intent: 'cart' | 'buy', variantId?: string) => {
+    if (intent === 'buy') {
+      navigate(`/products/${product.sku || product.id}`);
+      return;
+    }
     if (!product.storeId) {
       toast.error('Chưa xác định được gian hàng. Vui lòng mở chi tiết sản phẩm.');
       return;
@@ -215,8 +221,6 @@ export default function MarketplacePage() {
     if (!authService.getCurrentUser() || !localStorage.getItem('token')) {
       addItem(payload);
       setPendingPurchase({ productId: product.id, variantId, intent });
-    } else if (intent === 'buy') {
-      buyNow(payload);
     } else {
       addItem(payload);
       openCart();
@@ -236,8 +240,7 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
 
-      <PublicHeader onOpenTracking={() => trackingRef.current?.scrollIntoView({ behavior: 'smooth' })} />
-      <MarketplaceShortcuts onOpenLive={() => setIsLiveModalOpen(true)} />
+      <MarketplaceHeader onOpenTracking={() => trackingRef.current?.scrollIntoView({ behavior: 'smooth' })} onOpenLive={() => setIsLiveModalOpen(true)} />
 
       <MarketplaceHero stores={marketplaceStores} onOpenLive={() => setIsLiveModalOpen(true)} />
 

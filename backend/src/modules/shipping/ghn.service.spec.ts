@@ -485,6 +485,31 @@ describe('GHN customer order notifications', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('identifies a disabled sender ward without changing the order to shipping', async () => {
+    const order = {
+      id: 'order-limit', storeId: 'store-1', status: OrderStatus.PENDING,
+      externalOrderSn: 'DH-LIMIT-1', customerName: 'Khách', customerPhone: '0912345678',
+      shippingAddress: '12 Đường A, Phường B, Quận C, Thành phố D', customerId: null,
+      rawPayload: { paymentMethod: 'COD' }, subtotalAmount: 200000, finalAmount: 225000,
+      store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
+      orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
+    };
+    const prisma = {
+      order: { findUnique: jest.fn().mockResolvedValue(order) },
+      $transaction: jest.fn(),
+    };
+    const service = new GhnService(prisma as any, {} as ConfigService);
+    jest.spyOn(service as any, 'resolveGhnLocation').mockResolvedValue({ districtId: 1, wardCode: '001' });
+    jest.spyOn(service as any, 'ghnFetch').mockResolvedValue({
+      code: 400,
+      message: 'Không thể tạo đơn vì vượt quá số lượng cho phép',
+      code_message: 'SEND_WARD_IS_DISABLED',
+    });
+
+    await expect(service.createShippingOrder(order.id, { environment: GhnEnvironment.TEST })).rejects.toThrow('SEND_WARD_IS_DISABLED');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('allows replacing an existing internal test code with a real GHN waybill', async () => {
     const order = {
       id: 'order-1', storeId: 'store-1', status: OrderStatus.SHIPPING, externalOrderSn: 'DH-TEST-1',

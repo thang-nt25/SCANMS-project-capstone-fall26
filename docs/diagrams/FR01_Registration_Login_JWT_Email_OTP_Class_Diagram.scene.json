@@ -1,0 +1,1574 @@
+{
+  "width": 2800,
+  "height": 2240,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-01 Registration, Login JWT and Email OTP — Class Diagram",
+      "x": 50,
+      "y": 24,
+      "w": 2540,
+      "h": 48,
+      "size": 30,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 150,
+      "w": 830,
+      "h": 196
+    },
+    {
+      "type": "text",
+      "value": "AuthController",
+      "x": 858,
+      "y": 154,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          192
+        ],
+        [
+          1680,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          239
+        ],
+        [
+          1680,
+          239
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- authService: AuthService",
+      "x": 862,
+      "y": 202,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sendOtp(dto: SendOtpDto)",
+      "x": 862,
+      "y": 249,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ register(dto: RegisterDto)",
+      "x": 862,
+      "y": 278,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ login(dto: LoginDto, ip?, userAgent?)",
+      "x": 862,
+      "y": 307,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 700,
+      "w": 830,
+      "h": 393
+    },
+    {
+      "type": "text",
+      "value": "AuthService",
+      "x": 858,
+      "y": 704,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          742
+        ],
+        [
+          1680,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          870
+        ],
+        [
+          1680,
+          870
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 862,
+      "y": 752,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- jwtService: JwtService (@nestjs/jwt)",
+      "x": 862,
+      "y": 779,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- mailService?: MailService",
+      "x": 862,
+      "y": 806,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- otpCache: Map<string, StoredOtp>",
+      "x": 862,
+      "y": 833,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sendRegistrationOtp(dto: SendOtpDto)",
+      "x": 862,
+      "y": 880,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ register(dto: RegisterDto)",
+      "x": 862,
+      "y": 909,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ login(dto: LoginDto, meta?)",
+      "x": 862,
+      "y": 938,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ hashPassword(password): Promise<string>",
+      "x": 862,
+      "y": 967,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ verifyPassword(password, hash): Promise<boolean>",
+      "x": 862,
+      "y": 996,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- assertOtp(key, suppliedCode): void",
+      "x": 862,
+      "y": 1025,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- findLoginUser(identifier: LoginIdentifier)",
+      "x": 862,
+      "y": 1054,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 1280,
+      "w": 830,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaService",
+      "x": 858,
+      "y": 1284,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1322
+        ],
+        [
+          1680,
+          1322
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1396
+        ],
+        [
+          1680,
+          1396
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- pool: Pool",
+      "x": 862,
+      "y": 1332,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService?: ConfigService",
+      "x": 862,
+      "y": 1359,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleInit(): Promise<void>",
+      "x": 862,
+      "y": 1406,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleDestroy(): Promise<void>",
+      "x": 862,
+      "y": 1435,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 150,
+      "w": 560,
+      "h": 138
+    },
+    {
+      "type": "text",
+      "value": "JwtService (@nestjs/jwt)",
+      "x": 68,
+      "y": 154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          192
+        ],
+        [
+          620,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          239
+        ],
+        [
+          620,
+          239
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- options: JwtModuleOptions",
+      "x": 72,
+      "y": 202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sign(payload, options?): string",
+      "x": 72,
+      "y": 249,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 700,
+      "w": 560,
+      "h": 196
+    },
+    {
+      "type": "text",
+      "value": "MailService",
+      "x": 68,
+      "y": 704,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          742
+        ],
+        [
+          620,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          789
+        ],
+        [
+          620,
+          789
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- transporter: Transporter | null",
+      "x": 72,
+      "y": 752,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sendRegistrationOtp(email, otp)",
+      "x": 72,
+      "y": 799,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ sendLoginSecurityAlert(email, fullName, details)",
+      "x": 72,
+      "y": 828,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- sendMail(to, subject, html, text, requireDelivery?)",
+      "x": 72,
+      "y": 857,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1700,
+      "w": 650,
+      "h": 304
+    },
+    {
+      "type": "text",
+      "value": "PrismaClient",
+      "x": 68,
+      "y": 1704,
+      "w": 634,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1742
+        ],
+        [
+          710,
+          1742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1897
+        ],
+        [
+          710,
+          1897
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ user: Prisma.UserDelegate",
+      "x": 72,
+      "y": 1752,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ store: Prisma.StoreDelegate",
+      "x": 72,
+      "y": 1779,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorProfile: Prisma.CollaboratorProfileDelegate",
+      "x": 72,
+      "y": 1806,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorTier: Prisma.CollaboratorTierDelegate",
+      "x": 72,
+      "y": 1833,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ wallet: Prisma.WalletDelegate",
+      "x": 72,
+      "y": 1860,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $connect(): Promise<void>",
+      "x": 72,
+      "y": 1907,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $disconnect(): Promise<void>",
+      "x": 72,
+      "y": 1936,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $queryRaw(query): Promise<T>",
+      "x": 72,
+      "y": 1965,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 150,
+      "w": 620,
+      "h": 287
+    },
+    {
+      "type": "text",
+      "value": "User",
+      "x": 1938,
+      "y": 154,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          192
+        ],
+        [
+          2550,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          401
+        ],
+        [
+          2550,
+          401
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 202,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ email: string {unique}",
+      "x": 1942,
+      "y": 229,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ passwordHash: string",
+      "x": 1942,
+      "y": 256,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ fullName: string",
+      "x": 1942,
+      "y": 283,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ phoneNumber: string | null",
+      "x": 1942,
+      "y": 310,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ role: UserRole",
+      "x": 1942,
+      "y": 337,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive, isDeleted: boolean",
+      "x": 1942,
+      "y": 364,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 650,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "Store",
+      "x": 1938,
+      "y": 654,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          692
+        ],
+        [
+          2550,
+          692
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          847
+        ],
+        [
+          2550,
+          847
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id, ownerId: string",
+      "x": 1942,
+      "y": 702,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ name, slug: string",
+      "x": 1942,
+      "y": 729,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ logoUrl: string | null",
+      "x": 1942,
+      "y": 756,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isActive, isVerified: boolean",
+      "x": 1942,
+      "y": 783,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onboardingStatus: ShopOnboardingStatus",
+      "x": 1942,
+      "y": 810,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1090,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "CollaboratorProfile",
+      "x": 1938,
+      "y": 1094,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1132
+        ],
+        [
+          2550,
+          1132
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1287
+        ],
+        [
+          2550,
+          1287
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1142,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ userId: string {unique}",
+      "x": 1942,
+      "y": 1169,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ tierId: string | null",
+      "x": 1942,
+      "y": 1196,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ avatarUrl: string | null",
+      "x": 1942,
+      "y": 1223,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ kycStatus: KycStatus",
+      "x": 1942,
+      "y": 1250,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 1503,
+      "w": 620,
+      "h": 206
+    },
+    {
+      "type": "text",
+      "value": "Wallet",
+      "x": 1938,
+      "y": 1507,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1545
+        ],
+        [
+          2550,
+          1545
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          1673
+        ],
+        [
+          2550,
+          1673
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 1555,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ collaboratorId: string {unique}",
+      "x": 1942,
+      "y": 1582,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ availableBalance, pendingBalance: Decimal",
+      "x": 1942,
+      "y": 1609,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ version: number",
+      "x": 1942,
+      "y": 1636,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          346
+        ],
+        [
+          1265,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1093
+        ],
+        [
+          1265,
+          1280
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1474
+        ],
+        [
+          1265,
+          1620
+        ],
+        [
+          385,
+          1620
+        ],
+        [
+          385,
+          1700
+        ]
+      ],
+      "dash": false,
+      "arrow": "triangle"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          749.125
+        ],
+        [
+          660,
+          749.125
+        ],
+        [
+          660,
+          270.75
+        ],
+        [
+          620,
+          270.75
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          798.25
+        ],
+        [
+          660,
+          798.25
+        ],
+        [
+          660,
+          798
+        ],
+        [
+          620,
+          798
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1304.25
+        ],
+        [
+          1890,
+          1304.25
+        ],
+        [
+          1890,
+          401.125
+        ],
+        [
+          1930,
+          401.125
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1328.5
+        ],
+        [
+          1860,
+          1328.5
+        ],
+        [
+          1860,
+          853.875
+        ],
+        [
+          1930,
+          853.875
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1352.75
+        ],
+        [
+          1832,
+          1352.75
+        ],
+        [
+          1832,
+          1264.75
+        ],
+        [
+          1930,
+          1264.75
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1449.75
+        ],
+        [
+          1890,
+          1449.75
+        ],
+        [
+          1890,
+          1528.75
+        ],
+        [
+          1930,
+          1528.75
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2472.5,
+          437
+        ],
+        [
+          2472.5,
+          650
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          401.125
+        ],
+        [
+          2630,
+          401.125
+        ],
+        [
+          2630,
+          1119.125
+        ],
+        [
+          2550,
+          1119.125
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2550,
+          365.25
+        ],
+        [
+          2660,
+          365.25
+        ],
+        [
+          2660,
+          1528.75
+        ],
+        [
+          2550,
+          1528.75
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2484.5,
+      "y": 445,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2484.5,
+      "y": 616,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 409.125,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..1",
+      "x": 2560,
+      "y": 1127.125,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2560,
+      "y": 329.25,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..1",
+      "x": 2560,
+      "y": 1536.75,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "authService",
+      "x": 1275,
+      "y": 508,
+      "w": 134,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 1275,
+      "y": 1171.5,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "extends",
+      "x": 779,
+      "y": 1577,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "jwtService",
+      "x": 670,
+      "y": 494.9375,
+      "w": 123,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "mailService",
+      "x": 688,
+      "y": 755.25,
+      "w": 134,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1900,
+      "y": 928,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1779,
+      "y": 1076.1875,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1720.5,
+      "y": 1365.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1749.5,
+      "y": 1406.75,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "stores",
+      "x": 2482.5,
+      "y": 528.5,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "collaboratorProfile",
+      "x": 2402,
+      "y": 888.7249999999999,
+      "w": 218,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "wallet",
+      "x": 2670,
+      "y": 932,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ public member     - private member     Solid arrow: retained reference     Dashed arrow: dependency",
+      "x": 60,
+      "y": 2065,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Hollow triangle: actual inheritance (PrismaService extends PrismaClient)     Solid line with multiplicities: model association",
+      "x": 60,
+      "y": 2105,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Selected existing registration/login members. OTP is an in-process Map, not a database model. JwtService here is @nestjs/jwt. Login has no second-factor OTP challenge; Verify2FaDto is unused. Role-specific profile/Store/Wallet writes are separate.",
+      "x": 60,
+      "y": 2150,
+      "w": 2500,
+      "h": 60,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

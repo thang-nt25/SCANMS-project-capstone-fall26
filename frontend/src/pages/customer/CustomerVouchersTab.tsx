@@ -1,70 +1,21 @@
-import { useEffect, useState } from 'react';
-import { VoucherProducts } from '@/components/checkout/VoucherProducts';
-import { ArrowRight, Check, ChevronDown, Copy, Ticket, Store, Clock3 } from 'lucide-react';
-import api from '../../services/api';
+import { useState } from 'react';
+import { ChevronDown, History } from 'lucide-react';
+import { authService } from '../../services/auth.service';
+import { useCustomerVouchers, type CustomerVoucher } from '../../hooks/useCustomerVouchers';
 import { toast } from '../../utils/toast';
-import { formatMoney } from '../../utils/marketplace.utils';
-
-interface AvailableVoucher {
-  id: string;
-  code: string;
-  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
-  discountValue: number;
-  minimumOrderAmount: number;
-  maximumDiscountAmount: number | null;
-  remainingUses: number | null;
-  expiresAt: string | null;
-  scopeType: string;
-  fundingSource: string;
-  benefitType: 'GOODS' | 'SHIPPING';
-  store: { id: string; name: string; slug: string };
-}
+import { CustomerVoucherCard } from './CustomerVoucherCard';
+import { voucherExpiryState } from '../../utils/voucher-expiry.utils';
 
 export function CustomerVouchersTab() {
-  const [vouchers, setVouchers] = useState<AvailableVoucher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const user = authService.getCurrentUser();
+  const { vouchers, expiredVouchers, now, savedIds, loading, error, toggleSaved: toggleInventorySaved } = useCustomerVouchers(user?.role === 'CUSTOMER' ? user.id : undefined);
   const [copiedCode, setCopiedCode] = useState('');
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [showSaved, setShowSaved] = useState(false);
   const [savingId, setSavingId] = useState('');
-  const [expandedVoucher, setExpandedVoucher] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    Promise.allSettled([
-      api.get('/coupons/available', { headers: { 'x-skip-cache': 'true' } }),
-      api.get('/coupons/saved', { headers: { 'x-skip-cache': 'true' } }),
-      api.get('/coupons/saved/details', { headers: { 'x-skip-cache': 'true' } }),
-    ]).then(([availableResult, savedResult, detailsResult]) => {
-        if (availableResult.status === 'rejected') throw availableResult.reason;
-        const availableResponse: any = availableResult.value;
-        const savedResponse: any = savedResult.status === 'fulfilled' ? savedResult.value : [];
-        const savedDetailsResponse: any = detailsResult.status === 'fulfilled' ? detailsResult.value : [];
-        const data = availableResponse?.data?.data || availableResponse?.data || availableResponse;
-        const saved = savedResponse?.data?.data || savedResponse?.data || savedResponse;
-        const savedDetails = savedDetailsResponse?.data?.data || savedDetailsResponse?.data || savedDetailsResponse;
-        if (active) {
-          const merged = [...(Array.isArray(data) ? data : []), ...(Array.isArray(savedDetails) ? savedDetails : [])];
-          setVouchers([...new Map(merged.map((voucher: AvailableVoucher) => [voucher.id, voucher])).values()]);
-          setSavedIds(Array.isArray(saved) ? saved : []);
-        }
-      })
-      .catch(() => { if (active) setError('Chưa tải được voucher. Vui lòng thử lại sau.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
-
-  const toggleSaved = async (voucher: AvailableVoucher) => {
+  const toggleSaved = async (voucher: CustomerVoucher) => {
     setSavingId(voucher.id);
     try {
-      if (savedIds.includes(voucher.id)) {
-        await api.delete(`/coupons/saved/${voucher.id}`);
-        setSavedIds((ids) => ids.filter((id) => id !== voucher.id));
-      } else {
-        await api.post(`/coupons/saved/${voucher.id}`);
-        setSavedIds((ids) => [...ids, voucher.id]);
-      }
+      await toggleInventorySaved(voucher);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Chưa lưu được voucher. Vui lòng thử lại.');
     } finally {
@@ -72,139 +23,48 @@ export function CustomerVouchersTab() {
     }
   };
 
-  const visibleVouchers = showSaved ? vouchers.filter((voucher) => savedIds.includes(voucher.id)) : vouchers;
-
-  const copyCode = async (code: string) => {
+  const copyCode = async (voucher: CustomerVoucher) => {
+    if (voucherExpiryState(voucher.expiresAt) === 'expired') {
+      toast.error('Voucher đã hết hạn sử dụng.');
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(code);
-      setCopiedCode(code);
-      toast.success(`Đã sao chép mã ${code}`);
+      await navigator.clipboard.writeText(voucher.code);
+      setCopiedCode(voucher.code);
+      toast.success(`Đã sao chép mã ${voucher.code}`);
     } catch {
       toast.error('Chưa thể sao chép. Bạn có thể nhập mã khi thanh toán.');
     }
   };
 
   return (
-    <section className="@container/vouchers grid gap-[14px] w-full max-w-[1120px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-labelledby="customer-vouchers-title">
-      <header className="flex items-center gap-[11px] p-[4px_0_14px] border-b border-[#EAE4D7]">
-        <span className="grid place-items-center shrink-0 w-[40px] h-[42px] border border-[#EEDFC6] rounded-[11px] bg-white text-[#B88E4F]" aria-hidden="true">
-          <Ticket size={21} />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center flex-wrap gap-[9px]">
-            <h1 id="customer-vouchers-title" className="m-0 font-inherit text-[20px] @max-[499px]:text-[19px] font-[650] leading-[1.4] tracking-[-0.4px] text-[#1A1612]">Kho voucher</h1>
-            <span className="p-[3px_7px] rounded-[6px] bg-[#F3EFE6] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
-              {vouchers.length} ưu đãi
-            </span>
-          </div>
-          <p className="m-0 mt-[3px] text-[#7D715E] text-[12px] leading-[1.5]">Ưu đãi từ SCANMS và các gian hàng đối tác. Chọn Dùng ngay để xem sản phẩm áp dụng; lưu mã là tùy chọn.</p>
+    <section className="customer-vouchers [container:customer-vouchers_/_inline-size]! w-full! max-w-[1120px]! min-w-0! text-[#1A1612]! text-left! [&_.customer-voucher-state]:inline-flex! [&_.customer-voucher-state]:p-[3px_7px]! [&_.customer-voucher-state]:[border:1px_solid_#EEDFC6]! [&_.customer-voucher-state]:rounded-[6px]! [&_.customer-voucher-state]:bg-[#FBF5EB]! [&_.customer-voucher-state]:text-[#8A642C]! [&_.customer-voucher-state]:text-[10px]! [&_.customer-voucher-state]:font-[600]! [&_.customer-voucher-state]:leading-[1.4]! [&_.customer-voucher-state--expired]:border-[#EAE4D7]! [&_.customer-voucher-state--expired]:bg-[#F4F3F1]! [&_.customer-voucher-state--expired]:text-[#706B64]! [&_.customer-voucher-status]:flex! [&_.customer-voucher-status]:items-center! [&_.customer-voucher-status]:flex-wrap! [&_.customer-voucher-status]:gap-[5px_8px]! [&_.customer-voucher-countdown]:text-[#8A642C]! [&_.customer-voucher-countdown]:text-[11px]! [&_.customer-voucher-countdown]:font-[600]! [&_.customer-voucher-countdown]:leading-[1.5]! [&_.customer-voucher-card[data-voucher-state='expired']]:border-[#E5E3DF]! [&_.customer-voucher-card[data-voucher-state='expired']]:shadow-[none]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-value]:bg-[#F4F3F1]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-value]:border-[#E5E3DF]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-amount]:text-[#706B64]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-info_h2]:text-[#706B64]! [&_.customer-voucher-card[data-voucher-state='expired']_svg]:text-[#706B64]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-actions_button:disabled]:border-[#E5E3DF]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-actions_button:disabled]:bg-[#F4F3F1]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-actions_button:disabled]:text-[#706B64]! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-actions_button:disabled]:cursor-not-allowed! [&_.customer-voucher-card[data-voucher-state='expired']_.customer-voucher-actions_button:disabled]:opacity-[1]! [&_.customer-voucher-card]:[container:voucher-card_/_inline-size]! [&_.customer-voucher-card]:min-w-0! [&_.customer-voucher-card]:overflow-hidden! [&_.customer-voucher-card]:[border:1px_solid_#EAE4D7]! [&_.customer-voucher-card]:rounded-[16px]! [&_.customer-voucher-card]:bg-[#FFFFFF]! [&_.customer-voucher-card]:shadow-[0_2px_6px_rgb(35_29_21_/_2%)]! [&_.customer-voucher-card]:[transition:border-color_150ms,box-shadow_150ms]! [&_.customer-voucher-card:hover]:border-[#EEDFC6]! [&_.customer-voucher-card:hover]:shadow-[0_4px_14px_rgb(35_29_21_/_4%)]! [&_.customer-voucher-card[data-voucher-state='expired']:hover]:border-[#E5E3DF]! [&_.customer-voucher-card[data-voucher-state='expired']:hover]:shadow-[none]! [&_.customer-voucher-main]:grid! [&_.customer-voucher-main]:grid-cols-[136px_minmax(0,1fr)]! [&_.customer-voucher-main]:min-h-[136px]! [&_.customer-voucher-value]:flex! [&_.customer-voucher-value]:flex-col! [&_.customer-voucher-value]:items-center! [&_.customer-voucher-value]:justify-center! [&_.customer-voucher-value]:min-w-0! [&_.customer-voucher-value]:gap-[7px]! [&_.customer-voucher-value]:p-[16px_10px]! [&_.customer-voucher-value]:[border-right:1px_dashed_#EEDFC6]! [&_.customer-voucher-value]:bg-[#FBF5EB]! [&_.customer-voucher-value]:text-center! [&_.customer-voucher-value-label]:text-[#7D715E]! [&_.customer-voucher-value-label]:text-[11px]! [&_.customer-voucher-value-label]:leading-[1.4]! [&_.customer-voucher-amount]:flex! [&_.customer-voucher-amount]:items-baseline! [&_.customer-voucher-amount]:justify-center! [&_.customer-voucher-amount]:gap-[3px]! [&_.customer-voucher-amount]:max-w-full! [&_.customer-voucher-amount]:text-[26px]! [&_.customer-voucher-amount]:font-[750]! [&_.customer-voucher-amount]:leading-[1.2]! [&_.customer-voucher-amount]:tracking-[-.8px]! [&_.customer-voucher-amount]:text-[#8A642C]! [&_.customer-voucher-amount]:tabular-nums! [&_.customer-voucher-amount]:whitespace-nowrap! [&_.customer-voucher-amount.customer-voucher-amount--long]:text-[21px]! [&_.customer-voucher-amount.customer-voucher-amount--long]:tracking-[-.5px]! [&_.customer-voucher-amount.customer-voucher-amount--wide]:text-[17px]! [&_.customer-voucher-amount.customer-voucher-amount--wide]:tracking-[-.4px]! [&_.customer-voucher-currency]:text-[13px]! [&_.customer-voucher-currency]:font-[600]! [&_.customer-voucher-currency]:tracking-[0]! [&_.customer-voucher-benefit]:max-w-full! [&_.customer-voucher-benefit]:text-[#7D715E]! [&_.customer-voucher-benefit]:text-[11px]! [&_.customer-voucher-benefit]:leading-[1.5]! [&_.customer-voucher-info]:flex! [&_.customer-voucher-info]:flex-col! [&_.customer-voucher-info]:justify-center! [&_.customer-voucher-info]:items-start! [&_.customer-voucher-info]:min-w-0! [&_.customer-voucher-info]:gap-[6px]! [&_.customer-voucher-info]:p-[16px_18px]! [&_.customer-voucher-store]:flex! [&_.customer-voucher-store]:items-start! [&_.customer-voucher-store]:gap-[6px]! [&_.customer-voucher-store]:max-w-full! [&_.customer-voucher-store]:text-[#7D715E]! [&_.customer-voucher-store]:text-[12px]! [&_.customer-voucher-store]:leading-[1.5]! [&_.customer-voucher-store_svg]:shrink-0! [&_.customer-voucher-store_svg]:mt-[2px]! [&_.customer-voucher-store_svg]:text-[#B88E4F]! [&_.customer-voucher-store_>_span]:[display:-webkit-box]! [&_.customer-voucher-store_>_span]:[-webkit-box-orient:vertical]! [&_.customer-voucher-store_>_span]:[-webkit-line-clamp:2]! [&_.customer-voucher-store_>_span]:overflow-hidden! [&_.customer-voucher-store_>_span]:[overflow-wrap:anywhere]! [&_.customer-voucher-info_h2]:m-0! [&_.customer-voucher-info_h2]:[font-family:inherit]! [&_.customer-voucher-info_h2]:text-[#1A1612]! [&_.customer-voucher-info_h2]:text-[15px]! [&_.customer-voucher-info_h2]:font-[650]! [&_.customer-voucher-info_h2]:leading-[1.45]! [&_.customer-voucher-info_p]:m-0! [&_.customer-voucher-info_p]:text-[#7D715E]! [&_.customer-voucher-info_p]:text-[12px]! [&_.customer-voucher-info_p]:leading-[1.5]! [&_.customer-voucher-info_p]:[overflow-wrap:anywhere]! [&_.customer-voucher-actions]:grid! [&_.customer-voucher-actions]:grid-cols-[minmax(0,1fr)_94px_106px]! [&_.customer-voucher-actions]:items-stretch! [&_.customer-voucher-actions]:gap-[8px]! [&_.customer-voucher-actions]:p-[12px_16px]! [&_.customer-voucher-actions]:[border-top:1px_solid_#EAE4D7]! [&_.customer-voucher-actions_button]:inline-flex! [&_.customer-voucher-actions_button]:items-center! [&_.customer-voucher-actions_button]:justify-center! [&_.customer-voucher-actions_button]:gap-[6px]! [&_.customer-voucher-actions_button]:min-w-0! [&_.customer-voucher-actions_button]:min-h-[40px]! [&_.customer-voucher-actions_button]:p-[9px_10px]! [&_.customer-voucher-actions_button]:[border:1px_solid_#EAE4D7]! [&_.customer-voucher-actions_button]:rounded-[9px]! [&_.customer-voucher-actions_button]:[font-family:inherit]! [&_.customer-voucher-actions_button]:text-[#1A1612]! [&_.customer-voucher-actions_button]:text-[12px]! [&_.customer-voucher-actions_button]:font-[600]! [&_.customer-voucher-actions_button]:leading-[1.5]! [&_.customer-voucher-actions_button]:cursor-pointer! [&_.customer-voucher-actions_button]:no-underline! [&_.customer-voucher-actions_button]:[transition:background_150ms,border-color_150ms]! [&_.customer-voucher-actions_a]:inline-flex! [&_.customer-voucher-actions_a]:items-center! [&_.customer-voucher-actions_a]:justify-center! [&_.customer-voucher-actions_a]:gap-[6px]! [&_.customer-voucher-actions_a]:min-w-0! [&_.customer-voucher-actions_a]:min-h-[40px]! [&_.customer-voucher-actions_a]:p-[9px_10px]! [&_.customer-voucher-actions_a]:[border:1px_solid_#EAE4D7]! [&_.customer-voucher-actions_a]:rounded-[9px]! [&_.customer-voucher-actions_a]:[font-family:inherit]! [&_.customer-voucher-actions_a]:text-[#1A1612]! [&_.customer-voucher-actions_a]:text-[12px]! [&_.customer-voucher-actions_a]:font-[600]! [&_.customer-voucher-actions_a]:leading-[1.5]! [&_.customer-voucher-actions_a]:cursor-pointer! [&_.customer-voucher-actions_a]:no-underline! [&_.customer-voucher-actions_a]:[transition:background_150ms,border-color_150ms]! [&_.customer-voucher-actions_svg]:shrink-0! [&_.customer-voucher-actions_svg]:text-[#B88E4F]! [&_.customer-voucher-actions_.customer-voucher-code]:justify-start! [&_.customer-voucher-actions_.customer-voucher-code]:bg-[#FAF8F5]! [&_.customer-voucher-code_>_span:not(.sr-only)]:min-w-0! [&_.customer-voucher-code_>_span:not(.sr-only)]:[overflow-wrap:anywhere]! [&_.customer-voucher-code_>_span:not(.sr-only)]:tracking-[.2px]! [&_.customer-voucher-actions_.customer-voucher-save]:bg-[#FFFFFF]! [&_.customer-voucher-actions_.customer-voucher-save]:whitespace-nowrap! [&_.customer-voucher-actions_.customer-voucher-use]:border-[#EEDFC6]! [&_.customer-voucher-actions_.customer-voucher-use]:bg-[#FBF5EB]! [&_.customer-voucher-actions_.customer-voucher-use]:whitespace-nowrap! [&_.customer-voucher-actions_button:hover]:border-[#C59B58]! [&_.customer-voucher-actions_button:hover]:bg-[#FBF5EB]! [&_.customer-voucher-actions_a:hover]:border-[#C59B58]! [&_.customer-voucher-actions_a:hover]:bg-[#FBF5EB]! [&_.customer-voucher-actions_.customer-voucher-use:hover]:bg-[#F3EFE6]! [&_.customer-voucher-actions_button[data-copied='true']]:border-[#EEDFC6]! [&_.customer-voucher-actions_button[data-copied='true']]:bg-[#FBF5EB]! [&_.customer-voucher-actions_button[aria-pressed='true']]:border-[#EEDFC6]! [&_.customer-voucher-actions_button[aria-pressed='true']]:bg-[#FBF5EB]! [&_.customer-voucher-actions_button:disabled]:opacity-[.6]! [&_.customer-voucher-actions_button:disabled]:cursor-wait! [&_.customer-voucher-actions_:focus-visible]:[outline:2px_solid_#C59B58]! [&_.customer-voucher-actions_:focus-visible]:outline-offset-[2px]! [&_.customer-voucher-terms_summary:focus-visible]:[outline:2px_solid_#C59B58]! [&_.customer-voucher-terms_summary:focus-visible]:outline-offset-[2px]! [&_.customer-voucher-terms]:m-[0_16px]! [&_.customer-voucher-terms]:min-w-0! [&_.customer-voucher-terms]:[border-top:1px_solid_#EAE4D7]! [&_.customer-voucher-terms_summary]:flex! [&_.customer-voucher-terms_summary]:items-center! [&_.customer-voucher-terms_summary]:justify-between! [&_.customer-voucher-terms_summary]:flex-wrap! [&_.customer-voucher-terms_summary]:gap-[6px_12px]! [&_.customer-voucher-terms_summary]:min-h-[42px]! [&_.customer-voucher-terms_summary]:p-[10px_0]! [&_.customer-voucher-terms_summary]:list-none! [&_.customer-voucher-terms_summary]:text-[#7D715E]! [&_.customer-voucher-terms_summary]:text-[11px]! [&_.customer-voucher-terms_summary]:leading-[1.5]! [&_.customer-voucher-terms_summary]:cursor-pointer! [&_.customer-voucher-terms_summary::-webkit-details-marker]:hidden! [&_.customer-voucher-terms-label]:inline-flex! [&_.customer-voucher-terms-label]:items-center! [&_.customer-voucher-terms-label]:gap-[5px]! [&_.customer-voucher-expiry]:inline-flex! [&_.customer-voucher-expiry]:items-center! [&_.customer-voucher-expiry]:gap-[5px]! [&_.customer-voucher-terms-label]:text-[#7D715E]! [&_.customer-voucher-terms-label]:font-[500]! [&_.customer-voucher-terms_summary:hover_.customer-voucher-terms-label]:text-[#1A1612]! [&_.customer-voucher-terms-label_svg]:[transition:transform_150ms]! [&_.customer-voucher-terms[open]_.customer-voucher-terms-label_svg]:[transform:rotate(180deg)]! [&_.customer-voucher-expiry]:ml-auto! [&_.customer-voucher-expiry]:flex-wrap! [&_.customer-voucher-expiry]:justify-end! [&_.customer-voucher-expiry_>_span]:min-w-0! [&_.customer-voucher-expiry_>_span]:[overflow-wrap:anywhere]! [&_.customer-voucher-expiry_>_span]:text-right! [&_.customer-voucher-expiry_time]:tabular-nums! [&_.customer-voucher-expiry_svg]:text-[#B88E4F]! [&_.customer-voucher-terms_dl]:grid! [&_.customer-voucher-terms_dl]:gap-[10px]! [&_.customer-voucher-terms_dl]:m-[0_0_14px]! [&_.customer-voucher-terms_dl]:p-[14px]! [&_.customer-voucher-terms_dl]:rounded-[10px]! [&_.customer-voucher-terms_dl]:bg-[#FAF8F5]! [&_.customer-voucher-terms_dl]:text-[12px]! [&_.customer-voucher-terms_dl]:leading-[1.6]! [&_.customer-voucher-terms_dl_>_div]:grid! [&_.customer-voucher-terms_dl_>_div]:grid-cols-[84px_minmax(0,1fr)]! [&_.customer-voucher-terms_dl_>_div]:gap-[12px]! [&_.customer-voucher-terms_dt]:text-[#7D715E]! [&_.customer-voucher-terms_dd]:m-0! [&_.customer-voucher-terms_dd]:text-[#1A1612]! [&_.customer-voucher-terms_dd]:[overflow-wrap:anywhere]! [&_.customer-voucher-spinner]:animate-[customer-voucher-spin_.8s_linear_infinite]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-main]:grid-cols-[116px_minmax(0,1fr)]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-value]:p-[14px_8px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-amount]:text-[24px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-amount.customer-voucher-amount--long]:text-[19px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-amount.customer-voucher-amount--wide]:text-[15px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-currency]:text-[11px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-info]:p-[14px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-info_h2]:text-[14px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions]:grid-cols-[repeat(2,minmax(0,1fr))]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions]:gap-[8px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions]:p-[12px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions_.customer-voucher-code]:col-[1_/_-1]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions_.customer-voucher-code]:justify-center! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions_button]:min-h-[44px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-actions_a]:min-h-[44px]! [@container_voucher-card_(max-width:430px)]:[&_.customer-voucher-terms]:m-[0_12px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-main]:grid-cols-[104px_minmax(0,1fr)]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-amount]:text-[22px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-amount.customer-voucher-amount--long]:text-[17px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-amount.customer-voucher-amount--wide]:text-[14px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-info]:p-[12px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-store]:text-[11px]! [@container_voucher-card_(max-width:320px)]:[&&]:[&_.customer-voucher-info_p]:text-[11px]! [@media_(max-width:767px)]:pb-[64px]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-voucher-card]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-voucher-actions_button]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-voucher-actions_a]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-voucher-terms-label_svg]:[transition:none]! [@media_(prefers-reduced-motion:reduce)]:[&_.customer-voucher-spinner]:animate-none!" aria-label="Kho voucher">
+      {loading && <p className="customer-vouchers-message m-0! p-[16px_0]! text-[#7D715E]! text-[13px]!" role="status">Đang tải voucher...</p>}
+      {error && <p role="alert" className="customer-vouchers-message customer-vouchers-message--error m-0! p-[16px_0]! text-[#7D715E]! text-[13px]! [&.customer-vouchers-message--error]:text-[#DC2626]!">Chưa tải được voucher. Vui lòng thử lại sau.</p>}
+      {!loading && !error && vouchers.length === 0 && <p className="customer-vouchers-message m-0! p-[16px_0]! text-[#7D715E]! text-[13px]!">Hiện chưa có voucher khả dụng.</p>}
+      <div className="customer-vouchers-grid grid! grid-cols-[repeat(2,minmax(0,1fr))]! [align-items:start]! gap-[16px]! [@container_customer-vouchers_(max-width:880px)]:grid-cols-[minmax(0,1fr)]!">
+        {vouchers.map((voucher) => (
+          <CustomerVoucherCard key={voucher.id} voucher={voucher}
+            now={now}
+            saved={savedIds.includes(voucher.id)} saving={savingId === voucher.id}
+            copied={copiedCode === voucher.code}
+            onToggleSaved={() => void toggleSaved(voucher)}
+            onCopy={() => void copyCode(voucher)} />
+        ))}
+      </div>
+      {expiredVouchers.length > 0 && <details className="customer-vouchers-history mt-[20px]! p-[0_16px_16px]! [border:1px_solid_#EAE4D7]! rounded-[14px]! bg-[white]! [&_>_summary]:flex! [&_>_summary]:items-center! [&_>_summary]:gap-[8px]! [&_>_summary]:min-h-[54px]! [&_>_summary]:p-[14px_0]! [&_>_summary]:list-none! [&_>_summary]:text-[#7D715E]! [&_>_summary]:text-[13px]! [&_>_summary]:font-[600]! [&_>_summary]:cursor-pointer! [&_>_summary::-webkit-details-marker]:hidden! [&:not([open])]:pb-[0]! [&[open]_.customer-vouchers-history-chevron]:[transform:rotate(180deg)]! [&_>_summary:focus-visible]:[outline:2px_solid_#C59B58]! [&_>_summary:focus-visible]:outline-offset-[2px]!">
+        <summary>
+          <History size={17} aria-hidden="true" />
+          <span>Voucher hết hạn</span>
+          <span className="customer-vouchers-history-count p-[2px_6px]! rounded-[5px]! bg-[#F3EFE6]! text-[11px]!">{expiredVouchers.length}</span>
+          <ChevronDown size={16} className="customer-vouchers-history-chevron ml-auto! [transition:transform_150ms]!" aria-hidden="true" />
+        </summary>
+        <p className="customer-vouchers-history-note m-[0_0_14px]! text-[12px]! leading-[1.6]! text-[#7D715E]!">Các mã bạn đã lưu nhưng đã hết thời hạn sử dụng.</p>
+        <div className="customer-vouchers-grid grid! grid-cols-[repeat(2,minmax(0,1fr))]! [align-items:start]! gap-[16px]! [@container_customer-vouchers_(max-width:880px)]:grid-cols-[minmax(0,1fr)]!">
+          {expiredVouchers.map(voucher => <CustomerVoucherCard key={voucher.id} voucher={voucher} now={now}
+            saved saving={false} copied={false} onToggleSaved={() => {}} onCopy={() => {}} />)}
         </div>
-      </header>
-      <div className="flex gap-2 pb-4">
-        <button type="button" aria-pressed={!showSaved} onClick={() => setShowSaved(false)} className={`rounded-full px-4 py-1.5 text-xs font-semibold cursor-pointer transition ${!showSaved ? 'bg-[#C59B58] text-white' : 'bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7]'}`}>Tất cả ({vouchers.length})</button>
-        <button type="button" aria-pressed={showSaved} onClick={() => setShowSaved(true)} className={`rounded-full px-4 py-1.5 text-xs font-semibold cursor-pointer transition ${showSaved ? 'bg-[#C59B58] text-white' : 'bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7]'}`}>Đã lưu ({savedIds.filter((id) => vouchers.some((voucher) => voucher.id === id)).length})</button>
-      </div>
-      {loading && <p className="text-xs text-[#7D715E] py-4">Đang tải voucher...</p>}
-      {error && <p role="alert" className="text-xs text-[#DC2626] py-2">{error}</p>}
-      {!loading && !error && visibleVouchers.length === 0 && <p className="text-xs text-[#7D715E] py-4">{showSaved ? 'Bạn chưa lưu voucher khả dụng nào.' : 'Hiện chưa có voucher khả dụng.'}</p>}
-      <div className="grid grid-cols-2 @max-[899px]:grid-cols-1 items-start gap-[14px] min-w-0">
-        {visibleVouchers.map((voucher) => {
-          const copied = copiedCode === voucher.code;
-          const value = voucher.discountType === 'PERCENTAGE'
-            ? `${voucher.discountValue}%` : formatMoney(voucher.discountValue);
-          const minimum = voucher.minimumOrderAmount > 0
-            ? `Đơn từ ${formatMoney(voucher.minimumOrderAmount)}` : 'Không yêu cầu đơn tối thiểu';
-          const expiry = voucher.expiresAt
-            ? new Date(voucher.expiresAt).toLocaleDateString('vi-VN') : 'Không giới hạn';
-          return (
-            <article className="grid grid-cols-[68px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[66px_minmax(0,1fr)] items-center gap-[10px_14px] @max-[499px]:gap-[10px_12px] min-w-0 p-[14px_16px_0] @max-[499px]:p-[14px_14px_0] border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] transition-colors" key={voucher.id}>
-              <div className="flex flex-col items-center justify-center gap-[4px] min-h-[68px] p-[8px_4px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
-                <strong className="text-[20px] @max-[499px]:text-[18px] leading-[1.15] tracking-[-0.8px] font-[650]">{value}</strong>
-                <span className="text-[10px] leading-[1.5] text-[#7D715E]">{voucher.benefitType === 'SHIPPING' ? 'Cước GHN' : 'Tiền hàng'}</span>
-              </div>
-              <div className="grid gap-[3px] min-w-0">
-                <span className="inline-flex items-center gap-[5px] text-[11px] leading-[1.5] text-[#B88E4F]">
-                  <Store size={13} className="shrink-0" aria-hidden="true" />
-                  {voucher.store.name}
-                </span>
-                <h2 className="m-0 font-inherit text-[14px] font-[600] leading-[1.45] break-words text-[#1A1612]">
-                  {voucher.fundingSource === 'PLATFORM_FUNDED' ? 'Voucher sàn SCANMS' : 'Ưu đãi tại ' + voucher.store.name}
-                </h2>
-                <p className="m-0 text-[#7D715E] text-[11px] leading-[1.5]">{minimum}</p>
-              </div>
-              <div className="flex flex-col @max-[499px]:col-span-full @max-[499px]:flex-row @max-[499px]:items-center @max-[499px]:justify-between @max-[499px]:flex-wrap items-stretch gap-[5px] @max-[499px]:gap-[8px] min-w-0">
-                <button
-                  type="button"
-                  disabled={savingId === voucher.id}
-                  onClick={() => void toggleSaved(voucher)}
-                  className="inline-flex items-center justify-center gap-[6px] min-h-[28px] px-2.5 py-1 border border-[#EEDFC6] rounded-[8px] text-[11px] font-semibold bg-[#FBF5EB] text-[#1A1612] hover:bg-[#F3EFE6] transition cursor-pointer disabled:opacity-50"
-                >
-                  {savedIds.includes(voucher.id) ? 'Bỏ lưu' : 'Lưu mã'}
-                </button>
-                <button
-                  type="button"
-                  className={`inline-flex items-center justify-center gap-[6px] min-h-[28px] px-2.5 py-1 border rounded-[8px] text-[11px] font-[550] whitespace-nowrap cursor-pointer transition-colors ${
-                    copied
-                      ? 'border-[#C59B58] bg-[#FBF5EB] text-[#B88E4F]'
-                      : 'border-transparent bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58]'
-                  }`}
-                  onClick={() => void copyCode(voucher.code)}
-                  aria-label={`Sao chép mã ${voucher.code}`}
-                  title={copied ? 'Đã sao chép' : 'Sao chép mã'}
-                >
-                  {copied ? <Check size={14} className="shrink-0 text-[#059669]" /> : <Copy size={14} className="shrink-0 text-[#B88E4F]" />}
-                  <span className="tracking-[0.3px]">{voucher.code}</span>
-                </button>
-                <button type="button" aria-expanded={expandedVoucher === voucher.id}
-                  className="inline-flex items-center justify-center gap-[6px] min-h-[28px] px-2.5 py-1 border border-[#EEDFC6] rounded-[8px] text-[11px] font-semibold bg-[#FBF5EB] text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6] transition whitespace-nowrap no-underline"
-                  onClick={() => setExpandedVoucher((id) => id === voucher.id ? null : voucher.id)}
-                >
-                  <span>Dùng ngay</span>
-                  <ArrowRight size={13} className="shrink-0 text-[#B88E4F]" />
-                </button>
-              </div>
-              {expandedVoucher === voucher.id && <VoucherProducts key={voucher.id} couponId={voucher.id} />}
-              <details className="col-span-full min-w-0 border-t border-[#EAE4D7] mt-0 group">
-                <summary
-                  className="flex items-center justify-between flex-wrap gap-[5px_10px] min-h-[34px] p-[8px_0] list-none text-[10px] leading-[1.5] text-[#7D715E] hover:text-[#B88E4F] cursor-pointer select-none [&::-webkit-details-marker]:hidden"
-                  aria-label={`Điều kiện mã ${voucher.code}, hạn dùng ${expiry}`}
-                >
-                  <span className="inline-flex items-center gap-[5px]">
-                    Điều kiện
-                    <ChevronDown size={13} className="group-open:rotate-180 transition-transform duration-200" aria-hidden="true" />
-                  </span>
-                  <span className="inline-flex items-center gap-[5px] whitespace-nowrap">
-                    <Clock3 size={12} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                    HSD: {expiry}
-                  </span>
-                </summary>
-                <dl className="grid gap-[7px] m-[0_0_12px] p-[10px_12px] rounded-[8px] bg-[#FAF8F5] text-[11px] leading-[1.6]">
-                  <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
-                    <dt className="text-[#7D715E]">Áp dụng</dt>
-                    <dd className="m-0 text-[#1A1612] break-words">{voucher.store.name}</dd>
-                  </div>
-                  <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
-                    <dt className="text-[#7D715E]">Giá trị đơn</dt>
-                    <dd className="m-0 text-[#1A1612] break-words">{minimum}</dd>
-                  </div>
-                  {voucher.maximumDiscountAmount !== null && (
-                    <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
-                      <dt className="text-[#7D715E]">Giảm tối đa</dt>
-                      <dd className="m-0 text-[#1A1612] break-words">{formatMoney(voucher.maximumDiscountAmount)}</dd>
-                    </div>
-                  )}
-                  {voucher.remainingUses !== null && (
-                    <div className="grid grid-cols-[68px_minmax(0,1fr)] gap-[8px]">
-                      <dt className="text-[#7D715E]">Lượt còn</dt>
-                      <dd className="m-0 text-[#1A1612] break-words">{voucher.remainingUses}</dd>
-                    </div>
-                  )}
-                </dl>
-              </details>
-            </article>
-          );
-        })}
-      </div>
+      </details>}
     </section>
   );
 }

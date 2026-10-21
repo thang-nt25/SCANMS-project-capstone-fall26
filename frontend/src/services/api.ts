@@ -13,7 +13,8 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     const token = localStorage.getItem('token');
-    if (token && config.headers) {
+    (config as any).__sessionToken = token;
+    if (token && config.headers && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -47,6 +48,9 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
+    if ((response.config as any).__sessionToken !== localStorage.getItem('token')) {
+      return Promise.reject(new axios.CanceledError('Phiên đăng nhập đã thay đổi.', response.config));
+    }
     const method = (response.config.method || 'get').toLowerCase();
     const url = response.config.url;
 
@@ -63,9 +67,11 @@ api.interceptors.response.use(
   },
   async (error) => {
     const status = error.response?.status;
-    if (status === 401 && !error.config?.url?.includes('/auth/login')) {
+    if (status === 401 && !error.config?.url?.includes('/auth/login') &&
+        error.config?.headers?.Authorization === `Bearer ${localStorage.getItem('token')}`) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth-user-updated'));
     }
     const message =
       error.response?.data?.message ||

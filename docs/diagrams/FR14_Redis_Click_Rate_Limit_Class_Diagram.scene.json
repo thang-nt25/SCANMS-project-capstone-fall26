@@ -1,0 +1,1297 @@
+{
+  "width": 2800,
+  "height": 2240,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-14 Redis Click Spam Protection — Class Diagram",
+      "x": 50,
+      "y": 24,
+      "w": 2540,
+      "h": 48,
+      "size": 30,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 150,
+      "w": 830,
+      "h": 165
+    },
+    {
+      "type": "text",
+      "value": "RedirectController",
+      "x": 858,
+      "y": 154,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          192
+        ],
+        [
+          1680,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          266
+        ],
+        [
+          1680,
+          266
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- service: ReferralLinksService",
+      "x": 862,
+      "y": 202,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService: ConfigService",
+      "x": 862,
+      "y": 229,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ handleRedirect(shortCode, req, res, userAgent?, referer?)",
+      "x": 862,
+      "y": 276,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 700,
+      "w": 830,
+      "h": 192
+    },
+    {
+      "type": "text",
+      "value": "ReferralLinksService",
+      "x": 858,
+      "y": 704,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          742
+        ],
+        [
+          1680,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          843
+        ],
+        [
+          1680,
+          843
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 862,
+      "y": 752,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- cacheService: CacheService",
+      "x": 862,
+      "y": 779,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- clickQueue?: ClickQueueService",
+      "x": 862,
+      "y": 806,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ handleRedirect(shortCode: string, clientInfo: ClientTrackingInfo)",
+      "x": 862,
+      "y": 853,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 850,
+      "y": 1280,
+      "w": 830,
+      "h": 194
+    },
+    {
+      "type": "text",
+      "value": "PrismaService",
+      "x": 858,
+      "y": 1284,
+      "w": 814,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1322
+        ],
+        [
+          1680,
+          1322
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          1396
+        ],
+        [
+          1680,
+          1396
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- pool: Pool",
+      "x": 862,
+      "y": 1332,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- configService?: ConfigService",
+      "x": 862,
+      "y": 1359,
+      "w": 806,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleInit(): Promise<void>",
+      "x": 862,
+      "y": 1406,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ onModuleDestroy(): Promise<void>",
+      "x": 862,
+      "y": 1435,
+      "w": 806,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 150,
+      "w": 560,
+      "h": 302
+    },
+    {
+      "type": "text",
+      "value": "CacheService",
+      "x": 68,
+      "y": 154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          192
+        ],
+        [
+          620,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          345
+        ],
+        [
+          620,
+          345
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- redisClient: Redis | null",
+      "x": 72,
+      "y": 202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- isConnectedToRedis: boolean",
+      "x": 72,
+      "y": 229,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- fallbackSlidingWindowMap: Map<string, {timestamps: number[]; lastSeen: number}>",
+      "x": 72,
+      "y": 256,
+      "w": 536,
+      "h": 52,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- clickRateLimitLuaScript: string",
+      "x": 72,
+      "y": 308,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ checkClickRateLimitAtomic(params)",
+      "x": 72,
+      "y": 355,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ recordClickSpike(metadata)",
+      "x": 72,
+      "y": 384,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isRedisActive(): boolean",
+      "x": 72,
+      "y": 413,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 700,
+      "w": 560,
+      "h": 138
+    },
+    {
+      "type": "text",
+      "value": "Redis (ioredis library)",
+      "x": 68,
+      "y": 704,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          742
+        ],
+        [
+          620,
+          742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          789
+        ],
+        [
+          620,
+          789
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ status: RedisStatus",
+      "x": 72,
+      "y": 752,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ eval(script, numberOfKeys, ...args)",
+      "x": 72,
+      "y": 799,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1150,
+      "w": 560,
+      "h": 250
+    },
+    {
+      "type": "text",
+      "value": "ClickQueueService",
+      "x": 68,
+      "y": 1154,
+      "w": 544,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1192
+        ],
+        [
+          620,
+          1192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1293
+        ],
+        [
+          620,
+          1293
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "- prisma: PrismaService",
+      "x": 72,
+      "y": 1202,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- cacheService?: CacheService",
+      "x": 72,
+      "y": 1229,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- queue: EnqueuedClickJob[]",
+      "x": 72,
+      "y": 1256,
+      "w": 536,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ enqueue(job: EnqueuedClickJob): void",
+      "x": 72,
+      "y": 1303,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ processQueue(): Promise<void>",
+      "x": 72,
+      "y": 1332,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "- processSingleJob(job: EnqueuedClickJob): Promise<void>",
+      "x": 72,
+      "y": 1361,
+      "w": 536,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 1700,
+      "w": 650,
+      "h": 223
+    },
+    {
+      "type": "text",
+      "value": "PrismaClient",
+      "x": 68,
+      "y": 1704,
+      "w": 634,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1742
+        ],
+        [
+          710,
+          1742
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1816
+        ],
+        [
+          710,
+          1816
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ referralLink: Prisma.ReferralLinkDelegate",
+      "x": 72,
+      "y": 1752,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ clickTrafficLog: Prisma.ClickTrafficLogDelegate",
+      "x": 72,
+      "y": 1779,
+      "w": 626,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $transaction(callback): Promise<T>",
+      "x": 72,
+      "y": 1826,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $connect(): Promise<void>",
+      "x": 72,
+      "y": 1855,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ $disconnect(): Promise<void>",
+      "x": 72,
+      "y": 1884,
+      "w": 626,
+      "h": 29,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 150,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "ReferralLink",
+      "x": 1938,
+      "y": 154,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          192
+        ],
+        [
+          2550,
+          192
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          347
+        ],
+        [
+          2550,
+          347
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 202,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ shortCode: string {unique}",
+      "x": 1942,
+      "y": 229,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ storeId, collaboratorId, productId: string",
+      "x": 1942,
+      "y": 256,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ status: ReferralLinkStatus",
+      "x": 1942,
+      "y": 283,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ totalClicks, uniqueClicks: number",
+      "x": 1942,
+      "y": 310,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "rect",
+      "x": 1930,
+      "y": 650,
+      "w": 620,
+      "h": 233
+    },
+    {
+      "type": "text",
+      "value": "ClickTrafficLog",
+      "x": 1938,
+      "y": 654,
+      "w": 604,
+      "h": 34,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          692
+        ],
+        [
+          2550,
+          692
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1930,
+          847
+        ],
+        [
+          2550,
+          847
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "+ id: string",
+      "x": 1942,
+      "y": 702,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ eventId: string | null {unique}",
+      "x": 1942,
+      "y": 729,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ referralLinkId: string",
+      "x": 1942,
+      "y": 756,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ isValid, isUnique: boolean",
+      "x": 1942,
+      "y": 783,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ riskReason: string | null",
+      "x": 1942,
+      "y": 810,
+      "w": 596,
+      "h": 27,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          315
+        ],
+        [
+          1265,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          892
+        ],
+        [
+          1265,
+          1280
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1265,
+          1474
+        ],
+        [
+          1265,
+          1620
+        ],
+        [
+          385,
+          1620
+        ],
+        [
+          385,
+          1700
+        ]
+      ],
+      "dash": false,
+      "arrow": "triangle"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          724
+        ],
+        [
+          660,
+          724
+        ],
+        [
+          660,
+          414.25
+        ],
+        [
+          620,
+          414.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          850,
+          868
+        ],
+        [
+          660,
+          868
+        ],
+        [
+          660,
+          1181.25
+        ],
+        [
+          620,
+          1181.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          620,
+          1306.25
+        ],
+        [
+          810,
+          1306.25
+        ],
+        [
+          810,
+          1304.25
+        ],
+        [
+          850,
+          1304.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          60,
+          1181.25
+        ],
+        [
+          20,
+          1181.25
+        ],
+        [
+          20,
+          414.25
+        ],
+        [
+          60,
+          414.25
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          200,
+          452
+        ],
+        [
+          200,
+          700
+        ]
+      ],
+      "dash": false,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1304.25
+        ],
+        [
+          1890,
+          1304.25
+        ],
+        [
+          1890,
+          353.875
+        ],
+        [
+          1930,
+          353.875
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1680,
+          1328.5
+        ],
+        [
+          1860,
+          1328.5
+        ],
+        [
+          1860,
+          853.875
+        ],
+        [
+          1930,
+          853.875
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2472.5,
+          383
+        ],
+        [
+          2472.5,
+          650
+        ]
+      ],
+      "dash": false,
+      "arrow": "none"
+    },
+    {
+      "type": "text",
+      "value": "1",
+      "x": 2484.5,
+      "y": 391,
+      "w": 24,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "0..*",
+      "x": 2484.5,
+      "y": 616,
+      "w": 50,
+      "h": 28,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "service",
+      "x": 1275,
+      "y": 492.5,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 1275,
+      "y": 1071,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "extends",
+      "x": 779,
+      "y": 1577,
+      "w": 92,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "cacheService",
+      "x": 670,
+      "y": 554.125,
+      "w": 144,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "clickQueue",
+      "x": 670,
+      "y": 1009.625,
+      "w": 123,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "prisma",
+      "x": 674.5,
+      "y": 1263.25,
+      "w": 81,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "cacheService",
+      "x": 30,
+      "y": 859.45,
+      "w": 144,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "redisClient",
+      "x": 210,
+      "y": 561,
+      "w": 134,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1900,
+      "y": 909.0999999999999,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "«use»",
+      "x": 1779,
+      "y": 1076.1875,
+      "w": 71,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "clickTrafficLogs",
+      "x": 2482.5,
+      "y": 501.5,
+      "w": 186,
+      "h": 30,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "+ public member     - private member     Solid arrow: retained reference     Dashed arrow: dependency",
+      "x": 60,
+      "y": 2065,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Hollow triangle: actual inheritance (PrismaService extends PrismaClient)     Solid line with multiplicities: model association",
+      "x": 60,
+      "y": 2105,
+      "w": 2500,
+      "h": 32,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Defaults: 10 accepted clicks/second and 60/minute per IP hash across links. Redis Lua windows and local RAM fallback are caches, not Prisma tables; monitoring is documented separately.",
+      "x": 60,
+      "y": 2150,
+      "w": 2500,
+      "h": 60,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

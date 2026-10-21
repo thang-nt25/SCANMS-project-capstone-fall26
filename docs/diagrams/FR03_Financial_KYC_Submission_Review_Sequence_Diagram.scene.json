@@ -1,0 +1,1395 @@
+{
+  "width": 2840,
+  "height": 3072,
+  "shapes": [
+    {
+      "type": "text",
+      "value": "FR-03 Financial KYC Submission and Review — Sequence Diagram",
+      "x": 45,
+      "y": 20,
+      "w": 2750,
+      "h": 46,
+      "size": 28,
+      "align": "left",
+      "bold": true
+    },
+    {
+      "type": "text",
+      "value": "Current UI: KOL submits CCCD, tax and bank details → Admin reviews. Shop review is allowed by the legacy API; the shared Shop UI calls Admin-only routes.",
+      "x": 45,
+      "y": 73,
+      "w": 2750,
+      "h": 32,
+      "size": 20,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "actor",
+      "x": 92,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "KOL",
+      "x": 0,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          110,
+          193
+        ],
+        [
+          110,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "actor",
+      "x": 382,
+      "y": 120,
+      "w": 36,
+      "h": 50
+    },
+    {
+      "type": "text",
+      "value": "Admin / Manager",
+      "x": 290,
+      "y": 172,
+      "w": 220,
+      "h": 28,
+      "size": 18,
+      "align": "center"
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          400,
+          193
+        ],
+        [
+          400,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 625,
+      "y": 135,
+      "w": 250,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": "Browser",
+      "x": 633,
+      "y": 143,
+      "w": 234,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          750,
+          193
+        ],
+        [
+          750,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1105,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":KycController",
+      "x": 1113,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1320,
+          193
+        ],
+        [
+          1320,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 1645,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":KycService",
+      "x": 1653,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1860,
+          193
+        ],
+        [
+          1860,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 2185,
+      "y": 135,
+      "w": 430,
+      "h": 58
+    },
+    {
+      "type": "text",
+      "value": ":PrismaService",
+      "x": 2193,
+      "y": 143,
+      "w": 414,
+      "h": 42,
+      "size": 20,
+      "align": "center",
+      "bold": true
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2400,
+          193
+        ],
+        [
+          2400,
+          2667
+        ]
+      ],
+      "dash": true,
+      "arrow": "none"
+    },
+    {
+      "type": "rect",
+      "x": 105,
+      "y": 245,
+      "w": 10,
+      "h": 954
+    },
+    {
+      "type": "rect",
+      "x": 395,
+      "y": 1253,
+      "w": 10,
+      "h": 1354
+    },
+    {
+      "type": "rect",
+      "x": 745,
+      "y": 245,
+      "w": 10,
+      "h": 2362
+    },
+    {
+      "type": "rect",
+      "x": 1315,
+      "y": 389,
+      "w": 10,
+      "h": 746
+    },
+    {
+      "type": "rect",
+      "x": 1855,
+      "y": 453,
+      "w": 10,
+      "h": 618
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 597,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 805,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 933,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 1315,
+      "y": 1317,
+      "w": 10,
+      "h": 330
+    },
+    {
+      "type": "rect",
+      "x": 1855,
+      "y": 1381,
+      "w": 10,
+      "h": 202
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 1445,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 1315,
+      "y": 1829,
+      "w": 10,
+      "h": 714
+    },
+    {
+      "type": "rect",
+      "x": 1855,
+      "y": 1893,
+      "w": 10,
+      "h": 586
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 1957,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 2085,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 2213,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "rect",
+      "x": 2395,
+      "y": 2341,
+      "w": 10,
+      "h": 74
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          115,
+          245
+        ],
+        [
+          745,
+          245
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "1. Fill CCCD, tax, bank, channel and ID photos; Submit",
+      "x": 412,
+      "y": 196,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          309
+        ],
+        [
+          800,
+          309
+        ],
+        [
+          800,
+          328
+        ],
+        [
+          755,
+          328
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "2. Validate form; prepare ID image references (upload flow omitted)",
+      "x": 812,
+      "y": 283,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          389
+        ],
+        [
+          1315,
+          389
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "3. PUT /api/kyc/submit { identity, tax, bank, photos, channel }",
+      "x": 762,
+      "y": 340,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1325,
+          453
+        ],
+        [
+          1855,
+          453
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "4. submitKyc(userId from JWT, dto)",
+      "x": 1332,
+      "y": 404,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          517
+        ],
+        [
+          1910,
+          517
+        ],
+        [
+          1910,
+          536
+        ],
+        [
+          1865,
+          536
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "5. Require non-blank frontCardUrl and backCardUrl; otherwise 400",
+      "x": 1922,
+      "y": 491,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          597
+        ],
+        [
+          2395,
+          597
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "6. collaboratorProfile.findUnique({ where: { userId } })",
+      "x": 1872,
+      "y": 548,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          661
+        ],
+        [
+          1865,
+          661
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "7. Existing UNVERIFIED profile (happy path)",
+      "x": 1872,
+      "y": 612,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          725
+        ],
+        [
+          1910,
+          725
+        ],
+        [
+          1910,
+          744
+        ],
+        [
+          1865,
+          744
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "8. Normalize fields; merge photo metadata; keep VERIFIED if already set",
+      "x": 1922,
+      "y": 699,
+      "w": 430,
+      "h": 46,
+      "size": 18,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          805
+        ],
+        [
+          2395,
+          805
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "9. collaboratorProfile.update(): CCCD, tax, bank, JSON and status",
+      "x": 1872,
+      "y": 756,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          869
+        ],
+        [
+          1865,
+          869
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "10. Saved profile with UNVERIFIED status",
+      "x": 1872,
+      "y": 820,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          933
+        ],
+        [
+          2395,
+          933
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "11. [channel supplied] findFirst then update/create social channel (summary)",
+      "x": 1872,
+      "y": 884,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          997
+        ],
+        [
+          1865,
+          997
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "12. Channel synchronization completed",
+      "x": 1872,
+      "y": 948,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1855,
+          1061
+        ],
+        [
+          1325,
+          1061
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "13. Submission message and saved profile",
+      "x": 1332,
+      "y": 1012,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1315,
+          1125
+        ],
+        [
+          755,
+          1125
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "14. 200: KYC submission result",
+      "x": 762,
+      "y": 1076,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          745,
+          1189
+        ],
+        [
+          115,
+          1189
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "15. Show pending review; reload profile and account",
+      "x": 412,
+      "y": 1140,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          405,
+          1253
+        ],
+        [
+          745,
+          1253
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "16. Open KYC approval list",
+      "x": 412,
+      "y": 1204,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          1317
+        ],
+        [
+          1315,
+          1317
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "17. GET /api/kyc/admin/applications (Admin/Manager only)",
+      "x": 762,
+      "y": 1268,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1325,
+          1381
+        ],
+        [
+          1855,
+          1381
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "18. getUpgradeApplications()",
+      "x": 1332,
+      "y": 1332,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          1445
+        ],
+        [
+          2395,
+          1445
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "19. Promise.all: profiles + User/tier and non-deleted non-DRAFT Stores",
+      "x": 1872,
+      "y": 1396,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          1509
+        ],
+        [
+          1865,
+          1509
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "20. KOL applications and Shop applications",
+      "x": 1872,
+      "y": 1460,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1855,
+          1573
+        ],
+        [
+          1325,
+          1573
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "21. { kolApplications, shopApplications }",
+      "x": 1332,
+      "y": 1524,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1315,
+          1637
+        ],
+        [
+          755,
+          1637
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "22. 200: application lists",
+      "x": 762,
+      "y": 1588,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          745,
+          1701
+        ],
+        [
+          405,
+          1701
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "23. Filter pending; display documents and bank details",
+      "x": 412,
+      "y": 1652,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          405,
+          1765
+        ],
+        [
+          745,
+          1765
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "24. Inspect CCCD, tax and bank; Approve",
+      "x": 412,
+      "y": 1716,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          755,
+          1829
+        ],
+        [
+          1315,
+          1829
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "25. PATCH /api/kyc/admin/kol/:id/review { status: VERIFIED }",
+      "x": 762,
+      "y": 1780,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1325,
+          1893
+        ],
+        [
+          1855,
+          1893
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "26. reviewKolApplication(profileId, dto)",
+      "x": 1332,
+      "y": 1844,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          1957
+        ],
+        [
+          2395,
+          1957
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "27. collaboratorProfile.findUnique({ id }, include: { user: true })",
+      "x": 1872,
+      "y": 1908,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          2021
+        ],
+        [
+          1865,
+          2021
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "28. Profile and User with COLLABORATOR role (happy path)",
+      "x": 1872,
+      "y": 1972,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          2085
+        ],
+        [
+          2395,
+          2085
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "29. collaboratorProfile.update({ kycStatus: VERIFIED })",
+      "x": 1872,
+      "y": 2036,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          2149
+        ],
+        [
+          1865,
+          2149
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "30. Verified profile",
+      "x": 1872,
+      "y": 2100,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          2213
+        ],
+        [
+          2395,
+          2213
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "31. wallet.findUnique({ collaboratorId: profile.userId })",
+      "x": 1872,
+      "y": 2164,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          2277
+        ],
+        [
+          1865,
+          2277
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "32. Existing Wallet; no creation needed (happy path)",
+      "x": 1872,
+      "y": 2228,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1865,
+          2341
+        ],
+        [
+          2395,
+          2341
+        ]
+      ],
+      "dash": false,
+      "arrow": "filled"
+    },
+    {
+      "type": "text",
+      "value": "33. notification.create({ userId: profile.userId, type: KOL_APPROVED, ... })",
+      "x": 1872,
+      "y": 2292,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          2395,
+          2405
+        ],
+        [
+          1865,
+          2405
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "34. Approval notification saved",
+      "x": 1872,
+      "y": 2356,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1855,
+          2469
+        ],
+        [
+          1325,
+          2469
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "35. { success: true, message, profile: updatedProfile }",
+      "x": 1332,
+      "y": 2420,
+      "w": 516,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          1315,
+          2533
+        ],
+        [
+          755,
+          2533
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "36. 200: approval result in response envelope",
+      "x": 762,
+      "y": 2484,
+      "w": 546,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "line",
+      "points": [
+        [
+          745,
+          2597
+        ],
+        [
+          405,
+          2597
+        ]
+      ],
+      "dash": true,
+      "arrow": "open"
+    },
+    {
+      "type": "text",
+      "value": "37. Invalidate list cache; close modal; show verified",
+      "x": 412,
+      "y": 2548,
+      "w": 326,
+      "h": 44,
+      "size": 18,
+      "align": "center",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Browser groups KycSubmissionPage (KOL) and KycApprovalPage (reviewer) in separate authenticated sessions. JWT/role guards run before controller calls; DTO checks precede methods. Expanded case: existing COLLABORATOR profile and Wallet. Initial GET/profile and refresh calls are summarized.",
+      "x": 45,
+      "y": 2707,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "ID photos: separate upload to Cloudinary, with FileReader Data URL fallback. References are saved in socialLinksJson. Form requires tax/bank/channel data; bank fields are optional in SubmitKycDto. No automatic tax/bank verification is shown.",
+      "x": 45,
+      "y": 2757,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Missing profile is created by submitKyc. New/rejected submissions become UNVERIFIED; editing a VERIFIED profile keeps VERIFIED. UNVERIFIED plus submitted ID is displayed as pending, not a separate database PENDING status. Social channel synchronization is awaited after profile persistence.",
+      "x": 45,
+      "y": 2812,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Legacy admin/pending and admin/:id/review allow Shop/Admin/Manager. Shared UI instead calls admin/applications and admin/kol/:id/review (Admin/Manager only): ordinary Shop receives 403. Shop approval through the legacy API is separate from that UI.",
+      "x": 45,
+      "y": 2867,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Profile not found: 404. VERIFIED promotes CUSTOMER to COLLABORATOR and creates Wallet only if absent; REJECTED sends KOL_REJECTED. These branches are summarized. KOL writes are sequential, with no transaction or approval AuditLog in this method.",
+      "x": 45,
+      "y": 2922,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    },
+    {
+      "type": "text",
+      "value": "Legacy reviewKyc delegates to reviewKolApplication but drops dto.note; non-VERIFIED maps to REJECTED. Bank fields belong to Profile, Wallet to User. Rejection does not remove role/Wallet. Shop onboarding and FR07 are separate; see FR03_CODE_ANALYSIS.md.",
+      "x": 45,
+      "y": 2977,
+      "w": 2750,
+      "h": 44,
+      "size": 19,
+      "align": "left",
+      "bold": false
+    }
+  ]
+}

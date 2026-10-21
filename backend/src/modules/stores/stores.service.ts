@@ -7,7 +7,6 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Prisma } from '@prisma/client';
-import { activeSponsoredPlacements } from './sponsored-placement.config';
 
 @Injectable()
 export class StoresService {
@@ -430,16 +429,18 @@ export class StoresService {
   async getSponsoredPlacements() {
     const now = new Date();
     const booked = await this.prisma.sponsoredPlacement.findMany({
-      where: { status: 'APPROVED', startsAt: { lte: now }, endsAt: { gt: now },
+      where: { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 },
+        paymentReference: { not: null }, paymentProofUrl: { not: null },
+        reviewedById: { not: null }, reviewedAt: { not: null },
+        startsAt: { lte: now }, endsAt: { gt: now },
         store: { isDeleted: false, isActive: true, isVerified: true, onboardingStatus: 'VERIFIED', owner: { isActive: true } },
       },
       select: { storeId: true, headline: true, endsAt: true },
       orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
     });
-    // Explicit legacy bookings remain compatible; no store is promoted automatically.
+    // Only database bookings with reviewed payment evidence can buy a public position.
     const placements = [
       ...booked.map((row) => ({ ...row, endsAt: row.endsAt.toISOString() })),
-      ...activeSponsoredPlacements(process.env.MARKETPLACE_SPONSORED_PLACEMENTS),
     ].filter((row, index, all) => all.findIndex((item) => item.storeId === row.storeId) === index).slice(0, 6);
     if (!placements.length) return [];
     const stores = await this.prisma.store.findMany({

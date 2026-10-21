@@ -5,6 +5,7 @@ import { tierService, type TierStatus, type TierPolicy } from '../../services/ti
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 import KolBonusProgressPage from './KolBonusProgressPage';
+import { KolTierExplanation } from '../../components/affiliate/KolTierExplanation';
 
 const currency = (value: number) => `${value.toLocaleString('vi-VN')} ₫`;
 const samePolicy = (left: TierPolicy, right: TierPolicy) =>
@@ -48,7 +49,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
   }, [view, loadRevision]);
 
   const currentTier = tierStatus?.currentTier;
-const currentRevenue = Number(tierStatus?.currentRevenue || 0);
+  const currentRevenue = Number(tierStatus?.currentRevenue || 0);
   const totalOrders = Number(tierStatus?.totalOrders || 0);
   const nextTier = tierStatus?.nextTier;
   const targetSales = Number(nextTier?.minRevenueThreshold || 0);
@@ -135,7 +136,7 @@ const currentRevenue = Number(tierStatus?.currentRevenue || 0);
 
               <div className="grid grid-cols-3 gap-2 my-4">
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Doanh số tích lũy</span>
+                  <span className="text-[11px] text-[#7D715E]">GMV tháng trước</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
@@ -148,6 +149,7 @@ const currentRevenue = Number(tierStatus?.currentRevenue || 0);
                 </div>
               </div>
 
+              <KolTierExplanation status={tierStatus} />
               {nextTier ? (
                 <div className="pt-3 border-t border-[#EAE4D7]" id="tier-promotion-progress">
                   <div className="flex items-center justify-between gap-2.5 mb-2">
@@ -197,7 +199,7 @@ const currentRevenue = Number(tierStatus?.currentRevenue || 0);
                 </span>
                 <div>
                   <h2 id="tier-policy-title" className="text-sm font-semibold text-[#1A1612]">Cấp bậc &amp; quyền lợi</h2>
-                  <p className="text-[11px] text-[#7D715E]">Ngưỡng doanh số tích lũy để xét hạng.</p>
+                  <p className="text-[11px] text-[#7D715E]">Xét hạng theo GMV hợp lệ của tháng trước.</p>
                 </div>
               </div>
               <span className="px-2 py-0.5 border border-[#EAE4D7] rounded-md text-[11px] text-[#7D715E]">

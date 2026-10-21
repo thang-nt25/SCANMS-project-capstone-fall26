@@ -3,18 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import {
   Save,
   ShieldAlert,
-  Globe,
   Percent,
   Clock,
   CheckCircle2,
   Store,
-  Copy,
-  ExternalLink,
   Upload,
   Loader2,
   ImageIcon,
   Building2,
   FileText,
+  ChevronDown,
   Mail,
   MapPin,
   Phone,
@@ -29,6 +27,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
+import { StorefrontSettingsSection } from '../../components/stores/StorefrontSettingsSection';
 
 export default function ShopSettingsPage() {
   const navigate = useNavigate();
@@ -368,65 +367,8 @@ export default function ShopSettingsPage() {
               </div>
             </div>
 
-            <details className="settings-extra">
-              <summary>Trang gian hàng <span>Link & giới thiệu</span></summary>
-              <div className="settings-extra-body">
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
-                <Globe className="h-3.5 w-3.5 text-[#B88E4F]" />
-                Link gian hàng
-              </label>
-              <div className="settings-storefront-link flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
-                  value={storefrontUrl}
-                  readOnly
-                  aria-label="Đường dẫn gian hàng trên SCANMS"
-                  placeholder="Đang tải đường dẫn gian hàng..."
-                  onFocus={(event) => event.currentTarget.select()}
-                  className="h-11 min-w-0 flex-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 text-sm text-[#1A1612] outline-none focus:border-[#C59B58]"
-                />
-                <div className="flex shrink-0 gap-2">
-                  <a
-                    href={storefrontPath || undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-disabled={!storefrontPath}
-                    className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition sm:flex-none ${storefrontPath
-                      ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C] hover:bg-[#F3EFE6]'
-                      : 'pointer-events-none border-[#EAE4D7] bg-[#F3EFE6] text-[#7D715E]/50'
-                    }`}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Mở gian hàng
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => void copyStorefrontUrl()}
-                    disabled={!storefrontUrl}
-                    className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-                  >
-                    <Copy className="h-4 w-4 text-[#B88E4F]" />
-                    Sao chép
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
-                Giới thiệu gian hàng
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Giới thiệu xuất xứ, dòng sản phẩm thế mạnh và cam kết chất lượng của thương hiệu..."
-                className="min-h-[92px] w-full resize-y rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
-              />
-            </div>
-              </div>
-            </details>
+            <StorefrontSettingsSection url={storefrontUrl} path={storefrontPath} description={description}
+              onDescriptionChange={setDescription} onCopy={() => void copyStorefrontUrl()} />
           </section>
 
           <details className="group space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
@@ -438,7 +380,7 @@ export default function ShopSettingsPage() {
                 <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Chính sách công khai</h2>
                 <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Đổi trả, bảo hành và giao nhận. Bấm để chỉnh sửa.</p>
               </div>
-              <span className="ml-auto text-xl font-normal text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span>
+              <ChevronDown className="ml-auto h-[18px] w-[18px] shrink-0 text-[#B88E4F] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
             </summary>
 
 <div className="space-y-3 border-t border-[#EAE4D7] pt-3">
@@ -672,8 +614,7 @@ export default function ShopSettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <details className="settings-extra settings-owner-details">
-                    <summary><span className="settings-owner-preview"><strong>{shopOwnerDetails.representativeName || 'Chưa cập nhật người đại diện'}</strong><span>{shopOwnerDetails.contactEmail || shopOwnerDetails.contactPhone || 'Xem thông tin liên hệ và pháp lý'}</span></span></summary>
+                  <div className="settings-owner-details">
                   <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
@@ -740,7 +681,7 @@ export default function ShopSettingsPage() {
                       </div>
                     </div>
                   </div>
-                  </details>
+                  </div>
                 )}
               </div>
           </section>
