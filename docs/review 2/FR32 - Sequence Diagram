@@ -1,0 +1,316 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR32 - Sequence Diagram" id="FR32---Sequence-Diagram">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1640" pageHeight="2000">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-32 Comprehensive Audit Logs - Sequence Diagram">
+          <mxGeometry y="20" width="1580" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="pre" value="Recording: an HTTP mutation reaches its handler. Inspection and export: authenticated SYSTEM_ADMIN / SYSTEM_MANAGER (JwtAuthGuard + RolesGuard).">
+          <mxGeometry y="62" width="1580" as="geometry" height="30" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head0" value="User / Administrator">
+          <mxGeometry y="100" width="30" as="geometry" height="55" x="85" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life0" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="180" as="sourcePoint" />
+            <mxPoint x="100" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head1" value="Browser / AuditLogsPage">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="265" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life1" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="180" as="sourcePoint" />
+            <mxPoint x="380" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head2" value=":AuditInterceptor">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="545" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="660" y="180" as="sourcePoint" />
+            <mxPoint x="660" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head3" value=":AuditController">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="825" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="180" as="sourcePoint" />
+            <mxPoint x="940" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head4" value=":AuditService">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="1105" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life4" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1220" y="180" as="sourcePoint" />
+            <mxPoint x="1220" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="head5" value=":PrismaService">
+          <mxGeometry y="105" width="230" as="geometry" height="40" x="1385" />
+        </mxCell>
+        <mxCell parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" edge="1" id="life5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1500" y="180" as="sourcePoint" />
+            <mxPoint x="1500" y="1850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation0" value="">
+          <mxGeometry y="210" width="8" as="geometry" height="447" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation1" value="">
+          <mxGeometry y="256" width="8" as="geometry" height="401" x="656" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation2" value="">
+          <mxGeometry y="403" width="8" as="geometry" height="208" x="1216" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation3" value="">
+          <mxGeometry y="519" width="8" as="geometry" height="46" x="1496" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation4" value="">
+          <mxGeometry y="703" width="8" as="geometry" height="527" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation5" value="">
+          <mxGeometry y="749" width="8" as="geometry" height="435" x="936" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation6" value="">
+          <mxGeometry y="795" width="8" as="geometry" height="343" x="1216" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation7" value="">
+          <mxGeometry y="940" width="8" as="geometry" height="58" x="1496" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation8" value="">
+          <mxGeometry y="1276" width="8" as="geometry" height="46" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation9" value="">
+          <mxGeometry y="1392" width="8" as="geometry" height="416" x="376" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation10" value="">
+          <mxGeometry y="1438" width="8" as="geometry" height="324" x="936" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation11" value="">
+          <mxGeometry y="1484" width="8" as="geometry" height="232" x="1216" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" id="activation12" value="">
+          <mxGeometry y="1530" width="8" as="geometry" height="46" x="1496" />
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m1" value="1. Perform an operation that changes data">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="210" as="sourcePoint" />
+            <mxPoint x="376" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m2" value="2. POST / PUT / PATCH / DELETE request">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="256" as="sourcePoint" />
+            <mxPoint x="656" y="256" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m3" value="3. next.handle(): execute HTTP handler&#xA;Capture success or handler error">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="664" y="321" as="sourcePoint" />
+            <mxPoint x="664" y="343" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="704" y="321" />
+              <mxPoint x="704" y="343" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m4" value="4. recordAuditLog(userId, action, details, ip, eventId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="664" y="403" as="sourcePoint" />
+            <mxPoint x="1216" y="403" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m5" value="5. sanitizeAuditDetails(details)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="449" as="sourcePoint" />
+            <mxPoint x="1224" y="471" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1264" y="449" />
+              <mxPoint x="1264" y="471" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m6" value="6. auditLog.create(data)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="519" as="sourcePoint" />
+            <mxPoint x="1496" y="519" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m7" value="7. Created AuditLog or database error">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1496" y="565" as="sourcePoint" />
+            <mxPoint x="1224" y="565" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m8" value="8. AuditLog or null; warn on write failure">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1216" y="611" as="sourcePoint" />
+            <mxPoint x="664" y="611" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m9" value="9. Original handler response or error">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="656" y="657" as="sourcePoint" />
+            <mxPoint x="384" y="657" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m10" value="10. Open audit logs; choose filters / page">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="703" as="sourcePoint" />
+            <mxPoint x="376" y="703" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m11" value="11. GET /audit-logs and /audit-logs/stats">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="749" as="sourcePoint" />
+            <mxPoint x="936" y="749" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m12" value="12. getAuditLogs(query, user); getAuditStats(timeframe)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="944" y="795" as="sourcePoint" />
+            <mxPoint x="1216" y="795" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m13" value="13. buildAuditWhere(query)&#xA;Validate dates; apply filters">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="860" as="sourcePoint" />
+            <mxPoint x="1224" y="882" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1264" y="860" />
+              <mxPoint x="1264" y="882" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m14" value="14. auditLog.count / findMany / groupBy;&#xA;user.findMany for statistics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="940" as="sourcePoint" />
+            <mxPoint x="1496" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m15" value="15. Matching events, totals, groups and actors">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1496" y="998" as="sourcePoint" />
+            <mxPoint x="1224" y="998" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m16" value="16. Redact details; resolveActionMeta(action)&#xA;Format pagination and aggregate statistics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="1058" as="sourcePoint" />
+            <mxPoint x="1224" y="1080" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1264" y="1058" />
+              <mxPoint x="1264" y="1080" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m17" value="17. Paginated logs and statistics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1216" y="1138" as="sourcePoint" />
+            <mxPoint x="944" y="1138" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m18" value="18. 200 OK: JSON responses">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="936" y="1184" as="sourcePoint" />
+            <mxPoint x="384" y="1184" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m19" value="19. Display events, filters and statistics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="376" y="1230" as="sourcePoint" />
+            <mxPoint x="100" y="1230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m20" value="20. Select an event">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="1276" as="sourcePoint" />
+            <mxPoint x="376" y="1276" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m21" value="21. setSelectedLog(log): display loaded details">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1322" as="sourcePoint" />
+            <mxPoint x="384" y="1344" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="424" y="1322" />
+              <mxPoint x="424" y="1344" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m22" value="22. [Optional] Export filtered logs">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="1392" as="sourcePoint" />
+            <mxPoint x="376" y="1392" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m23" value="23. GET /audit-logs/export (same filters)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="384" y="1438" as="sourcePoint" />
+            <mxPoint x="936" y="1438" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m24" value="24. exportAuditLogsCsv(query)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="944" y="1484" as="sourcePoint" />
+            <mxPoint x="1216" y="1484" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m25" value="25. auditLog.findMany(where, include user, take: 2000)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="1530" as="sourcePoint" />
+            <mxPoint x="1496" y="1530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m26" value="26. Up to 2,000 newest matching logs">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1496" y="1576" as="sourcePoint" />
+            <mxPoint x="1224" y="1576" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" edge="1" id="m27" value="27. Redact details; escape cells with auditCsvCell()&#xA;Build UTF-8 CSV with BOM">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1224" y="1636" as="sourcePoint" />
+            <mxPoint x="1224" y="1658" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1264" y="1636" />
+              <mxPoint x="1264" y="1658" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m28" value="28. { csvContent, filename, totalRecords }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1216" y="1716" as="sourcePoint" />
+            <mxPoint x="944" y="1716" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m29" value="29. 200 OK: CSV attachment">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="936" y="1762" as="sourcePoint" />
+            <mxPoint x="384" y="1762" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" edge="1" id="m30" value="30. Download CSV file">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="376" y="1808" as="sourcePoint" />
+            <mxPoint x="100" y="1808" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="footer" value="Grouped arrows summarize separate list/statistics requests and multiple Prisma calls; they do not represent a transaction.&#xA;GET requests bypass recording. The interceptor records handler outcomes, not requests rejected before it. The UI detail modal uses loaded log data.&#xA;Additional API endpoints: GET /audit-logs/:id and /audit-logs/actions. Business services may also record domain-specific audit events.">
+          <mxGeometry y="1880" width="1580" as="geometry" height="75" x="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

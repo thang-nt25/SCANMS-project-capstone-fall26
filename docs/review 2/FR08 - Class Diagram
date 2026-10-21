@@ -1,0 +1,171 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR08 - Class Diagram" id="FR08-Class">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1640" pageHeight="1180">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-08 Media Hub and 1-Click Copy - Class Diagram">
+          <mxGeometry y="20" width="1580" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="page" value="MediaHubBrowserPage">
+          <mxGeometry y="90" width="390" as="geometry" height="280" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-fields" value="&lt;&lt;React functional component&gt;&gt;&#xA;- mediaList: MediaAsset[]&#xA;- previewAsset: any | null&#xA;- selectedProduct, selectedType, search: string&#xA;- activeCaptionTab, copiedCaption&#xA;- filteredMedia: MediaAsset[] [derived]">
+          <mxGeometry y="30" width="390" as="geometry" height="165" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="shape=line;strokeColor=#000000;" id="page-line" value="">
+          <mxGeometry y="195" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-methods" value="+ fetchMedia()&#xA;+ handleCopyCaption()&#xA;+ handleDownloadPack()">
+          <mxGeometry y="195" width="390" as="geometry" height="85" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="client" value="mediaService &lt;&lt;object&gt;&gt;">
+          <mxGeometry y="500" width="390" as="geometry" height="210" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-fields" value="&lt;&lt;HTTP API client&gt;&gt;">
+          <mxGeometry y="30" width="390" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="shape=line;strokeColor=#000000;" id="client-line" value="">
+          <mxGeometry y="70" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-methods" value="+ getMediaAssets(params?)&#xA;+ createMediaAsset(data)&#xA;+ deleteMediaAsset(id)&#xA;+ submitKolVideo(data)">
+          <mxGeometry y="70" width="390" as="geometry" height="140" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="safety" value="UploadController">
+          <mxGeometry y="850" width="390" as="geometry" height="190" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="safety-fields" value="- cloudinaryService: CloudinaryService">
+          <mxGeometry y="30" width="390" as="geometry" height="50" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="shape=line;strokeColor=#000000;" id="safety-line" value="">
+          <mxGeometry y="80" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="safety" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="safety-methods" value="+ uploadImage(file, folder?)&#xA;+ uploadVideo(file, folder?)">
+          <mxGeometry y="80" width="390" as="geometry" height="110" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="controller" value="MediaController">
+          <mxGeometry y="90" width="450" as="geometry" height="240" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-fields" value="- mediaService: MediaService">
+          <mxGeometry y="30" width="450" as="geometry" height="40" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="shape=line;strokeColor=#000000;" id="controller-line" value="">
+          <mxGeometry y="70" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-methods" value="+ findAll(query, userId, role)&#xA;+ create(ownerId, role, dto: CreateMediaDto)&#xA;+ delete(ownerId, role, id)">
+          <mxGeometry y="70" width="450" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="service" value="MediaService">
+          <mxGeometry y="430" width="450" as="geometry" height="310" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-fields" value="- prisma: PrismaService&#xA;- cacheService: CacheService">
+          <mxGeometry y="30" width="450" as="geometry" height="60" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="shape=line;strokeColor=#000000;" id="service-line" value="">
+          <mxGeometry y="90" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-methods" value="+ findAll(query: QueryMediaDto, viewer)&#xA;+ create(userId, role, dto: CreateMediaDto)&#xA;+ softDelete(userId, role, id)&#xA;+ validateAllowedUrl(url, fieldName?)">
+          <mxGeometry y="90" width="450" as="geometry" height="220" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="prisma" value="PrismaService">
+          <mxGeometry y="850" width="450" as="geometry" height="190" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-fields" value="&lt;&lt;extends PrismaClient&gt;&gt;&#xA;- pool: Pool&#xA;- configService?: ConfigService">
+          <mxGeometry y="30" width="450" as="geometry" height="75" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="shape=line;strokeColor=#000000;" id="prisma-line" value="">
+          <mxGeometry y="105" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-methods" value="+ onModuleInit(): Promise&lt;void&gt;&#xA;+ onModuleDestroy(): Promise&lt;void&gt;">
+          <mxGeometry y="105" width="450" as="geometry" height="85" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="interceptor" value="Store">
+          <mxGeometry y="90" width="270" as="geometry" height="200" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="interceptor" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="interceptor-fields" value="+ id, ownerId, name: string&#xA;+ isActive, isDeleted: boolean">
+          <mxGeometry y="30" width="270" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="user" value="StoreCollaborator">
+          <mxGeometry y="500" width="580" as="geometry" height="200" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="user" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="user-fields" value="+ id, storeId, collaboratorId: string&#xA;+ status: StoreCollaboratorStatus">
+          <mxGeometry y="30" width="580" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="audit" value="MediaAsset">
+          <mxGeometry y="90" width="250" as="geometry" height="300" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="audit" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="audit-fields" value="+ id, storeId, title: string&#xA;+ productId: string | null&#xA;+ collaboratorId: string | null&#xA;+ assetType: AssetType&#xA;+ urlOrContent: string&#xA;+ status: MediaAssetStatus&#xA;+ isDeleted: boolean&#xA;+ deletedAt: Date | null&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="270" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="base" value="CloudinaryService">
+          <mxGeometry y="850" width="580" as="geometry" height="190" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="base-fields" value="- configService: ConfigService">
+          <mxGeometry y="30" width="580" as="geometry" height="45" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="shape=line;strokeColor=#000000;" id="base-line" value="">
+          <mxGeometry y="75" width="580" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="base" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="base-methods" value="+ uploadImage(file, folder?): Promise&lt;CloudinaryUploadResult&gt;&#xA;+ uploadVideo(file, folder?): Promise&lt;CloudinaryUploadResult&gt;">
+          <mxGeometry y="75" width="580" as="geometry" height="115" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" id="footer" value="Types: IMAGE / VIDEO / COPYWRITE_TEXT. Shop-created assets are APPROVED; KOL access requires an APPROVED StoreCollaborator relation and visible media status.&#xA;Copy uses navigator.clipboard.writeText() locally; image/video action opens its source URL. ZIP export uses buildMediaPack()/saveMediaPack() in the frontend.&#xA;File upload and POST /media are separate APIs. The current hub has no wired Shop create-media form. KOL video submission/review belongs to a separate flow.">
+          <mxGeometry y="1100" width="1580" as="geometry" height="55" x="30" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e1" value="uses" source="page" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=1;exitY=0.2;entryX=0;entryY=0.7;" edge="1" id="e2" value="HTTP" source="client" target="controller">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="542" />
+              <mxPoint x="455" y="258" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e3" value="mediaService" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="e4" value="prisma" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.3333;" edge="1" id="e5" value="1 : 0..*" source="interceptor" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;endArrow=none;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" id="e6" value="1 : 0..*" source="interceptor" target="user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="420" />
+              <mxPoint x="1175" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=1;exitY=0.1;entryX=0.5;entryY=1;" edge="1" id="e7" value="reads / writes" source="service" target="audit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="975" y="461" />
+              <mxPoint x="975" y="450" />
+              <mxPoint x="1485" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=1;exitY=0.7;entryX=0;entryY=0.5;" edge="1" id="e8" value="eligibility" source="service" target="user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="975" y="647" />
+              <mxPoint x="975" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="e9" value="cloudinaryService" source="safety" target="base">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="1070" />
+              <mxPoint x="1320" y="1070" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

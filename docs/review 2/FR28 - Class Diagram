@@ -1,0 +1,156 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="FR28 - Class Diagram" id="FR28---Class-Diagram">
+    <mxGraphModel grid="1" gridSize="10" guides="1" connect="1" arrows="1" page="1" pageScale="1" math="0" shadow="0" pageWidth="1640" pageHeight="1170">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" id="title" value="FR-28 Realtime Sales Dashboard — Class Diagram">
+          <mxGeometry y="20" width="1580" as="geometry" height="35" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="page" value="RealtimeAnalyticsPage">
+          <mxGeometry y="90" width="390" as="geometry" height="270" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-fields" value="«React functional component»&#xA;- range: string&#xA;- overview: DashboardOverviewResponse | null&#xA;- timeSeries: TimeSeriesPoint[]&#xA;- autoRefreshInterval: number">
+          <mxGeometry y="30" width="390" as="geometry" height="110" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="shape=line;strokeColor=#000000;" id="page-line" value="">
+          <mxGeometry y="140" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="page" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="page-methods" value="+ fetchData(showIndicator?)&#xA;+ handleApplyCustomRange()&#xA;+ handleExportCsv()">
+          <mxGeometry y="140" width="390" as="geometry" height="130" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="client" value="analyticsService «object»">
+          <mxGeometry y="480" width="390" as="geometry" height="210" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-fields" value="«HTTP API client»">
+          <mxGeometry y="30" width="390" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="shape=line;strokeColor=#000000;" id="client-line" value="">
+          <mxGeometry y="65" width="390" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="client" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="client-methods" value="+ getRealtimeOverview(...) / getTimeSeries(...)&#xA;+ getTopProducts(...) / getTopChannels(...)&#xA;+ getConversionFunnel(...)&#xA;+ getCampaignPerformance(...)">
+          <mxGeometry y="65" width="390" as="geometry" height="145" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="point" value="TimeSeriesPoint «interface»">
+          <mxGeometry y="820" width="390" as="geometry" height="230" x="30" />
+        </mxCell>
+        <mxCell vertex="1" parent="point" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="point-fields" value="+ date?: string&#xA;+ hour?: number&#xA;+ label: string&#xA;+ clicks: number&#xA;+ orders: number&#xA;+ revenue: number&#xA;+ commission: number&#xA;+ conversionRate: number">
+          <mxGeometry y="30" width="390" as="geometry" height="200" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="controller" value="DashboardController">
+          <mxGeometry y="90" width="450" as="geometry" height="240" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-fields" value="- dashboardService: DashboardService">
+          <mxGeometry y="30" width="450" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="shape=line;strokeColor=#000000;" id="controller-line" value="">
+          <mxGeometry y="65" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="controller-methods" value="+ getRealtimeOverview(...) / getTimeSeries(...)&#xA;+ getTopProducts(...) / getTopChannels(...)&#xA;+ getConversionFunnel(...)&#xA;+ getCampaignPerformance(...)">
+          <mxGeometry y="65" width="450" as="geometry" height="175" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="service" value="DashboardService">
+          <mxGeometry y="440" width="450" as="geometry" height="300" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-fields" value="- prisma: PrismaService">
+          <mxGeometry y="30" width="450" as="geometry" height="35" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="shape=line;strokeColor=#000000;" id="service-line" value="">
+          <mxGeometry y="65" width="450" as="geometry" height="0" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="service-methods" value="+ getRealtimeOverview(...)&#xA;+ getTimeSeriesMetrics(...)&#xA;+ getTopProductsBreakdown(...) / getTopChannelsBreakdown(...)&#xA;+ getConversionFunnel(...) / getCampaignPerformanceMetrics(...)&#xA;+ resolveDateRange(...)&#xA;- resolveAnalyticsScope(...)&#xA;- _getHourlyTimeSeries(...) / _getDailyTimeSeries(...)&#xA;- _calcGrowthPercent(...)">
+          <mxGeometry y="65" width="450" as="geometry" height="235" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="prisma" value="PrismaService">
+          <mxGeometry y="880" width="450" as="geometry" height="200" x="490" />
+        </mxCell>
+        <mxCell vertex="1" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="prisma-fields" value="«extends PrismaClient»&#xA;+ store: Prisma.StoreDelegate&#xA;+ order: Prisma.OrderDelegate&#xA;+ commission: Prisma.CommissionDelegate&#xA;+ clickTrafficLog: Prisma.ClickTrafficLogDelegate&#xA;+ referralLink: Prisma.ReferralLinkDelegate">
+          <mxGeometry y="30" width="450" as="geometry" height="170" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="link" value="ReferralLink">
+          <mxGeometry y="90" width="270" as="geometry" height="210" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="link" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="link-fields" value="+ id: string&#xA;+ storeId: string&#xA;+ productId: string&#xA;+ collaboratorId: string&#xA;+ channel: SocialPlatform | null&#xA;+ status: ReferralLinkStatus">
+          <mxGeometry y="30" width="270" as="geometry" height="180" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="click" value="ClickTrafficLog">
+          <mxGeometry y="90" width="250" as="geometry" height="140" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="click" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="click-fields" value="+ id: string&#xA;+ referralLinkId: string&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="110" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="order" value="Order">
+          <mxGeometry y="460" width="270" as="geometry" height="230" x="1030" />
+        </mxCell>
+        <mxCell vertex="1" parent="order" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="order-fields" value="+ id: string&#xA;+ storeId: string&#xA;+ attributedCollaboratorId: string | null&#xA;+ referralLinkId: string | null&#xA;+ finalAmount: Decimal&#xA;+ status: OrderStatus&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="270" as="geometry" height="200" x="0" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" id="commission" value="Commission">
+          <mxGeometry y="460" width="250" as="geometry" height="210" x="1360" />
+        </mxCell>
+        <mxCell vertex="1" parent="commission" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" id="commission-fields" value="+ id: string&#xA;+ orderId: string&#xA;+ collaboratorId: string&#xA;+ commissionAmount: Decimal&#xA;+ status: CommissionStatus&#xA;+ createdAt: Date">
+          <mxGeometry y="30" width="250" as="geometry" height="180" x="0" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d1" value="uses" source="page" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.25;entryX=0;entryY=0.65;" edge="1" id="d2" value="HTTP GET" source="client" target="controller">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="533" />
+              <mxPoint x="455" y="246" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d3" value="dashboardService" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d4" value="prisma" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="d5" value="returns TimeSeriesPoint[]" source="client" target="point">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.3;entryX=0;entryY=0.75;" edge="1" id="d6" value="«reads»" source="prisma" target="order">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="980" y="940" />
+              <mxPoint x="980" y="633" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.65;entryX=0.5;entryY=1;" edge="1" id="d7" value="«reads»" source="prisma" target="click">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="1010" />
+              <mxPoint x="990" y="390" />
+              <mxPoint x="1485" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="a1" value="1 referral link / 0..* clicks" source="link" target="click">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="350" />
+              <mxPoint x="1485" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" id="a2" value="0..1 link / 0..* orders" source="link" target="order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" id="a3" value="1 order / 0..* commissions" source="order" target="commission">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="760" />
+              <mxPoint x="1485" y="760" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;whiteSpace=wrap;fontSize=12;spacing=0;" id="scope" value="React component hooks, API-client functions and response interfaces are shown with their stereotypes. Recharts renders traffic and revenue/commission charts; CR% is a KPI. Refresh uses HTTP polling (off by default), not a socket subscription. Only relevant members are shown; (...) omits parameters.">
+          <mxGeometry y="1110" width="1580" as="geometry" height="45" x="30" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
