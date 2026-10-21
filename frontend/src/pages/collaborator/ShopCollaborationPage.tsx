@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
+import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -299,6 +300,7 @@ export default function ShopCollaborationPage() {
   // Modal 5: Đề xuất Deal hoa hồng riêng kèm cam kết (KOL -> Shop)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [dealModalProduct, setDealModalProduct] = useState<any | null>(null);
+  const [dealPickerStoreId, setDealPickerStoreId] = useState<string | null>(null);
   const [dealModalProducts, setDealModalProducts] = useState<any[]>([]);
   const [dealProposedRate, setDealProposedRate] = useState<number>(11);
   const [dealDurationMonths, setDealDurationMonths] = useState<number>(3);
@@ -1452,7 +1454,7 @@ setActiveTab('samples');
                   </div>
                   <button
                     type="button"
-                    onClick={() => navigate('/collaborator/marketing?tab=links')}
+                    onClick={() => setDealPickerStoreId(selectedStore.id)}
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
                   >
                     <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
@@ -2804,6 +2806,11 @@ setActiveTab('samples');
       )}
 
       {/* MODAL 5: ĐỀ XUẤT DEAL HOA HỒNG RIÊNG (KOL -> SHOP) */}
+      {selectedStore && dealPickerStoreId === selectedStore.id && (
+        <DealProductPicker key={selectedStore.id} storeId={selectedStore.id} storeName={selectedStore.name}
+          onClose={() => setDealPickerStoreId(null)}
+          onSelect={(product) => { setDealPickerStoreId(null); handleOpenDealModal(product); }} />
+      )}
       {(dealModalProduct || dealModalProducts.length > 0) && (() => {
         const isBundle = dealModalProducts.length > 1;
         const currentProducts = isBundle ? dealModalProducts : [dealModalProduct];
