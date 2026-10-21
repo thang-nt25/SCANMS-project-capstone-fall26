@@ -619,7 +619,7 @@ export default function ShopCollaborationPage() {
     const timer = window.setInterval(() => void refresh(), 30000);
     window.addEventListener('focus', refresh);
     return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
-  }, [selectedStore.id, activeTab]);
+  }, [selectedStore?.id, activeTab]);
 
   const openStorefront = useCallback((store: PartnerStore) => {
     if (store.slug) {
@@ -709,8 +709,9 @@ export default function ShopCollaborationPage() {
   }, [selectedStore?.id, activeTab, loadStoreProducts, loadStoreSamples, loadStoreMedia]);
 
   useEffect(() => {
-    if (activeTab !== 'products') return;
-    const refresh = () => { if (!document.hidden) void loadStoreProducts(selectedStore.id, true); };
+    const storeId = selectedStore?.id;
+    if (activeTab !== 'products' || !storeId) return;
+    const refresh = () => { if (!document.hidden) void loadStoreProducts(storeId, true); };
     const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -721,7 +722,7 @@ export default function ShopCollaborationPage() {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [activeTab, selectedStore.id, loadStoreProducts]);
+  }, [activeTab, selectedStore?.id, loadStoreProducts]);
 
   // Chọn / bỏ chọn sản phẩm để tạo gói deal
   const handleToggleProductSelection = (productId: string) => {
@@ -953,12 +954,12 @@ setActiveTab('samples');
         setRequestSampleModalProduct(null);
         setActiveTab('samples');
         setSampleStatusFilter('ALL');
-        updateUrl(selectedStore.id, 'samples');
+        if (selectedStore?.id) updateUrl(selectedStore.id, 'samples');
         toast.error(editingRequest ? message : 'Bạn đã có yêu cầu cho sản phẩm này. Xem tại tab Hàng mẫu.');
       } else {
         toast.error(message);
       }
-      void loadStoreSamples(selectedStore.id);
+      if (selectedStore?.id) void loadStoreSamples(selectedStore.id);
     } finally {
       sampleSubmissionInFlight.current = false;
       setSubmittingSample(false);
