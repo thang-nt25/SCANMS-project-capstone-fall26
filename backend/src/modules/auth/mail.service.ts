@@ -213,7 +213,7 @@ export class MailService {
   }
 
   /**
-   * Gửi mã OTP xác minh đổi / thêm mật khẩu mới cho tài khoản (Chuẩn Shopee)
+   * Gửi mã OTP xác minh đổi / thêm mật khẩu mới cho tài khoản (Chuẩn SCANMS)
    */
   async sendPasswordSecurityOtp(
     email: string,

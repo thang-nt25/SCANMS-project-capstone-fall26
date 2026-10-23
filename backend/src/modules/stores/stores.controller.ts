@@ -31,19 +31,19 @@ export class StoresController {
   }
 
   @Get('public/id/:storeId/presence')
-  getPresence(@Param('storeId', ParseUUIDPipe) storeId: string) {
+  getPresence(@Param('storeId') storeId: string) {
     return this.presence.getPublicPresence(storeId);
   }
 
   @Get('public/id/:storeId')
-  getPublicStoreById(@Param('storeId', ParseUUIDPipe) storeId: string) {
+  getPublicStoreById(@Param('storeId') storeId: string) {
     return this.storesService.getPublicStoreById(storeId);
   }
 
   @Get('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
   getFollowStatus(
-    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('storeId') storeId: string,
     @CurrentUser('id') userId: string,
   ) {
     return this.storesService.getFollowStatus(storeId, userId);
@@ -52,7 +52,7 @@ export class StoresController {
   @Post('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
   follow(
-    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('storeId') storeId: string,
     @CurrentUser('id') userId: string,
   ) {
     return this.storesService.setFollow(storeId, userId, true);
@@ -61,7 +61,7 @@ export class StoresController {
   @Delete('public/id/:storeId/follow')
   @UseGuards(JwtAuthGuard)
   unfollow(
-    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('storeId') storeId: string,
     @CurrentUser('id') userId: string,
   ) {
     return this.storesService.setFollow(storeId, userId, false);

@@ -2280,28 +2280,38 @@ export class OrdersService {
         dto.couponsByStore?.[storeId] || dto.couponCode || undefined;
       let couponValidationResult: any = null;
       if (storeCoupon?.trim()) {
-        couponValidationResult = await this.couponsService.validateCoupon(
-          {
-            code: storeCoupon.trim(),
-            storeId,
-            customerPhone: customerPhone || undefined,
-            items: storeItems,
-            hasProductDiscount: anyProductHasDirectDiscount,
-            hasShopVoucher: false,
-            hasPlatformVoucher: false,
-          },
-          undefined,
-          undefined,
-          undefined,
-        );
+        try {
+          couponValidationResult = await this.couponsService.validateCoupon(
+            {
+              code: storeCoupon.trim(),
+              storeId,
+              customerPhone: customerPhone || undefined,
+              items: storeItems,
+              hasProductDiscount: anyProductHasDirectDiscount,
+              hasShopVoucher: false,
+              hasPlatformVoucher: false,
+            },
+            undefined,
+            undefined,
+            undefined,
+          );
+        } catch (err: any) {
+          // Nếu người dùng chỉ định rõ couponsByStore cho shop này, báo lỗi thật
+          if (dto.couponsByStore?.[storeId]) {
+            throw err;
+          }
+          // Nếu là fallback từ couponCode chung và mã thuộc về shop khác trong giỏ hàng, an toàn bỏ qua cho shop này
+          couponValidationResult = null;
+        }
       }
 
+      const effectiveStoreCoupon = couponValidationResult ? storeCoupon : undefined;
       const subIdempotencyKey = `${baseIdempotencyKey}_store_${storeId}`;
       const subDto: CreateOrderDto = {
         ...dto,
         storeId,
         items: storeItems,
-        couponCode: storeCoupon,
+        couponCode: effectiveStoreCoupon,
         platformCouponCode: dto.platformCouponsByStore?.[storeId] || dto.platformCouponCode,
         shippingCouponCode: dto.shippingCouponsByStore?.[storeId] || dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
