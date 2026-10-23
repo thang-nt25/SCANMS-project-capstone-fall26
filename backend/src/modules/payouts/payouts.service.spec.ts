@@ -16,7 +16,7 @@ describe('PayoutsService FR-22', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
   const storeId = '38b2b124-12d2-47f8-881f-c3107ee71084';
 
-  function createService(balance = '500000.31') {
+  function createService(balance = '500000.31', selectedStoreId = storeId) {
     let availableBalance = new Prisma.Decimal(balance);
     let persistedRequests = 0;
     const profile = {
@@ -34,7 +34,7 @@ describe('PayoutsService FR-22', () => {
     const tx = {
       store: {
         findUnique: jest.fn().mockResolvedValue({
-          id: storeId,
+          id: selectedStoreId,
           isDeleted: false,
           owner: { isActive: true, isDeleted: false },
         }),
@@ -44,7 +44,7 @@ describe('PayoutsService FR-22', () => {
         findUniqueOrThrow: jest.fn(() =>
           Promise.resolve({
             id: 'store-wallet-id',
-            storeId,
+            storeId: selectedStoreId,
             availableBalance,
             pendingBalance: new Prisma.Decimal(0),
           }),
@@ -127,6 +127,16 @@ describe('PayoutsService FR-22', () => {
       getRequests: () => persistedRequests,
     };
   }
+
+  it('accepts a seeded UUID v5 shop without bypassing balance debits', async () => {
+    const seededShopId = '2f67001b-09a5-5958-85fd-5f401831c871';
+    const { service, tx, getBalance, getRequests } = createService('1006000', seededShopId);
+    const response = await service.createWithdrawal(collaboratorId, { storeId: seededShopId, amount: '1000000' });
+    expect(response.request.status).toBe(PayoutStatus.PENDING);
+    expect(getBalance()).toBe('6000.00');
+    expect(getRequests()).toBe(1);
+    expect(tx.store.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: seededShopId } }));
+  });
 
   it('debits available balance and creates PENDING request in the same transaction', async () => {
     const { service, prisma, tx, getBalance } = createService();
