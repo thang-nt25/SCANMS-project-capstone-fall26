@@ -79,6 +79,6 @@ export class ExportPayoutBatchDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(200)
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID('all', { each: true })
   payoutIds: string[];
 }
