@@ -12,6 +12,7 @@ import {
   PRODUCT_TEMPLATES,
   RETURN_POLICY,
   SHOPS,
+  SHOP_DESCRIPTIONS,
   WARRANTY_POLICY,
 } from './data/catalog.data';
 
@@ -28,7 +29,9 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
       name: shop.name,
       slug: `seed-${shop.slug}`,
       logoUrl: assetUrl(context, logo),
-      description: `${shop.name} — gian hàng minh họa cho các luồng mua sắm và tiếp thị liên kết trên SCANMS.`,
+      description:
+        SHOP_DESCRIPTIONS[shop.slug] ||
+        `${shop.name} — Thương hiệu chính hãng hợp tác cùng sàn SCANMS, cam kết nguồn gốc xuất xứ và dịch vụ hậu mãi uy tín.`,
       defaultCommissionRate: 10,
       isActive: true,
       isVerified: true,

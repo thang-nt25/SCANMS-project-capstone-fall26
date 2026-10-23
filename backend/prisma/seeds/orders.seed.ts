@@ -279,7 +279,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
             productId: product.id!,
             orderId: id,
             customerName: customer.fullName,
-            rating: 5,
+            rating: (customerIndex + itemIndex) % 4 === 0 ? 4 : 5,
             comment: [
               'Đóng gói cẩn thận, mình đã nhận đúng phân loại đã đặt.',
               'Sản phẩm được niêm phong, Shop tư vấn rõ ràng.',
