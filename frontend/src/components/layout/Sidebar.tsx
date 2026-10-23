@@ -175,15 +175,15 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         currentPath.startsWith('/collaborator/referral-links') ||
         currentPath.startsWith('/collaborator/links') ||
         currentPath.startsWith('/collaborator/media-hub') ||
-        currentPath.startsWith('/collaborator/coupons')
+        currentPath.startsWith('/collaborator/coupons') ||
+        currentPath.startsWith('/collaborator/samples') ||
+        currentPath.startsWith('/collaborator/sample-requests')
       );
     }
 
     if (path === '/collaborator/collaboration') {
       return (
         currentPath.startsWith('/collaborator/collaboration') ||
-        currentPath.startsWith('/collaborator/sample-requests') ||
-        currentPath.startsWith('/collaborator/samples') ||
         currentPath.startsWith('/collaborator/messages') ||
         currentPath.startsWith('/collaborator/campaigns') ||
         currentPath === '/chat'

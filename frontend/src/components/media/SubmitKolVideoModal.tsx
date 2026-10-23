@@ -59,6 +59,7 @@ export function SubmitKolVideoModal({
   const [selectedProductId, setSelectedProductId] = useState<string>(initialProductId || '');
   const [title, setTitle] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoInputMode, setVideoInputMode] = useState<'link' | 'file'>('link');
   const [posterUrl, setPosterUrl] = useState('');
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [posterFileName, setPosterFileName] = useState<string | null>(null);
@@ -266,10 +267,6 @@ export function SubmitKolVideoModal({
 
   useEffect(() => {
     if (!isOpen) return;
-
-
-    setTitle((prev) => prev || 'Trải nghiệm thực tế Serum Vitamin C sau 14 ngày - Da sáng rõ rệt');
-    setCaption((prev) => prev || 'Serum mỏng nhẹ thấm nhanh, mùi cam dễ chịu, hiệu quả làm đều màu da rõ rệt sau 2 tuần.');
 
     if (initialProductId) {
       setSelectedProductId(initialProductId);
@@ -603,8 +600,8 @@ export function SubmitKolVideoModal({
             )}
             <p className="text-[11px] text-[#7D715E] mt-1 m-0">
               {sampleRequestId
-                ? 'Video sẽ được gắn với yêu cầu nhận mẫu này và Shop sẽ kiểm duyệt.'
-                : 'Chỉ nộp được cho sản phẩm thuộc gian hàng bạn đã được phê duyệt làm CTV (StoreCollaborator = APPROVED).'}
+                ? 'Video sẽ được gắn trực tiếp với yêu cầu nhận mẫu thử này để Shop kiểm duyệt.'
+                : 'Chỉ hiển thị các sản phẩm thuộc Gian hàng đối tác bạn đã được phê duyệt liên kết tiếp thị.'}
             </p>
           </div>
 
@@ -618,7 +615,7 @@ export function SubmitKolVideoModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ví dụ: Trải nghiệm thực tế Serum sau 14 ngày dùng - da căng bóng mờ thâm"
-              className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+              className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#C59B58] transition"
               required
             />
           </div>
@@ -627,7 +624,7 @@ export function SubmitKolVideoModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
-                Video Review Sản phẩm <span className="text-rose-500 font-bold">{sampleRequestId ? '* (Dán link video đã đăng)' : '* (Bắt buộc phải tải video)'}</span>
+                Video Review Sản Phẩm <span className="text-rose-500">*</span>
               </label>
               {videoPreview && (
                 <button
@@ -640,121 +637,145 @@ export function SubmitKolVideoModal({
               )}
             </div>
 
-            {sampleRequestId && (
-              <input
-                type="url"
-                value={videoUrl.startsWith('blob:') ? '' : videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://www.tiktok.com/@kenh/video/..."
-                className="w-full mb-3 p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                required
-              />
-            )}
-
-            {!sampleRequestId && (
-              <>
-            <input
-              ref={videoFileInputRef}
-              type="file"
-              accept="video/mp4,video/webm,video/quicktime"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) processSelectedVideoFile(f);
-              }}
-              className="hidden"
-            />
-
-            {!videoPreview && !videoUrl ? (
-              <div
-                onClick={() => videoFileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDraggingVideo(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setIsDraggingVideo(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDraggingVideo(false);
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) processSelectedVideoFile(f);
-                }}
-                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 ${
-                  isDraggingVideo
-                    ? 'border-[#B88E4F] bg-[#F3EFE6] scale-[0.99]'
-                    : 'border-[#B88E4F] bg-[#FBF5EB]/70 hover:border-[#B88E4F] hover:bg-[#FBF5EB]'
+            {/* Chuyển đổi phương thức: Dán link vs Tải file */}
+            <div className="flex items-center gap-2 mb-2 p-1 bg-[#F3EFE6] rounded-xl border border-[#EAE4D7]">
+              <button
+                type="button"
+                onClick={() => setVideoInputMode('link')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  videoInputMode === 'link'
+                    ? 'bg-white text-[#1A1612] shadow-xs border border-[#EAE4D7]'
+                    : 'text-[#7D715E] hover:text-[#1A1612]'
                 }`}
               >
-                <div className="w-12 h-12 mx-auto mb-2.5 rounded-full bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] shadow-sm">
-                  <Video className="w-6 h-6" />
-                </div>
-                <p className="text-xs font-bold text-[#1A1612] m-0">
-                  Bấm để tải video từ máy tính <span className="text-[#7D715E] font-normal">hoặc kéo thả file vào đây</span>
+                🔗 Dán link (TikTok / Reels / YouTube)
+              </button>
+              <button
+                type="button"
+                onClick={() => setVideoInputMode('file')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  videoInputMode === 'file'
+                    ? 'bg-white text-[#1A1612] shadow-xs border border-[#EAE4D7]'
+                    : 'text-[#7D715E] hover:text-[#1A1612]'
+                }`}
+              >
+                📁 Tải file video trực tiếp (MP4 / MOV)
+              </button>
+            </div>
+
+            {videoInputMode === 'link' ? (
+              <div className="space-y-1.5">
+                <input
+                  type="url"
+                  value={videoUrl.startsWith('blob:') ? '' : videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://www.tiktok.com/@kenh/video/... hoặc https://youtube.com/shorts/..."
+                  className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#C59B58] transition"
+                  required={videoInputMode === 'link'}
+                />
+                <p className="text-[11px] text-[#7D715E] flex items-center gap-1">
+                  <span>Hỗ trợ:</span>
+                  <strong className="text-[#1A1612]">TikTok, YouTube, Facebook Reels, Instagram Reels</strong>
                 </p>
-                <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-                  Hỗ trợ: <strong>MP4, WEBM, MOV</strong> (tối đa 100 MB). Khuyên dùng video dọc 9:16 hoặc 16:9.
-                </p>
-                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full text-[11px] font-bold text-amber-900 shadow-xs">
-                  ⚠️ Bắt buộc phải tải video lên thì mới bấm gửi duyệt được
-                </div>
               </div>
             ) : (
-              <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 flex items-center gap-3.5">
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-black/10 border border-[#EAE4D7] shrink-0 flex items-center justify-center">
-                  {videoPreview ? (
-                    <video
-                      src={videoPreview}
-                      className="w-full h-full object-cover"
-                      muted
-                      playsInline
-                    />
-                  ) : (
-                    <Video className="w-8 h-8 text-[#B88E4F]" />
-                  )}
-                  {isUploadingVideo && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
-                      <Loader2 className="w-5 h-5 animate-spin mb-1" />
-                      <span className="text-[9px]">Đang tải...</span>
+              <>
+                <input
+                  ref={videoFileInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) processSelectedVideoFile(f);
+                  }}
+                  className="hidden"
+                />
+
+                {!videoPreview && !videoUrl.startsWith('blob:') ? (
+                  <div
+                    onClick={() => videoFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingVideo(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDraggingVideo(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingVideo(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) processSelectedVideoFile(f);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 ${
+                      isDraggingVideo
+                        ? 'border-[#B88E4F] bg-[#F3EFE6] scale-[0.99]'
+                        : 'border-[#DEBE85] bg-[#FBF5EB]/70 hover:border-[#B88E4F] hover:bg-[#FBF5EB]'
+                    }`}
+                  >
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] shadow-sm">
+                      <Video className="w-6 h-6" />
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {isUploadingVideo ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
-                        <Loader2 className="w-3 h-3 animate-spin" /> Đang tải video lên máy chủ...
-                      </span>
-                    ) : videoUploadError ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
-                        <AlertCircle className="w-3 h-3" /> {videoUploadError}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3" /> Video đã tải lên thành công - Có thể bấm gửi!
-                      </span>
-                    )}
+                    <p className="text-xs font-bold text-[#1A1612] m-0">
+                      Bấm để tải video từ máy tính <span className="text-[#7D715E] font-normal">hoặc kéo thả file vào đây</span>
+                    </p>
+                    <p className="text-[11px] text-[#7D715E] mt-1 m-0">
+                      Hỗ trợ: <strong>MP4, WEBM, MOV</strong> (tối đa 100 MB). Khuyên dùng khung hình dọc 9:16.
+                    </p>
                   </div>
-                  <p className="text-xs font-semibold text-[#1A1612] truncate m-0">
-                    {videoFileName || 'Video review đã chọn'} {videoFileSize ? `(${videoFileSize})` : ''}
-                  </p>
-                  <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">
-                    Video sẽ hiển thị trực tiếp trên Landing Page sản phẩm sau khi Shop duyệt
-                  </p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => videoFileInputRef.current?.click()}
-                      disabled={isUploadingVideo}
-                      className="text-[11px] font-semibold text-[#B88E4F] hover:text-[#B88E4F] hover:underline cursor-pointer disabled:opacity-50"
-                    >
-                      Đổi video khác
-                    </button>
+                ) : (
+                  <div className="bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl p-3 flex items-center gap-3.5">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-black/10 border border-[#EAE4D7] shrink-0 flex items-center justify-center">
+                      {videoPreview ? (
+                        <video
+                          src={videoPreview}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <Video className="w-8 h-8 text-[#B88E4F]" />
+                      )}
+                      {isUploadingVideo && (
+                        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
+                          <Loader2 className="w-5 h-5 animate-spin mb-1" />
+                          <span className="text-[9px]">Đang tải...</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {isUploadingVideo ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Đang tải video lên máy chủ...
+                          </span>
+                        ) : videoUploadError ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                            <AlertCircle className="w-3 h-3" /> {videoUploadError}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" /> Video đã tải lên thành công!
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-[#1A1612] truncate m-0">
+                        {videoFileName || 'Video review đã chọn'} {videoFileSize ? `(${videoFileSize})` : ''}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => videoFileInputRef.current?.click()}
+                          disabled={isUploadingVideo}
+                          className="text-[11px] font-semibold text-[#B88E4F] hover:text-[#1A1612] hover:underline cursor-pointer disabled:opacity-50"
+                        >
+                          Đổi video khác
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
               </>
             )}
           </div>
@@ -926,7 +947,7 @@ export function SubmitKolVideoModal({
             <span className="text-[11px] text-[#7D715E]">
               {!videoUrl.trim() ? (
                 <span className="text-rose-600 font-semibold flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> {sampleRequestId ? 'Dán link video để gửi Shop duyệt' : 'Bắt buộc phải tải video để gửi duyệt'}
+                  <AlertCircle className="w-3.5 h-3.5" /> Vui lòng dán link hoặc tải file video để gửi Shop duyệt
                 </span>
               ) : (
                 <span className="text-emerald-700 font-semibold flex items-center gap-1">
@@ -950,8 +971,8 @@ export function SubmitKolVideoModal({
                   : isUploadingVideo
                   ? 'Đang tải video...'
                   : !videoUrl.trim()
-                  ? 'Cần tải video để gửi'
-                  : sampleRequestId ? 'Gửi link video cho Shop duyệt' : 'Gửi video cho Shop duyệt'}
+                  ? 'Cần video để gửi'
+                  : 'Gửi video cho Shop duyệt'}
               </Button>
             </div>
           </div>

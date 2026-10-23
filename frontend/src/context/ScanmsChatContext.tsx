@@ -24,28 +24,6 @@ export type {
   ScanmsChatContextType,
 };
 
-const DEFAULT_CONVERSATIONS: ChatConversationItem[] = [
-  {
-    id: 'conv-sora-skin',
-    store: {
-      id: 'a7e7bd20-bebc-44c9-a98b-004de44cf773',
-      name: 'Sora Skin Official Store',
-      isVerified: true,
-    },
-    lastMessage: 'Dạ Shop chào bạn! Shop có thể hỗ trợ gì cho bạn về sản phẩm ạ?',
-    lastTime: '10:33',
-    unreadCount: 1,
-    messages: [
-      {
-        id: 'm1',
-        sender: 'shop',
-        content: 'Xin chào! Cảm ơn bạn đã ghé thăm gian hàng chính hãng Sora Skin trên SCANMS. Bạn cần tư vấn về dòng serum hay kem chống nắng nào ạ?',
-        timestamp: '10:30',
-      },
-    ],
-  },
-];
-
 const ScanmsChatContext = createContext<ScanmsChatContextType | undefined>(undefined);
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -89,13 +67,11 @@ function formatTimeDisplay(dateStr?: string | null): string {
 
 function loadCachedConversations(scope: string): ChatConversationItem[] {
   try {
-    const isGuest = scope === 'guest';
     const key = getChatStorageKey(scope);
-    const legacyKey = `scanms_shopee_chat_conversations:${encodeURIComponent(scope)}`;
-    const saved = localStorage.getItem(key) || localStorage.getItem(legacyKey);
-    if (!saved) return isGuest ? DEFAULT_CONVERSATIONS : [];
+    const saved = localStorage.getItem(key);
+    if (!saved) return [];
     const parsed: ChatConversationItem[] = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return isGuest ? DEFAULT_CONVERSATIONS : [];
+    if (!Array.isArray(parsed)) return [];
     const filtered = parsed.filter(
       (c) =>
         c?.store?.name &&
@@ -103,12 +79,12 @@ function loadCachedConversations(scope: string): ChatConversationItem[] {
         !c.store.name.toLowerCase().includes('umizoku') &&
         c.id !== 'conv-marie-japan' &&
         c.id !== 'conv-umizoku' &&
-        (isGuest || c.id !== 'conv-sora-skin')
+        c.id !== 'conv-sora-skin' &&
+        (c.messages?.length > 0 || Boolean(c.lastMessage && c.lastMessage !== 'Bắt đầu cuộc trò chuyện' && c.lastMessage !== 'Bắt đầu cuộc trò chuyện mới'))
     );
-    const deduped = deduplicateConversations(filtered);
-    return deduped.length > 0 ? deduped : (isGuest ? DEFAULT_CONVERSATIONS : []);
+    return deduplicateConversations(filtered);
   } catch {
-    return scope === 'guest' ? DEFAULT_CONVERSATIONS : [];
+    return [];
   }
 }
 
@@ -267,7 +243,11 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
   const [conversations, setConversations] = useState<ChatConversationItem[]>(() =>
     loadCachedConversations(getChatStorageScope())
   );
-  const [activeConversationId, setActiveConversationId] = useState<string>('conv-sora-skin');
+  const [draftConversation, setDraftConversation] = useState<ChatConversationItem | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string>(() => {
+    const cached = loadCachedConversations(getChatStorageScope());
+    return cached[0]?.id || '';
+  });
   const [activeProduct, setActiveProduct] = useState<ChatProductInfo | null>(null);
   const socketRef = useRef<ReturnType<typeof getChatSocket> | null>(null);
   const authScopeRef = useRef(getChatStorageScope());
@@ -308,7 +288,6 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let cancelled = false;
-    localStorage.removeItem('scanms_shopee_chat_conversations');
 
     const reloadConversations = () => {
       const currentScope = getChatStorageScope();
@@ -325,8 +304,10 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       const requestedScope = currentScope;
       api.get('/chat/conversations')
         .then((result: any) => {
-          const rows = Array.isArray(result) ? result : result?.data || [];
-          if (cancelled || requestedScope !== getChatStorageScope() || !Array.isArray(rows)) return;
+          const rawRows = Array.isArray(result) ? result : result?.data || [];
+          if (cancelled || requestedScope !== getChatStorageScope() || !Array.isArray(rawRows)) return;
+          // Chỉ lấy hội thoại thực sự có tin nhắn
+          const rows = rawRows.filter((r: any) => (r.chatMessages && r.chatMessages.length > 0) || (r.messageCount && r.messageCount > 0));
           const mapped = rows.map(mapServerConversation);
           setConversations((prev) => {
             const mergedMapped = mapped.map((srv) => {
@@ -338,7 +319,13 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
               };
             });
             const pendingOptimistic = prev.filter(
-              (p) => !UUID_REGEX.test(p.id) && p.id !== 'conv-sora-skin' && p.store?.id && !mapped.some((m) => m.store?.id === p.store?.id)
+              (p) =>
+                !UUID_REGEX.test(p.id) &&
+                p.id !== 'conv-sora-skin' &&
+                !p.id.startsWith('draft-') &&
+                p.store?.id &&
+                !mapped.some((m) => m.store?.id === p.store?.id) &&
+                (p.messages?.length > 0 || Boolean(p.lastMessage && p.lastMessage !== 'Bắt đầu cuộc trò chuyện'))
             );
             return deduplicateConversations([...mergedMapped, ...pendingOptimistic]);
           });
@@ -405,9 +392,13 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
   }, [conversations]);
 
   const activeConversation =
-    conversations.find((c) => c.id === activeConversationId) || conversations[0] || null;
+    (draftConversation && draftConversation.id === activeConversationId ? draftConversation : null) ||
+    conversations.find((c) => c.id === activeConversationId) ||
+    draftConversation ||
+    conversations[0] ||
+    null;
 
-  const openChat = async (store?: ChatStoreInfo, product?: ChatProductInfo) => {
+  const openChat = (store?: ChatStoreInfo, product?: ChatProductInfo) => {
     setIsOpen(true);
     setIsMinimized(false);
 
@@ -424,107 +415,36 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       const normalizedStoreName = cleanStore.name.trim().toLowerCase();
       const existingConv = conversations.find(
         (c) =>
-          (c.store.id && cleanStore.id && c.store.id.toLowerCase() === cleanStore.id.toLowerCase()) ||
-          c.store.name.trim().toLowerCase() === normalizedStoreName
+          ((c.store.id && cleanStore.id && c.store.id.toLowerCase() === cleanStore.id.toLowerCase()) ||
+          c.store.name.trim().toLowerCase() === normalizedStoreName) &&
+          (c.messages.length > 0 || Boolean(c.lastMessage && c.lastMessage !== 'Bắt đầu cuộc trò chuyện' && c.lastMessage !== ''))
       );
 
-      let currentConvId = '';
-
       if (existingConv) {
-        currentConvId = existingConv.id;
-        setActiveConversationId(currentConvId);
-
-        setConversations((prev) => {
-          const others = prev.filter((c) => c.id !== existingConv.id);
-          const updatedConv = {
-            ...existingConv,
-            store: {
-              ...existingConv.store,
-              logoUrl: cleanStore.logoUrl || existingConv.store.logoUrl,
-            },
-            unreadCount: 0,
-          };
-          return deduplicateConversations([updatedConv, ...others]);
-        });
+        setDraftConversation(null);
+        setActiveConversationId(existingConv.id);
+        ensureSocket();
       } else {
-        const newConvId = `conv-${Date.now()}`;
-        currentConvId = newConvId;
-        const newConv: ChatConversationItem = {
-          id: newConvId,
+        const draftId = `draft-${cleanStore.id || Date.now()}`;
+        const draft: ChatConversationItem = {
+          id: draftId,
           store: cleanStore,
-          lastMessage: 'Bắt đầu cuộc trò chuyện mới',
-          lastTime: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          lastMessage: '',
+          lastTime: '',
           unreadCount: 0,
-          messages: [
-            {
-              id: `m-init-${Date.now()}`,
-              sender: 'shop',
-              content: `Kính chào quý khách! Gian hàng ${cleanStore.name} đã sẵn sàng tư vấn. Bạn có câu hỏi nào về sản phẩm hoặc chính sách bảo hành không ạ?`,
-              timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            },
-          ],
+          messages: [],
         };
-        setConversations((prev) => deduplicateConversations([newConv, ...prev]));
-        setActiveConversationId(newConvId);
-      }
-
-      if (localStorage.getItem('token') && cleanStore.id) {
-        try {
-          const result: any = await api.post('/chat/conversations', { storeId: cleanStore.id });
-          const raw = result?.data || result;
-          if (raw?.id) {
-            const mapped = mapServerConversation(raw);
-            const cleanMapped: ChatConversationItem = {
-              ...mapped,
-              store: {
-                ...mapped.store,
-                logoUrl: isUnsafeShopLogo(mapped.store.logoUrl) ? undefined : mapped.store.logoUrl,
-              },
-            };
-
-            setConversations((prev) => {
-              const oldMatch = prev.find(
-                (c) =>
-                  c.id === currentConvId ||
-                  (c.store.id && c.store.id.toLowerCase() === cleanStore.id.toLowerCase()) ||
-                  c.store.name.trim().toLowerCase() === normalizedStoreName
-              );
-
-              const remaining = prev.filter(
-                (c) =>
-                  c.id !== currentConvId &&
-                  c.id !== cleanMapped.id &&
-                  c.store.id?.toLowerCase() !== cleanStore.id.toLowerCase() &&
-                  c.store.name.trim().toLowerCase() !== normalizedStoreName
-              );
-
-              const mergedMessages =
-                cleanMapped.messages && cleanMapped.messages.length > 0
-                  ? cleanMapped.messages
-                  : oldMatch?.messages || [];
-
-              const finalConv: ChatConversationItem = {
-                ...cleanMapped,
-                messages: mergedMessages,
-                lastMessage: oldMatch?.lastMessage || cleanMapped.lastMessage,
-                lastTime: oldMatch?.lastTime || cleanMapped.lastTime,
-              };
-
-              return deduplicateConversations([finalConv, ...remaining]);
-            });
-
-            setActiveConversationId(cleanMapped.id);
-            ensureSocket();
-          }
-        } catch {
-          // Local conversation remains active if network is offline
-        }
+        setDraftConversation(draft);
+        setActiveConversationId(draftId);
       }
     }
   };
 
   const closeChat = () => {
     setIsOpen(false);
+    if (draftConversation && draftConversation.messages.length === 0) {
+      setDraftConversation(null);
+    }
   };
 
   const toggleMinimize = () => {
@@ -532,6 +452,9 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
   };
 
   const selectConversation = (id: string) => {
+    if (draftConversation && id !== draftConversation.id) {
+      setDraftConversation(null);
+    }
     setActiveConversationId(id);
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
@@ -607,13 +530,59 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     toast.success('Đã xóa toàn bộ lịch sử các cuộc trò chuyện.');
   };
 
-  const sendMessage = (content: string) => {
-    if (!content.trim() || !activeConversation) return;
+  const sendMessage = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed || !activeConversation) return;
+
+    if (activeConversation.id.startsWith('draft-')) {
+      const storeId = activeConversation.store?.id;
+      let serverConvId = '';
+
+      if (localStorage.getItem('token') && storeId) {
+        try {
+          const result: any = await api.post('/chat/conversations', { storeId });
+          const raw = result?.data || result;
+          if (raw?.id) serverConvId = raw.id;
+        } catch (err) {
+          console.warn('Lỗi tạo hội thoại chat trên server:', err);
+        }
+      }
+
+      const realConvId = serverConvId || `conv-${Date.now()}`;
+      const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const userMsg: ChatMessageItem = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        content: trimmed,
+        timestamp: timeStr,
+        product: activeProduct || undefined,
+      };
+
+      const promotedConv: ChatConversationItem = {
+        ...activeConversation,
+        id: realConvId,
+        lastMessage: trimmed,
+        lastTime: timeStr,
+        unreadCount: 0,
+        messages: [userMsg],
+      };
+
+      setDraftConversation(null);
+      setActiveConversationId(realConvId);
+      setConversations((prev) => deduplicateConversations([promotedConv, ...prev]));
+
+      if (serverConvId && localStorage.getItem('token')) {
+        const socket = ensureSocket();
+        socket.emit('join_conversation', { conversationId: serverConvId });
+        socket.emit('send_message', { conversationId: serverConvId, messageText: trimmed });
+      }
+      return;
+    }
 
     if (UUID_REGEX.test(activeConversation.id) && localStorage.getItem('token')) {
       const socket = ensureSocket();
       socket.emit('join_conversation', { conversationId: activeConversation.id });
-      socket.emit('send_message', { conversationId: activeConversation.id, messageText: content.trim() });
+      socket.emit('send_message', { conversationId: activeConversation.id, messageText: trimmed });
       return;
     }
 
@@ -621,7 +590,7 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     const userMsg: ChatMessageItem = {
       id: `msg-${Date.now()}`,
       sender: 'user',
-      content: content.trim(),
+      content: trimmed,
       timestamp: timeStr,
       product: activeProduct || undefined,
     };
@@ -637,46 +606,43 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         };
       })
     );
-
-    const currentStoreName = activeConversation.store.name;
-    setTimeout(() => {
-      const replies = [
-        `Dạ ${currentStoreName} xin chào bạn! Shop đã ghi nhận tin nhắn: "${content.trim()}". Shop sẽ kiểm tra và phản hồi kỹ hơn cho bạn ngay nhé!`,
-        `Dạ sản phẩm chính hãng 100% được bảo hành đổi trả trong 14 ngày ạ. Bạn cần Shop hướng dẫn cách đặt mã giảm giá không ạ?`,
-        `Dạ hàng có sẵn tại kho và đóng gói bàn giao đơn vị vận chuyển ngay trong ngày hôm nay bạn nhé!`,
-      ];
-      const randomReply = replies[Math.floor(Math.random() * replies.length)];
-      const shopMsg: ChatMessageItem = {
-        id: `msg-shop-${Date.now()}`,
-        sender: 'shop',
-        content: randomReply,
-        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setConversations((prev) =>
-        prev.map((conv) => {
-          if (conv.id !== activeConversationId) return conv;
-          return {
-            ...conv,
-            lastMessage: shopMsg.content,
-            lastTime: shopMsg.timestamp,
-            messages: [...conv.messages, shopMsg],
-          };
-        })
-      );
-    }, 1200);
   };
 
   const sendAttachment = async (file: File, type: ChatAttachmentType, caption = '') => {
     if (!localStorage.getItem('token')) throw new Error('Vui lòng đăng nhập để gửi tệp trong chat.');
-    if (!activeConversation || !UUID_REGEX.test(activeConversation.id)) {
+    if (!activeConversation) throw new Error('Không tìm thấy cuộc trò chuyện.');
+
+    let convId = activeConversation.id;
+    if (convId.startsWith('draft-')) {
+      const storeId = activeConversation.store?.id;
+      if (storeId) {
+        try {
+          const result: any = await api.post('/chat/conversations', { storeId });
+          const raw = result?.data || result;
+          if (raw?.id) {
+            convId = raw.id;
+            const promotedConv: ChatConversationItem = {
+              ...activeConversation,
+              id: convId,
+            };
+            setDraftConversation(null);
+            setActiveConversationId(convId);
+            setConversations((prev) => deduplicateConversations([promotedConv, ...prev]));
+          }
+        } catch (err: any) {
+          throw new Error(err?.response?.data?.message || 'Không thể tạo cuộc trò chuyện trên máy chủ.');
+        }
+      }
+    }
+
+    if (!UUID_REGEX.test(convId)) {
       throw new Error('Cuộc trò chuyện chưa kết nối với máy chủ. Hãy đóng và mở lại chat của Shop.');
     }
 
     const formData = new FormData();
     formData.append('file', file);
     const result: any = await api.post(
-      `/chat/conversations/${activeConversation.id}/attachments`,
+      `/chat/conversations/${convId}/attachments`,
       formData,
       { timeout: 120000, headers: { 'Content-Type': 'multipart/form-data' } },
     );
@@ -684,9 +650,9 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     if (!attachment?.url) throw new Error('Máy chủ chưa trả về đường dẫn tệp đã tải lên.');
 
     const socket = ensureSocket();
-    socket.emit('join_conversation', { conversationId: activeConversation.id });
+    socket.emit('join_conversation', { conversationId: convId });
     socket.emit('send_message', {
-      conversationId: activeConversation.id,
+      conversationId: convId,
       messageText: caption.trim(),
       mediaUrl: attachment.url,
       mediaType: type,
@@ -694,8 +660,68 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const sendProductsInquiry = (productsToSend: ChatProductInfo[]) => {
+  const sendProductsInquiry = async (productsToSend: ChatProductInfo[]) => {
     if (!productsToSend || productsToSend.length === 0 || !activeConversation) return false;
+
+    let targetConvId = activeConversation.id;
+
+    if (targetConvId.startsWith('draft-')) {
+      const storeId = activeConversation.store?.id;
+      let serverConvId = '';
+      if (localStorage.getItem('token') && storeId) {
+        try {
+          const result: any = await api.post('/chat/conversations', { storeId });
+          const raw = result?.data || result;
+          if (raw?.id) serverConvId = raw.id;
+        } catch (err) {
+          console.warn('Lỗi tạo hội thoại chat trên server:', err);
+        }
+      }
+
+      const realConvId = serverConvId || `conv-${Date.now()}`;
+      const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const userMsg: ChatMessageItem = {
+        id: `msg-${Date.now()}`,
+        sender: 'user',
+        content: `Khách đang quan tâm sản phẩm này.`,
+        timestamp: timeStr,
+        products: productsToSend,
+        product: productsToSend[0],
+      };
+
+      const promotedConv: ChatConversationItem = {
+        ...activeConversation,
+        id: realConvId,
+        lastMessage: `[Sản phẩm] ${productsToSend[0].title}`,
+        lastTime: timeStr,
+        unreadCount: 0,
+        messages: [userMsg],
+      };
+
+      setDraftConversation(null);
+      setActiveConversationId(realConvId);
+      setConversations((prev) => deduplicateConversations([promotedConv, ...prev]));
+
+      if (serverConvId && localStorage.getItem('token')) {
+        const socket = ensureSocket();
+        socket.emit('join_conversation', { conversationId: serverConvId });
+        productsToSend.forEach((product) => {
+          socket.emit('send_message', {
+            conversationId: serverConvId,
+            messageText: JSON.stringify({
+              type: 'PRODUCT_INQUIRY',
+              productId: product.id,
+              message: 'Mình muốn tìm hiểu thêm về sản phẩm này.',
+            }),
+          });
+        });
+        toast.success(`Đã gửi ${productsToSend.length} sản phẩm vào cuộc trò chuyện.`);
+        return true;
+      }
+
+      toast.success(`Đã gửi ${productsToSend.length} sản phẩm vào cuộc trò chuyện.`);
+      return true;
+    }
 
     // Guest / Offline fallback: Append product card locally into chat history
     if (!localStorage.getItem('token') || !UUID_REGEX.test(activeConversation.id)) {
@@ -832,7 +858,5 @@ export function useScanmsChat() {
   return context;
 }
 
-// Aliases for clean adoption and backward compatibility
+// Aliases for clean adoption
 export const useFloatingChat = useScanmsChat;
-export const useShopeeChat = useScanmsChat;
-export const ShopeeChatProvider = ScanmsChatProvider;

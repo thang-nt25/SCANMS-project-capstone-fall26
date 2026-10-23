@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkles,
+  Handshake,
+  Megaphone,
   Store,
   ShieldCheck,
   ShoppingBag,
@@ -63,7 +64,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   const getWorkspaceIcon = (key: string, iconClass = 'w-4 h-4') => {
     switch (key) {
       case 'kol':
-        return <Sparkles className={`${iconClass} text-[#B88E4F]`} />;
+        return <Megaphone className={`${iconClass} text-[#B88E4F]`} />;
       case 'shop':
         return <Store className={`${iconClass} text-[#B88E4F]`} />;
       case 'admin':
@@ -165,8 +166,8 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               className="w-full px-2.5 py-2 rounded-xl border border-dashed border-[#C59B58]/60 bg-gradient-to-r from-[#FAF5EB] to-white hover:from-[#F3EFE6] hover:to-[#FAF5EB] text-left transition flex items-center justify-between text-xs font-bold text-[#B88E4F] cursor-pointer shadow-2xs group"
             >
               <span className="flex items-center gap-1.5 min-w-0 truncate">
-                <Sparkles className="w-3.5 h-3.5 text-[#C59B58] shrink-0" />
-                <span className="truncate">Mở quyền KOL / Gian Hàng</span>
+                <Handshake className="w-3.5 h-3.5 text-[#C59B58] shrink-0" />
+                <span className="truncate">Hợp tác với chúng tôi</span>
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform" />
             </button>
@@ -255,8 +256,8 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               className="w-full p-2 rounded-xl text-left text-xs font-bold text-[#B88E4F] hover:bg-[#FBF5EB] transition flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Nâng cấp Đối tác (KOL / Shop)</span>
+                <Handshake className="w-3.5 h-3.5" />
+                <span>Hợp tác với chúng tôi</span>
               </div>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>

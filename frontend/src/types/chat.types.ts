@@ -141,7 +141,7 @@ export interface ScanmsChatContextType {
   selectConversation: (id: string) => void;
   sendMessage: (content: string) => void;
   sendAttachment: (file: File, type: ChatAttachmentType, caption?: string) => Promise<void>;
-  sendProductsInquiry: (products: ChatProductInfo[]) => boolean;
+  sendProductsInquiry: (products: ChatProductInfo[]) => boolean | Promise<boolean>;
   shareCouponVoucher: (coupon: ChatCouponVoucher) => boolean;
   clearActiveProduct: () => void;
   deleteConversation: (id: string) => Promise<boolean>;

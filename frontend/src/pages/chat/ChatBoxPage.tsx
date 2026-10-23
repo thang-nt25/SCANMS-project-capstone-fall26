@@ -936,6 +936,7 @@ interface ChatBoxPageProps {
   hideHeaderInChat?: boolean;
   className?: string;
   initialProductContext?: ProductContextData;
+  initialConversations?: Conversation[];
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -975,6 +976,7 @@ export default function ChatBoxPage({
   hideHeaderInChat = false,
   className = '',
   initialProductContext,
+  initialConversations,
 }: ChatBoxPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -988,6 +990,8 @@ export default function ChatBoxPage({
   })();
 
   const effectiveTargetStoreId = targetStoreId || searchParams.get('storeId') || undefined;
+  const targetStoreName = searchParams.get('storeName') || undefined;
+  const targetStoreLogo = searchParams.get('storeLogo') || undefined;
   const requestedConversationId = searchParams.get('conversationId');
   const isCustomerConversation =
     currentUser?.role === 'CUSTOMER' || searchParams.get('asCustomer') === '1';
@@ -1003,8 +1007,13 @@ export default function ChatBoxPage({
     : undefined;
   const effectiveProductContext = initialProductContext || queryProductContext;
 
-  const [conversations, setConversations] = useState<Conversation[]>(() => chatSessionCache.conversations);
-  const conversationsRef = useRef<Conversation[]>(chatSessionCache.conversations);
+  const [conversations, setConversations] = useState<Conversation[]>(() => {
+    if (initialConversations && initialConversations.length > 0) return initialConversations;
+    return chatSessionCache.conversations;
+  });
+  const conversationsRef = useRef<Conversation[]>(
+    initialConversations && initialConversations.length > 0 ? initialConversations : chatSessionCache.conversations
+  );
   conversationsRef.current = conversations;
   const [activeConvId, setActiveConvId] = useState<string | null>(() => chatSessionCache.activeConvId);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -1076,21 +1085,14 @@ export default function ChatBoxPage({
         if (matching) {
           openConversationRef.current(matching);
         } else if (UUID_REGEX.test(effectiveStoreId)) {
-          try {
-            const res: any = await api.post('/chat/conversations', {
-              storeId: effectiveStoreId,
-              ...(isCustomerConversation ? { asCustomer: true } : {}),
-            });
-            const realConv = res?.data || res;
-            if (isMounted && realConv && realConv.id) {
-              setConversations((prev) => {
-                const filtered = prev.filter((c) => c.id !== realConv.id);
-                return [realConv, ...filtered];
-              });
-              openConversationRef.current(realConv);
-            }
-          } catch (err) {
-            console.warn('Không thể khởi tạo hội thoại thật với shop:', err);
+          const draftConv: any = {
+            id: `draft-${effectiveStoreId}`,
+            storeId: effectiveStoreId,
+            store: { id: effectiveStoreId, name: targetStoreName || 'Gian hàng đối tác', logoUrl: targetStoreLogo },
+            chatMessages: [],
+          };
+          if (isMounted) {
+            openConversationRef.current(draftConv);
           }
         }
       } else if (targetCollaboratorId) {
@@ -1101,18 +1103,14 @@ export default function ChatBoxPage({
         if (matching) {
           openConversationRef.current(matching);
         } else if (UUID_REGEX.test(effectiveCollabId)) {
-          try {
-            const res: any = await api.post('/chat/conversations', { collaboratorId: effectiveCollabId });
-            const realConv = res?.data || res;
-            if (isMounted && realConv && realConv.id) {
-              setConversations((prev) => {
-                const filtered = prev.filter((c) => c.id !== realConv.id);
-                return [realConv, ...filtered];
-              });
-              openConversationRef.current(realConv);
-            }
-          } catch (err) {
-            console.warn('Không thể khởi tạo hội thoại thật với KOL:', err);
+          const draftConv: any = {
+            id: `draft-collab-${effectiveCollabId}`,
+            collaboratorId: effectiveCollabId,
+            collaborator: { id: effectiveCollabId, fullName: 'Nhà sáng tạo', role: 'COLLABORATOR' },
+            chatMessages: [],
+          };
+          if (isMounted) {
+            openConversationRef.current(draftConv);
           }
         }
       } else if (activeConvIdRef.current) {
@@ -1127,15 +1125,42 @@ export default function ChatBoxPage({
       }
     };
 
+    // 1. Setup ngay lập tức nếu đã có danh sách hội thoại từ props hoặc cache (0ms!)
+    const immediateList = (initialConversations && initialConversations.length > 0)
+      ? initialConversations
+      : conversationsRef.current.length > 0
+      ? conversationsRef.current
+      : chatSessionCache.conversations.length > 0
+      ? chatSessionCache.conversations
+      : null;
+
+    if (immediateList && immediateList.length > 0) {
+      const filtered = immediateList.filter((conversation) => {
+        if (onlyCustomerChats && !conversation.customerId) return false;
+        const hasMessages = (conversation.chatMessages && conversation.chatMessages.length > 0) || ((conversation as any).messageCount && (conversation as any).messageCount > 0);
+        return hasMessages;
+      });
+      if (filtered.length > 0) {
+        setupContext(filtered);
+      }
+    }
+
+    // 2. Đồng bộ ngầm với server (không chặn luồng hiển thị)
     api
-      .get('/chat/conversations', { headers: { 'x-skip-cache': '1' } })
+      .get('/chat/conversations')
       .then((res: any) => {
         if (!isMounted) return;
         const all: Conversation[] = Array.isArray(res) ? res : res?.data || [];
-        const list = onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all;
+        const list = all.filter((conversation) => {
+          if (onlyCustomerChats && !conversation.customerId) return false;
+          const hasMessages = (conversation.chatMessages && conversation.chatMessages.length > 0) || ((conversation as any).messageCount && (conversation as any).messageCount > 0);
+          return hasMessages;
+        });
         setConversations(list);
         chatSessionCache.conversations = list;
-        setupContext(list);
+        if (!immediateList || immediateList.length === 0) {
+          setupContext(list);
+        }
       })
       .catch((err) => {
         console.warn('Lỗi tải danh sách hội thoại:', err);
@@ -1144,7 +1169,7 @@ export default function ChatBoxPage({
     return () => {
       isMounted = false;
     };
-  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation, requestedConversationId, onlyCustomerChats]);
+  }, [effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation, requestedConversationId, onlyCustomerChats, initialConversations]);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -1175,7 +1200,14 @@ export default function ChatBoxPage({
       if (!conversationsRef.current.some((conversation) => conversation.id === msg.conversationId)) {
         api.get('/chat/conversations', { headers: { 'x-skip-cache': '1' } }).then((response: any) => {
           const all: Conversation[] = Array.isArray(response) ? response : response?.data || [];
-          setConversations(onlyCustomerChats ? all.filter((conversation) => Boolean(conversation.customerId)) : all);
+          const list = all.filter((conversation) => {
+            if (onlyCustomerChats && !conversation.customerId) return false;
+            const hasMessages =
+              (conversation.chatMessages && conversation.chatMessages.length > 0) ||
+              ((conversation as any).messageCount && (conversation as any).messageCount > 0);
+            return hasMessages;
+          });
+          setConversations(list);
         }).catch(() => undefined);
       }
       if (msg.conversationId === activeConvIdRef.current) {
@@ -1288,6 +1320,11 @@ export default function ChatBoxPage({
       setMessages(cached);
       setIsLoadingMsgs(false);
       setTimeout(() => scrollToBottom(), 10);
+    } else if (conv.chatMessages && conv.chatMessages.length > 0) {
+      // Optimistic preview: Hiển thị ngay tin nhắn gần nhất từ conversation summary trong lúc tải full lịch sử
+      setMessages(conv.chatMessages as any);
+      setIsLoadingMsgs(true);
+      setTimeout(() => scrollToBottom(), 10);
     } else {
       setMessages([]);
       setIsLoadingMsgs(true);
@@ -1297,7 +1334,7 @@ export default function ChatBoxPage({
 
     if (UUID_REGEX.test(conv.id)) {
       try {
-        const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`, { headers: { 'x-skip-cache': '1' } });
+        const res: any = await api.get(`/chat/conversations/${conv.id}/messages?take=50`);
         const msgs: ChatMessage[] = Array.isArray(res) ? res : res?.data || [];
         if (activeConvIdRef.current !== conv.id) return;
         setMessages(msgs);
@@ -1391,29 +1428,66 @@ export default function ChatBoxPage({
     if (!socket.connected) { showErrorToast('Mất kết nối chat, vui lòng thử lại.'); return; }
     sendingRef.current = true;
     setIsSending(true);
-    socket.timeout(8000).emit('send_message', {
-      conversationId: activeConvId,
-      messageText: messageToSend,
-      messageId: crypto.randomUUID(),
-    }, (timeoutError: Error | null, result?: { ok: boolean; error?: string }) => {
-      sendingRef.current = false;
-      setIsSending(false);
-      if (timeoutError || !result?.ok) {
-        showErrorToast(result?.error || 'Không gửi được tin nhắn, vui lòng thử lại.');
-        return;
-      }
-      setInputText((current) => current.trim() === trimmed ? '' : current);
-      if (activeConvIdRef.current !== activeConvId) return;
-      setPinnedProduct(null);
-      if (pinnedProduct && queryProductId) {
-        const nextParams = new URLSearchParams(searchParams);
-        ['productId', 'productTitle', 'productImage', 'productPrice', 'productSku', 'commissionRate'].forEach(key => nextParams.delete(key));
-        setSearchParams(nextParams, { replace: true });
-      }
-    });
 
-    socket.emit('typing', { conversationId: activeConvId, isTyping: false });
-  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams, setInputText]);
+    const proceedSend = (convId: string) => {
+      socket.timeout(8000).emit('send_message', {
+        conversationId: convId,
+        messageText: messageToSend,
+        messageId: crypto.randomUUID(),
+      }, (timeoutError: Error | null, result?: { ok: boolean; error?: string }) => {
+        sendingRef.current = false;
+        setIsSending(false);
+        if (timeoutError || !result?.ok) {
+          showErrorToast(result?.error || 'Không gửi được tin nhắn, vui lòng thử lại.');
+          return;
+        }
+        setInputText((current) => current.trim() === trimmed ? '' : current);
+        if (activeConvIdRef.current !== convId) return;
+        setPinnedProduct(null);
+        if (pinnedProduct && queryProductId) {
+          const nextParams = new URLSearchParams(searchParams);
+          ['productId', 'productTitle', 'productImage', 'productPrice', 'productSku', 'commissionRate'].forEach(key => nextParams.delete(key));
+          setSearchParams(nextParams, { replace: true });
+        }
+      });
+      socket.emit('typing', { conversationId: convId, isTyping: false });
+    };
+
+    if (activeConvId.startsWith('draft-')) {
+      (async () => {
+        try {
+          let res: any;
+          if (effectiveTargetStoreId) {
+            const sId = LEGACY_ID_MAP[effectiveTargetStoreId] || effectiveTargetStoreId;
+            res = await api.post('/chat/conversations', {
+              storeId: sId,
+              ...(isCustomerConversation ? { asCustomer: true } : {}),
+            });
+          } else if (targetCollaboratorId) {
+            const cId = LEGACY_ID_MAP[targetCollaboratorId] || targetCollaboratorId;
+            res = await api.post('/chat/conversations', { collaboratorId: cId });
+          }
+          const realConv = res?.data || res;
+          if (realConv?.id) {
+            setActiveConvId(realConv.id);
+            activeConvIdRef.current = realConv.id;
+            setConversations((prev) => [realConv, ...prev.filter((c) => c.id !== activeConvId)]);
+            socket.emit('join_conversation', { conversationId: realConv.id });
+            proceedSend(realConv.id);
+          } else {
+            throw new Error('Không tạo được hội thoại');
+          }
+        } catch {
+          sendingRef.current = false;
+          setIsSending(false);
+          showErrorToast('Không thể kết nối trò chuyện với gian hàng.');
+        }
+      })();
+      return;
+    }
+
+    proceedSend(activeConvId);
+  }, [inputText, activeConvId, pinnedProduct, queryProductId, searchParams, setSearchParams, setInputText, effectiveTargetStoreId, targetCollaboratorId, isCustomerConversation]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

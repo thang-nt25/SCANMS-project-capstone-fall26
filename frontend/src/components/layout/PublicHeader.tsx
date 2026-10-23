@@ -6,8 +6,11 @@ import {
   User,
   LogOut,
   Store,
-  Sparkles,
+  Handshake,
+  Megaphone,
   Shield,
+  ShieldCheck,
+  Check,
   Settings,
   MessageSquare,
   Wallet,
@@ -162,7 +165,7 @@ export function PublicHeader({
     : '/collaborator/dashboard';
 
   const workspaceLabel = isCustomer
-    ? 'Đơn Mua Của Tôi 🛍️'
+    ? 'Đơn mua của tôi ↗'
     : isShop
     ? 'Vào Quản Lý Shop ↗'
     : isAdmin
@@ -170,6 +173,32 @@ export function PublicHeader({
     : 'Vào Không Gian KOL ↗';
 
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
+  const [activeWorkspace, setActiveWorkspace] = useState(() => authService.getActiveWorkspace());
+
+  useEffect(() => {
+    const syncWorkspace = () => setActiveWorkspace(authService.getActiveWorkspace());
+    window.addEventListener('scanms_workspace_changed', syncWorkspace);
+    window.addEventListener('storage', syncWorkspace);
+    return () => {
+      window.removeEventListener('scanms_workspace_changed', syncWorkspace);
+      window.removeEventListener('storage', syncWorkspace);
+    };
+  }, []);
+
+  const workspaces = currentUser ? authService.getUserAvailableWorkspaces(currentUser) : [];
+
+  const getWorkspaceIcon = (key: string, iconClass = 'w-3.5 h-3.5') => {
+    switch (key) {
+      case 'kol':
+        return <Megaphone className={`${iconClass} text-[#B88E4F]`} />;
+      case 'shop':
+        return <Store className={`${iconClass} text-[#B88E4F]`} />;
+      case 'admin':
+        return <ShieldCheck className={`${iconClass} text-[#B88E4F]`} />;
+      default:
+        return <ShoppingBag className={`${iconClass} text-[#B88E4F]`} />;
+    }
+  };
 
   return (
     <header className={`scanms-site-header ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs`}>
@@ -298,12 +327,12 @@ export function PublicHeader({
                         <span className="text-[#7D715E] font-medium">Vai trò:</span>
                         <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
                           {isCustomer
-                            ? '🛍️ Khách Mua Sắm'
+                            ? 'Khách Mua Sắm'
                             : isKol
-                            ? '⭐ KOL / KOC Đối Tác'
+                            ? 'KOL / KOC Đối Tác'
                             : isShop
-                            ? `🏪 Chủ Shop (${storeName})`
-                            : '🛡️ Quản Trị Hệ Thống'}
+                            ? `Chủ Shop (${storeName})`
+                            : 'Quản Trị Hệ Thống'}
                         </span>
                       </div>
                     </div>
@@ -353,7 +382,7 @@ export function PublicHeader({
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
                         >
-                          {isKol && <Sparkles className="w-4 h-4 text-[#B88E4F]" />}
+                          {isKol && <Megaphone className="w-4 h-4 text-[#B88E4F]" />}
                           {isShop && <Store className="w-4 h-4 text-[#B88E4F]" />}
                           {isAdmin && <Shield className="w-4 h-4 text-[#B88E4F]" />}
                           <span>{workspaceLabel}</span>
@@ -374,22 +403,21 @@ export function PublicHeader({
                         </button>
                       )}
 
-                      {isCustomer && (
-                        <Link
-                          to="/customer/upgrade"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#B88E4F] bg-gradient-to-r from-[#FBF5EB] to-[#F7EDE0] hover:from-[#F3EFE6] hover:to-[#EAE4D7] rounded-xl border border-[#EEDFC6] transition mt-1 shadow-2xs group"
-                          title="Nộp hồ sơ nâng cấp thành KOL Tiếp Thị hoặc Mở Shop"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0 group-hover:scale-110 transition-transform" />
-                            <span className="truncate">Nâng cấp Đối tác (KOL / Shop)</span>
-                          </div>
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-[#C59B58] text-white shrink-0 shadow-2xs">
-                            MỚI
-                          </span>
-                        </Link>
-                      )}
+                      {/* Hợp tác với chúng tôi */}
+                      <Link
+                        to="/customer/upgrade"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#B88E4F] bg-gradient-to-r from-[#FBF5EB] to-[#F7EDE0] hover:from-[#F3EFE6] hover:to-[#EAE4D7] rounded-xl border border-[#EEDFC6] transition mt-1 shadow-2xs group"
+                        title="Đăng ký hợp tác KOL Tiếp Thị hoặc Mở Shop"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0 group-hover:scale-105 transition-transform" />
+                          <span className="truncate">Hợp tác với chúng tôi</span>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-[#C59B58] text-white shrink-0 shadow-2xs">
+                          MỚI
+                        </span>
+                      </Link>
 
                       {isKol && (
                         <>
@@ -437,6 +465,50 @@ export function PublicHeader({
                       )}
                     </div>
 
+                    {/* Chuyển vai trò (Role Switcher) */}
+                    {workspaces.length > 1 && (
+                      <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#7D715E] flex items-center justify-between">
+                          <span>Chuyển vai trò</span>
+                          <span className="text-[9.5px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-1.5 py-0.2 rounded-full border border-[#EEDFC6]">
+                            {workspaces.length} vai trò
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1 mt-1">
+                          {workspaces.map((ws) => {
+                            const isActive = ws.key === activeWorkspace;
+                            return (
+                              <button
+                                key={ws.key}
+                                type="button"
+                                onClick={() => {
+                                  setIsUserMenuOpen(false);
+                                  authService.switchWorkspace(ws.key, navigate);
+                                }}
+                                className={`w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-xl transition cursor-pointer text-left ${
+                                  isActive
+                                    ? 'bg-[#FBF5EB] border border-[#C59B58] font-bold text-[#B88E4F] shadow-2xs'
+                                    : 'hover:bg-[#FAF8F5] border border-transparent hover:border-[#EAE4D7] text-[#1A1612] font-medium'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-6 h-6 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center shrink-0 shadow-2xs">
+                                    {getWorkspaceIcon(ws.key, 'w-3 h-3')}
+                                  </div>
+                                  <span className="truncate text-xs">{ws.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
+                                    {ws.badge}
+                                  </span>
+                                  {isActive && <Check className="w-3.5 h-3.5 text-[#B88E4F]" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Explicit Logout Button */}
                     <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
