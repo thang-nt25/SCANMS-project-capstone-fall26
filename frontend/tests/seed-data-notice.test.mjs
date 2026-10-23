@@ -16,9 +16,9 @@ test('does not mark an actual registered user as a fixture', () => {
   assert.equal(render({ email: 'customer@example.test' }), '');
   assert.equal(render(null), '');
 });
-test('seed identity/metrics/payment are unmistakably labeled synthetic', () => {
-  assert.match(render({ email: 'shop01@seed.scanms.test' }), /Tài khoản kiểm thử Capstone/);
-  assert.match(render({ email: 'shop01@seed.scanms.test' }), /không chứng minh xác minh danh tính hoặc thanh toán thật/);
+test('ordinary seed accounts no longer show the Capstone banner or an empty container', () => {
+  assert.equal(render({ email: 'shop01@seed.scanms.test' }), '');
+  assert.equal(render({ email: 'kol01@seed.scanms.test' }), '');
 });
 test('a public creator reference explicitly disclaims account ownership/partnership', () => {
   assert.match(render({ email: 'kol01@seed.scanms.test', collaboratorProfile: { socialLinksJson: {
