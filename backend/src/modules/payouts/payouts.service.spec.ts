@@ -133,6 +133,8 @@ describe('PayoutsService FR-22', () => {
     const { service, tx, getBalance, getRequests } = createService('1006000', seededShopId);
     const response = await service.createWithdrawal(collaboratorId, { storeId: seededShopId, amount: '1000000' });
     expect(response.request.status).toBe(PayoutStatus.PENDING);
+    expect(response.request.taxAmount).toBe('100000.00');
+    expect(response.request.netAmount).toBe('900000.00');
     expect(getBalance()).toBe('6000.00');
     expect(getRequests()).toBe(1);
     expect(tx.store.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: seededShopId } }));
@@ -160,8 +162,8 @@ describe('PayoutsService FR-22', () => {
     const createInput = tx.payoutRequest.create.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(response.request.taxAmount).toBe('0.00');
-    expect(response.request.netAmount).toBe('200000.10');
+    expect(response.request.taxAmount).toBe('20000.01');
+    expect(response.request.netAmount).toBe('180000.09');
     expect(tx.financialLedger.create).toHaveBeenCalledTimes(1);
     expect(createInput.data.storeId).toBe(storeId);
   });
