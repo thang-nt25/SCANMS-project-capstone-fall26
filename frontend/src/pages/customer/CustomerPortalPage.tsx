@@ -1830,7 +1830,7 @@ export default function CustomerPortalPage() {
             {currentTab === 'wallet' && <CustomerWalletTab />}
 
             {/* ------------------------------------------------------------- */}
-            {/* TAB 5: NÂNG CẤP ĐỐI TÁC (KOL / SHOP MANAGER) */}
+            {/* TAB 5: HỢP TÁC VỚI CHÚNG TÔI (KOL / SHOP MANAGER) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'upgrade' && <PartnerUpgradeTab />}
 

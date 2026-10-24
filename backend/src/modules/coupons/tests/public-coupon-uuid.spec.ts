@@ -4,6 +4,8 @@ import request from 'supertest';
 import { PublicCouponsController } from '../coupons.controller';
 import { CouponsService } from '../coupons.service';
 
+import { OptionalJwtAuthGuard } from '../../../common/guards/optional-jwt-auth.guard';
+
 describe('Public voucher discovery and redemption UUID compatibility', () => {
   const storeId = '2f67001b-09a5-5958-85fd-5f401831c871';
   const productId = '12345678-1234-5123-8123-123456789abc';
@@ -17,7 +19,10 @@ describe('Public voucher discovery and redemption UUID compatibility', () => {
     const module = await Test.createTestingModule({
       controllers: [PublicCouponsController],
       providers: [{ provide: CouponsService, useValue: service }],
-    }).compile();
+    })
+      .overrideGuard(OptionalJwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     await app.init();

@@ -109,3 +109,43 @@
      - **Cơ chế Đăng nhập không mất giỏ hàng:** Không được redirect làm mất giỏ hàng và dữ liệu form của khách. Phải mở popup Đăng nhập nhanh tại chỗ (Quick Login / Google OAuth / OTP SMS); sau khi đăng nhập thành công, giữ nguyên 100% giỏ hàng để khách tiếp tục thanh toán ngay lập tức.
    - **Trung tâm thông báo (`NotificationDropdown.tsx`):** Bấm vào thông báo đơn hàng hoặc khiếu nại bắt buộc phải truyền `orderId` để mở trực tiếp modal hoặc trang chi tiết đơn hàng đó, không được chỉ ném người dùng vào trang danh sách tổng.
 
+---
+
+## 5. 👥 HỆ THỐNG 5 ROLES & MA TRẬN PHÂN QUYỀN RBAC CHUẨN MỰC (PRISMA SCHEMA & CODEBASE)
+
+Hệ thống chuẩn hóa duy nhất **5 User Roles** (khớp 1:1 với `enum UserRole` trong `schema.prisma` và `auth.service.ts`):
+1. **`CUSTOMER` (Khách mua hàng):** Duyệt Marketplace, xem livestream, mua hàng qua link/voucher tiếp thị, theo dõi vận đơn GHN, gửi yêu cầu đổi trả/hoàn tiền.
+2. **`COLLABORATOR` (Cộng tác viên / KOL / KOC / Affiliate Partner):** Định danh cá nhân (CCCD, STK ngân hàng), sinh Smart Link / Dynamic QR / Coupon độc quyền, xin sản phẩm mẫu 14 ngày, đàm phán deal độc quyền với Shop, nhận hoa hồng và rút tiền Napas 24/7.
+3. **`SHOP_MANAGER` (Quản lý gian hàng / Merchant):** Quản lý sản phẩm (ma trận biến thể 6 khối), cấp duyệt hàng mẫu, cấu hình mốc thưởng tháng, đàm phán deal VIP với KOL, quản lý đơn hàng GHN, đối soát hoa hồng và ví shop.
+4. **`SYSTEM_MANAGER` (Chuyên viên Vận hành & Tuân thủ Sàn - Operations Specialist):**
+   - Trực tiếp xử lý tác vụ vận hành sàn hằng ngày:
+     - Thẩm định & Phê duyệt hồ sơ KYC cá nhân và doanh nghiệp.
+     - Kiểm duyệt sản phẩm Shop mới đăng (`Product Moderation`).
+     - Trọng tài phân xử hàng mẫu KOL vi phạm cam kết (`Sample Request Dispute`).
+     - Giải quyết tranh chấp khiếu nại đơn hàng & trung gian Escrow (`Dispute & Mediation`).
+     - Giám sát gian lận lưu lượng và đường link affiliate (`Fraud Sentinel`).
+5. **`SYSTEM_ADMIN` (Quản trị viên Tối cao Hệ thống - Super Admin):**
+   - **Kế thừa 100% quyền hạn của `SYSTEM_MANAGER`** (có thể thực hiện mọi thao tác vận hành).
+   - **ĐỘC QUYỀN 2 CHỨC NĂNG TỐI CAO:**
+     1. **Quản lý Tài khoản & Phân quyền (`/admin/users`):** Khóa/mở tài khoản, cấp quyền nhân viên, thay đổi vai trò người dùng trong hệ thống.
+     2. **Executive Financial & Performance Dashboard (`/admin/analytics`):** Báo cáo Doanh số, GMV toàn sàn, biên lợi nhuận hoa hồng sàn thu về, dòng tiền Escrow tổng.
+
+---
+
+## 6. 💰 HỆ THỐNG 5 LOẠI HOA HỒNG & THƯỞNG ĐA TẦNG (ADDITIVE MULTI-RULE COMMISSION ENGINE)
+
+Hệ thống tính toán hoa hồng tự động theo cơ chế cộng dồn đa tầng (`additiveCommissionRate`), với mức trần tối đa **$25\%$**:
+$$\text{Final Rate} = \min\Big(25\%,\; R_{\text{base}} + R_{\text{tier}} + R_{\text{deal}} + R_{\text{campaign}} + R_{\text{live}}\Big) + \text{Bonus Thưởng Tháng}$$
+
+1. **Hoa hồng gốc sàn (Base Rate - $10\%$):** Mức hoa hồng Open Offer mở công khai mặc định cho toàn bộ sản phẩm trên sàn SCANMS.
+2. **Hoa hồng theo Cấp bậc KOL (Tier Ranking Bonus):** Tự động cộng lũy tiến theo doanh số tích lũy:
+   - Hạng Bạc (Silver): $+1\%$ (Tổng $11\%$).
+   - Hạng Vàng (Gold): $+2\%$ (Tổng $12\%$).
+   - Hạng Kim Cương (Diamond): $+3\%$ (Tổng $13\%$).
+3. **Hoa hồng Đàm phán Độc quyền 2 chiều (Exclusive Deal Negotiation):**
+   - **Chiều 1 (Collab $\rightarrow$ Shop):** KOL gửi Proposal đề xuất mức VIP ($+1\%$ đến $+3\%$, hoặc mức đặc biệt) kèm cam kết doanh số và video review. Shop duyệt hoặc từ chối.
+   - **Chiều 2 (Shop $\rightarrow$ Collab):** Shop chủ động lọc Top KOL từ bảng Leaderboard và gửi Thẻ mời chiến dịch độc quyền qua khung Chat Socket.IO.
+4. **Hoa hồng Phiên Livestream (Live Session Bonus Rate):** Tự động cộng thêm **$+2\%$ hoặc $+3\%$** cho các sản phẩm được ghim trong giỏ Live khi phiên có trạng thái `status = LIVE`. Tự động hết hạn khi phiên Live kết thúc (`ENDED`).
+5. **Thưởng Mốc Doanh Số Tháng (Monthly Revenue Bonus Milestones - FR-09):** Shop thiết lập các mốc bậc thang doanh số trong tháng (ví dụ: đạt 50tr thưởng thêm $2\%$ hoặc 1tr VNĐ; đạt 100tr thưởng $3.5\%$). Hệ thống tự động kết chuyển thưởng vào ví cuối tháng.
+
+

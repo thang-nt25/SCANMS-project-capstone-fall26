@@ -1,0 +1,338 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Sequence FR4" id="OhLHutnK56LVcTAY7qNI">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=28;fontStyle=1;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="FR-04 Multi-Social-Channel Management — Sequence Diagram" vertex="1">
+          <mxGeometry height="46" width="2750" x="45" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=20;fontStyle=0;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="Add another TikTok / Facebook / YouTube / Threads channel with followers → optionally mark primary → recalculate total followers → refresh list. No configured channel-count cap." vertex="1">
+          <mxGeometry height="32" width="2750" x="45" y="73" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_kol" parent="1" style="shape=umlActor;html=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;fontFamily=Arial;fontColor=#000000;fontSize=18;verticalLabelPosition=bottom;verticalAlign=top;" value="KOL" vertex="1">
+          <mxGeometry height="50" width="36" x="92" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_0" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=none;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="193" as="sourcePoint" />
+            <mxPoint x="110" y="2555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head_1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="58" width="250" x="335" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="head_text_1" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="Browser" vertex="1">
+          <mxGeometry height="42" width="234" x="343" y="143" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_1" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=none;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="193" as="sourcePoint" />
+            <mxPoint x="460" y="2555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head_2" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="58" width="430" x="815" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="head_text_2" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value=":SocialChannelsController" vertex="1">
+          <mxGeometry height="42" width="414" x="823" y="143" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_2" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=none;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1030" y="193" as="sourcePoint" />
+            <mxPoint x="1030" y="2555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head_3" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="58" width="430" x="1355" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="head_text_3" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value=":SocialChannelsService" vertex="1">
+          <mxGeometry height="42" width="414" x="1363" y="143" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_3" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=none;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1570" y="193" as="sourcePoint" />
+            <mxPoint x="1570" y="2555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head_4" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="58" width="430" x="1895" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="head_text_4" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value=":PrismaService" vertex="1">
+          <mxGeometry height="42" width="414" x="1903" y="143" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_4" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=none;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2110" y="193" as="sourcePoint" />
+            <mxPoint x="2110" y="2555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="activation_0" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="2250" width="10" x="105" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="2250" width="10" x="455" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_2" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="1153" width="10" x="1025" y="455" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_3" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="967" width="10" x="1565" y="548" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_4" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="103" width="10" x="2105" y="642" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_5" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="104" width="10" x="2105" y="828" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_6" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="103" width="10" x="2105" y="1132" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_7" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="104" width="10" x="2105" y="1318" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_8" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="477" width="10" x="1025" y="1808" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_9" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="290" width="10" x="1565" y="1902" as="geometry" />
+        </mxCell>
+        <mxCell id="activation_10" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.4;" value="" vertex="1">
+          <mxGeometry height="103" width="10" x="2105" y="1995" as="geometry" />
+        </mxCell>
+        <mxCell id="message_1" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="115" y="245" as="sourcePoint" />
+            <mxPoint x="455" y="245" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_1" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="1. Enter channel + followers; select primary; Add" vertex="1">
+          <mxGeometry height="44" width="326" x="122" y="196" as="geometry" />
+        </mxCell>
+        <mxCell id="message_2" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="338" />
+              <mxPoint x="510" y="357" />
+            </Array>
+            <mxPoint x="465" y="338" as="sourcePoint" />
+            <mxPoint x="465" y="357" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_2" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="2. Validate form fields; convert followerCount with Number()" vertex="1">
+          <mxGeometry height="46" width="430" x="522" y="312" as="geometry" />
+        </mxCell>
+        <mxCell id="message_3" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="465" y="455" as="sourcePoint" />
+            <mxPoint x="1025" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_3" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="3. POST /api/social-channels { platformName, channelUrl, followerCount, isPrimary: true, ... }" vertex="1">
+          <mxGeometry height="44" width="546" x="472" y="406" as="geometry" />
+        </mxCell>
+        <mxCell id="message_4" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1035" y="548" as="sourcePoint" />
+            <mxPoint x="1565" y="548" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_4" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="4. addChannel(userId from JWT, dto)" vertex="1">
+          <mxGeometry height="44" width="516" x="1042" y="499" as="geometry" />
+        </mxCell>
+        <mxCell id="message_5" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1575" y="642" as="sourcePoint" />
+            <mxPoint x="2105" y="642" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_5" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="5. [isPrimary] updateMany({ collaboratorId, isPrimary: true }, { isPrimary: false })" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="593" as="geometry" />
+        </mxCell>
+        <mxCell id="message_6" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2105" y="735" as="sourcePoint" />
+            <mxPoint x="1575" y="735" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_6" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="6. Previous primary flags cleared" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="686" as="geometry" />
+        </mxCell>
+        <mxCell id="message_7" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1575" y="828" as="sourcePoint" />
+            <mxPoint x="2105" y="828" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_7" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="7. collaboratorSocialChannel.create(): owner, platform, trimmed fields, followers, primary" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="779" as="geometry" />
+        </mxCell>
+        <mxCell id="message_8" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2105" y="922" as="sourcePoint" />
+            <mxPoint x="1575" y="922" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_8" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="8. New social channel" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="873" as="geometry" />
+        </mxCell>
+        <mxCell id="message_9" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1620" y="1015" />
+              <mxPoint x="1620" y="1034" />
+            </Array>
+            <mxPoint x="1575" y="1015" as="sourcePoint" />
+            <mxPoint x="1575" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_9" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="9. recalculateTotalFollowers(collaboratorId)" vertex="1">
+          <mxGeometry height="46" width="430" x="1632" y="989" as="geometry" />
+        </mxCell>
+        <mxCell id="message_10" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1575" y="1132" as="sourcePoint" />
+            <mxPoint x="2105" y="1132" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_10" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="10. collaboratorSocialChannel.aggregate({ collaboratorId }, _sum.followerCount)" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="1083" as="geometry" />
+        </mxCell>
+        <mxCell id="message_11" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2105" y="1225" as="sourcePoint" />
+            <mxPoint x="1575" y="1225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_11" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="11. Follower sum for all channels of this User" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="1176" as="geometry" />
+        </mxCell>
+        <mxCell id="message_12" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1575" y="1318" as="sourcePoint" />
+            <mxPoint x="2105" y="1318" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_12" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="12. collaboratorProfile.updateMany({ userId }, { totalFollowers: sum || 0 })" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="1269" as="geometry" />
+        </mxCell>
+        <mxCell id="message_13" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2105" y="1412" as="sourcePoint" />
+            <mxPoint x="1575" y="1412" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_13" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="13. Profile update count (may be 0 if profile is absent)" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="1363" as="geometry" />
+        </mxCell>
+        <mxCell id="message_14" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="1505" as="sourcePoint" />
+            <mxPoint x="1035" y="1505" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_14" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="14. { message, channel } after follower recalculation" vertex="1">
+          <mxGeometry height="44" width="516" x="1042" y="1456" as="geometry" />
+        </mxCell>
+        <mxCell id="message_15" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1025" y="1598" as="sourcePoint" />
+            <mxPoint x="465" y="1598" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_15" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="15. 201 Created: channel result in response envelope" vertex="1">
+          <mxGeometry height="44" width="546" x="472" y="1549" as="geometry" />
+        </mxCell>
+        <mxCell id="message_16" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="1692" />
+              <mxPoint x="510" y="1711" />
+            </Array>
+            <mxPoint x="465" y="1692" as="sourcePoint" />
+            <mxPoint x="465" y="1711" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_16" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="16. Show success; close modal; reset form; loadChannels(true)" vertex="1">
+          <mxGeometry height="46" width="430" x="522" y="1666" as="geometry" />
+        </mxCell>
+        <mxCell id="message_17" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="465" y="1808" as="sourcePoint" />
+            <mxPoint x="1025" y="1808" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_17" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="17. GET /api/social-channels (x-skip-cache: true)" vertex="1">
+          <mxGeometry height="44" width="546" x="472" y="1759" as="geometry" />
+        </mxCell>
+        <mxCell id="message_18" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1035" y="1902" as="sourcePoint" />
+            <mxPoint x="1565" y="1902" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_18" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="18. getMyChannels(userId from JWT)" vertex="1">
+          <mxGeometry height="44" width="516" x="1042" y="1853" as="geometry" />
+        </mxCell>
+        <mxCell id="message_19" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1575" y="1995" as="sourcePoint" />
+            <mxPoint x="2105" y="1995" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_19" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="19. findMany({ collaboratorId }, orderBy: isPrimary desc, createdAt desc)" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="1946" as="geometry" />
+        </mxCell>
+        <mxCell id="message_20" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2105" y="2088" as="sourcePoint" />
+            <mxPoint x="1575" y="2088" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_20" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="20. Owned channel list including the new row" vertex="1">
+          <mxGeometry height="44" width="516" x="1582" y="2039" as="geometry" />
+        </mxCell>
+        <mxCell id="message_21" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="2182" as="sourcePoint" />
+            <mxPoint x="1035" y="2182" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_21" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="21. Channel list" vertex="1">
+          <mxGeometry height="44" width="516" x="1042" y="2133" as="geometry" />
+        </mxCell>
+        <mxCell id="message_22" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1025" y="2275" as="sourcePoint" />
+            <mxPoint x="465" y="2275" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_22" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="22. 200: channels" vertex="1">
+          <mxGeometry height="44" width="546" x="472" y="2226" as="geometry" />
+        </mxCell>
+        <mxCell id="message_23" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=block;endFill=1;endSize=10;dashed=0;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="2368" />
+              <mxPoint x="510" y="2387" />
+            </Array>
+            <mxPoint x="465" y="2368" as="sourcePoint" />
+            <mxPoint x="465" y="2387" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_23" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=left;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="23. Replace list; sum followers; apply local search/platform filters" vertex="1">
+          <mxGeometry height="46" width="430" x="522" y="2342" as="geometry" />
+        </mxCell>
+        <mxCell id="message_24" edge="1" parent="1" style="rounded=0;html=0;strokeColor=#000000;strokeWidth=1.4;endArrow=open;endFill=0;endSize=10;dashed=1;dashPattern=6 4;fontFamily=Arial;fontSize=18;fontColor=#000000;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="455" y="2485" as="sourcePoint" />
+            <mxPoint x="115" y="2485" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="message_text_24" connectable="0" parent="1" style="text;html=0;fontFamily=Arial;fontColor=#000000;fontSize=18;fontStyle=0;align=center;verticalAlign=middle;whiteSpace=wrap;fillColor=none;strokeColor=none;spacing=0;" value="24. Show all owned channels, primary badge and follower totals" vertex="1">
+          <mxGeometry height="44" width="326" x="122" y="2436" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

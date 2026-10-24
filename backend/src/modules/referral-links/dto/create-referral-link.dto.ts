@@ -15,7 +15,7 @@ export class CreateReferralLinkDto {
     description: 'ID của sản phẩm cần tiếp thị (UUID)',
     example: 'b54934c3-0762-40b4-868e-e7f66dac1684',
   })
-  @IsUUID('4', { message: 'productId phải là định dạng UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'productId phải là định dạng UUID hợp lệ' })
   productId: string;
 
   @ApiPropertyOptional({
@@ -23,7 +23,7 @@ export class CreateReferralLinkDto {
     example: 'd9b3a0c5-5d9c-4f5b-9d4a-3b5f6a7b8c9d',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'campaignId phải là định dạng UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'campaignId phải là định dạng UUID hợp lệ' })
   campaignId?: string;
 
   @ApiPropertyOptional({
@@ -31,7 +31,7 @@ export class CreateReferralLinkDto {
       'ID Exclusive Deal đã được Shop duyệt, dùng khi phát hành link VIP.',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'exclusiveDealId phải là định dạng UUID v4 hợp lệ' })
+  @IsUUID('all', { message: 'exclusiveDealId phải là định dạng UUID hợp lệ' })
   exclusiveDealId?: string;
 
   @ApiProperty({

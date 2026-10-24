@@ -1,0 +1,304 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="Q67mI0E3qSRuBCgGf2rK" name="Sequence FR26">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" value="FR-26 Sample Product Requests — Sequence Diagram" vertex="1">
+          <mxGeometry height="35" width="1660" x="20" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="precondition" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" value="Preconditions: authenticated KOL / Shop; JWT and role checks apply. Shipping options A and B are alternatives; shipping continues only after approval." vertex="1">
+          <mxGeometry height="30" width="1660" x="20" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="head0" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="Browser (KOL / Shop)" vertex="1">
+          <mxGeometry height="40" width="180" x="10" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life0" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="140" as="sourcePoint" />
+            <mxPoint x="100" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":SamplesController" vertex="1">
+          <mxGeometry height="40" width="180" x="260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life1" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="140" as="sourcePoint" />
+            <mxPoint x="350" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head2" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":SamplesService" vertex="1">
+          <mxGeometry height="40" width="180" x="510" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life2" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="140" as="sourcePoint" />
+            <mxPoint x="600" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head3" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":PrismaService" vertex="1">
+          <mxGeometry height="40" width="180" x="760" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life3" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="850" y="140" as="sourcePoint" />
+            <mxPoint x="850" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head4" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":ShippingController" vertex="1">
+          <mxGeometry height="40" width="180" x="1010" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life4" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1100" y="140" as="sourcePoint" />
+            <mxPoint x="1100" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head5" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":GhnService" vertex="1">
+          <mxGeometry height="40" width="180" x="1260" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life5" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1350" y="140" as="sourcePoint" />
+            <mxPoint x="1350" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head6" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="GHN API" vertex="1">
+          <mxGeometry height="40" width="180" x="1510" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life6" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1600" y="140" as="sourcePoint" />
+            <mxPoint x="1600" y="1515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="activation0" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="330" width="8" x="96" y="185" as="geometry" />
+        </mxCell>
+        <mxCell id="activation1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="330" width="8" x="346" y="185" as="geometry" />
+        </mxCell>
+        <mxCell id="activation2" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="242" width="8" x="596" y="229" as="geometry" />
+        </mxCell>
+        <mxCell id="activation3" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="44" width="8" x="1346" y="273" as="geometry" />
+        </mxCell>
+        <mxCell id="activation4" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="66" width="8" x="846" y="361" as="geometry" />
+        </mxCell>
+        <mxCell id="activation5" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="246" width="8" x="96" y="575" as="geometry" />
+        </mxCell>
+        <mxCell id="activation6" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="246" width="8" x="346" y="575" as="geometry" />
+        </mxCell>
+        <mxCell id="activation7" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="158" width="8" x="596" y="619" as="geometry" />
+        </mxCell>
+        <mxCell id="activation8" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="70" width="8" x="846" y="663" as="geometry" />
+        </mxCell>
+        <mxCell id="activation9" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="242" width="8" x="96" y="881" as="geometry" />
+        </mxCell>
+        <mxCell id="activation10" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="242" width="8" x="346" y="881" as="geometry" />
+        </mxCell>
+        <mxCell id="activation11" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="154" width="8" x="596" y="925" as="geometry" />
+        </mxCell>
+        <mxCell id="activation12" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="66" width="8" x="846" y="969" as="geometry" />
+        </mxCell>
+        <mxCell id="activation13" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="330" width="8" x="96" y="1183" as="geometry" />
+        </mxCell>
+        <mxCell id="activation14" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="330" width="8" x="1096" y="1183" as="geometry" />
+        </mxCell>
+        <mxCell id="activation15" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="242" width="8" x="1346" y="1227" as="geometry" />
+        </mxCell>
+        <mxCell id="activation16" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="44" width="8" x="1596" y="1271" as="geometry" />
+        </mxCell>
+        <mxCell id="activation17" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="66" width="8" x="846" y="1359" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="1. [KOL] POST /sample-requests">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="104" y="185" as="sourcePoint" />
+            <mxPoint x="346" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="2. createRequest(collaboratorId, dto)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="354" y="229" as="sourcePoint" />
+            <mxPoint x="596" y="229" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="3. [eligibility checked] getDistricts(...) / getWards(...) / getProvinces(...)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="604" y="273" as="sourcePoint" />
+            <mxPoint x="1346" y="273" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="4. GHN address data; validate recipient address">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1346" y="317" as="sourcePoint" />
+            <mxPoint x="604" y="317" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="5. [product, channel, quota and duplicates checked]&#xa;$transaction(...): sampleProductRequest.create(PENDING)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="604" y="361" as="sourcePoint" />
+            <mxPoint x="846" y="361" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="6. Created request (PENDING)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="846" y="427" as="sourcePoint" />
+            <mxPoint x="604" y="427" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="7. Request; notify Shop and record audit/event (best effort)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="596" y="471" as="sourcePoint" />
+            <mxPoint x="354" y="471" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="8. 201 Created — PENDING">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="346" y="515" as="sourcePoint" />
+            <mxPoint x="104" y="515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="9. [Shop] PATCH /sample-requests/{id}/approve or /reject">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="104" y="575" as="sourcePoint" />
+            <mxPoint x="346" y="575" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="10. approveRequest(...) or rejectRequest(..., reason)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="354" y="619" as="sourcePoint" />
+            <mxPoint x="596" y="619" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="11. [approve] Serializable $transaction: check KOL/product/quota; allocate sample; APPROVED&#xa;[reject] sampleProductRequest.update(REJECTED, reason)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="604" y="663" as="sourcePoint" />
+            <mxPoint x="846" y="663" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="12. APPROVED or REJECTED">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="846" y="733" as="sourcePoint" />
+            <mxPoint x="604" y="733" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="13. Result; notify KOL and record audit/event (best effort)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="596" y="777" as="sourcePoint" />
+            <mxPoint x="354" y="777" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="14. 200 OK — processing ends if REJECTED">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="346" y="821" as="sourcePoint" />
+            <mxPoint x="104" y="821" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="15. [Option A: GHTK / non-GHN] PATCH /sample-requests/{id}/ship">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="104" y="881" as="sourcePoint" />
+            <mxPoint x="346" y="881" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="16. shipRequest(requestId, shopOwnerId, dto)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="354" y="925" as="sourcePoint" />
+            <mxPoint x="596" y="925" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="17. [owner; APPROVED or DELIVERY_ISSUE; carrier is not GHN]&#xa;sampleProductRequest.update(SHIPPED, trackingNumber, carrier)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="604" y="969" as="sourcePoint" />
+            <mxPoint x="846" y="969" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="18. Updated request (SHIPPED)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="846" y="1035" as="sourcePoint" />
+            <mxPoint x="604" y="1035" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m19" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="19. Result; notify KOL and record audit/event (best effort)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="596" y="1079" as="sourcePoint" />
+            <mxPoint x="354" y="1079" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m20" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="20. 200 OK — saved tracking details">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="346" y="1123" as="sourcePoint" />
+            <mxPoint x="104" y="1123" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m21" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="21. [Option B: GHN LIVE] POST /shipping/ghn/create-sample/{requestId}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="104" y="1183" as="sourcePoint" />
+            <mxPoint x="1096" y="1183" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m22" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="22. createSampleShippingOrder(requestId, shopOwnerId, LIVE)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1104" y="1227" as="sourcePoint" />
+            <mxPoint x="1346" y="1227" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m23" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="23. [ownership, status, address and package checked] POST /v2/shipping-order/create">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1354" y="1271" as="sourcePoint" />
+            <mxPoint x="1596" y="1271" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m24" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="24. order_code and shipping fee (if returned)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1596" y="1315" as="sourcePoint" />
+            <mxPoint x="1354" y="1315" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m25" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="25. $transaction(...): update SHIPPED + tracking; create shipping charge,&#xa;sampleRequestEvent and KOL notification (Shop pays; COD = 0)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1346" y="1359" as="sourcePoint" />
+            <mxPoint x="854" y="1359" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m26" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="26. Transaction committed">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="854" y="1425" as="sourcePoint" />
+            <mxPoint x="1346" y="1425" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m27" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="27. { success, trackingNumber, carrier, totalFee, environment }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1346" y="1469" as="sourcePoint" />
+            <mxPoint x="1104" y="1469" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m28" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="28. 201 Created — GHN waybill and shipment result">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1096" y="1513" as="sourcePoint" />
+            <mxPoint x="104" y="1513" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;whiteSpace=wrap;fontSize=12;spacing=0;" value="KOL eligibility: active account, verified KYC, linked social channel, and no sample-request block. Invalid requests stop at the failing check. GHN API failure leaves the request unshipped. GHN TEST creates test records only and does not change the real sample status. Detailed validation queries and list refreshes are omitted." vertex="1">
+          <mxGeometry height="60" width="1660" x="20" y="1550" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

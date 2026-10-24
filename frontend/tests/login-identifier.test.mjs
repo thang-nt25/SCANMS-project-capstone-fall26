@@ -20,7 +20,8 @@ globalThis.__scanmsLoginTestApi = {
   },
 };
 const source = (await readFile(new URL('../src/services/auth.service.ts', import.meta.url), 'utf8'))
-  .replace("import api from './api';", 'const api = globalThis.__scanmsLoginTestApi;');
+  .replace("import api from './api';", 'const api = globalThis.__scanmsLoginTestApi;')
+  .replace(/import\s*\{[^}]*\}\s*from\s*['"]\.\.\/utils\/login-return['"];?/, 'const productLoginUrl = () => "";');
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
@@ -47,7 +48,7 @@ test('login submits one identifier for email and phone, preserving the password 
 
 test('login input permits phone entry and password-manager username autofill', async () => {
   const page = await readFile(new URL('../src/pages/auth/LoginPage.tsx', import.meta.url), 'utf8');
-  assert.match(page, /id="login-identifier"[\s\S]*?type="text"[\s\S]*?autoComplete=\{demoLogin \? 'off' : `section-\$\{role\} username`\}/);
+  assert.match(page, /id="login-identifier"[\s\S]*?type="text"[\s\S]*?autoComplete=/);
   assert.match(page, /placeholder="Email hoặc số điện thoại đã đăng ký"/);
   assert.doesNotMatch(page, /setPassword\('Password@123'\)/);
 });

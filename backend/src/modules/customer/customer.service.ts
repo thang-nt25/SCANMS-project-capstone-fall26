@@ -171,7 +171,7 @@ export class CustomerService {
   }
 
   /**
-   * 3.1. Gửi mã OTP xác minh qua Email (Chuẩn Shopee)
+   * 3.1. Gửi mã OTP xác minh qua Email (Chuẩn SCANMS)
    */
   async sendPasswordSecurityOtp(
     userId: string,
@@ -1019,17 +1019,17 @@ export class CustomerService {
   }
 
   // ==========================================
-  // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SHOPEE)
+  // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SCANMS)
   // ==========================================
   /**
-   * 5.1. Lấy thông tin CCCD của khách hàng (Chuẩn Shopee)
+   * 5.1. Lấy thông tin CCCD của khách hàng (Chuẩn SCANMS)
    */
   async getCustomerIdentity(userId: string) {
     return this.identities.getOne(userId);
   }
 
   /**
-   * 5.2. Xác thực và lưu thông tin CCCD của khách hàng (Chuẩn Shopee)
+   * 5.2. Xác thực và lưu thông tin CCCD của khách hàng (Chuẩn SCANMS)
    */
   async verifyCustomerIdentity(userId: string, dto: VerifyCustomerIdentityDto) {
     return this.identities.confirm(userId, dto);
