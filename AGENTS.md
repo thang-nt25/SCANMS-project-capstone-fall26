@@ -31,3 +31,21 @@
 2. Đây là nền tảng kết nối **NHIỀU Gian Hàng (Shops)** quản lý hàng hóa với **NHIỀU Nhà Sáng Tạo (KOL/KOC)** quảng bá sản phẩm.
 3. Không được biến website thành trang bán hàng riêng của một hãng đơn lẻ (như "Sora Skin"). Sora Skin chỉ là một trong nhiều gian hàng đối tác kinh doanh trên sàn SCANMS.
 4. Header công khai luôn mang thương hiệu **SCANMS**, có đầy đủ cổng đăng nhập cho Đối tác (`/login`) và nút quay lại trang mua hàng.
+
+---
+
+### 👥 5 USER ROLES & MA TRẬN PHÂN QUYỀN
+1. **`CUSTOMER`**: Khách mua hàng, theo dõi đơn GHN, gửi khiếu nại đổi trả.
+2. **`COLLABORATOR`**: KOL / KOC tiếp thị, sinh Smart Link / Dynamic QR / Coupon, xin mẫu thử, nhận hoa hồng.
+3. **`SHOP_MANAGER`**: Chủ shop, quản lý sản phẩm 6 khối, duyệt hàng mẫu, đàm phán deal VIP, quản lý đơn hàng.
+4. **`SYSTEM_MANAGER`**: Chuyên viên vận hành sàn: Duyệt KYC, duyệt sản phẩm mới, trọng tài hàng mẫu, xử lý khiếu nại hoàn tiền.
+5. **`SYSTEM_ADMIN`**: Quản trị tối cao: Toàn quyền của System Manager + Độc quyền Quản lý User/Phân quyền & Executive Dashboard.
+
+---
+
+### 💰 MA TRẬN 5 LOẠI HOA HỒNG (MAX TRAN 25%)
+1. **Hoa hồng gốc (Base Rate)**: 10% chuẩn sàn Open Offer.
+2. **Hoa hồng cấp bậc (Tier Bonus)**: Bạc +1%, Vàng +2%, Kim Cương +3%.
+3. **Hoa hồng Deal độc quyền 2 chiều**: Collab đề xuất Proposal với Shop OR Shop mời Top KOL qua Chat Socket.IO.
+4. **Hoa hồng Livestream**: +2% đến +3% trong phiên Live.
+5. **Thưởng mốc doanh số tháng (FR-09)**: Lũy tiến theo bậc doanh số tháng.

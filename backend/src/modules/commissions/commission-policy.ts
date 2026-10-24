@@ -31,5 +31,21 @@ export function liveBonusRate(session: {
 }
 
 export function additiveCommissionRate(tier: number, deal: number, campaign: number, live: number): number {
-  return Math.min(MAX_COMMISSION_RATE, BASE_COMMISSION_RATE + tier + deal + campaign + live);
+  const shopNegotiated = Math.max(deal, campaign);
+  return Math.min(MAX_COMMISSION_RATE, BASE_COMMISSION_RATE + tier + shopNegotiated + live);
 }
+
+export function splitCommissionFunding(tier: number, deal: number, campaign: number, live: number): {
+  totalRate: number;
+  shopRate: number;
+  platformRate: number;
+} {
+  const shopNegotiated = Math.max(deal, campaign);
+  const rawShopRate = BASE_COMMISSION_RATE + shopNegotiated + live;
+  const rawPlatformRate = tier;
+  const totalRate = Math.min(MAX_COMMISSION_RATE, rawShopRate + rawPlatformRate);
+  const shopRate = Math.min(rawShopRate, totalRate);
+  const platformRate = totalRate - shopRate;
+  return { totalRate, shopRate, platformRate };
+}
+

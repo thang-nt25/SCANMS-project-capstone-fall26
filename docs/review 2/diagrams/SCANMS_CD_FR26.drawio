@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="5gmq4Ze3m0LgZxsL0wnU" name="ClassDiagram FR26">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" value="FR-26 Sample Product Requests — Class Diagram" vertex="1">
+          <mxGeometry height="35" width="1540" x="30" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="controller" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="SamplesController" vertex="1">
+          <mxGeometry height="220" width="390" x="30" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-fields" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- samplesService: SamplesService" vertex="1">
+          <mxGeometry height="35" width="390" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-line" parent="controller" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="390" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-methods" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ createRequest(...)&#xa;+ getMyRequests(...)&#xa;+ getShopRequests(...)&#xa;+ approveRequest(...)&#xa;+ rejectRequestWithReason(...)&#xa;+ shipRequest(...)" vertex="1">
+          <mxGeometry height="155" width="390" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="service" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="SamplesService" vertex="1">
+          <mxGeometry height="310" width="440" x="490" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="service-fields" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- prisma: PrismaService&#xa;- ghnService: GhnService" vertex="1">
+          <mxGeometry height="50" width="440" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="service-line" parent="service" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="service-methods" parent="service" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ getMyEligibility(...)&#xa;+ createRequest(...)&#xa;+ getMyRequests(...)&#xa;+ getRequestsForShop(...)&#xa;+ approveRequest(...)&#xa;+ rejectRequest(...)&#xa;+ shipRequest(...)&#xa;- validateRecipientAddress(...)&#xa;- ensureShopOwns(...)&#xa;- notify(...) / audit(...)" vertex="1">
+          <mxGeometry height="230" width="440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="shipping" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="ShippingController" vertex="1">
+          <mxGeometry height="140" width="390" x="30" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="shipping-fields" parent="shipping" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- ghnService: GhnService" vertex="1">
+          <mxGeometry height="35" width="390" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="shipping-line" parent="shipping" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="390" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="shipping-methods" parent="shipping" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ createSampleGhnOrder(...)" vertex="1">
+          <mxGeometry height="75" width="390" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="ghn" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="GhnService" vertex="1">
+          <mxGeometry height="200" width="440" x="490" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ghn-fields" parent="ghn" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- prisma: PrismaService&#xa;- configService: ConfigService" vertex="1">
+          <mxGeometry height="50" width="440" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ghn-line" parent="ghn" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ghn-methods" parent="ghn" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ getProvinces(...) / getDistricts(...) / getWards(...)&#xa;+ createSampleShippingOrder(...)&#xa;- createSampleShippingOrderInternal(...)&#xa;- ghnFetch(...)" vertex="1">
+          <mxGeometry height="120" width="440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="PrismaService" vertex="1">
+          <mxGeometry height="220" width="440" x="490" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma-fields" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="«extends PrismaClient»&#xa;+ sampleProductRequest: Prisma.SampleProductRequestDelegate&#xa;+ product: Prisma.ProductDelegate&#xa;+ productVariant: Prisma.ProductVariantDelegate&#xa;+ sampleShippingCharge: Prisma.SampleShippingChargeDelegate&#xa;+ notification: Prisma.NotificationDelegate&#xa;+ auditLog: Prisma.AuditLogDelegate&#xa;+ sampleRequestEvent: Prisma.SampleRequestEventDelegate&#xa;+ $transaction(...)" vertex="1">
+          <mxGeometry height="190" width="440" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="product" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="Product" vertex="1">
+          <mxGeometry height="210" width="240" x="1030" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="product-fields" parent="product" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ storeId: string&#xa;+ title: string&#xa;+ sampleEnabled: boolean&#xa;+ sampleQuota: number&#xa;+ sampleGrantedCount: number" vertex="1">
+          <mxGeometry height="180" width="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="variant" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="ProductVariant" vertex="1">
+          <mxGeometry height="210" width="240" x="1330" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="variant-fields" parent="variant" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ productId: string&#xa;+ sampleEnabled: boolean | null&#xa;+ sampleQuota: number | null&#xa;+ sampleGrantedCount: number" vertex="1">
+          <mxGeometry height="180" width="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="request" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="SampleProductRequest" vertex="1">
+          <mxGeometry height="450" width="270" x="1030" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="request-fields" parent="request" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ collaboratorId: string&#xa;+ productId: string&#xa;+ productVariantId: string | null&#xa;+ socialChannelId: string | null&#xa;+ recipientName: string | null&#xa;+ recipientPhone: string | null&#xa;+ shippingAddress: string&#xa;+ ghnProvinceId: number | null&#xa;+ ghnDistrictId: number | null&#xa;+ ghnWardCode: string | null&#xa;+ contentType: string | null&#xa;+ acceptedTermsAt: Date | null&#xa;+ status: SampleRequestStatus&#xa;+ grantedAt: Date | null&#xa;+ trackingNumber: string | null&#xa;+ carrier: string | null&#xa;+ rejectedReason: string | null" vertex="1">
+          <mxGeometry height="420" width="270" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="channel" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="CollaboratorSocialChannel" vertex="1">
+          <mxGeometry height="150" width="240" x="1330" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="channel-fields" parent="channel" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ collaboratorId: string&#xa;+ platformName: string&#xa;+ channelUrl: string" vertex="1">
+          <mxGeometry height="120" width="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="charge" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="SampleShippingCharge" vertex="1">
+          <mxGeometry height="220" width="240" x="1330" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="charge-fields" parent="charge" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ sampleRequestId: string&#xa;+ storeId: string&#xa;+ environment: string&#xa;+ trackingNumber: string&#xa;+ amount: Decimal | null&#xa;+ payer: string&#xa;+ codAmount: number&#xa;+ status: string" vertex="1">
+          <mxGeometry height="190" width="240" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" edge="1" parent="1" source="controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.355;" target="service" value="samplesService">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" edge="1" parent="1" source="shipping" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" target="ghn" value="ghnService">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" edge="1" parent="1" source="service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="ghn" value="ghnService">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" edge="1" parent="1" source="service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=1;exitY=0.75;entryX=1;entryY=0.2;" target="prisma" value="prisma">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="970" y="323" />
+              <mxPoint x="970" y="934" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d5" edge="1" parent="1" source="ghn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="prisma" value="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" edge="1" parent="1" source="prisma" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.9;" target="request" value="«uses»">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="1000" />
+              <mxPoint x="990" y="845" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d7" edge="1" parent="1" source="prisma" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;exitX=1;exitY=0.75;entryX=0.5;entryY=1;" target="charge" value="«uses»">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="1055" />
+              <mxPoint x="1450" y="1055" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a1" edge="1" parent="1" source="product" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="variant" value="1 / 0..* variants">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" edge="1" parent="1" source="product" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.4444;entryY=0;" target="request" value="1 product / 0..* requests">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" edge="1" parent="1" source="variant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=1;entryY=0.1;" target="request" value="0..1 variant / 0..* requests">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1450" y="350" />
+              <mxPoint x="1315" y="350" />
+              <mxPoint x="1315" y="485" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a4" edge="1" parent="1" source="channel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" target="request" value="0..1 channel / 0..* requests">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1450" y="665" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a5" edge="1" parent="1" source="request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" target="charge" value="1 request / 0..* charges">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="1140" />
+              <mxPoint x="1450" y="1140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

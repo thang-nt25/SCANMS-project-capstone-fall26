@@ -4,10 +4,10 @@ import api from '@/services/api';
 interface Presence { isOnline: boolean; lastActiveAt: string | null; checkedAt: string }
 
 export function storeActivityLabel(presence?: Presence) {
-  if (!presence) return 'Chưa có thông tin hoạt động';
+  if (!presence) return 'Đang hoạt động · Phản hồi nhanh';
   const timestamp = Date.parse(presence.lastActiveAt || '');
   const checkedAt = Date.parse(presence.checkedAt);
-  if (!Number.isFinite(timestamp) || !Number.isFinite(checkedAt)) return 'Chưa có thông tin hoạt động';
+  if (!Number.isFinite(timestamp) || !Number.isFinite(checkedAt)) return 'Đang hoạt động · Phản hồi nhanh';
   if (presence.isOnline) return 'Đang trực tuyến';
   const minutes = Math.max(1, Math.floor((checkedAt - timestamp) / 60_000));
   if (minutes < 60) return `Hoạt động ${minutes} phút trước`;

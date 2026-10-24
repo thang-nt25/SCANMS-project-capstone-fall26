@@ -59,7 +59,7 @@ export default function LoginPage() {
   });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => registeredEmail || getRememberedIdentifier(role) || getDemoLogin(role)?.identifier || '');
-  const [password, setPassword] = useState(() => registeredEmail || getRememberedIdentifier(role) ? '' : getDemoLogin(role)?.password || '');
+  const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin(role)?.password || '');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -83,7 +83,7 @@ export default function LoginPage() {
       const account = getDemoLogin(selectedRole);
       const remembered = getRememberedIdentifier(selectedRole);
       setIdentifier(remembered || account?.identifier || '');
-      setPassword(remembered ? '' : account?.password || '');
+      setPassword(account?.password || '');
     }
     setPasswordAuthState('idle');
     setRole(selectedRole);
@@ -254,7 +254,7 @@ export default function LoginPage() {
                               : 'hover:bg-[#FAF8F5] text-[#1A1612] font-medium'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2.5 truncate pr-2">
                             <div
                               className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                                 isSelected
@@ -264,15 +264,17 @@ export default function LoginPage() {
                             >
                               <Icon className="w-3.5 h-3.5" />
                             </div>
-                            <div>
-                              <div className="text-xs font-bold leading-tight">
-                                {r.label} · <span className="text-[#7D715E] font-normal">{r.badge}</span>
+                            <div className="truncate">
+                              <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                                <span>{r.label}</span>
+                                <span className="text-[#7D715E] font-normal text-[11px] truncate hidden sm:inline">· {r.badge}</span>
                               </div>
-                              <div className="text-[10px] text-[#7D715E] font-mono">
+                              <div className="text-[10px] text-[#7D715E] font-mono truncate">
                                 {r.email}
                               </div>
                             </div>
                           </div>
+
                           {isSelected && (
                             <Check className="w-4 h-4 text-[#C59B58] shrink-0" />
                           )}
@@ -308,17 +310,28 @@ export default function LoginPage() {
             )}
 
             {/* Form inputs */}
-            {searchParams.get('sessionChanged') === '1' && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
-              Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
-            </p>}
-            <form key={role} name="scanms-login" autoComplete="on" onSubmit={handleSubmit} className="space-y-3">
+            {searchParams.get('sessionChanged') === '1' && (
+              <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2.5 text-xs leading-relaxed text-[#7D715E]">
+                Tài khoản đã được thay đổi ở tab khác. Đăng nhập tài khoản {activeRole.label} để tiếp tục trang vừa mở.
+              </p>
+            )}
+            <form id="scanms-auth-form" name="scanms-auth-form" autoComplete="off" onSubmit={handleSubmit} className="space-y-3">
+              {/* Trap decoy inputs for Chrome autofill */}
+              <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }} aria-hidden="true">
+                <input type="text" name="chrome_autofill_decoy_user" tabIndex={-1} autoComplete="username" />
+                <input type="password" name="chrome_autofill_decoy_pass" tabIndex={-1} autoComplete="current-password" />
+              </div>
+
               <div className="relative flex items-center">
                 <label htmlFor="login-identifier" className="sr-only">Email hoặc số điện thoại đã đăng ký</label>
                 <input
                   id="login-identifier"
-                  name="username"
+                  name="scanms_account_identity"
                   type="text"
-                  autoComplete="username"
+                  autoComplete="one-time-code"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -334,8 +347,8 @@ export default function LoginPage() {
 
               <label className="sr-only" htmlFor="login-password">Mật khẩu</label>
               <AnimatedPasswordField
-                autoComplete="current-password"
-                name="password"
+                autoComplete="new-password"
+                name="scanms_account_secret"
                 value={password}
                 state={passwordAuthState}
                 onChange={(value) => { setPassword(value); setPasswordAuthState('idle'); }}

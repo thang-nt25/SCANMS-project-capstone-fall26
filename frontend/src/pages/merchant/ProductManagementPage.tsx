@@ -1817,7 +1817,7 @@ export default function ProductManagementPage() {
                           variant="outline"
                           size="sm"
                           icon={<Package className="w-3.5 h-3.5" />}
-                          onClick={() => navigate('/collaborator/samples')}
+                          onClick={() => navigate('/collaborator/collaboration?tab=samples')}
                         >
                           Xin mẫu
                         </Button>

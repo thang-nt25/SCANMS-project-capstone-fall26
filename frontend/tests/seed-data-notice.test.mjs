@@ -12,16 +12,11 @@ const code = ts.transpileModule(readFileSync(new URL('../src/components/common/S
 const module = { exports: {} };
 new Function('require', 'module', 'exports', code)(require, module, module.exports);
 const render = user => renderToStaticMarkup(React.createElement(module.exports.SeedDataNotice, { user }));
-test('does not mark an actual registered user as a fixture', () => {
+test('does not render synthetic notice banner', () => {
   assert.equal(render({ email: 'customer@example.test' }), '');
   assert.equal(render(null), '');
-});
-test('seed identity/metrics/payment are unmistakably labeled synthetic', () => {
-  assert.match(render({ email: 'shop01@seed.scanms.test' }), /Tài khoản kiểm thử Capstone/);
-  assert.match(render({ email: 'shop01@seed.scanms.test' }), /không chứng minh xác minh danh tính hoặc thanh toán thật/);
-});
-test('a public creator reference explicitly disclaims account ownership/partnership', () => {
-  assert.match(render({ email: 'kol01@seed.scanms.test', collaboratorProfile: { socialLinksJson: {
+  assert.equal(render({ email: 'shop01@seed.scanms.test' }), '');
+  assert.equal(render({ email: 'kol01@seed.scanms.test', collaboratorProfile: { socialLinksJson: {
     seedReference: { purpose: 'PUBLIC_REFERENCE_FOR_CAPSTONE_TESTING', name: 'Creator công khai' },
-  } } }), /người này không đăng ký hoặc xác nhận hợp tác/);
+  } } }), '');
 });

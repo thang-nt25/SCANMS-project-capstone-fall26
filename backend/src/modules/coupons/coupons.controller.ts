@@ -126,7 +126,9 @@ export class PublicCouponsController {
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Query('productId', new ParseUUIDPipe({ optional: true })) productId?: string,
   ) {
-    return this.service.getPublicStoreCoupons(storeId, productId);
+    return productId
+      ? this.service.getPublicStoreCoupons(storeId, productId)
+      : this.service.getPublicStoreCoupons(storeId);
   }
 
   @Get(':couponId/products')

@@ -77,7 +77,7 @@ export class CustomerController {
   @Post('send-password-otp')
   @ApiOperation({
     summary:
-      'Gửi mã OTP xác minh qua Email để đổi hoặc thêm mật khẩu mới (Chuẩn Shopee)',
+      'Gửi mã OTP xác minh qua Email để đổi hoặc thêm mật khẩu mới (Chuẩn SCANMS)',
   })
   async sendPasswordOtp(
     @CurrentUser('id') userId: string,
@@ -310,7 +310,7 @@ export class CustomerController {
   }
 
   // ==========================================
-  // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SHOPEE)
+  // 5. XÁC MINH CCCD THÔNG TIN CÁ NHÂN (CHUẨN SCANMS)
   // ==========================================
   @Get('identity')
   @ApiOperation({
