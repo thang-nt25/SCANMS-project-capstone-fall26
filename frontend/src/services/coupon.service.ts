@@ -147,6 +147,14 @@ export interface CreateCouponPayload {
   storeId: string;
   code: string;
   campaignId?: string;
+  discountType?: DiscountType;
+  discountValue?: number;
+  minimumOrderAmount?: number;
+  maximumDiscountAmount?: number;
+  startsAt?: string;
+  expiresAt?: string;
+  scopeType?: CouponScope;
+  note?: string;
 }
 
 export interface CreateStoreCouponPayload {

@@ -74,16 +74,19 @@ export interface ChatStoreInfo {
 export interface ChatCouponVoucher {
   id: string;
   code: string;
+  displayCode?: string;
   discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
   discountValue: number;
   minimumOrderAmount: number | null;
   maximumDiscountAmount: number | null;
   remainingUses: number | null;
+  usageLimitTotal?: number | null;
+  usageCount?: number;
   expiresAt: string | null;
   scopeType: string;
-  products: Array<{ id: string; title: string }>;
-  categories: string[];
-  storeName: string;
+  products?: Array<{ id: string; title: string }>;
+  categories?: string[];
+  storeName?: string;
 }
 
 export interface ChatExclusiveDeal {

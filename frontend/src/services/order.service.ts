@@ -121,7 +121,15 @@ export interface StoreOrderRecord {
   ghnEnvironment?: 'LIVE' | 'TEST' | null;
   carrierName: string | null;
   store?: { id: string; name: string; slug: string; logoUrl?: string };
-  attributedCollaborator?: { id: string; fullName: string; email: string } | null;
+  attributedCollaborator?: {
+    id: string;
+    fullName: string;
+    email: string;
+    collaboratorProfile?: {
+      avatarUrl?: string | null;
+      tier?: string;
+    } | null;
+  } | null;
   couponCode: string | null;
   totalCommission: number;
   items: StoreOrderItem[];
