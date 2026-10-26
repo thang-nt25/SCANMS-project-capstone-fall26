@@ -13,7 +13,9 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     const token = localStorage.getItem('token');
+    apiCache.setSession(token);
     (config as any).__sessionToken = token;
+    (config as any).__cacheRevision = apiCache.revision;
     if (token && config.headers && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -55,22 +57,24 @@ api.interceptors.response.use(
     const url = response.config.url;
 
     // Lưu tạm vào cache nếu là GET request thành công
-    if (method === 'get' && url && apiCache.isCacheable(url)) {
+    if (method === 'get' && url && apiCache.isCacheable(url) &&
+        (response.config as any).__cacheRevision === apiCache.revision) {
       apiCache.set(url, response.config.params, response.data);
     } else if (['post', 'put', 'patch', 'delete'].includes(method)) {
       // Khi có hành động thay đổi dữ liệu -> Invalidate cache của domain bị ảnh hưởng (targeted invalidation)
-      const affectedDomain = apiCache.getAffectedDomain(url);
-      apiCache.invalidate(affectedDomain);
+      apiCache.invalidateAffected(url);
     }
 
     return response.data;
   },
   async (error) => {
+    if (axios.isCancel(error)) return Promise.reject(error);
     const status = error.response?.status;
     if (status === 401 && !error.config?.url?.includes('/auth/login') &&
         error.config?.headers?.Authorization === `Bearer ${localStorage.getItem('token')}`) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      apiCache.setSession(null);
       window.dispatchEvent(new Event('auth-user-updated'));
     }
     const message =
@@ -81,6 +85,7 @@ api.interceptors.response.use(
     customErr.response = error.response;
     customErr.status = status;
     customErr.statusCode = status;
+    customErr.code = error.code;
     return Promise.reject(customErr);
   }
 );
