@@ -97,7 +97,7 @@ export class MediaService {
             select: { id: true, fullName: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
     ]);
 

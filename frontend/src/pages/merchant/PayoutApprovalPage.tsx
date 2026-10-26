@@ -20,6 +20,8 @@ import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Select } from "../../components/ui/Select";
 import { type VietQrBank, findBankByQuery } from "@/config/banks.config";
 import { toast } from "../../utils/toast";
+import { fixturePayoutView, payoutPagination } from '@/utils/merchant-payout-view';
+import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
@@ -33,7 +35,7 @@ const STATUS_LABELS: Record<PayoutStatus, string> = {
   REJECTED: "Đã từ chối",
 };
 const money = (amount: string) =>
-  `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(amount))} ₫`;
+  ledgerAmountPresentation(amount).text.replace(/^\+/, '');
 const buttonClass =
   "rounded-xl border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -269,6 +271,11 @@ export default function PayoutApprovalPage() {
   const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'TAX' | 'KYC'>('ALL');
   const [selected, setSelected] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setPage(1); setSelected([]); setDebouncedSearch(searchQuery.trim()); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
   const [viewingBill, setViewingBill] = useState<MerchantPayout | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -440,13 +447,16 @@ export default function PayoutApprovalPage() {
     if (!storeId) return;
     const sequence = ++loadSequence.current;
     setLoading(true);
+    setHistory(null);
+    setSelected([]);
     try {
       const [requests, batchHistory] = await Promise.all([
-        payoutService.list(storeId, page, status),
+        payoutService.list(storeId, page, status, { search: debouncedSearch, filter: activeKpiFilter }),
         payoutService.batches(storeId),
       ]);
       if (sequence !== loadSequence.current) return;
       setHistory(requests);
+      if (requests.page && requests.page !== page) setPage(requests.page);
       setBatches(batchHistory.batches);
       setSelected([]);
       setError("");
@@ -456,7 +466,7 @@ export default function PayoutApprovalPage() {
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
-  }, [storeId, page, status]);
+  }, [storeId, page, status, debouncedSearch, activeKpiFilter]);
   useEffect(() => {
     const sequenceRef = loadSequence;
     void load();
@@ -592,65 +602,32 @@ export default function PayoutApprovalPage() {
     });
   }
 
-  // An empty/failed API response is not consent to display fabricated financial activity.
-  const baseRequests = useMemo(() =>
-    history && history.requests.length > 0 ? history.requests : fixtureMode ? localRequests : [],
-  [history, fixtureMode, localRequests]);
-
-  // Thống kê KPIs chi trả (Chuẩn Figma 13 - tính toán chính xác trên dữ liệu hiện tại)
-  const pendingRequests = baseRequests.filter((r) => r.status === "PENDING");
-  const approvedRequests = baseRequests.filter((r) => r.status === "APPROVED");
-  const pendingAmountSum = pendingRequests.reduce(
-    (acc, r) => acc + Number(r.netAmount || r.amount || 0),
-    0
-  );
-  const approvedAmountSum = approvedRequests.reduce(
-    (acc, r) => acc + Number(r.netAmount || r.amount || 0),
-    0
-  );
-  const totalTaxSum = baseRequests.reduce(
-    (acc, r) => acc + Number(r.taxAmount || 0),
-    0
-  );
-  const taxRequests = baseRequests.filter((r) => Number(r.taxAmount || 0) > 0);
-  const pendingKycCount = baseRequests.filter(
-    (r) => r.kycStatus && r.kycStatus !== "VERIFIED"
-  ).length;
-
-  const displayPendingCount = pendingRequests.length;
-  const displayPendingAmount = pendingAmountSum;
-  const displayApprovedCount = approvedRequests.length;
-  const displayApprovedAmount = approvedAmountSum;
-  const displayTaxCount = taxRequests.length;
-  const displayTaxAmount = totalTaxSum;
-  const displayKycPendingCount = pendingKycCount;
-
-  // Bộ lọc dữ liệu bảng tương tác: kết hợp Dropdown Trạng thái + Thẻ KPI đang bấm + Tìm kiếm
-  const displayedRequests = useMemo(() => {
-    return baseRequests.filter((request) => {
-      if (status && request.status !== status) return false;
-      if (activeKpiFilter === "PENDING") return request.status === "PENDING";
-      if (activeKpiFilter === "APPROVED") return request.status === "APPROVED";
-      if (activeKpiFilter === "TAX") return Number(request.taxAmount) > 0;
-      if (activeKpiFilter === "KYC") return request.kycStatus !== "VERIFIED";
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchName = request.collaboratorName?.toLowerCase().includes(q);
-        const matchId = request.id?.toLowerCase().includes(q);
-        const matchBank = request.bankName?.toLowerCase().includes(q);
-        const matchAcc = request.bankAccountNumber?.includes(q);
-        const matchAccName = request.bankAccountName?.toLowerCase().includes(q);
-        return Boolean(matchName || matchId || matchBank || matchAcc || matchAccName);
-      }
-      return true;
-    });
-  }, [baseRequests, status, activeKpiFilter, searchQuery]);
+  // Only an explicitly enabled DEV workspace may use local financial fixtures.
+  const usingFixtures = fixtureMode && !history;
+  const baseRequests = useMemo(() => usingFixtures ? localRequests : history?.requests || [], [usingFixtures, localRequests, history]);
+  const fixtureView = useMemo(() => usingFixtures ? fixturePayoutView(localRequests, {
+    page, limit: 10, status, filter: activeKpiFilter, search: debouncedSearch,
+  }) : null, [usingFixtures, localRequests, page, status, activeKpiFilter, debouncedSearch]);
+  const summary = usingFixtures ? fixtureView?.summary : history?.summary;
+  const displayedRequests = loading || searchQuery.trim() !== debouncedSearch ? [] : usingFixtures ? fixtureView?.requests || [] : history?.requests || [];
+  const total = usingFixtures ? fixtureView?.total || 0 : history?.total || 0;
+  const pageLimit = history?.limit || 10;
+  const effectivePage = usingFixtures ? fixtureView?.page || page : history?.page || page;
+  const pagination = payoutPagination(total, pageLimit, effectivePage);
+  const displayPendingCount = summary?.pending.count ?? '—';
+  const displayPendingAmount = summary?.pending.netAmount;
+  const displayApprovedCount = summary?.approvedToday.count ?? '—';
+  const displayApprovedAmount = summary?.approvedToday.netAmount;
+  const displayTaxCount = summary?.withheldTax.count ?? 0;
+  const displayTaxAmount = summary?.withheldTax.amount;
+  const displayKycPendingCount = summary?.kycPendingCount ?? '—';
 
   const eligible = displayedRequests.filter(
     (request) => request.status === "PENDING" && !request.batchId
   );
 
   const handleExportExcel = async () => {
+    if (busy || loading || searchQuery.trim() !== debouncedSearch) return;
     const targetIds =
       selected.length > 0
         ? selected
@@ -1038,7 +1015,7 @@ export default function PayoutApprovalPage() {
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
                 <Clock className="h-3.5 w-3.5 text-[#B88E4F]" />
-                <span>Hôm nay</span>
+                <span>Toàn gian hàng · UTC+7</span>
               </span>
             </div>
 
@@ -1055,9 +1032,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "PENDING"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1101,9 +1078,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "APPROVED"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1147,9 +1124,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "TAX"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1174,14 +1151,10 @@ export default function PayoutApprovalPage() {
                 </div>
                 <div>
                   <div className="text-base sm:text-lg font-extrabold leading-none text-[#1A1612] tracking-tight whitespace-nowrap">
-                    {displayTaxAmount >= 1000000
-                      ? `${(displayTaxAmount / 1000000).toLocaleString("vi-VN", {
-                          maximumFractionDigits: 2,
-                        })} tr ₫`
-                      : money(String(displayTaxAmount))}
+                    {money(displayTaxAmount ?? '')}
                   </div>
                   <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#7D715E] whitespace-nowrap">
-                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh · Từ 2 triệu` : "10% lệnh từ 2 triệu"}
+                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh đã khấu trừ` : "10% mỗi lệnh rút mới"}
                   </span>
                 </div>
               </div>
@@ -1197,9 +1170,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "KYC"
                     ? "border-[#DC2626] bg-[#FEF2F2] shadow-xs ring-1 ring-[#DC2626]/20"
@@ -1253,7 +1226,8 @@ export default function PayoutApprovalPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm KOL, mã yêu cầu, số tài khoản..."
+                aria-label="Tìm yêu cầu chi trả"
+                placeholder="Tìm KOL, UUID đầy đủ, số tài khoản..."
                 className="h-9 w-48 sm:w-60 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 pl-8.5 pr-7 text-xs text-[#1A1612] placeholder:text-[#A89E90] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
               />
               {searchQuery && (
@@ -1292,7 +1266,7 @@ export default function PayoutApprovalPage() {
             {activeKpiFilter !== "ALL" && (
               <button
                 type="button"
-                onClick={() => setActiveKpiFilter("ALL")}
+                onClick={() => { setPage(1); setSelected([]); setActiveKpiFilter("ALL"); }}
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:border-[#FECACA] hover:text-[#DC2626]"
               >
                 <span>Đang lọc: {activeKpiFilter === 'PENDING' ? 'Chờ duyệt' : activeKpiFilter === 'APPROVED' ? 'Đã duyệt' : activeKpiFilter === 'TAX' ? 'Thuế 10%' : 'KYC'}</span>
@@ -1535,7 +1509,7 @@ export default function PayoutApprovalPage() {
           </table>
         </div>
 
-        {!loading && displayedRequests.length === 0 && (
+        {!loading && searchQuery.trim() === debouncedSearch && displayedRequests.length === 0 && (
           <div className="p-8 text-center text-[#7D715E]">
             <p className="font-semibold text-[#1A1612]">
               Không có yêu cầu chi trả nào phù hợp với bộ lọc hiện tại.
@@ -1545,6 +1519,8 @@ export default function PayoutApprovalPage() {
                 type="button"
                 onClick={() => {
                   setStatus("");
+                  setPage(1);
+                  setSelected([]);
                   setActiveKpiFilter("ALL");
                   setSearchQuery("");
                 }}
@@ -1559,21 +1535,21 @@ export default function PayoutApprovalPage() {
         {/* Thanh phân trang */}
         <div className="flex items-center justify-between gap-3 border-t border-[#EAE4D7] p-3.5 sm:p-4 text-xs">
           <span className="font-medium text-[#7D715E]">
-            Hiển thị <strong className="text-[#1A1612]">{displayedRequests.length}</strong> yêu cầu chi trả · Trang {page}
+            Hiển thị <strong className="text-[#1A1612]">{displayedRequests.length}</strong> / {total} yêu cầu phù hợp · Trang {pagination.page}/{pagination.totalPages}
           </span>
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy || loading || page <= 1}
-              onClick={() => setPage((current) => current - 1)}
+              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canPrevious}
+              onClick={() => setPage(pagination.page - 1)}
               className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
             >
               Trước
             </button>
             <button
               type="button"
-              disabled={busy || loading || page * 10 >= displayedRequests.length}
-              onClick={() => setPage((current) => current + 1)}
+              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canNext}
+              onClick={() => setPage(pagination.page + 1)}
               className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
             >
               Sau

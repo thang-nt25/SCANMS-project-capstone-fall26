@@ -567,6 +567,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const voucherValidationBasisRef = useRef(voucherValidationBasis);
   voucherValidationBasisRef.current = voucherValidationBasis;
   const previousVoucherBasis = useRef(voucherBasisKey);
+  const shippingVoucherBasis = JSON.stringify(shippingFeesByStore);
+  const previousShippingVoucherBasis = useRef(shippingVoucherBasis);
+  useEffect(() => {
+    if (previousShippingVoucherBasis.current !== shippingVoucherBasis) {
+      previousShippingVoucherBasis.current = shippingVoucherBasis;
+      // A shipping discount is a preview of a particular quote, not a fixed credit.
+      setAppliedShippingCoupon(null);
+    }
+  }, [shippingVoucherBasis]);
   useEffect(() => {
     if (previousVoucherBasis.current !== voucherBasisKey) {
       previousVoucherBasis.current = voucherBasisKey;
@@ -1269,8 +1278,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         paymentMethod,
         couponCode: Object.values(appliedShopCoupons)[0]?.code || undefined,
         couponsByStore: Object.keys(finalCouponsByStore).length > 0 ? finalCouponsByStore : undefined,
-        platformCouponsByStore: appliedPlatformCoupon ? { [itemsGroupedByShop[0]?.store.id || 'default']: appliedPlatformCoupon.code } : undefined,
-        shippingCouponsByStore: appliedShippingCoupon ? { [itemsGroupedByShop[0]?.store.id || 'default']: appliedShippingCoupon.code } : undefined,
+        platformCouponsByStore: appliedPlatformCoupon ? { [appliedPlatformCoupon.storeId || targetVoucherStoreId]: appliedPlatformCoupon.code } : undefined,
+        shippingCouponsByStore: appliedShippingCoupon ? { [appliedShippingCoupon.storeId || targetVoucherStoreId]: appliedShippingCoupon.code } : undefined,
         platformCouponCode: appliedPlatformCoupon?.code || undefined,
         shippingCouponCode: appliedShippingCoupon?.code || undefined,
         idempotencyKey,
@@ -1924,6 +1933,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             <ScanmsCheckoutVoucherModal
               isOpen={isScanmsVoucherModalOpen}
               onClose={() => setIsScanmsVoucherModalOpen(false)}
+              onRequestSignIn={() => {
+                setIsScanmsVoucherModalOpen(false);
+                setShowPasswordLogin(true);
+                window.requestAnimationFrame(() => {
+                  const gate = document.getElementById('mandatory-auth-gate');
+                  gate?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  gate?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+                });
+              }}
               groups={itemsGroupedByShop}
               shippingFeesByStore={shippingFeesByStore}
               totalShippingFee={shippingFee || 0}
@@ -1933,12 +1951,14 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               appliedPlatformCoupon={appliedPlatformCoupon}
               appliedShippingCoupon={appliedShippingCoupon}
               onApplyShopCoupon={(storeId, v) => {
+                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
                 setAppliedShopCoupons((prev) => ({
                   ...prev,
                   [storeId]: { ...v, storeId },
                 }));
               }}
               onRemoveShopCoupon={(storeId) => {
+                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
                 setAppliedShopCoupons((prev) => {
                   const next = { ...prev };
                   delete next[storeId];

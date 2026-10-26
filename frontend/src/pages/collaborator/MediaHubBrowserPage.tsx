@@ -73,19 +73,30 @@ export default function MediaHubBrowserPage() {
   const [mediaList, setMediaList] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [catalogueProgress, setCatalogueProgress] = useState({ loaded: 0, total: 0 });
+  const catalogueController = useRef<AbortController | null>(null);
+  const [mediaPage, setMediaPage] = useState(1);
 
   const fetchMedia = async () => {
+    catalogueController.current?.abort();
+    const controller = new AbortController();
+    catalogueController.current = controller;
     setLoading(true);
     setFetchError(null);
+    setCatalogueProgress({ loaded: 0, total: 0 });
     try {
-      const res: any = await mediaService.getMediaAssets({ limit: 100 });
-      const items = res?.items || (Array.isArray(res) ? res : []);
+      const items = await mediaService.getAllMediaAssets({ signal: controller.signal,
+        onProgress: (loaded, total) => { if (!controller.signal.aborted) setCatalogueProgress({ loaded, total }); },
+      });
+      if (controller.signal.aborted) return;
       setMediaList(items);
-    } catch {
-      setFetchError('Không thể tải danh sách tài nguyên lúc này. Vui lòng thử lại.');
+      setMediaPage(1);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setFetchError(error instanceof Error ? error.message : 'Không thể tải danh sách tài nguyên lúc này. Vui lòng thử lại.');
       setMediaList([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
@@ -96,7 +107,7 @@ export default function MediaHubBrowserPage() {
       setViewMode('MY_SUBMISSIONS');
     };
     window.addEventListener('scanms_media_updated', refreshMedia);
-    return () => window.removeEventListener('scanms_media_updated', refreshMedia);
+    return () => { catalogueController.current?.abort(); window.removeEventListener('scanms_media_updated', refreshMedia); };
   }, []);
 
   const [search, setSearch] = useState('');
@@ -203,8 +214,13 @@ export default function MediaHubBrowserPage() {
     });
   }, [mediaList, viewMode, currentUser?.id, search, selectedProduct, selectedType]);
 
+  useEffect(() => { setMediaPage(1); }, [search, selectedProduct, selectedType, viewMode]);
+  const totalMediaPages = Math.max(1, Math.ceil(filteredMedia.length / 24));
+  const visibleMediaPage = Math.min(mediaPage, totalMediaPages);
+  const visibleMedia = filteredMedia.slice((visibleMediaPage - 1) * 24, visibleMediaPage * 24);
+
   const handleDownloadPack = async () => {
-    if (packController.current || loading) return;
+    if (packController.current || loading || fetchError) return;
     if (!filteredMedia.length) {
       toast.info('Không có tài nguyên trong bộ lọc hiện tại.');
       return;
@@ -450,7 +466,7 @@ export default function MediaHubBrowserPage() {
         </div>
       ) : (
         <div className="kol-media-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {filteredMedia.map((m) => {
+          {visibleMedia.map((m) => {
             const isVideo = m.assetType === 'VIDEO';
             const isText = m.assetType === 'COPYWRITE_TEXT';
             const displayBadge =
@@ -651,6 +667,14 @@ export default function MediaHubBrowserPage() {
       )}
 
 
+      {!loading && !fetchError && filteredMedia.length > 0 && <nav aria-label="Phân trang kho nội dung" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#7D715E]">
+        <span>Trang {visibleMediaPage}/{totalMediaPages} · {filteredMedia.length} tài nguyên. Pack bao gồm tất cả kết quả lọc, không chỉ trang này.</span>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={visibleMediaPage <= 1} onClick={() => setMediaPage(value => Math.max(1, value - 1))}>Trang trước</Button>
+          <Button variant="outline" size="sm" disabled={visibleMediaPage >= totalMediaPages} onClick={() => setMediaPage(visibleMediaPage + 1)}>Trang sau</Button>
+        </div>
+      </nav>}
+      {loading && catalogueProgress.total > 0 && <p role="status" className="text-xs text-[#7D715E]">Đang tải {catalogueProgress.loaded}/{catalogueProgress.total} tài nguyên…</p>}
       {previewAsset && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-[#EAE4D7] shadow-2xl">

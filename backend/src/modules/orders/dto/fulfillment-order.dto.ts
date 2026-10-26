@@ -1,5 +1,7 @@
 import {
   IsEnum,
+  IsIn,
+  IsUUID,
   IsOptional,
   IsString,
   Matches,
@@ -49,8 +51,13 @@ export class UpdateOrderFulfillmentDto {
 export class QueryStoreOrdersDto {
   @ApiPropertyOptional({ description: 'Trạng thái đơn hàng' })
   @IsOptional()
-  @IsEnum(OrderStatus)
-  status?: OrderStatus;
+  @IsIn([...Object.values(OrderStatus), 'RETURNS'])
+  status?: OrderStatus | 'RETURNS';
+
+  @ApiPropertyOptional({ description: 'Lọc đúng tài khoản khách trong hội thoại, không tìm theo tên' })
+  @IsOptional()
+  @IsUUID('all')
+  customerId?: string;
 
   @ApiPropertyOptional({
     description: 'Từ khóa tìm kiếm (Mã đơn, Tên, Số điện thoại)',
