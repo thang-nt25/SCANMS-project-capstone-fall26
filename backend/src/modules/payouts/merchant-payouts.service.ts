@@ -283,14 +283,13 @@ export class MerchantPayoutsService {
     request: PayoutRequest,
   ) {
     if (
-      !request.storeId ||
       request.amount.lessThanOrEqualTo(0) ||
       request.taxAmount.lessThan(0) ||
       request.netAmount.lessThanOrEqualTo(0) ||
       !request.netAmount.plus(request.taxAmount).equals(request.amount)
     )
       throw new BadRequestException(
-        'Payout thiếu shop hoặc snapshot thuế hợp lệ; cần đối soát',
+        'Payout thiếu snapshot thuế hợp lệ; cần đối soát',
       );
     const debit = await tx.financialLedger.findFirst({
       where: {
@@ -298,14 +297,14 @@ export class MerchantPayoutsService {
         referenceType: 'PAYOUT_REQUEST',
         transactionType: 'PAYOUT_WITHDRAW',
         balanceBucket: 'AVAILABLE',
-        storeId: request.storeId,
+        ...(request.storeId ? { storeId: request.storeId } : {}),
         wallet: { collaboratorId: request.collaboratorId },
         amount: request.amount.negated(),
       },
     });
     if (!debit)
       throw new BadRequestException(
-        'Payout chưa có ledger trừ tiền đúng shop; cần đối soát',
+        'Payout chưa có ledger trừ tiền hợp lệ; cần đối soát',
       );
   }
 

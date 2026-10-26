@@ -13,6 +13,7 @@ import { MerchantPayoutsService } from './merchant-payouts.service';
 import { PayoutBatchesService } from './payout-batches.service';
 import { MerchantPayoutsController } from './merchant-payouts.controller';
 import { PayoutApprovalController } from './payout-approval.controller';
+import { AdminPayoutsController } from './admin-payouts.controller';
 
 @Module({
   imports: [ConfigModule],
@@ -44,6 +45,7 @@ class PayoutSettingsModule {}
     PayoutsController,
     MerchantPayoutsController,
     PayoutApprovalController,
+    AdminPayoutsController,
   ],
   providers: [
     PayoutsService,
