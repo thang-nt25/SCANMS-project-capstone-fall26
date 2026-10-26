@@ -54,9 +54,10 @@ export class SamplesController {
   @Get('my')
   @Roles('COLLABORATOR')
   @ApiOperation({ summary: '[KOL] Lấy danh sách yêu cầu xin mẫu của tôi' })
-  getMyRequests(@Request() req: any) {
+  @ApiQuery({ name: 'storeId', required: false, type: String, description: 'Lọc theo ID gian hàng' })
+  getMyRequests(@Request() req: any, @Query('storeId') storeId?: string) {
     const userId = req.user?.id || req.user?.sub;
-    return this.samplesService.getMyRequests(userId);
+    return this.samplesService.getMyRequests(userId, storeId);
   }
 
   @Get('my/eligibility')

@@ -318,9 +318,12 @@ export class SamplesService {
     });
   }
 
-  async getMyRequests(collaboratorId: string) {
+  async getMyRequests(collaboratorId: string, storeId?: string) {
     return this.prisma.sampleProductRequest.findMany({
-      where: { collaboratorId },
+      where: {
+        collaboratorId,
+        ...(storeId ? { product: { storeId } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: this.includeRelations(),
     });

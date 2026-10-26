@@ -498,7 +498,7 @@ export default function WalletPage() {
       </section>
 
 
-      {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (TIKTOK SHOP & SHOPEE CREATOR COMPACT STYLE) */}
+      {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (SCANMS CREATOR COMPACT STYLE) */}
       <section className="wallet-payout-stack grid! grid-cols-[minmax(260px,_.7fr)_minmax(0,_1.3fr)]! items-stretch! gap-[16px]! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ">
         {/* Cột 1: Quản lý tài khoản ngân hàng thụ hưởng (VietQR) */}
         <div className="wallet-bank-row [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_>_div]:grid! [&_>_div]:grid-cols-[minmax(0,1fr)]! [&_>_div]:gap-[14px]! [&_>_div_>_div:first-child]:flex-row! [&_>_div_>_div:first-child]:items-center! [&_>_div_>_div:first-child]:justify-between! [&_>_div_>_div:first-child]:gap-[8px]! [&_>_div_>_div:first-child]:[border-top:0]! [&_>_div_>_div:first-child]:[border-right:0]! [&_>_div_>_div:first-child]:[border-left:0]! [&_>_div_>_div:first-child]:[border-bottom:1px_solid_#eae4d7]! [&_>_div_>_div:first-child]:p-[0_0_12px]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! [@media(max-width:639px)]:p-[14px]! ">
@@ -743,7 +743,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* Cột 2: Form Tạo yêu cầu rút tiền (Shopee / TikTok Creator Studio Standard) */}
+        {/* Cột 2: Form Tạo yêu cầu rút tiền (SCANMS Creator Studio Standard) */}
         <form
           aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
@@ -847,7 +847,7 @@ export default function WalletPage() {
                 </span>
               </div>
 
-              {/* Quick shortcut pills (Shopee / TikTok Style) */}
+              {/* Quick shortcut pills */}
               <div className="mt-2 flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10.5px] text-[#7D715E] font-medium mr-0.5">Gợi ý nhanh:</span>
                 {[200000, 500000, 1000000].map((quickVal) => (
@@ -937,7 +937,7 @@ export default function WalletPage() {
       </section>
 
 
-              {/* 1. LỊCH SỬ YÊU CẦU RÚT TIỀN (FINTECH & TIKTOK/SHOPEE COMPACT E-COMMERCE STYLE) */}
+              {/* 1. LỊCH SỬ YÊU CẦU RÚT TIỀN (FINTECH & SCANMS COMPACT E-COMMERCE STYLE) */}
       <WalletCooperationStores stores={wallet?.cooperationStores} />
 
       <section className="overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-xs">

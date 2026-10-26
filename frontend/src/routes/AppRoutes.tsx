@@ -33,6 +33,7 @@ const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
 const PayosReturnPage = lazyRetry(() => import('../pages/public/PayosReturnPage'));
 const LiveStreamRoomPage = lazyRetry(() => import('../pages/public/LiveStreamRoomPage'));
+const CartPage = lazyRetry(() => import('../pages/public/CartPage'));
 
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
@@ -48,7 +49,6 @@ const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPor
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
 const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
-const SampleRequestsPage = lazyRetry(() => import('../pages/collaborator/SampleRequestsPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
 
@@ -78,7 +78,6 @@ const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutio
 
 // Shop Return Requests (Merchant)
 const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
-const ShopStorefrontPage = lazy(() => import('../pages/public/ShopStorefrontPage'));
 
 import { RouteContent } from './RouteContent';
 import { RoleGuard } from './RoleGuard';
@@ -138,11 +137,13 @@ function AppRoutes() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
               <Route path="/payment/payos-return" element={<PayosReturnPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/gio-hang" element={<Navigate to="/cart" replace />} />
               <Route path="/store" element={<MarketplacePage />} />
               <Route path="/storefront" element={<MarketplacePage />} />
-              <Route path="/shop" element={<ShopStorefrontPage />} />
-              <Route path="/shop/:slug" element={<ShopStorefrontPage />} />
-              <Route path="/stores/:slug" element={<ShopStorefrontPage />} />
+              <Route path="/shop" element={<ShopPage />} />
+              <Route path="/shop/:shopId" element={<ShopPage />} />
+              <Route path="/stores/:shopId" element={<ShopPage />} />
               <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
               <Route path="/live/:slug" element={<LiveStreamRoomPage />} />
               <Route path="/live/:id" element={<LiveStreamRoomPage />} />
@@ -251,9 +252,9 @@ function AppRoutes() {
               <Route path="kol/referral-links" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
-              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
-              <Route path="collaborator/samples" element={<SampleRequestsPage />} />
-              <Route path="collaborator/sample-requests" element={<SampleRequestsPage />} />
+              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
+              <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
+              <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Shield, ShoppingBag, Star, Store } from 'lucide-react';
+import { ChevronDown, Megaphone, Shield, ShoppingBag, Store } from 'lucide-react';
 import type { UserProfile } from '../../services/auth.service';
 
 interface HeaderAccountButtonProps {
@@ -13,7 +13,7 @@ interface HeaderAccountButtonProps {
 
 const roles = {
   CUSTOMER: { label: 'Khách mua sắm', icon: ShoppingBag },
-  COLLABORATOR: { label: 'KOL/KOC', icon: Star },
+  COLLABORATOR: { label: 'KOL/KOC', icon: Megaphone },
   SHOP_MANAGER: { label: 'Chủ shop', icon: Store },
   SYSTEM_MANAGER: { label: 'Vận hành', icon: Shield },
   SYSTEM_ADMIN: { label: 'Admin', icon: Shield },

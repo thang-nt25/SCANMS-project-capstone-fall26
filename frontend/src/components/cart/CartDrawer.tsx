@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Minus, Plus, RefreshCw, ShoppingBag, Store, Trash2, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, Minus, Plus, RefreshCw, ShoppingBag, Store, Ticket, Trash2, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import type { CartItem } from '@/types/cart.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -131,11 +131,17 @@ export function CartDrawer() {
               onChange={() => toggleSelectAll()} />
             <span>Chọn tất cả</span>
           </label>
-          <button type="button" onClick={() => void refreshCartStock()} disabled={isValidatingStock || isCartSyncing}
-            className="scanms-cart-refresh inline-flex items-center gap-[6px] min-h-[44px] p-[0_2px] border-0 bg-transparent text-[11px] font-[500] text-[color:#7D715E]! [&:hover]:text-[color:#B88E4F]! [&:disabled]:opacity-[.6]" aria-label="Cập nhật giá và tồn kho">
-            <RefreshCw size={14} className={isValidatingStock || isCartSyncing ? 'scanms-cart-spin animate-[scanms-cart-spin_1s_linear_infinite] [@media_(prefers-reduced-motion:reduce)]:animate-none' : ''} aria-hidden="true" />
-            <span>{isValidatingStock || isCartSyncing ? 'Đang cập nhật…' : 'Cập nhật'}</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <Link to="/cart" onClick={closeCart} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F] hover:underline" title="Mở trang giỏ hàng riêng biệt">
+              <span>Trang đầy đủ</span>
+              <ExternalLink size={12} />
+            </Link>
+            <button type="button" onClick={() => void refreshCartStock()} disabled={isValidatingStock || isCartSyncing}
+              className="scanms-cart-refresh inline-flex items-center gap-[6px] min-h-[44px] p-[0_2px] border-0 bg-transparent text-[11px] font-[500] text-[color:#7D715E]! [&:hover]:text-[color:#B88E4F]! [&:disabled]:opacity-[.6]" aria-label="Cập nhật giá và tồn kho">
+              <RefreshCw size={14} className={isValidatingStock || isCartSyncing ? 'scanms-cart-spin animate-[scanms-cart-spin_1s_linear_infinite] [@media_(prefers-reduced-motion:reduce)]:animate-none' : ''} aria-hidden="true" />
+              <span>{isValidatingStock || isCartSyncing ? 'Đang cập nhật…' : 'Cập nhật'}</span>
+            </button>
+          </div>
         </div>}
 
         <div className="scanms-cart-body flex-auto shrink-0 bg-[color:#FAF8F5] p-[18px] [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]! [@media_(max-width:480px)]:p-[12px]">
@@ -172,10 +178,38 @@ export function CartDrawer() {
             <div><span>Tạm tính tiền hàng</span><small>Đã chọn {selectedCount} sản phẩm</small></div>
             <strong aria-live="polite" aria-atomic="true">{formatMoney(subtotal)}</strong>
           </div>
-          <p className="scanms-cart-footer__note m-[12px_0_14px] text-[11px] leading-[1.6] text-[color:#7D715E]!">Phí vận chuyển và ưu đãi được tính ở bước thanh toán.</p>
+          {/* Thanh SCANMS Voucher Trigger Banner */}
+          <div
+            onClick={() => {
+              if (selected.length > 0) {
+                startCheckout(selected);
+              }
+            }}
+            className={`my-3 p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between transition-colors ${
+              selected.length > 0 ? 'cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB]' : 'opacity-60 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
+                <Ticket size={14} />
+              </div>
+              <span className="text-xs font-bold text-[#1A1612]">SCANMS Voucher</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
+              <span>Chọn hoặc nhập mã</span>
+              <ChevronRight size={14} />
+            </div>
+          </div>
+
           <button type="button" onClick={() => startCheckout(selected)} disabled={!selected.length || isValidatingStock || isCartSyncing} className="scanms-cart-primary scanms-cart-checkout inline-flex items-center justify-center gap-[12px] min-h-[48px] p-[12px_20px] border border-[#C59B58] rounded-[12px] bg-[color:#FBF5EB] text-[color:#1A1612]! [font-family:inherit]! text-[13px] font-[700] [transition:background_150ms,border-color_150ms] w-full border-[#EEDFC6] [&:hover:not(:disabled)]:bg-[color:#F3EFE6] [&:hover:not(:disabled)]:border-[#C59B58] [&:disabled]:bg-[color:#F3EFE6] [&:disabled]:border-[#EAE4D7] [&:disabled]:text-[color:#7D715E]!">
             <span>Thanh toán{selectedCount > 0 ? ` (${selectedCount})` : ''}</span><ArrowRight size={18} />
           </button>
+          <div className="mt-2.5 text-center">
+            <Link to="/cart" onClick={closeCart} className="text-[11px] text-[#7D715E] hover:text-[#B88E4F] font-semibold transition-colors inline-flex items-center gap-1">
+              <span>Xem chi tiết giỏ hàng toàn màn hình</span>
+              <ChevronRight size={13} />
+            </Link>
+          </div>
           {!selected.length && <p className="scanms-cart-footer__hint m-[8px_0_0] text-[11px] text-center text-[color:#7D715E]!" role="status">Chọn sản phẩm để tiếp tục thanh toán.</p>}
         </footer>}
       </div>

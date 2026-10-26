@@ -142,6 +142,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       fundingSource: 'SHOP_FUNDED',
       shopFundingRate: 100,
       platformFundingRate: 0,
+      stackableWithProductDiscount: true,
       stackableWithShopVoucher: false,
       approvedBy: seedId(`shop-owner:${storeIndex}`),
       approvedAt: createdAt,

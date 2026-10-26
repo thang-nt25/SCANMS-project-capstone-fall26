@@ -40,6 +40,7 @@ import { customerService } from '@/services/customer.service';
 import { couponService, type EligibleProductCoupon } from '@/services/coupon.service';
 import { voucherSlot } from '@/utils/voucher-intent';
 import { toast } from '@/utils/toast';
+import { formatMoney } from '@/utils/marketplace.utils';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
@@ -53,6 +54,60 @@ function getSmartFallbackImage(title?: string, categoryName?: string): string {
   void title;
   void categoryName;
   return '/assets/product-placeholder.svg';
+}
+
+interface ParsedVideoSource {
+  type: 'youtube' | 'tiktok' | 'direct' | 'social_link' | 'none';
+  videoId?: string;
+  embedUrl?: string;
+  directUrl?: string;
+  videoUrl?: string;
+}
+
+function parseVideoSource(url?: string | null): ParsedVideoSource {
+  if (!url) return { type: 'none' };
+  const trimmed = url.trim();
+
+  // YouTube / Shorts
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  );
+  if (ytMatch) {
+    return {
+      type: 'youtube',
+      videoId: ytMatch[1],
+      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=0&rel=0&modestbranding=1`,
+      directUrl: trimmed,
+    };
+  }
+
+  // TikTok
+  const ttMatch = trimmed.match(/tiktok\.com\/(?:@[^/]+\/video\/|v\/)?(\d+)/);
+  if (ttMatch) {
+    return {
+      type: 'tiktok',
+      videoId: ttMatch[1],
+      embedUrl: `https://www.tiktok.com/embed/v2/${ttMatch[1]}`,
+      directUrl: trimmed,
+    };
+  }
+
+  // Direct MP4 / WebM / M3U8
+  if (
+    /\.(mp4|webm|m3u8)(\?|$)/i.test(trimmed) ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('/reference/')
+  ) {
+    return {
+      type: 'direct',
+      videoUrl: trimmed,
+    };
+  }
+
+  return {
+    type: 'social_link',
+    directUrl: trimmed,
+  };
 }
 
 const SCANMS_PLACEHOLDER = '/assets/product-placeholder.svg';
@@ -397,7 +452,7 @@ export default function ProductDetailPage() {
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedVoucherCode = searchParams.get('voucher');
+  const requestedVoucherCode = searchParams.get('voucher') || searchParams.get('coupon') || searchParams.get('code');
   const isCheckoutParam = searchParams.get('checkout') === '1' || searchParams.get('checkout') === 'true';
   const isCheckoutOpen = isCheckoutParam;
   const setIsCheckoutOpen = (open: boolean) => {
@@ -1015,16 +1070,70 @@ export default function ProductDetailPage() {
     setCouponError(null);
   }, [data?.product?.id, selectedVariant?.id, quantity]);
 
+  const kolToastShownRef = useRef<string | null>(null);
+
   useEffect(() => {
     setSelectedExtraVoucher(null);
-    const code = requestedVoucherCode;
-    if (!code || !availableStoreCoupons.length) return;
-    const voucher = (availableStoreCoupons as any[]).find((item) => ((item.code || item.displayCode) as string).toUpperCase() === code.toUpperCase());
-    if (!voucher) { setCouponError('Voucher không còn phù hợp với sản phẩm này.'); return; }
-    chooseProductVoucher(voucher);
-    // Revalidate the deep-linked intent when the selected product basis changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableStoreCoupons, requestedVoucherCode, selectedVariant?.id, quantity]);
+    const code = requestedVoucherCode?.trim().toUpperCase();
+    if (!code || !data?.product) return;
+
+    // 1. Kiểm tra nếu mã có trong danh sách voucher công khai của Shop
+    if (availableStoreCoupons.length > 0) {
+      const voucher = (availableStoreCoupons as any[]).find(
+        (item) => ((item.code || item.displayCode) as string).toUpperCase() === code,
+      );
+      if (voucher) {
+        chooseProductVoucher(voucher);
+        return;
+      }
+    }
+
+    // 2. Nếu không có trong danh sách công khai (ví dụ mã độc quyền KOL từ link dán FB/Tiktok)
+    let active = true;
+    const applyDeepLinkCoupon = async () => {
+      try {
+        const res: any = await api.post('/coupons/validate', {
+          code,
+          storeId: data.store.id,
+          items: [
+            {
+              productId: data.product.id,
+              variantId: selectedVariantIsReal ? selectedVariant?.id : undefined,
+              quantity,
+            },
+          ],
+        });
+        const couponRes = res?.data?.data || res?.data || {};
+        const discount = Number(couponRes.discountAmount || couponRes.totalDiscount || 0);
+        if (!active) return;
+
+        if (discount > 0) {
+          setAppliedCoupon({
+            contextKey: couponContextRef.current,
+            code,
+            discountAmount: discount,
+            description: couponRes.description || `Mã độc quyền ${code} đã được áp dụng!`,
+          });
+          setCouponError(null);
+          if (kolToastShownRef.current !== code) {
+            kolToastShownRef.current = code;
+            toast.success(`🎉 Nhận mã ưu đãi độc quyền "${code}" từ Creator! Giảm ${formatMoney(discount)} khi đặt hàng.`);
+          }
+        }
+      } catch (err: any) {
+        if (!active) return;
+        const msg = err?.response?.data?.message;
+        if (msg) {
+          console.warn('Deep link coupon validate error:', msg);
+        }
+      }
+    };
+
+    void applyDeepLinkCoupon();
+    return () => {
+      active = false;
+    };
+  }, [availableStoreCoupons, requestedVoucherCode, selectedVariant?.id, quantity, data?.product?.id]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1460,18 +1569,29 @@ export default function ProductDetailPage() {
               />
               <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
 
-              {/* Shipping estimate: show a date range, then refresh with carrier data after fulfillment. */}
+              {/* Shipping estimate: realistic fulfillment info & voucher support */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-0.5">
                   Vận chuyển
                 </span>
-                <div className="flex-1 text-xs">
+                <div className="flex-1 text-xs space-y-1.5">
                   <div className="flex items-start gap-2">
-                    <Truck className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                    <Truck className="h-4 w-4 shrink-0 text-[#B88E4F] mt-0.5" />
                     <div className="min-w-0">
-                      <div className="font-semibold text-[#1A1612]">Miễn phí vận chuyển tiêu chuẩn toàn quốc</div>
-                      <div className="mt-0.5 font-bold text-[#8C6226]">
-                        Dự kiến nhận: {estimatedDeliveryWindow}
+                      <div className="flex flex-wrap items-center gap-1.5 font-medium text-[#1A1612]">
+                        <span>Giao từ:</span>
+                        <strong className="font-semibold">Kho {store?.name || 'Chính hãng'}</strong>
+                        <span className="text-[#7D715E]">• Giao hàng tiêu chuẩn GHN</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="text-[#1A1612] font-semibold">Cước dự kiến: 16.500 ₫ – 22.000 ₫</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8C6226]">
+                          Miễn phí với Voucher Freeship SCANMS
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs font-semibold text-[#8C6226] flex items-center gap-1">
+                        <span>Dự kiến nhận hàng:</span>
+                        <strong className="font-bold underline decoration-[#C59B58]">{estimatedDeliveryWindow}</strong>
                       </div>
                     </div>
                   </div>
@@ -1496,7 +1616,7 @@ export default function ProductDetailPage() {
                     Phân Loại
                   </span>
                   <div className="flex-1">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                       {activeVariants.map((v) => {
                         const isSelected = selectedVariant?.id === v.id;
                         const isOutOfStock = v.stockQuantity <= 0;
@@ -1527,27 +1647,31 @@ export default function ProductDetailPage() {
                               const gIdx = gallery.indexOf(variantImg);
                               if (gIdx >= 0) setSelectedImageIndex(gIdx);
                             }}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border text-xs transition-all relative cursor-pointer ${
+                            className={`min-h-[46px] w-full sm:w-auto inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-all relative cursor-pointer select-none text-left ${
                               isSelected
-                                ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#B88E4F] font-bold shadow-2xs ring-1 ring-[#B88E4F]'
+                                ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#8C6226] font-bold shadow-xs ring-1.5 ring-[#B88E4F]'
                                 : isOutOfStock
                                 ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed'
                                 : isHovered
-                                ? 'border-[#B88E4F] text-[#B88E4F] bg-white ring-1 ring-[#B88E4F]/40'
-                                : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#B88E4F]'
+                                ? 'border-[#B88E4F] text-[#8C6226] bg-white ring-1 ring-[#B88E4F]/40'
+                                : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#8C6226]'
                             }`}
                           >
                             <img
                               src={variantImg}
                               alt={v.name}
-                              className="w-6 h-6 object-cover rounded-xs border border-[#EAE4D7] shrink-0"
+                              className="w-7 h-7 object-cover rounded-lg border border-[#EAE4D7] shrink-0"
                             />
-                            <span className="max-w-[280px] break-words text-left">
-                              <span className="block">{v.name}</span>
-                              {attributeText && attributeText !== v.name && <span className="block text-[10px] opacity-70">{attributeText}</span>}
-                            </span>
+                            <div className="min-w-0 flex-1 leading-snug">
+                              <span className="block font-semibold truncate">{v.name}</span>
+                              {attributeText && attributeText !== v.name && (
+                                <span className="block text-[10px] text-[#7D715E] font-normal truncate mt-0.5">
+                                  {attributeText}
+                                </span>
+                              )}
+                            </div>
                             {isSelected && (
-                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)]" />
+                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
                             )}
                           </button>
                         );
@@ -1770,6 +1894,7 @@ export default function ProductDetailPage() {
                 {/* Button 2: Mua Với Voucher (SCANMS UI Reference Solid CTA Style) */}
                 <button
                   type="button"
+                  data-testid="desktop-buy-now-btn"
                   disabled={currentStock <= 0 || !product.canPurchase || !product.isActive || product.status === 'INACTIVE'}
                   onClick={() => handleBuyNow('main_cta')}
                   className="h-12 min-w-0 w-full px-2 sm:px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#EAE4D7] disabled:text-[#7D715E] disabled:cursor-not-allowed text-[#1A1612] font-bold text-xs sm:text-sm shadow-sm shadow-[#C59B58]/20 flex flex-col items-center justify-center cursor-pointer active:scale-98 transition"
@@ -1854,201 +1979,247 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {activeVideo ? (
-            <div className="sf-video-body grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          {activeVideo ? (() => {
+            const parsedVideo = parseVideoSource(activeVideo.videoUrl);
+            return (
+              <div className="sf-video-body grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                {/* Cột Trái: Trình phát Video (Hỗ trợ TikTok / YouTube / MP4 File) */}
+                <div className="lg:col-span-7 bg-[#1A1612] rounded-2xl overflow-hidden aspect-video relative group shadow-lg border border-[#EAE4D7] flex items-center justify-center">
+                  {parsedVideo.type === 'youtube' ? (
+                    <iframe
+                      src={parsedVideo.embedUrl}
+                      title={activeVideo.title || 'Video review sản phẩm từ nhà sáng tạo'}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                    />
+                  ) : parsedVideo.type === 'tiktok' ? (
+                    <iframe
+                      src={parsedVideo.embedUrl}
+                      title={activeVideo.title || 'TikTok Video review'}
+                      allow="encrypted-media;"
+                      allowFullScreen
+                      className="w-full h-full border-0 bg-black"
+                    />
+                  ) : parsedVideo.type === 'direct' ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        src={parsedVideo.videoUrl}
+                        poster={activeVideo.posterUrl || undefined}
+                        playsInline
+                        muted={isMuted}
+                        onEnded={() => {
+                          setIsPlaying(false);
+                          trackAnalytics('video_complete', {
+                            videoId: activeVideo.id,
+                          });
+                        }}
+                        className="w-full h-full object-contain"
+                      />
 
-              <div className="lg:col-span-7 bg-[#1A1612] rounded-2xl overflow-hidden aspect-video relative group shadow-lg border border-[#EAE4D7]">
-                <video
-                  ref={videoRef}
-                  src={activeVideo.videoUrl}
-                  poster={activeVideo.posterUrl || undefined}
-                  playsInline
-                  muted={isMuted}
-                  onEnded={() => {
-                    setIsPlaying(false);
-                    trackAnalytics('video_complete', {
-                      videoId: activeVideo.id,
-                    });
-                  }}
-                  className="w-full h-full object-contain"
-                />
-
-
-                {activeVideo.caption && showCaptions && (
-                  <div className="absolute bottom-16 left-4 right-4 text-center pointer-events-none z-10">
-                    <span className="bg-[#1A1612]/85 text-[#FAF8F5] text-xs px-3.5 py-1.5 rounded-xl backdrop-blur-xs font-medium inline-block shadow-md border border-[#C59B58]/30">
-                      {activeVideo.caption}
-                    </span>
-                  </div>
-                )}
-
-
-                <div className="sf-player-controls absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
-                  <div className="flex items-center justify-between text-white text-xs font-semibold">
-                    <span className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-md line-clamp-1 max-w-[70%]">
-                      {activeVideo.title}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {activeVideo.isReferredKol && (
-                        <span className="bg-[#EBD08C] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-xs">
-                          KOL Giới Thiệu
-                        </span>
+                      {activeVideo.caption && showCaptions && (
+                        <div className="absolute bottom-16 left-4 right-4 text-center pointer-events-none z-10">
+                          <span className="bg-[#1A1612]/85 text-[#FAF8F5] text-xs px-3.5 py-1.5 rounded-xl backdrop-blur-xs font-medium inline-block shadow-md border border-[#C59B58]/30">
+                            {activeVideo.caption}
+                          </span>
+                        </div>
                       )}
-                      <span className="bg-[#EBD08C] text-white px-2 py-0.5 rounded text-[10px] font-bold">
-                        Đã duyệt bởi Shop
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between text-white">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={togglePlay}
-                        aria-label={isPlaying ? 'Tạm dừng video' : 'Phát video'}
-                        className="w-10 h-10 rounded-full bg-[#EBD08C] hover:bg-[#DEC07A] flex items-center justify-center text-white transition-all shadow-md active:scale-95"
-                      >
-                        {isPlaying ? (
-                          <Pause className="w-5 h-5 fill-white" />
-                        ) : (
-                          <Play className="w-5 h-5 fill-white ml-0.5" />
-                        )}
-                      </button>
+                      <div className="sf-player-controls absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
+                        <div className="flex items-center justify-between text-white text-xs font-semibold">
+                          <span className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-md line-clamp-1 max-w-[70%]">
+                            {activeVideo.title}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {activeVideo.isReferredKol && (
+                              <span className="bg-[#C59B58] text-[#1A1612] px-2 py-0.5 rounded text-[10px] font-bold shadow-xs">
+                                KOL Giới Thiệu
+                              </span>
+                            )}
+                            <span className="bg-[#B88E4F] text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                              Đã duyệt bởi Shop
+                            </span>
+                          </div>
+                        </div>
 
-                      <button
-                        onClick={cycleSpeed}
-                        className="h-8 px-2.5 rounded-xl bg-black/60 hover:bg-black/80 flex items-center gap-1 text-[11px] font-bold text-white transition-colors"
-                        title="Tốc độ phát"
-                      >
-                        <Gauge className="w-3.5 h-3.5" />
-                        <span>{playbackSpeed}x</span>
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-between text-white">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={togglePlay}
+                              aria-label={isPlaying ? 'Tạm dừng video' : 'Phát video'}
+                              className="w-10 h-10 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] flex items-center justify-center text-[#1A1612] transition-all shadow-md active:scale-95 cursor-pointer"
+                            >
+                              {isPlaying ? (
+                                <Pause className="w-5 h-5 fill-current" />
+                              ) : (
+                                <Play className="w-5 h-5 fill-current ml-0.5" />
+                              )}
+                            </button>
 
-                    <div className="flex items-center gap-2.5">
-                      {activeVideo.caption && (
+                            <button
+                              onClick={cycleSpeed}
+                              className="h-8 px-2.5 rounded-xl bg-black/60 hover:bg-black/80 flex items-center gap-1 text-[11px] font-bold text-white transition-colors cursor-pointer"
+                              title="Tốc độ phát"
+                            >
+                              <Gauge className="w-3.5 h-3.5" />
+                              <span>{playbackSpeed}x</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            {activeVideo.caption && (
+                              <button
+                                onClick={() => setShowCaptions(!showCaptions)}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer ${
+                                  showCaptions ? 'bg-[#C59B58] text-[#1A1612]' : 'bg-black/60 hover:bg-black/80'
+                                }`}
+                                title={showCaptions ? 'Tắt phụ đề' : 'Bật phụ đề'}
+                              >
+                                <Subtitles className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={toggleMute}
+                              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors cursor-pointer"
+                              title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
+                            >
+                              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                            </button>
+
+                            <button
+                              onClick={handleFullscreen}
+                              className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors cursor-pointer"
+                              title="Toàn màn hình"
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isPlaying && (
                         <button
-                          onClick={() => setShowCaptions(!showCaptions)}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition-colors ${
-                            showCaptions
-                              ? 'bg-[#EBD08C]'
-                              : 'bg-black/60 hover:bg-black/80'
-                          }`}
-                          title={showCaptions ? 'Tắt phụ đề' : 'Bật phụ đề'}
+                          onClick={togglePlay}
+                          aria-label="Phát video"
+                          className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#C59B58]/90 hover:bg-[#B88E4F] text-[#1A1612] flex items-center justify-center shadow-xl transition-all transform hover:scale-105 z-10 cursor-pointer"
                         >
-                          <Subtitles className="w-4 h-4" />
+                          <Play className="w-8 h-8 fill-current ml-1" />
                         </button>
                       )}
-
-                      <button
-                        onClick={toggleMute}
-                        className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
-                        title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
-                      >
-                        {isMuted ? (
-                          <VolumeX className="w-4 h-4" />
-                        ) : (
-                          <Volume2 className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={handleFullscreen}
-                        className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
-                        title="Toàn màn hình"
-                      >
-                        <Maximize2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-
-                {!isPlaying && (
-                  <button
-                    onClick={togglePlay}
-                    aria-label="Phát video"
-                    className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#EBD08C]/90 hover:bg-[#DEC07A] text-white flex items-center justify-center shadow-xl transition-all transform hover:scale-105 z-10"
-                  >
-                    <Play className="w-8 h-8 fill-white ml-1" />
-                  </button>
-                )}
-              </div>
-
-
-              <div className="sf-creator-card lg:col-span-5 bg-white rounded-xl p-4 border border-[#EAE4D7] space-y-4">
-                <div className="flex items-center gap-3">
-                  {activeVideo.kol.avatarUrl ? (
-                    <img
-                      src={activeVideo.kol.avatarUrl}
-                      alt={activeVideo.kol.name}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          SCANMS_PLACEHOLDER;
-                      }}
-                      className="w-12 h-12 rounded-full border-2 border-[#C59B58] object-cover"
-                    />
+                    </>
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#F3EFE6] border-2 border-[#C59B58] flex items-center justify-center font-bold text-[#B88E4F]">
-                      {activeVideo.kol.name.charAt(0)}
-                    </div>
-                  )}
-                  <div>
-                    <div className="font-bold text-sm text-[#1A1612] flex items-center gap-1">
-                      {activeVideo.kol.name}
-                      {activeVideo.kol.isVerified && (
-                        <BadgeCheck className="w-4 h-4 text-[#B88E4F]" />
+                    /* Social Video Link Fallback */
+                    <div className="p-6 text-center text-white flex flex-col items-center justify-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-[#C59B58]/20 border border-[#C59B58]/40 flex items-center justify-center text-[#C59B58]">
+                        <Play className="w-7 h-7 fill-current ml-1" />
+                      </div>
+                      <div className="max-w-sm">
+                        <div className="font-bold text-sm text-[#FAF8F5]">{activeVideo.title || 'Video trải nghiệm thực tế'}</div>
+                        <p className="text-xs text-[#EAE4D7]/70 mt-1">Được đăng tải bởi Nhà sáng tạo đối tác đã hoàn thành thử nghiệm sản phẩm mẫu.</p>
+                      </div>
+                      {parsedVideo.directUrl && (
+                        <a
+                          href={parsedVideo.directUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-md"
+                        >
+                          <span>Mở xem video trên kênh Creator</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </a>
                       )}
                     </div>
-                    <div className="text-xs text-[#7D715E]">
-                      {activeVideo.kol.badgeLabel}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="p-3 bg-[#FBF5EB] rounded-xl border border-[#EAE4D7] text-xs text-[#7D715E] leading-relaxed">
-                  <div className="font-bold text-[#B88E4F] mb-1 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Minh bạch tiếp thị
-                  </div>
-                  {activeVideo.kol.disclosure}. Video đánh giá trải nghiệm thực tế sau khi sử dụng mẫu thử từ gian hàng đối tác.
-                </div>
-
-                <div className="pt-2">
-                  <div className="text-xs text-[#7D715E] mb-2 font-medium">
-                    Bạn thích video review này?
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleBuyNow('video_card')}
-                    className="w-full p-3 bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] hover:border-[#C59B58] rounded-xl flex items-center justify-between gap-3 transition-colors group cursor-pointer text-left"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-
-                      <div className="w-9 h-9 rounded-xl bg-white border border-[#DEBE85] flex items-center justify-center text-[#B88E4F] shadow-xs shrink-0 group-hover:scale-105 group-hover:bg-[#FAF8F5] group-hover:border-[#B88E4F] transition-all">
-                        <ShoppingBag className="w-4.5 h-4.5 text-[#B88E4F]" />
+                {/* Cột Phải: Thẻ Nhà Sáng Tạo & CTA Đặt Mua */}
+                <div className="sf-creator-card lg:col-span-5 bg-white rounded-xl p-4 border border-[#EAE4D7] space-y-4">
+                  <div className="flex items-center gap-3">
+                    {activeVideo.kol.avatarUrl ? (
+                      <img
+                        src={activeVideo.kol.avatarUrl}
+                        alt={activeVideo.kol.name}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = SCANMS_PLACEHOLDER;
+                        }}
+                        className="w-12 h-12 rounded-full border-2 border-[#C59B58] object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#F3EFE6] border-2 border-[#C59B58] flex items-center justify-center font-bold text-[#B88E4F]">
+                        {activeVideo.kol.name.charAt(0)}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-extrabold text-xs sm:text-sm text-[#1A1612] group-hover:text-[#B88E4F] transition-colors leading-snug">
-                          Mua sản phẩm giới thiệu trong video
+                    )}
+                    <div>
+                      <div className="font-bold text-sm text-[#1A1612] flex items-center gap-1">
+                        {activeVideo.kol.name}
+                        {activeVideo.kol.isVerified && <BadgeCheck className="w-4 h-4 text-[#B88E4F]" />}
+                      </div>
+                      <div className="text-xs text-[#7D715E]">{activeVideo.kol.badgeLabel}</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-[#FBF5EB] rounded-xl border border-[#EAE4D7] text-xs text-[#7D715E] leading-relaxed">
+                    <div className="font-bold text-[#B88E4F] mb-1 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Minh bạch tiếp thị
+                    </div>
+                    {activeVideo.kol.disclosure}. Video đánh giá trải nghiệm thực tế sau khi sử dụng mẫu thử từ gian hàng đối tác.
+                  </div>
+
+                  <div className="pt-2">
+                    <div className="text-xs text-[#7D715E] mb-2 font-medium">Bạn thích video review này?</div>
+                    <button
+                      type="button"
+                      onClick={() => handleBuyNow('video_card')}
+                      className="w-full p-3 bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] hover:border-[#C59B58] rounded-xl flex items-center justify-between gap-3 transition-colors group cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-[#DEBE85] flex items-center justify-center text-[#B88E4F] shadow-xs shrink-0 group-hover:scale-105 group-hover:bg-[#FAF8F5] group-hover:border-[#B88E4F] transition-all">
+                          <ShoppingBag className="w-4.5 h-4.5 text-[#B88E4F]" />
                         </div>
-                        <div className="text-[11px] text-[#7D715E] font-medium mt-0.5 truncate">
-                          Chính hãng từ {store?.name || 'Gian hàng đối tác'}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-extrabold text-xs sm:text-sm text-[#1A1612] group-hover:text-[#B88E4F] transition-colors leading-snug">
+                            Mua sản phẩm giới thiệu trong video
+                          </div>
+                          <div className="text-[11px] text-[#7D715E] font-medium mt-0.5 truncate">
+                            Chính hãng từ {store?.name || 'Gian hàng đối tác'}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-
-                    <div className="w-8 h-8 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] shadow-2xs group-hover:border-[#C59B58] group-hover:bg-[#FBF5EB] transition-all shrink-0">
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </button>
+                      <div className="w-8 h-8 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] shadow-2xs group-hover:border-[#C59B58] group-hover:bg-[#FBF5EB] transition-all shrink-0">
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5 sm:gap-3.5 mt-4 p-3.5 sm:p-4 rounded-xl bg-[#FAF8F5]">
-              <span className="w-9 sm:w-11 h-9 sm:h-11 grid place-items-center shrink-0 border border-[#EAE4D7] rounded-xl text-[#B88E4F] bg-white"><Play size={22} strokeWidth={1.5} /></span>
-              <div><h3 className="m-0 text-sm font-semibold text-[#1A1612]">Chưa có video review</h3><p className="m-0 mt-1 text-xs text-[#7D715E] leading-relaxed">Video trải nghiệm sẽ hiển thị tại đây sau khi được gian hàng phê duyệt.</p></div>
+            );
+          })() : (
+            <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="w-10 sm:w-12 h-10 sm:h-12 grid place-items-center shrink-0 border border-[#EEDFC6] rounded-xl text-[#B88E4F] bg-[#FBF5EB]">
+                  <Play size={22} strokeWidth={1.5} />
+                </span>
+                <div>
+                  <h3 className="m-0 text-sm sm:text-base font-bold text-[#1A1612]">Chưa có video review được phê duyệt</h3>
+                  <p className="m-0 mt-0.5 text-xs text-[#7D715E] leading-relaxed">
+                    Gian hàng <strong className="text-[#1A1612]">{store?.name}</strong> đang mở suất cấp mẫu thử miễn phí 14 ngày cho Nhà sáng tạo (KOL/KOC).
+                  </p>
+                </div>
+              </div>
+              {(!currentUser || isKolUser) && (
+                <button
+                  type="button"
+                  onClick={handleRequestSample}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-2"
+                >
+                  <Package className="w-4 h-4" />
+                  <span>Đăng ký nhận mẫu ngay</span>
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -2158,7 +2329,7 @@ export default function ProductDetailPage() {
           }}
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}
-          initialCouponCode={appliedCoupon?.code || ''}
+          initialCouponCode={appliedCoupon?.code || requestedVoucherCode || ''}
           initialExtraVoucher={selectedExtraVoucher ? { code: selectedExtraVoucher.code, benefitType: selectedExtraVoucher.benefitType || 'GOODS' } : undefined}
           onOrderPlaced={(order) => {
             if (order.paymentMethod === 'PAYOS') return;

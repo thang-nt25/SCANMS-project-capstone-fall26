@@ -1,0 +1,162 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="kJLG_vKFi-kNqtFtYHbI" name="Class Diagram FR5">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" value="FR-05 KOL Tiering Cron Engine - Class Diagram" vertex="1">
+          <mxGeometry height="35" width="1580" x="30" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="page" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="KolTierStatusPage" vertex="1">
+          <mxGeometry height="280" width="390" x="30" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="page-fields" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="&lt;&lt;React functional component&gt;&gt;&#xa;- tierStatus: TierStatus | null&#xa;- tierPolicies: TierPolicy[]&#xa;- loading: boolean&#xa;- statusError, policyError: boolean" vertex="1">
+          <mxGeometry height="160" width="390" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="page-line" parent="page" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="390" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="page-methods" parent="page" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ loadData() [inside useEffect]&#xa;+ retry()" vertex="1">
+          <mxGeometry height="90" width="390" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="client" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="tierService &lt;&lt;object&gt;&gt;" vertex="1">
+          <mxGeometry height="210" width="390" x="30" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="client-fields" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="&lt;&lt;HTTP API client&gt;&gt;" vertex="1">
+          <mxGeometry height="40" width="390" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="client-line" parent="client" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="390" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="client-methods" parent="client" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ getAllTiers(): Promise&lt;TierPolicy[]&gt;&#xa;+ getMyTierStatus(): Promise&lt;TierStatus&gt;&#xa;+ triggerEvaluation()" vertex="1">
+          <mxGeometry height="140" width="390" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="safety" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="TierStatus &lt;&lt;interface&gt;&gt;" vertex="1">
+          <mxGeometry height="190" width="390" x="30" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="safety-fields" parent="safety" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ currentTier, qualifiedTier: TierPolicy&#xa;+ nextTier: TierPolicy | null&#xa;+ currentRevenue, totalOrders: number&#xa;+ progressPercentage, revenueNeeded: number&#xa;+ revenueBasis: &#39;LIFETIME&#39; [frontend type]" vertex="1">
+          <mxGeometry height="160" width="390" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="controller" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="TiersController" vertex="1">
+          <mxGeometry height="240" width="450" x="490" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-fields" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- tiersService: TiersService" vertex="1">
+          <mxGeometry height="40" width="450" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-line" parent="controller" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="450" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="controller-methods" parent="controller" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ getAllTiers()&#xa;+ getMyTierStatus(userId)&#xa;+ evaluateTiers()" vertex="1">
+          <mxGeometry height="170" width="450" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="service" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="TiersService" vertex="1">
+          <mxGeometry height="310" width="450" x="490" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="service-fields" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="- prisma: PrismaService" vertex="1">
+          <mxGeometry height="40" width="450" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="service-line" parent="service" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="450" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="service-methods" parent="service" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ getAllTiers()&#xa;+ getMyTierStatus(userId)&#xa;+ evaluateAllCollaborators() [@Cron]&#xa;- previousMonthWindow(now?)&#xa;- previousMonthSales(userId)&#xa;- tierBonus(tier)&#xa;- policyKey(tier)" vertex="1">
+          <mxGeometry height="240" width="450" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="PrismaService" vertex="1">
+          <mxGeometry height="190" width="450" x="490" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma-fields" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="&lt;&lt;extends PrismaClient&gt;&gt;&#xa;- pool: Pool&#xa;- configService?: ConfigService" vertex="1">
+          <mxGeometry height="75" width="450" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma-line" parent="prisma" style="shape=line;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry width="450" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="prisma-methods" parent="prisma" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ onModuleInit(): Promise&lt;void&gt;&#xa;+ onModuleDestroy(): Promise&lt;void&gt;" vertex="1">
+          <mxGeometry height="85" width="450" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="interceptor" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="CollaboratorTier" vertex="1">
+          <mxGeometry height="180" width="580" x="1030" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="interceptor-fields" parent="interceptor" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ name: string&#xa;+ minRevenueThreshold: Decimal&#xa;+ extraBonusPercentage: Decimal&#xa;+ createdAt: Date" vertex="1">
+          <mxGeometry height="150" width="580" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="User" vertex="1">
+          <mxGeometry height="200" width="270" x="1030" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="user-fields" parent="user" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ fullName: string&#xa;+ role: UserRole" vertex="1">
+          <mxGeometry height="170" width="270" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="CollaboratorProfile" vertex="1">
+          <mxGeometry height="200" width="250" x="1360" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="audit-fields" parent="audit" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ userId: string {unique}&#xa;+ tierId: string | null" vertex="1">
+          <mxGeometry height="170" width="250" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="base" parent="1" style="swimlane;startSize=30;collapsible=0;rounded=0;fontStyle=1;fillColor=#FFFFFF;swimlaneFillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="Order" vertex="1">
+          <mxGeometry height="190" width="580" x="1030" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="base-fields" parent="base" style="text;align=left;verticalAlign=top;spacing=8;whiteSpace=wrap;overflow=fill;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="+ id: string&#xa;+ attributedCollaboratorId: string | null&#xa;+ status: OrderStatus; createdAt: Date&#xa;+ subtotalAmount, discountAmount, finalAmount: Decimal&#xa;+ couponDiscountAmount: Decimal | null&#xa;+ refundedAmount: Decimal" vertex="1">
+          <mxGeometry height="160" width="580" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="page" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="client" value="uses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=1;exitY=0.2;entryX=0;entryY=0.7;" target="controller" value="GET / POST">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="542" />
+              <mxPoint x="455" y="258" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="controller" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="service" value="tiersService">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="prisma" value="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="safety" value="returns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=1;exitY=0.15;entryX=0;entryY=0.6;" target="interceptor" value="reads">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="975" y="477" />
+              <mxPoint x="975" y="198" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="interceptor" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;endArrow=none;exitX=0.8;exitY=1;entryX=0.5;entryY=0;" target="audit" value="0..1 : 0..*">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1494" y="350" />
+              <mxPoint x="1485" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;endArrow=none;exitX=1;exitY=0.65;entryX=0;entryY=0.65;" target="audit" value="1 : 0..1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;endArrow=none;exitX=0.5;exitY=1;entryX=0.3;entryY=0;" target="base" value="1 : 0..*">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="780" />
+              <mxPoint x="1204" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="prisma" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=1;exitY=0.45;entryX=0;entryY=0.45;" target="base" value="reads">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;endFill=0;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=12;fontColor=#000000;dashed=1;exitX=1;exitY=0.8;entryX=0.5;entryY=1;" target="audit" value="reads / updates">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="975" y="678" />
+              <mxPoint x="975" y="750" />
+              <mxPoint x="1485" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

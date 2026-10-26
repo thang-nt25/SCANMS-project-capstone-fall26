@@ -55,6 +55,7 @@ __pycache__/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+*.lnk
 
 # Testing & Coverage
 coverage/

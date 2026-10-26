@@ -12,7 +12,7 @@ const code = ts.transpileModule(readFileSync(new URL('../src/components/common/S
 const module = { exports: {} };
 new Function('require', 'module', 'exports', code)(require, module, module.exports);
 const render = user => renderToStaticMarkup(React.createElement(module.exports.SeedDataNotice, { user }));
-test('does not mark an actual registered user as a fixture', () => {
+test('does not render synthetic notice banner', () => {
   assert.equal(render({ email: 'customer@example.test' }), '');
   assert.equal(render(null), '');
 });
