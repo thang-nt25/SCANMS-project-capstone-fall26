@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { chatCustomerOrderQuery, chatOrderSummary } from '@/utils/chat-customer-orders';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -747,28 +748,35 @@ function CustomerOrdersDrawer({
 }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
+  const customerId = customer?.id;
 
   useEffect(() => {
     let active = true;
+    setOrders([]);
+    setLoadError('');
+    const query = chatCustomerOrderQuery(storeId, customerId);
+    if (!query) {
+      setLoading(false);
+      setLoadError('Chưa xác định được tài khoản khách để tra cứu đơn hàng.');
+      return;
+    }
     setLoading(true);
-    orderService.getMyStoreOrders({
-      storeId,
-      search: customer?.fullName || customer?.id || undefined,
-      limit: 10,
-    })
+    orderService.getMyStoreOrders(query)
       .then((res: any) => {
         if (!active) return;
         const list = res?.orders || res?.items || [];
-        setOrders(list);
+        setOrders(list.map(chatOrderSummary));
       })
       .catch(() => {
-        if (active) setOrders([]);
+        if (active) setLoadError('Chưa tải được lịch sử đơn hàng. Vui lòng thử lại.');
       })
       .finally(() => {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [storeId, customer]);
+  }, [storeId, customerId, reload]);
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; bg: string; text: string }> = {
@@ -807,6 +815,11 @@ function CustomerOrdersDrawer({
             <div className="py-12 text-center text-xs text-[#7D715E]">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C59B58] mb-2" />
               Đang tra cứu lịch sử đơn hàng...
+            </div>
+          ) : loadError ? (
+            <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-xs text-[#7D715E]">
+              {loadError}
+              {customerId && <button type="button" className="ml-2 font-semibold text-[#B88E4F] underline" onClick={() => setReload(value => value + 1)}>Thử lại</button>}
             </div>
           ) : orders.length === 0 ? (
             <div className="py-12 text-center text-xs text-[#7D715E] space-y-2">

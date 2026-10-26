@@ -11,6 +11,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { isUUID } from 'class-validator';
 import ExcelJS from 'exceljs';
 import { PrismaService } from '../../core/database/prisma.service';
 import { MerchantPayoutsService } from './merchant-payouts.service';
@@ -40,9 +41,7 @@ export class PayoutBatchesService {
       dto.payoutIds.some(
         (id) =>
           typeof id !== 'string' ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            id,
-          ),
+          !isUUID(id, 'all'),
       )
     )
       throw new BadRequestException(

@@ -16,7 +16,7 @@ describe('PayoutsService FR-22', () => {
   const collaboratorId = '28b2b124-12d2-47f8-881f-c3107ee71084';
   const storeId = '38b2b124-12d2-47f8-881f-c3107ee71084';
 
-  function createService(balance = '500000.31') {
+  function createService(balance = '500000.31', selectedStoreId = storeId) {
     let availableBalance = new Prisma.Decimal(balance);
     let persistedRequests = 0;
     const profile = {
@@ -34,7 +34,7 @@ describe('PayoutsService FR-22', () => {
     const tx = {
       store: {
         findUnique: jest.fn().mockResolvedValue({
-          id: storeId,
+          id: selectedStoreId,
           isDeleted: false,
           owner: { isActive: true, isDeleted: false },
         }),
@@ -44,7 +44,7 @@ describe('PayoutsService FR-22', () => {
         findUniqueOrThrow: jest.fn(() =>
           Promise.resolve({
             id: 'store-wallet-id',
-            storeId,
+            storeId: selectedStoreId,
             availableBalance,
             pendingBalance: new Prisma.Decimal(0),
           }),
@@ -128,6 +128,18 @@ describe('PayoutsService FR-22', () => {
     };
   }
 
+  it('accepts a seeded UUID v5 shop without bypassing balance debits', async () => {
+    const seededShopId = '2f67001b-09a5-5958-85fd-5f401831c871';
+    const { service, tx, getBalance, getRequests } = createService('1006000', seededShopId);
+    const response = await service.createWithdrawal(collaboratorId, { storeId: seededShopId, amount: '1000000' });
+    expect(response.request.status).toBe(PayoutStatus.PENDING);
+    expect(response.request.taxAmount).toBe('100000.00');
+    expect(response.request.netAmount).toBe('900000.00');
+    expect(getBalance()).toBe('6000.00');
+    expect(getRequests()).toBe(1);
+    expect(tx.store.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: seededShopId } }));
+  });
+
   it('debits available balance and creates PENDING request in the same transaction', async () => {
     const { service, prisma, tx, getBalance } = createService();
     const response = await service.createWithdrawal(collaboratorId, {
@@ -150,8 +162,8 @@ describe('PayoutsService FR-22', () => {
     const createInput = tx.payoutRequest.create.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(response.request.taxAmount).toBe('0.00');
-    expect(response.request.netAmount).toBe('200000.10');
+    expect(response.request.taxAmount).toBe('20000.01');
+    expect(response.request.netAmount).toBe('180000.09');
     expect(tx.financialLedger.create).toHaveBeenCalledTimes(1);
     expect(createInput.data.storeId).toBe(storeId);
   });

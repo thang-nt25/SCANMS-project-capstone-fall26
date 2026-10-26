@@ -15,8 +15,13 @@ const render = user => renderToStaticMarkup(React.createElement(module.exports.S
 test('does not render synthetic notice banner', () => {
   assert.equal(render({ email: 'customer@example.test' }), '');
   assert.equal(render(null), '');
+});
+test('ordinary seed accounts no longer show the Capstone banner or an empty container', () => {
   assert.equal(render({ email: 'shop01@seed.scanms.test' }), '');
-  assert.equal(render({ email: 'kol01@seed.scanms.test', collaboratorProfile: { socialLinksJson: {
+  assert.equal(render({ email: 'kol01@seed.scanms.test' }), '');
+});
+test('a public creator reference explicitly disclaims account ownership/partnership', () => {
+  assert.match(render({ email: 'kol01@seed.scanms.test', collaboratorProfile: { socialLinksJson: {
     seedReference: { purpose: 'PUBLIC_REFERENCE_FOR_CAPSTONE_TESTING', name: 'Creator công khai' },
-  } } }), '');
+  } } }), /người này không đăng ký hoặc xác nhận hợp tác/);
 });

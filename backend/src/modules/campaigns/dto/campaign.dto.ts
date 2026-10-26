@@ -56,7 +56,7 @@ export class InviteCollaboratorDto {
     description: 'ID định danh của KOL / CTV',
     example: '237a7208-1c74-4322-96b2-51d810660723',
   })
-  @IsUUID('4', { message: 'collaboratorId phải là định dạng UUID v4' })
+  @IsUUID('all', { message: 'collaboratorId phải là UUID hợp lệ' })
   @IsNotEmpty({ message: 'collaboratorId không được để trống' })
   collaboratorId: string;
 
@@ -64,7 +64,7 @@ export class InviteCollaboratorDto {
     description: 'ID hội thoại chat nếu mời trực tiếp từ cửa sổ chat',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'conversationId phải là UUID v4' })
+  @IsUUID('all', { message: 'conversationId phải là UUID hợp lệ' })
   conversationId?: string;
 
   @ApiPropertyOptional({ description: 'Lời nhắn riêng đính kèm thẻ mời VIP' })
@@ -78,7 +78,7 @@ export class InviteInChatDto {
     description: 'ID chiến dịch cần gửi thẻ mời',
     example: '11111111-2222-3333-4444-555555555555',
   })
-  @IsUUID('4', { message: 'campaignId phải là UUID v4' })
+  @IsUUID('all', { message: 'campaignId phải là UUID hợp lệ' })
   @IsNotEmpty({ message: 'campaignId không được để trống' })
   campaignId: string;
 

@@ -1181,7 +1181,7 @@ export default function PayoutApprovalPage() {
                       : money(String(displayTaxAmount))}
                   </div>
                   <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#7D715E] whitespace-nowrap">
-                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh · Từ 2 triệu` : "10% lệnh từ 2 triệu"}
+                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh đã khấu trừ` : "10% mỗi lệnh rút mới"}
                   </span>
                 </div>
               </div>

@@ -25,6 +25,8 @@ export interface PlatformSubsidySummary {
 }
 
 export interface PublicStoreCoupon {
+  store?: { id: string; name: string; slug?: string };
+  storeId?: string;
   fundingSource?: CouponFundingSource;
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;

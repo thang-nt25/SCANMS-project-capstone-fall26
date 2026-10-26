@@ -1,4 +1,5 @@
 import api from './api';
+import { fetchAllMediaPages, type MediaPage } from '../utils/media-pagination';
 
 export interface MediaAsset {
   id: string;
@@ -27,9 +28,14 @@ export const mediaService = {
     assetType?: string;
     page?: number;
     limit?: number;
-  }) {
-    const res: any = await api.get('/media', { params });
+  }, options?: { signal?: AbortSignal; fresh?: boolean }): Promise<MediaPage<MediaAsset>> {
+    const res: any = await api.get('/media', { params, signal: options?.signal,
+      headers: options?.fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data;
+  },
+
+  async getAllMediaAssets(options: { signal?: AbortSignal; onProgress?: (loaded: number, total: number) => void } = {}) {
+    return fetchAllMediaPages((page, limit) => mediaService.getMediaAssets({ page, limit }, { signal: options.signal, fresh: true }), options);
   },
 
   async createMediaAsset(data: {
