@@ -510,7 +510,7 @@ export class AuthService {
     if (!user) {
       const requestedShopRole = dto.role === 'SHOP_MANAGER';
       const desiredRole = requestedShopRole
-        ? UserRole.CUSTOMER
+        ? UserRole.SHOP_MANAGER
         : dto.role === 'COLLABORATOR'
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;

@@ -78,7 +78,7 @@ export class InviteInChatDto {
     description: 'ID chiến dịch cần gửi thẻ mời',
     example: '11111111-2222-3333-4444-555555555555',
   })
-  @IsUUID('4', { message: 'campaignId phải là UUID v4' })
+  @IsUUID('all', { message: 'campaignId phải là định dạng UUID hợp lệ' })
   @IsNotEmpty({ message: 'campaignId không được để trống' })
   campaignId: string;
 

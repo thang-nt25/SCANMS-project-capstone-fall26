@@ -52,7 +52,7 @@ export const SHOP_DESCRIPTIONS: Record<string, string> = {
 /** Catalogue fixtures use existing repository photos, whose sources are documented in assets/products/real/README.md. */
 export const PRODUCT_TEMPLATES = [
   {
-    name: 'Serum Vitamin C 15%',
+    name: 'Serum Vitamin C',
     category: 'Chăm sóc da',
     image: 'vitamin-c-15-serum.jpg',
     price: 250_000,
