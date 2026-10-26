@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Tag,
   Ticket,
@@ -14,13 +14,14 @@ import {
   Percent,
   Check,
   ChevronDown,
-  Sparkles,
   Plus,
   Copy,
   Layers,
   ShoppingBag,
-  Zap,
-  Gift,
+  Crown,
+  Users,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 import {
   couponService,
@@ -133,6 +134,7 @@ export function CustomSandSelect<T extends string>({
 }
 
 export const ShopCouponsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { storeId: urlStoreId } = useParams<{ storeId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryStoreId = searchParams.get('storeId') || '';
@@ -160,6 +162,7 @@ export const ShopCouponsPage: React.FC = () => {
   // Modal: Phát hành Voucher Gian Hàng (Store-issued Voucher)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+  const [newlyCreatedCampaign, setNewlyCreatedCampaign] = useState<any | null>(null);
   const [createForm, setCreateForm] = useState<CreateStoreCouponPayload>({
     code: '',
     discountType: 'PERCENTAGE',
@@ -353,6 +356,24 @@ export const ShopCouponsPage: React.FC = () => {
       couponService.getStorePlatformSubsidies(selected.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null));
     }
   };
+
+  useEffect(() => {
+    if (searchParams.get('createVoucher') === '1') {
+      const campId = searchParams.get('campaignId');
+      if (campId) {
+        setCreateForm((prev) => ({
+          ...prev,
+          scopeType: 'CAMPAIGN',
+          campaignId: campId,
+        }));
+      }
+      generateRandomCode('SHOP');
+      setIsCreateModalOpen(true);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('createVoucher');
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams]);
 
   // Generate random voucher code
   const generateRandomCode = (prefix = 'SHOP') => {
@@ -636,12 +657,6 @@ export const ShopCouponsPage: React.FC = () => {
   return (
     <div className="promotions-coupons w-full text-[#1A1612]">
       <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
-        {platformSubsidy && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm" aria-label="Đối soát voucher sàn">
-          <h2 className="font-bold">Voucher sàn tài trợ cho Shop</h2>
-          <p className="mt-1">{platformSubsidy.orderCount} đơn · Sàn tài trợ {platformSubsidy.amount.toLocaleString('vi-VN')}₫ · Đã ghi nhận chuyển hoàn {platformSubsidy.paidAmount.toLocaleString('vi-VN')}₫ · Còn phải hoàn {platformSubsidy.outstandingAmount.toLocaleString('vi-VN')}₫</p>
-          <details className="mt-2"><summary className="cursor-pointer font-semibold text-[#B88E4F]">Xem theo đơn hàng</summary><ul className="mt-2 space-y-1">{platformSubsidy.orders.map((order) => <li key={order.orderId}>{order.orderCode}: tài trợ {order.amount.toLocaleString('vi-VN')}₫, đã ghi nhận {order.paidAmount.toLocaleString('vi-VN')}₫, còn lại {order.outstandingAmount.toLocaleString('vi-VN')}₫{order.paidAmount > order.amount ? ' — cần đối soát khoản hoàn vượt sau khi đơn đổi trạng thái' : ''}{order.payments.map((payment, index) => <span key={`${payment.bankReference}-${index}`} className="block pl-3 text-xs text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</span>)}</li>)}</ul></details>
-          {!platformSubsidy.reimbursementReady && <p className="mt-2 text-[#DC2626]">Chức năng ghi nhận chuyển hoàn đang chờ cập nhật database.</p>}
-        </section>}
         <section aria-label="Phát hành voucher gian hàng" className="coupon-issuer rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
@@ -649,8 +664,7 @@ export const ShopCouponsPage: React.FC = () => {
                 <Ticket className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-semibold text-[#1A1612]">Tạo voucher gian hàng</h2>
-                <p className="mt-0.5 text-xs text-[#7D715E]">Chọn mẫu nhanh hoặc tạo ưu đãi riêng.</p>
+                <h2 className="text-base font-bold text-[#1A1612]">Mã giảm giá gian hàng</h2>
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -666,39 +680,18 @@ export const ShopCouponsPage: React.FC = () => {
                   <Store className="h-4 w-4 shrink-0 text-[#B88E4F]" /><span className="truncate">{storeName}</span>
                 </span>
               )}
-            <button
-              type="button"
-              onClick={() => setIsCampaignModalOpen(true)}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 text-xs font-semibold text-[#1A1612] transition-colors hover:bg-[#F3EFE6] cursor-pointer"
-            >
-              <Calendar className="h-4 w-4 text-[#B88E4F]" />
-              Tạo chiến dịch
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                generateRandomCode('SHOP');
-                setIsCreateModalOpen(true);
-              }}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#B88E4F] cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Phát hành voucher mới</span>
-            </button>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] pt-3">
-            <span className="mr-1 text-xs text-[#7D715E]">Mẫu nhanh</span>
-            {([
-              { id: 'DISCOUNT_10', label: 'Giảm 10%', icon: Zap },
-              { id: 'FLAT_50K', label: 'Giảm 50K', icon: Coins },
-              { id: 'FREESHIP', label: 'Freeship 25K', icon: Gift },
-            ] as const).map((preset) => (
-              <button key={preset.id} type="button" onClick={() => { applyPreset(preset.id); setIsCreateModalOpen(true); }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#B88E4F] cursor-pointer">
-                <preset.icon className="h-3.5 w-3.5 text-[#B88E4F]" />{preset.label}
+              <button
+                type="button"
+                onClick={() => {
+                  generateRandomCode('SHOP');
+                  setIsCreateModalOpen(true);
+                }}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#B88E4F] cursor-pointer shadow-xs"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Phát hành voucher mới</span>
               </button>
-            ))}
+            </div>
           </div>
         </section>
 
@@ -989,7 +982,7 @@ export const ShopCouponsPage: React.FC = () => {
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FBF5EB] text-[#7D715E] font-semibold border border-[#EEDFC6]">
-                          <Sparkles className="w-3 h-3 text-[#B88E4F]" />
+                          <Users className="w-3 h-3 text-[#B88E4F]" />
                           KOL: {coupon.collaborator?.fullName || 'Nhà sáng tạo'}
                         </span>
                       )}
@@ -1168,69 +1161,9 @@ export const ShopCouponsPage: React.FC = () => {
 
             {/* Modal Body: 2 Columns */}
             <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-[#EAE4D7]">
-              {/* Left Column (7 cols): Presets + Form */}
+              {/* Left Column (7 cols): Form */}
               <div className="p-4 sm:p-5 md:col-span-7 space-y-4">
-                {/* Presets Quick-Select */}
-                <div className="p-3 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-1.5">
-                    <span className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      Mẫu ưu đãi nhanh
-                    </span>
-                    <span className="text-[10px] text-[#7D715E]">Bấm để áp dụng nhanh</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="Mẫu ưu đãi nhanh">
-                    {([
-                      { id: 'DISCOUNT_10', title: 'Giảm 10%', note: 'Tối đa 30K · Đơn từ 150K', value: 10, minimum: 150000, maximum: 30000, type: 'PERCENTAGE', shipping: false, icon: Percent },
-                      { id: 'DISCOUNT_20', title: 'Giảm 20%', note: 'Tối đa 60K · Đơn từ 300K', value: 20, minimum: 300000, maximum: 60000, type: 'PERCENTAGE', shipping: false, icon: Percent },
-                      { id: 'FLAT_50K', title: 'Giảm 50.000đ', note: 'Giảm trực tiếp · Đơn từ 250K', value: 50000, minimum: 250000, maximum: undefined, type: 'FIXED_AMOUNT', shipping: false, icon: Coins },
-                      { id: 'FREESHIP', title: 'Freeship 25K', note: 'Hỗ trợ ship · Đơn từ 120K', value: 25000, minimum: 120000, maximum: undefined, type: 'FIXED_AMOUNT', shipping: true, icon: Gift },
-                    ] as const).map(preset => {
-                      const selected = createForm.discountType === preset.type && Number(createForm.discountValue) === preset.value
-                        && Number(createForm.minimumOrderAmount) === preset.minimum
-                        && (Number(createForm.maximumDiscountAmount) || 0) === (preset.maximum || 0)
-                        && (createForm.benefitType === 'SHIPPING') === preset.shipping;
-                      const Icon = preset.icon;
-                      return (
-                        <button key={preset.id} type="button" aria-pressed={selected} onClick={() => applyPreset(preset.id)}
-                          className={`relative flex min-w-0 items-start gap-2 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${selected ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'}`}>
-                          <Icon className="mt-0.5 hidden h-4 w-4 shrink-0 text-[#B88E4F] sm:block" />
-                          <span className="min-w-0 flex-1 pr-3">
-                            <span className="block text-xs font-semibold leading-5 text-[#1A1612]">{preset.title}</span>
-                            <span className="block text-[10px] leading-4 text-[#7D715E]">{preset.note}</span>
-                          </span>
-                          {selected && <Check className="absolute right-2 top-2 h-3.5 w-3.5 text-[#B88E4F]" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {createForm.benefitType !== 'SHIPPING' && (
-                    <button type="button" aria-pressed={createForm.scopeType === 'CAMPAIGN'}
-                      onClick={() => setCreateForm(previous => ({ ...previous, scopeType: previous.scopeType === 'CAMPAIGN' ? 'STORE_WIDE' : 'CAMPAIGN', productIds: [], campaignId: previous.scopeType === 'CAMPAIGN' ? undefined : previous.campaignId }))}
-                      className={`mt-3 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${createForm.scopeType === 'CAMPAIGN' ? 'border-[#C59B58] bg-white' : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'}`}>
-                      <Calendar className="h-4 w-4 shrink-0 text-[#B88E4F]" />
-                      <span className="flex-1"><span className="block text-xs font-semibold text-[#1A1612]">Chiến dịch Sale</span><span className="mt-0.5 block text-[10px] leading-4 text-[#7D715E]">Gắn voucher với chiến dịch của gian hàng</span></span>
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${createForm.scopeType === 'CAMPAIGN' ? 'border-[#C59B58] bg-[#C59B58] text-white' : 'border-[#EAE4D7]'}`}>{createForm.scopeType === 'CAMPAIGN' && <Check size={12} />}</span>
-                    </button>
-                  )}
-                </div>
-
                 <form id="store-voucher-form" onSubmit={handleCreateSubmit} className="space-y-4">
-                  {createForm.scopeType === 'CAMPAIGN' && (
-                    <div className="p-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
-                      <label className="block text-xs font-bold text-[#1A1612] mb-2" htmlFor="voucher-campaign">Chiến dịch áp dụng *</label>
-                      <select id="voucher-campaign" required value={createForm.campaignId || ''}
-                        onChange={event => {
-                          const campaign = storeCampaigns.find(row => row.id === event.target.value);
-                          setCreateForm(form => ({ ...form, campaignId: campaign?.id,
-                            startsAt: campaign?.startDate || form.startsAt, expiresAt: campaign?.endDate || form.expiresAt }));
-                        }} className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2.5 text-sm">
-                        <option value="">Chọn chiến dịch của gian hàng</option>
-                        {storeCampaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name || campaign.title}</option>)}
-                      </select>
-                      <p className="mt-2 text-xs text-[#7D715E]">Voucher chỉ dùng trong thời gian chiến dịch hoạt động. {storeCampaigns.length === 0 && 'Tạo chiến dịch trong mục Khuyến mãi & Hoa hồng trước.'}</p>
-                    </div>
-                  )}
                   {createError && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1276,15 +1209,16 @@ export const ShopCouponsPage: React.FC = () => {
                         type="text"
                         inputMode="numeric"
                         autoComplete="off"
-                        value={createForm.discountValue ? (createForm.discountType === 'FIXED_AMOUNT' && !discountAmountFocused ? createForm.discountValue.toLocaleString('vi-VN') : String(createForm.discountValue)) : ''}
+                        value={createForm.discountValue === 0 ? '0' : (createForm.discountValue ? (createForm.discountType === 'FIXED_AMOUNT' && !discountAmountFocused ? createForm.discountValue.toLocaleString('vi-VN') : String(createForm.discountValue)) : '')}
                         onFocus={() => setDiscountAmountFocused(true)}
                         onBlur={() => setDiscountAmountFocused(false)}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const valStr = e.target.value.replace(/[^0-9]/g, '');
                           setCreateForm({
                             ...createForm,
-                            discountValue: Number(e.target.value.replace(/[^0-9]/g, '')),
-                          })
-                        }
+                            discountValue: valStr !== '' ? Number(valStr) : 0,
+                          });
+                        }}
                         className="w-full px-3.5 py-2.5 pr-10 text-sm font-bold bg-white border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/40 text-[#1A1612]"
                         placeholder={createForm.discountType === 'PERCENTAGE' ? 'VD: 15' : 'VD: 50.000'}
                         required
@@ -1320,7 +1254,7 @@ export const ShopCouponsPage: React.FC = () => {
                         onClick={() => generateRandomCode('SHOP')}
                         className="px-3.5 py-2 bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6B32] text-xs font-bold rounded-xl border border-[#DEBE85] transition-colors cursor-pointer shrink-0 flex items-center gap-1.5"
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <RefreshCw className="w-3.5 h-3.5" />
                         <span>Tự sinh mã</span>
                       </button>
                     </div>
@@ -1337,17 +1271,22 @@ export const ShopCouponsPage: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={createForm.maximumDiscountAmount || ''}
+                        value={createForm.maximumDiscountAmount === 0 ? '0' : (createForm.maximumDiscountAmount || '')}
                         onChange={(e) =>
                           setCreateForm({
                             ...createForm,
-                            maximumDiscountAmount: e.target.value ? Number(e.target.value) : undefined,
+                            maximumDiscountAmount: e.target.value !== '' ? Number(e.target.value) : undefined,
                           })
                         }
-                        placeholder={createForm.discountType === 'PERCENTAGE' ? 'VD: 50.000₫' : 'Không áp dụng'}
+                        placeholder={createForm.discountType === 'PERCENTAGE' ? 'VD: 50000' : 'Không áp dụng'}
                         disabled={createForm.discountType === 'FIXED_AMOUNT'}
-                        className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58] disabled:opacity-50"
+                        className="w-full px-3.5 py-2.5 text-xs font-mono font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58] disabled:opacity-50"
                       />
+                      {createForm.maximumDiscountAmount && Number(createForm.maximumDiscountAmount) > 0 && (
+                        <span className="text-[10px] text-[#B88E4F] font-bold font-mono block mt-1">
+                          {Number(createForm.maximumDiscountAmount).toLocaleString('vi-VN')} ₫
+                        </span>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
@@ -1355,16 +1294,21 @@ export const ShopCouponsPage: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={createForm.minimumOrderAmount || ''}
+                        value={createForm.minimumOrderAmount === 0 ? '0' : (createForm.minimumOrderAmount || '')}
                         onChange={(e) =>
                           setCreateForm({
                             ...createForm,
-                            minimumOrderAmount: e.target.value ? Number(e.target.value) : undefined,
+                            minimumOrderAmount: e.target.value !== '' ? Number(e.target.value) : undefined,
                           })
                         }
-                        placeholder="VD: 200.000₫"
-                        className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58]"
+                        placeholder="VD: 200000"
+                        className="w-full px-3.5 py-2.5 text-xs font-mono font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58]"
                       />
+                      {createForm.minimumOrderAmount && Number(createForm.minimumOrderAmount) > 0 && (
+                        <span className="text-[10px] text-[#B88E4F] font-bold font-mono block mt-1">
+                          {Number(createForm.minimumOrderAmount).toLocaleString('vi-VN')} ₫
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1413,7 +1357,7 @@ export const ShopCouponsPage: React.FC = () => {
                       <button
                         type="button"
                         aria-pressed={createForm.scopeType === 'STORE_WIDE'}
-                        onClick={() => { setCreateForm({ ...createForm, scopeType: 'STORE_WIDE', productIds: [] }); setVoucherProductSearch(''); }}
+                        onClick={() => { setCreateForm({ ...createForm, scopeType: 'STORE_WIDE', productIds: [], campaignId: undefined }); setVoucherProductSearch(''); }}
                         className={`flex items-center justify-center flex-1 gap-1.5 py-1.5 px-2 text-xs font-bold rounded-md transition cursor-pointer ${
                           createForm.scopeType === 'STORE_WIDE'
                             ? 'bg-white text-[#8C6B32] shadow-2xs border border-[#EEDFC6]'
@@ -1426,7 +1370,7 @@ export const ShopCouponsPage: React.FC = () => {
                       <button
                         type="button"
                         aria-pressed={createForm.scopeType === 'PRODUCTS'}
-                        onClick={() => setCreateForm({ ...createForm, scopeType: 'PRODUCTS' })}
+                        onClick={() => setCreateForm({ ...createForm, scopeType: 'PRODUCTS', campaignId: undefined })}
                         className={`flex items-center justify-center flex-1 gap-1.5 py-1.5 px-2 text-xs font-bold rounded-md transition cursor-pointer ${
                           createForm.scopeType === 'PRODUCTS'
                             ? 'bg-white text-[#8C6B32] shadow-2xs border border-[#EEDFC6]'
@@ -1436,7 +1380,53 @@ export const ShopCouponsPage: React.FC = () => {
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>Chọn sản phẩm</span>
                       </button>
+                      <button
+                        type="button"
+                        aria-pressed={createForm.scopeType === 'CAMPAIGN'}
+                        onClick={() => setCreateForm({ ...createForm, scopeType: 'CAMPAIGN', productIds: [] })}
+                        className={`flex items-center justify-center flex-1 gap-1.5 py-1.5 px-2 text-xs font-bold rounded-md transition cursor-pointer ${
+                          createForm.scopeType === 'CAMPAIGN'
+                            ? 'bg-white text-[#8C6B32] shadow-2xs border border-[#EEDFC6]'
+                            : 'text-[#7D715E] hover:text-[#1A1612]'
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Theo chiến dịch</span>
+                      </button>
                     </div>
+
+                    {createForm.scopeType === 'CAMPAIGN' && (
+                      <div className="mt-2.5 p-3.5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]">
+                        <label className="block text-xs font-bold text-[#1A1612] mb-1.5" htmlFor="voucher-campaign">
+                          Chiến dịch áp dụng *
+                        </label>
+                        <select
+                          id="voucher-campaign"
+                          required
+                          value={createForm.campaignId || ''}
+                          onChange={(event) => {
+                            const campaign = storeCampaigns.find((row) => row.id === event.target.value);
+                            setCreateForm((form) => ({
+                              ...form,
+                              campaignId: campaign?.id,
+                              startsAt: campaign?.startDate || form.startsAt,
+                              expiresAt: campaign?.endDate || form.expiresAt,
+                            }));
+                          }}
+                          className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
+                        >
+                          <option value="">-- Chọn chiến dịch của gian hàng --</option>
+                          {storeCampaigns.map((campaign) => (
+                            <option key={campaign.id} value={campaign.id}>
+                              {campaign.name || campaign.title}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1.5 text-[11px] text-[#7D715E]">
+                          Voucher sẽ áp dụng trong thời gian hoạt động của chiến dịch.
+                        </p>
+                      </div>
+                    )}
 
                     {createForm.scopeType === 'PRODUCTS' && (
                       <div className="mt-2.5 border border-[#EAE4D7] rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -1564,15 +1554,12 @@ export const ShopCouponsPage: React.FC = () => {
                       />
                       <span>Cho phép cộng dồn với giá giảm trực tiếp của sản phẩm</span>
                     </label>
-                    <label className="flex items-center gap-2 text-xs text-[#7D715E] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={true}
-                        disabled
-                        className="accent-[#C59B58]"
-                      />
-                      <span>Dùng cùng 1 voucher Sàn và 1 voucher vận chuyển; không chồng voucher tiền hàng của Shop</span>
-                    </label>
+                    <div className="text-[11px] text-[#7D715E] bg-[#FBF5EB] p-2.5 rounded-xl border border-[#EEDFC6] flex items-start gap-2">
+                      <Info className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Quy chuẩn sàn:</strong> Mỗi đơn hàng cho phép kết hợp tối đa 1 voucher Shop + 1 voucher Sàn + 1 voucher Vận chuyển (không cộng dồn nhiều voucher tiền hàng của cùng 1 Shop).
+                      </span>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -1718,7 +1705,7 @@ export const ShopCouponsPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-200" />
+                    <Check className="w-4 h-4 text-white" />
                     <span>Phát hành voucher</span>
                   </>
                 )}
@@ -1796,8 +1783,8 @@ export const ShopCouponsPage: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    value={approveForm.maximumDiscountAmount || ''}
-                    onChange={(e) => setApproveForm({ ...approveForm, maximumDiscountAmount: e.target.value ? Number(e.target.value) : undefined })}
+                    value={approveForm.maximumDiscountAmount === 0 ? '0' : (approveForm.maximumDiscountAmount || '')}
+                    onChange={(e) => setApproveForm({ ...approveForm, maximumDiscountAmount: e.target.value !== '' ? Number(e.target.value) : undefined })}
                     className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58]"
                   />
                 </div>
@@ -1807,8 +1794,8 @@ export const ShopCouponsPage: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    value={approveForm.minimumOrderAmount || ''}
-                    onChange={(e) => setApproveForm({ ...approveForm, minimumOrderAmount: e.target.value ? Number(e.target.value) : undefined })}
+                    value={approveForm.minimumOrderAmount === 0 ? '0' : (approveForm.minimumOrderAmount || '')}
+                    onChange={(e) => setApproveForm({ ...approveForm, minimumOrderAmount: e.target.value !== '' ? Number(e.target.value) : undefined })}
                     className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58]"
                   />
                 </div>
@@ -1965,9 +1952,74 @@ export const ShopCouponsPage: React.FC = () => {
               setStoreCampaigns(previous => [campaign, ...previous.filter(item => item.id !== campaign.id)]);
               setCreateForm(previous => ({ ...previous, scopeType: 'CAMPAIGN', campaignId: campaign.id, productIds: [], startsAt: campaign.startDate, expiresAt: campaign.endDate }));
             }
-            toast.success('Đã tạo chiến dịch. Bạn có thể phát hành voucher cho chiến dịch này.');
+            setNewlyCreatedCampaign(campaign);
+            toast.success(`Đã tạo chiến dịch "${campaign.name}" thành công!`);
           }}
         />
+      )}
+
+      {newlyCreatedCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/50 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-[#EAE4D7] shadow-xl p-5 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-[#1A1612] truncate">
+                  Chiến dịch: {newlyCreatedCampaign.name}
+                </h3>
+                <p className="text-xs text-[#7D715E] mt-0.5">
+                  Đã tạo thành công. Chọn bước tiếp theo để triển khai:
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const campId = newlyCreatedCampaign.id;
+                  setNewlyCreatedCampaign(null);
+                  navigate(`/merchant/kol-hub?campaignId=${campId}`);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Crown className="w-4 h-4" />
+                <span>Mời KOL tham gia ngay</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const camp = newlyCreatedCampaign;
+                  setNewlyCreatedCampaign(null);
+                  setCreateForm(prev => ({
+                    ...prev,
+                    scopeType: 'CAMPAIGN',
+                    campaignId: camp.id,
+                    startsAt: camp.startDate,
+                    expiresAt: camp.endDate,
+                  }));
+                  generateRandomCode('SHOP');
+                  setIsCreateModalOpen(true);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Ticket className="w-4 h-4 text-[#B88E4F]" />
+                <span>Tạo voucher đính kèm chiến dịch</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNewlyCreatedCampaign(null)}
+                className="w-full py-2 px-3 text-xs text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer text-center"
+              >
+                Để sau, tiếp tục quản lý
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

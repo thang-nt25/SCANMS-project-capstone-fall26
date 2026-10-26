@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { CalendarPlus, X } from 'lucide-react';
 import api from '../../services/api';
 import type { Campaign } from '@/types/campaigns.types';
 import { DateTimePicker } from './DateTimePicker';
@@ -36,14 +37,18 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-[#1A1612]">🎯 Tạo Chiến Dịch Mới</h2>
+          <div className="flex items-center gap-2">
+            <CalendarPlus className="w-4 h-4 text-[#B88E4F]" />
+            <h2 className="text-base font-extrabold text-[#1A1612]">Tạo Chiến Dịch Mới</h2>
+          </div>
           <button
             type="button"
             className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
             onClick={onClose}
             id="btn-close-create-campaign"
+            aria-label="Đóng"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -81,8 +86,16 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
               Nhập thủ công trong khoảng từ 1% đến 2%.
             </small>
           </div>
-          <label className="block text-xs font-bold text-[#1A1612]">Ngân sách trần cho hoa hồng thưởng (VNĐ)
-            <input type="number" min={1} step={1000} required value={form.bonusBudgetTotal} onChange={(e) => setForm((f) => ({ ...f, bonusBudgetTotal: Number(e.target.value) }))} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5" />
+          <label className="block text-xs font-bold text-[#1A1612]">
+            <div className="flex items-center justify-between">
+              <span>Ngân sách trần cho hoa hồng thưởng (VNĐ)</span>
+              {form.bonusBudgetTotal > 0 && (
+                <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
+                  {Number(form.bonusBudgetTotal).toLocaleString('vi-VN')} ₫
+                </span>
+              )}
+            </div>
+            <input type="number" min={1} step={1000} required value={form.bonusBudgetTotal} onChange={(e) => setForm((f) => ({ ...f, bonusBudgetTotal: Number(e.target.value) }))} className="mt-1.5 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 font-mono text-sm font-bold" />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -124,10 +137,10 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
             <button
               id="btn-create-campaign"
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? '⏳ Đang tạo...' : '🚀 Tạo chiến dịch'}
+              {loading ? 'Đang tạo...' : 'Tạo chiến dịch'}
             </button>
           </div>
         </form>
