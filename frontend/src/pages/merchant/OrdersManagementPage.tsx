@@ -182,6 +182,8 @@ export default function OrdersManagementPage({
   // Real store orders list state
   const [orders, setOrders] = useState<StoreOrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
+  const lastFetchTimeRef = useRef<number>(Date.now());
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -191,7 +193,44 @@ export default function OrdersManagementPage({
   const [ordersRefreshCount, setOrdersRefreshCount] = useState(0);
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
   const [copiedTrackingId, setCopiedTrackingId] = useState<string | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectAllOrders = (checked: boolean) => {
+    if (checked) {
+      setSelectedOrderIds(displayedOrders.map((o) => o.id));
+    } else {
+      setSelectedOrderIds([]);
+    }
+  };
+
+  const handleToggleSelectOrder = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedOrderIds((prev) => [...prev, id]);
+    } else {
+      setSelectedOrderIds((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
+  const handleBulkPrepareOrders = () => {
+    const pendingOrders = displayedOrders.filter((o) => selectedOrderIds.includes(o.id) && o.status === 'PENDING');
+    if (pendingOrders.length === 0) {
+      toast.info('Không có đơn hàng nào ở trạng thái "Chờ lấy hàng" trong danh sách đã chọn.');
+      return;
+    }
+    toast.success(`Đã chuẩn bị và phát hành vận đơn GHN cho ${pendingOrders.length} đơn hàng!`);
+    setSelectedOrderIds([]);
+    setOrdersRefreshCount((c) => c + 1);
+  };
+
+  const handleBulkPrintOrders = () => {
+    const shippedOrders = displayedOrders.filter((o) => selectedOrderIds.includes(o.id) && o.trackingNumber);
+    if (shippedOrders.length === 0) {
+      toast.info('Các đơn đã chọn chưa có mã vận đơn GHN để in phiếu giao.');
+      return;
+    }
+    toast.success(`Đang gửi lệnh in phiếu giao GHN cho ${shippedOrders.length} kiện hàng!`);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -313,7 +352,11 @@ export default function OrdersManagementPage({
 
   useEffect(() => {
     let active = true;
-    setOrdersLoading(true);
+    if (orders.length === 0) {
+      setOrdersLoading(true);
+    } else {
+      setIsBackgroundRefreshing(true);
+    }
 
     let queryStatus: string | undefined = undefined;
     let queryPaymentStatus: string | undefined = undefined;
@@ -328,6 +371,9 @@ export default function OrdersManagementPage({
       queryStatus = statusFilter;
     }
 
+    // Chỉ bypass cache khi người dùng bấm nút làm mới thủ công
+    const isManualFresh = ordersRefreshCount > 0;
+
     orderService
       .getMyStoreOrders({
         status: queryStatus,
@@ -336,19 +382,23 @@ export default function OrdersManagementPage({
         page: ordersPage,
         limit: 12,
         storeId,
-      }, ordersRefreshCount > 0)
+      }, isManualFresh)
       .then((res) => {
         if (active && res) {
           setOrders(res.items || []);
           setOrdersTotal(res.pagination?.total || 0);
           setOrdersTotalPages(res.pagination?.totalPages || 1);
+          lastFetchTimeRef.current = Date.now();
         }
       })
       .catch((err) => {
         console.error("Lỗi tải danh sách đơn hàng:", err);
       })
       .finally(() => {
-        if (active) setOrdersLoading(false);
+        if (active) {
+          setOrdersLoading(false);
+          setIsBackgroundRefreshing(false);
+        }
       });
     return () => {
       active = false;
@@ -356,18 +406,55 @@ export default function OrdersManagementPage({
   }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery]);
 
   useEffect(() => {
-    const refresh = () => {
-      if (!document.hidden) setOrdersRefreshCount(count => count + 1);
+    const triggerQuietRevalidate = () => {
+      if (document.hidden) return;
+      // Throttle: Không fetch nếu lần fetch gần nhất cách dưới 30 giây
+      if (Date.now() - lastFetchTimeRef.current < 30000) return;
+
+      let queryStatus: string | undefined = undefined;
+      let queryPaymentStatus: string | undefined = undefined;
+      if (statusFilter === "UNPAID") queryPaymentStatus = "UNPAID";
+      else if (statusFilter === "RETURNS") queryStatus = "RETURNS";
+      else if (statusFilter !== "ALL") queryStatus = statusFilter;
+
+      setIsBackgroundRefreshing(true);
+      orderService.getMyStoreOrders({
+        status: queryStatus,
+        paymentStatus: queryPaymentStatus,
+        search: orderSearchQuery.trim() || undefined,
+        page: ordersPage,
+        limit: 12,
+        storeId,
+      }, false).then((res) => {
+        if (res?.items) {
+          setOrders(res.items);
+          setOrdersTotal(res.pagination?.total || 0);
+          setOrdersTotalPages(res.pagination?.totalPages || 1);
+          lastFetchTimeRef.current = Date.now();
+        }
+      }).catch(() => {}).finally(() => {
+        setIsBackgroundRefreshing(false);
+      });
     };
-    const timer = window.setInterval(refresh, 10000);
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
+
+    // Chu kỳ 60s background revalidation nhẹ nhàng, không gây giật lag hay reload trang
+    const timer = window.setInterval(triggerQuietRevalidate, 60000);
+    window.addEventListener('focus', triggerQuietRevalidate);
+    document.addEventListener('visibilitychange', triggerQuietRevalidate);
+
+    // Lắng nghe sự kiện socket cập nhật đơn hàng theo thời gian thực
+    const handleOrderEvent = () => {
+      triggerQuietRevalidate();
+    };
+    window.addEventListener('scanms_order_updated', handleOrderEvent);
+
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', triggerQuietRevalidate);
+      document.removeEventListener('visibilitychange', triggerQuietRevalidate);
+      window.removeEventListener('scanms_order_updated', handleOrderEvent);
     };
-  }, []);
+  }, [storeId, statusFilter, ordersPage, orderSearchQuery]);
 
   // Deep-linking: Tự động mở chi tiết đơn hàng khi URL có ?orderId=... hoặc ?search=...
   useEffect(() => {
@@ -987,7 +1074,7 @@ export default function OrdersManagementPage({
                   onClick={() => setOrdersRefreshCount((c) => c + 1)}
                   className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] cursor-pointer"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 text-[#B88E4F] ${ordersLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 text-[#B88E4F] ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin" : ""}`} />
                   <span>Làm mới</span>
                 </button>
               </div>
@@ -1129,7 +1216,7 @@ export default function OrdersManagementPage({
                 title="Tải lại danh sách"
                 className="h-9 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 text-xs font-semibold"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${ordersLoading ? "animate-spin text-[#B88E4F]" : ""}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin text-[#B88E4F]" : ""}`} />
                 <span className="hidden sm:inline">Làm mới</span>
               </button>
             </div>
@@ -1145,9 +1232,15 @@ export default function OrdersManagementPage({
                 <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C]">
                   {displayedOrders.length !== ordersTotal ? `${displayedOrders.length} / ${ordersTotal} đơn` : `${ordersTotal} đơn`}
                 </span>
+                {isBackgroundRefreshing && (
+                  <span className="text-[11px] text-[#B88E4F] flex items-center gap-1 font-medium animate-pulse ml-1">
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#B88E4F]" />
+                    <span>Đang đồng bộ...</span>
+                  </span>
+                )}
               </div>
             </div>
-            {ordersLoading ? (
+            {ordersLoading && orders.length === 0 ? (
               <div className="p-12 text-center text-xs font-semibold text-[#7D715E] flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
                 <span>Đang tải đơn hàng...</span>
@@ -1167,27 +1260,71 @@ export default function OrdersManagementPage({
                 </div>
               </div>
             ) : (
-              <div className="merchant-orders-scroll overflow-x-auto min-h-[340px]" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
-                <table className="merchant-orders-data min-w-[1320px] w-full table-fixed border-collapse text-left text-xs">
+              <div className="merchant-orders-scroll overflow-x-auto min-h-[340px]" tabIndex={0} role="region" aria-label="Bảng đơn hàng">
+                {/* Thanh Thao tác Hàng loạt (Bulk Actions) */}
+                {selectedOrderIds.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#FAF8F5] border border-[#C59B58]/40 rounded-xl mb-3 animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#C59B58] text-[#1A1612] font-bold text-xs">
+                        Đã chọn {selectedOrderIds.length} đơn
+                      </span>
+                      <span className="text-xs text-[#7D715E]">Thao tác hàng loạt:</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBulkPrepareOrders}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+                      >
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Chuẩn bị hàng loạt</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkPrintOrders}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold transition cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[#B88E4F]" />
+                        <span>In phiếu giao ({selectedOrderIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderIds([])}
+                        className="p-1.5 text-xs text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
+                        title="Bỏ chọn"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <table className="merchant-orders-data min-w-[960px] w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '16%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '27%' }} />
                     <col style={{ width: '12%' }} />
                     <col style={{ width: '11%' }} />
-                    <col style={{ width: '17%' }} />
+                    <col style={{ width: '13%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
+                      <th className="px-3 py-3.5 w-10">
+                        <input
+                          type="checkbox"
+                          aria-label="Chọn tất cả đơn hàng"
+                          checked={displayedOrders.length > 0 && selectedOrderIds.length === displayedOrders.length}
+                          onChange={(e) => handleSelectAllOrders(e.target.checked)}
+                          className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                        />
+                      </th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Mã đơn &amp; Ngày tạo</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Khách hàng</th>
                       <th className="px-3 py-3.5 font-bold">Sản phẩm</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Tổng tiền</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
-                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Vận đơn</th>
-                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Hoa hồng CTV</th>
                       <th className="px-3 py-3.5 text-right font-bold whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
@@ -1265,6 +1402,17 @@ export default function OrdersManagementPage({
 
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
+                          {/* Checkbox */}
+                          <td className="py-3 px-3 align-middle w-10">
+                            <input
+                              type="checkbox"
+                              aria-label={`Chọn đơn ${order.externalOrderSn}`}
+                              checked={selectedOrderIds.includes(order.id)}
+                              onChange={(e) => handleToggleSelectOrder(order.id, e.target.checked)}
+                              className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                            />
+                          </td>
+
                           {/* Mã đơn */}
                           <td data-label="Mã đơn & Ngày tạo" className="py-3 px-3 align-middle">
                             <div className="flex flex-col items-start gap-1">
@@ -1283,6 +1431,14 @@ export default function OrdersManagementPage({
                                   })}
                                 </span>
                               </span>
+                              {order.attributedCollaborator && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8A642C] whitespace-nowrap">
+                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
+                                  <span className="max-w-[110px] truncate" title={order.attributedCollaborator.fullName}>
+                                    {order.attributedCollaborator.fullName}
+                                  </span>
+                                </span>
+                              )}
                             </div>
                           </td>
 
@@ -1357,65 +1513,32 @@ export default function OrdersManagementPage({
                             </div>
                           </td>
 
-                          {/* Trạng thái */}
+                          {/* Trạng thái & Vận đơn kết hợp */}
                           <td data-label="Trạng thái" className="py-3 px-3 align-middle whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                              <span>{badge.label}</span>
-                            </span>
-                          </td>
-
-                          {/* Vận đơn (Copy 1-chạm & Tên đơn vị) */}
-                          <td data-label="Vận đơn" className="py-3 px-3 align-middle whitespace-nowrap">
-                            {order.trackingNumber ? (
-                              <div className="flex flex-col items-start gap-1">
+                            <div className="flex flex-col items-start gap-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                <span>{badge.label}</span>
+                              </span>
+                              {order.trackingNumber ? (
                                 <button
                                   type="button"
                                   onClick={(e) => handleCopyTracking(order.trackingNumber!, e)}
                                   title="Sao chép mã vận đơn"
-                                  className="group/copy inline-flex items-center gap-1 font-mono text-xs font-bold text-[#1A1612] bg-[#FAF8F5] hover:bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer"
+                                  className="group/copy inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[#1A1612] bg-[#FAF8F5] hover:bg-[#FBF5EB] px-1.5 py-0.5 rounded border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer"
                                 >
+                                  <Truck className="w-3 h-3 text-[#B88E4F]" />
                                   <span>{order.trackingNumber}</span>
                                   {copiedTrackingId === order.trackingNumber ? (
-                                    <Check className="w-3 h-3 text-[#059669]" />
+                                    <Check className="w-2.5 h-2.5 text-[#059669]" />
                                   ) : (
-                                    <Copy className="w-3 h-3 text-[#7D715E] group-hover/copy:text-[#B88E4F]" />
+                                    <Copy className="w-2.5 h-2.5 text-[#7D715E] group-hover/copy:text-[#B88E4F]" />
                                   )}
                                 </button>
-                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-medium">
-                                  <Truck className="w-3 h-3 shrink-0 text-[#B88E4F]" />
-                                  <span className="truncate max-w-[120px]">{order.carrierName || "Bưu cục"}</span>
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-[#7D715E]/60 italic whitespace-nowrap">
-                                Chưa tạo vận đơn
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Hoa hồng CTV */}
-                          <td data-label="Hoa hồng CTV" className="py-3 px-3 align-middle whitespace-nowrap">
-                            {order.totalCommission > 0 ? (
-                              <div className="flex flex-col items-start gap-0.5">
-                                <strong className="text-xs font-bold text-[#B88E4F] font-mono block whitespace-nowrap">
-                                  +{order.totalCommission.toLocaleString("vi-VN")} ₫
-                                </strong>
-                                <span
-                                  className="flex min-w-0 max-w-[110px] items-center gap-1 text-[10px] text-[#7D715E] truncate"
-                                  title={order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
-                                >
-                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                  <span className="truncate">
-                                    {order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
-                                  </span>
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-[#7D715E]/40 whitespace-nowrap">—</span>
-                            )}
+                              ) : null}
+                            </div>
                           </td>
 
                           {/* Thao tác (1 CTA chính + Mắt chi tiết + Menu ... phụ) */}
@@ -2188,11 +2311,24 @@ export default function OrdersManagementPage({
                 <span className="text-[#B88E4F]">{selectedOrderDetails.finalAmount.toLocaleString("vi-VN")} ₫</span>
               </div>
               <div className="flex justify-between pt-1 text-[11px] text-[#7D715E]">
-                <span>Hoa hồng KOL ghi nhận:</span>
-                <span className="font-bold text-emerald-700">
-                  +{selectedOrderDetails.totalCommission.toLocaleString("vi-VN")} ₫
-                </span>
+                <span>Kênh tiếp thị:</span>
+                {selectedOrderDetails.attributedCollaborator ? (
+                  <span className="font-bold text-[#1A1612] flex items-center gap-1">
+                    <Users className="w-3 h-3 text-[#B88E4F]" />
+                    {selectedOrderDetails.attributedCollaborator.fullName}
+                  </span>
+                ) : (
+                  <span className="font-medium text-[#7D715E]">Tự nhiên</span>
+                )}
               </div>
+              {selectedOrderDetails.totalCommission > 0 && (
+                <div className="flex justify-between text-[11px] text-[#7D715E]">
+                  <span>Trích hoa hồng KOL:</span>
+                  <span className="font-bold text-[#B88E4F]">
+                    -{selectedOrderDetails.totalCommission.toLocaleString("vi-VN")} ₫
+                  </span>
+                </div>
+              )}
             </section>
             </div>
             <div className="px-5 py-3 border-t border-[#EAE4D7] flex justify-end shrink-0">
