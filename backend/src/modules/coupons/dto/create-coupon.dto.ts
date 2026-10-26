@@ -15,7 +15,7 @@ export class CreateCouponDto {
     example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @IsNotEmpty({ message: 'storeId không được để trống' })
-  @IsUUID('4', { message: 'storeId phải là định dạng UUID hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là định dạng UUID hợp lệ' })
   storeId: string;
 
   @ApiProperty({
@@ -40,6 +40,41 @@ export class CreateCouponDto {
     example: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'campaignId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'campaignId phải là UUID hợp lệ' })
   campaignId?: string;
+
+  @ApiPropertyOptional({ description: 'Hình thức giảm giá', example: 'PERCENTAGE' })
+  @IsOptional()
+  @IsString()
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+
+  @ApiPropertyOptional({ description: 'Mức giảm mong muốn (% hoặc VNĐ)', example: 15 })
+  @IsOptional()
+  discountValue?: number;
+
+  @ApiPropertyOptional({ description: 'Giá trị đơn tối thiểu (VNĐ)', example: 150000 })
+  @IsOptional()
+  minimumOrderAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Mức giảm tối đa (VNĐ)', example: 50000 })
+  @IsOptional()
+  maximumDiscountAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Thời điểm bắt đầu' })
+  @IsOptional()
+  startsAt?: string;
+
+  @ApiPropertyOptional({ description: 'Thời điểm kết thúc' })
+  @IsOptional()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ description: 'Phạm vi áp dụng (STORE_WIDE | PRODUCTS)', example: 'STORE_WIDE' })
+  @IsOptional()
+  @IsString()
+  scopeType?: string;
+
+  @ApiPropertyOptional({ description: 'Cam kết / Ghi chú mục đích sử dụng' })
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
