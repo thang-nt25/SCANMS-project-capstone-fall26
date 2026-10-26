@@ -24,6 +24,7 @@ import {
 } from '@/services/analytics.service';
 import { Select } from '@/components/ui/Select';
 import { kolDashboardRange, loadKolDashboard } from '@/utils/kol-dashboard';
+import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;
@@ -371,7 +372,8 @@ export default function KolDashboardPage() {
               </div>
             ) : (
               ledger.entries.slice(0, 4).map((entry) => {
-                const isPositive = entry.balanceBucket === 'AVAILABLE' || entry.transactionType.includes('COMMISSION');
+                const amount = ledgerAmountPresentation(entry.amount);
+                const isPositive = amount.direction === 'credit';
                 return (
                   <div
                     key={entry.id}
@@ -399,13 +401,12 @@ export default function KolDashboardPage() {
                         })}
                       </span>
                     </div>
-                    <strong
+                    <strong data-testid="dashboard-ledger-amount" data-direction={amount.direction}
                       className={`text-xs sm:text-sm font-bold tabular-nums shrink-0 ${
                         isPositive ? 'text-[#B88E4F]' : 'text-[#7D715E]'
                       }`}
                     >
-                      {isPositive ? '+' : '-'}
-                      {Math.abs(Number(entry.amount)).toLocaleString('vi-VN')} ₫
+                      {amount.text}
                     </strong>
                   </div>
                 );

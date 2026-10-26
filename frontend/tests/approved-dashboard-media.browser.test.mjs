@@ -36,7 +36,12 @@ for (const screen of ['dashboard', 'media']) {
             if (failWallet) return request.respond({ status: 503, headers, contentType: 'application/json', body: JSON.stringify({ message: 'Unavailable fixture' }) });
             data = { availableBalance: '1234567.00', pendingBalance: '0.00' };
           }
-          if (url.pathname.endsWith('/ledger')) data = { entries: [] };
+          if (url.pathname.endsWith('/ledger')) data = { entries: [
+            { id: 'withdraw', transactionType: 'PAYOUT_WITHDRAW', balanceBucket: 'AVAILABLE', amount: '-1000000.00' },
+            { id: 'move-pending', transactionType: 'COMMISSION_APPROVED', balanceBucket: 'PENDING', amount: '-25000.00' },
+            { id: 'move-available', transactionType: 'COMMISSION_APPROVED', balanceBucket: 'AVAILABLE', amount: '25000.00' },
+            { id: 'zero', transactionType: 'REVERSAL', balanceBucket: 'AVAILABLE', amount: '0.00' },
+          ].map(entry => ({ ...entry, createdAt: '2026-10-26T00:00:00Z' })) };
           if (url.pathname === '/api/dashboard/realtime/overview') {
             ranges.push(url.searchParams.get('startDate'));
             data = { metrics: { totalClicks: 0, totalOrders: 0, completedOrders: 0, conversionRate: 0, averageOrderValue: 0,
@@ -71,6 +76,12 @@ for (const screen of ['dashboard', 'media']) {
         await page.waitForSelector('[role=alert]').catch(error => { throw new Error(`${error.message}; ${errors.join('; ')}`, { cause: error }); });
         const wallet = '[aria-label="Số dư ví KOL"]';
         assert.match(await page.$eval(wallet, el => el.textContent), /—/);
+        assert.deepEqual(await page.$$eval('[data-testid="dashboard-ledger-amount"]', elements => elements.map(element => ({ text: element.textContent, direction: element.dataset.direction }))), [
+          { text: '-1.000.000 ₫', direction: 'debit' },
+          { text: '-25.000 ₫', direction: 'debit' },
+          { text: '+25.000 ₫', direction: 'credit' },
+          { text: '0 ₫', direction: 'neutral' },
+        ]);
         assert.ok(ranges[0].includes('T17:00:00.000Z'));
         failWallet = false;
         await page.evaluate(() => [...document.querySelectorAll('button')].find(el => el.textContent === 'Thử tải lại').click());
