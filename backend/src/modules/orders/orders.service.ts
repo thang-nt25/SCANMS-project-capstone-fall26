@@ -1079,6 +1079,11 @@ export class OrdersService {
             `PRODUCT_OUT_OF_STOCK: Phân loại sản phẩm "${variant?.name || prod.title}" của gian hàng "${store.name}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
           );
         }
+        await tx.$executeRaw`
+          UPDATE products
+          SET stock_quantity = GREATEST(0, stock_quantity - ${item.quantity}), updated_at = NOW()
+          WHERE id = ${item.productId}::uuid
+        `;
       } else {
         const updatedCount = await tx.$executeRaw`
           UPDATE products
@@ -3096,6 +3101,11 @@ export class OrdersService {
             SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
             WHERE id = ${item.variantId}::uuid
           `;
+          await tx.$executeRaw`
+            UPDATE products
+            SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.productId}::uuid
+          `;
         } else {
           await tx.$executeRaw`
             UPDATE products
@@ -3885,7 +3895,17 @@ export class OrdersService {
             select: { id: true, name: true, slug: true, logoUrl: true },
           },
           attributedCollaborator: {
-            select: { id: true, fullName: true, email: true },
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              collaboratorProfile: {
+                select: {
+                  avatarUrl: true,
+                  tier: { select: { name: true } },
+                },
+              },
+            },
           },
           orderItems: {
             include: {
@@ -3940,10 +3960,15 @@ export class OrdersService {
           attributedCollaborator: order.attributedCollaborator,
           couponCode:
             order.couponCodeSnapshot || order.coupon?.displayCode || null,
-          totalCommission: order.commissions.reduce(
-            (sum, c) => sum + Number(c.commissionAmount || 0),
-            0,
-          ),
+          totalCommission: order.commissions.length > 0
+            ? order.commissions.reduce(
+                (sum, c) => sum + Number(c.commissionAmount || 0),
+                0,
+              )
+            : order.orderItems.reduce(
+                (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
+                0,
+              ),
           returnRequest: order.returnRequest,
           items: order.orderItems.map((item) => ({
             productId: item.productId,

@@ -107,11 +107,11 @@ function parseProductInquiry(text: string): ChatProductInfo | undefined {
 function parseCouponVoucher(text: string): ChatCouponVoucher | undefined {
   try {
     const card = JSON.parse(text);
-    if (card?.type !== 'COUPON_VOUCHER' || !card.couponId || !card.couponCode) return;
+    if (card?.type !== 'COUPON_VOUCHER' || !card.couponId) return;
     return {
       id: card.couponId,
-      code: card.couponCode,
-      discountType: card.discountType,
+      code: card.couponCode || card.code || 'VOUCHER',
+      discountType: card.discountType || 'PERCENTAGE',
       discountValue: Number(card.discountValue || 0),
       minimumOrderAmount: card.minimumOrderAmount == null ? null : Number(card.minimumOrderAmount),
       maximumDiscountAmount: card.maximumDiscountAmount == null ? null : Number(card.maximumDiscountAmount),
@@ -140,6 +140,38 @@ export function parseExclusiveDealMessage(text?: string): ChatExclusiveDeal | un
 
 function getChatMessagePreview(messageText?: string, mediaName?: string) {
   if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện';
+  try {
+    const parsed = JSON.parse(messageText);
+    if (parsed.type === 'CAMPAIGN_INVITE') {
+      const bonus = parsed.bonusCommissionRate ? ` (+${parsed.bonusCommissionRate}%)` : '';
+      return `🎁 Thư mời chiến dịch VIP: ${parsed.campaignName || parsed.title || 'Chiến dịch'}${bonus}`;
+    }
+    if (parsed.type === 'CAMPAIGN_ACCEPTED') {
+      return `✅ Đã tham gia chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'CAMPAIGN_REJECTED') {
+      return `❌ Đã từ chối chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL') {
+      return `🎟️ Đề xuất mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL_APPROVED') {
+      return `✅ Đã kích hoạt mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
+    if (parsed.type === 'EXCLUSIVE_DEAL_PROPOSAL') {
+      return `🤝 Đề xuất deal độc quyền: ${parsed.productTitle || 'Sản phẩm'}`;
+    }
+    if (parsed.type === 'EXCLUSIVE_DEAL_DECISION') {
+      return parsed.status === 'APPROVED' ? '✅ Đã duyệt deal độc quyền' : '❌ Đã từ chối deal độc quyền';
+    }
+    if (parsed.type === 'PRODUCT_INQUIRY') {
+      return `🛍️ Hỏi về: ${parsed.productTitle || 'sản phẩm'}`;
+    }
+    if (parsed.type === 'COUPON_VOUCHER') {
+      return `🎟️ Voucher: ${parsed.couponCode || 'ưu đãi'}`;
+    }
+    return messageText;
+  } catch {}
   const product = parseProductInquiry(messageText);
   if (product) return `Sản phẩm: ${product.title}`;
   const coupon = parseCouponVoucher(messageText);
@@ -808,14 +840,29 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       return false;
     }
     socket.emit('join_conversation', { conversationId: activeConversation.id });
+    const voucherPayload = {
+      type: 'COUPON_VOUCHER',
+      couponId: coupon.id,
+      couponCode: coupon.displayCode || coupon.code || 'VOUCHER',
+      discountType: coupon.discountType || 'PERCENTAGE',
+      discountValue: Number(coupon.discountValue || 0),
+      minimumOrderAmount: coupon.minimumOrderAmount ? Number(coupon.minimumOrderAmount) : null,
+      maximumDiscountAmount: coupon.maximumDiscountAmount ? Number(coupon.maximumDiscountAmount) : null,
+      remainingUses: coupon.remainingUses !== null && coupon.remainingUses !== undefined
+        ? coupon.remainingUses
+        : (coupon.usageLimitTotal ? Math.max(0, coupon.usageLimitTotal - (coupon.usageCount || 0)) : null),
+      expiresAt: coupon.expiresAt || null,
+      scopeType: coupon.scopeType || 'STORE_WIDE',
+      storeName: activeConversation?.store?.name || coupon.storeName || 'Gian hàng',
+    };
     socket.emit(
       'send_message',
       {
         conversationId: activeConversation.id,
-        messageText: JSON.stringify({ type: 'COUPON_VOUCHER', couponId: coupon.id }),
+        messageText: JSON.stringify(voucherPayload),
       },
       (result: { ok?: boolean; message?: string }) => {
-        if (result?.ok) toast.success(`Đã gửi mã ${coupon.code} vào cuộc trò chuyện.`);
+        if (result?.ok) toast.success(`Đã gửi mã ${coupon.displayCode || coupon.code} vào cuộc trò chuyện.`);
         else toast.error(result?.message || 'Không gửi được mã giảm giá.');
       },
     );

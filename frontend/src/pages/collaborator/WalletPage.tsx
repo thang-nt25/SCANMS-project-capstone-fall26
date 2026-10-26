@@ -276,9 +276,12 @@ export default function WalletPage() {
     (store) => store.storeId === storeId,
   );
   const grossMinor = validPreviewAmount ? toMinorUnits(amount.trim()) : 0n;
-  const selectedStoreCanWithdraw = Boolean(
-    wallet?.canWithdraw && selectedStore?.isActive &&
-    toMinorUnits(selectedStore.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount),
+  const isWithdrawEligible = Boolean(
+    wallet?.canWithdraw &&
+      (selectedStore
+        ? selectedStore.isActive &&
+          toMinorUnits(selectedStore.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)
+        : toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)),
   );
   const taxMinor =
     wallet && grossMinor > 0n
@@ -295,11 +298,6 @@ export default function WalletPage() {
     if (!wallet || submissionInFlight.current || loading) return;
     setError("");
     setSuccess("");
-    if (!selectedStore?.isActive) {
-      toast.error("Vui lòng chọn gian hàng phụ trách chi trả.");
-      setError("Chọn shop có số dư khả dụng để rút tiền.");
-      return;
-    }
     if (!wallet.bankAccount) {
       toast.error("Vui lòng liên kết tài khoản ngân hàng thụ hưởng trước khi tạo yêu cầu rút.");
       setError("Vui lòng liên kết tài khoản ngân hàng thụ hưởng trước khi tạo yêu cầu rút.");
@@ -334,18 +332,13 @@ export default function WalletPage() {
       setError("Số dư khả dụng không đủ để thực hiện rút tiền.");
       return;
     }
-    if (minorUnits > toMinorUnits(selectedStore.availableBalance)) {
-      toast.error(`Số dư khả dụng tại ${selectedStore.storeName} không đủ (${formatMoney(selectedStore.availableBalance)}).`);
-      setError("Số dư khả dụng tại shop đã chọn không đủ.");
-      return;
-    }
 
     submissionInFlight.current = true;
     setSubmitting(true);
     try {
       const result = await walletService.createWithdrawal(
         normalizedAmount,
-        selectedStore.storeId,
+        storeId ? storeId : undefined,
       );
       setSuccess(`${result.message}. Mã yêu cầu: ${result.request.id}`);
       setIsWithdrawHistoryCollapsed(false);
@@ -478,7 +471,7 @@ export default function WalletPage() {
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]"><Wallet size={15} className="text-[#B88E4F]" /> Số dư khả dụng</div>
           <strong className="col-span-full text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-1">{wallet ? formatMoney(wallet.availableBalance) : "—"}</strong>
           <div className="col-span-full flex items-center justify-between gap-2 mt-1">
-            <span className="text-[11px] text-[#7D715E]">Khoản rút phụ thuộc số dư từng Shop.</span>
+            <span className="text-[11px] text-[#7D715E]">Rút trực tiếp về tài khoản ngân hàng liên kết.</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-medium text-[#7D715E]">
               {wallet?.canWithdraw ? <CheckCircle2 size={12} className="text-[#059669]" /> : <Clock3 size={12} />}
               {loading ? 'Đang tải' : wallet?.canWithdraw ? 'Đủ điều kiện rút' : 'Chưa đủ điều kiện'}
@@ -766,19 +759,23 @@ export default function WalletPage() {
             </div>
 
             <div className="wallet-withdraw-inputs grid! grid-cols-[1fr_1fr]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:639px)]:grid-cols-[1fr]! [@media(max-width:639px)]:gap-[12px]! ">
-            {/* Shop phụ trách chi trả */}
+            {/* Nguồn hoa hồng */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label
                   htmlFor="withdrawal-store"
                   className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider"
                 >
-                  Gian hàng phụ trách chi trả
+                  Nguồn hoa hồng
                 </label>
-                {selectedStore && (
+                {selectedStore ? (
                   <span className="text-[11px] font-semibold text-[#B88E4F] flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     <span>Ví chờ: {formatMoney(selectedStore.pendingBalance)}</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-[#B88E4F] flex items-center gap-1">
+                    <span>Toàn sàn</span>
                   </span>
                 )}
               </div>
@@ -786,12 +783,11 @@ export default function WalletPage() {
                 id="withdrawal-store"
                 value={storeId}
                 onChange={(event: { target: { value: string } }) => setStoreId(event.target.value)}
-                required
                 disabled={loading || submitting}
                 className="w-full h-9.5 sm:h-10 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/40 hover:bg-white focus:bg-white px-3 text-xs sm:text-sm text-[#1A1612] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"
               >
                 <option value="">
-                  -- Chọn gian hàng muốn rút hoa hồng --
+                  Toàn bộ hoa hồng tích lũy ({wallet ? formatMoney(wallet.availableBalance) : '0 ₫'})
                 </option>
                 {wallet?.stores.map((store) => (
                   <option
@@ -799,7 +795,7 @@ export default function WalletPage() {
                     value={store.storeId}
                     disabled={!store.isActive}
                   >
-                    {store.storeName} — Khả dụng: {formatMoney(store.availableBalance)}
+                    {store.storeName} — {formatMoney(store.availableBalance)}
                   </option>
                 ))}
               </Select>
@@ -814,17 +810,17 @@ export default function WalletPage() {
                 >
                   Số tiền muốn rút (VNĐ)
                 </label>
-                {selectedStore && Number(selectedStore.availableBalance) > 0 && (
+                {wallet && Number(selectedStore ? selectedStore.availableBalance : wallet.availableBalance) > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      // Điền toàn bộ số dư khả dụng
-                      const raw = selectedStore.availableBalance.replace(/[^0-9.]/g, '');
+                      const maxVal = selectedStore ? selectedStore.availableBalance : wallet.availableBalance;
+                      const raw = maxVal.replace(/[^0-9.]/g, '');
                       setAmount(raw);
                     }}
                     className="text-[11px] font-bold text-[#B88E4F] hover:text-[#1A1612] transition cursor-pointer select-none"
                   >
-                    Rút toàn bộ ({formatMoney(selectedStore.availableBalance)})
+                    Rút toàn bộ ({formatMoney(selectedStore ? selectedStore.availableBalance : wallet.availableBalance)})
                   </button>
                 )}
               </div>
@@ -833,9 +829,9 @@ export default function WalletPage() {
                 <input
                   id="withdrawal-amount"
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
                   placeholder="VD: 500000"
                   required
                   maxLength={16}
@@ -898,7 +894,7 @@ export default function WalletPage() {
           <div className="wallet-withdraw-actions pt-[0]! w-full! [&_>_button]:h-[42px]! [&_>_button]:[border:1px_solid_#c59b58]! [&_>_button]:bg-[#c59b58]! [&_>_button]:text-[#1a1612]! [&_>_button]:text-[length:12px]! [&_>_button]:font-[600]! [&_>_button:not(:disabled):hover]:bg-[#b88e4f]! [&_>_button:disabled]:bg-[#f3efe6]! [&_>_button:disabled]:border-[#eae4d7]! [&_>_button:disabled]:text-[#7d715e]! [&_>_button:disabled]:opacity-[.7]! [&_>_div]:[border:0]! [&_>_div]:p-[0]! [&_>_div]:bg-[transparent]! [&_>_div]:text-[length:10px]! [&_>_div]:leading-[16px]! ">
             <button
               type="submit"
-              disabled={submitting || loading || !selectedStoreCanWithdraw}
+              disabled={submitting || loading || !isWithdrawEligible}
               className="scanms-brand-action w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
             >
               {submitting ? (
@@ -908,27 +904,33 @@ export default function WalletPage() {
               )}
               <span>{submitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu rút tiền"}</span>
             </button>
-            {wallet && !selectedStoreCanWithdraw && (
-              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
-                <p className="font-semibold">Bạn chưa thể rút tiền khi chưa đủ các điều kiện sau:</p>
+            {wallet && !isWithdrawEligible && (
+              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1.5">
+                <div className="font-bold text-[#1A1612]">Điều kiện rút tiền:</div>
                 {!wallet.bankAccount && (
-                  <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
-                    <span>⚠️</span>
+                  <div className="text-[#D97706] font-medium flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>Chưa liên kết tài khoản ngân hàng nhận tiền.</span>
-                  </p>
+                  </div>
                 )}
                 {wallet.kycStatus !== 'VERIFIED' && (
-                  <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
-                    <span>⚠️</span>
-                    <span>Hồ sơ định danh KYC cần được thẩm định trước khi rút tiền.</span>
-                    <button type="button" onClick={() => setSearchParams({ tab: 'kyc' })} className="underline text-[#B88E4F]">Mở hồ sơ KYC</button>
-                  </p>
+                  <div className="text-[#D97706] font-medium flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Hồ sơ định danh KYC cần được thẩm định trước khi rút.</span>
+                    <button type="button" onClick={() => setSearchParams({ tab: 'kyc' })} className="underline text-[#B88E4F] ml-1 cursor-pointer">Mở hồ sơ KYC</button>
+                  </div>
                 )}
-                {!selectedStore && <p className="m-0">Chưa có gian hàng có số dư được phân bổ để rút tiền.</p>}
                 {selectedStore && Number(selectedStore.availableBalance) < Number(wallet.minimumWithdrawalAmount) && (
-                  <p className="m-0 text-[#7D715E]">
-                    ℹ️ Số dư khả dụng tại shop này hiện là <strong className="font-mono text-[#1A1612]">{formatMoney(selectedStore.availableBalance)}</strong> (Cần tối thiểu {formatMoney(wallet.minimumWithdrawalAmount)} để thực hiện lệnh rút).
-                  </p>
+                  <div className="text-[#7D715E] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Số dư khả dụng tại gian hàng này: <strong className="font-mono text-[#1A1612]">{formatMoney(selectedStore.availableBalance)}</strong> (Tối thiểu {formatMoney(wallet.minimumWithdrawalAmount)}).</span>
+                  </div>
+                )}
+                {!selectedStore && Number(wallet.availableBalance) < Number(wallet.minimumWithdrawalAmount) && (
+                  <div className="text-[#7D715E] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Số dư khả dụng tối thiểu để tạo yêu cầu rút: <strong className="font-mono text-[#1A1612]">{formatMoney(wallet.minimumWithdrawalAmount)}</strong>.</span>
+                  </div>
                 )}
               </div>
             )}

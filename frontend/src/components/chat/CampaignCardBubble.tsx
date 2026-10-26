@@ -62,16 +62,8 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
   const start = campaignDate(card.startDate);
   const end = campaignDate(card.endDate);
 
-  if (status !== 'PENDING') return (
-    <div className="flex items-start gap-2.5 w-[330px] max-w-full p-3 sm:px-3.5 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612]" role="status">
-      {status === 'ACCEPTED' ? <CheckCircle2 size={18} className="text-[#059669] shrink-0 mt-0.5" /> : <XCircle size={18} className="text-[#7D715E] shrink-0 mt-0.5" />}
-      <div>
-        <strong className="text-xs font-semibold text-[#1A1612]">{status === 'ACCEPTED' ? 'Đã chấp nhận chiến dịch' : 'Đã từ chối chiến dịch'}</strong>
-        <p className="m-0 my-1 text-[11px] break-all text-[#1A1612]">{card.campaignName}</p>
-        <span className="text-[10px] leading-relaxed text-[#7D715E]">{status === 'ACCEPTED' ? 'Hoa hồng thưởng thêm đã được kích hoạt.' : 'Phản hồi đã được gửi tới đối tác.'}</span>
-      </div>
-    </div>
-  );
+  const isAccepted = status === 'ACCEPTED';
+  const isRejected = status === 'REJECTED';
 
   return (
     <div className="w-[330px] max-w-full border border-[#EEDFC6] rounded-2xl overflow-hidden bg-white text-[#1A1612] shadow-[0_3px_12px_rgba(35,29,21,0.03)] text-left">
@@ -83,17 +75,27 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
           <span className="text-[10px] leading-3.5 text-[#7D715E]">Lời mời hợp tác</span>
           <strong className="text-[13px] leading-[18px] font-semibold text-[#1A1612]">Chiến dịch VIP</strong>
         </div>
-        <span className="ml-auto px-2 py-0.5 border border-[#EEDFC6] rounded-md text-[#8C6226] bg-[#FBF5EB] text-[9px] font-semibold tracking-wider">VIP</span>
+        <span className={`ml-auto px-2 py-0.5 border rounded-md text-[9px] font-semibold tracking-wider flex items-center gap-1 ${
+          isAccepted
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : isRejected
+            ? 'border-gray-200 bg-gray-50 text-gray-600'
+            : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+        }`}>
+          {isAccepted && <CheckCircle2 size={11} className="text-[#059669]" />}
+          {isRejected && <XCircle size={11} />}
+          {isAccepted ? 'ĐÃ KÍCH HOẠT' : isRejected ? 'ĐÃ TỪ CHỐI' : 'VIP'}
+        </span>
       </header>
       <div className="p-3.5">
-        <h3 className="m-0 text-[15px] font-semibold leading-snug break-words text-[#1A1612]">{card.campaignName}</h3>
+        <h3 className="m-0 text-[15px] font-semibold leading-snug break-words text-[#1A1612]">{card.campaignName || card.title}</h3>
         {card.storeName && <p className="m-0 mt-1 text-[11px] text-[#7D715E] leading-relaxed break-words">Gian hàng <strong className="font-medium text-[#1A1612] ml-1">{card.storeName}</strong></p>}
         <div className="flex items-center justify-between gap-2.5 my-3 p-3 border border-[#EEDFC6] bg-[#FBF5EB] rounded-[10px]">
           <span className="flex items-center gap-2 text-[11px] font-medium text-[#1A1612]">
             <Gift size={16} className="shrink-0 text-[#B88E4F]" />
             <span>
               Hoa hồng thưởng thêm
-              <small className="block mt-0.5 text-[#7D715E] text-[9px] font-normal">Cộng vào hoa hồng sản phẩm</small>
+              <small className="block mt-0.5 text-[#7D715E] text-[9px] font-normal">Cộng dồn vào hoa hồng sản phẩm</small>
             </span>
           </span>
           <strong className="text-[#B88E4F] text-2xl font-semibold whitespace-nowrap tabular-nums">+{card.bonusCommissionRate}<small className="inline text-sm font-medium text-inherit">%</small></strong>
@@ -114,7 +116,17 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
         {feedbackError && <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-[#DC2626]" role="alert">{feedbackError} <button type="button" className="underline" onClick={() => setStateRevision(value => value + 1)}>Thử lại</button></p>}
       </div>
       <footer className="px-3.5 py-2.5 border-t border-[#EAE4D7] bg-[#FAF8F5]">
-        {isExpired ? (
+        {isAccepted ? (
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-[11px] font-semibold text-emerald-900">
+            <CheckCircle2 size={16} className="text-[#059669] shrink-0" />
+            <span>Đã kích hoạt hợp tác VIP · Thưởng +{card.bonusCommissionRate}%</span>
+          </div>
+        ) : isRejected ? (
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-50 border border-gray-200 text-[11px] font-medium text-gray-600">
+            <XCircle size={16} className="text-gray-500 shrink-0" />
+            <span>Đã từ chối lời mời hợp tác</span>
+          </div>
+        ) : isExpired ? (
           <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Chiến dịch đã kết thúc</span></div>
         ) : isMine ? (
           <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Đã gửi lời mời<small className="block text-[10px] mt-0.5">Đang chờ đối tác phản hồi</small></span></div>

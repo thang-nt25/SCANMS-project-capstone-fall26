@@ -140,8 +140,24 @@ function getChatMessagePreview(messageText?: string, mediaName?: string): string
   if (!messageText) return mediaName ? `📎 ${mediaName}` : '';
   try {
     const parsed = JSON.parse(messageText);
+    if (parsed.type === 'CAMPAIGN_INVITE') {
+      const bonus = parsed.bonusCommissionRate ? ` (+${parsed.bonusCommissionRate}%)` : '';
+      return `🎁 Thư mời chiến dịch VIP: ${parsed.campaignName || parsed.title || 'Chiến dịch'}${bonus}`;
+    }
+    if (parsed.type === 'CAMPAIGN_ACCEPTED') {
+      return `✅ Đã tham gia chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'CAMPAIGN_REJECTED') {
+      return `❌ Đã từ chối chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL') {
+      return `🎟️ Đề xuất mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL_APPROVED') {
+      return `✅ Đã kích hoạt mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
     if (parsed.type === 'EXCLUSIVE_DEAL_PROPOSAL') {
-      return '🤝 Đề xuất deal độc quyền';
+      return `🤝 Đề xuất deal độc quyền: ${parsed.productTitle || 'Sản phẩm'}`;
     }
     if (parsed.type === 'EXCLUSIVE_DEAL_DECISION') {
       return parsed.status === 'APPROVED' ? '✅ Đã duyệt deal độc quyền' : '❌ Đã từ chối deal độc quyền';
@@ -236,9 +252,9 @@ export default function ShopCollaborationPage() {
 
   // Modal 1: Lấy Link Tiếp Thị Chuyên Nghiệp (Giải pháp 1)
   const [linkModalProduct, setLinkModalProduct] = useState<any | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<'TIKTOK' | 'FACEBOOK' | 'YOUTUBE' | 'INSTAGRAM'>('TIKTOK');
   const [generatedShortlink, setGeneratedShortlink] = useState<string>('');
   const [generatedQr, setGeneratedQr] = useState<string>('');
+  const [exclusiveDeals, setExclusiveDeals] = useState<any[]>([]);
 
   // Modal 2: Xin Hàng Mẫu 4 Bước (Giải pháp 2)
   const [requestSampleModalProduct, setRequestSampleModalProduct] = useState<any | null>(null);
@@ -531,6 +547,7 @@ export default function ShopCollaborationPage() {
 
       const convList = Array.isArray(convRes) ? convRes : convRes?.data || [];
       const dealsList: any[] = Array.isArray(dealsRes) ? dealsRes : dealsRes?.data || [];
+      setExclusiveDeals(dealsList);
 
       // Tập hợp các ID gian hàng đã có deal độc quyền (đã xin deal hoa hồng)
       const dealStoreIds = new Set<string>();
@@ -947,11 +964,11 @@ export default function ShopCollaborationPage() {
     }
   };
 
-  // Open Link Generator Modal (Giải pháp 1)
+  // Open Link Generator Modal
   const handleOpenLinkModal = async (prod: any) => {
     setLinkModalProduct(prod);
     try {
-      const url = `${window.location.origin}/products/${prod.id}?ref=kol&utm_source=${selectedChannel.toLowerCase()}`;
+      const url = `${window.location.origin}/products/${prod.id}?ref=kol`;
       setGeneratedShortlink(url);
       const qrData = await QRCode.toDataURL(url, { width: 320, margin: 2 });
       setGeneratedQr(qrData);
@@ -960,20 +977,10 @@ export default function ShopCollaborationPage() {
     }
   };
 
-  const handleChannelChange = async (ch: 'TIKTOK' | 'FACEBOOK' | 'YOUTUBE' | 'INSTAGRAM') => {
-    setSelectedChannel(ch);
-    if (linkModalProduct) {
-      const url = `${window.location.origin}/products/${linkModalProduct.id}?ref=kol&utm_source=${ch.toLowerCase()}`;
-      setGeneratedShortlink(url);
-      const qrData = await QRCode.toDataURL(url, { width: 320, margin: 2 });
-      setGeneratedQr(qrData);
-    }
-  };
-
   const handleCopyLink = async () => {
     if (!generatedShortlink) return;
     await navigator.clipboard.writeText(generatedShortlink);
-    toast.success(`Đã sao chép link tiếp thị có gắn UTM [${selectedChannel}] vào bộ nhớ tạm!`);
+    toast.success('Đã sao chép link tiếp thị vào bộ nhớ tạm.');
   };
 
   // Submit sample request (Giải pháp 2)
@@ -1692,7 +1699,12 @@ setActiveTab('samples');
                               sampleHistoryReady && !activeSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
                             const isSelectedForBundle = selectedProductIds.includes(prod.id);
-                            const commRate = 10;
+                            const activeDeal = exclusiveDeals.find(
+                              (d) => (d.productId === prod.id || d.product?.id === prod.id) && (d.status === 'APPROVED' || d.isCurrentDeal)
+                            );
+                            const commRate = activeDeal
+                              ? Number(activeDeal.approvedCommissionRate || activeDeal.proposedCommissionRate || 10)
+                              : (prod.commissionRate ? Number(prod.commissionRate) : 10);
                             const commAmount = Math.round((Number(prod.price || 0) * commRate) / 100);
 
                             return (
@@ -1726,7 +1738,11 @@ setActiveTab('samples');
                                       <span className="text-[10px] text-[#7D715E] font-mono font-medium truncate">
                                         {prod.sku || 'SKU'}
                                       </span>
-                                      {isExclusive ? (
+                                      {activeDeal ? (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold border border-[#E8D4B0] bg-[#FAF0DD] text-[#9E7332] whitespace-nowrap">
+                                          Deal {commRate}%
+                                        </span>
+                                      ) : isExclusive ? (
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold border border-[#EEDFC6] bg-[#FBF5EB] text-[#9B7136] whitespace-nowrap">
                                           Deal VIP
                                         </span>
@@ -1762,8 +1778,12 @@ setActiveTab('samples');
                                   onClick={() => void loadStoreSamples(selectedStore.id)}
                                   className="text-left text-xs text-[#DC2626]">Chưa tải được lịch sử mẫu · Thử lại</button>}
                                 {/* Commission box */}
-                                <div className="flex items-center justify-between gap-2 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB]">
-                                  <span className="text-[10px] text-[#7D715E]">Hoa hồng nền</span>
+                                <div className={`flex items-center justify-between gap-2 p-2 border rounded-lg ${
+                                  activeDeal ? 'bg-[#FAF0DD] border-[#E8D4B0]' : 'bg-[#FBF5EB] border-[#EEDFC6]'
+                                }`}>
+                                  <span className="text-[10px] text-[#7D715E] font-medium">
+                                    {activeDeal ? 'Hoa hồng Deal độc quyền' : 'Hoa hồng'}
+                                  </span>
                                   <strong className="text-[#A77C3D] text-xs font-bold leading-normal text-right">
                                     {commRate}% (~{commAmount.toLocaleString('vi-VN')} ₫/đơn)
                                   </strong>
@@ -2138,131 +2158,120 @@ setActiveTab('samples');
       </div>
     </div>
 
-      {/* MODAL 1: LẤY LINK TIẾP THỊ CHUẨN KÊNH & MÃ QR */}
-      {linkModalProduct && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white border border-[#EAE4D7] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-left">
-            <div className="p-5 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
-              <div className="flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-[#B88E4F]" />
-                <h3 className="text-sm font-extrabold text-[#1A1612] m-0">
-                  Tạo Link Tiếp Thị Đa Kênh &amp; Mã QR
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLinkModalProduct(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      {/* MODAL 1: LẤY LINK TIẾP THỊ & MÃ QR */}
+      {linkModalProduct && (() => {
+        const activeDeal = exclusiveDeals.find(
+          (d) => (d.productId === linkModalProduct.id || d.product?.id === linkModalProduct.id) && (d.status === 'APPROVED' || d.isCurrentDeal)
+        );
+        const effectiveRate = activeDeal
+          ? Number(activeDeal.approvedCommissionRate || activeDeal.proposedCommissionRate || 10)
+          : (linkModalProduct.commissionRate ? Number(linkModalProduct.commissionRate) : 10);
+        const commissionAmount = Math.round(Number(linkModalProduct.price || 0) * (effectiveRate / 100));
 
-            <div className="p-5 flex flex-col gap-4">
-              <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-2xl flex items-center gap-3">
-                <img
-                  src={linkModalProduct.imageUrl}
-                  alt={linkModalProduct.title}
-                  className="w-12 h-12 rounded-xl object-cover border border-[#EAE4D7] bg-white shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
-                    {linkModalProduct.title}
-                  </strong>
-                  <span className="text-[11px] text-[#B88E4F] font-bold block mt-0.5">
-                    Hoa hồng nền: 10% (~
-                    {Math.round(Number(linkModalProduct.price) * 0.1).toLocaleString('vi-VN')} ₫)
-                  </span>
-                  <span className="mt-1 block text-[10px] text-[#7D715E]">Thưởng cấp bậc, Deal, chiến dịch và Live được cộng riêng khi đủ điều kiện.</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                  Chọn kênh bạn dự kiến đăng (Tự động gắn UTM Source):
-                </label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { id: 'TIKTOK', label: 'TikTok Bio' },
-                    { id: 'FACEBOOK', label: 'Facebook' },
-                    { id: 'YOUTUBE', label: 'YouTube' },
-                    { id: 'INSTAGRAM', label: 'Instagram' },
-                  ].map((ch) => (
-                    <button
-                      key={ch.id}
-                      type="button"
-                      onClick={() => handleChannelChange(ch.id as any)}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold transition cursor-pointer text-center ${
-                        selectedChannel === ch.id
-                          ? 'bg-[#EBD08C] text-white shadow-2xs'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-[#F3EFE6]'
-                      }`}
-                    >
-                      {ch.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                  Đường dẫn tiếp thị rút gọn (Shortlink):
-                </label>
+        return (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white border border-[#EAE4D7] rounded-2xl w-full max-w-md shadow-xl overflow-hidden text-left">
+              <div className="p-4 border-b border-[#EAE4D7] flex items-center justify-between bg-[#FAF8F5]">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedShortlink}
-                    className="flex-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-mono text-[#1A1612] outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="px-3.5 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-bold flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Sao chép</span>
-                  </button>
+                  <Link2 className="w-4 h-4 text-[#B88E4F]" />
+                  <h3 className="text-sm font-bold text-[#1A1612] m-0">
+                    Link tiếp thị &amp; Mã QR
+                  </h3>
                 </div>
-              </div>
-
-              {generatedQr && (
-                <div className="flex items-center gap-4 p-3 bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7]">
-                  <img src={generatedQr} alt="QR Code" className="w-24 h-24 rounded-lg bg-white p-1 border border-[#EAE4D7]" />
-                  <div className="flex-1 text-xs text-[#7D715E]">
-                    <strong className="text-xs text-[#1A1612] block mb-1">Mã QR Livestream / Bìa Video</strong>
-                    <span>Khách quét mã sẽ tự động mở trang thanh toán và ghi nhận hoa hồng cho tài khoản của bạn.</span>
-                    <a
-                      href={generatedQr}
-                      download={`QR_${linkModalProduct.sku || 'scanms'}.png`}
-                      className="inline-flex items-center gap-1 text-[#B88E4F] font-bold mt-2 hover:underline block"
-                    >
-                      <Download className="w-3 h-3" /> Tải ảnh QR HD (PNG)
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-[#EAE4D7] flex justify-between items-center">
-                <button
-                  type="button"
-                  onClick={() => navigate('/collaborator/links')}
-                  className="text-xs text-[#B88E4F] font-bold hover:underline"
-                >
-                  Xem Quản Lý Link Đã Tạo (Click &amp; CR%) →
-                </button>
                 <button
                   type="button"
                   onClick={() => setLinkModalProduct(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] cursor-pointer"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer"
                 >
-                  Đóng
+                  ✕
                 </button>
+              </div>
+
+              <div className="p-4 flex flex-col gap-3.5">
+                <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl flex items-center gap-3">
+                  <img
+                    src={linkModalProduct.imageUrl}
+                    alt={linkModalProduct.title}
+                    className="w-12 h-12 rounded-lg object-cover border border-[#EAE4D7] bg-white shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <strong className="text-xs font-bold text-[#1A1612] line-clamp-1 block">
+                      {linkModalProduct.title}
+                    </strong>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md border ${
+                        activeDeal
+                          ? 'bg-[#FAF0DD] text-[#9E7332] border-[#E8D4B0]'
+                          : 'bg-[#FBF5EB] text-[#B88E4F] border-[#EEDFC6]'
+                      }`}>
+                        Hoa hồng: {effectiveRate}% {activeDeal ? '(Deal độc quyền)' : ''}
+                      </span>
+                      <span className="text-[11px] text-[#7D715E] font-medium">
+                        (~{commissionAmount.toLocaleString('vi-VN')} ₫)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                    Smart Link
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={generatedShortlink}
+                      className="flex-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs font-mono text-[#1A1612] outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="px-3 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Sao chép</span>
+                    </button>
+                  </div>
+                </div>
+
+                {generatedQr && (
+                  <div className="flex items-center gap-3.5 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
+                    <img src={generatedQr} alt="QR Code" className="w-20 h-20 rounded-lg bg-white p-1 border border-[#EAE4D7] shrink-0" />
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      <span className="text-xs font-semibold text-[#1A1612]">Mã QR tiếp thị</span>
+                      <a
+                        href={generatedQr}
+                        download={`QR_${linkModalProduct.sku || 'scanms'}.png`}
+                        className="inline-flex items-center gap-1.5 text-xs text-[#B88E4F] font-bold hover:underline"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Tải ảnh QR (PNG)
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-[#EAE4D7] flex justify-between items-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/collaborator/links')}
+                    className="text-xs text-[#B88E4F] font-semibold hover:underline"
+                  >
+                    Quản lý link tiếp thị →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLinkModalProduct(null)}
+                    className="px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Sample request: review commitment and delivery details */}
       {requestSampleModalProduct && (

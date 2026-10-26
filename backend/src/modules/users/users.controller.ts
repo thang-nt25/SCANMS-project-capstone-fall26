@@ -1,15 +1,33 @@
-import { Controller, Get, Param, ParseUUIDPipe, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('users')
 @Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy danh sách người dùng' })
   @ApiResponse({
     status: 200,
@@ -20,7 +38,6 @@ export class UsersController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })
   @ApiResponse({
@@ -33,6 +50,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy thông tin người dùng theo ID' })
   @ApiResponse({ status: 200, description: 'Thông tin chi tiết người dùng' })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {

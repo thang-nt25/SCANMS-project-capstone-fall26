@@ -166,7 +166,31 @@ export class ChatService {
           fullName: true,
           role: true,
           avatarUrl: true,
-          collaboratorProfile: { select: { avatarUrl: true } },
+          socialChannels: {
+            select: {
+              id: true,
+              platformName: true,
+              channelName: true,
+              channelUrl: true,
+              followerCount: true,
+              isPrimary: true,
+            },
+          },
+          collaboratorProfile: {
+            select: {
+              avatarUrl: true,
+              bio: true,
+              totalFollowers: true,
+              tier: {
+                select: {
+                  id: true,
+                  name: true,
+                  bonusRate: true,
+                  minRevenue: true,
+                },
+              },
+            },
+          },
         },
       },
       customer: { select: { id: true, fullName: true, role: true } },
@@ -264,7 +288,31 @@ export class ChatService {
             fullName: true,
             role: true,
             avatarUrl: true,
-            collaboratorProfile: { select: { avatarUrl: true } },
+            socialChannels: {
+              select: {
+                id: true,
+                platformName: true,
+                channelName: true,
+                channelUrl: true,
+                followerCount: true,
+                isPrimary: true,
+              },
+            },
+            collaboratorProfile: {
+              select: {
+                avatarUrl: true,
+                bio: true,
+                totalFollowers: true,
+                tier: {
+                  select: {
+                    id: true,
+                    name: true,
+                    extraBonusPercentage: true,
+                    minRevenueThreshold: true,
+                  },
+                },
+              },
+            },
           },
         },
         customer: { select: { id: true, fullName: true, role: true } },
@@ -329,7 +377,39 @@ export class ChatService {
             owner: { select: { fullName: true, avatarUrl: true } },
           },
         },
-        collaborator: { select: { id: true, fullName: true, role: true } },
+        collaborator: {
+          select: {
+            id: true,
+            fullName: true,
+            role: true,
+            avatarUrl: true,
+            socialChannels: {
+              select: {
+                id: true,
+                platformName: true,
+                channelName: true,
+                channelUrl: true,
+                followerCount: true,
+                isPrimary: true,
+              },
+            },
+            collaboratorProfile: {
+              select: {
+                avatarUrl: true,
+                bio: true,
+                totalFollowers: true,
+                tier: {
+                  select: {
+                    id: true,
+                    name: true,
+                    extraBonusPercentage: true,
+                    minRevenueThreshold: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         customer: { select: { id: true, fullName: true, role: true } },
       },
     });

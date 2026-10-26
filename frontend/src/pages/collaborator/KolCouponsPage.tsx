@@ -18,11 +18,14 @@ import {
   Loader2,
   Sparkles,
   ChevronDown,
+  DollarSign,
 } from 'lucide-react';
 import {
   couponService,
   type CouponItem,
   type CouponStatus,
+  type DiscountType,
+  type CouponScope,
 } from '../../services/coupon.service';
 import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
@@ -129,9 +132,29 @@ export const KolCouponsPage: React.FC = () => {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const storeDropdownRef = useRef<HTMLDivElement>(null);
   const [proposeCode, setProposeCode] = useState('');
+  const [proposeDiscountType, setProposeDiscountType] = useState<DiscountType>('PERCENTAGE');
+  const [proposeDesiredPercent, setProposeDesiredPercent] = useState<number>(15);
+  const [proposeFixedAmount, setProposeFixedAmount] = useState<number>(30000);
+  const [proposeMaxDiscount, setProposeMaxDiscount] = useState<number>(50000);
+  const [proposeMinOrder, setProposeMinOrder] = useState<number>(150000);
+  const [proposeValidityDays, setProposeValidityDays] = useState<number>(30);
+  const [proposeScopeType, setProposeScopeType] = useState<CouponScope>('STORE_WIDE');
+  const [proposeNote, setProposeNote] = useState<string>('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
+
+  const handleNumericInput = (rawText: string, setter: (val: number) => void) => {
+    const digits = rawText.replace(/\D/g, '');
+    if (!digits) {
+      setter(0);
+      return;
+    }
+    const parsed = parseInt(digits, 10);
+    setter(Number.isNaN(parsed) ? 0 : parsed);
+  };
+
+
   const selectedStore = approvedStores.find(
     (store) => (store.id || store.storeId) === selectedStoreId,
   ) || approvedStores[0];
@@ -375,9 +398,23 @@ export const KolCouponsPage: React.FC = () => {
     try {
       setModalLoading(true);
       setModalError(null);
+
+      const startsAt = new Date().toISOString();
+      const expiresAt = proposeValidityDays > 0
+        ? new Date(Date.now() + proposeValidityDays * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+
       await couponService.proposeCoupon({
         storeId: selectedStoreId,
         code: trimmedCode,
+        discountType: proposeDiscountType,
+        discountValue: proposeDiscountType === 'PERCENTAGE' ? proposeDesiredPercent : proposeFixedAmount,
+        minimumOrderAmount: proposeMinOrder > 0 ? proposeMinOrder : undefined,
+        maximumDiscountAmount: proposeDiscountType === 'PERCENTAGE' && proposeMaxDiscount > 0 ? proposeMaxDiscount : undefined,
+        startsAt,
+        expiresAt,
+        scopeType: proposeScopeType,
+        note: proposeNote.trim() || undefined,
       });
 
 
@@ -526,19 +563,6 @@ export const KolCouponsPage: React.FC = () => {
               </button>
             ))}
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsModalOpen(true);
-              setModalError(null);
-              setModalSuccess(null);
-            }}
-            className="inline-flex items-center justify-center gap-2 min-h-[40px] shrink-0 px-3.5 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-xs font-semibold whitespace-nowrap cursor-pointer hover:bg-[#F3EFE6] hover:border-[#C59B58] transition"
-          >
-            <Plus className="w-4 h-4" />
-            Đề xuất mã mới
-          </button>
         </div>
 
 
@@ -601,12 +625,12 @@ export const KolCouponsPage: React.FC = () => {
                     </div>
 
                     {/* Voucher Code Box */}
-                    <div className="flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2.5 shadow-2xs">
-                      <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
+                      <div className="min-w-0 flex-1">
                         <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#7D715E] block">
                           MÃ VOUCHER ĐỘC QUYỀN
                         </span>
-                        <span className="text-base sm:text-lg font-mono font-black text-[#1A1612] tracking-wider truncate block">
+                        <span className="text-sm sm:text-base font-mono font-black text-[#1A1612] tracking-normal truncate block" title={coupon.displayCode}>
                           {coupon.displayCode}
                         </span>
                       </div>
@@ -975,7 +999,222 @@ export const KolCouponsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. LIVE INTERACTIVE VOUCHER PREVIEW (Vé Ưu Đãi Trực Quan Thời Gian Thực) */}
+                {/* 2. Cấu hình điều kiện ưu đãi đề xuất */}
+                <div className="space-y-3 pt-1 border-t border-[#EAE4D7]">
+                  {/* Hình thức giảm giá */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
+                      Hình thức giảm giá mong muốn
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setProposeDiscountType('PERCENTAGE')}
+                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          proposeDiscountType === 'PERCENTAGE'
+                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
+                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
+                        }`}
+                      >
+                        <Percent className="w-3.5 h-3.5" />
+                        <span>Giảm theo phần trăm (%)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProposeDiscountType('FIXED_AMOUNT')}
+                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          proposeDiscountType === 'FIXED_AMOUNT'
+                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
+                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
+                        }`}
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        <span>Giảm tiền cố định (VNĐ)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Giá trị giảm */}
+                  {proposeDiscountType === 'PERCENTAGE' ? (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Mức giảm (%)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={5}
+                            max={50}
+                            value={proposeDesiredPercent || ''}
+                            onChange={(e) => setProposeDesiredPercent(Number(e.target.value) || 0)}
+                            className="w-full px-3 py-2 text-xs font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                            placeholder="15"
+                          />
+                          <span className="text-xs font-bold text-[#7D715E]">%</span>
+                        </div>
+                        <div className="flex gap-1 mt-1">
+                          {[10, 15, 20, 25].map((pct) => (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => setProposeDesiredPercent(pct)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                                proposeDesiredPercent === pct
+                                  ? 'bg-[#B88E4F] text-white'
+                                  : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                              }`}
+                            >
+                              {pct}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Giảm tối đa (VNĐ)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={proposeMaxDiscount ? String(proposeMaxDiscount) : ''}
+                          onChange={(e) => handleNumericInput(e.target.value, setProposeMaxDiscount)}
+                          placeholder="50000"
+                          className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                        />
+                        <div className="flex items-center justify-between text-[10px] mt-0.5">
+                          <span className="text-[#7D715E]">Trần giảm bảo vệ Shop</span>
+                          {proposeMaxDiscount > 0 && (
+                            <span className="font-bold text-[#B88E4F] font-mono">
+                              {proposeMaxDiscount.toLocaleString('vi-VN')} ₫
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Số tiền giảm cố định (VNĐ)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={proposeFixedAmount ? String(proposeFixedAmount) : ''}
+                        onChange={(e) => handleNumericInput(e.target.value, setProposeFixedAmount)}
+                        placeholder="30000"
+                        className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      />
+                      {proposeFixedAmount > 0 && (
+                        <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
+                          Quy đổi: {proposeFixedAmount.toLocaleString('vi-VN')} ₫
+                        </div>
+                      )}
+                      <div className="flex gap-1.5 mt-1">
+                        {[20000, 30000, 50000, 100000].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setProposeFixedAmount(amt)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                              proposeFixedAmount === amt
+                                ? 'bg-[#B88E4F] text-white'
+                                : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                            }`}
+                          >
+                            {(amt / 1000).toLocaleString('vi-VN')}K
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Giá trị đơn tối thiểu */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Giá trị đơn hàng tối thiểu (VNĐ)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={proposeMinOrder ? String(proposeMinOrder) : ''}
+                      onChange={(e) => handleNumericInput(e.target.value, setProposeMinOrder)}
+                      placeholder="150000"
+                      className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                    />
+                    {proposeMinOrder > 0 && (
+                      <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
+                        Áp dụng đơn từ: {proposeMinOrder.toLocaleString('vi-VN')} ₫
+                      </div>
+                    )}
+                    <div className="flex gap-1.5 mt-1 flex-wrap">
+                      {[0, 100000, 150000, 200000, 300000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setProposeMinOrder(amt)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                            proposeMinOrder === amt
+                              ? 'bg-[#B88E4F] text-white'
+                              : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                          }`}
+                        >
+                          {amt === 0 ? 'Không giới hạn' : `${(amt / 1000).toLocaleString('vi-VN')}K`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phạm vi & Thời hạn */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Phạm vi áp dụng
+                      </label>
+                      <select
+                        value={proposeScopeType}
+                        onChange={(e) => setProposeScopeType(e.target.value as CouponScope)}
+                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      >
+                        <option value="STORE_WIDE">Toàn bộ gian hàng</option>
+                        <option value="PRODUCTS">Sản phẩm review chỉ định</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Thời hạn hiệu lực
+                      </label>
+                      <select
+                        value={proposeValidityDays}
+                        onChange={(e) => setProposeValidityDays(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      >
+                        <option value={14}>14 ngày (Đợt review)</option>
+                        <option value={30}>30 ngày (Tháng này)</option>
+                        <option value={60}>60 ngày (Dài hạn)</option>
+                        <option value={0}>Vô thời hạn</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Cam kết review */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Kế hoạch đẩy số / Mục đích sử dụng
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={proposeNote}
+                      onChange={(e) => setProposeNote(e.target.value)}
+                      placeholder="VD: Em chuẩn bị lên video review trên TikTok và ghim mã trong giỏ hàng..."
+                      className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. LIVE INTERACTIVE VOUCHER PREVIEW (Vé Ưu Đãi Trực Quan Thời Gian Thực) */}
                 <div className="pt-1">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-[#7D715E] mb-1.5">
                     <span className="flex items-center gap-1 text-[#B88E4F]">
@@ -1002,6 +1241,12 @@ export const KolCouponsPage: React.FC = () => {
                         <div className="text-[11px] text-[#7D715E] mt-0.5 truncate">
                           Áp dụng tại: <strong>{selectedStore?.name || selectedStore?.storeName || 'Gian hàng đối tác'}</strong>
                         </div>
+                        <div className="text-[10px] text-[#B88E4F] font-semibold mt-0.5">
+                          {proposeDiscountType === 'PERCENTAGE'
+                            ? `Giảm ${proposeDesiredPercent}%${proposeMaxDiscount ? ` (Tối đa ${(proposeMaxDiscount / 1000).toLocaleString('vi-VN')}K)` : ''}`
+                            : `Giảm ${(proposeFixedAmount / 1000).toLocaleString('vi-VN')}K₫`}
+                          {proposeMinOrder > 0 ? ` · Đơn từ ${(proposeMinOrder / 1000).toLocaleString('vi-VN')}K` : ''}
+                        </div>
                       </div>
 
                       <div className="shrink-0 text-right border-l border-dashed border-[#EEDFC6] pl-3 py-1">
@@ -1009,14 +1254,14 @@ export const KolCouponsPage: React.FC = () => {
                           Chờ duyệt
                         </span>
                         <div className="text-[10px] text-[#7D715E] mt-1">
-                          Shop cấu hình %
+                          {proposeValidityDays > 0 ? `${proposeValidityDays} ngày` : 'Dài hạn'}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
+                {/* 4. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
                   <div className={`flex items-center gap-1.5 ${isLengthValid ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
                     <span>{isLengthValid ? '✓' : '•'}</span>

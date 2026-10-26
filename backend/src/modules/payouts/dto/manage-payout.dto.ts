@@ -16,11 +16,27 @@ import {
 import { PayoutStatus } from '@prisma/client';
 import { QueryWithdrawalsDto } from './query-withdrawals.dto';
 
+export enum MerchantPayoutFilter {
+  ALL = 'ALL', PENDING = 'PENDING', APPROVED = 'APPROVED', TAX = 'TAX', KYC = 'KYC',
+}
+
 export class QueryMerchantPayoutsDto extends QueryWithdrawalsDto {
   @ApiPropertyOptional({ enum: PayoutStatus })
   @IsOptional()
   @IsEnum(PayoutStatus)
   status?: PayoutStatus;
+
+  @ApiPropertyOptional({ maxLength: 200, description: 'Tên/email KOL, ngân hàng, tài khoản hoặc UUID đầy đủ của yêu cầu' })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+
+  @ApiPropertyOptional({ enum: MerchantPayoutFilter, default: MerchantPayoutFilter.ALL })
+  @IsOptional()
+  @IsEnum(MerchantPayoutFilter)
+  filter?: MerchantPayoutFilter;
 }
 
 export class PayoutApprovalNoteDto {
