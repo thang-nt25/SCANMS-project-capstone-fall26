@@ -185,17 +185,23 @@ export const CustomerWalletTab: React.FC = () => {
               </div>
               <div className="flex items-end gap-[10px] @max-[599px]:flex-wrap">
                 <div className="flex-1 min-w-0 @max-[599px]:basis-full">
-                  <label htmlFor="cw-demo-amount" className="block mb-[5px] text-[11px] text-[#7D715E]">Số tiền nạp</label>
+                  <div className="flex items-center justify-between mb-[5px]">
+                    <label htmlFor="cw-demo-amount" className="block text-[11px] text-[#7D715E]">Số tiền nạp</label>
+                    {customAmount && Number(customAmount) > 0 && (
+                      <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
+                        {Number(customAmount).toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-[8px] min-h-[38px] px-[12px] border border-[#EAE4D7] focus-within:border-[#C59B58] rounded-[8px] bg-white">
                     <input
                       id="cw-demo-amount"
-                      type="number"
-                      min="10000"
-                      step="50000"
+                      type="text"
+                      inputMode="numeric"
                       value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
+                      onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
                       placeholder="Tối thiểu 10.000"
-                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550]"
+                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550] font-mono"
                     />
                     <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                   </div>

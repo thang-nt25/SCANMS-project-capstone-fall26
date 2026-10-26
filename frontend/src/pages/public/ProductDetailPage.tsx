@@ -37,7 +37,7 @@ import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
-import { couponService, type EligibleProductCoupon } from '@/services/coupon.service';
+import { couponService, type EligibleProductCoupon, type PublicStoreCoupon } from '@/services/coupon.service';
 import { voucherSlot } from '@/utils/voucher-intent';
 import { toast } from '@/utils/toast';
 import { formatMoney } from '@/utils/marketplace.utils';
@@ -419,7 +419,29 @@ export default function ProductDetailPage() {
   couponContextRef.current = couponContextKey;
   useEffect(() => { setAppliedCoupon(null); setCouponError(null); }, [couponContextKey]);
 
+  const [publicStoreCoupons, setPublicStoreCoupons] = useState<PublicStoreCoupon[]>([]);
+
+  useEffect(() => {
+    if (!data?.store?.id) return;
+    let active = true;
+    couponService.getPublicStoreCoupons(data.store.id, data.product?.id)
+      .then(items => { if (active) setPublicStoreCoupons(items); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [data?.store?.id, data?.product?.id]);
+
   const availableStoreCoupons = couponSuggestions.key === couponContextKey ? couponSuggestions.items : [];
+  const displayVouchers = availableStoreCoupons.length > 0
+    ? availableStoreCoupons
+    : publicStoreCoupons.map((c) => ({
+        id: c.id,
+        displayCode: c.code,
+        code: c.code,
+        discountType: c.discountType,
+        discountValue: c.discountValue,
+        discountAmount: c.discountValue,
+        minimumOrderAmount: c.minimumOrderAmount || 0,
+      }));
   // Recheck the same server rules used by Apply, with real SKU prices and account usage.
   useEffect(() => {
     setShowAllCoupons(false);
@@ -1568,6 +1590,66 @@ export default function ProductDetailPage() {
                 voucher={verifiedCoupon && discountAmount > 0 ? { code: verifiedCoupon.code, discount: discountAmount, total: finalTotal } : undefined}
               />
               <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
+
+              {/* Voucher của Shop (Hiển thị ngay dưới Khối giá) */}
+              {displayVouchers.length > 0 && (
+                <div data-product-price-vouchers className="flex items-center gap-4 py-3 border-t border-[#EAE4D7]/80">
+                  <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium flex items-center gap-1.5">
+                    <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    Mã giảm giá
+                  </span>
+                  <div className="flex-1 flex flex-wrap items-center gap-2">
+                    {displayVouchers.slice(0, 3).map((vc) => {
+                      const isApplied = verifiedCoupon?.code === vc.displayCode;
+                      const label = vc.discountType === 'PERCENTAGE'
+                        ? `Giảm ${vc.discountValue}%`
+                        : `Giảm ${Number(vc.discountAmount || vc.discountValue).toLocaleString('vi-VN')}₫`;
+                      return (
+                        <div
+                          key={vc.id}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
+                            isApplied
+                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6B32]'
+                              : 'bg-white border-[#EEDFC6] text-[#1A1612] hover:border-[#C59B58]'
+                          }`}
+                        >
+                          <span className="font-bold text-[#8C6B32]">{label}</span>
+                          <span className="font-mono text-[10px] text-[#7D715E] bg-[#FAF8F5] px-1 py-0.5 rounded border border-[#EAE4D7]">
+                            {vc.displayCode}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={couponLoading}
+                            onClick={() => {
+                              setCouponCode(vc.displayCode);
+                              applyCouponDirectly(vc.displayCode);
+                            }}
+                            className={`ml-1 text-[11px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${
+                              isApplied
+                                ? 'bg-[#059669] text-white'
+                                : 'bg-[#C59B58] text-white hover:bg-[#B88E4F]'
+                            }`}
+                          >
+                            {isApplied ? 'Đã áp dụng' : 'Lưu mã'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {displayVouchers.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.querySelector('[data-product-coupons]');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="text-[11px] font-semibold text-[#8C6B32] hover:underline"
+                      >
+                        +{displayVouchers.length - 3} mã khác
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Shipping estimate: realistic fulfillment info & voucher support */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
