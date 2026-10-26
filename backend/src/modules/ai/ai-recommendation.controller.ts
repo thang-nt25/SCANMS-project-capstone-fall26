@@ -64,7 +64,7 @@ export class AiRecommendationController {
     type: AiRecommendationResponseDto,
   })
   getRecommendationsForProduct(
-    @Param('productId', new ParseUUIDPipe({ version: '4' })) productId: string,
+    @Param('productId', new ParseUUIDPipe()) productId: string,
     @Query() query: RecommendKolsQueryDto,
     @CurrentUser() user: any,
   ) {
