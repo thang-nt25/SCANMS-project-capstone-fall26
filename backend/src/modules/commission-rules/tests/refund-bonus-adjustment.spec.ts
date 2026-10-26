@@ -114,7 +114,7 @@ describe('Refund bonus incremental recovery', () => {
       _sum: { adjustmentAmount: true },
     });
     expect(f.events.slice(0, 3)).toEqual([
-      'lock:refund-bonus:store-a:kol-a:2026-09',
+      'lock:monthly-bonus:store-a:kol-a',
       'order-lock',
       'refund-write',
     ]);
