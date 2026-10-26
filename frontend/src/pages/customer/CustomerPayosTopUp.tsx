@@ -206,18 +206,23 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
               </div>
               <div className="flex items-end gap-[10px] @max-[599px]:flex-wrap">
                 <div className="flex-1 min-w-0 @max-[599px]:basis-full">
-                  <label htmlFor="cw-payos-amount" className="block mb-[5px] text-[11px] text-[#7D715E]">Số tiền muốn nạp</label>
+                  <div className="flex items-center justify-between mb-[5px]">
+                    <label htmlFor="cw-payos-amount" className="block text-[11px] text-[#7D715E]">Số tiền muốn nạp</label>
+                    {amount && Number(amount) > 0 && (
+                      <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
+                        {Number(amount).toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-[8px] min-h-[38px] px-[12px] border border-[#EAE4D7] focus-within:border-[#C59B58] rounded-[8px] bg-white">
                     <input
                       id="cw-payos-amount"
-                      type="number"
-                      min={10000}
-                      max={50000000}
-                      step={10000}
+                      type="text"
+                      inputMode="numeric"
                       value={amount}
                       disabled={creating}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550]"
+                      onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550] font-mono"
                     />
                     <span className="text-[11px] text-[#7D715E]">VNĐ</span>
                   </div>

@@ -84,6 +84,50 @@ export class CommissionRulesController {
     return this.commissionRulesService.getSettlementHistory(storeId, yearMonth);
   }
 
+  @Get('team-progress')
+  @ApiOperation({
+    summary: 'Xem tiến độ doanh số và mốc thưởng của toàn bộ đội ngũ KOL thuộc Shop trong tháng',
+  })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  @ApiQuery({
+    name: 'yearMonth',
+    required: false,
+    example: '2026-10',
+    description: 'Kỳ tháng cần xem (mặc định tháng hiện tại)',
+  })
+  async getTeamProgress(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Query('yearMonth') yearMonth?: string,
+  ) {
+    return this.commissionRulesService.getTeamProgress(storeId, yearMonth);
+  }
+
+  @Post('settle-all')
+  @ApiOperation({
+    summary: 'Chốt đối soát hàng loạt cho tất cả KOL đạt mốc thưởng trong tháng',
+  })
+  @ApiParam({
+    name: 'storeId',
+    description: 'ID định danh của cửa hàng (UUID)',
+  })
+  async settleAll(
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Body() body: { yearMonth: string },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const user = req.user;
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    return this.commissionRulesService.settleAllEligible(
+      storeId,
+      body.yearMonth,
+      user?.id,
+      ipAddress,
+    );
+  }
+
   @Get('kol-progress/:collaboratorId')
   @ApiOperation({
     summary: 'Xem tiến độ doanh số và mốc thưởng của KOL trong tháng',

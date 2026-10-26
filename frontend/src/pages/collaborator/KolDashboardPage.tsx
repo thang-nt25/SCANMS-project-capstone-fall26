@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   MousePointerClick,
   ShoppingBag,
@@ -13,6 +14,12 @@ import {
   Clock,
   RefreshCw,
   PlusCircle,
+  Copy,
+  Check,
+  Package,
+  Award,
+  Radio,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { tierService, type TierStatus } from '@/services/tier.service';
@@ -23,7 +30,9 @@ import {
   type TimeSeriesPoint,
 } from '@/services/analytics.service';
 import { Select } from '@/components/ui/Select';
-import { kolDashboardRange, loadKolDashboard } from '@/utils/kol-dashboard';
+import KolProductCommissionTable from '../../components/affiliate/KolProductCommissionTable';
+import KolLivePerformanceCard from '../../components/affiliate/KolLivePerformanceCard';
+import { kolDashboardRange } from '@/utils/kol-dashboard';
 import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
@@ -64,53 +73,150 @@ function DashboardMetric({ label, value, note, growth, icon: Icon }: {
 
 export default function KolDashboardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState('7');
   const [metric, setMetric] = useState<'clicks' | 'orders' | 'revenue' | 'commission'>('clicks');
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'stores' | 'live'>('orders');
+  const [copiedOrderSn, setCopiedOrderSn] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<'wallet' | 'ledger' | 'overview' | 'series' | 'tier', string>>>({});
 
-  const [wallet, setWallet] = useState<WalletSummary | null>(null);
-  const [ledger, setLedger] = useState<LedgerHistory | null>(null);
-  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [tierStatus, setTierStatus] = useState<TierStatus | null>(null);
-  const requestSequence = useRef(0);
+  // TanStack Query Hooks with 3-minute stale cache and seamless keepPreviousData
+  const { data: wallet, isFetching: isFetchingWallet } = useQuery<WalletSummary | null>({
+    queryKey: ['kol-wallet'],
+    queryFn: () => walletService.getMyWallet().catch(() => null),
+    staleTime: 1000 * 60 * 3,
+  });
 
-  const loadData = async () => {
-    const requestId = ++requestSequence.current;
-    setLoading(true);
-    setErrors({});
-    setWallet(null); setLedger(null); setOverview(null); setTimeSeries([]); setTierStatus(null);
-    try {
+  const { data: ledger } = useQuery<LedgerHistory | null>({
+    queryKey: ['kol-ledger'],
+    queryFn: () => walletService.getMyLedger(1).catch(() => null),
+    staleTime: 1000 * 60 * 3,
+  });
+
+  const { data: overview, isFetching: isFetchingOverview } = useQuery<DashboardOverviewResponse | null>({
+    queryKey: ['kol-overview', period],
+    queryFn: () => {
       const days = Number(period) || 7;
       const query = kolDashboardRange(days);
-      const snapshot = await loadKolDashboard({
-        wallet: () => walletService.getMyWallet(),
-        ledger: () => walletService.getMyLedger(1),
-        overview: () => analyticsService.getRealtimeOverview(query),
-        series: () => analyticsService.getTimeSeries({ ...query, interval: 'daily' }),
-        tier: () => tierService.getMyTierStatus(),
+      return analyticsService.getRealtimeOverview(query).catch(() => {
+        setErrors((prev) => ({ ...prev, overview: 'Chưa thể tải tổng quan.' }));
+        return null;
       });
+    },
+    staleTime: 1000 * 60 * 3,
+    placeholderData: keepPreviousData,
+  });
 
-      if (requestId !== requestSequence.current) return;
-      setErrors(snapshot.errors);
-      setWallet(snapshot.wallet);
-      setLedger(snapshot.ledger);
-      setOverview(snapshot.overview);
-      setTimeSeries(snapshot.series);
-      setTierStatus(snapshot.tier);
-    } catch (err) {
-      if (requestId === requestSequence.current) setErrors({ overview: 'Chưa thể tải dashboard. Vui lòng thử lại.' });
-      console.error('Lỗi tải dữ liệu Dashboard KOL:', err);
-    } finally {
-      if (requestId === requestSequence.current) setLoading(false);
-    }
+  const { data: timeSeries = [] } = useQuery<TimeSeriesPoint[]>({
+    queryKey: ['kol-timeseries', period],
+    queryFn: async () => {
+      const days = Number(period) || 7;
+      const query = kolDashboardRange(days);
+      const res = await analyticsService.getTimeSeries({
+        ...query,
+        interval: 'daily',
+      }).catch(() => []);
+      return Array.isArray(res) ? res : [];
+    },
+    staleTime: 1000 * 60 * 3,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: tierStatus } = useQuery<TierStatus | null>({
+    queryKey: ['kol-tier-status'],
+    queryFn: () => tierService.getMyTierStatus().catch(() => null),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: referralOrdersData } = useQuery({
+    queryKey: ['kol-referral-orders'],
+    queryFn: () => analyticsService.getCollaboratorReferralOrders({ limit: 10 }).catch(() => null),
+    staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: topProductsData, isFetching: isFetchingProducts } = useQuery({
+    queryKey: ['kol-top-products'],
+    queryFn: () => analyticsService.getCollaboratorTopProducts(10).catch(() => null),
+    staleTime: 1000 * 60 * 3,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: liveData, isFetching: isFetchingLive } = useQuery({
+    queryKey: ['kol-live-summary'],
+    queryFn: () => analyticsService.getCollaboratorLiveSessionsSummary().catch(() => null),
+    staleTime: 1000 * 60 * 3,
+    placeholderData: keepPreviousData,
+  });
+
+  const referralOrders = referralOrdersData?.items || [];
+  const topProducts = topProductsData?.items || [];
+  const liveSummary = {
+    sessions: liveData?.sessions || [],
+    totals: liveData?.totals || { totalLiveRevenue: 0, totalLiveCommission: 0, totalLiveOrders: 0 },
   };
 
-  useEffect(() => {
-    void loadData();
-    return () => { requestSequence.current += 1; };
-  }, [period]);
+  const storeBreakdown = useMemo(() => {
+    const storeMap = new Map<string, { storeName: string; ordersCount: number; totalRevenue: number; totalCommission: number }>();
+
+    referralOrders.forEach((order) => {
+      const sName = order.storeName || 'Sora Skin Official';
+      const existing = storeMap.get(sName) || {
+        storeName: sName,
+        ordersCount: 0,
+        totalRevenue: 0,
+        totalCommission: 0,
+      };
+      existing.ordersCount += 1;
+      existing.totalRevenue += Number(order.finalAmount || 0);
+      existing.totalCommission += Number(order.commissionAmount || 0);
+      storeMap.set(sName, existing);
+    });
+
+    topProducts.forEach((prod) => {
+      if (prod.storeName && !storeMap.has(prod.storeName)) {
+        storeMap.set(prod.storeName, {
+          storeName: prod.storeName,
+          ordersCount: prod.ordersCount || 0,
+          totalRevenue: prod.grossRevenue || 0,
+          totalCommission: Math.round((prod.grossRevenue || 0) * 0.1),
+        });
+      }
+    });
+
+    if (storeMap.size === 0) {
+      storeMap.set('Sora Skin Official', {
+        storeName: 'Sora Skin Official',
+        ordersCount: 0,
+        totalRevenue: 0,
+        totalCommission: 0,
+      });
+    }
+
+    const items = Array.from(storeMap.values());
+    const grandTotalCommission = items.reduce((sum, s) => sum + s.totalCommission, 0) || 1;
+
+    return items
+      .map((item) => ({
+        ...item,
+        percentage: Math.min(100, Math.round((item.totalCommission / grandTotalCommission) * 100)),
+      }))
+      .sort((a, b) => b.totalCommission - a.totalCommission);
+  }, [referralOrdersData?.items, topProductsData?.items]);
+
+  const loading = isFetchingOverview || isFetchingWallet;
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['kol-overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-timeseries'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-wallet'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-ledger'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-referral-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-top-products'] }),
+      queryClient.invalidateQueries({ queryKey: ['kol-live-summary'] }),
+    ]);
+  };
 
   const metrics = overview?.metrics;
   const availBal = wallet ? Number(wallet.availableBalance) : null;
@@ -133,7 +239,7 @@ export default function KolDashboardPage() {
     <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
       {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
         <p className="m-0">{Object.values(errors).join(' ')} Dấu — nghĩa là chưa có dữ liệu xác nhận, không phải số dư bằng 0.</p>
-        <button type="button" disabled={loading} onClick={() => void loadData()} className="mt-2 font-semibold text-[#B88E4F] underline disabled:opacity-50">Thử tải lại</button>
+        <button type="button" disabled={loading} onClick={() => void handleRefresh()} className="mt-2 font-semibold text-[#B88E4F] underline disabled:opacity-50">Thử tải lại</button>
       </div>}
       <section className="grid w-full grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-4 shadow-xs" aria-label="Bộ lọc và thao tác tổng quan KOL">
             <div className="w-full">
@@ -152,7 +258,7 @@ export default function KolDashboardPage() {
             <button
               type="button"
               className="order-last inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#FBF5EB] transition-colors disabled:opacity-60 cursor-pointer"
-              onClick={() => void loadData()}
+              onClick={() => void handleRefresh()}
               disabled={loading}
             >
               <RefreshCw size={14} className={`text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
@@ -185,24 +291,62 @@ export default function KolDashboardPage() {
       </section>
 
       <div className="min-w-0 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-        <section className="grid grid-cols-1 md:grid-cols-2 items-center gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
-          <div className="grid gap-1.5 min-w-0 p-3 sm:p-4 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E] leading-relaxed">
-              <Wallet size={15} className="text-[#B88E4F]" aria-hidden="true" />
-              Số dư khả dụng
-            </span>
-            <strong className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight tabular-nums text-[#1A1612]">
+        <section className="grid grid-cols-1 md:grid-cols-3 items-stretch gap-2.5 p-3.5" aria-label="Số dư ví KOL" aria-busy={loading}>
+          {/* 1. Số dư khả dụng */}
+          <div className="flex flex-col justify-between gap-2 p-3 sm:p-4 rounded-xl border border-[#EEDFC6] bg-gradient-to-b from-[#FBF5EB] to-white shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <Wallet size={15} className="text-[#B88E4F]" aria-hidden="true" />
+                Số dư khả dụng
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF8F5] text-[#059669] border border-[#EAE4D7]">
+                Rút ngay 24/7
+              </span>
+            </div>
+            <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1A1612] my-0.5">
               {availBal === null ? '—' : `${availBal.toLocaleString('vi-VN')} ₫`}
             </strong>
-          </div>
-          <div className="grid gap-1.5 min-w-0 p-3 sm:p-4 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]">
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#7D715E] leading-relaxed">
-              <Clock size={14} className="text-[#B88E4F]" aria-hidden="true" />
-              Chờ đối soát Escrow
+            <span className="text-[10px] text-[#7D715E] leading-tight">
+              Có thể rút tiền về tài khoản ngân hàng liên kết bất kỳ lúc nào.
             </span>
-            <strong className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight tabular-nums text-[#1A1612]">
+          </div>
+
+          {/* 2. Chờ đối soát Escrow */}
+          <div className="flex flex-col justify-between gap-2 p-3 sm:p-4 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/80 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <Clock size={14} className="text-[#B88E4F]" aria-hidden="true" />
+                Chờ đối soát Escrow
+              </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#B88E4F] border border-[#EEDFC6]">
+                14 ngày bảo chứng
+              </span>
+            </div>
+            <strong className="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums text-[#1A1612] my-0.5">
               {pendingBal === null ? '—' : `${pendingBal.toLocaleString('vi-VN')} ₫`}
             </strong>
+            <span className="text-[10px] text-[#7D715E] leading-tight">
+              Đơn đã giao thành công, đang đếm ngược thời gian khiếu nại đổi trả.
+            </span>
+          </div>
+
+          {/* 3. Hoa hồng tạm tính */}
+          <div className="flex flex-col justify-between gap-2 p-3 sm:p-4 rounded-xl border border-[#EEDFC6] bg-gradient-to-br from-white via-[#FBF5EB] to-white shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8C6226]">
+                <ShoppingBag size={14} className="text-[#B88E4F]" aria-hidden="true" />
+                Hoa hồng tạm tính
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#B88E4F] border border-[#EEDFC6]">
+                {(metrics?.pendingOrdersCount || 0)} đơn mới
+              </span>
+            </div>
+            <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#B88E4F] my-0.5">
+              {(metrics?.estimatedCommission || 0).toLocaleString('vi-VN')} ₫
+            </strong>
+            <span className="text-[10px] text-[#7D715E] leading-tight">
+              Ghi nhận ngay khi khách đặt mua qua link; chuyển vào ví chờ sau khi giao.
+            </span>
           </div>
         </section>
 
@@ -440,6 +584,285 @@ export default function KolDashboardPage() {
           </div>
         </div>
       </div>
-    </section>
+
+      {/* KHỐI BÁO CÁO CHI TIẾT GỌN GÀNG DẠNG SUB-TABS (TRÁNH KÉO DÀI TRANG) */}
+      <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
+        {/* Khay tab điều hướng */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-[#EAE4D7] bg-[#FAF8F5]/80">
+          <div className="inline-flex p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('orders')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'orders'
+                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                  : 'text-[#7D715E] hover:text-[#1A1612]'
+              }`}
+            >
+              <ShoppingBag size={13} className={activeTab === 'orders' ? 'text-[#B88E4F]' : ''} />
+              <span>Đơn hàng</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
+                {referralOrders.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('products')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'products'
+                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                  : 'text-[#7D715E] hover:text-[#1A1612]'
+              }`}
+            >
+              <Award size={13} className={activeTab === 'products' ? 'text-[#B88E4F]' : ''} />
+              <span>Sản phẩm</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
+                {topProducts.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('stores')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'stores'
+                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                  : 'text-[#7D715E] hover:text-[#1A1612]'
+              }`}
+            >
+              <Store size={13} className={activeTab === 'stores' ? 'text-[#B88E4F]' : ''} />
+              <span>Gian hàng</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
+                {storeBreakdown.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('live')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'live'
+                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                  : 'text-[#7D715E] hover:text-[#1A1612]'
+              }`}
+            >
+              <Radio size={13} className={activeTab === 'live' ? 'text-[#B88E4F]' : ''} />
+              <span>Livestream</span>
+              {liveSummary.sessions.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
+                  {liveSummary.sessions.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <span className="text-[11px] text-[#7D715E]">
+            {activeTab === 'orders' && `${referralOrders.length} đơn hàng tiếp thị gần nhất`}
+            {activeTab === 'products' && `${topProducts.length} sản phẩm ghi nhận doanh số`}
+            {activeTab === 'stores' && `${storeBreakdown.length} gian hàng đối tác`}
+            {activeTab === 'live' && `${liveSummary.sessions.length} phiên Live có ghim giỏ hàng`}
+          </span>
+        </div>
+
+        {/* Nội dung Tab 1: Đơn hàng tiếp thị */}
+        {activeTab === 'orders' &&
+          (referralOrders.length === 0 ? (
+          <div className="py-10 px-4 text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center mb-2.5">
+              <Package size={22} />
+            </div>
+            <strong className="text-sm font-semibold text-[#1A1612]">Chưa phát sinh đơn hàng qua liên kết</strong>
+            <p className="text-xs text-[#7D715E] max-w-md mt-1 mb-3.5">
+              Khi khách hàng nhấp vào link tiếp thị và đặt mua sản phẩm, đơn hàng và hoa hồng tạm tính sẽ xuất hiện ngay tại đây.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/collaborator/marketing?tab=links')}
+              className="px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              Lấy link chia sẻ ngay
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7]">
+                <tr>
+                  <th className="px-3.5 py-2.5 font-bold">Mã đơn hàng</th>
+                  <th className="px-3.5 py-2.5 font-bold">Thời gian đặt</th>
+                  <th className="px-3.5 py-2.5 font-bold">Sản phẩm & Gian hàng</th>
+                  <th className="px-3.5 py-2.5 font-bold text-right">Giá trị đơn</th>
+                  <th className="px-3.5 py-2.5 font-bold text-right">Hoa hồng ({referralOrders[0]?.commissionRate || 10}%)</th>
+                  <th className="px-3.5 py-2.5 font-bold text-center">Trạng thái đối soát</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EAE4D7]">
+                {referralOrders.map((order) => {
+                  const isDelivered = order.status === 'DELIVERED';
+                  const isCompleted = order.status === 'COMPLETED';
+                  const isCancelled = order.status === 'CANCELLED';
+                  const firstProduct = order.products?.[0];
+                  const otherCount = (order.products?.length || 1) - 1;
+
+                  return (
+                    <tr key={order.id} className="hover:bg-[#FAF8F5]/60 transition-colors">
+                      <td className="px-3.5 py-3 font-mono font-bold text-[#1A1612]">
+                        <div className="flex items-center gap-1.5">
+                          <span>{order.orderCode}</span>
+                          <button
+                            type="button"
+                            aria-label={`Sao chép mã đơn ${order.orderCode}`}
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.orderCode);
+                              setCopiedOrderSn(order.orderCode);
+                              setTimeout(() => setCopiedOrderSn(null), 1500);
+                            }}
+                            className="text-[#7D715E] hover:text-[#B88E4F] p-0.5 rounded cursor-pointer"
+                            title="Sao chép mã đơn"
+                          >
+                            {copiedOrderSn === order.orderCode ? (
+                              <Check size={12} className="text-[#059669]" />
+                            ) : (
+                              <Copy size={12} />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3 text-[#7D715E] whitespace-nowrap">
+                        {new Date(order.createdAt).toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-2.5 min-w-0 max-w-xs">
+                          {firstProduct?.imageUrl ? (
+                            <img
+                              src={firstProduct.imageUrl}
+                              alt={firstProduct.title}
+                              className="w-8 h-8 rounded-lg object-cover border border-[#EAE4D7] shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center shrink-0">
+                              <ShoppingBag size={14} className="text-[#B88E4F]" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-semibold text-[#1A1612] truncate block" title={firstProduct?.title}>
+                              {firstProduct?.title || 'Sản phẩm tiếp thị'}
+                              {otherCount > 0 && ` (+${otherCount})`}
+                            </span>
+                            <span className="text-[10px] text-[#7D715E] truncate block">
+                              {order.storeName}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-bold text-[#1A1612] tabular-nums whitespace-nowrap">
+                        {order.finalAmount.toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-extrabold text-[#B88E4F] tabular-nums whitespace-nowrap">
+                        +{order.commissionAmount.toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="px-3.5 py-3 text-center whitespace-nowrap">
+                        {isCompleted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#059669] border border-[#EEDFC6]">
+                            ✓ Đã hoàn tất (Khả dụng)
+                          </span>
+                        ) : isDelivered ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#B88E4F] border border-[#EAE4D7]">
+                            <Clock size={11} /> Chờ đối soát Escrow
+                          </span>
+                        ) : isCancelled ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                            ✕ Đã hủy
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
+                            <Clock size={11} /> Hoa hồng tạm tính
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+      {/* Nội dung Tab 2: Hiệu suất theo sản phẩm */}
+      {activeTab === 'products' && (
+        <div className="p-0">
+          <KolProductCommissionTable items={topProducts} loading={isFetchingProducts} />
+        </div>
+      )}
+
+      {/* Nội dung Tab: Phân bổ hoa hồng theo gian hàng */}
+      {activeTab === 'stores' && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#7D715E]">
+                <th className="py-3 px-4">Gian hàng</th>
+                <th className="py-3 px-4 text-center">Số đơn</th>
+                <th className="py-3 px-4 text-right">Doanh số (GMV)</th>
+                <th className="py-3 px-4 text-right">Hoa hồng nhận</th>
+                <th className="py-3 px-4 text-right">Tỷ trọng</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EAE4D7]">
+              {storeBreakdown.map((item, idx) => (
+                <tr key={item.storeName || idx} className="hover:bg-[#FBF5EB]/40 transition">
+                  <td className="py-3 px-4 font-semibold text-[#1A1612]">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-center text-[#B88E4F] shrink-0">
+                        <Store size={14} />
+                      </div>
+                      <span>{item.storeName}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-center text-[#1A1612] tabular-nums font-medium">
+                    {item.ordersCount}
+                  </td>
+                  <td className="py-3 px-4 text-right font-semibold text-[#1A1612] tabular-nums">
+                    {item.totalRevenue.toLocaleString('vi-VN')} ₫
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold text-[#B88E4F] tabular-nums">
+                    {item.totalCommission.toLocaleString('vi-VN')} ₫
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <div className="inline-flex items-center gap-2 justify-end">
+                      <div className="w-16 h-1.5 rounded-full bg-[#EAE4D7] overflow-hidden">
+                        <div
+                          className="h-full bg-[#C59B58] rounded-full"
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono text-[#7D715E] w-8 tabular-nums">
+                        {item.percentage}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Nội dung Tab 3: Phiên Livestream */}
+      {activeTab === 'live' && (
+        <div className="p-0">
+          <KolLivePerformanceCard
+            sessions={liveSummary.sessions}
+            totals={liveSummary.totals}
+            loading={isFetchingLive}
+          />
+        </div>
+      )}
+    </div>
+  </section>
   );
 }

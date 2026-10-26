@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Tag, Trophy, Link2 } from 'lucide-react';
+import { Tag, Calendar, Handshake, Trophy, Link2 } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import ShopCouponsPage from './ShopCouponsPage';
+import ShopCampaignsPage from './ShopCampaignsPage';
+import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
 
@@ -35,8 +37,18 @@ export default function ShopPromotionsHubPage() {
       icon: Tag,
     },
     {
+      id: 'campaigns',
+      label: 'Chiến dịch',
+      icon: Calendar,
+    },
+    {
+      id: 'exclusive-deals',
+      label: 'Thỏa thuận độc quyền',
+      icon: Handshake,
+    },
+    {
       id: 'commission-rules',
-      label: 'Hoa hồng & thưởng',
+      label: 'Thưởng mốc doanh số',
       icon: Trophy,
     },
     {
@@ -54,7 +66,7 @@ export default function ShopPromotionsHubPage() {
         onChange={handleTabChange}
         compact
         stretchTabs
-        stretchTabColumns={3}
+        stretchTabColumns={5}
         tone="white"
         className="promotions-tabs mb-0"
       />
@@ -63,6 +75,18 @@ export default function ShopPromotionsHubPage() {
         {activeTab === 'coupons' && (
           <div className="animate-in fade-in-50 duration-200">
             <ShopCouponsPage />
+          </div>
+        )}
+
+        {activeTab === 'campaigns' && (
+          <div className="animate-in fade-in-50 duration-200">
+            <ShopCampaignsPage embedded />
+          </div>
+        )}
+
+        {activeTab === 'exclusive-deals' && (
+          <div className="animate-in fade-in-50 duration-200">
+            <ExclusiveDealInbox />
           </div>
         )}
 

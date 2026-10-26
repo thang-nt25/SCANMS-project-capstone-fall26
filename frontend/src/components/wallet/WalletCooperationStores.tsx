@@ -11,11 +11,10 @@ export function WalletCooperationStores({ stores = [] }: { stores?: WalletSummar
   return <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
     <button type="button" aria-expanded={open} aria-controls="wallet-cooperation-shops" onClick={() => setOpen(value => !value)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#FAF8F5]">
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><Store size={18} /></span>
-      <span className="flex-1"><span className="text-sm font-semibold text-[#1A1612]">Gian hàng hợp tác <span className="ml-1 text-xs font-normal text-[#7D715E]">({stores.length})</span></span><span className="mt-0.5 block text-xs text-[#7D715E]">Trạng thái hợp tác và hoa hồng theo từng Shop.</span></span>
+      <span className="flex-1"><span className="text-sm font-bold text-[#1A1612]">Gian hàng đối tác <span className="ml-1 text-xs font-normal text-[#7D715E]">({stores.length})</span></span></span>
       <ChevronDown size={17} className={`text-[#B88E4F] transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
     {open && <div id="wallet-cooperation-shops" className="border-t border-[#EAE4D7] p-4">
-      <p className="mb-3 text-xs leading-relaxed text-[#7D715E]">KOL có thể hợp tác với nhiều Shop. Danh sách rút tiền chỉ gồm Shop đã có ví hoa hồng; được duyệt hợp tác chưa đồng nghĩa đã phát sinh thu nhập.</p>
       {stores.length > 6 && <label className="mb-3 flex max-w-sm items-center gap-2 rounded-xl border border-[#EAE4D7] px-3 py-2 text-[#7D715E]"><Search size={15} /><input aria-label="Tìm gian hàng hợp tác" value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm tên Shop…" className="w-full bg-transparent text-xs outline-none" /></label>}
       <div className="max-h-80 overflow-auto rounded-xl border border-[#EAE4D7]">
         <table className="w-full min-w-[530px] text-left text-xs">

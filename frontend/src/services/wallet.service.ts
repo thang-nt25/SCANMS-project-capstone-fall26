@@ -65,7 +65,7 @@ export const walletService = {
     ).data;
   },
 
-  async createWithdrawal(amount: string, storeId: string) {
+  async createWithdrawal(amount: string, storeId?: string) {
     return (
       await api.post<
         never,
@@ -74,7 +74,7 @@ export const walletService = {
           request: WithdrawalRequest;
           availableBalance: string;
         }>
-      >("/wallets/withdrawals", { amount, storeId })
+      >("/wallets/withdrawals", { amount, ...(storeId ? { storeId } : {}) })
     ).data;
   },
 

@@ -40,8 +40,12 @@ export default function MainLayout() {
     };
 
     window.addEventListener('auth-user-updated', handleUserUpdated);
-    return () => window.removeEventListener('auth-user-updated', handleUserUpdated);
-  }, [location.pathname]);
+    window.addEventListener('scanms_workspace_changed', handleUserUpdated);
+    return () => {
+      window.removeEventListener('auth-user-updated', handleUserUpdated);
+      window.removeEventListener('scanms_workspace_changed', handleUserUpdated);
+    };
+  }, []);
 
   const handleLogout = () => {
     authService.logout();

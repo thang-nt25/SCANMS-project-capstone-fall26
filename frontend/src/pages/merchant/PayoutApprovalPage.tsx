@@ -1,1938 +1,372 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { useParams } from "react-router-dom";
-import { Download, RefreshCw, ReceiptText, ShieldCheck, Landmark, ChevronRight, Plus, BarChart3, Clock, Hourglass, CheckCircle, FileText, AlertTriangle, X, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from 'react';
 import {
-  payoutService,
-  getPayoutErrorMessage,
-} from "../../services/payout.service";
-import type {
-  MerchantPayout,
-  MerchantPayoutBatch,
-  MerchantPayoutHistory,
-} from "../../services/payout.service";
-import type { PayoutStatus } from "../../services/wallet.service";
-import { storeService } from "../../services/store.service";
-import { authService } from "../../services/auth.service";
-import PayoutBillUpload from "../../components/payouts/PayoutBillUpload";
-import { BankSelectorModal } from "../../components/bank/BankSelectorModal";
-import { ConfirmModal } from "../../components/ui/ConfirmModal";
-import { Select } from "../../components/ui/Select";
-import { type VietQrBank, findBankByQuery } from "@/config/banks.config";
-import { toast } from "../../utils/toast";
-import { fixturePayoutView, payoutPagination } from '@/utils/merchant-payout-view';
-import { ledgerAmountPresentation } from '@/utils/ledger-amount';
-import {
-  maskBankAccount,
-  MAX_PAYOUT_BILL_BYTES,
-  validatePayoutBill,
-} from "@/validations/payout-bill.validation";
+  CreditCard,
+  Download,
+  Search,
+  ShieldCheck,
+  Loader2,
+} from 'lucide-react';
+import { storeService } from '../../services/store.service';
+import { toast } from '../../utils/toast';
 
-const STATUS_LABELS: Record<PayoutStatus, string> = {
-  PENDING: "Chờ xử lý",
-  PROCESSING: "Chờ chuyển khoản",
-  APPROVED: "Đã xác nhận chi trả",
-  REJECTED: "Đã từ chối",
-};
-const money = (amount: string) =>
-  ledgerAmountPresentation(amount).text.replace(/^\+/, '');
-const buttonClass =
-  "rounded-xl border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
-
-function saveWorkbook(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+interface CommissionStatementItem {
+  id: string;
+  orderCode: string;
+  orderDate: string;
+  collaboratorName: string;
+  collaboratorAvatar?: string;
+  orderAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  settlementStatus: 'HOLDING_14D' | 'SETTLED' | 'CLAWBACKED';
+  productName: string;
 }
 
-// Dữ liệu mẫu chuẩn Figma 13 (24 chờ duyệt ~48.2tr, 9 đã duyệt ~17.65tr, thuế ~4.82tr, 3 cần bổ sung KYC)
-const FIGMA13_PAYOUT_SEEDS: MerchantPayout[] = [
-  {
-    id: "PAY-20261003-8801",
-    collaboratorId: "kol-1",
-    collaboratorName: "Trần Văn Nhật",
-    collaboratorEmail: "nhat.tran@gmail.com",
-    collaboratorPhone: "0988776655",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: "8472910394",
-    kycStatus: "VERIFIED",
-    storeId: "store-sora",
-    amount: "2500000",
-    taxAmount: "250000",
-    netAmount: "2250000",
-    status: "PENDING",
-    bankName: "MBBank (Quân đội)",
-    bankAccountNumber: "0988776655",
-    bankAccountName: "TRAN VAN NHAT",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    processedAt: null,
-  },
-  {
-    id: "PAY-20261003-8802",
-    collaboratorId: "kol-2",
-    collaboratorName: "Lê Mai Anh",
-    collaboratorEmail: "maianh.le@gmail.com",
-    collaboratorPhone: "0912345678",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: "8592019481",
-    kycStatus: "VERIFIED",
-    storeId: "store-sora",
-    amount: "1800000",
-    taxAmount: "0",
-    netAmount: "1800000",
-    status: "PENDING",
-    bankName: "Vietcombank",
-    bankAccountNumber: "1012345678",
-    bankAccountName: "LE MAI ANH",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    processedAt: null,
-  },
-  {
-    id: "PAY-20261003-8803",
-    collaboratorId: "kol-3",
-    collaboratorName: "Phạm Khánh Linh",
-    collaboratorEmail: "khanhlinh.pham@gmail.com",
-    collaboratorPhone: "0933445566",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: null,
-    kycStatus: "PENDING",
-    storeId: "store-sora",
-    amount: "3200000",
-    taxAmount: "320000",
-    netAmount: "2880000",
-    status: "PENDING",
-    bankName: "Techcombank",
-    bankAccountNumber: "19033445566",
-    bankAccountName: "PHAM KHANH LINH",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
-    processedAt: null,
-  },
-  {
-    id: "PAY-20261003-8804",
-    collaboratorId: "kol-4",
-    collaboratorName: "Đặng Thu Thảo",
-    collaboratorEmail: "thuthao.dang@gmail.com",
-    collaboratorPhone: "0977889900",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: "8201948271",
-    kycStatus: "VERIFIED",
-    storeId: "store-sora",
-    amount: "5600000",
-    taxAmount: "560000",
-    netAmount: "5040000",
-    status: "APPROVED",
-    bankName: "ACB",
-    bankAccountNumber: "23456789",
-    bankAccountName: "DANG THU THAO",
-    bankRefCode: "MBB202610038821",
-    batchId: "BATCH-20261003-01",
-    hasBill: true,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 8).toISOString(),
-    processedAt: new Date(Date.now() - 3600000 * 7).toISOString(),
-  },
-  {
-    id: "PAY-20261003-8805",
-    collaboratorId: "kol-5",
-    collaboratorName: "Vũ Đức Huy",
-    collaboratorEmail: "duchuy.vu@gmail.com",
-    collaboratorPhone: "0966554433",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: null,
-    kycStatus: "REJECTED",
-    storeId: "store-sora",
-    amount: "1200000",
-    taxAmount: "0",
-    netAmount: "1200000",
-    status: "PENDING",
-    bankName: "VPBank",
-    bankAccountNumber: "9876543210",
-    bankAccountName: "VU DUC HUY",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 10).toISOString(),
-    processedAt: null,
-  },
-  {
-    id: "PAY-20261003-8806",
-    collaboratorId: "kol-6",
-    collaboratorName: "Hoàng Bảo Ngọc",
-    collaboratorEmail: "baongoc.hoang@gmail.com",
-    collaboratorPhone: "0944332211",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: "8192847193",
-    kycStatus: "VERIFIED",
-    storeId: "store-sora",
-    amount: "4500000",
-    taxAmount: "450000",
-    netAmount: "4050000",
-    status: "APPROVED",
-    bankName: "BIDV",
-    bankAccountNumber: "58110000123456",
-    bankAccountName: "HOANG BAO NGOC",
-    bankRefCode: "BIDV77218392",
-    batchId: "BATCH-20261003-01",
-    hasBill: true,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    processedAt: new Date(Date.now() - 3600000 * 11).toISOString(),
-  },
-  {
-    id: "PAY-20261003-8807",
-    collaboratorId: "kol-7",
-    collaboratorName: "Nguyễn Minh Triết",
-    collaboratorEmail: "minhtriet.nguyen@gmail.com",
-    collaboratorPhone: "0922110099",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: "8391827401",
-    kycStatus: "VERIFIED",
-    storeId: "store-sora",
-    amount: "8900000",
-    taxAmount: "890000",
-    netAmount: "8010000",
-    status: "PENDING",
-    bankName: "TPBank",
-    bankAccountNumber: "03982182001",
-    bankAccountName: "NGUYEN MINH TRIET",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 14).toISOString(),
-    processedAt: null,
-  },
-  {
-    id: "PAY-20261003-8808",
-    collaboratorId: "kol-8",
-    collaboratorName: "Chu Thị Bích Vân",
-    collaboratorEmail: "bichvan.chu@gmail.com",
-    collaboratorPhone: "0911223344",
-    collaboratorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
-    collaboratorTaxCode: null,
-    kycStatus: "PENDING",
-    storeId: "store-sora",
-    amount: "2100000",
-    taxAmount: "210000",
-    netAmount: "1890000",
-    status: "PENDING",
-    bankName: "Agribank",
-    bankAccountNumber: "1500205839201",
-    bankAccountName: "CHU THI BICH VAN",
-    bankRefCode: null,
-    batchId: null,
-    hasBill: false,
-    rejectedReason: null,
-    createdAt: new Date(Date.now() - 3600000 * 16).toISOString(),
-    processedAt: null,
-  }
-];
+const formatMoney = (val: number) =>
+  `${Number(val || 0).toLocaleString('vi-VN')} ₫`;
 
-const FIGMA13_BATCH_SEEDS: MerchantPayoutBatch[] = [
+const SETTLEMENT_BADGES: Record<string, { label: string; className: string }> = {
+  HOLDING_14D: { label: 'Tạm giữ 14 ngày', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  SETTLED: { label: 'Đã quyết toán', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  CLAWBACKED: { label: 'Đã thu hồi', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+// Seeded statements for business realism
+const DEMO_STATEMENTS: CommissionStatementItem[] = [
   {
-    id: "BATCH-20261003-01",
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    payoutCount: 9,
+    id: 'stmt-01',
+    orderCode: 'SCN-99824',
+    orderDate: '2026-10-24T14:30:00Z',
+    collaboratorName: 'Nguyễn Mai Anh',
+    collaboratorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+    orderAmount: 1450000,
+    commissionRate: 13,
+    commissionAmount: 188500,
+    settlementStatus: 'SETTLED',
+    productName: 'Serum Vitamin C 15% Sora Skin 30 ml',
   },
   {
-    id: "BATCH-20261002-02",
-    createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
-    payoutCount: 15,
+    id: 'stmt-02',
+    orderCode: 'SCN-99821',
+    orderDate: '2026-10-25T09:15:00Z',
+    collaboratorName: 'Phan Hải Yến',
+    collaboratorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+    orderAmount: 580000,
+    commissionRate: 10,
+    commissionAmount: 58000,
+    settlementStatus: 'HOLDING_14D',
+    productName: 'Sữa rửa mặt dịu nhẹ pH 5.5 Sora Skin 100 ml',
+  },
+  {
+    id: 'stmt-03',
+    orderCode: 'SCN-99781',
+    orderDate: '2026-10-23T16:20:00Z',
+    collaboratorName: 'Trần Văn Nhật',
+    collaboratorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+    orderAmount: 2200000,
+    commissionRate: 12,
+    commissionAmount: 264000,
+    settlementStatus: 'SETTLED',
+    productName: 'Combo Phục Hồi Dưỡng Ẩm Chuyên Sâu Sora Skin',
+  },
+  {
+    id: 'stmt-04',
+    orderCode: 'SCN-99750',
+    orderDate: '2026-10-22T11:00:00Z',
+    collaboratorName: 'Lê Minh Khang',
+    collaboratorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+    orderAmount: 490000,
+    commissionRate: 10,
+    commissionAmount: 49000,
+    settlementStatus: 'CLAWBACKED',
+    productName: 'Kem Chống Nắng Phổ Rộng SPF 50+ Sora Skin',
   },
 ];
 
 export default function PayoutApprovalPage() {
-  const fixtureMode = import.meta.env.DEV && import.meta.env.VITE_PAYOUT_FIXTURES_ENABLED === 'true';
-  const { storeId: routeStoreId } = useParams<{ storeId: string }>();
-  const [storeId, setStoreId] = useState(routeStoreId ?? "");
-  const [history, setHistory] = useState<MerchantPayoutHistory | null>(null);
-  const [localRequests, setLocalRequests] = useState<MerchantPayout[]>(fixtureMode ? FIGMA13_PAYOUT_SEEDS : []);
-  const [batches, setBatches] = useState<MerchantPayoutBatch[]>(fixtureMode ? FIGMA13_BATCH_SEEDS : []);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<PayoutStatus | "">("");
-  const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'TAX' | 'KYC'>('ALL');
-  const [selected, setSelected] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = window.setTimeout(() => { setPage(1); setSelected([]); setDebouncedSearch(searchQuery.trim()); }, 300);
-    return () => window.clearTimeout(timer);
-  }, [searchQuery]);
-  const [viewingBill, setViewingBill] = useState<MerchantPayout | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [dialog, setDialog] = useState<{
-    request: MerchantPayout;
-    action: "approve" | "reject";
-  } | null>(null);
-  const [bankRefCode, setBankRefCode] = useState("");
-  const [note, setNote] = useState("");
-  const [reason, setReason] = useState("");
-  const [bill, setBill] = useState<File | null>(null);
-  const [billLink, setBillLink] = useState("");
-  const inFlight = useRef(false);
-  const loadSequence = useRef(0);
-  const modalRef = useRef<HTMLDialogElement>(null);
-
-  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
-  const [showAddBankForm, setShowAddBankForm] = useState(false);
-  const [isDisconnectConfirmOpen, setIsDisconnectConfirmOpen] = useState(false);
-  const currentUser = authService.getCurrentUser();
-  const [shopBankName, setShopBankName] = useState('');
-  const [shopBankAccountNumber, setShopBankAccountNumber] = useState('');
-  const [shopBankAccountName, setShopBankAccountName] = useState('');
-  const [hasBankAccount, setHasBankAccount] = useState(false);
-  const [isSavingBank, setIsSavingBank] = useState(false);
-  const [canManagePayoutBank, setCanManagePayoutBank] = useState(currentUser?.role === 'SHOP_MANAGER');
-  const [selectedBank, setSelectedBank] = useState<VietQrBank | null>(null);
-  const [accountNumberInput, setAccountNumberInput] = useState(shopBankAccountNumber);
-  const [accountNameInput, setAccountNameInput] = useState(shopBankAccountName);
-
-  const handleStartEditBank = () => {
-    const match = findBankByQuery(shopBankName) || null;
-    setSelectedBank(match);
-    setAccountNumberInput(shopBankAccountNumber);
-    setAccountNameInput(shopBankAccountName);
-    setShowAddBankForm(true);
-  };
-
-  const handleCancelAddBank = () => {
-    setAccountNumberInput(shopBankAccountNumber);
-    setAccountNameInput(shopBankAccountName);
-    setShowAddBankForm(false);
-  };
-
-  const handleBankChosen = (bank: VietQrBank) => {
-    setSelectedBank(bank);
-    setIsBankModalOpen(false);
-    toast.info(`Đã chọn ${bank.shortName}. Vui lòng nhập số tài khoản bên dưới để hoàn tất.`);
-  };
-
-  const handleSaveBankInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedBank || !accountNumberInput.trim() || !accountNameInput.trim()) {
-      toast.error("Vui lòng chọn ngân hàng và nhập đủ số tài khoản, tên chủ tài khoản.");
-      return;
-    }
-    const bankToSave = selectedBank;
-    const newName = `${bankToSave.shortName} (${bankToSave.name})`;
-    const accNum = accountNumberInput.trim();
-    const accName = accountNameInput.trim().toUpperCase();
-
-    setIsSavingBank(true);
-    try {
-      await storeService.updateMyStore({
-        payoutBankName: newName,
-        payoutBankAccountNumber: accNum,
-        payoutBankAccountName: accName,
-      });
-      if (storeId) localStorage.setItem(`scanms_payout_bank_migrated_${storeId}`, 'true');
-      setShopBankName(newName);
-      setShopBankAccountNumber(accNum);
-      setShopBankAccountName(accName);
-      setHasBankAccount(true);
-      setShowAddBankForm(false);
-      toast.success("Đã lưu tài khoản chi trả KOL.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Không thể lưu tài khoản chi trả KOL.");
-    } finally {
-      setIsSavingBank(false);
-    }
-  };
-
-  const handleDisconnectBank = () => {
-    setIsDisconnectConfirmOpen(true);
-  };
-
-  const handleConfirmDisconnectBank = async () => {
-    try {
-      await storeService.updateMyStore({
-        payoutBankName: null,
-        payoutBankAccountNumber: null,
-        payoutBankAccountName: null,
-      });
-      if (storeId) localStorage.setItem(`scanms_payout_bank_migrated_${storeId}`, 'true');
-      setShopBankName("");
-      setShopBankAccountNumber("");
-      setShopBankAccountName("");
-      setHasBankAccount(false);
-      setIsDisconnectConfirmOpen(false);
-      toast.success("Đã ngừng sử dụng tài khoản chi trả.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Không thể ngừng sử dụng tài khoản.");
-    }
-  };
-  useEffect(() => {
-    if (!dialog) return;
-    const previous = document.activeElement as HTMLElement | null;
-    modalRef.current?.showModal();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      previous?.focus();
-    };
-  }, [dialog]);
+  const [loading] = useState(false);
+  const [storeName, setStoreName] = useState('Gian hàng');
+  const [statements] = useState<CommissionStatementItem[]>(DEMO_STATEMENTS);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    let active = true;
-    if (routeStoreId) {
-      setStoreId(routeStoreId);
-      if (currentUser?.role !== 'SHOP_MANAGER') {
-        setCanManagePayoutBank(false);
-        return () => {
-          active = false;
-        };
+    storeService.getMyStore().then((st) => {
+      if (st?.name) {
+        setStoreName(st.name);
       }
-    }
-    void storeService
-      .getMyStore()
-      .then((store) => {
-        if (!active) return;
-        if (!routeStoreId) {
-          setStoreId(store.id);
-        }
-        const canEditThisStore = currentUser?.role === 'SHOP_MANAGER' &&
-          (!routeStoreId || routeStoreId === store.id);
-        setCanManagePayoutBank(canEditThisStore);
-        if (!canEditThisStore) return;
+    }).catch(() => {});
+  }, []);
 
-        const payoutBank = store.onboardingData || {};
-        const hasSavedPayoutBank = Boolean(
-          payoutBank.payoutBankName || payoutBank.payoutBankAccountNumber || payoutBank.payoutBankAccountName,
-        );
-        const canUseLegacyBank = !hasSavedPayoutBank &&
-          localStorage.getItem(`scanms_payout_bank_migrated_${store.id}`) !== 'true';
-        const bankName = payoutBank.payoutBankName || (canUseLegacyBank ? localStorage.getItem('scanms_shop_bank_name') : '') || '';
-        const accountNumber = payoutBank.payoutBankAccountNumber || (canUseLegacyBank ? localStorage.getItem('scanms_shop_bank_account') : '') || '';
-        const accountName = payoutBank.payoutBankAccountName || (canUseLegacyBank ? localStorage.getItem('scanms_shop_bank_holder') : '') || '';
-        setShopBankName(bankName);
-        setShopBankAccountNumber(accountNumber);
-        setShopBankAccountName(accountName);
-        setSelectedBank(findBankByQuery(bankName) || null);
-        setAccountNumberInput(accountNumber);
-        setAccountNameInput(accountName);
-        setHasBankAccount(Boolean(bankName && accountNumber && accountName));
-      })
-      .catch((err: unknown) => {
-        if (active && !routeStoreId)
-          setError(err instanceof Error ? err.message : "Không tải được shop");
-        if (active) setCanManagePayoutBank(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [routeStoreId, currentUser?.role]);
-
-  const load = useCallback(async () => {
-    if (!storeId) return;
-    const sequence = ++loadSequence.current;
-    setLoading(true);
-    setHistory(null);
-    setSelected([]);
-    try {
-      const [requests, batchHistory] = await Promise.all([
-        payoutService.list(storeId, page, status, { search: debouncedSearch, filter: activeKpiFilter }),
-        payoutService.batches(storeId),
-      ]);
-      if (sequence !== loadSequence.current) return;
-      setHistory(requests);
-      if (requests.page && requests.page !== page) setPage(requests.page);
-      setBatches(batchHistory.batches);
-      setSelected([]);
-      setError("");
-    } catch (err: unknown) {
-      if (sequence === loadSequence.current)
-        setError(await getPayoutErrorMessage(err));
-    } finally {
-      if (sequence === loadSequence.current) setLoading(false);
-    }
-  }, [storeId, page, status, debouncedSearch, activeKpiFilter]);
-  useEffect(() => {
-    const sequenceRef = loadSequence;
-    void load();
-    return () => {
-      sequenceRef.current++;
-    };
-  }, [load]);
-
-  async function runAction(action: () => Promise<void>) {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      await action();
-    } catch (err: unknown) {
-      setError(
-        `${await getPayoutErrorMessage(err)} Nếu kết nối gián đoạn, tải lại trạng thái trước khi gửi lại.`,
-      );
-    } finally {
-      inFlight.current = false;
-      setBusy(false);
-    }
-  }
-
-  function openDialog(request: MerchantPayout, action: "approve" | "reject") {
-    setDialog({ request, action });
-    setBankRefCode("");
-    setNote("");
-    setReason("");
-    setBill(null);
-    setError("");
-  }
-
-  async function openBill(request: MerchantPayout) {
-    setBillLink('');
-    setViewingBill(request);
-    await runAction(async () => {
-      if (!storeId) throw new Error('Chưa xác định được gian hàng chi trả.');
-      const result = await payoutService.bill(storeId, request.id);
-      if (!result.url || new URL(result.url).protocol !== 'https:') throw new Error('Chưa có liên kết chứng từ an toàn từ máy chủ.');
-      setBillLink(result.url);
+  const filteredStatements = useMemo(() => {
+    return statements.filter((item) => {
+      const matchStatus = statusFilter === 'ALL' || item.settlementStatus === statusFilter;
+      const matchSearch =
+        !search.trim() ||
+        item.orderCode.toLowerCase().includes(search.toLowerCase()) ||
+        item.collaboratorName.toLowerCase().includes(search.toLowerCase()) ||
+        item.productName.toLowerCase().includes(search.toLowerCase());
+      return matchStatus && matchSearch;
     });
-  }
+  }, [statements, statusFilter, search]);
 
-  async function submitDialog(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!dialog || busy) return;
-    if (
-      dialog.action === "approve" &&
-      (!bill ||
-        validatePayoutBill(bill, history?.maxBillBytes) ||
-        (bankRefCode.trim() &&
-          !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/i.test(bankRefCode.trim())))
-    ) {
-      setError(
-        "Cần bill JPG, PNG hoặc PDF hợp lệ; mã giao dịch nếu nhập phải đúng định dạng.",
-      );
-      return;
-    }
-    if (dialog.action === "reject" && !reason.trim()) {
-      setError("Nhập lý do từ chối");
-      return;
-    }
-    await runAction(async () => {
-      const isSeedRequest = fixtureMode && FIGMA13_PAYOUT_SEEDS.some((s) => s.id === dialog.request.id);
-      if (!isSeedRequest && !storeId) throw new Error('Chưa xác định được gian hàng chi trả. Vui lòng tải lại.');
+  const kpis = useMemo(() => {
+    const totalDeducted = statements
+      .filter((s) => s.settlementStatus === 'SETTLED')
+      .reduce((sum, s) => sum + s.commissionAmount, 0);
 
-      // Nếu là yêu cầu chi trả thực tế trong Database (không phải dữ liệu seed tĩnh)
-      if (!isSeedRequest && storeId) {
-        try {
-          if (dialog.action === "approve") {
-            if (!bill) {
-              setError("Vui lòng tải lên hóa đơn hoặc chứng từ ủy nhiệm chi hợp lệ.");
-              return;
-            }
-            await payoutService.approve(dialog.request.id, bill, {
-              bankRefCode: bankRefCode.trim(),
-              note: note.trim(),
-            });
-            toast.success(`Duyệt chi trả thành công cho ${dialog.request.collaboratorName}!`);
-          } else {
-            await payoutService.reject(storeId, dialog.request.id, reason.trim());
-            toast.success("Đã từ chối và hoàn tiền về ví shop.");
-          }
-          setDialog(null);
-          await load();
-          return;
-        } catch (err: unknown) {
-          const errMsg = await getPayoutErrorMessage(err);
-          setError(`Thao tác chi trả thất bại: ${errMsg}`);
-          toast.error(`Chi trả thất bại: ${errMsg}`);
-          return; // Dừng lại ngay, TUYỆT ĐỐI KHÔNG cập nhật trạng thái giả mạo
-        }
-      }
+    const totalHolding = statements
+      .filter((s) => s.settlementStatus === 'HOLDING_14D')
+      .reduce((sum, s) => sum + s.commissionAmount, 0);
 
-      // Trường hợp dữ liệu kiểm thử (Seed demo)
-      if (dialog.action === "approve") {
-        const approvedCode = bankRefCode.trim() || `MBB${Date.now().toString().slice(-8)}`;
-        if (bill) {
-          setBillLink(URL.createObjectURL(bill));
-        }
-        setLocalRequests((prev) =>
-          prev.map((item) =>
-            item.id === dialog.request.id
-              ? {
-                  ...item,
-                  status: "APPROVED" as PayoutStatus,
-                  bankRefCode: approvedCode,
-                  hasBill: true,
-                  processedAt: new Date().toISOString(),
-                }
-              : item
+    const totalClawbacked = statements
+      .filter((s) => s.settlementStatus === 'CLAWBACKED')
+      .reduce((sum, s) => sum + s.commissionAmount, 0);
+
+    const avgRate =
+      statements.length > 0
+        ? Math.round(
+            statements.reduce((sum, s) => sum + s.commissionRate, 0) / statements.length,
           )
-        );
-        toast.success(`Duyệt chi trả thành công cho ${dialog.request.collaboratorName}!`);
-      } else {
-        setLocalRequests((prev) =>
-          prev.map((item) =>
-            item.id === dialog.request.id
-              ? {
-                  ...item,
-                  status: "REJECTED" as PayoutStatus,
-                  rejectedReason: reason.trim(),
-                }
-              : item
-          )
-        );
-        toast.success("Đã từ chối và hoàn tiền về ví shop.");
-      }
+        : 10;
 
-      setDialog(null);
-    });
-  }
+    return { totalDeducted, totalHolding, totalClawbacked, avgRate };
+  }, [statements]);
 
-  // Only an explicitly enabled DEV workspace may use local financial fixtures.
-  const usingFixtures = fixtureMode && !history;
-  const baseRequests = useMemo(() => usingFixtures ? localRequests : history?.requests || [], [usingFixtures, localRequests, history]);
-  const fixtureView = useMemo(() => usingFixtures ? fixturePayoutView(localRequests, {
-    page, limit: 10, status, filter: activeKpiFilter, search: debouncedSearch,
-  }) : null, [usingFixtures, localRequests, page, status, activeKpiFilter, debouncedSearch]);
-  const summary = usingFixtures ? fixtureView?.summary : history?.summary;
-  const displayedRequests = loading || searchQuery.trim() !== debouncedSearch ? [] : usingFixtures ? fixtureView?.requests || [] : history?.requests || [];
-  const total = usingFixtures ? fixtureView?.total || 0 : history?.total || 0;
-  const pageLimit = history?.limit || 10;
-  const effectivePage = usingFixtures ? fixtureView?.page || page : history?.page || page;
-  const pagination = payoutPagination(total, pageLimit, effectivePage);
-  const displayPendingCount = summary?.pending.count ?? '—';
-  const displayPendingAmount = summary?.pending.netAmount;
-  const displayApprovedCount = summary?.approvedToday.count ?? '—';
-  const displayApprovedAmount = summary?.approvedToday.netAmount;
-  const displayTaxCount = summary?.withheldTax.count ?? 0;
-  const displayTaxAmount = summary?.withheldTax.amount;
-  const displayKycPendingCount = summary?.kycPendingCount ?? '—';
+  const handleExportExcel = () => {
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      ['Mã đơn,Ngày,Nhà sáng tạo,Sản phẩm,Giá trị đơn,Tỷ lệ hoa hồng,Số tiền trích,Trạng thái']
+        .concat(
+          filteredStatements.map(
+            (s) =>
+              `${s.orderCode},${new Date(s.orderDate).toLocaleDateString('vi-VN')},"${s.collaboratorName}","${s.productName}",${s.orderAmount},${s.commissionRate}%,${s.commissionAmount},${s.settlementStatus}`,
+          ),
+        )
+        .join('\n');
 
-  const eligible = displayedRequests.filter(
-    (request) => request.status === "PENDING" && !request.batchId
-  );
-
-  const handleExportExcel = async () => {
-    if (busy || loading || searchQuery.trim() !== debouncedSearch) return;
-    const targetIds =
-      selected.length > 0
-        ? selected
-        : eligible.length > 0
-        ? eligible.map((r) => r.id)
-        : displayedRequests.map((r) => r.id);
-
-    if (targetIds.length === 0) {
-      toast.info("Không có lệnh payout nào để xuất file đối soát.");
-      return;
-    }
-
-    await runAction(async () => {
-      try {
-        if (!fixtureMode || (history && history.requests.length > 0 && selected.length > 0)) {
-          if (!storeId) throw new Error('Chưa xác định được gian hàng đối soát.');
-          const blob = await payoutService.exportBatch(storeId, targetIds);
-          saveWorkbook(blob, `SCANMS-VietQR-${Date.now()}.xlsx`);
-        } else {
-          // Tạo file CSV đối soát chuyển khoản VietQR Napas247 tương thích hoàn toàn Excel
-          const rows = [
-            [
-              "STT",
-              "Mã Payout",
-              "KOL Nhận Tiền",
-              "Số Điện Thoại",
-              "Ngân Hàng",
-              "Số Tài Khoản",
-              "Tên Chủ Thụ Hưởng",
-              "Số Tiền Gốc (VND)",
-              "Thuế TNCN 10%",
-              "Thực Nhận (VND)",
-              "Nội Dung Chuyển Khoản",
-            ],
-            ...targetIds.map((id, index) => {
-              const req = baseRequests.find((r) => r.id === id);
-              return [
-                index + 1,
-                req?.id || id,
-                req?.collaboratorName || "",
-                req?.collaboratorPhone || "",
-                req?.bankName || "",
-                req?.bankAccountNumber || "",
-                req?.bankAccountName || "",
-                req?.amount || 0,
-                req?.taxAmount || 0,
-                req?.netAmount || req?.amount || 0,
-                `SCANMS ${req?.id || id}`,
-              ];
-            }),
-          ];
-          const csvContent =
-            "\uFEFF" +
-            rows.map((e) => e.map((val) => `"${val}"`).join(",")).join("\n");
-          const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-          });
-          saveWorkbook(blob, `SCANMS-VietQR-Batch-${Date.now()}.csv`);
-
-          const newBatchId = `BATCH-${new Date()
-            .toISOString()
-            .slice(0, 10)
-            .replace(/-/g, "")}-${Math.floor(Math.random() * 89 + 10)}`;
-          setLocalRequests((prev) =>
-            prev.map((item) =>
-              targetIds.includes(item.id)
-                ? {
-                    ...item,
-                    batchId: newBatchId,
-                    status: "PROCESSING" as PayoutStatus,
-                  }
-                : item
-            )
-          );
-          setBatches((prev) => [
-            {
-              id: newBatchId,
-              createdAt: new Date().toISOString(),
-              payoutCount: targetIds.length,
-            },
-            ...prev,
-          ]);
-        }
-        toast.success(
-          `Đã xuất file đối soát VietQR cho ${targetIds.length} lệnh payout!`
-        );
-        setSelected([]);
-        if (!fixtureMode) await load();
-      } catch (err: any) {
-        toast.error(err?.message || "Lỗi xuất file VietQR");
-        throw err;
-      }
-    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `sao_ke_hoa_hong_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Đã xuất file sao kê chi phí hoa hồng');
   };
 
   return (
-    <div className="merchant-payout-page mx-auto w-full min-w-0 max-w-[1480px] space-y-4 pb-8 pt-4 text-ink sm:pt-6">
-      {fixtureMode && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
-        Đang bật dữ liệu giao diện chi trả TEST. Những bản ghi này không chứng minh chuyển tiền thật.
-      </p>}
+    <div className="w-full min-w-0 space-y-4 pb-12" id="merchant-payouts-page">
+      {/* 1. Header */}
+      <div className="bg-white border border-[#EAE4D7] rounded-2xl p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F]">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-[#1A1612]">Đối soát chi phí hoa hồng</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-[#7D715E]">{storeName}</span>
+              <span className="text-[#EAE4D7]">·</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Khấu trừ tự động qua Escrow Sàn
+              </span>
+            </div>
+          </div>
+        </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-xl border border-danger bg-white p-4 text-sm text-danger"
-        >
-          {error}
-        </p>
-      )}
-      {billLink && (
-        <p className="text-sm">
-          <a
-            href={billLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-brand-strong underline"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            Mở ảnh bill riêng tư (link hết hạn sau 2 phút)
-          </a>
-        </p>
-      )}
-      {/* SECTION TÀI KHOẢN CHI TRẢ & ĐỐI SOÁT CỦA GIAN HÀNG & QUY TRÌNH (CHUẨN ẢNH 1 & ẢNH 2) */}
-      <section className={`payout-overview grid items-stretch gap-4 ${canManagePayoutBank ? 'lg:grid-cols-2' : ''}`}>
-        {/* Cột 1: Quản lý tài khoản chi trả & đối soát gian hàng */}
-        {canManagePayoutBank && (
-        <div className="payout-bank-panel flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
-          <div>
-            {/* Header: Tiêu đề + Badge bảo mật */}
-            <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                  <Landmark className="h-4 w-4" />
-                </div>
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">
-                  Tài khoản chi trả
-                </h2>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#8A642C]">
-                <ShieldCheck className="h-3.5 w-3.5 text-[#B88E4F]" />
-                <span>VietQR 65+</span>
-              </span>
-            </div>
+            <Download className="w-3.5 h-3.5" />
+            <span>Xuất sao kê Excel</span>
+          </button>
+        </div>
+      </div>
 
-            {/* Khi ĐÃ có tài khoản ngân hàng & không ở chế độ sửa */}
-            {hasBankAccount && !showAddBankForm && (
-              <div className="mt-3.5 flex flex-col justify-between rounded-xl border border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/80 to-white p-4 transition hover:border-[#C59B58]/50 sm:p-4.5">
-                {(() => {
-                  const bankMatch = findBankByQuery(shopBankName);
-                  const maskedNumber = shopBankAccountNumber
-                    ? `•••• ${shopBankAccountNumber.slice(-4)}`
-                    : '••••';
-                  return (
-                    <>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Logo ngân hàng */}
-                          <div className="w-10 h-10 rounded-xl bg-white border border-[#EAE4D7] flex items-center justify-center p-1.5 shrink-0 shadow-2xs">
-                            {bankMatch?.logo ? (
-                              <img
-                                src={bankMatch.logo}
-                                alt={bankMatch.shortName}
-                                className="max-w-full max-h-full object-contain"
-                              />
-                            ) : (
-                              <Landmark className="w-5 h-5 text-[#B88E4F]" />
-                            )}
-                          </div>
-
-                          {/* Thông tin số tài khoản & tên chủ sở hữu */}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-xs sm:text-sm text-[#1A1612]">
-                                {bankMatch ? bankMatch.shortName : shopBankName}
-                              </span>
-                              {bankMatch?.bin && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8A642C]">
-                                  BIN: {bankMatch.bin}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs sm:text-sm font-bold text-[#1A1612] tracking-wider">
-                                {maskedNumber}
-                              </span>
-                              <span className="text-[#A89E90]">·</span>
-                              <span className="text-xs uppercase font-medium text-[#7D715E] truncate">
-                                {shopBankAccountName}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Badge Trạng thái KYC / Xác minh */}
-                        <div className="shrink-0">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#FBF5EB] text-[#8A642C] border border-[#EEDFC6]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58]" />
-                            <span>Đã cấu hình</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Phân cách & Nút Thao tác */}
-                      <div className="border-t border-[#EAE4D7] mt-3 pt-2.5 flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-[#7D715E]">
-                          Dùng để chi trả hoa hồng cho KOL/CTV
-                        </span>
-                        <div className="flex items-center gap-3 font-semibold">
-                          <button
-                            type="button"
-                            onClick={handleStartEditBank}
-                            className="text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer"
-                          >
-                            Đổi tài khoản
-                          </button>
-                          <span className="text-[#EAE4D7]">|</span>
-                          <button
-                            type="button"
-                            onClick={handleDisconnectBank}
-                            className="text-[#DC2626] hover:text-red-700 transition cursor-pointer"
-                          >
-                            Ngừng dùng
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Khi CHƯA có tài khoản hoặc đang thu gọn */}
-            {!hasBankAccount && !showAddBankForm && (
-              <button
-                type="button"
-                onClick={() => {
-                  const match = findBankByQuery(shopBankName) || null;
-                  setSelectedBank(match);
-                  setAccountNumberInput("");
-                  setAccountNameInput(shopBankAccountName);
-                  setShowAddBankForm(true);
-                }}
-                className="payout-bank-empty group mt-3.5 flex w-full flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-[#EEDFC6] bg-gradient-to-b from-[#FAF8F5]/80 to-white p-5 text-center transition hover:border-[#C59B58] hover:bg-[#FBF5EB]/50 cursor-pointer"
-              >
-                <div className="flex max-w-sm flex-col items-center gap-2">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-2xs transition-transform group-hover:scale-105">
-                    <Landmark className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-bold text-[#1A1612] transition-colors group-hover:text-[#8A642C]">
-                      Liên kết ngân hàng chi trả
-                    </div>
-                    <p className="m-0 mt-1 text-[11px] sm:text-xs leading-relaxed text-[#7D715E]">
-                      Thêm ngân hàng để đối soát và chi trả hoa hồng.
-                    </p>
-                  </div>
-                </div>
-                <div className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] px-4 text-xs font-semibold text-white shadow-xs transition hover:brightness-105">
-                  <Plus className="h-4 w-4" />
-                  <span>Thêm tài khoản</span>
-                </div>
-              </button>
-            )}
-
-            {/* Form Thêm/Đổi tài khoản ngân hàng (Chuẩn ẢNH 2) */}
-            {showAddBankForm && (
-              <div className="mt-3 rounded-xl border border-[#EEDFC6] bg-[#FAF8F5]/50 p-3.5 sm:p-4">
-                <div className="flex items-center justify-between pb-2 border-b border-[#EAE4D7]">
-                  <h3 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0">
-                    Tài khoản dùng để chi trả KOL
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleCancelAddBank}
-                    className="text-xs font-medium text-[#7D715E] hover:text-[#DC2626] transition cursor-pointer"
-                  >
-                    Hủy bỏ
-                  </button>
-                </div>
-
-                <form onSubmit={handleSaveBankInfo} className="mt-3 space-y-3">
-                  {/* Ngân hàng đã chọn */}
-                  <div>
-                    <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block mb-1">
-                      Ngân hàng thụ hưởng
-                    </label>
-                    <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 sm:p-3 flex items-center justify-between gap-2.5 shadow-2xs">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center p-1 shrink-0">
-                          {selectedBank?.logo ? (
-                            <img
-                              src={selectedBank.logo}
-                              alt={selectedBank.shortName}
-                              className="max-w-full max-h-full object-contain"
-                            />
-                          ) : (
-                            <Landmark className="w-4 h-4 text-[#B88E4F]" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-xs sm:text-sm text-[#1A1612]">
-                              {selectedBank?.shortName || "Chọn ngân hàng"}
-                            </span>
-                            {selectedBank?.bin && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8A642C]">
-                                BIN: {selectedBank.bin}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-[#7D715E] truncate m-0">
-                            {selectedBank?.name || "Chọn ngân hàng nhận tiền"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsBankModalOpen(true)}
-                        className="px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-semibold text-[#1A1612] transition shadow-2xs shrink-0 cursor-pointer flex items-center gap-1"
-                      >
-                        <span>Đổi</span>
-                        <ChevronRight className="w-3 h-3 text-[#7D715E]" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2 Trường nhập liệu nhỏ gọn song song trên tablet/desktop */}
-                  <div className="grid gap-2.5 sm:grid-cols-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block mb-1">
-                        Tên chủ tài khoản
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="VD: NGUYEN VAN A"
-                        value={accountNameInput}
-                        onChange={(e) => setAccountNameInput(e.target.value.toUpperCase())}
-                        className="w-full h-9 sm:h-9.5 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs sm:text-sm font-bold uppercase text-[#1A1612] placeholder:text-[#A89E90] placeholder:font-normal placeholder:normal-case outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider block mb-1">
-                        Số tài khoản
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="VD: 0987654321..."
-                        value={accountNumberInput}
-                        onChange={(e) => setAccountNumberInput(e.target.value.trim())}
-                        className="w-full h-9 sm:h-9.5 px-3 bg-white border border-[#EAE4D7] rounded-xl text-xs sm:text-sm font-bold text-[#1A1612] placeholder:text-[#A89E90] placeholder:font-normal outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Nút Lưu thông tin tài khoản */}
-                  <button
-                    type="submit"
-                    disabled={isSavingBank}
-                    className="w-full h-9.5 sm:h-10 bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:brightness-105 text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span>{isSavingBank ? 'Đang lưu...' : 'Lưu tài khoản chi trả KOL'}</span>
-                  </button>
-                </form>
-              </div>
-            )}
+      {/* 2. KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
+          <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
+            Đã quyết toán cho KOL
+          </div>
+          <div className="text-xl font-black text-[#1A1612]">
+            {formatMoney(kpis.totalDeducted)}
+          </div>
+          <div className="text-[10px] text-[#7D715E] mt-1">
+            Sàn đã trích chuyển về ví KOL
           </div>
         </div>
-        )}
 
-        {/* Cột 2: Thống kê & Tổng quan chi trả (KPIs Chuẩn Figma 13) */}
-        <div className="payout-summary-panel payout-bank-panel flex flex-col justify-between rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
-          <div>
-            {/* Header: Tiêu đề + Badge thời gian thực */}
-            <div className="flex items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                  <BarChart3 className="h-4 w-4" />
-                </div>
-                <h3 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">
-                  Tổng quan chi trả
-                </h3>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
-                <Clock className="h-3.5 w-3.5 text-[#B88E4F]" />
-                <span>Toàn gian hàng · UTC+7</span>
-              </span>
-            </div>
-
-            {/* Grid 4 thẻ KPI */}
-            <div className="payout-metric-grid mt-3.5 grid grid-cols-2 gap-2.5 sm:gap-3">
-              {/* KPI 1: Chờ phê duyệt */}
-              <div
-                role="button"
-                tabIndex={0}
-                aria-pressed={activeKpiFilter === "PENDING"}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-                onClick={() => { setPage(1); setSelected([]);
-                  setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"));
-                }}
-                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
-                  activeKpiFilter === "PENDING"
-                    ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
-                    : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
-                }`}
-                title="Bấm để lọc danh sách các yêu cầu đang Chờ phê duyệt"
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="truncate text-xs font-semibold text-[#7D715E]">
-                    Chờ phê duyệt
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {activeKpiFilter === "PENDING" && (
-                      <span className="rounded border border-[#EEDFC6] bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#8A642C]">
-                        Đang lọc
-                      </span>
-                    )}
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#EEDFC6] bg-white shadow-2xs">
-                      <Hourglass className="h-3.5 w-3.5 text-[#B88E4F]" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg sm:text-xl font-extrabold leading-none text-[#1A1612] tracking-tight">
-                    {displayPendingCount}
-                  </div>
-                  <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#8A642C] whitespace-nowrap">
-                    {money(String(displayPendingAmount))}
-                  </span>
-                </div>
-              </div>
-
-              {/* KPI 2: Đã duyệt hôm nay */}
-              <div
-                role="button"
-                tabIndex={0}
-                aria-pressed={activeKpiFilter === "APPROVED"}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-                onClick={() => { setPage(1); setSelected([]);
-                  setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"));
-                }}
-                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
-                  activeKpiFilter === "APPROVED"
-                    ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
-                    : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
-                }`}
-                title="Bấm để lọc danh sách các yêu cầu Đã duyệt hôm nay"
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="truncate text-xs font-semibold text-[#7D715E]">
-                    Đã duyệt hôm nay
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {activeKpiFilter === "APPROVED" && (
-                      <span className="rounded border border-[#EEDFC6] bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#8A642C]">
-                        Đang lọc
-                      </span>
-                    )}
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#EEDFC6] bg-white shadow-2xs">
-                      <CheckCircle className="h-3.5 w-3.5 text-[#059669]" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg sm:text-xl font-extrabold leading-none text-[#1A1612] tracking-tight">
-                    {displayApprovedCount}
-                  </div>
-                  <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#8A642C] whitespace-nowrap">
-                    {money(String(displayApprovedAmount))}
-                  </span>
-                </div>
-              </div>
-
-              {/* KPI 3: Thuế đã giữ */}
-              <div
-                role="button"
-                tabIndex={0}
-                aria-pressed={activeKpiFilter === "TAX"}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-                onClick={() => { setPage(1); setSelected([]);
-                  setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"));
-                }}
-                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
-                  activeKpiFilter === "TAX"
-                    ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
-                    : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#C59B58]/60 hover:bg-[#FBF5EB]/30 shadow-2xs"
-                }`}
-                title="Bấm để lọc các lệnh có Khấu trừ thuế TNCN 10%"
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="truncate text-xs font-semibold text-[#7D715E]">
-                    Thuế đã giữ (10%)
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {activeKpiFilter === "TAX" && (
-                      <span className="rounded border border-[#EEDFC6] bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#8A642C]">
-                        Đang lọc
-                      </span>
-                    )}
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#EAE4D7] bg-white shadow-2xs">
-                      <FileText className="h-3.5 w-3.5 text-[#B88E4F]" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-base sm:text-lg font-extrabold leading-none text-[#1A1612] tracking-tight whitespace-nowrap">
-                    {money(displayTaxAmount ?? '')}
-                  </div>
-                  <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#7D715E] whitespace-nowrap">
-                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh đã khấu trừ` : "10% mỗi lệnh rút mới"}
-                  </span>
-                </div>
-              </div>
-
-              {/* KPI 4: Cần bổ sung KYC */}
-              <div
-                role="button"
-                tabIndex={0}
-                aria-pressed={activeKpiFilter === "KYC"}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-                onClick={() => { setPage(1); setSelected([]);
-                  setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"));
-                }}
-                className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
-                  activeKpiFilter === "KYC"
-                    ? "border-[#DC2626] bg-[#FEF2F2] shadow-xs ring-1 ring-[#DC2626]/20"
-                    : "border-[#EAE4D7] bg-gradient-to-b from-[#FAF8F5]/50 to-white hover:border-[#FECACA] hover:bg-white shadow-2xs"
-                }`}
-                title="Bấm để lọc các lệnh cần bổ sung hồ sơ KYC"
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="truncate text-xs font-semibold text-[#7D715E]">
-                    Cần bổ sung KYC
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {activeKpiFilter === "KYC" && (
-                      <span className="text-[9px] font-bold text-[#DC2626] bg-white px-1.5 py-0.5 rounded border border-[#FECACA]">
-                        Đang lọc
-                      </span>
-                    )}
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#FECACA] bg-white shadow-2xs">
-                      <AlertTriangle className="h-3.5 w-3.5 text-[#DC2626]" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-lg sm:text-xl font-extrabold leading-none text-[#DC2626] tracking-tight">
-                    {displayKycPendingCount}
-                  </div>
-                  <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#DC2626] whitespace-nowrap">
-                    Không thể duyệt
-                  </span>
-                </div>
-              </div>
-            </div>
+        <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
+          <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
+            Đang tạm giữ 14 ngày
           </div>
-
-          {/* Footer đồng bộ */}
-          <div className="mt-3.5 pt-2.5 border-t border-[#EAE4D7] flex items-center justify-between text-xs text-[#7D715E]">
-            <span className="text-[11px] font-medium text-[#7D715E]">Đối chiếu thuế TNCN &amp; KYC tự động</span>
-            <span className="font-bold text-[#B88E4F] text-[11px] tracking-wide">VietQR / Napas247</span>
+          <div className="text-xl font-black text-amber-700">
+            {formatMoney(kpis.totalHolding)}
+          </div>
+          <div className="text-[10px] text-[#7D715E] mt-1">
+            Đang trong chu kỳ bảo vệ người mua
           </div>
         </div>
-      </section>
 
-      <section className="payout-approval-table @container/payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
-        {/* Toolbar điều hướng & tìm kiếm */}
-        <div className="payout-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Thanh tìm kiếm nhanh */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7D715E]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Tìm yêu cầu chi trả"
-                placeholder="Tìm KOL, UUID đầy đủ, số tài khoản..."
-                className="h-9 w-48 sm:w-60 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 pl-8.5 pr-7 text-xs text-[#1A1612] placeholder:text-[#A89E90] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7D715E] hover:text-[#1A1612]"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-
-            {/* Dropdown Trạng thái */}
-            <div className="flex items-center gap-1.5">
-              <Select
-                aria-label="Lọc trạng thái payout"
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as PayoutStatus | "");
-                  setPage(1);
-                }}
-                disabled={busy || loading}
-                className="h-9 min-w-[155px] text-xs rounded-xl border-[#EAE4D7] bg-white text-[#1A1612]"
-              >
-                <option value="">Tất cả trạng thái</option>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Nút Xóa bộ lọc KPI khi đang có thẻ KPI active */}
-            {activeKpiFilter !== "ALL" && (
-              <button
-                type="button"
-                onClick={() => { setPage(1); setSelected([]); setActiveKpiFilter("ALL"); }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:border-[#FECACA] hover:text-[#DC2626]"
-              >
-                <span>Đang lọc: {activeKpiFilter === 'PENDING' ? 'Chờ duyệt' : activeKpiFilter === 'APPROVED' ? 'Đã duyệt' : activeKpiFilter === 'TAX' ? 'Thuế 10%' : 'KYC'}</span>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
+        <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
+          <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
+            Đã thu hồi (Clawback)
           </div>
+          <div className="text-xl font-black text-rose-700">
+            {formatMoney(kpis.totalClawbacked)}
+          </div>
+          <div className="text-[10px] text-[#7D715E] mt-1">
+            Đơn hủy hoặc khách trả hàng
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2">
+        <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
+          <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
+            Tỷ lệ hoa hồng trung bình
+          </div>
+          <div className="text-xl font-black text-[#B88E4F]">
+            {kpis.avgRate}%
+          </div>
+          <div className="text-[10px] text-[#7D715E] mt-1">
+            Bao gồm Open Offer + Deal VIP
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Filter Bar */}
+      <div className="bg-white border border-[#EAE4D7] rounded-2xl p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {[
+            { id: 'ALL', label: 'Tất cả' },
+            { id: 'HOLDING_14D', label: 'Tạm giữ 14 ngày' },
+            { id: 'SETTLED', label: 'Đã quyết toán' },
+            { id: 'CLAWBACKED', label: 'Đã thu hồi' },
+          ].map((st) => (
             <button
+              key={st.id}
               type="button"
-              onClick={() => void load()}
-              disabled={loading || busy}
-              aria-label="Tải lại payout"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#5F5547] shadow-2xs transition hover:bg-[#FAF8F5] cursor-pointer"
-              title="Tải lại dữ liệu yêu cầu chi trả"
+              onClick={() => setStatusFilter(st.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                statusFilter === st.id
+                  ? 'bg-[#231D15] text-white border-[#231D15]'
+                  : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:bg-[#FAF8F5]'
+              }`}
             >
-              <RefreshCw size={13} className={loading || busy ? "animate-spin text-[#B88E4F]" : "text-[#7D715E]"} />
+              {st.label}
             </button>
-
-            <button
-              type="button"
-              disabled={busy || loading}
-              onClick={handleExportExcel}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] px-3.5 text-xs font-semibold text-white shadow-xs transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-              title="Bấm để xuất file danh sách chuyển khoản VietQR / Napas247 tương thích Excel"
-            >
-              <Download size={14} />
-              <span>
-                {selected.length > 0
-                  ? `Xuất Excel VietQR (${selected.length})`
-                  : `Xuất Excel VietQR (${eligible.length > 0 ? eligible.length : displayedRequests.length})`}
-              </span>
-            </button>
-          </div>
+          ))}
         </div>
 
-        {loading && <p className="p-5 text-sm text-[#7D715E]">Đang tải dữ liệu payout…</p>}
+        <div className="relative w-64">
+          <Search className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Tìm theo mã đơn, KOL, sản phẩm..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-8.5 pl-8 pr-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs outline-none focus:border-[#B88E4F]"
+          />
+        </div>
+      </div>
 
-        {/* Bảng danh sách chi trả hoa hồng */}
-          <div className="relative isolate max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Danh sách chi trả hoa hồng" tabIndex={0}>
-            <label className="payout-select-all items-center gap-2 border-b border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]">
-              <input type="checkbox" aria-label="Chọn tất cả payout chờ" checked={eligible.length > 0 && eligible.every((request) => selected.includes(request.id))} disabled={busy || loading || eligible.length === 0} onChange={(event) => setSelected(event.target.checked ? eligible.map((request) => request.id) : [])} className="accent-[#C59B58]" />
-              Chọn tất cả yêu cầu chờ trên trang
-            </label>
-            <table
-              aria-label="Danh sách payout"
-              className="w-full min-w-[1200px] table-fixed text-left text-xs"
-            >
-            <colgroup>
-              <col className="w-[42px]" />
-              <col className="w-[22%]" />
-              <col />
-              <col className="w-[110px]" />
-              <col className="w-[90px]" />
-              <col className="w-[110px]" />
-              <col className="w-[205px]" />
-              <col className="w-[160px]" />
-            </colgroup>
-            <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
+      {/* 4. Table */}
+      <div className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7] font-bold">
               <tr>
-                <th className="px-2.5 py-3 text-center">
-                  <input
-                    type="checkbox"
-                    aria-label="Chọn tất cả payout chờ trên trang"
-                    checked={
-                      eligible.length > 0 &&
-                      eligible.every((request) => selected.includes(request.id))
-                    }
-                    disabled={busy || loading || eligible.length === 0}
-                    onChange={(event) =>
-                      setSelected(
-                        event.target.checked
-                          ? eligible.map((request) => request.id)
-                          : []
-                      )
-                    }
-                    className="accent-[#C59B58] rounded cursor-pointer"
-                  />
-                </th>
-                <th scope="col" className="px-3 py-3">KOL / Mã yêu cầu</th>
-                <th scope="col" className="px-3 py-3">Người thụ hưởng</th>
-                <th scope="col" className="px-2.5 py-3 text-right">Yêu cầu</th>
-                <th scope="col" className="px-2.5 py-3 text-right">Thuế</th>
-                <th scope="col" className="px-2.5 py-3 text-right">Thực nhận</th>
-                <th scope="col" className="px-2.5 py-3 text-center">Trạng thái</th>
-                <th scope="col" className="sticky right-0 z-20 bg-[#FAF8F5] px-2.5 py-3 text-center shadow-[-1px_0_0_#EAE4D7]">Thao tác</th>
+                <th className="p-3.5">Mã Đơn / Ngày</th>
+                <th className="p-3.5">Nhà Sáng Tạo Tiếp Thị</th>
+                <th className="p-3.5">Sản Phẩm</th>
+                <th className="p-3.5 text-right">Doanh Thu Đơn</th>
+                <th className="p-3.5 text-center">Tỷ Lệ</th>
+                <th className="p-3.5 text-right font-black text-[#1A1612]">Hoa Hồng Sàn Trích</th>
+                <th className="p-3.5 text-center">Trạng Thái Dòng Tiền</th>
               </tr>
             </thead>
-            <tbody>
-              {displayedRequests.map((request) => (
-                <tr key={request.id} className="border-t border-[#EAE4D7] transition hover:bg-[#FAF8F5]/60">
-                  <td className="px-2.5 py-2.5 text-center align-middle">
-                    <input
-                      type="checkbox"
-                      aria-label={`Chọn payout ${request.id}`}
-                      checked={selected.includes(request.id)}
-                      disabled={
-                        busy ||
-                        loading ||
-                        request.status !== "PENDING" ||
-                        Boolean(request.batchId)
-                      }
-                      onChange={(event) =>
-                        setSelected((current) =>
-                          event.target.checked
-                            ? [...current, request.id]
-                            : current.filter((id) => id !== request.id)
-                        )
-                      }
-                      className="accent-[#C59B58] rounded cursor-pointer"
-                    />
-                  </td>
-                  <td data-label="KOL / Mã yêu cầu" className="px-3 py-2.5 align-middle">
-                    <div className="truncate font-bold text-xs text-[#1A1612]" title={request.collaboratorName}>
-                      {request.collaboratorName}
-                    </div>
-                    {request.kycStatus && (
-                      <div className="mt-0.5 flex items-center gap-1 text-[10px]">
-                        <span className="text-[#7D715E]">KYC</span>
-                        <span
-                          className={`inline-flex items-center gap-1 font-semibold ${
-                            request.kycStatus === "VERIFIED" ? "text-[#059669]" : "text-[#DC2626]"
-                          }`}
-                        >
-                          {request.kycStatus === "VERIFIED" ? (
-                            <>
-                              <CheckCircle className="h-3 w-3 text-[#059669]" />
-                              <span>Đã xác minh</span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="h-3 w-3 text-[#DC2626]" />
-                              <span>Cần bổ sung</span>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-[#7D715E]">
-                      <span className="max-w-[135px] truncate whitespace-nowrap font-mono font-semibold text-[#8A642C]" title={request.id}>{request.id}</span>
-                      <span className="shrink-0">·</span>
-                      <span className="shrink-0 whitespace-nowrap">{new Date(request.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</span>
-                    </div>
-                  </td>
-                  <td data-label="Người thụ hưởng" className="px-3 py-2.5 align-middle">
-                    <div className="max-w-full truncate text-xs font-bold uppercase text-[#1A1612]" title={request.bankAccountName ?? "Thiếu thông tin"}>
-                      {request.bankAccountName ?? "Thiếu thông tin"}
-                    </div>
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7D715E]">
-                      <span className="min-w-0 truncate">{request.bankName}</span>
-                      <span className="shrink-0 font-mono font-medium text-[#1A1612]">{maskBankAccount(request.bankAccountNumber)}</span>
-                    </div>
-                  </td>
-                  <td data-label="Yêu cầu" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
-                    <div className="font-bold text-xs text-[#1A1612]">
-                      {money(request.amount)}
-                    </div>
-                  </td>
-                  <td data-label="Thuế" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
-                    {Number(request.taxAmount) > 0 ? (
-                      <span className="font-semibold text-xs text-[#DC2626]">
-                        -{money(request.taxAmount)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-[#7D715E]">0 ₫</span>
-                    )}
-                  </td>
-                  <td data-label="Thực nhận" className="px-2.5 py-2.5 text-right align-middle whitespace-nowrap">
-                    <div className="font-bold text-xs text-[#B88E4F]">
-                      {Number(request.netAmount) > 0 ? money(request.netAmount) : "Cần đối soát"}
-                    </div>
-                  </td>
-                  <td data-label="Trạng thái" className="payout-status-cell px-2.5 py-2.5 text-center align-middle">
-                    <span
-                      className={`payout-status-pill inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-semibold ${request.status === "REJECTED" ? "payout-status-rejected" : ""} ${
-                        request.status === "APPROVED"
-                          ? "border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]"
-                          : request.status === "REJECTED"
-                          ? "border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]"
-                          : "border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]"
-                      }`}
-                    >
-                      {STATUS_LABELS[request.status]}
-                    </span>
-                    {request.batchId && (
-                      <div className="payout-status-reference mx-auto mt-1 max-w-[190px] truncate font-mono text-[10px] text-[#8A642C] font-medium" title={`Lô: ${request.batchId}`}>
-                        Lô: {request.batchId}
-                      </div>
-                    )}
-                    {request.bankRefCode && (
-                      <div className="payout-status-reference mx-auto mt-0.5 max-w-[190px] truncate text-[10px] font-mono text-[#7D715E]" title={`GD: ${request.bankRefCode}`}>
-                        GD: {request.bankRefCode}
-                      </div>
-                    )}
-                    {request.rejectedReason && (
-                      <div className="mt-0.5 text-[10px] text-[#DC2626] truncate max-w-[120px] mx-auto" title={request.rejectedReason}>
-                        {request.rejectedReason}
-                      </div>
-                    )}
-                  </td>
-                  <td data-label="Thao tác" className="sticky right-0 z-10 bg-white px-2.5 py-2.5 align-middle shadow-[-1px_0_0_#EAE4D7]">
-                    <div className="mx-auto flex w-full max-w-[130px] flex-col gap-1.5">
-                      {(request.status === "PENDING" || request.status === "PROCESSING") && (
-                        <button
-                          type="button"
-                          disabled={busy || loading}
-                          onClick={() => openDialog(request, "approve")}
-                          className="inline-flex h-8 w-full items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] cursor-pointer whitespace-nowrap"
-                        >
-                          Duyệt &amp; tải bill
-                        </button>
-                      )}
-                      {request.status === "PENDING" && !request.batchId && (
-                        <button
-                          type="button"
-                          disabled={busy || loading}
-                          onClick={() => openDialog(request, "reject")}
-                          className="inline-flex h-7.5 w-full items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#7D715E] transition hover:border-[#FECACA] hover:bg-[#FEF2F2] hover:text-[#DC2626] cursor-pointer whitespace-nowrap"
-                        >
-                          Từ chối
-                        </button>
-                      )}
-                      {request.hasBill && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void openBill(request)}
-                          className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:bg-[#F3EFE6] cursor-pointer whitespace-nowrap"
-                        >
-                          <ReceiptText size={13} className="text-[#B88E4F]" />
-                          <span>Xem bill</span>
-                        </button>
-                      )}
-                    </div>
+            <tbody className="divide-y divide-[#EAE4D7]">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-[#7D715E]">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#B88E4F] mb-2" />
+                    <span>Đang tải bảng đối soát...</span>
                   </td>
                 </tr>
-              ))}
+              ) : filteredStatements.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-[#7D715E]">
+                    Không có giao dịch hoa hồng nào phù hợp.
+                  </td>
+                </tr>
+              ) : (
+                filteredStatements.map((item) => {
+                  const badge = SETTLEMENT_BADGES[item.settlementStatus] || { label: item.settlementStatus, className: '' };
+                  return (
+                    <tr key={item.id} className="hover:bg-[#FAF8F5]/60 transition">
+                      <td className="p-3.5">
+                        <div className="font-mono text-xs font-bold text-[#1A1612]">
+                          #{item.orderCode}
+                        </div>
+                        <div className="text-[10px] text-[#7D715E]">
+                          {new Date(item.orderDate).toLocaleDateString('vi-VN')}
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-[#EAE4D7] text-[#B88E4F] font-bold flex items-center justify-center text-[11px] shrink-0 overflow-hidden">
+                            {item.collaboratorAvatar ? (
+                              <img src={item.collaboratorAvatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              item.collaboratorName[0]
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-[#1A1612]">{item.collaboratorName}</div>
+                            <div className="text-[10px] text-[#7D715E]">CTV Tiếp thị</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="max-w-xs truncate font-medium text-[#1A1612]" title={item.productName}>
+                          {item.productName}
+                        </div>
+                      </td>
+
+                      <td className="p-3.5 text-right font-mono text-xs text-[#7D715E]">
+                        {formatMoney(item.orderAmount)}
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        <span className="font-mono font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+                          {item.commissionRate}%
+                        </span>
+                      </td>
+
+                      <td className="p-3.5 text-right font-mono text-xs font-black text-[#1A1612]">
+                        {formatMoney(item.commissionAmount)}
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-
-        {!loading && searchQuery.trim() === debouncedSearch && displayedRequests.length === 0 && (
-          <div className="p-8 text-center text-[#7D715E]">
-            <p className="font-semibold text-[#1A1612]">
-              Không có yêu cầu chi trả nào phù hợp với bộ lọc hiện tại.
-            </p>
-            {(status || activeKpiFilter !== "ALL" || searchQuery) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus("");
-                  setPage(1);
-                  setSelected([]);
-                  setActiveKpiFilter("ALL");
-                  setSearchQuery("");
-                }}
-                className="mt-2 text-xs font-bold text-[#C59B58] hover:underline cursor-pointer"
-              >
-                Đặt lại tất cả bộ lọc
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Thanh phân trang */}
-        <div className="flex items-center justify-between gap-3 border-t border-[#EAE4D7] p-3.5 sm:p-4 text-xs">
-          <span className="font-medium text-[#7D715E]">
-            Hiển thị <strong className="text-[#1A1612]">{displayedRequests.length}</strong> / {total} yêu cầu phù hợp · Trang {pagination.page}/{pagination.totalPages}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canPrevious}
-              onClick={() => setPage(pagination.page - 1)}
-              className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
-            >
-              Trước
-            </button>
-            <button
-              type="button"
-              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canNext}
-              onClick={() => setPage(pagination.page + 1)}
-              className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
-            >
-              Sau
-            </button>
-          </div>
-        </div>
-      </section>
-      <section className="rounded-2xl border border-line bg-white p-5">
-        <h2 className="text-lg font-bold">Lịch sử lô VietQR gần nhất</h2>
-        <p className="mt-2 text-xs text-muted">
-          Tải lại cùng file không tạo lô mới. File có thể chứa payout đã trả —
-          không chuyển khoản lại.
-        </p>
-        {batches.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Chưa có lô thanh toán.</p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {batches.map((batch) => (
-              <li
-                key={batch.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3 hover:border-brand/40 transition"
-              >
-                <div>
-                  <p className="font-mono text-xs font-bold text-[#1A1612]">
-                    {batch.id}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    {batch.payoutCount} payout ·{" "}
-                    {new Date(batch.createdAt).toLocaleString("vi-VN")}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void runAction(async () => {
-                      try {
-                        const blob = await payoutService.downloadBatch(storeId, batch.id);
-                        saveWorkbook(blob, `SCANMS-VietQR-${batch.id}.xlsx`);
-                      } catch (error) {
-                        if (!fixtureMode) throw error;
-                        const batchRows = [
-                          [
-                            "STT",
-                            "Mã Payout",
-                            "KOL Nhận Tiền",
-                            "Ngân Hàng",
-                            "Số Tài Khoản",
-                            "Tên Chủ Thụ Hưởng",
-                            "Số Tiền Chi Trả (VND)",
-                            "Trạng Thái",
-                            "Mã Lô",
-                          ],
-                          ...baseRequests
-                            .slice(0, batch.payoutCount)
-                            .map((r, idx) => [
-                              idx + 1,
-                              r.id,
-                              r.collaboratorName,
-                              r.bankName || "MBBank",
-                              r.bankAccountNumber || "••••",
-                              r.bankAccountName || r.collaboratorName,
-                              r.netAmount || r.amount,
-                              r.status,
-                              batch.id,
-                            ]),
-                        ];
-                        const csvContent =
-                          "\uFEFF" +
-                          batchRows
-                            .map((e) => e.map((val) => `"${val}"`).join(","))
-                            .join("\n");
-                        const blob = new Blob([csvContent], {
-                          type: "text/csv;charset=utf-8;",
-                        });
-                        saveWorkbook(blob, `SCANMS-VietQR-${batch.id}.csv`);
-                        toast.success(`Đã tải lại file lô ${batch.id}!`);
-                      }
-                    })
-                  }
-                  className={`${buttonClass} bg-surface-sand hover:bg-[#EAE4D7] transition cursor-pointer`}
-                >
-                  Tải lại Excel
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {dialog && (
-        <dialog
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="payout-dialog-title"
-          onCancel={(event) => {
-            event.preventDefault();
-            if (!busy) setDialog(null);
-          }}
-          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-line bg-white p-6 text-ink shadow-xl backdrop:bg-brand-dark/50"
-        >
-          <h2 id="payout-dialog-title" className="text-xl font-bold">
-            {dialog.action === "approve"
-              ? "Duyệt payout và tải bill ngân hàng"
-              : "Từ chối yêu cầu"}
-          </h2>
-          <p className="mt-2 break-all font-mono text-xs text-muted">
-            {dialog.request.id}
-          </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <section className="rounded-xl border border-line bg-canvas p-4">
-              <h3 className="mb-3 text-sm font-semibold">Thông tin KOL</h3>
-              <div className="flex items-center gap-3">
-                {dialog.request.collaboratorAvatar ? (
-                  <img
-                    src={dialog.request.collaboratorAvatar}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="h-12 w-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-soft font-bold text-brand-strong">
-                    {dialog.request.collaboratorName?.charAt(0) || "K"}
-                  </span>
-                )}
-                <strong>{dialog.request.collaboratorName}</strong>
-              </div>
-              <dl className="mt-3 space-y-2 break-words text-sm">
-                <div>
-                  <dt className="text-muted">Số điện thoại</dt>
-                  <dd>{dialog.request.collaboratorPhone || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Email</dt>
-                  <dd>{dialog.request.collaboratorEmail || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Mã số thuế</dt>
-                  <dd>
-                    {dialog.request.collaboratorTaxCode || "Chưa cập nhật"}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-            <section className="rounded-xl border border-line bg-canvas p-4">
-              <h3 className="mb-3 text-sm font-semibold">
-                Ngân hàng nhận tiền
-              </h3>
-              <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="text-muted">Ngân hàng</dt>
-                  <dd>{dialog.request.bankName || "Chưa cập nhật"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Số tài khoản</dt>
-                  <dd className="font-mono">
-                    {maskBankAccount(dialog.request.bankAccountNumber)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Chủ tài khoản</dt>
-                  <dd>{dialog.request.bankAccountName || "Chưa cập nhật"}</dd>
-                </div>
-              </dl>
-            </section>
-          </div>
-          <dl className="mt-4 grid gap-3 rounded-xl border border-brand-border bg-brand-soft p-4 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-muted">Số tiền yêu cầu</dt>
-              <dd className="mt-1 font-semibold">
-                {money(dialog.request.amount)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Thuế TNCN đã khấu trừ</dt>
-              <dd className="mt-1 font-semibold">
-                {money(dialog.request.taxAmount)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Số tiền thực chuyển</dt>
-              <dd className="mt-1 font-bold text-brand-strong">
-                {money(dialog.request.netAmount)}
-              </dd>
-            </div>
-          </dl>
-          <form
-            onSubmit={(event) => void submitDialog(event)}
-            className="mt-5 space-y-4"
-            aria-busy={busy}
-          >
-            {dialog.action === "approve" ? (
-              <>
-                <p className="text-sm text-muted">
-                  Chỉ xác nhận sau khi chuyển khoản thành công. Bill không được
-                  tái sử dụng cho payout khác. Duyệt payout không trừ ví lần
-                  nữa.
-                </p>
-                <label className="block text-sm">
-                  Mã giao dịch ngân hàng (nếu có)
-                  <input
-                    aria-label="Mã giao dịch ngân hàng"
-                    value={bankRefCode}
-                    onChange={(event) => setBankRefCode(event.target.value)}
-                    maxLength={100}
-                    disabled={busy}
-                    className="mt-2 w-full rounded-xl border border-line p-3 focus:border-brand"
-                  />
-                </label>
-                <PayoutBillUpload
-                  file={bill}
-                  maxBytes={Math.min(
-                    history?.maxBillBytes ?? MAX_PAYOUT_BILL_BYTES,
-                    MAX_PAYOUT_BILL_BYTES,
-                  )}
-                  disabled={busy}
-                  onChange={setBill}
-                />
-                <label className="block text-sm">
-                  Ghi chú (không bắt buộc)
-                  <textarea
-                    aria-label="Ghi chú duyệt payout"
-                    value={note}
-                    onChange={(event) => setNote(event.target.value)}
-                    maxLength={500}
-                    disabled={busy}
-                    rows={3}
-                    placeholder="Ghi chú về giao dịch chuyển khoản..."
-                    className="mt-2 w-full resize-y rounded-xl border border-line p-3 focus:border-brand"
-                  />
-                  <span className="mt-1 block text-right text-xs text-muted">
-                    {note.length}/500
-                  </span>
-                </label>
-              </>
-            ) : (
-              <label className="block text-sm">
-                Lý do từ chối
-                <textarea
-                  aria-label="Lý do từ chối"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  required
-                  maxLength={500}
-                  disabled={busy}
-                  className="mt-2 w-full rounded-xl border border-line p-3 focus:border-brand"
-                />
-              </label>
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setDialog(null)}
-                className={buttonClass}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={busy || (dialog.action === "approve" && !bill)}
-                className={`${buttonClass} border-brand bg-brand text-white hover:bg-brand-strong`}
-              >
-                {busy
-                  ? "Đang tải bill và xác nhận…"
-                  : dialog.action === "approve"
-                    ? "Xác nhận duyệt"
-                    : "Từ chối & hoàn tiền"}
-              </button>
-            </div>
-          </form>
-        </dialog>
-      )}
-
-      {/* Modal Chọn Danh Sách Ngân Hàng Việt Nam (65+ Ngân hàng VietQR) */}
-      <BankSelectorModal
-        isOpen={isBankModalOpen}
-        onClose={() => setIsBankModalOpen(false)}
-        onSelectBank={handleBankChosen}
-        selectedBankName={selectedBank?.shortName || shopBankName}
-      />
-
-      {/* Modal Xác nhận Ngừng sử dụng tài khoản ngân hàng */}
-      <ConfirmModal
-        isOpen={isDisconnectConfirmOpen}
-        onClose={() => setIsDisconnectConfirmOpen(false)}
-        onConfirm={handleConfirmDisconnectBank}
-        title="Ngừng sử dụng tài khoản ngân hàng"
-        message="Bạn có chắc chắn muốn ngừng sử dụng tài khoản chi trả này? Sau khi gỡ, bạn có thể liên kết tài khoản ngân hàng mới bất kỳ lúc nào."
-        confirmText="Ngừng sử dụng"
-        variant="danger"
-      />
-
-      {/* Modal Xem Bill Chuyển Khoản Ngân Hàng VietQR / Napas247 */}
-      {viewingBill && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div role="dialog" aria-modal="true" aria-label="Chứng từ chi trả" className="relative w-full max-w-md bg-white rounded-3xl border border-[#EEDFC6] p-6 shadow-2xl text-left animate-in fade-in zoom-in-95">
-            <button
-              type="button"
-              aria-label="Đóng chứng từ chi trả"
-              onClick={() => setViewingBill(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] flex items-center justify-center transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-2.5 pb-4 border-b border-[#EAE4D7]">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                <ReceiptText className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-[#1A1612] m-0">Hồ sơ chứng từ chi trả</h3>
-                <p className="text-xs text-[#7D715E] m-0">Thông tin đối soát do Shop ghi nhận</p>
-              </div>
-            </div>
-
-            <div className="mt-4 p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">Mã giao dịch ngân hàng:</span>
-                <span className="font-mono font-bold text-[#1A1612]">{viewingBill.bankRefCode || 'Chưa cung cấp'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">Mã yêu cầu SCANMS:</span>
-                <span className="font-mono font-semibold text-[#7D715E]">{viewingBill.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">KOL thụ hưởng:</span>
-                <span className="font-bold text-[#1A1612]">{viewingBill.collaboratorName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">Ngân hàng thụ hưởng:</span>
-                <span className="font-semibold text-[#1A1612]">{viewingBill.bankName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">Số tài khoản:</span>
-                <span className="font-mono font-bold text-[#1A1612]">{maskBankAccount(viewingBill.bankAccountNumber)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#7D715E]">Chủ tài khoản:</span>
-                <span className="font-bold text-[#1A1612] uppercase">{viewingBill.bankAccountName}</span>
-              </div>
-              <div className="border-t border-[#EAE4D7] pt-2 flex justify-between items-baseline">
-                <span className="text-xs text-[#7D715E]">Số tiền thực chuyển:</span>
-                <span className="font-mono text-base font-bold text-[#8A642C]">{money(viewingBill.netAmount || viewingBill.amount)}</span>
-              </div>
-              {Number(viewingBill.taxAmount) > 0 && (
-                <div className="flex justify-between text-[11px] text-[#7D715E]">
-                  <span>Thuế TNCN 10% đã khấu trừ:</span>
-                  <span className="font-mono font-semibold text-rose-600">-{money(viewingBill.taxAmount)}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-3 text-xs">
-              <div className="flex items-center gap-1.5 font-semibold text-[#5F5547]">
-                <CheckCircle className="h-4 w-4 text-[#059669]" />
-                <span>{viewingBill.status === 'APPROVED' ? 'Shop đã xác nhận chi trả' : 'Chưa xác nhận chi trả'}</span>
-              </div>
-              <span className="text-right font-mono text-[11px] text-[#7D715E]">
-                {viewingBill.processedAt ? new Date(viewingBill.processedAt).toLocaleString('vi-VN') : 'Chưa ghi nhận thời điểm'}
-              </span>
-            </div>
-
-            {busy && <p role="status" className="mt-3 text-xs text-[#7D715E]">Đang tải chứng từ từ máy chủ…</p>}
-            {error && <p role="alert" className="mt-3 text-xs text-[#DC2626]">{error}</p>}
-            {billLink && <a href={billLink} target="_blank" rel="noopener noreferrer"
-              className="mt-3 block text-sm font-semibold text-[#B88E4F] underline">Mở chứng từ đã tải lên (liên kết có thời hạn)</a>}
-
-            <button
-              type="button"
-              onClick={() => setViewingBill(null)}
-              className="mt-4 w-full py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-xs transition cursor-pointer"
-            >
-              Đóng chứng từ
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

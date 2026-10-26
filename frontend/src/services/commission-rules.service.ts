@@ -229,6 +229,28 @@ export const commissionRulesService = {
     return res.data || res;
   },
 
+  async getTeamProgress(
+    storeId: string,
+    yearMonth?: string,
+  ): Promise<any> {
+    const res: any = await api.get(
+      `/stores/${storeId}/commission-rules/team-progress`,
+      { params: yearMonth ? { yearMonth } : {} },
+    );
+    return res.data || res;
+  },
+
+  async settleAll(
+    storeId: string,
+    yearMonth: string,
+  ): Promise<any> {
+    const res: any = await api.post(
+      `/stores/${storeId}/commission-rules/settle-all`,
+      { yearMonth },
+    );
+    return res.data || res;
+  },
+
   async getKolProgress(
     storeId: string,
     collaboratorId: string,

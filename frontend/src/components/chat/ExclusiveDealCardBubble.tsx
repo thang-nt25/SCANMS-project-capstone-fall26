@@ -101,7 +101,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
           <div className="grid grid-cols-2 mt-2.5 p-2 px-2.5 rounded-lg bg-[#FBF5EB]">
             <div>
               <span className="text-[#7D715E] text-[10px]">Hoa hồng sàn</span>
-              <strong className="block mt-0.5 text-xl leading-tight font-semibold tabular-nums text-[#1A1612]">{card.publicCommissionRate ?? '—'}<small className="text-[13px] ml-0.5 font-normal">%</small></strong>
+              <strong className="block mt-0.5 text-xl leading-tight font-semibold tabular-nums text-[#1A1612]">{(card.publicCommissionRate ?? 10)}<small className="text-[13px] ml-0.5 font-normal">%</small></strong>
             </div>
             <div className="pl-3 border-l border-[#EEDFC6]">
               <span className="text-[#8C6226] text-[10px]">Hoa hồng độc quyền</span>

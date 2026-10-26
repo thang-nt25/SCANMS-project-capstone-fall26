@@ -223,7 +223,8 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         (currentPath.startsWith('/merchant/promotions') && !location.search.includes('tab=live-sessions')) ||
         currentPath.startsWith('/merchant/coupons') ||
         currentPath.startsWith('/merchant/commission-rules') ||
-        currentPath.startsWith('/merchant/referral-links')
+        currentPath.startsWith('/merchant/referral-links') ||
+        currentPath.startsWith('/merchant/campaigns')
       );
     }
 

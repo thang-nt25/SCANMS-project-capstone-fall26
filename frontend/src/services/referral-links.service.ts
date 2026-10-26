@@ -98,18 +98,32 @@ export interface ExclusiveDealProposal {
   productId: string;
   storeId: string;
   conversationId: string;
+  collaboratorId?: string;
   proposedCommissionRate: number;
   approvedCommissionRate?: number | null;
   currentCommissionRate?: number | null;
+  publicCommissionRate?: number | null;
   isCurrentDeal?: boolean;
   salesCommitment: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   shopResponse?: string | null;
   shortUrl?: string | null;
-  product?: { id: string; title: string; imageUrl?: string | null; price?: string | number };
-  store?: { id: string; name: string; logoUrl?: string | null };
-  collaborator?: { id: string; fullName: string; email: string };
+  vipVoucherCode?: string | null;
+  referralLink?: {
+    id?: string;
+    shortCode: string;
+    status?: string;
+    customCouponCode?: string | null;
+    totalClicks?: number;
+    totalOrders?: number;
+  } | null;
+  productTitle?: string;
+  collaboratorName?: string;
+  product?: { id: string; title: string; imageUrl?: string | null; price?: string | number; customCommissionRate?: number | null };
+  store?: { id: string; name: string; logoUrl?: string | null; defaultCommissionRate?: number };
+  collaborator?: { id: string; fullName: string; email: string; collaboratorProfile?: { avatarUrl?: string | null; kycStatus?: string } };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface QueryReferralLinksParams {

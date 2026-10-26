@@ -1,12 +1,13 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, OrderStatus } from '@prisma/client';
 import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
 import {
   DashboardAnalyticsQueryDto,
   AnalyticsQuickRange,
   AnalyticsTimeInterval,
   TopBreakdownQueryDto,
+  QueryReferralOrdersDto,
 } from './dto/dashboard-analytics.dto';
 
 @Injectable()
@@ -261,6 +262,68 @@ export class DashboardService {
       ...(storeId ? { storeId } : !isShop ? { collaboratorId: userId } : {}),
     } });
 
+    // Tính toán Hoa hồng tạm tính (Estimated Commission từ các đơn đang xử lý / đang giao / chờ đối soát)
+    let estimatedCommission = 0;
+    let pendingOrdersCount = 0;
+    if (!isShop) {
+      const pendingOrders = await this.prisma.order.findMany({
+        where: {
+          attributedCollaboratorId: userId,
+          status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED] },
+        },
+        include: {
+          orderItems: {
+            select: {
+              calculatedCommissionAmount: true,
+            },
+          },
+          commissions: {
+            where: { status: { in: ['APPROVED', 'PAID'] } },
+            select: { id: true },
+          },
+        },
+      });
+
+      const unfinalizedOrders = pendingOrders.filter(
+        (o) => o.commissions.length === 0,
+      );
+      pendingOrdersCount = unfinalizedOrders.length;
+      for (const o of unfinalizedOrders) {
+        for (const item of o.orderItems) {
+          estimatedCommission += Number(item.calculatedCommissionAmount || 0);
+        }
+      }
+    } else if (storeId) {
+      const pendingOrders = await this.prisma.order.findMany({
+        where: {
+          storeId,
+          attributedCollaboratorId: { not: null },
+          status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED] },
+        },
+        include: {
+          orderItems: {
+            select: {
+              calculatedCommissionAmount: true,
+            },
+          },
+          commissions: {
+            where: { status: { in: ['APPROVED', 'PAID'] } },
+            select: { id: true },
+          },
+        },
+      });
+
+      const unfinalizedOrders = pendingOrders.filter(
+        (o) => o.commissions.length === 0,
+      );
+      pendingOrdersCount = unfinalizedOrders.length;
+      for (const o of unfinalizedOrders) {
+        for (const item of o.orderItems) {
+          estimatedCommission += Number(item.calculatedCommissionAmount || 0);
+        }
+      }
+    }
+
     return {
       period: {
         startDate: startDate.toISOString(),
@@ -286,6 +349,9 @@ export class DashboardService {
         totalCommission: currCommission,
         previousCommission: prevCommission,
         growthCommission,
+
+        estimatedCommission: Math.round(estimatedCommission),
+        pendingOrdersCount,
 
         vipBonusCommission: 0,
         conversionRate,
@@ -955,4 +1021,487 @@ export class DashboardService {
       },
     };
   }
+
+  // ─── 7. LẤY DANH SÁCH ĐƠN HÀNG TIẾP THỊ CỦA KOL (REFERRAL ORDERS) ───
+  async getCollaboratorReferralOrders(
+    collaboratorId: string,
+    query: QueryReferralOrdersDto,
+  ) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      attributedCollaboratorId: collaboratorId,
+    };
+
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    if (query.search?.trim()) {
+      const s = query.search.trim();
+      where.OR = [
+        { externalOrderSn: { contains: s, mode: 'insensitive' } },
+        { customerName: { contains: s, mode: 'insensitive' } },
+        {
+          orderItems: {
+            some: {
+              product: {
+                title: { contains: s, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          status: true,
+          subtotalAmount: true,
+          discountAmount: true,
+          shippingFee: true,
+          finalAmount: true,
+          createdAt: true,
+          updatedAt: true,
+          completedAt: true,
+          customerName: true,
+          customerPhone: true,
+          attributionMethod: true,
+          attributionConfidence: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              logoUrl: true,
+            },
+          },
+          orderItems: {
+            select: {
+              id: true,
+              quantity: true,
+              unitPrice: true,
+              appliedCommissionRate: true,
+              calculatedCommissionAmount: true,
+              product: {
+                select: {
+                  id: true,
+                  title: true,
+                  imageUrl: true,
+                  sku: true,
+                },
+              },
+              variant: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                },
+              },
+            },
+          },
+          commissions: {
+            select: {
+              id: true,
+              status: true,
+              commissionAmount: true,
+              availableAt: true,
+              eligibleAt: true,
+              approvedAt: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = orders.map((order) => {
+      const totalCommission = order.orderItems.reduce(
+        (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
+        0,
+      );
+      const avgCommissionRate =
+        order.orderItems.length > 0
+          ? order.orderItems[0].appliedCommissionRate
+          : 10;
+
+      return {
+        id: order.id,
+        orderCode: order.externalOrderSn,
+        status: order.status,
+        createdAt: order.createdAt,
+        customerName: order.customerName,
+        customerPhoneMasked: order.customerPhone
+          ? order.customerPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2')
+          : '***',
+        storeName: order.store?.name || 'Gian hàng',
+        storeLogo: order.store?.logoUrl,
+        finalAmount: Number(order.finalAmount),
+        commissionAmount: totalCommission,
+        commissionRate: avgCommissionRate,
+        commissionStatus:
+          order.commissions?.[0]?.status ||
+          (['DELIVERED', 'COMPLETED'].includes(order.status)
+            ? 'IN_ESCROW'
+            : 'ESTIMATED'),
+        availableAt: order.commissions?.[0]?.availableAt || null,
+        products: order.orderItems.map((item) => ({
+          id: item.product?.id,
+          title: item.product?.title || '',
+          variantName: item.variant?.name,
+          imageUrl: item.product?.imageUrl,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          commissionAmount: Number(item.calculatedCommissionAmount || 0),
+        })),
+      };
+    });
+
+    return {
+      success: true,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      items,
+    };
+  }
+
+  // ─── 8. LẤY ĐƠN HÀNG TIẾP THỊ CỦA 1 KOL TRONG GIAN HÀNG (SHOP MANAGER) ───
+  async getShopKolOrders(
+    userId: string,
+    userRole: string,
+    kolId: string,
+    query: QueryReferralOrdersDto,
+  ) {
+    let storeId: string | null = null;
+    if (userRole === UserRole.SHOP_MANAGER) {
+      storeId = await this.getStoreId(userId);
+      if (!storeId) throw new ForbiddenException('Không tìm thấy gian hàng của bạn.');
+    } else if (
+      userRole === UserRole.SYSTEM_ADMIN ||
+      userRole === UserRole.SYSTEM_MANAGER
+    ) {
+      storeId = query.storeId || null;
+    } else {
+      throw new ForbiddenException('Không có quyền xem dữ liệu.');
+    }
+
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      attributedCollaboratorId: kolId,
+      ...(storeId ? { storeId } : {}),
+    };
+
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          status: true,
+          finalAmount: true,
+          createdAt: true,
+          customerName: true,
+          orderItems: {
+            select: {
+              id: true,
+              quantity: true,
+              unitPrice: true,
+              appliedCommissionRate: true,
+              calculatedCommissionAmount: true,
+              product: {
+                select: {
+                  id: true,
+                  title: true,
+                  imageUrl: true,
+                },
+              },
+            },
+          },
+          commissions: {
+            select: {
+              id: true,
+              status: true,
+              commissionAmount: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = orders.map((order) => {
+      const totalCommission = order.orderItems.reduce(
+        (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
+        0,
+      );
+      const firstProduct =
+        order.orderItems[0]?.product?.title || 'Sản phẩm tiếp thị';
+      const otherCount = order.orderItems.length - 1;
+
+      return {
+        id: order.id,
+        orderCode: order.externalOrderSn,
+        createdAt: order.createdAt,
+        customerName: order.customerName,
+        productTitle:
+          otherCount > 0 ? `${firstProduct} (+${otherCount})` : firstProduct,
+        orderTotal: Number(order.finalAmount),
+        finalAmount: Number(order.finalAmount),
+        commissionEarned: totalCommission,
+        commissionAmount: totalCommission,
+        commissionRate: order.orderItems[0]?.appliedCommissionRate || 10,
+        status: order.status,
+      };
+    });
+
+    return {
+      success: true,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      items,
+    };
+  }
+
+  // ─── 9. TỔNG HỢP HOA HỒNG THEO TỪNG SẢN PHẨM CỦA KOL (PRODUCT BREAKDOWN) ───
+  async getCollaboratorTopProducts(collaboratorId: string, limit = 10) {
+    const profile = await this.prisma.collaboratorProfile.findUnique({
+      where: { userId: collaboratorId },
+      include: { tier: true },
+    });
+    const tierName = profile?.tier?.name || 'Mới';
+    let tierBonus = 0;
+    if (tierName.toLowerCase().includes('bạc') || tierName.toLowerCase().includes('silver')) tierBonus = 1;
+    else if (tierName.toLowerCase().includes('vàng') || tierName.toLowerCase().includes('gold')) tierBonus = 2;
+    else if (tierName.toLowerCase().includes('kim cương') || tierName.toLowerCase().includes('diamond')) tierBonus = 3;
+
+    const activeDeals = await this.prisma.exclusiveDealProposal.findMany({
+      where: {
+        collaboratorId,
+        status: 'APPROVED',
+      },
+      select: {
+        productId: true,
+        approvedCommissionRate: true,
+        proposedCommissionRate: true,
+      },
+    });
+    const dealRateByProduct = new Map<string, number>();
+    for (const d of activeDeals) {
+      const rate = Number(d.approvedCommissionRate || d.proposedCommissionRate || 0);
+      dealRateByProduct.set(d.productId, rate);
+    }
+
+    const orderItems = await this.prisma.orderItem.findMany({
+      where: {
+        order: {
+          attributedCollaboratorId: collaboratorId,
+          status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+        },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            imageUrl: true,
+            price: true,
+            store: {
+              select: { id: true, name: true, slug: true, logoUrl: true },
+            },
+          },
+        },
+      },
+    });
+
+    const productMap = new Map<string, {
+      productId: string;
+      productTitle: string;
+      productImage: string | null;
+      productPrice: number;
+      storeName: string;
+      unitsSold: number;
+      grossRevenue: number;
+      commissionEarned: number;
+      appliedRates: number[];
+      orderIds: Set<string>;
+    }>();
+
+    for (const item of orderItems) {
+      const pid = item.productId;
+      if (!productMap.has(pid)) {
+        productMap.set(pid, {
+          productId: pid,
+          productTitle: item.product?.title || 'Sản phẩm',
+          productImage: item.product?.imageUrl || null,
+          productPrice: Number(item.unitPrice || item.product?.price || 0),
+          storeName: item.product?.store?.name || 'SCANMS Store',
+          unitsSold: 0,
+          grossRevenue: 0,
+          commissionEarned: 0,
+          appliedRates: [],
+          orderIds: new Set<string>(),
+        });
+      }
+
+      const pData = productMap.get(pid)!;
+      pData.unitsSold += item.quantity;
+      pData.grossRevenue += Number(item.unitPrice) * item.quantity;
+      pData.commissionEarned += Number(item.calculatedCommissionAmount || 0);
+      pData.orderIds.add(item.orderId);
+      if (item.appliedCommissionRate) {
+        pData.appliedRates.push(Number(item.appliedCommissionRate));
+      }
+    }
+
+    const items = Array.from(productMap.values()).map((p) => {
+      const avgRate = p.appliedRates.length > 0
+        ? Math.round(p.appliedRates.reduce((a, b) => a + b, 0) / p.appliedRates.length)
+        : 10;
+      
+      const dealRate = dealRateByProduct.get(p.productId);
+      const dealBonus = dealRate ? Math.max(0, dealRate - 10) : 0;
+      const baseRate = 10;
+      const finalRate = Math.min(25, Math.max(avgRate, baseRate + tierBonus + dealBonus));
+
+      return {
+        productId: p.productId,
+        productTitle: p.productTitle,
+        productImage: p.productImage,
+        productPrice: p.productPrice,
+        storeName: p.storeName,
+        unitsSold: p.unitsSold,
+        ordersCount: p.orderIds.size,
+        grossRevenue: p.grossRevenue,
+        commissionEarned: p.commissionEarned,
+        rateBreakdown: {
+          baseRate,
+          tierBonus,
+          tierName,
+          dealBonus,
+          hasExclusiveDeal: Boolean(dealRate),
+          liveBonus: finalRate > baseRate + tierBonus + dealBonus ? finalRate - (baseRate + tierBonus + dealBonus) : 0,
+          finalRate,
+        },
+      };
+    });
+
+    items.sort((a, b) => b.commissionEarned - a.commissionEarned);
+
+    return {
+      success: true,
+      totalProducts: items.length,
+      items: items.slice(0, limit),
+    };
+  }
+
+  // ─── 10. TỔNG HỢP HIỆU SUẤT LIVESTREAM CỦA KOL (LIVE SESSION SUMMARY) ───
+  async getCollaboratorLiveSessionsSummary(collaboratorId: string) {
+    const liveSessions = await this.prisma.liveShoppingSession.findMany({
+      where: { creatorId: collaboratorId },
+      include: {
+        store: { select: { id: true, name: true, logoUrl: true } },
+        products: {
+          include: {
+            product: { select: { id: true, title: true, imageUrl: true, price: true } },
+          },
+        },
+      },
+      orderBy: { startsAt: 'desc' },
+      take: 20,
+    });
+
+    const sessions = await Promise.all(
+      liveSessions.map(async (sess) => {
+        const liveOrders = await this.prisma.order.findMany({
+          where: {
+            attributedCollaboratorId: collaboratorId,
+            storeId: sess.storeId,
+            createdAt: { gte: sess.startsAt, lte: sess.endsAt },
+            status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+          },
+          include: {
+            orderItems: {
+              select: {
+                quantity: true,
+                unitPrice: true,
+                calculatedCommissionAmount: true,
+              },
+            },
+          },
+        });
+
+        const ordersCount = liveOrders.length;
+        let unitsSold = 0;
+        let grossRevenue = 0;
+        let commissionEarned = 0;
+
+        for (const ord of liveOrders) {
+          for (const it of ord.orderItems) {
+            unitsSold += it.quantity;
+            grossRevenue += Number(it.unitPrice) * it.quantity;
+            commissionEarned += Number(it.calculatedCommissionAmount || 0);
+          }
+        }
+
+        return {
+          id: sess.id,
+          title: sess.title,
+          coverImageUrl: sess.coverImageUrl,
+          storeName: sess.store?.name || 'Gian hàng',
+          storeLogo: sess.store?.logoUrl,
+          startsAt: sess.startsAt,
+          endsAt: sess.endsAt,
+          status: sess.status,
+          pinnedProductsCount: sess.products.length,
+          liveBonusRate: Number(sess.commissionRate || 2),
+          metrics: {
+            ordersCount,
+            unitsSold,
+            grossRevenue,
+            commissionEarned,
+          },
+        };
+      }),
+    );
+
+    const totalLiveRevenue = sessions.reduce((sum, s) => sum + s.metrics.grossRevenue, 0);
+    const totalLiveCommission = sessions.reduce((sum, s) => sum + s.metrics.commissionEarned, 0);
+    const totalLiveOrders = sessions.reduce((sum, s) => sum + s.metrics.ordersCount, 0);
+
+    return {
+      success: true,
+      totalSessions: sessions.length,
+      totals: {
+        totalLiveRevenue,
+        totalLiveCommission,
+        totalLiveOrders,
+      },
+      sessions,
+    };
+  }
 }
+
+

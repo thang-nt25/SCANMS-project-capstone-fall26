@@ -68,6 +68,18 @@ export class AffiliateDealsController {
     return this.service.getShopProposals(userId, role);
   }
 
+  @Get('shop/active-partners')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({
+    summary: 'Shop xem danh sách các KOL đang có Deal độc quyền hiệu lực và tiến độ KPI',
+  })
+  getShopActivePartners(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.getShopActivePartners(userId, role);
+  }
+
   @Get(':id/progress')
   @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   getProgress(
