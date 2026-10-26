@@ -1,20 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw,
-  Download,
   Search,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Clock,
-  ExternalLink,
   ShieldCheck,
   Building2,
   ReceiptText,
   Landmark,
   Eye,
   Loader2,
-  Upload,
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
@@ -70,7 +63,6 @@ export default function AdminFinancePayoutsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
@@ -86,7 +78,6 @@ export default function AdminFinancePayoutsPage() {
 
   // Bill preview modal
   const [viewingBillUrl, setViewingBillUrl] = useState<string | null>(null);
-  const [loadingBill, setLoadingBill] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -107,7 +98,6 @@ export default function AdminFinancePayoutsPage() {
       const res = await api.get('/admin/payouts', { params });
       const data = res.data?.data || res.data;
       setPayouts(data.requests || []);
-      setTotal(data.total || 0);
     } catch {
       // If endpoint not returned, fallback
     } finally {
@@ -174,7 +164,6 @@ export default function AdminFinancePayoutsPage() {
   };
 
   const handleViewBill = async (item: PayoutItem) => {
-    setLoadingBill(true);
     try {
       const res = await api.get(`/admin/payouts/${item.id}/bill`);
       const url = res.data?.data?.url || res.data?.url;
@@ -185,8 +174,6 @@ export default function AdminFinancePayoutsPage() {
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Không lấy được chứng từ');
-    } finally {
-      setLoadingBill(false);
     }
   };
 

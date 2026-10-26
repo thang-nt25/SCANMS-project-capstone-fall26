@@ -284,7 +284,7 @@ export default function WalletPage() {
         : toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)),
   );
   const taxMinor =
-    wallet && grossMinor >= toMinorUnits(wallet.withdrawalTaxPolicy.threshold)
+    wallet && grossMinor > 0n
       ? (grossMinor * toMinorUnits(wallet.withdrawalTaxPolicy.rate) + 50n) /
         100n
       : 0n;
@@ -873,7 +873,7 @@ export default function WalletPage() {
                   <div className="flex justify-between gap-3 text-xs text-[#7D715E]">
                     <span className="flex items-center gap-1">
                       <span>Thuế khấu trừ ({Number(wallet.withdrawalTaxPolicy.rate) * 100}%)</span>
-                      <span className="text-[10px] text-[#A89E90]">(từ {formatMoney(wallet.withdrawalTaxPolicy.threshold)})</span>
+                      <span className="text-[10px] text-[#A89E90]">(mọi lệnh rút mới)</span>
                     </span>
                     <span className="font-semibold font-mono text-[#DC2626]" data-testid="withdrawal-tax-preview">
                       -{previewMoney(taxMinor)}

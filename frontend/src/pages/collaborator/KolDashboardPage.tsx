@@ -32,6 +32,8 @@ import {
 import { Select } from '@/components/ui/Select';
 import KolProductCommissionTable from '../../components/affiliate/KolProductCommissionTable';
 import KolLivePerformanceCard from '../../components/affiliate/KolLivePerformanceCard';
+import { kolDashboardRange } from '@/utils/kol-dashboard';
+import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 
 function DashboardMetric({ label, value, note, growth, icon: Icon }: {
   label: string;
@@ -76,6 +78,7 @@ export default function KolDashboardPage() {
   const [metric, setMetric] = useState<'clicks' | 'orders' | 'revenue' | 'commission'>('clicks');
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'stores' | 'live'>('orders');
   const [copiedOrderSn, setCopiedOrderSn] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<'wallet' | 'ledger' | 'overview' | 'series' | 'tier', string>>>({});
 
   // TanStack Query Hooks with 3-minute stale cache and seamless keepPreviousData
   const { data: wallet, isFetching: isFetchingWallet } = useQuery<WalletSummary | null>({
@@ -94,16 +97,11 @@ export default function KolDashboardPage() {
     queryKey: ['kol-overview', period],
     queryFn: () => {
       const days = Number(period) || 7;
-      const endDate = new Date();
-      const startDate = new Date(endDate);
-      startDate.setUTCHours(0, 0, 0, 0);
-      startDate.setUTCDate(startDate.getUTCDate() - days + 1);
-      return analyticsService.getRealtimeOverview({
-        range: 'custom',
-        days,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      }).catch(() => null);
+      const query = kolDashboardRange(days);
+      return analyticsService.getRealtimeOverview(query).catch(() => {
+        setErrors((prev) => ({ ...prev, overview: 'Chưa thể tải tổng quan.' }));
+        return null;
+      });
     },
     staleTime: 1000 * 60 * 3,
     placeholderData: keepPreviousData,
@@ -113,16 +111,10 @@ export default function KolDashboardPage() {
     queryKey: ['kol-timeseries', period],
     queryFn: async () => {
       const days = Number(period) || 7;
-      const endDate = new Date();
-      const startDate = new Date(endDate);
-      startDate.setUTCHours(0, 0, 0, 0);
-      startDate.setUTCDate(startDate.getUTCDate() - days + 1);
+      const query = kolDashboardRange(days);
       const res = await analyticsService.getTimeSeries({
-        range: 'custom',
-        days,
+        ...query,
         interval: 'daily',
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
       }).catch(() => []);
       return Array.isArray(res) ? res : [];
     },
@@ -136,7 +128,7 @@ export default function KolDashboardPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: referralOrdersData, isFetching: isFetchingOrders } = useQuery({
+  const { data: referralOrdersData } = useQuery({
     queryKey: ['kol-referral-orders'],
     queryFn: () => analyticsService.getCollaboratorReferralOrders({ limit: 10 }).catch(() => null),
     staleTime: 1000 * 60 * 2,
@@ -227,8 +219,8 @@ export default function KolDashboardPage() {
   };
 
   const metrics = overview?.metrics;
-  const availBal = Number(wallet?.availableBalance || 0);
-  const pendingBal = Number(wallet?.pendingBalance || 0);
+  const availBal = wallet ? Number(wallet.availableBalance) : null;
+  const pendingBal = wallet ? Number(wallet.pendingBalance) : null;
 
   const getMetricValue = (point: TimeSeriesPoint) => {
     const value = Number(point[metric]);
@@ -245,6 +237,10 @@ export default function KolDashboardPage() {
 
   return (
     <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
+      {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
+        <p className="m-0">{Object.values(errors).join(' ')} Dấu — nghĩa là chưa có dữ liệu xác nhận, không phải số dư bằng 0.</p>
+        <button type="button" disabled={loading} onClick={() => void handleRefresh()} className="mt-2 font-semibold text-[#B88E4F] underline disabled:opacity-50">Thử tải lại</button>
+      </div>}
       <section className="grid w-full grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-4 shadow-xs" aria-label="Bộ lọc và thao tác tổng quan KOL">
             <div className="w-full">
               <Select
@@ -308,7 +304,7 @@ export default function KolDashboardPage() {
               </span>
             </div>
             <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1A1612] my-0.5">
-              {availBal.toLocaleString('vi-VN')} ₫
+              {availBal === null ? '—' : `${availBal.toLocaleString('vi-VN')} ₫`}
             </strong>
             <span className="text-[10px] text-[#7D715E] leading-tight">
               Có thể rút tiền về tài khoản ngân hàng liên kết bất kỳ lúc nào.
@@ -327,7 +323,7 @@ export default function KolDashboardPage() {
               </span>
             </div>
             <strong className="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums text-[#1A1612] my-0.5">
-              {pendingBal.toLocaleString('vi-VN')} ₫
+              {pendingBal === null ? '—' : `${pendingBal.toLocaleString('vi-VN')} ₫`}
             </strong>
             <span className="text-[10px] text-[#7D715E] leading-tight">
               Đơn đã giao thành công, đang đếm ngược thời gian khiếu nại đổi trả.
@@ -358,29 +354,29 @@ export default function KolDashboardPage() {
           <DashboardMetric
             label="Lượt nhấp tiếp thị"
             icon={MousePointerClick}
-            value={(metrics?.totalClicks || 0).toLocaleString('vi-VN')}
+            value={metrics ? metrics.totalClicks.toLocaleString('vi-VN') : '—'}
             growth={metrics?.growthClicks}
-            note={`${metrics?.activeReferralLinks || 0} liên kết đang có lượt xem`}
+            note={metrics ? `${metrics.activeReferralLinks} liên kết đang có lượt xem` : 'Chưa tải được số liệu'}
           />
           <DashboardMetric
             label="Đơn hàng thành công"
             icon={ShoppingBag}
             growth={metrics?.growthOrders}
-            value={<>{metrics?.completedOrders || 0}<span className="text-xs font-normal text-[#7D715E]"> / {metrics?.totalOrders || 0} đơn</span></>}
+            value={metrics ? <>{metrics.completedOrders}<span className="text-xs font-normal text-[#7D715E]"> / {metrics.totalOrders} đơn</span></> : '—'}
             note={`Chu kỳ ${period} ngày gần nhất`}
           />
           <DashboardMetric
             label="Tỷ lệ chuyển đổi"
             icon={Target}
-            value={`${(metrics?.conversionRate || 0).toFixed(2)}%`}
-            note={`Trung bình đơn: ${(metrics?.averageOrderValue || 0).toLocaleString('vi-VN')} ₫`}
+            value={metrics ? `${metrics.conversionRate.toFixed(2)}%` : '—'}
+            note={metrics ? `Trung bình đơn: ${metrics.averageOrderValue.toLocaleString('vi-VN')} ₫` : 'Chưa tải được số liệu'}
           />
           <DashboardMetric
             label="Doanh số tiếp thị (GMV)"
             icon={Wallet}
             growth={metrics?.growthRevenue}
-            value={`${(metrics?.grossRevenue || 0).toLocaleString('vi-VN')} ₫`}
-            note={<>Hoa hồng: <strong className="text-[#B88E4F]">{(metrics?.totalCommission || 0).toLocaleString('vi-VN')} ₫</strong></>}
+            value={metrics ? `${metrics.grossRevenue.toLocaleString('vi-VN')} ₫` : '—'}
+            note={metrics ? <>Hoa hồng: <strong className="text-[#B88E4F]">{metrics.totalCommission.toLocaleString('vi-VN')} ₫</strong></> : 'Chưa tải được số liệu'}
           />
         </div>
       </div>
@@ -419,6 +415,8 @@ export default function KolDashboardPage() {
               <RefreshCw size={20} className="animate-spin text-[#B88E4F]" aria-hidden="true" />
               <span>Đang tải dữ liệu biểu đồ…</span>
             </div>
+          ) : errors.series ? (
+            <p className="p-5 text-xs text-[#7D715E]">{errors.series} Không thể kết luận chưa phát sinh giao dịch.</p>
           ) : timeSeries.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 min-h-[220px] p-5 text-xs text-[#7D715E]">
               <BarChart3 className="w-8 h-8 text-[#EAE4D7] mb-1" />
@@ -510,13 +508,16 @@ export default function KolDashboardPage() {
           </div>
 
           <div className="grid divide-y divide-[#EAE4D7]">
-            {!ledger?.entries || ledger.entries.length === 0 ? (
+            {!ledger ? (
+              <p className="py-6 text-center text-xs text-[#7D715E]">{loading ? 'Đang tải lịch sử hoa hồng…' : errors.ledger || 'Chưa tải được lịch sử hoa hồng.'}</p>
+            ) : ledger.entries.length === 0 ? (
               <div className="py-6 text-center text-xs text-[#7D715E] leading-relaxed">
                 Chưa có phát sinh hoa hồng nào. Khi khách mua qua link tiếp thị của bạn, tiền hoa hồng sẽ hiển thị tại đây!
               </div>
             ) : (
               ledger.entries.slice(0, 4).map((entry) => {
-                const isPositive = entry.balanceBucket === 'AVAILABLE' || entry.transactionType.includes('COMMISSION');
+                const amount = ledgerAmountPresentation(entry.amount);
+                const isPositive = amount.direction === 'credit';
                 return (
                   <div
                     key={entry.id}
@@ -544,13 +545,12 @@ export default function KolDashboardPage() {
                         })}
                       </span>
                     </div>
-                    <strong
+                    <strong data-testid="dashboard-ledger-amount" data-direction={amount.direction}
                       className={`text-xs sm:text-sm font-bold tabular-nums shrink-0 ${
                         isPositive ? 'text-[#B88E4F]' : 'text-[#7D715E]'
                       }`}
                     >
-                      {isPositive ? '+' : '-'}
-                      {Math.abs(Number(entry.amount)).toLocaleString('vi-VN')} ₫
+                      {amount.text}
                     </strong>
                   </div>
                 );
@@ -563,7 +563,7 @@ export default function KolDashboardPage() {
             <div className="flex items-center gap-1.5">
               <Crown className="w-4 h-4 text-[#B88E4F] shrink-0" />
               <strong className="text-xs font-semibold text-[#1A1612]">
-                {tierStatus?.currentTier
+                {loading ? 'Đang tải cấp bậc…' : errors.tier ? 'Chưa tải được cấp bậc' : tierStatus?.currentTier
                   ? `Hạng ${tierStatus.currentTier.name} (+${tierStatus.currentTier.extraBonusPercentage || 0}% Thưởng)`
                   : 'Cấp bậc khởi đầu (Hạng Đồng)'}
               </strong>

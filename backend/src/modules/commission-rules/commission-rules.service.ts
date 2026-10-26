@@ -23,6 +23,16 @@ export class CommissionRulesService {
     private readonly walletsService: WalletsService,
   ) {}
 
+  private lockBonusLedger(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    collaboratorId: string,
+  ) {
+    // Refunds and settlements, including different months, share one ledger.
+    const key = `monthly-bonus:${storeId}:${collaboratorId}`;
+    return tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+
   private async verifyStoreExists(storeId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -1200,6 +1210,7 @@ export class CommissionRulesService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      await this.lockBonusLedger(tx, storeId, collaboratorId);
       // 3. Kiểm tra Idempotency
       const existingSettlement = await tx.monthlyBonusResult.findUnique({
         where: {
@@ -1328,26 +1339,117 @@ export class CommissionRulesService {
         where: {
           storeId,
           collaboratorId,
-          targetYearMonth: yearMonth,
+          targetYearMonth: { lte: yearMonth },
           status: 'PENDING',
         },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       });
 
+      const requestedAdjustment = pendingAdjustments.reduce(
+        (sum, adj) => sum.add(adj.adjustmentAmount),
+        new Prisma.Decimal(0),
+      );
+      // Credits are available before allocating deductions, independently of
+      // row order. Never mark a deduction applied beyond this month's capacity.
+      let netBonus = pendingAdjustments.reduce(
+        (sum, adj) =>
+          adj.adjustmentAmount.greaterThan(0)
+            ? sum.add(adj.adjustmentAmount)
+            : sum,
+        grossBonus,
+      );
       let totalAdjustment = new Prisma.Decimal(0);
+      let carriedForwardAdjustment = new Prisma.Decimal(0);
+      const appliedAdjustments: Array<{
+        id: string;
+        amount: string;
+        reason: string;
+      }> = [];
+      const carriedAdjustments: Array<{
+        id: string;
+        amount: string;
+        targetYearMonth: string;
+      }> = [];
+      let carryMonth: string | undefined;
       for (const adj of pendingAdjustments) {
-        totalAdjustment = totalAdjustment.add(adj.adjustmentAmount);
-      }
-
-      let netBonus = grossBonus.add(totalAdjustment);
-      if (netBonus.lessThan(0)) {
-        netBonus = new Prisma.Decimal(0);
-      }
-
-      if (pendingAdjustments.length > 0) {
-        await tx.bonusAdjustment.updateMany({
-          where: { id: { in: pendingAdjustments.map((a) => a.id) } },
-          data: { status: 'APPLIED' },
-        });
+        const applied = adj.adjustmentAmount.isNegative()
+          ? Prisma.Decimal.min(adj.adjustmentAmount.abs(), netBonus).negated()
+          : adj.adjustmentAmount;
+        if (applied.isNegative()) netBonus = netBonus.add(applied);
+        const remaining = adj.adjustmentAmount.minus(applied);
+        if (!remaining.isZero() && !carryMonth) {
+          carryMonth = this.getNextYearMonth(yearMonth);
+          let found = false;
+          for (let attempt = 0; attempt < 36; attempt++) {
+            const settled = await tx.monthlyBonusResult.findUnique({
+              where: {
+                storeId_collaboratorId_yearMonth: {
+                  storeId,
+                  collaboratorId,
+                  yearMonth: carryMonth,
+                },
+              },
+            });
+            if (!settled) {
+              found = true;
+              break;
+            }
+            carryMonth = this.getNextYearMonth(carryMonth);
+          }
+          if (!found)
+            throw new ConflictException(
+              'Không tìm thấy kỳ mở để chuyển khoản khấu trừ còn thiếu',
+            );
+        }
+        if (remaining.isZero()) {
+          await tx.bonusAdjustment.update({
+            where: { id: adj.id },
+            data: { status: 'APPLIED' },
+          });
+        } else if (applied.isZero()) {
+          // No recovery yet: preserve the amount and original refund identity.
+          await tx.bonusAdjustment.update({
+            where: { id: adj.id },
+            data: { targetYearMonth: carryMonth! },
+          });
+          carriedAdjustments.push({
+            id: adj.id,
+            amount: remaining.toString(),
+            targetYearMonth: carryMonth!,
+          });
+        } else {
+          // Split a pending row, not a historical settlement. The combined
+          // signed amount remains unchanged for incremental refund recovery.
+          await tx.bonusAdjustment.update({
+            where: { id: adj.id },
+            data: { status: 'APPLIED', adjustmentAmount: applied },
+          });
+          const carry = await tx.bonusAdjustment.create({
+            data: {
+              storeId,
+              collaboratorId,
+              originalSettlementId: adj.originalSettlementId,
+              refundId: adj.refundId,
+              targetYearMonth: carryMonth!,
+              adjustmentAmount: remaining,
+              reason: adj.reason,
+              status: 'PENDING',
+            },
+          });
+          carriedAdjustments.push({
+            id: carry.id,
+            amount: remaining.toString(),
+            targetYearMonth: carryMonth!,
+          });
+        }
+        totalAdjustment = totalAdjustment.add(applied);
+        carriedForwardAdjustment = carriedForwardAdjustment.add(remaining);
+        if (!applied.isZero())
+          appliedAdjustments.push({
+            id: adj.id,
+            amount: applied.toString(),
+            reason: adj.reason,
+          });
       }
 
       const ruleSnapshot = {
@@ -1356,12 +1458,11 @@ export class CommissionRulesService {
         rangeBonuses: calculation.rangeBonuses,
         grossBonus: grossBonus.toString(),
         totalAdjustment: totalAdjustment.toString(),
+        requestedAdjustment: requestedAdjustment.toString(),
+        carriedForwardAdjustment: carriedForwardAdjustment.toString(),
         netBonus: netBonus.toString(),
-        appliedAdjustments: pendingAdjustments.map((a) => ({
-          id: a.id,
-          amount: a.adjustmentAmount.toString(),
-          reason: a.reason,
-        })),
+        appliedAdjustments,
+        carriedAdjustments,
         formula: calculation.formula,
       };
 
@@ -1401,6 +1502,9 @@ export class CommissionRulesService {
             appliedRuleName: calculation.highestReachedRule?.name || null,
             grossBonus: grossBonus.toString(),
             totalAdjustment: totalAdjustment.toString(),
+            requestedAdjustment: requestedAdjustment.toString(),
+            carriedForwardAdjustment: carriedForwardAdjustment.toString(),
+            carriedAdjustments,
             netBonus: netBonus.toString(),
             settlementId: createdSettlement.id,
             status: CommissionStatus.PENDING,
@@ -1640,6 +1744,9 @@ export class CommissionRulesService {
     const orderYearMonth = this.getVietnamYearMonth(completedDate);
 
     return await this.prisma.$transaction(async (tx) => {
+      // Different orders can affect the same monthly bonus. Serialize before
+      // mutating any refund, not just by order ID, until this transaction ends.
+      await this.lockBonusLedger(tx, storeId, collaboratorId);
       // Khóa dòng Order bằng FOR UPDATE chống race condition khi có 2 yêu cầu hoàn tiền đồng thời (Issue 4)
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
 
@@ -1956,8 +2063,23 @@ export class CommissionRulesService {
         );
         const correctBonusAmount = new Prisma.Decimal(recalculation.totalBonus);
 
-        const overpaidBonus =
-          pastSettlement.bonusAmount.minus(correctBonusAmount);
+        // Both queued and already applied deductions count toward the amount
+        // recovered. Never charge the cumulative shortfall again on each refund.
+        const previousAdjustments = await tx.bonusAdjustment.aggregate({
+          where: {
+            storeId,
+            collaboratorId,
+            originalSettlementId: pastSettlement.id,
+            status: { in: ['PENDING', 'APPLIED'] },
+          },
+          _sum: { adjustmentAmount: true },
+        });
+        const overpaidBonus = Prisma.Decimal.max(
+          0,
+          pastSettlement.bonusAmount
+            .minus(correctBonusAmount)
+            .add(previousAdjustments._sum.adjustmentAmount ?? 0),
+        );
 
         if (overpaidBonus.greaterThan(0)) {
           // Tìm kỳ lương kế tiếp chưa chốt tại thời điểm phát sinh hoàn tiền (chuẩn múi giờ Việt Nam)

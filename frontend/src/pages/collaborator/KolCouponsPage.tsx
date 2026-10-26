@@ -19,8 +19,6 @@ import {
   Sparkles,
   ChevronDown,
   DollarSign,
-  Calendar,
-  ShoppingBag,
 } from 'lucide-react';
 import {
   couponService,
@@ -156,10 +154,7 @@ export const KolCouponsPage: React.FC = () => {
     setter(Number.isNaN(parsed) ? 0 : parsed);
   };
 
-  const formatMoney = (val?: number | null) => {
-    if (val === 0) return '0';
-    return val ? val.toLocaleString('vi-VN') : '';
-  };
+
   const selectedStore = approvedStores.find(
     (store) => (store.id || store.storeId) === selectedStoreId,
   ) || approvedStores[0];

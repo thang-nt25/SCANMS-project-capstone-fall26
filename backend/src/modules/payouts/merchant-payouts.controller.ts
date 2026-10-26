@@ -52,7 +52,7 @@ export class MerchantPayoutsController {
   @Get()
   @Header('Cache-Control', 'no-store')
   list(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: QueryMerchantPayoutsDto,
   ) {
@@ -76,8 +76,8 @@ export class MerchantPayoutsController {
   })
   @UseInterceptors(FileInterceptor('bill'))
   approve(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
-    @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('payoutId', ParseUUIDPipe) payoutId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ApprovePayoutDto,
     @UploadedFile() bill: Express.Multer.File,
@@ -87,8 +87,8 @@ export class MerchantPayoutsController {
 
   @Patch(':payoutId/reject')
   reject(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
-    @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('payoutId', ParseUUIDPipe) payoutId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: RejectPayoutDto,
   ) {
@@ -98,8 +98,8 @@ export class MerchantPayoutsController {
   @Get(':payoutId/bill')
   @Header('Cache-Control', 'no-store')
   bill(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
-    @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('payoutId', ParseUUIDPipe) payoutId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.payouts.getBill(storeId, user.id, payoutId);
@@ -108,7 +108,7 @@ export class MerchantPayoutsController {
   @Get('batches')
   @Header('Cache-Control', 'no-store')
   listBatches(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: QueryWithdrawalsDto,
   ) {
@@ -120,7 +120,7 @@ export class MerchantPayoutsController {
     summary: 'FR-24: Tạo lô, đánh dấu PROCESSING và tải Excel VietQR',
   })
   async exportBatch(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ExportPayoutBatchDto,
     @Res() response: Response,
@@ -133,8 +133,8 @@ export class MerchantPayoutsController {
 
   @Get('batches/:batchId/download')
   async downloadBatch(
-    @Param('storeId', new ParseUUIDPipe()) storeId: string,
-    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('batchId', ParseUUIDPipe) batchId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Res() response: Response,
   ) {

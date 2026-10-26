@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingBag, Store, Info, Sparkles, TrendingUp, Award, Radio } from 'lucide-react';
+import { ShoppingBag, Store, Info, Sparkles, Award } from 'lucide-react';
 import type { ProductCommissionBreakdownItem } from '../../services/analytics.service';
 
 interface Props {

@@ -12,13 +12,11 @@ import {
   ShieldAlert,
   Users,
   Tag,
-  Sparkles,
   Heart,
   User,
   Package,
   Radio,
   Bell,
-  CreditCard,
   ReceiptText,
   type LucideProps,
 } from 'lucide-react';

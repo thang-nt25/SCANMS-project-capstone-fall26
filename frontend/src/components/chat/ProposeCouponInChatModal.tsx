@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Ticket, X, Sparkles, AlertCircle, CheckCircle2, Calendar, ShoppingBag, DollarSign, Percent } from 'lucide-react';
+import { useState } from 'react';
+import { Ticket, X, Sparkles, AlertCircle, CheckCircle2, DollarSign, Percent } from 'lucide-react';
 import { couponService, type DiscountType, type CouponScope } from '../../services/coupon.service';
 
 interface ProposeCouponInChatModalProps {
@@ -62,10 +62,7 @@ export function ProposeCouponInChatModal({
     setter(Number.isNaN(parsed) ? 0 : parsed);
   };
 
-  const formatMoney = (val?: number | null) => {
-    if (val === 0) return '0';
-    return val ? val.toLocaleString('vi-VN') : '';
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -19,6 +19,7 @@ describe('wallet cooperation visibility', () => {
     };
     const service = new WalletSummaryService(prisma, { minimumAmount: decimal(200000) } as never);
     const result = await service.getMyWallet('kol');
+    expect(result.withdrawalTaxPolicy).toEqual({ threshold: '0.00', rate: '0.10' });
     expect(prisma.storeCollaborator.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { collaboratorId: 'kol', store: { isDeleted: false } } }));
     expect(result.cooperationStores).toHaveLength(3);
     expect(result.cooperationStores[1]).toMatchObject({ storeName: 'Sora Skin', status: 'APPROVED', hasWallet: false, availableBalance: '0.00', pendingBalance: '0.00' });

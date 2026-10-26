@@ -25,6 +25,8 @@ export interface PlatformSubsidySummary {
 }
 
 export interface PublicStoreCoupon {
+  store?: { id: string; name: string; slug?: string };
+  storeId?: string;
   fundingSource?: CouponFundingSource;
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
@@ -45,6 +47,8 @@ export interface EligibleProductCoupon {
   id: string;
   code: string;
   displayCode: string;
+  discountType?: DiscountType;
+  discountValue?: number;
   discountAmount: number;
   minimumOrderAmount: number;
   expiresAt: string | null;

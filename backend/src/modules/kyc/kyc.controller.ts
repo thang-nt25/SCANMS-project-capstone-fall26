@@ -73,8 +73,8 @@ export class KycController {
   }
 
   @Get('admin/pending')
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Admin / Shop xem danh sách hồ sơ KYC cần duyệt' })
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({ summary: 'Quản trị sàn xem danh sách hồ sơ KYC cần duyệt' })
   async getPendingKyc() {
     return this.kycService.getPendingKycList();
   }
@@ -89,7 +89,7 @@ export class KycController {
   }
 
   @Patch('admin/:id/review')
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Admin duyệt hoặc từ chối hồ sơ KYC cũ' })
   async reviewKyc(@Param('id') profileId: string, @Body() dto: ReviewKycDto) {
     return this.kycService.reviewKyc(profileId, dto);

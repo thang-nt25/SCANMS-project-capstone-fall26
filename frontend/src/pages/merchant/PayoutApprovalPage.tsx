@@ -1,19 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   CreditCard,
   Download,
   Search,
-  RefreshCw,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
-  ExternalLink,
-  Store,
   ShieldCheck,
   Loader2,
 } from 'lucide-react';
-import api from '../../services/api';
 import { storeService } from '../../services/store.service';
 import { toast } from '../../utils/toast';
 
@@ -92,9 +84,9 @@ const DEMO_STATEMENTS: CommissionStatementItem[] = [
 ];
 
 export default function PayoutApprovalPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [storeName, setStoreName] = useState('Gian hàng');
-  const [statements, setStatements] = useState<CommissionStatementItem[]>(DEMO_STATEMENTS);
+  const [statements] = useState<CommissionStatementItem[]>(DEMO_STATEMENTS);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 

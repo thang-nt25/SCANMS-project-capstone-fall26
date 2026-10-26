@@ -152,7 +152,7 @@ export const ShopCouponsPage: React.FC = () => {
 
   // Store Products for Scope Picker
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; price: number; imageUrl?: string }>>([]);
-  const [platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
+  const [_platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
   const [storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; startDate: string; endDate: string }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [voucherProductSearch, setVoucherProductSearch] = useState('');
@@ -385,82 +385,8 @@ export const ShopCouponsPage: React.FC = () => {
     setCreateForm((prev) => ({ ...prev, code: `${prefix}${rand}` }));
   };
 
-  // 1-Click Voucher Presets
-  const applyPreset = (presetType: 'DISCOUNT_10' | 'DISCOUNT_20' | 'FLAT_50K' | 'FREESHIP' | 'VIP_100K') => {
-    const codeSuffix = Math.floor(10 + Math.random() * 90);
-    switch (presetType) {
-      case 'DISCOUNT_10':
-        setCreateForm((prev) => ({
-          ...prev,
-          code: `SHOP10K${codeSuffix}`,
-          benefitType: 'GOODS',
-          discountType: 'PERCENTAGE',
-          discountValue: 10,
-          maximumDiscountAmount: 30000,
-          minimumOrderAmount: 150000,
-          budgetTotal: 2000000,
-          usageLimitTotal: 100,
-          scopeType: 'STORE_WIDE',
-        }));
-        break;
-      case 'DISCOUNT_20':
-        setCreateForm((prev) => ({
-          ...prev,
-          code: `SUPER20K${codeSuffix}`,
-          benefitType: 'GOODS',
-          discountType: 'PERCENTAGE',
-          discountValue: 20,
-          maximumDiscountAmount: 60000,
-          minimumOrderAmount: 300000,
-          budgetTotal: 3000000,
-          usageLimitTotal: 50,
-          scopeType: 'STORE_WIDE',
-        }));
-        break;
-      case 'FLAT_50K':
-        setCreateForm((prev) => ({
-          ...prev,
-          code: `GIAM50K${codeSuffix}`,
-          benefitType: 'GOODS',
-          discountType: 'FIXED_AMOUNT',
-          discountValue: 50000,
-          maximumDiscountAmount: undefined,
-          minimumOrderAmount: 250000,
-          budgetTotal: 2500000,
-          usageLimitTotal: 50,
-          scopeType: 'STORE_WIDE',
-        }));
-        break;
-      case 'FREESHIP':
-        setCreateForm((prev) => ({
-          ...prev,
-          code: `SHIP25K${codeSuffix}`,
-          benefitType: 'SHIPPING',
-          discountType: 'FIXED_AMOUNT',
-          discountValue: 25000,
-          maximumDiscountAmount: undefined,
-          minimumOrderAmount: 120000,
-          budgetTotal: 1500000,
-          usageLimitTotal: 60,
-          scopeType: 'STORE_WIDE',
-        }));
-        break;
-      case 'VIP_100K':
-        setCreateForm((prev) => ({
-          ...prev,
-          code: `VIP100K${codeSuffix}`,
-          benefitType: 'GOODS',
-          discountType: 'FIXED_AMOUNT',
-          discountValue: 100000,
-          maximumDiscountAmount: undefined,
-          minimumOrderAmount: 600000,
-          budgetTotal: 5000000,
-          usageLimitTotal: 50,
-          scopeType: 'STORE_WIDE',
-        }));
-        break;
-    }
-  };
+  // 1-Click Voucher Presets (available for future template extensions)
+
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1255,8 +1255,8 @@ export function ScanmsFloatingChatWidget() {
                     <div className="mt-2 text-sm font-extrabold">{discount}</div>
                     {coupon.minimumOrderAmount && <div className="mt-1 text-[11px] text-[#7D715E]">Đơn tối thiểu {coupon.minimumOrderAmount.toLocaleString('vi-VN')}₫</div>}
                     {coupon.maximumDiscountAmount && coupon.discountType === 'PERCENTAGE' && <div className="text-[11px] text-[#7D715E]">Giảm tối đa {coupon.maximumDiscountAmount.toLocaleString('vi-VN')}₫</div>}
-                    {coupon.scopeType === 'PRODUCTS' && <div className="mt-1 text-[11px] text-[#7D715E]">Áp dụng cho {coupon.products.length} sản phẩm trong danh sách Shop.</div>}
-                    {coupon.scopeType === 'CATEGORIES' && <div className="mt-1 text-[11px] text-[#7D715E]">Danh mục: {coupon.categories.join(', ') || 'theo điều kiện của Shop'}.</div>}
+                    {coupon.scopeType === 'PRODUCTS' && <div className="mt-1 text-[11px] text-[#7D715E]">Áp dụng cho {coupon.products?.length || 0} sản phẩm trong danh sách Shop.</div>}
+                    {coupon.scopeType === 'CATEGORIES' && <div className="mt-1 text-[11px] text-[#7D715E]">Danh mục: {coupon.categories?.join(', ') || 'theo điều kiện của Shop'}.</div>}
                     {coupon.expiresAt && <div className="mt-1 text-[11px] text-[#7D715E]">Hạn đến {new Date(coupon.expiresAt).toLocaleDateString('vi-VN')}</div>}
                     <div className="mt-2 border-t border-[#F3EFE6] pt-2 text-right text-[10px] text-[#7D715E]">{msg.timestamp}</div>
                   </article>

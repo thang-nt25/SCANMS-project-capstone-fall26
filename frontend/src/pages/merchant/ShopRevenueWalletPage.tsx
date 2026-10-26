@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Search,
   CheckCircle2,
-  AlertCircle,
   FileText,
   Loader2,
   RefreshCw,
@@ -116,7 +115,7 @@ export default function ShopRevenueWalletPage() {
   const activeTab = rawTab === 'commissions' || rawTab === 'withdrawals' ? rawTab : 'ledger';
 
   const [store, setStore] = useState<StoreSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Financial Balances
@@ -178,7 +177,7 @@ export default function ShopRevenueWalletPage() {
         }
       }
 
-      const summary = dashboardRes?.data?.summary || dashboardRes?.summary;
+      const summary = (dashboardRes?.data as any)?.summary || (dashboardRes as any)?.summary;
       if (summary) {
         if (summary.totalRevenue != null) {
           const rev = Number(summary.totalRevenue);
@@ -1351,7 +1350,7 @@ export default function ShopRevenueWalletPage() {
             setSelectedBank(bank);
             setIsBankModalOpen(false);
           }}
-          selectedBin={selectedBank.bin}
+          selectedBankBin={selectedBank?.bin}
         />
       )}
     </div>

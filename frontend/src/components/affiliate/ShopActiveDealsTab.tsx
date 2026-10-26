@@ -223,6 +223,10 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const totalRevenue = useMemo(() => {
+    return (activeData.deals || []).reduce((sum, d) => sum + (d.progress?.validRevenue || 0), 0);
+  }, [activeData.deals]);
+
   // Filtered active deals
   const filteredActiveDeals = useMemo(() => {
     return activeData.deals.filter((deal) => {
@@ -258,14 +262,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     return Array.from(map.values());
   }, [filteredActiveDeals]);
 
-  // Total stats
-  const totalRevenue = useMemo(() => {
-    return activeData.deals.reduce((sum, d) => sum + (d.progress?.validRevenue || 0), 0);
-  }, [activeData.deals]);
 
-  const totalOrders = useMemo(() => {
-    return activeData.deals.reduce((sum, d) => sum + (d.progress?.completedOrders || 0), 0);
-  }, [activeData.deals]);
 
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
@@ -970,7 +967,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                       {onSelectKolForChat && (
                         <button
                           type="button"
-                          onClick={() => onSelectKolForChat(item.collaboratorId)}
+                          onClick={() => item.collaboratorId && onSelectKolForChat(item.collaboratorId)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-bold text-[#7D715E] hover:text-[#1A1612]"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />

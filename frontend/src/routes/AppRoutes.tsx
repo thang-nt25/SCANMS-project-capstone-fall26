@@ -195,7 +195,8 @@ function AppRoutes() {
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
-              <Route path="merchant/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
+              <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
+              <Route path="merchant/campaigns-manage" element={<ShopCampaignsPage />} />
               <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
               <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
               <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />

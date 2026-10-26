@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import {
   CommissionStatus,
   OrderStatus,
@@ -369,9 +370,24 @@ export class CommissionsService {
   /**
    * Lấy chi tiết đếm ngược và trạng thái Escrow của một đơn hàng cụ thể
    */
-  async getOrderEscrowDetails(orderId: string) {
+  async getOrderEscrowDetails(
+    orderId: string,
+    viewer: Pick<AuthenticatedUser, 'id' | 'role'>,
+  ) {
+    if (!viewer?.id) throw new ForbiddenException('Không có quyền xem hoa hồng');
+    const where: Prisma.CommissionWhereInput = { orderId };
+    if (viewer.role === UserRole.COLLABORATOR) {
+      where.collaboratorId = viewer.id;
+    } else if (viewer.role === UserRole.SHOP_MANAGER) {
+      where.order = { store: { ownerId: viewer.id, isDeleted: false } };
+    } else if (
+      viewer.role !== UserRole.SYSTEM_ADMIN &&
+      viewer.role !== UserRole.SYSTEM_MANAGER
+    ) {
+      throw new ForbiddenException('Không có quyền xem hoa hồng');
+    }
     const commission = await this.prisma.commission.findFirst({
-      where: { orderId },
+      where,
       include: {
         order: {
           select: {

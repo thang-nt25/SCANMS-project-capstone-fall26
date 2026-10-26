@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Ticket, Sparkles, Check, Clock3, AlertCircle, Copy, CheckCircle2, Percent, DollarSign, Calendar, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
+import { Ticket, Sparkles, Check, Clock3, AlertCircle, Copy, CheckCircle2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { couponService, type DiscountType, type CouponScope } from '../../services/coupon.service';
 
@@ -31,7 +31,6 @@ interface CouponProposalCardProps {
 
 export function CouponProposalCardBubble({
   card,
-  isMine,
   isShop,
   activeConv,
 }: CouponProposalCardProps) {
@@ -42,8 +41,8 @@ export function CouponProposalCardBubble({
   );
   const [usageLimit, setUsageLimit] = useState<number>(card.usageLimit || 50);
   const [minOrder, setMinOrder] = useState<number>(card.minimumOrderAmount || 150000);
-  const [maxDiscount, setMaxDiscount] = useState<number>(card.maximumDiscountAmount || 50000);
-  const [validityDays, setValidityDays] = useState<number>(card.validityDays || 30);
+  const [maxDiscount] = useState<number>(card.maximumDiscountAmount || 50000);
+  const [validityDays] = useState<number>(card.validityDays || 30);
   const [status, setStatus] = useState<string>(card.status || 'PENDING_APPROVAL');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -81,10 +80,7 @@ export function CouponProposalCardBubble({
     setter(Number.isNaN(parsed) ? 0 : parsed);
   };
 
-  const formatMoney = (val?: number | null) => {
-    if (val === 0) return '0';
-    return val ? val.toLocaleString('vi-VN') : '';
-  };
+
 
   const handleApprove = async () => {
     if (!effectiveStoreId || !card.couponId) {

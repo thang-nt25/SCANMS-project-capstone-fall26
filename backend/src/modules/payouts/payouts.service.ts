@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { KycStatus, PayoutStatus, Prisma, UserRole } from '@prisma/client';
+import { isUUID } from 'class-validator';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { WithdrawalPolicyService } from '../wallets/withdrawal-policy.service';
@@ -53,9 +54,7 @@ export class PayoutsService {
     const storeId = dto.storeId?.trim() || null;
     if (
       storeId !== null &&
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        storeId,
-      )
+      !isUUID(storeId, 'all')
     ) {
       throw new BadRequestException('Mã shop không hợp lệ');
     }

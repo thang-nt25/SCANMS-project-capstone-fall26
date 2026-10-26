@@ -1,4 +1,4 @@
-import { Radio, Video, ShoppingBag, Store, Calendar, TrendingUp, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Radio, Video, ShoppingBag, Store, Calendar, TrendingUp, Sparkles } from 'lucide-react';
 import type { LiveSessionSummaryItem } from '../../services/analytics.service';
 
 interface Props {

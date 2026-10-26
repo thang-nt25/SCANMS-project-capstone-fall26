@@ -1602,8 +1602,8 @@ export default function ProductDetailPage() {
                     {displayVouchers.slice(0, 3).map((vc) => {
                       const isApplied = verifiedCoupon?.code === vc.displayCode;
                       const label = vc.discountType === 'PERCENTAGE'
-                        ? `Giảm ${vc.discountValue}%`
-                        : `Giảm ${Number(vc.discountAmount || vc.discountValue).toLocaleString('vi-VN')}₫`;
+                        ? `Giảm ${vc.discountValue || 0}%`
+                        : `Giảm ${Number(vc.discountAmount || vc.discountValue || 0).toLocaleString('vi-VN')}₫`;
                       return (
                         <div
                           key={vc.id}

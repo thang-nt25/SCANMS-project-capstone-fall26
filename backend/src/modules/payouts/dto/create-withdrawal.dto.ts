@@ -7,7 +7,7 @@ export class CreateWithdrawalDto {
     format: 'uuid',
   })
   @IsOptional()
-  @IsUUID(undefined, { message: 'Shop phải có UUID hợp lệ nếu được cung cấp' })
+  @IsUUID('all', { message: 'Shop phải có UUID hợp lệ nếu được cung cấp' })
   storeId?: string;
 
   @ApiProperty({

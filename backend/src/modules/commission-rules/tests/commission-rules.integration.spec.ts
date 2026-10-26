@@ -191,6 +191,7 @@ describe('CommissionRules Integration & Security Test', () => {
       }),
     },
     $executeRawUnsafe: jest.fn(),
+    $queryRaw: jest.fn(async () => [{ locked: 1 }]),
     $transaction: jest.fn(async (cb) => cb(mockPrismaService)),
   };
 

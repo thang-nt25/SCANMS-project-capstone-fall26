@@ -2317,8 +2317,10 @@ export class OrdersService {
         storeId,
         items: storeItems,
         couponCode: effectiveStoreCoupon,
-        platformCouponCode: dto.platformCouponsByStore?.[storeId] || dto.platformCouponCode,
-        shippingCouponCode: dto.shippingCouponsByStore?.[storeId] || dto.shippingCouponCode,
+        // An explicit per-shop map is authoritative: never leak the fallback
+        // code into another shop's child order during a multi-store checkout.
+        platformCouponCode: dto.platformCouponsByStore ? dto.platformCouponsByStore[storeId] : dto.platformCouponCode,
+        shippingCouponCode: dto.shippingCouponsByStore ? dto.shippingCouponsByStore[storeId] : dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
       };
       const subPayloadHash = computeOrderPayloadHash(
@@ -3792,7 +3794,8 @@ export class OrdersService {
     userId: string,
     userRole: string,
     query: {
-      status?: OrderStatus;
+      status?: OrderStatus | 'RETURNS';
+      customerId?: string;
       paymentStatus?: string;
       search?: string;
       page?: number | string;
@@ -3842,13 +3845,14 @@ export class OrdersService {
     if (targetStoreId) {
       where.storeId = targetStoreId;
     }
-    if ((query.status as string) === 'RETURNS') {
-      where.OR = [
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.status === 'RETURNS') {
+      where.AND = [{ OR: [
         { status: OrderStatus.RETURNED },
         { status: OrderStatus.RETURN_REQUESTED },
         { status: OrderStatus.DISPUTED },
         { returnRequest: { isNot: null } },
-      ];
+      ] }];
     } else if (query.status) {
       where.status = query.status;
     }
