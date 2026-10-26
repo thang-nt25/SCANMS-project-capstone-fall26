@@ -1620,6 +1620,10 @@ export class CommissionRulesService {
     const orderYearMonth = this.getVietnamYearMonth(completedDate);
 
     return await this.prisma.$transaction(async (tx) => {
+      // Different orders can affect the same monthly bonus. Serialize before
+      // mutating any refund, not just by order ID, until this transaction ends.
+      const bonusLockKey = `refund-bonus:${storeId}:${collaboratorId}:${orderYearMonth}`;
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${bonusLockKey}, 0))`;
       // Khóa dòng Order bằng FOR UPDATE chống race condition khi có 2 yêu cầu hoàn tiền đồng thời (Issue 4)
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
 
@@ -1936,8 +1940,23 @@ export class CommissionRulesService {
         );
         const correctBonusAmount = new Prisma.Decimal(recalculation.totalBonus);
 
-        const overpaidBonus =
-          pastSettlement.bonusAmount.minus(correctBonusAmount);
+        // Both queued and already applied deductions count toward the amount
+        // recovered. Never charge the cumulative shortfall again on each refund.
+        const previousAdjustments = await tx.bonusAdjustment.aggregate({
+          where: {
+            storeId,
+            collaboratorId,
+            originalSettlementId: pastSettlement.id,
+            status: { in: ['PENDING', 'APPLIED'] },
+          },
+          _sum: { adjustmentAmount: true },
+        });
+        const overpaidBonus = Prisma.Decimal.max(
+          0,
+          pastSettlement.bonusAmount
+            .minus(correctBonusAmount)
+            .add(previousAdjustments._sum.adjustmentAmount ?? 0),
+        );
 
         if (overpaidBonus.greaterThan(0)) {
           // Tìm kỳ lương kế tiếp chưa chốt tại thời điểm phát sinh hoàn tiền (chuẩn múi giờ Việt Nam)
