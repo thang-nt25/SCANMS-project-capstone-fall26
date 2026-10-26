@@ -3784,7 +3784,8 @@ export class OrdersService {
     userId: string,
     userRole: string,
     query: {
-      status?: OrderStatus;
+      status?: OrderStatus | 'RETURNS';
+      customerId?: string;
       paymentStatus?: string;
       search?: string;
       page?: number | string;
@@ -3834,13 +3835,14 @@ export class OrdersService {
     if (targetStoreId) {
       where.storeId = targetStoreId;
     }
-    if ((query.status as string) === 'RETURNS') {
-      where.OR = [
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.status === 'RETURNS') {
+      where.AND = [{ OR: [
         { status: OrderStatus.RETURNED },
         { status: OrderStatus.RETURN_REQUESTED },
         { status: OrderStatus.DISPUTED },
         { returnRequest: { isNot: null } },
-      ];
+      ] }];
     } else if (query.status) {
       where.status = query.status;
     }
