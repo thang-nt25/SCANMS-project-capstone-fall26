@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Ticket,
   Truck,
@@ -15,7 +15,10 @@ import {
   Clock,
 } from 'lucide-react';
 import type { CheckoutShopGroup } from './CheckoutItemsSection';
-import { type PublicStoreCoupon } from '@/services/coupon.service';
+import { couponService, type PublicStoreCoupon } from '@/services/coupon.service';
+import { collectCheckoutVouchers, checkoutVoucherDisabledReason } from '@/utils/checkout-vouchers';
+import { validateCheckoutVoucher } from '@/utils/checkout-voucher-validation';
+import type { VoucherSlot } from '@/utils/voucher-intent';
 import { formatMoney } from '@/utils/marketplace.utils';
 import { authService } from '@/services/auth.service';
 import api from '@/services/api';
@@ -53,6 +56,7 @@ export interface AppliedShopVoucher {
 }
 
 export interface AppliedPlatformVoucher {
+  storeId?: string;
   code: string;
   discountAmount: number;
   benefitType: 'GOODS' | 'SHIPPING';
@@ -61,6 +65,7 @@ export interface AppliedPlatformVoucher {
 export interface ScanmsCheckoutVoucherModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRequestSignIn?: () => void;
   groups: CheckoutShopGroup[];
   shippingFeesByStore: Record<string, number>;
   totalShippingFee: number;
@@ -84,8 +89,9 @@ export interface ScanmsCheckoutVoucherModalProps {
 export function ScanmsCheckoutVoucherModal({
   isOpen,
   onClose,
+  onRequestSignIn,
   groups,
-  shippingFeesByStore: _shippingFeesByStore,
+  shippingFeesByStore,
   totalShippingFee,
   rawGoodsSubtotal,
   customerPhone,
@@ -99,7 +105,6 @@ export function ScanmsCheckoutVoucherModal({
   onApplyShippingCoupon,
   onRemoveShippingCoupon,
 }: ScanmsCheckoutVoucherModalProps) {
-  const navigate = useNavigate();
   const [inputCode, setInputCode] = useState('');
   const [isApplyingCode, setIsApplyingCode] = useState(false);
   const [inputFeedback, setInputFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -109,289 +114,112 @@ export function ScanmsCheckoutVoucherModal({
   const [savedShopCouponsMap, setSavedShopCouponsMap] = useState<Record<string, PublicStoreCoupon[]>>({});
   const [platformCoupons, setPlatformCoupons] = useState<PublicStoreCoupon[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // Fetch available coupons when modal opens:
-  // CHUẨN BUSINESS: Chỉ lấy các mã trong VÍ VOUCHER mà khách đã lưu (Claimed) + Voucher công khai của Sàn
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
+  const applyingRef = useRef(false);
+  const revisionRef = useRef(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [clock, setClock] = useState(Date.now);
   useEffect(() => {
-    if (!isOpen) {
-      setInputFeedback(null);
-      return;
-    }
-
-    let active = true;
-    setLoadingCoupons(true);
-
-    const fetchAll = async () => {
-      try {
-        const currentUser = authService.getCurrentUser();
-        const loggedIn = Boolean(currentUser);
-        setIsLoggedIn(loggedIn);
-
-        let savedVouchers: PublicStoreCoupon[] = [];
-
-        // 1. Nếu khách đã đăng nhập, lấy các voucher đã lưu trong Ví Voucher
-        if (loggedIn) {
-          try {
-            const savedRes: any = await api.get('/coupons/saved/details', {
-              headers: { 'x-skip-cache': 'true' },
-            });
-            const rawSaved = savedRes?.data?.data ?? savedRes?.data ?? savedRes;
-            if (Array.isArray(rawSaved)) {
-              savedVouchers = rawSaved;
-            }
-          } catch (err) {
-            console.warn('Không thể tải voucher đã lưu của tài khoản:', err);
-          }
-        }
-
-        // 2. Lấy danh sách voucher công khai từ Sàn (Freeship & Platform Deal)
-        const platformRes: any = await api.get('/coupons/available').catch(() => ({ data: [] }));
-        const rawPlatform = platformRes?.data?.data ?? platformRes?.data ?? [];
-        const platList: PublicStoreCoupon[] = Array.isArray(rawPlatform) ? rawPlatform : [];
-
-        if (!active) return;
-
-        setPlatformCoupons(platList);
-
-        // 3. Phân bổ các mã shop ĐÃ LƯU vào từng shop trong giỏ hàng
-        const storeMap: Record<string, PublicStoreCoupon[]> = {};
-        for (const group of groups) {
-          const storeId = group.store.id;
-          storeMap[storeId] = savedVouchers.filter(
-            (c: any) => c.store?.id === storeId || c.storeId === storeId
-          );
-        }
-        setSavedShopCouponsMap(storeMap);
-      } catch (err) {
-        console.error('Lỗi tải danh sách voucher checkout:', err);
-      } finally {
-        if (active) setLoadingCoupons(false);
-      }
-    };
-
-    void fetchAll();
-
+    if (!isOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.querySelector<HTMLElement>('button, input')?.focus();
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => {
-      active = false;
+      window.clearInterval(timer);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
     };
-  }, [isOpen, groups]);
-
-  // Phân loại mã Freeship và mã Sàn
-  const { freeshipVouchers, platformGoodsVouchers } = useMemo(() => {
-    let freeship: PublicStoreCoupon[] = [];
-    let goods: PublicStoreCoupon[] = [];
-
-    for (const c of platformCoupons) {
-      if (c.fundingSource && c.fundingSource !== 'PLATFORM_FUNDED') continue;
-      if (c.code?.startsWith('KOL') || c.code?.startsWith('SHOP')) continue;
-      if (c.benefitType === 'SHIPPING') {
-        freeship.push(c);
-      } else {
-        goods.push(c);
-      }
-    }
-
-    // Giới hạn hiển thị 2 mã Freeship & 2 mã Sàn chủ đạo
-    freeship = freeship.slice(0, 2);
-    goods = goods.slice(0, 2);
-
-    // Mẫu chuẩn dự phòng nếu chưa có trong DB
-    if (freeship.length === 0) {
-      freeship.push({
-        id: 'mock-freeship-1',
-        code: 'SAN07SHIP',
-        discountType: 'FIXED_AMOUNT',
-        discountValue: 15000,
-        minimumOrderAmount: 100000,
-        maximumDiscountAmount: 15000,
-        remainingUses: 150,
-        expiresAt: '2026-12-31T23:59:59Z',
-        scopeType: 'STORE_WIDE',
-        products: [],
-        categories: [],
-        storeName: 'Sàn SCANMS',
-        benefitType: 'SHIPPING',
-        fundingSource: 'PLATFORM_FUNDED',
-      });
-      freeship.push({
-        id: 'mock-freeship-2',
-        code: 'FREESHIP30K',
-        discountType: 'FIXED_AMOUNT',
-        discountValue: 30000,
-        minimumOrderAmount: 300000,
-        maximumDiscountAmount: 30000,
-        remainingUses: 80,
-        expiresAt: '2026-12-31T23:59:59Z',
-        scopeType: 'STORE_WIDE',
-        products: [],
-        categories: [],
-        storeName: 'Sàn SCANMS',
-        benefitType: 'SHIPPING',
-        fundingSource: 'PLATFORM_FUNDED',
-      });
-    }
-
-    if (goods.length === 0) {
-      goods.push({
-        id: 'mock-platform-1',
-        code: 'SAN07SAVE',
-        discountType: 'FIXED_AMOUNT',
-        discountValue: 10000,
-        minimumOrderAmount: 150000,
-        maximumDiscountAmount: 10000,
-        remainingUses: 95,
-        expiresAt: '2026-12-31T23:59:59Z',
-        scopeType: 'STORE_WIDE',
-        products: [],
-        categories: [],
-        storeName: 'Sàn SCANMS',
-        benefitType: 'GOODS',
-        fundingSource: 'PLATFORM_FUNDED',
-      });
-    }
-
-    return { freeshipVouchers: freeship, platformGoodsVouchers: goods };
-  }, [platformCoupons]);
-
-  // Tự động tick chọn mã Freeship chuẩn nếu đủ điều kiện
+  }, [isOpen]);
   useEffect(() => {
-    if (!isOpen || loadingCoupons) return;
+    revisionRef.current++;
+    applyingRef.current = false;
+    setIsApplyingCode(false);
+    return () => { revisionRef.current++; };
+  }, [isOpen, groups, customerPhone, shippingFeesByStore]);
 
-    // Tự chọn Freeship tốt nhất nếu chưa chọn
-    if (!appliedShippingCoupon && freeshipVouchers.length > 0 && totalShippingFee > 0) {
-      const bestFreeship = freeshipVouchers.find(
-        (v) => rawGoodsSubtotal >= (v.minimumOrderAmount || 0)
-      );
-      if (bestFreeship) {
-        onApplyShippingCoupon({
-          code: bestFreeship.code,
-          discountAmount: Math.min(totalShippingFee, Number(bestFreeship.discountValue) || 0),
-          benefitType: 'SHIPPING',
-        });
+  // Public product-scoped offers are usable immediately; saved codes are optional.
+  useEffect(() => {
+    if (!isOpen) { setInputFeedback(null); return; }
+    let active = true;
+    const controller = new AbortController();
+    setLoadingCoupons(true);
+    setLoadError('');
+    setSavedShopCouponsMap({});
+    setPlatformCoupons([]);
+    const loggedIn = Boolean(authService.getCurrentUser() && localStorage.getItem('token'));
+    setIsLoggedIn(loggedIn);
+    const errors: string[] = [];
+    const fetchAll = async () => {
+      const savedPromise = loggedIn
+        ? api.get('/coupons/saved/details', { signal: controller.signal, headers: { 'x-skip-cache': '1' } })
+          .then((res: any) => { const data = res?.data?.data ?? res?.data ?? res; return Array.isArray(data) ? data as PublicStoreCoupon[] : []; })
+          .catch(() => { errors.push('Không tải được mã đã lưu.'); return [] as PublicStoreCoupon[]; })
+        : Promise.resolve([] as PublicStoreCoupon[]);
+      const publicPromise = Promise.all(groups.map(async group => {
+        const results = await Promise.allSettled([...new Set(group.items.map(item => item.productId))]
+          .map(productId => couponService.getPublicStoreCoupons(group.store.id, productId, controller.signal)));
+        if (results.some(result => result.status === 'rejected')) errors.push('Một số ưu đãi của Shop chưa tải được.');
+        return { storeId: group.store.id, coupons: collectCheckoutVouchers(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []))
+          .map(coupon => ({ ...coupon, storeId: group.store.id })) };
+      }));
+      const platformPromise = api.get('/coupons/available', { signal: controller.signal, headers: { 'x-skip-cache': '1' } })
+        .then((res: any) => { const data = res?.data?.data ?? res?.data ?? res; return Array.isArray(data) ? data as PublicStoreCoupon[] : []; })
+        .catch(() => { errors.push('Không tải được voucher sàn.'); return [] as PublicStoreCoupon[]; });
+      const [saved, publicGroups, platform] = await Promise.all([savedPromise, publicPromise, platformPromise]);
+      if (!active) return;
+      const storeMap: Record<string, PublicStoreCoupon[]> = {};
+      for (const group of publicGroups) {
+        const productIds = new Set(groups.find(item => item.store.id === group.storeId)?.items.map(item => item.productId));
+        // Saved scoped codes remain validated by the server, never estimated locally.
+        storeMap[group.storeId] = collectCheckoutVouchers([
+          group.coupons.filter(c => c.fundingSource !== 'PLATFORM_FUNDED' && c.benefitType !== 'SHIPPING'),
+          saved.filter(c => (c.store?.id || c.storeId) === group.storeId && c.fundingSource !== 'PLATFORM_FUNDED' && c.benefitType !== 'SHIPPING' &&
+            (c.scopeType !== 'PRODUCTS' || c.products?.some(product => productIds.has(product.id)))),
+        ]);
       }
-    }
-  }, [isOpen, loadingCoupons, appliedShippingCoupon, freeshipVouchers, totalShippingFee, rawGoodsSubtotal, onApplyShippingCoupon]);
+      setSavedShopCouponsMap(storeMap);
+      const storeIds = new Set(groups.map(group => group.store.id));
+      setPlatformCoupons(collectCheckoutVouchers([platform, ...publicGroups.map(group => group.coupons)])
+        .filter(c => storeIds.has(c.store?.id || c.storeId || '') || publicGroups.some(group => group.coupons.some(item => item.id === c.id))));
+      setLoadError([...new Set(errors)].join(' '));
+      setLoadingCoupons(false);
+    };
+    void fetchAll().catch(() => {
+      if (active) { setLoadError('Chưa thể tải voucher. Vui lòng thử lại.'); setLoadingCoupons(false); }
+    });
+    return () => { active = false; controller.abort(); };
+  }, [isOpen, groups, reload]);
 
-  // Xử lý khi khách tự gõ mã ưu đãi (mã KOL / mã shop / mã sàn)
-  const handleApplyInputCode = async () => {
-    const code = inputCode.trim().toUpperCase();
-    if (!code) return;
+  const { freeshipVouchers, platformGoodsVouchers } = useMemo(() => ({
+    freeshipVouchers: platformCoupons.filter(c => c.benefitType === 'SHIPPING'),
+    platformGoodsVouchers: platformCoupons.filter(c => c.fundingSource === 'PLATFORM_FUNDED' && c.benefitType !== 'SHIPPING'),
+  }), [platformCoupons]);
 
+  const handleApplyInputCode = async (overrideCode?: string, slot?: VoucherSlot, storeId?: string) => {
+    const code = (overrideCode ?? inputCode).trim().toUpperCase();
+    if (!code || applyingRef.current) return;
+    applyingRef.current = true;
+    const revision = revisionRef.current;
     setIsApplyingCode(true);
     setInputFeedback(null);
-
     try {
-      let appliedSuccess = false;
-
-      // 1. Thử validate theo từng shop trong đơn
-      for (const group of groups) {
-        try {
-          const res: any = await api.post('/coupons/validate', {
-            code,
-            storeId: group.store.id,
-            items: group.items.map((it) => ({
-              productId: it.productId,
-              variantId: it.variantId || undefined,
-              quantity: it.quantity,
-              unitPrice: it.price,
-            })),
-            customerPhone: customerPhone?.trim() || undefined,
-          });
-
-          const result = res?.data || res;
-          if (result && result.valid && result.discountAmount > 0) {
-            onApplyShopCoupon(group.store.id, {
-              code: result.code || code,
-              discountAmount: Number(result.discountAmount) || 0,
-              discountType: result.discountType,
-              storeName: group.store.name,
-            });
-            setInputFeedback({
-              type: 'success',
-              text: `Áp dụng thành công mã “${result.code}” cho ${group.store.name}: −${formatMoney(result.discountAmount)}`,
-            });
-            setInputCode('');
-            appliedSuccess = true;
-            break;
-          }
-        } catch {
-          // Thử tiếp
-        }
-      }
-
-      // 2. Thử preview Sàn (GOODS)
-      if (!appliedSuccess) {
-        try {
-          const resGoods: any = await api.post('/coupons/preview-stacked', {
-            code,
-            storeId: groups[0]?.store.id,
-            benefitType: 'GOODS',
-            goodsSubtotal: rawGoodsSubtotal,
-            shippingFee: totalShippingFee,
-            customerPhone: customerPhone?.trim() || undefined,
-          });
-          const result = resGoods?.data || resGoods;
-          if (result && result.discountAmount) {
-            onApplyPlatformCoupon({
-              code: result.code || code,
-              discountAmount: Number(result.discountAmount) || 0,
-              benefitType: 'GOODS',
-            });
-            setInputFeedback({
-              type: 'success',
-              text: `Áp dụng thành công mã Sàn “${result.code}”: −${formatMoney(Number(result.discountAmount) || 0)}`,
-            });
-            setInputCode('');
-            appliedSuccess = true;
-          }
-        } catch {
-          // Thử tiếp
-        }
-      }
-
-      // 3. Thử preview SHIPPING
-      if (!appliedSuccess) {
-        try {
-          const resShip: any = await api.post('/coupons/preview-stacked', {
-            code,
-            storeId: groups[0]?.store.id,
-            benefitType: 'SHIPPING',
-            goodsSubtotal: rawGoodsSubtotal,
-            shippingFee: totalShippingFee,
-            customerPhone: customerPhone?.trim() || undefined,
-          });
-          const result = resShip?.data || resShip;
-          if (result && result.discountAmount) {
-            onApplyShippingCoupon({
-              code: result.code || code,
-              discountAmount: Number(result.discountAmount) || 0,
-              benefitType: 'SHIPPING',
-            });
-            setInputFeedback({
-              type: 'success',
-              text: `Áp dụng thành công mã Freeship “${result.code}”: −${formatMoney(Number(result.discountAmount) || 0)}`,
-            });
-            setInputCode('');
-            appliedSuccess = true;
-          }
-        } catch {
-          // Ignore
-        }
-      }
-
-      if (!appliedSuccess) {
-        setInputFeedback({
-          type: 'error',
-          text: `Mã “${code}” không tồn tại, đã hết lượt sử dụng hoặc chưa đạt điều kiện đơn hàng.`,
-        });
-      }
-    } catch (err: any) {
-      setInputFeedback({
-        type: 'error',
-        text: err?.response?.data?.message || 'Không thể kiểm tra mã giảm giá lúc này.',
+      const result = await validateCheckoutVoucher((path, body) => api.post(path, body), {
+        code, slot, storeId, groups, shippingFees: shippingFeesByStore,
+        shopDiscounts: appliedShopCoupons, customerPhone,
       });
+      if (revision !== revisionRef.current) return;
+      if (result.slot === 'SHOP') onApplyShopCoupon(result.storeId, result);
+      else if (result.slot === 'PLATFORM') onApplyPlatformCoupon({ ...result, benefitType: 'GOODS' });
+      else onApplyShippingCoupon({ ...result, benefitType: 'SHIPPING' });
+      setInputFeedback({ type: 'success', text: `Đã áp dụng ${result.code} cho ${result.storeName}: −${formatMoney(result.discountAmount)}` });
+      setInputCode('');
+    } catch (error: any) {
+      if (revision === revisionRef.current) setInputFeedback({ type: 'error', text: error?.message || 'Chưa thể kiểm tra voucher. Vui lòng thử lại.' });
     } finally {
-      setIsApplyingCode(false);
+      if (revision === revisionRef.current) { applyingRef.current = false; setIsApplyingCode(false); }
     }
   };
 
@@ -415,10 +243,19 @@ export function ScanmsCheckoutVoucherModal({
   return (
     <div
       role="dialog"
+      ref={dialogRef}
       aria-modal="true"
       aria-labelledby="scanms-voucher-modal-title"
       className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 text-[#1A1612]"
       onClick={onClose}
+      onKeyDown={event => {
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
+        if (event.key !== 'Tab') return;
+        const elements = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), a[href], [role="button"][tabindex="0"]') || []);
+        const first = elements[0], last = elements[elements.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}
     >
       <div
         className="w-full max-w-2xl bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EAE4D7] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left"
@@ -465,7 +302,7 @@ export function ScanmsCheckoutVoucherModal({
             <button
               type="button"
               disabled={!inputCode.trim() || isApplyingCode}
-              onClick={handleApplyInputCode}
+              onClick={() => void handleApplyInputCode()}
               className="px-4 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5"
             >
               {isApplyingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -474,10 +311,10 @@ export function ScanmsCheckoutVoucherModal({
           </div>
 
           {inputFeedback && (
-            <div
+            <div role="status" aria-live="polite"
               className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 border ${
                 inputFeedback.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  ? 'bg-[#FBF5EB] text-[#8A642C] border-[#EEDFC6]'
                   : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
@@ -493,6 +330,11 @@ export function ScanmsCheckoutVoucherModal({
 
         {/* 3. Danh Sách Thẻ Voucher (Trực quan, không câu chữ giảng giải) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+            {loadError} <button type="button" className="ml-2 font-semibold text-[#B88E4F] underline" onClick={() => setReload(value => value + 1)}>Thử tải lại</button>
+          </div>}
+          {!loadingCoupons && !platformCoupons.length && !Object.values(savedShopCouponsMap).some(list => list.length) && !loadError &&
+            <p className="text-xs text-[#7D715E]">Hiện chưa có voucher phù hợp. Bạn vẫn có thể nhập mã Shop hoặc KOL được chia sẻ.</p>}
           {loadingCoupons ? (
             <div className="py-12 text-center text-xs text-[#7D715E] flex flex-col items-center justify-center gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-[#B88E4F]" />
@@ -518,22 +360,26 @@ export function ScanmsCheckoutVoucherModal({
                   {freeshipVouchers.map((voucher) => {
                     const isSelected = appliedShippingCoupon?.code === voucher.code;
                     const minAmount = voucher.minimumOrderAmount || 0;
-                    const isEligible = rawGoodsSubtotal >= minAmount && totalShippingFee > 0;
+                    const voucherGroup = groups.find(group => group.store.id === (voucher.store?.id || voucher.storeId));
+                    const isEligible = !isApplyingCode && !checkoutVoucherDisabledReason(voucher, voucherGroup?.subtotal ?? rawGoodsSubtotal, voucherGroup ? shippingFeesByStore[voucherGroup.store.id] || 0 : totalShippingFee, clock);
                     const lackAmount = minAmount - rawGoodsSubtotal;
 
                     return (
                       <div
                         key={voucher.id || voucher.code}
+                        role="button"
+                        aria-pressed={isSelected}
+                        aria-disabled={!isEligible && !isSelected}
+                        tabIndex={isEligible || isSelected ? 0 : -1}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                        }}
                         onClick={() => {
-                          if (!isEligible) return;
+                          if ((!isEligible && !isSelected) || applyingRef.current) return;
                           if (isSelected) {
                             onRemoveShippingCoupon();
                           } else {
-                            onApplyShippingCoupon({
-                              code: voucher.code,
-                              discountAmount: Number(voucher.discountValue) || 15000,
-                              benefitType: 'SHIPPING',
-                            });
+                            void handleApplyInputCode(voucher.code, 'SHIPPING', voucher.store?.id || voucher.storeId);
                           }
                         }}
                         className={`rounded-xl border transition-all flex items-stretch overflow-hidden select-none cursor-pointer ${
@@ -623,30 +469,27 @@ export function ScanmsCheckoutVoucherModal({
                   {platformGoodsVouchers.map((voucher) => {
                     const isSelected = appliedPlatformCoupon?.code === voucher.code;
                     const minAmount = voucher.minimumOrderAmount || 0;
-                    const isEligible = rawGoodsSubtotal >= minAmount;
+                    const voucherGroup = groups.find(group => group.store.id === (voucher.store?.id || voucher.storeId));
+                    const isEligible = !isApplyingCode && !checkoutVoucherDisabledReason(voucher, voucherGroup?.subtotal ?? rawGoodsSubtotal, totalShippingFee, clock);
                     const lackAmount = minAmount - rawGoodsSubtotal;
                     const isPercent = voucher.discountType === 'PERCENTAGE';
 
                     return (
                       <div
                         key={voucher.id || voucher.code}
+                        role="button"
+                        aria-pressed={isSelected}
+                        aria-disabled={!isEligible && !isSelected}
+                        tabIndex={isEligible || isSelected ? 0 : -1}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                        }}
                         onClick={() => {
-                          if (!isEligible) return;
+                          if ((!isEligible && !isSelected) || applyingRef.current) return;
                           if (isSelected) {
                             onRemovePlatformCoupon();
                           } else {
-                            const estDiscount = isPercent
-                              ? Math.min(
-                                  voucher.maximumDiscountAmount || Infinity,
-                                  rawGoodsSubtotal * (Number(voucher.discountValue) / 100),
-                                )
-                              : Number(voucher.discountValue) || 0;
-
-                            onApplyPlatformCoupon({
-                              code: voucher.code,
-                              discountAmount: estDiscount,
-                              benefitType: 'GOODS',
-                            });
+                            void handleApplyInputCode(voucher.code, 'PLATFORM', voucher.store?.id || voucher.storeId);
                           }
                         }}
                         className={`rounded-xl border transition-all flex items-stretch overflow-hidden select-none cursor-pointer ${
@@ -714,7 +557,7 @@ export function ScanmsCheckoutVoucherModal({
               </div>
 
               {/* ============================================================== */}
-              {/* NHÓM 3: 🏪 MÃ GIẢM GIÁ GIAN HÀNG (CHỈ HIỆN MÃ ĐÃ LƯU TRONG VÍ) */}
+              {/* NHÓM 3: Mã công khai đúng sản phẩm, mã đã lưu và mã đang áp dụng */}
               {/* ============================================================== */}
               <div className="space-y-4 pt-2 border-t border-[#EAE4D7]">
                 <div className="flex items-center justify-between">
@@ -724,7 +567,7 @@ export function ScanmsCheckoutVoucherModal({
                       Mã Giảm Giá Gian Hàng
                     </h3>
                   </div>
-                  <span className="text-[11px] text-[#7D715E]">Mã đã lưu trong Ví & Mã độc quyền</span>
+                  <span className="text-[11px] text-[#7D715E]">Áp dụng ngay, không cần lưu</span>
                 </div>
 
                 {/* Danh sách shop trong giỏ hàng */}
@@ -740,7 +583,7 @@ export function ScanmsCheckoutVoucherModal({
                     displayVouchers.unshift({
                       id: `applied-${appliedForThisStore.code}`,
                       code: appliedForThisStore.code,
-                      discountType: (appliedForThisStore.discountType as any) || 'FIXED_AMOUNT',
+                      discountType: 'FIXED_AMOUNT',
                       discountValue: appliedForThisStore.discountAmount,
                       minimumOrderAmount: 0,
                       maximumDiscountAmount: appliedForThisStore.discountAmount,
@@ -776,18 +619,18 @@ export function ScanmsCheckoutVoucherModal({
                         )}
                       </div>
 
-                      {/* Hiển thị các mã mà khách ĐÃ LƯU hoặc ĐÃ ÁP DỤNG cho shop này */}
+                      {/* Không bắt buộc lưu voucher trước khi áp dụng. */}
                       {displayVouchers.length === 0 ? (
                         <div className="py-2.5 px-3 rounded-lg border border-dashed border-[#EAE4D7] bg-[#FAF8F5] flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
                           <p className="text-xs text-[#7D715E]">
-                            Bạn chưa lưu mã giảm giá nào của <strong>{storeName}</strong>.
+                            Chưa có voucher phù hợp sản phẩm của <strong>{storeName}</strong>.
                           </p>
                           <Link
-                            to={`/shop/${storeId}`}
+                            to={`/shops/${storeId}`}
                             target="_blank"
                             className="inline-flex items-center gap-1 text-xs font-bold text-[#B88E4F] hover:underline shrink-0"
                           >
-                            <span>Ghé Shop lưu mã</span>
+                            <span>Xem ưu đãi Shop</span>
                             <ChevronRight size={13} />
                           </Link>
                         </div>
@@ -796,7 +639,7 @@ export function ScanmsCheckoutVoucherModal({
                           {displayVouchers.map((voucher) => {
                             const isSelected = appliedForThisStore?.code === voucher.code;
                             const minAmount = voucher.minimumOrderAmount || 0;
-                            const isEligible = group.subtotal >= minAmount;
+                            const isEligible = !isApplyingCode && !checkoutVoucherDisabledReason(voucher, group.subtotal, shippingFeesByStore[storeId] || 0, clock);
                             const lackAmount = minAmount - group.subtotal;
                             const isPercent = voucher.discountType === 'PERCENTAGE';
                             const isCreatorCoupon =
@@ -808,24 +651,19 @@ export function ScanmsCheckoutVoucherModal({
                             return (
                               <div
                                 key={voucher.id || voucher.code}
+                        role="button"
+                        aria-pressed={isSelected}
+                        aria-disabled={!isEligible && !isSelected}
+                        tabIndex={isEligible || isSelected ? 0 : -1}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+                        }}
                                 onClick={() => {
-                                  if (!isEligible) return;
+                                  if ((!isEligible && !isSelected) || applyingRef.current) return;
                                   if (isSelected) {
                                     onRemoveShopCoupon(storeId);
                                   } else {
-                                    const estDiscount = isPercent
-                                      ? Math.min(
-                                          voucher.maximumDiscountAmount || Infinity,
-                                          group.subtotal * (Number(voucher.discountValue) / 100),
-                                        )
-                                      : Number(voucher.discountValue) || 0;
-
-                                    onApplyShopCoupon(storeId, {
-                                      code: voucher.code,
-                                      discountAmount: estDiscount,
-                                      discountType: voucher.discountType,
-                                      storeName,
-                                    });
+                                    void handleApplyInputCode(voucher.code, 'SHOP', storeId);
                                   }
                                 }}
                                 className={`rounded-lg border p-2.5 flex items-center justify-between gap-3 transition-all select-none cursor-pointer ${
@@ -895,7 +733,7 @@ export function ScanmsCheckoutVoucherModal({
                     </p>
                     <button
                       type="button"
-                      onClick={() => navigate('/login')}
+                      onClick={onRequestSignIn || onClose}
                       className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] rounded-lg text-xs font-bold transition cursor-pointer shrink-0"
                     >
                       <LogIn size={13} />

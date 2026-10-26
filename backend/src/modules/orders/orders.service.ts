@@ -2312,8 +2312,10 @@ export class OrdersService {
         storeId,
         items: storeItems,
         couponCode: effectiveStoreCoupon,
-        platformCouponCode: dto.platformCouponsByStore?.[storeId] || dto.platformCouponCode,
-        shippingCouponCode: dto.shippingCouponsByStore?.[storeId] || dto.shippingCouponCode,
+        // An explicit per-shop map is authoritative: never leak the fallback
+        // code into another shop's child order during a multi-store checkout.
+        platformCouponCode: dto.platformCouponsByStore ? dto.platformCouponsByStore[storeId] : dto.platformCouponCode,
+        shippingCouponCode: dto.shippingCouponsByStore ? dto.shippingCouponsByStore[storeId] : dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
       };
       const subPayloadHash = computeOrderPayloadHash(
