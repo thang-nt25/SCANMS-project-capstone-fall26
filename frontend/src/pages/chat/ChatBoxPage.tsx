@@ -1333,12 +1333,9 @@ export default function ChatBoxPage({
       setMessages(cached);
       setIsLoadingMsgs(false);
       setTimeout(() => scrollToBottom(), 10);
-    } else if (conv.chatMessages && conv.chatMessages.length > 0) {
-      // Optimistic preview: Hiển thị ngay tin nhắn gần nhất từ conversation summary trong lúc tải full lịch sử
-      setMessages(conv.chatMessages as any);
-      setIsLoadingMsgs(true);
-      setTimeout(() => scrollToBottom(), 10);
     } else {
+      // Conversation summaries omit message IDs, attachments and sender details.
+      // Only render full messages from history or the per-conversation cache.
       setMessages([]);
       setIsLoadingMsgs(true);
     }
@@ -2154,11 +2151,11 @@ export default function ChatBoxPage({
                         >
                           <ChatAvatar
                             src={
-                              msg.sender.collaboratorProfile?.avatarUrl ||
-                              msg.sender.avatarUrl ||
+                              msg.sender?.collaboratorProfile?.avatarUrl ||
+                              msg.sender?.avatarUrl ||
                               getOtherAvatarUrl(activeConv)
                             }
-                            name={msg.sender.fullName || getOtherParty(activeConv)}
+                            name={msg.sender?.fullName || getOtherParty(activeConv)}
                             className="w-7 h-7 rounded-full text-[10px]"
                           />
                         </button>
@@ -2167,13 +2164,13 @@ export default function ChatBoxPage({
                       <div className={`chat-message-content ${hasSenderHeader ? `chat-deal-message-content ${!isMine ? 'chat-card-received' : ''}` : ''} max-w-[78%] space-y-1 sm:max-w-[72%] lg:max-w-[68%] ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && hasSenderHeader && <div className="chat-deal-sender">
                           <button type="button" onClick={() => openOtherProfile(activeConv)} disabled={!canOpenOtherProfile(activeConv)} title={`Xem hồ sơ ${getOtherParty(activeConv)}`} aria-label={`Xem hồ sơ ${getOtherParty(activeConv)}`}>
-                            <ChatAvatar src={msg.sender.collaboratorProfile?.avatarUrl || msg.sender.avatarUrl || getOtherAvatarUrl(activeConv)} name={msg.sender.fullName || getOtherParty(activeConv)} className="w-6 h-6 rounded-full text-[9px]" />
+                            <ChatAvatar src={msg.sender?.collaboratorProfile?.avatarUrl || msg.sender?.avatarUrl || getOtherAvatarUrl(activeConv)} name={msg.sender?.fullName || getOtherParty(activeConv)} className="w-6 h-6 rounded-full text-[9px]" />
                           </button>
-                          <span>{msg.sender.fullName || getOtherParty(activeConv)}</span>
+                          <span>{msg.sender?.fullName || getOtherParty(activeConv)}</span>
                         </div>}
                         {!isMine && !hasSenderHeader && (
                           <div className="pl-1 text-xs font-medium text-[#7D715E]">
-                            {msg.sender.fullName}
+                            {msg.sender?.fullName || getOtherParty(activeConv)}
                           </div>
                         )}
 
