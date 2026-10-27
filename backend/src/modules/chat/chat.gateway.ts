@@ -154,6 +154,7 @@ export class ChatGateway
       mediaType?: ChatAttachmentType;
       mediaName?: string;
       messageId?: string;
+      replyToId?: string;
     },
     @Ack()
     ack?: (result: { ok: boolean; error?: string; messageId?: string }) => void,
@@ -203,6 +204,12 @@ export class ChatGateway
       return;
     }
 
+    if (data.replyToId !== undefined && (typeof data.replyToId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.replyToId))) {
+      ack?.({ ok: false, error: 'Tin nhắn được trả lời không hợp lệ.' });
+      return;
+    }
+
     try {
       const conv = await this.chatService.getConversationById(
         data.conversationId,
@@ -226,9 +233,7 @@ export class ChatGateway
           );
         }
       } catch (error) {
-        if (error instanceof Error && error.message.startsWith('Sản phẩm')) {
-          throw error;
-        }
+        if (!(error instanceof SyntaxError)) throw error;
       }
 
       const profanityCheck = textToModerate
@@ -250,6 +255,7 @@ export class ChatGateway
         data.mediaType,
         data.mediaName ? sanitizeChatAttachmentName(data.mediaName) : undefined,
         data.messageId,
+        data.replyToId,
       );
 
       // Phát tới tất cả trong phòng conv:xxx và user

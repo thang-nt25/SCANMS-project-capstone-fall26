@@ -1,0 +1,82 @@
+.merchant-payout-page .payout-table td {
+  overflow-wrap: anywhere;
+}
+
+.merchant-payout-page .payout-table td[data-label="Yêu cầu"],
+.merchant-payout-page .payout-table td[data-label="Thuế"],
+.merchant-payout-page .payout-table td[data-label="Thực nhận"] {
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.merchant-payout-page .payout-status-pill {
+  white-space: normal;
+  padding-inline: 8px;
+}
+
+.merchant-payout-page .payout-table td[data-label="Thao tác"] button {
+  height: auto;
+  min-height: 32px;
+  padding: 6px;
+  white-space: normal;
+}
+
+@media (max-width: 1023px) {
+  .merchant-payout-page .payout-select-all {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .merchant-payout-page .payout-table,
+  .merchant-payout-page .payout-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .merchant-payout-page .payout-table colgroup,
+  .merchant-payout-page .payout-table thead {
+    display: none;
+  }
+
+  .merchant-payout-page .payout-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .merchant-payout-page .payout-table td {
+    display: block;
+    min-width: 0;
+    padding: 4px;
+    text-align: left;
+  }
+
+  .merchant-payout-page .payout-table td:first-child,
+  .merchant-payout-page .payout-table td[data-label="Thao tác"] {
+    grid-column: 1 / -1;
+  }
+
+  .merchant-payout-page .payout-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 5px;
+    color: #7D715E;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .merchant-payout-page .payout-table td[data-label="Thao tác"] > div {
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .merchant-payout-page .payout-table td[data-label="Thao tác"] button {
+    width: auto;
+    padding-inline: 12px;
+  }
+
+  .merchant-payout-page .payout-status-reference {
+    margin-left: 0;
+  }
+}

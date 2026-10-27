@@ -9,6 +9,7 @@ export interface ModalProps {
   subtitle?: ReactNode;
   icon?: ReactNode;
   children: ReactNode;
+  belowHeader?: ReactNode;
   footer?: ReactNode;
   className?: string;
   stickyHeader?: boolean;
@@ -22,6 +23,7 @@ export function Modal({
   subtitle,
   icon,
   children,
+  belowHeader,
   footer,
   className,
   stickyHeader = false,
@@ -69,6 +71,7 @@ export function Modal({
       >
         {(title || icon) && (
           <div className={cn(
+            'modal-header',
             'flex shrink-0 justify-between items-center gap-3 border-b border-slate-100',
             stickyHeader ? 'bg-white px-6 py-4 sm:px-7 sm:py-5' : 'pb-2'
           )}>
@@ -94,12 +97,13 @@ export function Modal({
           </div>
         )}
 
+        {belowHeader}
         {stickyHeader ? (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-7">
+          <div className="modal-scroll-body min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-7">
             {children}
           </div>
         ) : children}
-        {footer && <div className="shrink-0 border-t border-[#EAE4D7] px-6 py-3 sm:px-7">{footer}</div>}
+        {footer && <div className="modal-footer shrink-0 border-t border-[#EAE4D7] px-6 py-3 sm:px-7">{footer}</div>}
       </div>
     </div>
   );

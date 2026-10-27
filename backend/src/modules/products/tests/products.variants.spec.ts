@@ -101,7 +101,11 @@ describe('Product variant images', () => {
     );
     expect(prisma.productVariant.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ productId, isActive: true }),
+        where: expect.objectContaining({
+          productId,
+          isActive: true,
+          id: { notIn: [variantId, 'new-variant'] },
+        }),
         data: { isActive: false },
       }),
     );
@@ -124,6 +128,17 @@ describe('Product variant images', () => {
     expect(prisma.productVariant.create).not.toHaveBeenCalled();
   });
 
+  it('keeps newly created variants active when the product had no submitted variant IDs', async () => {
+    await service.syncProductVariants('shop-owner', UserRole.SHOP_MANAGER, productId, {
+      variants: [{ sku: 'NEW-SKU', name: '30 ml', attributes: { volume: '30 ml' },
+        stockQuantity: 5, price: 100000, imageUrl: 'https://cdn.scanms.vn/new.jpg' }],
+    });
+    expect(prisma.productVariant.updateMany).toHaveBeenCalledWith({
+      where: { productId, isActive: true, id: { notIn: ['new-variant'] } },
+      data: { isActive: false },
+    });
+  });
+
   it('creates a complete product with its variants and combined stock without optional commission or sample settings', async () => {
     prisma.store.findFirst.mockResolvedValue({
       id: 'store-1',
@@ -139,6 +154,11 @@ describe('Product variant images', () => {
     const result = await service.create('shop-owner', UserRole.SHOP_MANAGER, {
       storeId: 'store-1',
       sku: 'SERUM-1',
+      barcode: '4006381333931',
+      packageWeight: 500,
+      packageLength: 20,
+      packageWidth: 10,
+      packageHeight: 10,
       title: 'Serum dưỡng da',
       categoryName: 'Mỹ phẩm & Chăm sóc da',
       description:
@@ -201,6 +221,23 @@ describe('Product variant images', () => {
     );
     expect(result.product.id).toBe(productId);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows a single electronic product without barcode, ingredients or child SKUs', async () => {
+    prisma.store.findFirst.mockResolvedValue({ id: 'store-1', isVerified: true, onboardingStatus: 'VERIFIED' });
+    prisma.product.findFirst.mockResolvedValue(null);
+    prisma.product.create.mockImplementation((args: any) => ({ id: productId, ...args.data }));
+    const result = await service.create('shop-owner', UserRole.SHOP_MANAGER, {
+      sku: 'TECH-ONE', title: 'Tai nghe', categoryName: 'Thiết bị điện tử & Phụ kiện',
+      price: 100000, stockQuantity: 7, description: 'Tai nghe có dây', origin: 'Việt Nam',
+      labelInfo: 'Hướng dẫn bảo quản', imageUrl: 'https://cdn.scanms.vn/main.jpg',
+      originProofLinks: ['https://example.com/origin'], labelProofLinks: ['https://example.com/label'],
+      variants: [], packageWeight: 500, packageLength: 20, packageWidth: 10, packageHeight: 10,
+    });
+    expect(result.product.stockQuantity).toBe(7);
+    expect(result.product.barcode).toBeNull();
+    expect(result.product.ingredients).toBeNull();
+    expect(result.product.variants).toBeUndefined();
   });
 
   it('rejects a new product missing required evidence and details before persisting it', async () => {

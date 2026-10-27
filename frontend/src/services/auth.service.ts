@@ -121,7 +121,9 @@ export const authService = {
       const previousUserId = this.getCurrentUser()?.id;
       localStorage.setItem('user', JSON.stringify(user));
       if (user.stores?.[0]?.id) {
-        localStorage.setItem('current_store_id', user.stores[0].id);
+        const selectedStoreId = localStorage.getItem('current_store_id');
+        const keepSelection = previousUserId === user.id && user.stores.some((store: { id: string }) => store.id === selectedStoreId);
+        localStorage.setItem('current_store_id', keepSelection ? selectedStoreId! : user.stores[0].id);
       }
       if (previousUserId !== user.id) window.dispatchEvent(new Event('auth-user-updated'));
     }

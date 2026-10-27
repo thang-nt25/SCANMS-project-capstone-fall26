@@ -1,3 +1,4 @@
+import { chatMessageSelect } from '../chat/chat-reply';
 import {
   BadRequestException,
   ForbiddenException,
@@ -471,7 +472,7 @@ export class AffiliateDealsService {
             senderId: collaboratorId,
             messageText: JSON.stringify({ ...card, proposalId: proposal.id }),
           },
-          include: {
+          select: { ...chatMessageSelect,
             sender: { select: { id: true, fullName: true, role: true } },
           },
         });
@@ -996,7 +997,7 @@ export class AffiliateDealsService {
             senderId: userId,
             messageText: JSON.stringify(card),
           },
-          include: {
+          select: { ...chatMessageSelect,
             sender: { select: { id: true, fullName: true, role: true } },
           },
         });
@@ -1098,7 +1099,7 @@ export class AffiliateDealsService {
           senderId,
           messageText: JSON.stringify(card),
         },
-        include: {
+        select: { ...chatMessageSelect,
           sender: { select: { id: true, fullName: true, role: true } },
         },
       });

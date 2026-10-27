@@ -35,13 +35,14 @@ function DeliveryCountdown({ at }: { at: number }) {
   </span>;
 }
 
-export function SandboxSampleReceipt({ code, role, productId, productTitle, sampleRequestId, expanded = false }: {
+export function SandboxSampleReceipt({ code, role, productId, productTitle, sampleRequestId, expanded = false, hideStatusSummary = false }: {
   code: string;
   role: 'shop' | 'kol';
   productId?: string;
   productTitle?: string;
   sampleRequestId?: string;
   expanded?: boolean;
+  hideStatusSummary?: boolean;
 }) {
   const { state, setState, error: trackingError } = useSandboxSampleState(code);
   const [error, setError] = useState('');
@@ -69,26 +70,26 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
 
   return (
     <section
-      className="text-xs text-[#1A1612]"
+      className="sample-receipt text-xs text-[#1A1612]"
       aria-label="Tiến độ giao hàng đơn mẫu"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 pl-[46px]">
-        <div className="min-w-0">
+      {(!hideStatusSummary || (role === 'kol' && delivered && !state?.videoUrl) || (role === 'shop' && !simulationStartedAt && !delivered)) && <div className="sample-receipt-overview flex flex-wrap items-center justify-between gap-2 pl-[46px]">
+        {!hideStatusSummary && <div className="min-w-0">
           <div>
             <p className={overdue && !state?.videoUrl ? 'm-0 text-xs font-semibold text-[#DC2626]' : 'm-0 text-xs font-semibold text-[#231D15]'} role="status">
               {sandboxSampleStatusLabel(state)}
             </p>
             {state?.deadlineAt && !state.videoUrl && <p className="mt-0.5 text-[11px] text-[#7D715E]">Hạn video: {formatDateTime(state.deadlineAt)}</p>}
           </div>
-        </div>
+        </div>}
         <div className="flex items-center gap-2">
           {role === 'shop' && !simulationStartedAt && !delivered && <button type="button" disabled={busy || !state} onClick={() => void submit('start')} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <PackageCheck size={14} />}Bắt đầu hành trình</button>}
-          {role === 'kol' && delivered && !state?.videoUrl && <button type="button" onClick={() => setVideoModalOpen(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F]"><Video size={14} />Nộp video</button>}
+          {role === 'kol' && delivered && !state?.videoUrl && <button type="button" onClick={() => setVideoModalOpen(true)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F]"><Video size={14} />Nộp video kiểm thử</button>}
         </div>
-      </div>
-      {expanded && <div className="mt-3 space-y-2 border-t border-[#EAE4D7] pt-3">
+      </div>}
+      {expanded && <div className="sample-receipt-details mt-3 space-y-2 border-t border-[#EAE4D7] pt-3">
         {simulationStartedAt ? (
-          <ol className="grid grid-cols-3 py-1" aria-label="Các mốc giao hàng">
+          <ol className="sample-delivery-steps grid grid-cols-3 py-1" aria-label="Các mốc giao hàng">
             {deliverySteps.map((step, index) => {
               const done = deliveryIndex >= index;
               const current = done && index === deliveryIndex && !delivered;
@@ -98,6 +99,8 @@ export function SandboxSampleReceipt({ code, role, productId, productTitle, samp
               return (
                 <li
                   key={step.key}
+                  data-complete={done}
+                  aria-current={current ? 'step' : undefined}
                   className="relative flex min-w-0 flex-col items-center gap-1.5 px-1 text-center"
                 >
                   {index < deliverySteps.length - 1 && <span aria-hidden="true" className={`absolute left-1/2 top-2 h-px w-full ${deliveryIndex > index ? 'bg-[#C59B58]' : 'bg-[#EAE4D7]'}`} />}

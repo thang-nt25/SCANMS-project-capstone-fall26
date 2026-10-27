@@ -263,6 +263,12 @@ export const NotificationDropdown: React.FC = () => {
     }
     setIsOpen(false);
 
+    if (notif.type === 'PRODUCT_REVIEW_REPORTED') {
+      const role = authService.getCurrentUser()?.role;
+      if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/customer-reviews?filter=PENDING&review=${encodeURIComponent(notif.data?.reviewId || '')}`);
+      return;
+    }
+
     if (notif.type === 'LIVE_GOVERNANCE') {
       const role = authService.getCurrentUser()?.role;
       const sessionQuery = `session=${encodeURIComponent(notif.data?.sessionId || '')}`;

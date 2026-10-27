@@ -53,8 +53,19 @@ function SandboxShippingPayment({ code, amount, role }: { code: string; amount?:
       {role === 'shop' && !paid && <button type="button" onClick={() => void pay()} disabled={busy || !state || Boolean(trackingError) || !knownFee} className="sample-freight__pay inline-flex min-h-[38px] shrink-0 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EEDFC6] bg-[#FBF5EB] px-[13px] py-[9px] text-[11px] font-semibold leading-[1.4] text-[#231D15] transition-[background,border-color] duration-150 ease-[ease] hover:border-[#C59B58] hover:bg-[#F3EFE6] [&>svg]:text-[#8C6B32] focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#B88E4F] disabled:cursor-default disabled:opacity-50 [@media(max-width:480px)]:w-full">{busy ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}{busy ? 'Đang lưu…' : 'Thanh toán cước thử'}</button>}
       {paid && <p role="status" className="sample-freight__paid m-0 flex max-w-[170px] items-center gap-1.5 text-[10px] font-semibold leading-[1.5] text-[#795A2D] [&>svg]:shrink-0 [@media(max-width:480px)]:max-w-none"><CheckCircle2 size={15} />Shop đã thanh toán cước mô phỏng</p>}
     </div>
-    {paid && <p className="sample-freight__reference mt-2 mb-0 mx-0 flex flex-wrap items-baseline gap-x-[5px] gap-y-[3px] text-[9px] leading-[1.6] [&_code]:[overflow-wrap:anywhere] [&>span]:ml-auto [@media(max-width:480px)]:[&>span]:ml-0 [@media(max-width:480px)]:[&>span]:basis-full">Mã xác nhận: <code>{payment.reference}</code><span>{new Date(payment.paidAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span></p>}
-    {role !== 'shop' && <p className="sample-freight__note mt-2 mb-0 mx-0 flex items-start gap-[5px] text-[9px] leading-[1.6] [&>svg]:mt-px [&>svg]:shrink-0 [&>svg]:text-[#8C6B32]"><FlaskConical size={12} aria-hidden="true" /><span>Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.</span></p>}
+    {(paid || role !== 'shop') && <div className="sample-freight__receipt mt-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-2.5">
+      {paid && <div className="sample-freight__reference flex flex-wrap items-start justify-between gap-3 text-[10px] leading-relaxed">
+        <div className="sample-freight__confirmation min-w-0 flex-1">
+          <span className="block text-[9px] text-[#7D715E]">Mã xác nhận</span>
+          <code className="block mt-0.5 text-[#1A1612] [overflow-wrap:anywhere]">{payment.reference}</code>
+        </div>
+        <div className="sample-freight__timestamp">
+          <span className="block text-[9px] text-[#7D715E]">Thời gian thanh toán</span>
+          <time className="block mt-0.5 tabular-nums text-[#7D715E]" dateTime={payment.paidAt}>{new Date(payment.paidAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time>
+        </div>
+      </div>}
+      {role !== 'shop' && <p className="sample-freight__note mt-2 mb-0 mx-0 flex items-start gap-1.5 text-[10px] leading-relaxed [&>svg]:mt-px [&>svg]:shrink-0 [&>svg]:text-[#8C6B32]"><FlaskConical size={13} aria-hidden="true" /><span>Bạn nhận mẫu miễn phí, không phải trả tiền hàng hoặc phí ship.</span></p>}
+    </div>}
     {error && <p role="alert" className="sample-freight__error mt-2 mb-0 mx-0 text-[11px] leading-[1.5] text-[#DC2626]">{error}</p>}
   </div>;
 }
@@ -98,12 +109,12 @@ export function SampleSandboxWaybills({ charges, role = 'kol', productId, produc
   if (!tests.length) return null;
   const code = tests[0].trackingNumber;
 
-  return <section className="mt-3 min-w-0 rounded-xl border border-[#EAE4D7] bg-white" aria-label="Vận đơn mẫu GHN sandbox">
-    <div className="flex items-center justify-between gap-3 px-3.5 pb-1.5 pt-3">
+  return <section className="sample-waybill mt-3 min-w-0 rounded-xl border border-[#EAE4D7] bg-white" aria-label="Vận đơn mẫu GHN sandbox">
+    <div className="sample-waybill-heading flex items-center justify-between gap-3 px-3.5 pb-1.5 pt-3">
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Truck size={18} aria-hidden="true" /></span>
         <div className="min-w-0">
-          <div className="flex items-center gap-2"><h4 className="m-0 text-xs font-bold text-[#231D15]">Giao Hàng Nhanh</h4><span className="text-[10px] font-medium text-[#8C6B32]">Sandbox</span></div>
+          <div className="sample-waybill-carrier flex items-center gap-2"><h4 className="m-0 text-xs font-bold text-[#231D15]">Giao Hàng Nhanh</h4><span className="text-[10px] font-medium text-[#8C6B32]">Sandbox</span></div>
           <code className="mt-0.5 block text-[11px] font-semibold tracking-wide text-[#7D715E]">{code}</code>
         </div>
       </div>
@@ -112,7 +123,7 @@ export function SampleSandboxWaybills({ charges, role = 'kol', productId, produc
         <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
     </div>
-    <div className="px-3.5 pb-3">
+    <div className="sample-waybill-body px-3.5 pb-3">
       <SandboxSampleReceipt key={code} code={code} role={role} productId={productId} productTitle={productTitle} sampleRequestId={sampleRequestId} expanded={open} />
       <SandboxShippingPayment key={code} code={code} amount={tests[0].amount} role={role} />
     </div>

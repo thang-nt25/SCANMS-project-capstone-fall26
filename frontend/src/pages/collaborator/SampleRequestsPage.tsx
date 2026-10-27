@@ -1,10 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Copy,
   ExternalLink,
   Package,
-  RefreshCw,
   Search,
   Truck,
 } from 'lucide-react';
@@ -12,22 +11,32 @@ import { toast } from 'sonner';
 import api from '@/services/api';
 import { useWorkspaceResource } from '@/hooks/useWorkspaceResource';
 import {
-  WorkspaceHero,
-  WorkspaceMetrics,
   WorkspaceState,
   workspaceButton,
   workspaceInput,
 } from '@/components/ui/FeatureWorkspace';
+import './SampleRequestsPage.css';
+import { useSandboxSampleState, type SandboxSampleState } from '@/components/shipping/useSandboxSampleState';
+import { SandboxSampleReceipt } from '@/components/shipping/SandboxSampleReceipt';
 import type { SampleRequest } from '@/types/samples.types';
 import {
   canSubmitSampleVideo,
   SAMPLE_STATUS_LABELS,
   sampleDeadline,
   sampleNeedsAttention,
+  sampleSandboxCode,
+  withSampleSandboxState,
+  sampleShopLink,
 } from '@/utils/sample-workspace';
 
+function SandboxStateBridge({ code, onState }: { code: string; onState: (code: string, state: SandboxSampleState | null) => void }) {
+  const { state } = useSandboxSampleState(code);
+  useEffect(() => onState(code, state), [code, state, onState]);
+  return null;
+}
+
 const date = (value?: string | number | null) =>
-  value == null
+    value == null || !Number.isFinite(new Date(value).getTime())
     ? 'Chưa cập nhật'
     : new Date(value).toLocaleString('vi-VN', {
         timeZone: 'Asia/Ho_Chi_Minh',
@@ -40,10 +49,18 @@ export default function SampleRequestsPage() {
   const { data, loading, error, refresh, updatedAt } = useWorkspaceResource<
     SampleRequest[]
   >('/sample-requests/my');
-  const requests = data || [];
+  const [sandboxStates, setSandboxStates] = useState<Record<string, SandboxSampleState | null>>({});
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const onSandboxState = useCallback((code: string, state: SandboxSampleState | null) => {
+    setSandboxStates(previous => previous[code] === state ? previous : { ...previous, [code]: state });
+  }, []);
+  const requests = useMemo(() => (data || []).map(item => withSampleSandboxState(item, sandboxStates[sampleSandboxCode(item) || ''])), [data, sandboxStates]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ALL');
-  const [attention, setAttention] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [action, setAction] = useState<Action>('video');
   const [title, setTitle] = useState('');
@@ -56,21 +73,20 @@ export default function SampleRequestsPage() {
   const selected = requests.find((item) => item.id === selectedId);
   const visible = useMemo(
     () =>
-      (data || [])
+      requests
         .filter(
           (item) =>
             (status === 'ALL' || item.status === status) &&
-            (!attention || sampleNeedsAttention(item)) &&
-            `${item.product.title} ${item.product.store.name} ${item.trackingNumber || ''}`
+            `${item.product.title} ${item.product.store.name} ${item.trackingNumber || ''} ${item.shippingCharges?.filter(charge => charge.environment === 'TEST').map(charge => charge.trackingNumber).join(' ') || ''}`
               .toLocaleLowerCase('vi-VN')
               .includes(search.trim().toLocaleLowerCase('vi-VN')),
         )
         .sort(
           (a, b) =>
-            Number(sampleNeedsAttention(b)) - Number(sampleNeedsAttention(a)) ||
+            Number(sampleNeedsAttention(b, now)) - Number(sampleNeedsAttention(a, now)) ||
             (sampleDeadline(a) ?? Infinity) - (sampleDeadline(b) ?? Infinity),
         ),
-    [data, status, attention, search],
+    [requests, status, search, now],
   );
 
   function open(item: SampleRequest, next: Action) {
@@ -116,60 +132,24 @@ export default function SampleRequestsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-[1520px] flex-col gap-5 bg-[#FAF8F5] p-4 sm:p-7">
-      <WorkspaceHero
-        eyebrow="SCANMS / Creator operations"
-        title="Mẫu dùng thử của tôi"
-        description="Theo dõi hợp tác với nhiều gian hàng: duyệt mẫu, giao hàng, nộp video và nghiệm thu. Các yêu cầu cần xử lý được ưu tiên lên đầu."
-        actions={
-          <>
-            <button
-              className={workspaceButton}
-              disabled={loading}
-              onClick={refresh}
-            >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-              Làm mới
-            </button>
-            <Link
-              className={workspaceButton}
-              to="/collaborator/collaboration?tab=samples"
-            >
-              <Package size={15} />
-              Xin mẫu mới
-            </Link>
-          </>
-        }
-      />
-      <WorkspaceMetrics
-        items={[
-          {
-            label: 'Tổng yêu cầu',
-            value: requests.length,
-            detail: 'Tất cả gian hàng đối tác',
-          },
-          {
-            label: 'Đang giao',
-            value: requests.filter((item) => item.status === 'SHIPPED').length,
-            detail: 'Nhận hàng được hệ thống xác minh',
-          },
-          {
-            label: 'Cần chú ý',
-            value: requests.filter((item) => sampleNeedsAttention(item)).length,
-            alert: true,
-            detail: 'Cần sửa, quá hạn, hạn ≤ 3 ngày hoặc sự cố',
-          },
-          {
-            label: 'Đã hoàn thành',
-            value: requests.filter((item) => item.status === 'COMPLETED')
-              .length,
-            detail: 'Video đã được Shop nghiệm thu',
-          },
-        ]}
-      />
+    <main className="samples-page flex w-full min-w-0 flex-col bg-[#FAF8F5]">
+      {(data || []).map(item => {
+        const code = sampleSandboxCode(item);
+        return code ? <SandboxStateBridge key={code} code={code} onState={onSandboxState} /> : null;
+      })}
+      <div className="samples-page-metrics">
+        {[
+          { label: 'Tổng yêu cầu', value: requests.length },
+          { label: 'Đang giao', value: requests.filter(item => item.status === 'SHIPPED').length },
+          { label: 'Cần chú ý', value: requests.filter(item => sampleNeedsAttention(item, now)).length, attention: true },
+          { label: 'Hoàn thành', value: requests.filter(item => item.status === 'COMPLETED').length },
+        ].map(metric => <div key={metric.label} className="samples-page-metric" data-attention={Boolean(metric.attention && metric.value > 0)}>
+          <p>{metric.label}</p><strong>{!data ? '—' : metric.value}</strong>
+        </div>)}
+      </div>
       <section
         aria-label="Bộ lọc yêu cầu"
-        className="flex flex-wrap gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4"
+        className="samples-page-filters flex flex-wrap gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4"
       >
         <label className="relative min-w-52 flex-1">
           <span className="sr-only">Tìm sản phẩm, gian hàng, mã vận đơn</span>
@@ -197,15 +177,6 @@ export default function SampleRequestsPage() {
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-xs text-[#7D715E]">
-          <input
-            type="checkbox"
-            checked={attention}
-            onChange={(event) => setAttention(event.target.checked)}
-            className="accent-[#C59B58]"
-          />
-          Chỉ cần xử lý
-        </label>
       </section>
       {error && (
         <WorkspaceState
@@ -229,26 +200,28 @@ export default function SampleRequestsPage() {
           onAction={() => {
             setSearch('');
             setStatus('ALL');
-            setAttention(false);
           }}
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="samples-page-grid grid gap-4 xl:grid-cols-2">
           {visible.map((item) => {
             const deadline = sampleDeadline(item);
-            const needsAttention = sampleNeedsAttention(item);
+            const needsAttention = sampleNeedsAttention(item, now);
+            const original = data?.find(request => request.id === item.id);
+            const sandboxCode = original ? sampleSandboxCode(original) : null;
             return (
               <article
                 key={item.id}
-                className={`rounded-2xl border bg-white p-5 ${needsAttention ? 'border-[#C59B58]' : 'border-[#EAE4D7]'}`}
+                className={`samples-page-card rounded-2xl border bg-white p-5 ${needsAttention ? 'border-[#C59B58]' : 'border-[#EAE4D7]'}`}
               >
-                <div className="flex items-start gap-3">
+                <div className="samples-page-product flex items-start gap-3">
                   {item.product.imageUrl ? (
                     <img
                       src={item.product.imageUrl}
                       alt=""
                       loading="lazy"
-                      className="h-16 w-16 rounded-xl bg-[#F3EFE6] object-cover"
+                      className="h-16 w-16 rounded-xl bg-white object-contain"
+                      onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/assets/product-placeholder.svg'; }}
                     />
                   ) : (
                     <Package className="h-16 w-16 rounded-xl bg-[#F3EFE6] p-4 text-[#B88E4F]" />
@@ -260,12 +233,13 @@ export default function SampleRequestsPage() {
                     <h2 className="my-1 text-sm font-bold text-[#1A1612]">
                       {item.product.title}
                     </h2>
-                    <span className="inline-block rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-semibold text-[#8C6226]">
+                    <span data-status={item.status} className="samples-page-status inline-block rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-semibold text-[#8C6226]">
                       {SAMPLE_STATUS_LABELS[item.status]}
                     </span>
+                    {sandboxCode && <span className="samples-sandbox-label">Sandbox</span>}
                   </div>
                 </div>
-                <dl className="mb-0 mt-4 grid grid-cols-2 gap-4 rounded-xl bg-[#FAF8F5] p-3 text-xs">
+                <dl className="samples-page-dates mb-0 mt-4 grid grid-cols-2 gap-4 rounded-xl bg-[#FAF8F5] p-3 text-xs">
                   <div>
                     <dt className="text-[#7D715E]">Ngày yêu cầu</dt>
                     <dd className="ml-0 mt-1 text-[#1A1612]">
@@ -281,7 +255,9 @@ export default function SampleRequestsPage() {
                     <dd
                       className={`ml-0 mt-1 font-semibold ${needsAttention ? 'text-[#DC2626]' : 'text-[#1A1612]'}`}
                     >
-                      {date(deadline)}
+                      {['CANCELLED', 'REJECTED'].includes(item.status) ? 'Không áp dụng'
+                        : deadline === null && ['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERY_ISSUE'].includes(item.status)
+                        ? 'Tính sau khi giao thành công' : date(deadline)}
                     </dd>
                   </div>
                 </dl>
@@ -317,8 +293,9 @@ export default function SampleRequestsPage() {
                     Phản hồi: {item.videoRejectionReason || item.rejectedReason}
                   </p>
                 )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {canSubmitSampleVideo(item.status) && (
+                <div className="samples-page-actions mt-4 flex flex-wrap gap-2">
+                  <Link className={workspaceButton} to={sampleShopLink(item)}>Xem yêu cầu tại Shop<ExternalLink size={13} /></Link>
+                  {!sandboxCode && canSubmitSampleVideo(item.status) && (
                     <button
                       className={`${workspaceButton} !bg-[#C59B58]`}
                       onClick={() => open(item, 'video')}
@@ -328,7 +305,7 @@ export default function SampleRequestsPage() {
                         : 'Nộp video'}
                     </button>
                   )}
-                  {item.status === 'SHIPPED' && (
+                  {!sandboxCode && item.status === 'SHIPPED' && (
                     <button
                       className={workspaceButton}
                       onClick={() => open(item, 'issue')}
@@ -344,7 +321,7 @@ export default function SampleRequestsPage() {
                       Hủy yêu cầu
                     </button>
                   )}
-                  {item.videoUrl && /^https:\/\//i.test(item.videoUrl) && (
+                  {!sandboxCode && item.videoUrl && /^https:\/\//i.test(item.videoUrl) && (
                     <a
                       className={workspaceButton}
                       href={item.videoUrl}
@@ -356,25 +333,7 @@ export default function SampleRequestsPage() {
                     </a>
                   )}
                 </div>
-                {!!item.events?.length && (
-                  <details className="mt-4 border-t border-[#EAE4D7] pt-3">
-                    <summary className="cursor-pointer text-xs font-semibold text-[#7D715E]">
-                      Lịch sử xử lý ({item.events.length})
-                    </summary>
-                    <ol className="mb-0 space-y-2 pl-4 text-[11px] text-[#7D715E]">
-                      {item.events.map((event) => (
-                        <li key={event.id}>
-                          <time>{date(event.createdAt)}</time>
-                          <span className="ml-2 break-words">
-                            {event.action
-                              .replace(/^SAMPLE_/, '')
-                              .replaceAll('_', ' ')}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </details>
-                )}
+                {sandboxCode && <div className="samples-sandbox-receipt"><SandboxSampleReceipt code={sandboxCode} role="kol" productId={item.productId} productTitle={item.product.title} sampleRequestId={item.id} expanded hideStatusSummary /></div>}
               </article>
             );
           })}

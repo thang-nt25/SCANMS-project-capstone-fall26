@@ -23,6 +23,7 @@ import {
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import './LiveSessionsPage.css';
 
 type Session = {
   governance?: LiveGovernance;
@@ -189,7 +190,7 @@ export default function CollaboratorLiveSessionsPage() {
         type="button"
         onClick={() => setStatusFilter(key)}
         aria-pressed={isActive}
-        className={`inline-flex items-center justify-center gap-2 min-w-0 min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+        className={`creator-live-tab inline-flex items-center justify-center gap-2 min-w-0 min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
           isActive
             ? 'bg-[#FBF5EB] border border-[#C59B58] text-[#1A1612]'
             : 'bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] border border-[#EAE4D7]'
@@ -209,29 +210,18 @@ export default function CollaboratorLiveSessionsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full min-w-0 pb-12 text-[#1A1612] text-left">
+    <div className="creator-live-page flex flex-col gap-3 w-full min-w-0 pb-12 text-[#1A1612] text-left">
       <section
-        className={`grid grid-cols-2 items-stretch gap-2 p-2.5 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs ${counts.live > 0 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}
+        className="creator-live-toolbar"
         aria-label="Quản lý livestream và voucher"
       >
-        <nav className="contents" aria-label="Lọc phiên livestream">
+        <nav className="creator-live-tabs" aria-label="Lọc phiên livestream">
           {renderTab('ALL', 'Tất cả', counts.all)}
           {counts.live > 0 && renderTab('LIVE', 'Đang live', counts.live)}
           {renderTab('UPCOMING', 'Sắp diễn ra', counts.upcoming)}
           {renderTab('PENDING', 'Chờ phản hồi', counts.pending)}
           {renderTab('ENDED', 'Đã kết thúc', counts.ended)}
         </nav>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Làm mới danh sách phiên"
-          aria-label="Làm mới danh sách phiên"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          <span>Làm mới</span>
-        </button>
       </section>
 
       {loadError && (
@@ -283,7 +273,7 @@ export default function CollaboratorLiveSessionsPage() {
           </div>
         )
       ) : (
-        <div className="grid gap-3" aria-label="Danh sách phiên livestream">
+        <div className="creator-live-list grid gap-3" aria-label="Danh sách phiên livestream">
           {filteredSessions.map((session) => {
             const pending = session.inviteStatus === 'PENDING' && session.status !== 'ENDED' && session.status !== 'CANCELLED';
             const accepted = session.inviteStatus === 'ACCEPTED';
@@ -299,12 +289,12 @@ export default function CollaboratorLiveSessionsPage() {
             return (
               <article
                 key={session.id}
-                className="p-3.5 sm:p-4 rounded-xl border border-[#EAE4D7] bg-white shadow-xs"
+                className="creator-live-card rounded-xl border border-[#EAE4D7] bg-white"
                 aria-label={`Phiên ${session.title}`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                <div className="creator-live-heading flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="grid place-items-center shrink-0 w-9 h-9 overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F] text-xs font-semibold" aria-hidden="true">
+                    <span className="creator-live-logo grid place-items-center shrink-0 overflow-hidden rounded-lg border border-[#EAE4D7] bg-white text-[#B88E4F] text-xs font-semibold" aria-hidden="true">
                       {session.store.logoUrl ? (
                         <img src={session.store.logoUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -346,7 +336,7 @@ export default function CollaboratorLiveSessionsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-[#7D715E]">
+                      <div className="creator-live-meta flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[11px] text-[#7D715E]">
                         <span className="inline-flex items-center gap-1 text-[#1A1612] font-medium">
                           <Store className="w-3 h-3 text-[#B88E4F]" aria-hidden="true" />
                           {session.store.name}
@@ -367,7 +357,7 @@ export default function CollaboratorLiveSessionsPage() {
                       href={session.liveUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-medium hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors shrink-0"
+                      className="creator-live-room inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-medium hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                       {session.platform === 'SCANMS' ? 'Vào phòng SCANMS' : 'Mở link live'}
@@ -398,8 +388,8 @@ export default function CollaboratorLiveSessionsPage() {
                   </div>
                 )}
 
-                <div className={`grid ${session.products?.length ? 'grid-cols-1 md:grid-cols-[minmax(0,1.65fr)_minmax(230px,1fr)]' : 'grid-cols-1'} gap-2.5 items-stretch mt-3`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(120px,0.8fr)_minmax(0,1.4fr)_auto] items-center gap-3 p-2.5 sm:p-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
+                <div className="creator-live-offer-row" data-products={Boolean(session.products?.length)}>
+                  <div className="creator-live-offer">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Ticket className="w-5 h-5 shrink-0 text-[#B88E4F]" aria-hidden="true" />
                       <div>
@@ -407,7 +397,7 @@ export default function CollaboratorLiveSessionsPage() {
                         <strong className="block text-sm sm:text-base font-bold text-[#1A1612] leading-snug">Giảm {discount}</strong>
                       </div>
                     </div>
-                    <div className="min-w-0">
+                    <div className="creator-live-voucher min-w-0">
                       <small className="block text-[10px] text-[#7D715E] leading-tight">Mã voucher</small>
                       <div className="flex items-stretch min-w-0 mt-1 border border-[#EAE4D7] rounded-md overflow-hidden bg-white shadow-2xs">
                         <code className="flex-1 min-w-0 px-2 py-1 text-xs font-mono font-semibold text-[#1A1612] tracking-wider truncate select-all">
@@ -430,7 +420,7 @@ export default function CollaboratorLiveSessionsPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="sm:pl-3 sm:border-l sm:border-[#EEDFC6]">
+                    <div className="creator-live-rate">
                       <small className="flex items-center gap-1 text-[10px] text-[#7D715E] leading-tight">
                         <Sparkles className="w-2.5 h-2.5 text-[#B88E4F]" aria-hidden="true" />
                         Hoa hồng
@@ -442,13 +432,13 @@ export default function CollaboratorLiveSessionsPage() {
                   </div>
 
                   {!!session.products?.length && (
-                    <div className="flex flex-wrap items-center min-w-0 gap-2 p-2.5 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#7D715E] text-[10px]">
+                    <div className="creator-live-products flex flex-wrap items-center min-w-0 gap-2 text-[#7D715E] text-[10px]">
                       <span className="w-full text-[10px] text-[#7D715E]">Áp dụng cho:</span>
                       {session.products.slice(0, 2).map((item, index) => (
                         <span
                           key={item.product.id || index}
                           title={item.product.title}
-                          className="inline-flex items-center gap-1.5 min-w-0 max-w-full text-[#1A1612] text-xs font-medium"
+                          className="creator-live-product inline-flex items-center gap-1.5 min-w-0 max-w-full text-[#1A1612] text-xs font-medium"
                         >
                           <img
                             src={getSafeProductImageUrl(item.product.imageUrl)}
@@ -456,7 +446,7 @@ export default function CollaboratorLiveSessionsPage() {
                             loading="lazy"
                             className="w-5 h-5 rounded object-cover border border-[#EAE4D7] bg-white shrink-0"
                           />
-                          <span className="max-w-[200px] truncate">{item.product.title}</span>
+                          <span className="creator-live-product-name">{item.product.title}</span>
                         </span>
                       ))}
                       {session.products.length > 2 && (
@@ -467,7 +457,7 @@ export default function CollaboratorLiveSessionsPage() {
                 </div>
 
                 {report && (
-                  <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3 pt-3 border-t border-[#EAE4D7]">
+                  <dl className="creator-live-report">
                     <div className="min-w-0 p-2 rounded-lg bg-[#FAF8F5]">
                       <dt className="flex items-center gap-1 text-[10px] text-[#7D715E]">
                         <Users className="w-3 h-3 text-[#B88E4F]" aria-hidden="true" />
@@ -530,7 +520,7 @@ export default function CollaboratorLiveSessionsPage() {
                 )}
 
                 {pending && (
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 mt-3 pt-3 border-t border-[#EAE4D7]">
+                  <div className="creator-live-invitation flex flex-wrap items-center justify-between gap-2.5 mt-3">
                     <p className="flex items-center gap-1.5 text-xs text-[#7D715E] m-0">
                       <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                       Gian hàng mời bạn tham gia phiên live cùng voucher riêng.
@@ -561,7 +551,7 @@ export default function CollaboratorLiveSessionsPage() {
                   </div>
                 )}
 
-                <div className="mt-3 pt-3 border-t border-[#EAE4D7]">
+                <div className="creator-live-governance">
                   <LiveGovernancePanel session={session} audience="kol" onChanged={() => void load(false)} />
                 </div>
               </article>

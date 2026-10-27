@@ -84,6 +84,12 @@ export interface LedgerEntry {
   balanceAfter: string;
   referenceId: string | null;
   referenceType: string | null;
+  referenceDetails?: {
+    storeName: string | null;
+    orderId: string | null;
+    orderCode: string | null;
+    period: string | null;
+  } | null;
   createdAt: string;
 }
 

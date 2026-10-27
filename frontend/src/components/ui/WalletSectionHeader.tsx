@@ -3,8 +3,19 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 
 export function WalletSectionHeader({ id, title, description, count, icon: Icon, expanded, onToggle, onRefresh, refreshing }: {
   id: string; title: string; description: string; count: string; icon: LucideIcon;
-  expanded: boolean; onToggle: () => void; onRefresh?: () => void; refreshing?: boolean;
+  expanded?: boolean; onToggle?: () => void; onRefresh?: () => void; refreshing?: boolean;
 }) {
+  if (!onToggle) return (
+    <div className="wallet-section-header border-b border-[#EAE4D7] bg-white">
+      <div className="wallet-section-toggle flex items-center gap-3 p-4">
+        <span className="wallet-section-icon grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Icon size={19} strokeWidth={1.6} /></span>
+        <div className="min-w-0">
+          <h2 className="wallet-section-title m-0 flex flex-wrap items-center gap-2 text-sm font-semibold text-[#1A1612]">{title}<span className="rounded-md bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-normal text-[#7D715E]">{count}</span></h2>
+          {description && <p className="wallet-section-description m-0 mt-1 text-[11px] text-[#7D715E]">{description}</p>}
+        </div>
+      </div>
+    </div>
+  );
   return <div className={`wallet-section-header flex! items-center! gap-[8px]! bg-[#fff]! p-[3px_14px_3px_3px]! [&.is-open]:[border-bottom:1px_solid_#eae4d7]! [&.is-open_.wallet-section-chevron]:[transform:rotate(180deg)]! ${expanded ? ' is-open' : ''}`}>
     <h2 className="wallet-section-heading flex-1! min-w-0! m-[0]! ">
       <button type="button" className="wallet-section-toggle flex! items-center! gap-[12px]! w-full! p-[14px]! rounded-[10px]! bg-[transparent]! text-left! cursor-pointer! [transition:background_150ms_ease]! [&:hover]:bg-[#faf8f5]! [&:focus-visible]:[outline:2px_solid_#c59b58]! [&:focus-visible]:outline-offset-[-2px]! [@media(max-width:639px)]:p-[11px_8px]! [@media(max-width:639px)]:gap-[9px]! motion-reduce:[&&]:[transition:none]! " aria-expanded={expanded} aria-controls={id} onClick={onToggle}>

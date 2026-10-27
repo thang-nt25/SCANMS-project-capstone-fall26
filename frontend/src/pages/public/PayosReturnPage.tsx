@@ -10,12 +10,13 @@ export default function PayosReturnPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const orderCode = params.get('order') || '';
+  const manual = params.get('manual') === '1';
   const [status, setStatus] = useState<'loading' | 'PAID' | 'WAITING_PAYMENT' | 'CANCELLED' | 'error'>('loading');
   const [confirmedOrderCode, setConfirmedOrderCode] = useState('');
   const loggedIn = Boolean(localStorage.getItem('token') && authService.getCurrentUser());
 
   useEffect(() => {
-    if (!loggedIn || !orderCode) return;
+    if (manual || !loggedIn || !orderCode) return;
     let active = true;
     const refresh = async () => {
       try {
@@ -33,13 +34,19 @@ export default function PayosReturnPage() {
     };
     void refresh();
     return () => { active = false; };
-  }, [loggedIn, orderCode]);
+  }, [manual, loggedIn, orderCode]);
 
   useEffect(() => {
-    if (!loggedIn || !orderCode || status !== 'PAID' || confirmedOrderCode !== orderCode) return;
+    if (manual || !loggedIn || !orderCode || status !== 'PAID' || confirmedOrderCode !== orderCode) return;
     navigate('/customer/orders', { replace: true, state: { placedOrderCodes: [orderCode] } });
     toast.success('Thanh toán thành công. Bạn có thể theo dõi đơn trong Đơn mua.');
-  }, [loggedIn, orderCode, confirmedOrderCode, status, navigate]);
+  }, [manual, loggedIn, orderCode, confirmedOrderCode, status, navigate]);
+
+  if (manual) return <main className="min-h-screen bg-[#FAF8F5] px-4 py-16 text-[#1A1612]"><div className="mx-auto max-w-lg rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center">
+    <Clock3 className="mx-auto h-9 w-9 text-[#B88E4F]" /><h1 className="mt-4 text-xl font-semibold">Kiểm tra thanh toán đơn thủ công</h1>
+    <p className="mt-3 text-sm leading-relaxed text-[#7D715E]">SCANMS cập nhật trạng thái khi máy chủ PayOS xác nhận đã nhận đủ tiền. Vui lòng liên hệ Shop để kiểm tra đơn{orderCode ? ` ${orderCode}` : ''}.</p>
+    <Link to="/marketplace" className="mt-5 inline-block rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm">Về sàn SCANMS</Link>
+  </div></main>;
 
   const icon = status === 'PAID' ? <CheckCircle2 className="h-10 w-10 text-[#B88E4F]" />
     : status === 'error' ? <AlertCircle className="h-10 w-10 text-[#DC2626]" />

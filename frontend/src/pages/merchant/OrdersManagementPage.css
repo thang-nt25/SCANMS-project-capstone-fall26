@@ -1,0 +1,89 @@
+.merchant-orders-filters { container-type: inline-size; padding: 10px; border: 1px solid #EAE4D7; border-radius: 13px; background: #FFFFFF; }
+.merchant-orders-filter-layout { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 10px; }
+.merchant-orders-status-tabs { display: flex; align-items: stretch; gap: 3px; min-width: 0; overflow-x: auto; padding: 3px; border-radius: 9px; background: #FFFFFF; scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+.merchant-orders-status-tabs > button { flex: 1 0 auto; width: auto; min-height: 36px; height: auto; padding: 8px 12px; border: 1px solid transparent; border-radius: 7px; color: #7D715E; background: transparent; font-size: 11px; font-weight: 500; line-height: 18px; white-space: nowrap; box-shadow: none; transition: background-color .15s, border-color .15s, color .15s; }
+.merchant-orders-status-tabs > button:hover { color: #1A1612; background: #FAF8F5; }
+.merchant-orders-status-tabs > button[aria-pressed=true] { border-color: #EEDFC6; background: #FBF5EB; color: #79592C; font-weight: 600; box-shadow: none; }
+.merchant-orders-search { height: 42px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; box-shadow: none; }
+.merchant-orders-search:focus-within { border-color: #C59B58; box-shadow: 0 0 0 3px rgb(197 155 88 / 10%); }
+.merchant-orders-search input { font-size: 12px; }
+@container (min-width: 1100px) {
+  .merchant-orders-filter-layout { grid-template-columns: minmax(0, 1fr) 245px; }
+  .merchant-orders-status-tabs > button { flex: 1 1 0; padding-inline: 6px; }
+}
+.merchant-orders-page .merchant-orders-table { border: 1px solid #EAE4D7; border-radius: 13px; background: #FFFFFF; box-shadow: none; }
+.merchant-orders-table-heading { min-height: 62px; padding: 13px 18px; border-color: #EAE4D7; background: #FFFFFF; }
+.merchant-orders-heading-icon { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border: 1px solid #EEDFC6; border-radius: 9px; background: #FBF5EB; color: #B88E4F; }
+.merchant-orders-table-heading h2 { font-size: 14px; font-weight: 600; line-height: 22px; letter-spacing: -.15px; }
+.merchant-orders-table-heading h2 + span { padding: 2px 8px; border-color: #EAE4D7; background: #FAF8F5; color: #7D715E; font-size: 10px; font-weight: 500; }
+.merchant-orders-scroll { min-height: 0; scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+.merchant-orders-data thead tr { background: #FFFFFF; color: #7D715E; font-size: 11px; text-transform: none; letter-spacing: 0; }
+.merchant-orders-data th { height: 42px; padding: 11px 16px; font-weight: 500; }
+.merchant-orders-data td { padding: 14px 16px; border-color: #EAE4D7; }
+.merchant-orders-data tbody tr { background: #FFFFFF; }
+.merchant-orders-data tbody tr:hover { background: #FDFBF8; }
+.merchant-orders-data td[data-label="Khách hàng"] strong { font-size: 12px; font-weight: 600; line-height: 19px; }
+.merchant-orders-data td[data-label="Khách hàng"] span { font-family: inherit; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Sản phẩm"] > div { max-width: none; }
+.merchant-orders-data td[data-label="Sản phẩm"] img { object-fit: contain; background: #FFFFFF; }
+.merchant-orders-data td[data-label="Sản phẩm"] .relative { width: 42px; height: 42px; border-radius: 9px; box-shadow: none; }
+.merchant-orders-data td[data-label="Sản phẩm"] button { padding-left: 52px; font-weight: 500; }
+.merchant-orders-data :is(th:nth-child(3), td[data-label="Tổng tiền"]) { text-align: right; }
+.merchant-orders-data td[data-label="Tổng tiền"] > div { align-items: flex-end; gap: 5px; }
+.merchant-orders-data td[data-label="Tổng tiền"] strong { font-family: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Tổng tiền"] span { padding: 1px 6px; border-color: #EAE4D7; border-radius: 5px; background: #FAF8F5; color: #7D715E; font-size: 9px; font-weight: 500; line-height: 16px; text-transform: none; letter-spacing: 0; }
+.merchant-orders-data .merchant-order-status { gap: 6px; padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 500; line-height: 18px; }
+.merchant-orders-data [data-order-status="SHIPPING"], .merchant-orders-data [data-order-status="RETURNED"] { border-color: #EAE4D7; background: #FAF8F5; color: #7D715E; }
+.merchant-orders-data :is([data-order-status="SHIPPING"], [data-order-status="RETURNED"]) > span:first-child { background: #B88E4F; }
+.merchant-orders-data td[data-label="Hoa hồng CTV"] strong { color: #79592C; font-family: inherit; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Thao tác"] button { min-height: 30px; border-radius: 7px; font-weight: 500; box-shadow: none; }
+.merchant-orders-data td[data-label="Thao tác"] > div > div > button { padding: 6px 9px; border: 1px solid #EEDFC6; background: #FBF5EB; color: #1A1612; font-size: 10px; }
+.merchant-orders-data td[data-label="Thao tác"] > div > div > button:hover { background: #F3EFE6; }
+.merchant-orders-page :is(.merchant-orders-filters, .merchant-orders-table) :is(button, input):focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+.order-actions-menu { padding: 6px; border-color: #EAE4D7; border-radius: 11px; background: #FFFFFF; color: #1A1612; box-shadow: 0 10px 30px rgb(35 29 21 / 10%); scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+.order-menu-summary { display: flex; flex-direction: column; gap: 11px; margin-bottom: 4px; padding: 6px 6px 11px; border-bottom: 1px solid #EAE4D7; }
+.order-menu-heading { display: flex; align-items: center; gap: 9px; }
+.order-menu-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #B88E4F; }
+.order-menu-heading > div { min-width: 0; }
+.order-menu-heading p { margin: 0; color: #7D715E; font-size: 10px; line-height: 16px; }
+.order-menu-heading strong { display: block; margin-top: 2px; overflow-wrap: anywhere; font-size: 11px; line-height: 18px; font-weight: 600; }
+.order-menu-date { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px; font-size: 10px; line-height: 18px; }
+.order-menu-date > span { color: #7D715E; }
+.order-menu-date time { display: inline-flex; align-items: center; gap: 5px; color: #1A1612; font-variant-numeric: tabular-nums; }
+.order-menu-date svg { color: #B88E4F; }
+.order-menu-shipping { padding: 9px 10px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; }
+.order-menu-shipping > p:first-child { margin: 0 0 6px; color: #7D715E; font-size: 10px; line-height: 16px; }
+.order-menu-shipping > button { display: flex; width: 100%; min-height: 31px; justify-content: space-between; gap: 8px; padding: 5px 8px; border-color: #EEDFC6; border-radius: 6px; background: #FBF5EB; font-size: 11px; line-height: 18px; font-weight: 500; }
+.order-menu-shipping > button > span { overflow-wrap: anywhere; text-align: left; }
+.order-menu-shipping .order-menu-carrier { display: flex; align-items: flex-start; gap: 5px; margin: 6px 0 0; color: #7D715E; font-size: 10px; line-height: 17px; }
+.order-menu-carrier svg { flex-shrink: 0; margin-top: 2px; color: #B88E4F; }
+.order-menu-carrier > span { overflow-wrap: anywhere; }
+.order-menu-shipping > p:last-child:not(.order-menu-carrier) { margin: 0; font-size: 10px; line-height: 17px; font-style: normal; }
+.order-actions-menu > button { min-height: 34px; padding: 8px; border-radius: 6px; font-size: 11px; line-height: 18px; font-weight: 500; }
+.order-actions-menu > button:hover { background: #FBF5EB; }
+.order-actions-menu :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 1px; }
+@media (max-width: 639px) {
+  .merchant-orders-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .merchant-orders-filters { padding: 8px; border-radius: 11px; }
+  .merchant-orders-status-tabs > button { flex: 0 0 auto; padding-inline: 11px; }
+  .merchant-orders-table-heading { padding: 12px; }
+  .merchant-orders-data { min-width: 0; table-layout: auto; }
+  .merchant-orders-data :is(colgroup, thead) { display: none; }
+  .merchant-orders-data tbody { display: block; }
+  .merchant-orders-data tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 10px; padding: 14px; border-bottom: 1px solid #EAE4D7; }
+  .merchant-orders-data tbody tr:last-child { border-bottom: 0; }
+  .merchant-orders-data td { display: block; padding: 0; min-width: 0; }
+  .merchant-orders-data td[data-label="Khách hàng"] { grid-column: 1; grid-row: 1; }
+  .merchant-orders-data td[data-label="Trạng thái"] { grid-column: 2; grid-row: 1; text-align: right; }
+  .merchant-orders-data td[data-label="Sản phẩm"] { grid-column: 1 / -1; grid-row: 2; padding-top: 11px; border-top: 1px solid #EAE4D7; }
+  .merchant-orders-data td[data-label="Tổng tiền"] { grid-column: 2; grid-row: 3; align-self: center; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"] { grid-column: 1; grid-row: 3; align-self: center; text-align: left; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"]::before { display: block; margin-bottom: 3px; color: #7D715E; font-size: 10px; content: 'Hoa hồng CTV'; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"] > div { align-items: flex-start; }
+  .merchant-orders-data td[data-label="Thao tác"] { grid-column: 1 / -1; grid-row: 4; padding-top: 10px; border-top: 1px solid #EAE4D7; }
+  .merchant-orders-data td[data-label="Khách hàng"] > div { max-width: none; }
+}
+.merchant-orders-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
+.merchant-orders-view-tabs, .merchant-orders-toolbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.merchant-orders-toolbar :is(button, a) { width: 100%; min-width: 0; min-height: 40px; padding: 9px 12px; border-radius: 10px; font-size: 12px; line-height: 20px; white-space: normal; text-align: center; }
+.merchant-orders-toolbar :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }

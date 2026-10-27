@@ -335,8 +335,11 @@ export const couponService = {
     return res?.data?.data || res?.data || res;
   },
 
-  getStorePlatformSubsidies: async (storeId: string): Promise<PlatformSubsidySummary[]> => {
-    const res = await api.get(`/stores/${storeId}/coupons/subsidies`);
+  getStorePlatformSubsidies: async (storeId: string, signal?: AbortSignal): Promise<PlatformSubsidySummary[]> => {
+    const res = await api.get(`/stores/${storeId}/coupons/subsidies`, {
+      signal,
+      headers: { 'x-skip-cache': '1' },
+    });
     return res?.data?.data || res?.data || res;
   },
 

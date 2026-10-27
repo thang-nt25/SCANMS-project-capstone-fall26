@@ -51,6 +51,8 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isKycPage = location.pathname === '/collaborator/wallet' &&
+    new URLSearchParams(location.search).get('tab') === 'kyc';
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -62,7 +64,7 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+    <div className={`bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans ${isKycPage ? 'min-h-dvh workspace-document-scroll' : 'min-h-screen lg:h-screen lg:overflow-hidden'}`}>
       {/* 1. Topbar nằm full-width trên cùng (chuẩn vị trí Header như Customer) */}
       <Topbar
         currentUser={currentUser}
@@ -78,7 +80,7 @@ export default function MainLayout() {
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className={`workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
             <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={

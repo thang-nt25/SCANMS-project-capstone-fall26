@@ -1,0 +1,93 @@
+.creator-tier-page { gap: 14px; }
+.creator-tier-page > nav { padding: 7px; gap: 8px; border-radius: 13px; }
+.creator-tier-page > nav > a { min-height: 40px; padding: 9px 10px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; font-size: 12px; line-height: 20px; font-weight: 500; }
+.creator-tier-page > nav > a[aria-current=page] { border-color: #EEDFC6; background: #FBF5EB; color: #79592C; font-weight: 600; }
+.creator-tier-page > nav > a:hover { border-color: #EEDFC6; background: #FBF5EB; }
+.creator-tier-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.creator-tier-layout > section { min-width: 0; padding: 18px 20px; border: 1px solid #EAE4D7; border-radius: 14px; background: #FFFFFF; box-shadow: 0 2px 12px rgb(35 29 21 / 2%); }
+.creator-tier-layout > .tier-current-card { padding: 20px; }
+.tier-current-card > div:first-child { order: 0; padding: 0 0 2px; }
+.tier-current-card .tier-current-identity > span { width: 42px; height: 42px; border-radius: 10px; background: #FFFFFF; }
+.tier-current-card .tier-current-identity > span svg { width: 23px; height: 23px; }
+.tier-current-card #tier-current-title { margin: 0; font-size: 24px; line-height: 31px; font-weight: 650; letter-spacing: -.5px; }
+.tier-current-heading > div { gap: 12px; }
+.tier-current-heading { flex-wrap: wrap; row-gap: 14px; }
+.tier-current-identity { flex: 1 1 240px; }
+.tier-heading-review { display: flex; align-items: center; flex: 0 1 auto; gap: 9px; padding: 10px 12px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; }
+.tier-heading-review > svg { flex-shrink: 0; color: #B88E4F; }
+.tier-heading-review > div { display: grid; gap: 4px; }
+.tier-heading-review span { color: #7D715E; font-size: 10px; line-height: 16px; }
+.tier-heading-review strong { color: #1A1612; font-size: 11px; line-height: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tier-current-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; margin: 2px 0; }
+.tier-current-bonus { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid #EEDFC6; border-radius: 6px; background: #FFFFFF; color: #79592C; font-size: 10px; line-height: 16px; font-weight: 500; white-space: nowrap; }
+.tier-current-card > div:first-child p { font-size: 11px; line-height: 18px; }
+.tier-summary-metrics { order: 1; gap: 9px; margin: 16px 0; padding: 0; border: 0; }
+.tier-summary-metrics > div { padding: 12px; gap: 6px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; }
+.tier-summary-metrics span { font-size: 10px; line-height: 17px; }
+.tier-summary-metrics strong { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 17px; line-height: 24px; font-weight: 600; }
+.tier-current-card #tier-promotion-progress { order: 2; padding: 14px; margin-bottom: 16px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; }
+.tier-current-card #tier-promotion-progress > div:first-child > span { border: 1px solid #EAE4D7; background: #FFFFFF; color: #1A1612; font-size: 15px; font-weight: 600; }
+.tier-current-card #tier-promotion-progress h3 > span { background: #FFFFFF; border-color: #EAE4D7; }
+.tier-current-card #tier-promotion-progress h3 { flex-wrap: wrap; font-weight: 600; }
+.tier-current-card { --tier-progress-fill: #E4C995; --tier-progress-track: #FAF8F5; --tier-progress-border: #EAE4D7; }
+.tier-current-card[data-tier-tone=bronze] { --tier-progress-fill: #D4A27D; --tier-progress-track: #FBF5EF; --tier-progress-border: #EEDFD2; }
+.tier-current-card[data-tier-tone=silver] { --tier-progress-fill: #BFC5CE; --tier-progress-track: #F5F6F8; --tier-progress-border: #E0E3E8; }
+.tier-current-card[data-tier-tone=gold] { --tier-progress-fill: #E4C995; --tier-progress-track: #FBF8EF; --tier-progress-border: #EEDFC6; }
+.tier-current-card[data-tier-tone=diamond] { --tier-progress-fill: #ABD1E3; --tier-progress-track: #F2F8FC; --tier-progress-border: #D7E8F1; }
+.tier-current-card #tier-promotion-progress { border-color: var(--tier-progress-border); }
+.tier-current-card #tier-promotion-progress [role=progressbar] { height: 7px; background: var(--tier-progress-track); }
+.tier-current-card #tier-promotion-progress [role=progressbar] > div { background: var(--tier-progress-fill); }
+.tier-current-card #tier-promotion-progress > div:last-child { gap: 4px 12px; font-size: 10px; line-height: 18px; }
+.tier-current-card > section[aria-label] { order: 3; margin: 0 0 16px; padding: 0; border: 0; border-radius: 0; background: #FFFFFF; font-size: 11px; line-height: 19px; }
+.tier-current-card > section[aria-label] h3 { font-size: 12px; line-height: 20px; font-weight: 600; }
+.tier-current-card > section[aria-label] > p { font-size: 11px; line-height: 19px; }
+.tier-current-card > section[aria-label] > p.border-t { border-color: #EAE4D7; font-size: 10px; line-height: 18px; }
+.tier-sample-benefit { order: 4; flex-wrap: wrap; margin-top: auto; padding-top: 12px; font-size: 11px; line-height: 18px; }
+.tier-current-card > p { order: 2; margin-bottom: 14px; }
+.tier-policy-card > header { align-items: flex-start; margin-bottom: 16px; }
+.tier-policy-card > header > div { min-width: 0; }
+.tier-policy-card > header > div > span, .tier-featured-card > header > div > span { flex-shrink: 0; width: 34px; height: 34px; border: 1px solid #EEDFC6; border-radius: 9px; }
+.creator-tier-page :is(#tier-policy-title, #tier-featured-title) { font-size: 14px; line-height: 21px; font-weight: 600; letter-spacing: -.2px; }
+.tier-policy-card > header p, .tier-featured-card > header p { margin-top: 3px; font-size: 11px; line-height: 18px; }
+.tier-policy-card > header > span { flex-shrink: 0; font-size: 10px; }
+.tier-policy-card > div[aria-label] { flex: 1; align-content: stretch; gap: 10px; }
+.tier-policy-item { padding: 15px; border-radius: 11px; }
+.tier-policy-item[data-current-tier=true] { border-color: #C59B58; background: #FBF5EB; }
+.tier-policy-item h3 { font-size: 12px; line-height: 20px; font-weight: 600; }
+.tier-policy-item > div:nth-child(2) { margin-top: 12px; flex-wrap: wrap; gap: 3px 5px; }
+.tier-policy-item > div:nth-child(2) > strong { font-size: 25px; line-height: 32px; font-weight: 650; }
+.tier-policy-item > p { margin-top: 8px; font-size: 11px; line-height: 18px; }
+.tier-policy-card > p:last-child { margin-top: 16px; padding-top: 12px; font-size: 10px; line-height: 18px; }
+.tier-featured-card > header { margin-bottom: 16px; }
+.tier-featured-card > header > a { min-height: 32px; padding: 6px 9px; border: 1px solid #EAE4D7; border-radius: 7px; background: #FFFFFF; font-size: 11px; }
+.tier-featured-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tier-featured-grid > article { padding: 14px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; }
+.tier-featured-grid > article[data-rank='1'] { border-color: #EEDFC6; background: #FFFDFA; }
+.tier-featured-grid article > div:first-child > span:first-child { width: 38px; height: 38px; }
+.tier-featured-grid article img { position: absolute; inset: 0; }
+.tier-featured-grid h3 { font-size: 12px; line-height: 20px; font-weight: 600; }
+.tier-featured-grid article > div:last-child { flex-wrap: wrap; gap: 5px 8px; }
+.tier-featured-grid strong { font-size: 15px; line-height: 22px; font-weight: 600; }
+.creator-tier-page a:focus-visible, .creator-tier-page button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (max-width: 1199px) {
+  .creator-tier-layout { grid-template-columns: minmax(0, 1fr); }
+  .tier-featured-grid { gap: 10px; }
+}
+@media (max-width: 767px) {
+  .creator-tier-layout > section { padding: 16px; }
+  .tier-featured-grid { grid-template-columns: minmax(0, 1fr); }
+  .tier-featured-card > header { align-items: flex-start; gap: 10px; }
+  .tier-featured-card > header > a { margin-left: 44px; }
+}
+@media (max-width: 479px) {
+  .creator-tier-layout > .tier-current-card { padding: 16px; }
+  .tier-summary-metrics { gap: 7px; }
+  .tier-summary-metrics > div { padding-inline: 8px; }
+  .tier-summary-metrics strong { font-size: 14px; line-height: 21px; }
+  .tier-policy-card > header { flex-wrap: wrap; gap: 9px; }
+  .tier-policy-card > div[aria-label] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tier-policy-item { padding: 11px; }
+  .tier-policy-item > div:first-child { flex-wrap: wrap; }
+  .tier-policy-item > div:nth-child(2) > strong { font-size: 23px; }
+  .tier-policy-item > div:nth-child(2) > span { font-size: 9px; }
+}

@@ -1,0 +1,61 @@
+.promotions-links { padding-top: 0; gap: 18px; max-width: none; }
+.referral-filters { padding: 16px; border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+.referral-filters form { gap: 10px; }
+.referral-filters input { height: 40px; font-size: 12px; border-radius: 8px; background: #FAF8F5; }
+.referral-filters button[aria-haspopup='listbox'] { height: 40px; min-height: 40px; font-size: 12px; font-weight: 400; border-radius: 8px; box-shadow: none; }
+.referral-filters button[type='submit'] { height: 40px; padding-inline: 16px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8C6226; font-size: 12px; font-weight: 550; box-shadow: none; }
+.referral-filters button[type='submit']:hover { background: #F3EFE6; }
+.referral-filters button[title='Xóa bộ lọc'] { width: 36px; height: 40px; border-radius: 8px; background: #FFFFFF; }
+.referral-table-panel { border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+.referral-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; border-bottom: 1px solid #EAE4D7; }
+.referral-table-heading h2 { margin: 0; font-size: 15px; line-height: 22px; font-weight: 650; letter-spacing: -.2px; }
+.referral-table-heading p { margin: 4px 0 0; font-size: 11px; color: #7D715E; line-height: 18px; }
+.referral-table-heading > span { padding: 4px 8px; border: 1px solid #EAE4D7; border-radius: 6px; background: #FAF8F5; color: #7D715E; font-size: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.promotions-links table { min-width: 1040px; }
+.promotions-links col:nth-child(1) { width: 20%; }
+.promotions-links col:nth-child(3) { width: 190px; }
+.promotions-links col:nth-child(6) { width: 135px; }
+.promotions-links col:nth-child(7) { width: 120px; }
+.promotions-links thead tr { background: #FFFFFF; border-color: #EAE4D7; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.promotions-links th { padding: 12px 14px; font-weight: 500; }
+.promotions-links th:last-child { background: #FFFFFF; }
+.promotions-links td { padding: 16px 14px; font-size: 12px; vertical-align: middle; }
+.promotions-links td:last-child { padding: 12px 10px; }
+.promotions-links tbody tr { transition: background-color .15s; }
+.promotions-links tbody tr:hover { background: #FEFCF9; }
+.promotions-links td:first-child > div { gap: 10px; }
+.promotions-links td:first-child > div > div:first-child { width: 32px; height: 32px; border-radius: 50%; background: #F3EFE6; border: 0; color: #9A702F; font-size: 10px; box-shadow: none; }
+.promotions-links td:first-child .font-bold, .promotions-links td:first-child .font-semibold { font-weight: 550; font-size: 12px; }
+.promotions-links td:first-child [class*='text-[11px]'] { font-size: 10px; line-height: 17px; color: #9A9082; }
+.promotions-links td:nth-child(2) img { width: 40px; height: 40px; border-radius: 8px; box-shadow: none; }
+.promotions-links td:nth-child(2) > div { gap: 10px; }
+.promotions-links td:nth-child(2) .font-bold, .promotions-links td:nth-child(2) .font-semibold { font-weight: 550; }
+.promotions-links td:nth-child(2) .font-black { font-size: 13px; font-weight: 600; color: #1A1612; font-variant-numeric: tabular-nums; }
+.promotions-links td:nth-child(2) span.rounded-full { border-radius: 5px; font-size: 9px; font-weight: 500; padding: 2px 6px; }
+.promotions-links td code { display: block; min-width: 0; border: 0; background: #FAF8F5; border-radius: 6px; padding: 5px 7px; font-size: 11px; line-height: 17px; word-break: normal; overflow-wrap: anywhere; }
+.promotions-links td button[title='Sao chép link tiếp thị'] { width: 26px; height: 28px; border-radius: 6px; }
+.promotions-links td button[title='Sao chép link tiếp thị'] svg { width: 14px; height: 14px; }
+.promotions-links td:nth-child(3) > div:last-child > span:first-child { border: 0; border-radius: 4px; background: #FAF8F5; padding: 2px 5px; font-size: 9px; font-weight: 400; }
+.promotions-links td[data-label] { padding-inline: 5px; }
+.promotions-links td[data-label] > div { min-width: 32px; border: 0; border-radius: 6px; background: transparent; padding: 4px; gap: 5px; font-size: 12px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.promotions-links td[data-label] svg { width: 12px; height: 12px; color: #9A9082; }
+.promotions-links td:nth-child(6) > span, .promotions-links td:nth-child(6) > div > span:first-child { padding: 4px 7px; border-radius: 6px; font-size: 10px; font-weight: 500; }
+.promotions-links td:last-child > button { min-height: 32px; padding: 7px 9px; border-radius: 7px; font-size: 11px; font-weight: 500; box-shadow: none; }
+.promotions-links td:last-child > button svg { width: 13px; height: 13px; }
+.referral-block-dialog { padding: 22px; border-radius: 15px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.referral-block-dialog h3 { font-size: 15px; font-weight: 650; color: #1A1612; }
+.referral-block-dialog h3 svg { width: 18px; height: 18px; color: #B88E4F; }
+.referral-block-dialog form > div:first-child { border-radius: 9px; background: #FAF8F5; }
+.referral-block-dialog label { font-size: 11px; font-weight: 550; text-transform: none; letter-spacing: 0; line-height: 18px; margin-bottom: 6px; }
+.referral-block-dialog textarea { border-radius: 8px; background: #FFFFFF; font-size: 12px; line-height: 19px; }
+.referral-block-dialog form > div:last-child button { border-radius: 8px; font-size: 11px; font-weight: 550; box-shadow: none; }
+.promotions-links button:focus-visible, .promotions-links a:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (max-width: 639px) {
+  .referral-filters { padding: 14px; }
+  .referral-filters form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .referral-filters form > div:first-child, .referral-filters form > div:last-child { grid-column: 1 / -1; }
+  .referral-table-heading { padding: 16px; align-items: flex-start; }
+  .referral-table-heading h2 { font-size: 14px; }
+  .referral-table-heading p { font-size: 10px; }
+  .referral-block-dialog { padding: 18px; }
+}

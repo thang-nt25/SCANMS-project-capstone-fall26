@@ -8,7 +8,8 @@ import MediaHubBrowserPage from './MediaHubBrowserPage';
 import KolCouponsPage from './KolCouponsPage';
 export default function MarketingToolkitPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'links';
+  const requestedTab = searchParams.get('tab');
+  const activeTab = requestedTab === 'media' || requestedTab === 'coupons' ? requestedTab : 'links';
   const [isSubmitVideoOpen, setIsSubmitVideoOpen] = useState(false);
 
   const handleTabChange = (tabId: string) => {
@@ -48,12 +49,7 @@ export default function MarketingToolkitPage() {
       <button
         type="button"
         onClick={() => {
-          if (activeTab !== 'links') {
-            handleTabChange('links');
-            setTimeout(() => window.dispatchEvent(new CustomEvent('scanms_open_create_link')), 200);
-          } else {
-            window.dispatchEvent(new CustomEvent('scanms_open_create_link'));
-          }
+          setSearchParams({ tab: 'links', action: 'create' }, { replace: true });
         }}
         className="inline-flex w-full items-center justify-center gap-2 min-h-[44px] px-2 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#795A2D] text-xs font-bold transition-colors shadow-none cursor-pointer"
         title="Tạo link tiếp thị mới"

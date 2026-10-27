@@ -49,7 +49,7 @@ export class PayoutApprovalController {
   })
   @UseInterceptors(FileInterceptor('bill'))
   async approve(
-    @Param('payoutId', new ParseUUIDPipe({ version: '4' })) payoutId: string,
+    @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ReceiptApprovalDto,
     @UploadedFile() bill: Express.Multer.File,

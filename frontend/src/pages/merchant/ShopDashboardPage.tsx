@@ -7,7 +7,6 @@ import {
   ShoppingBag,
   MousePointerClick,
   ArrowRight,
-  RefreshCw,
   Box,
   ChevronDown,
   ChevronUp,
@@ -22,6 +21,7 @@ import { productService, type Product } from '../../services/product.service';
 import { orderService, type StoreOrderRecord } from '../../services/order.service';
 
 import { StatCard } from '../../components/ui/StatCard';
+import './ShopDashboardPage.css';
 
 export default function ShopDashboardPage() {
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
@@ -29,11 +29,9 @@ export default function ShopDashboardPage() {
   const [topProducts, setTopProducts] = useState<Product[]>([]);
   const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
   const [isOrdersExpanded, setIsOrdersExpanded] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
     setLoadError('');
     try {
       const currentStore = await storeService.getMyStore(true);
@@ -53,8 +51,6 @@ export default function ShopDashboardPage() {
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Chưa tải được dữ liệu gian hàng. Vui lòng thử lại.');
       console.error('Lỗi tải dữ liệu Dashboard Shop:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -65,6 +61,9 @@ export default function ShopDashboardPage() {
   const metrics = overview?.metrics;
   const chartSeries = timeSeries.slice(-7);
   const maxRevenue = Math.max(...chartSeries.flatMap(t => [t.revenue, t.commission]), 1);
+  const formatAxis = (value: number) => new Intl.NumberFormat('vi-VN', {
+    notation: 'compact', maximumFractionDigits: 1,
+  }).format(value);
 
   return (
     <div className="shop-overview flex flex-col gap-4 text-left pb-6">
@@ -94,9 +93,9 @@ export default function ShopDashboardPage() {
         />
 
         <StatCard
-          title="Lượt click tiếp thị"
+          title="Lượt nhấp tiếp thị"
           value={(metrics?.totalClicks || 0).toLocaleString('vi-VN')}
-          note={`${metrics?.activeReferralLinks || 0} link đang hoạt động`}
+          note={`${metrics?.activeReferralLinks || 0} liên kết đang hoạt động`}
           icon={<MousePointerClick className="w-4 h-4" />}
         />
       </div>
@@ -105,14 +104,14 @@ export default function ShopDashboardPage() {
       <div className="shop-overview-content grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* Doanh thu 7 ngày gần nhất (Biểu đồ thực tế) */}
         <div className="shop-overview-chart lg:col-span-8 p-4 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-4">
-          <div className="flex flex-wrap gap-3 justify-between items-center">
+          <div className="shop-overview-panel-heading flex flex-wrap gap-3 justify-between items-center">
             <div>
-              <h2 className="text-base font-extrabold text-[#1A1612] m-0">Doanh thu và hoa hồng 7 ngày qua</h2>
-              <p className="text-xs text-[#7D715E] m-0 mt-0.5">Doanh thu và hoa hồng ghi nhận theo ngày.</p>
+              <h2 className="text-base font-extrabold text-[#1A1612] m-0">Doanh thu & hoa hồng</h2>
+              <p className="text-xs text-[#7D715E] m-0 mt-0.5">Biến động trong 7 ngày gần nhất</p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-[#7D715E] font-bold">
+            <div className="shop-overview-legend flex items-center gap-3 text-xs text-[#7D715E] font-bold">
               <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-xs shrink-0 bg-[#EEDFC6] border border-[#C59B58]" /> Doanh thu (GMV)
+                <span className="h-3 w-3 rounded-xs shrink-0 bg-[#EEDFC6] border border-[#C59B58]" /> Doanh thu
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-3 w-3 rounded-xs shrink-0 bg-[#F3EFE6] border border-[#EAE4D7]" /> Hoa hồng KOL
@@ -126,35 +125,37 @@ export default function ShopDashboardPage() {
               Chưa có dữ liệu giao dịch trong 7 ngày gần nhất.
             </div>
           ) : (
-            <div className="grid gap-2 min-w-0 pt-2.5" style={{ gridTemplateColumns: `repeat(${chartSeries.length}, minmax(0, 1fr))` }}>
-              {chartSeries.map((col, idx) => {
-                const revHeight = Math.max(0, (col.revenue / maxRevenue) * 140);
-                const commHeight = Math.max(0, (col.commission / maxRevenue) * 140);
-                return (
-                  <div key={idx} className="min-w-0 text-center">
-                    <div className="flex h-[150px] items-end justify-center gap-1 border-b border-[#EAE4D7] bg-[#FAF8F5]/30">
-                      <div
-                        style={{ height: `${revHeight}px` }}
-                        title={`Doanh thu: ${col.revenue.toLocaleString('vi-VN')} ₫`}
-                        className="w-full max-w-[20px] shrink-0 rounded-t-md bg-[#EEDFC6] border border-[#C59B58] border-b-0 transition-colors hover:border-[#B88E4F]"
-                      />
-                      <div
-                        style={{ height: `${commHeight}px` }}
-                        title={`Hoa hồng: ${col.commission.toLocaleString('vi-VN')} ₫`}
-                        className="w-full max-w-[20px] shrink-0 rounded-t-md bg-[#F3EFE6] border border-[#EAE4D7] border-b-0 transition-colors hover:border-[#B88E4F]"
-                      />
+            <div className="shop-revenue-chart" role="group" aria-label="Biểu đồ doanh thu và hoa hồng 7 ngày, đơn vị đồng">
+              <div className="shop-chart-axis" aria-hidden="true">
+                {[1, .5, 0].map(ratio => <span key={ratio}>{formatAxis(maxRevenue * ratio)}</span>)}
+              </div>
+              <div className="shop-chart-plot">
+                <div className="shop-chart-grid" aria-hidden="true"><i /><i /><i /></div>
+                <div className="shop-chart-columns" style={{ gridTemplateColumns: `repeat(${chartSeries.length}, minmax(0, 1fr))` }}>
+                  {chartSeries.map((col, idx) => (
+                    <div key={col.date || idx} className="shop-chart-day" tabIndex={0}
+                      aria-label={`${col.label}: doanh thu ${col.revenue.toLocaleString('vi-VN')} đồng, hoa hồng ${col.commission.toLocaleString('vi-VN')} đồng`}>
+                      <div className="shop-chart-bars">
+                        <div className="shop-chart-bar shop-chart-bar-revenue" style={{ height: `${Math.max(0, col.revenue / maxRevenue) * 100}%` }} />
+                        <div className="shop-chart-bar shop-chart-bar-commission" style={{ height: `${Math.max(0, col.commission / maxRevenue) * 100}%` }} />
+                      </div>
+                      <span className="shop-chart-date">{col.label}</span>
+                      <div className="shop-chart-tooltip" role="tooltip">
+                        <strong>{col.label}</strong>
+                        <span>Doanh thu <b>{col.revenue.toLocaleString('vi-VN')} ₫</b></span>
+                        <span>Hoa hồng <b>{col.commission.toLocaleString('vi-VN')} ₫</b></span>
+                      </div>
                     </div>
-                    <span className="block mt-2 text-[#7D715E] text-[11px] truncate" title={col.label}>{col.label}</span>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         {/* Đơn hàng mới nhất (Dữ liệu thật) */}
         <div className="shop-overview-orders lg:col-span-4 p-4 bg-white border border-[#EAE4D7] rounded-2xl flex flex-col gap-3">
-          <div className="flex justify-between items-center">
+          <div className="shop-overview-panel-heading flex justify-between items-center">
             <h3 className="text-base font-extrabold text-[#1A1612] m-0">Đơn hàng mới nhất</h3>
             <Link
               to="/merchant/orders"
@@ -173,7 +174,7 @@ export default function ShopDashboardPage() {
               {(isOrdersExpanded ? recentOrders : recentOrders.slice(0, 3)).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] transition-all hover:bg-[#F3EFE6]/50"
+                  className="shop-overview-order flex items-center gap-3 p-3 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] transition-all hover:bg-[#F3EFE6]/50"
                 >
                   <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7] flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4" />
@@ -218,7 +219,9 @@ export default function ShopDashboardPage() {
 
       {/* Sản phẩm của gian hàng (Dữ liệu thật) */}
       <div className="shop-overview-products bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-2 xl:grid-cols-4 items-stretch gap-2 p-3 sm:p-4 border-b border-[#EAE4D7]">
+        <div className="shop-overview-product-heading">
+          <div><h2>Sản phẩm của gian hàng</h2></div>
+          <div className="shop-overview-product-actions">
           <div className="contents">
             <Link to="/merchant/products?create=1&returnTo=dashboard"
               className="inline-flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors">
@@ -240,16 +243,7 @@ export default function ShopDashboardPage() {
               <span>Quản lý sản phẩm</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#B88E4F]" />
             </Link>
-            <button
-              type="button"
-              onClick={loadData}
-              disabled={loading}
-              title="Tải lại dữ liệu gian hàng"
-              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
+          </div>
           </div>
         </div>
 
@@ -263,7 +257,7 @@ export default function ShopDashboardPage() {
               <thead>
                 <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] text-[11px] font-bold uppercase tracking-wider select-none">
                   <th className="py-3 px-4 font-bold whitespace-nowrap min-w-[280px]">Sản phẩm</th>
-                  <th className="py-3 px-4 font-bold whitespace-nowrap w-[130px]">SKU</th>
+                  <th className="py-3 px-4 font-bold whitespace-nowrap w-[130px]">Mã sản phẩm</th>
                   <th className="py-3 px-4 font-bold whitespace-nowrap w-[130px]">Giá bán</th>
                   <th className="py-3 px-4 font-bold whitespace-nowrap w-[100px]">Tồn kho</th>
                   <th className="py-3 px-4 font-bold whitespace-nowrap w-[130px]">Hoa hồng CTV</th>
@@ -274,7 +268,11 @@ export default function ShopDashboardPage() {
                 {topProducts.map((p) => (
                   <tr key={p.id} className="group hover:bg-[#FBF5EB]/40 transition-colors duration-150">
                     <td className="py-3 px-4 align-middle">
-                      <div className="flex items-center gap-3">
+                      <Link
+                        to={`/products/${encodeURIComponent(p.id)}`}
+                        aria-label={`Xem sản phẩm ${p.title} trên sàn`}
+                        className="flex w-fit max-w-full items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C59B58]"
+                      >
                         {p.imageUrl ? (
                           <img
                             src={p.imageUrl}
@@ -286,10 +284,10 @@ export default function ShopDashboardPage() {
                             <Box className="w-4 h-4" />
                           </div>
                         )}
-                        <strong className="text-[12.5px] font-bold text-[#1A1612] truncate max-w-[280px] block leading-snug" title={p.title}>
+                        <strong className="text-[12.5px] font-bold text-[#1A1612] truncate max-w-[280px] block leading-snug hover:text-[#B88E4F]" title={p.title}>
                           {p.title}
                         </strong>
-                      </div>
+                      </Link>
                     </td>
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <span className="font-mono text-[11px] font-bold text-[#7D715E] bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#EAE4D7] shadow-2xs whitespace-nowrap inline-block">

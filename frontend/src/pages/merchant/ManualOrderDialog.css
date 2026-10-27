@@ -1,0 +1,96 @@
+dialog[data-order-action=manual] { width: min(1000px, calc(100% - 32px)); max-height: calc(100dvh - 40px); border: 1px solid #EAE4D7; border-radius: 18px; background: #FAF8F5; color: #1A1612; box-shadow: 0 24px 80px rgb(35 29 21 / 16%); scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+dialog[data-order-action=manual]::backdrop { background: rgb(35 29 21 / 28%); }
+dialog[data-order-action=manual] > div { padding: 18px; }
+dialog[data-order-action=manual] > .manual-dialog-close-anchor { position: sticky; top: 34px; z-index: 80; height: 0; padding: 0; overflow: visible; }
+.manual-dialog-close { position: absolute; top: 0; right: 38px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; cursor: pointer; box-shadow: 0 2px 6px rgb(35 29 21 / 5%); }
+.manual-dialog-close:hover { background: #FBF5EB; color: #1A1612; }
+.manual-dialog-close:disabled { opacity: .5; cursor: not-allowed; }
+dialog[data-order-action=manual] form > fieldset { display: flex; flex-direction: column; gap: 14px; min-width: 0; width: 100%; }
+dialog[data-order-action=manual] form > fieldset > section { min-width: 0; margin: 0; padding: 18px 20px; border-color: #EAE4D7; border-radius: 12px; background: #FFFFFF; }
+dialog[data-order-action=manual] h3 { font-size: 15px; line-height: 23px; font-weight: 600; letter-spacing: -.2px; }
+dialog[data-order-action=manual] section > h3 { margin-bottom: 16px; }
+dialog[data-order-action=manual] .manual-customer-section > div:first-child { min-height: 30px; padding-right: 40px; margin-bottom: 16px; }
+dialog[data-order-action=manual] .manual-customer-section > div:first-child > button { width: 30px; height: 30px; border-radius: 8px; }
+dialog[data-order-action=manual] :is(.manual-customer-section, .manual-payment-section) > .grid { gap: 16px; }
+dialog[data-order-action=manual] label { min-width: 0; color: #7D715E; font-size: 11px; line-height: 18px; font-weight: 500; }
+dialog[data-order-action=manual] :is(input:not([type=checkbox]):not([type=radio]), textarea) { min-width: 0; height: 40px; margin-top: 6px; padding: 9px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-family: inherit; font-size: 12px; line-height: 20px; font-weight: 400; box-shadow: none; }
+dialog[data-order-action=manual] .manual-payment-section textarea { height: 64px; resize: vertical; }
+dialog[data-order-action=manual] .manual-payment-section label > div > :is(input, button) { margin-top: 0; }
+dialog[data-order-action=manual] input::placeholder { color: #A0988B; }
+dialog[data-order-action=manual] :is(input, textarea):focus { border-color: #C59B58; outline: none; box-shadow: 0 0 0 3px rgb(197 155 88 / 10%); }
+dialog[data-order-action=manual] button[aria-haspopup=listbox] { height: 40px; min-height: 40px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; padding: 9px 11px; color: #1A1612; font-size: 12px; line-height: 20px; font-weight: 400; box-shadow: none; }
+dialog[data-order-action=manual] label > div { margin-top: 6px; }
+dialog[data-order-action=manual] label > span { font-size: 10px; line-height: 17px; font-weight: 400; }
+dialog[data-order-action=manual] .manual-optional-fields { min-width: 0; padding: 13px 14px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; }
+.manual-optional-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin: 0 0 11px; color: #1A1612; font-size: 12px; line-height: 19px; font-weight: 500; }
+.manual-optional-heading > span, .manual-optional-tag { color: #7D715E; font-size: 10px; line-height: 17px; font-weight: 400; }
+.manual-optional-tag { margin-left: 5px; }
+.manual-payment-state > span { display: block; color: #7D715E; font-size: 11px; line-height: 18px; font-weight: 500; }
+.manual-payment-state > div { display: flex; align-items: center; gap: 7px; height: 40px; margin-top: 6px; padding: 9px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 12px; line-height: 20px; }
+.manual-payment-state svg { color: #B88E4F; }
+.manual-payment-state p { margin-top: 4px; color: #7D715E; font-size: 10px; line-height: 17px; }
+.manual-map-selection { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 9px; padding: 9px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; }
+.manual-map-selection > span { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #7D715E; font-size: 10px; line-height: 18px; }
+.manual-map-selection svg { color: #B88E4F; }
+.manual-map-selection strong { color: #1A1612; font-weight: 500; font-variant-numeric: tabular-nums; }
+.manual-map-selection > button { border: 1px solid #EAE4D7; border-radius: 6px; background: #FFFFFF; color: #7D715E; padding: 3px 8px; font-size: 10px; line-height: 18px; }
+.manual-location-result { margin-top: 10px; overflow: hidden; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; color: #1A1612; }
+.manual-location-result-heading { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px 0; }
+.manual-location-result-icon { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border: 1px solid #EEDFC6; border-radius: 9px; background: #FBF5EB; color: #B88E4F; }
+.manual-location-result-heading > div { min-width: 0; }
+.manual-location-result h4 { margin: 0; font-size: 12px; font-weight: 600; line-height: 18px; }
+.manual-location-result-heading p { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 12px; line-height: 20px; }
+.manual-location-result-hint { margin: 5px 14px 12px 56px; color: #7D715E; font-size: 11px; line-height: 18px; }
+.manual-location-result-warning { margin: 0 14px 12px 56px; color: #79592C; font-size: 11px; line-height: 18px; }
+.manual-location-result-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid #EAE4D7; background: #FAF8F5; }
+.manual-location-result-actions > button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid #EAE4D7; border-radius: 7px; background: #FFFFFF; color: #1A1612; font-size: 11px; font-weight: 500; line-height: 18px; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.manual-location-result-actions > button:hover:not(:disabled) { border-color: #C59B58; background: #FBF5EB; }
+.manual-location-result-actions > button:disabled { opacity: .45; cursor: not-allowed; }
+.manual-location-result-actions svg { flex-shrink: 0; color: #B88E4F; }
+.manual-location-result-actions > .manual-location-result-primary { border-color: #EEDFC6; background: #FBF5EB; }
+.manual-location-result-actions > .manual-location-result-dismiss { margin-left: auto; border-color: transparent; background: transparent; color: #7D715E; }
+@media (max-width: 419px) {
+  .manual-location-result-heading { padding: 12px 12px 0; gap: 8px; }
+  .manual-location-result-hint, .manual-location-result-warning { margin-left: 52px; margin-right: 12px; }
+  .manual-location-result-actions { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 5px; padding: 9px 8px; }
+  .manual-location-result-actions > button { padding: 7px 6px; font-size: 10px; }
+  .manual-location-result-actions > .manual-location-result-dismiss { grid-column: 3; margin-left: 0; }
+}
+dialog[data-order-action=manual] button[aria-haspopup=listbox]:disabled { background: #FAF8F5; }
+dialog[data-order-action=manual] .address-location-picker { border-color: #EAE4D7; border-radius: 10px; background: #FFFFFF; }
+dialog[data-order-action=manual] .address-location-header { padding: 12px 14px; }
+dialog[data-order-action=manual] .address-location-toolbar { gap: 12px; }
+dialog[data-order-action=manual] .address-location-toolbar strong { font-size: 12px; line-height: 20px; font-weight: 600; }
+dialog[data-order-action=manual] .address-location-toolbar span { font-size: 10px; line-height: 17px; }
+dialog[data-order-action=manual] .address-location-actions > button { --action-bg: #FFFFFF; --action-hover: #FBF5EB; --action-border: #EAE4D7; --action-border-hover: #C59B58; min-height: 32px; padding: 6px 10px; border: 1px solid #EAE4D7; border-radius: 7px; background: #FFFFFF; color: #79592C; font-size: 10px; line-height: 18px; font-weight: 500; }
+dialog[data-order-action=manual] .address-location-map { height: 200px; border-color: #EAE4D7; }
+dialog[data-order-action=manual] .address-location-map > .leaflet-container { min-height: 200px !important; }
+dialog[data-order-action=manual] .address-location-status { gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: #FFFFFF; font-size: 10px; line-height: 17px; }
+dialog[data-order-action=manual] .manual-customer-section details { font-size: 10px; line-height: 18px; font-weight: 400; }
+dialog[data-order-action=manual] .manual-products-section > div { margin-top: 14px; }
+dialog[data-order-action=manual] .manual-products-section table { font-size: 12px; }
+dialog[data-order-action=manual] .manual-products-section thead { background: #FAF8F5; }
+dialog[data-order-action=manual] .manual-products-section th { padding: 10px; color: #7D715E; font-size: 10px; font-weight: 500; }
+dialog[data-order-action=manual] .manual-products-section td { padding: 10px; font-size: 11px; }
+dialog[data-order-action=manual] .manual-products-section td input { margin-top: 0; }
+dialog[data-order-action=manual] .manual-products-section > button, dialog[data-order-action=manual] .manual-payment-section label button:not([aria-haspopup]) { min-height: 34px; padding: 7px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 11px; line-height: 18px; font-weight: 500; }
+dialog[data-order-action=manual] .manual-payment-section > dl { margin-top: 18px; padding: 14px 16px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; font-size: 12px; line-height: 20px; }
+dialog[data-order-action=manual] .manual-payment-section > dl > div { gap: 12px; }
+dialog[data-order-action=manual] .manual-payment-section > dl dt { color: #7D715E; }
+dialog[data-order-action=manual] .manual-payment-section > dl dd { font-variant-numeric: tabular-nums; }
+dialog[data-order-action=manual] .manual-payment-section > dl > div:last-child { margin-top: 12px; padding-top: 12px; border-color: #EAE4D7; font-size: 16px; line-height: 24px; font-weight: 600; }
+dialog[data-order-action=manual] .manual-payment-section > dl > div:last-child dt { color: #1A1612; }
+dialog[data-order-action=manual] form > footer { gap: 10px; margin-top: 16px; }
+dialog[data-order-action=manual] form > footer > button { min-height: 40px; padding: 9px 18px; border-radius: 8px; background: #FFFFFF; font-size: 12px; line-height: 20px; font-weight: 600; }
+dialog[data-order-action=manual] form > footer > button[type=submit] { --action-bg: #FBF5EB; --action-hover: #F3EFE6; --action-border: #EEDFC6; --action-border-hover: #C59B58; --action-ink: #1A1612; }
+dialog[data-order-action=manual] :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (max-width: 639px) {
+  dialog[data-order-action=manual] { width: calc(100% - 16px); max-height: calc(100dvh - 16px); border-radius: 13px; }
+  dialog[data-order-action=manual] > div { padding: 10px; }
+  dialog[data-order-action=manual] > .manual-dialog-close-anchor { top: 24px; padding: 0; }
+  dialog[data-order-action=manual] .manual-dialog-close { right: 23px; }
+  dialog[data-order-action=manual] form > fieldset > section { padding: 15px 13px; }
+  dialog[data-order-action=manual] :is(.manual-customer-section, .manual-payment-section) > .grid { gap: 13px; }
+  dialog[data-order-action=manual] .address-location-actions { flex-wrap: wrap; }
+  dialog[data-order-action=manual] form > footer > button { flex: 1; }
+}

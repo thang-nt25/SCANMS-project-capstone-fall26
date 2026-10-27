@@ -1,7 +1,9 @@
 import {
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -47,6 +49,15 @@ export class UpdateOrderFulfillmentDto {
 }
 
 export class QueryStoreOrdersDto {
+  @ApiPropertyOptional({ description: 'Lọc theo tài khoản khách hàng' })
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+
+  @ApiPropertyOptional({ enum: ['ALL', 'ORDER_SN', 'CUSTOMER_NAME', 'PHONE', 'TRACKING', 'PRODUCT'] })
+  @IsOptional()
+  @IsIn(['ALL', 'ORDER_SN', 'CUSTOMER_NAME', 'PHONE', 'TRACKING', 'PRODUCT'])
+  searchField?: 'ALL' | 'ORDER_SN' | 'CUSTOMER_NAME' | 'PHONE' | 'TRACKING' | 'PRODUCT';
   @ApiPropertyOptional({ description: 'Trạng thái đơn hàng' })
   @IsOptional()
   @IsEnum(OrderStatus)

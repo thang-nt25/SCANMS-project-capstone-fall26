@@ -1,3 +1,4 @@
+import { storeOrderSearch } from './store-order-search';
 import {
   Injectable,
   NotFoundException,
@@ -3774,7 +3775,9 @@ export class OrdersService {
     query: {
       status?: OrderStatus;
       paymentStatus?: string;
+      customerId?: string;
       search?: string;
+      searchField?: string;
       page?: number | string;
       limit?: number | string;
       storeId?: string;
@@ -3822,6 +3825,9 @@ export class OrdersService {
     if (targetStoreId) {
       where.storeId = targetStoreId;
     }
+    if (query.customerId) {
+      where.customerId = query.customerId;
+    }
     if ((query.status as string) === 'RETURNS') {
       where.OR = [
         { status: OrderStatus.RETURNED },
@@ -3839,24 +3845,8 @@ export class OrdersService {
       };
     }
     if (query.search?.trim()) {
-      const search = query.search.trim();
-      where.OR = [
-        { externalOrderSn: { contains: search, mode: 'insensitive' } },
-        { customerPhone: { contains: search } },
-        { customerName: { contains: search, mode: 'insensitive' } },
-        {
-          rawPayload: {
-            path: ['trackingNumber'],
-            string_contains: search,
-          },
-        },
-        {
-          rawPayload: {
-            path: ['ghnOrderCode'],
-            string_contains: search,
-          },
-        },
-      ];
+      // Keep search conjunctive with status, ownership and return-request filters.
+      where.AND = [storeOrderSearch(query.search.trim(), query.searchField)];
     }
 
     const [total, orders] = await Promise.all([
@@ -3909,7 +3899,13 @@ export class OrdersService {
           status: order.status,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
-          customerEmail: order.customerEmail,
+          customerEmail: order.customerEmail || (typeof raw.customer?.email === 'string' ? raw.customer.email : null),
+          note: typeof raw.note === 'string' ? raw.note : null,
+          isManualOrder: Boolean(raw.requestFingerprint),
+          deliveryLocation: typeof raw.customer?.latitude === 'number' && typeof raw.customer?.longitude === 'number'
+            && Number.isFinite(raw.customer.latitude) && Number.isFinite(raw.customer.longitude)
+            && Math.abs(raw.customer.latitude) <= 90 && Math.abs(raw.customer.longitude) <= 180
+            ? { latitude: raw.customer.latitude, longitude: raw.customer.longitude } : null,
           shippingAddress: order.shippingAddress,
           subtotalAmount: Number(order.subtotalAmount),
           discountAmount: Number(order.discountAmount),

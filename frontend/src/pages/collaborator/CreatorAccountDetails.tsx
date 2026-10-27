@@ -5,6 +5,7 @@ import { customerService } from '../../services/customer.service';
 import { uploadService } from '../../services/upload.service';
 import { Select } from '../../components/ui/Select';
 import { toast } from '../../utils/toast';
+import './CreatorAccountDetails.css';
 
 export default function CreatorAccountDetails() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
@@ -165,22 +166,20 @@ export default function CreatorAccountDetails() {
   };
 
   return (
-    <section className="bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] shadow-sm overflow-hidden text-left" aria-labelledby="creator-account-title">
+    <section className="creator-account-card bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] shadow-sm overflow-hidden text-left" aria-labelledby="creator-account-title">
       <header className="flex items-center gap-2.5 p-4 sm:px-5 border-b border-[#EAE4D7]">
         <span className="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><User size={18} /></span>
         <div>
           <h1 id="creator-account-title" className="text-base sm:text-lg font-semibold text-[#1A1612] tracking-tight">Hồ sơ của tôi</h1>
-          <p className="text-xs text-[#7D715E] mt-0.5">Cập nhật thông tin cá nhân và ảnh đại diện của bạn.</p>
         </div>
       </header>
 
-      <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_225px] gap-6 items-start">
+      <div className="creator-account-content">
         <form onSubmit={handleUpdateProfile} className="min-w-0" id="creator-account-form">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 items-start">
+          <div className="creator-account-fields">
             <div className="min-w-0 border-0 p-0 m-0">
               <span className="block mb-1.5 text-xs font-medium text-[#7D715E]">Tên đăng nhập</span>
               <div className="flex items-center min-h-[38px] px-3 py-2 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-xs font-medium text-[#1A1612] break-all">{username}</div>
-              <p className="mt-1.5 text-[10px] text-[#7D715E]">Tên đăng nhập chỉ có thể thay đổi một lần.</p>
             </div>
             <div className="min-w-0 border-0 p-0 m-0">
               <label htmlFor="creator-account-name" className="block mb-1.5 text-xs font-medium text-[#7D715E]">Họ và tên</label>
@@ -322,10 +321,7 @@ export default function CreatorAccountDetails() {
         </aside>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 p-3 sm:px-5 border-t border-[#EAE4D7] bg-[#FAF8F5]/50">
-        <span className="flex items-center gap-1.5 text-xs text-[#7D715E]">
-          <ShieldCheck size={14} className="text-[#B88E4F] shrink-0" /> Thông tin liên hệ được ẩn để bảo vệ tài khoản.
-        </span>
+      <footer className="flex flex-wrap items-center justify-end gap-3 p-3 sm:px-5 border-t border-[#EAE4D7] bg-[#FAF8F5]/50">
         <button
           type="submit"
           form="creator-account-form"

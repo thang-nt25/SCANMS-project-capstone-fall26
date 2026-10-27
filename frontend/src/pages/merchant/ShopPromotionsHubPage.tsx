@@ -5,6 +5,7 @@ import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import ShopCouponsPage from './ShopCouponsPage';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
+import './ShopPromotionsHubPage.css';
 
 export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();

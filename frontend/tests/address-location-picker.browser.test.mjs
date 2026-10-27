@@ -52,6 +52,9 @@ test('address map recovers from unavailable tiles/geocoder and explains denied d
     await page.waitForFunction(() => [...document.querySelectorAll('.leaflet-tile')].some(tile => tile.src.includes('openstreetmap.fr') && tile.complete && tile.naturalWidth > 0));
     assert.ok(fallbackTiles.length > 0);
     await page.click('.address-location-locate');
+    await page.waitForSelector('[data-device-location-suggestion]');
+    assert.equal(await page.evaluate(() => window.__picked), undefined, 'GPS is a suggestion until confirmed');
+    await page.click('[data-device-location-suggestion] button');
     await page.waitForFunction(() => Boolean(window.__picked));
     const result = await page.evaluate(() => window.__picked);
     assert.equal(result.latitude, 10.8231);

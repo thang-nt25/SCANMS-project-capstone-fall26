@@ -12,6 +12,10 @@ export class ReviewReportDto {
   details: string;
   @IsOptional() @IsArray() @ArrayMaxSize(3) @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
   evidence?: string[];
+  @IsOptional() @IsArray() @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
+  images?: string[];
+  @IsOptional() @IsArray() @IsUrl({ protocols: ['https'], require_protocol: true }, { each: true })
+  videos?: string[];
 }
 export class ResolveReviewReportDto {
   @IsIn(['KEEP', 'HIDE']) decision: 'KEEP' | 'HIDE';

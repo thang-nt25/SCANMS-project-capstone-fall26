@@ -1,0 +1,227 @@
+.collaboration-chat-pane { border: 1px solid #EAE4D7; border-radius: 16px; box-shadow: 0 4px 20px rgb(35 29 21 / 3%); }
+.collaboration-chat-pane .collaboration-shop-heading { padding: 12px 16px; gap: 12px; }
+.collaboration-chat-pane .collaboration-context-name { font-size: 14px; line-height: 21px; font-weight: 650; }
+.collaboration-chat-pane .collaboration-context-avatar { width: 34px; height: 34px; border-radius: 9px; box-shadow: none; }
+.collaboration-chat-pane .collaboration-store-link { min-height: 32px; padding: 6px 10px; font-size: 11px; border-radius: 8px; }
+.collaboration-chat-pane .collaboration-context-tabs { padding: 7px 12px; gap: 5px; background: #FFFDFA; }
+.collaboration-chat-pane .collaboration-context-tabs > button { min-height: 36px; padding: 6px 8px; border-radius: 8px; border-color: transparent; background: transparent; font-size: 11px; font-weight: 600; box-shadow: none; }
+.collaboration-chat-pane .collaboration-context-tabs > button[aria-selected="true"] { border-color: #EEDFC6; background: #fff; box-shadow: 0 2px 5px rgb(35 29 21 / 4%); color: #1A1612; }
+.collaboration-chat-pane .collaboration-context-tabs > button:hover { background: #FBF5EB; }
+.collaboration-chat-pane .collaboration-context-tabs > button > span:last-child { min-width: 19px; height: 19px; padding: 0 5px; font-size: 10px; }
+.collaboration-chat-pane .collaboration-deal-bar { align-items: center; margin: 10px 14px 0; padding: 10px 12px; gap: 10px; border: 1px solid #EEDFC6; border-radius: 10px; background: #FFFDFA; }
+.collaboration-deal-bar > div > svg { box-sizing: content-box; padding: 7px; border-radius: 8px; background: #FBF5EB; }
+.collaboration-deal-bar > div { min-width: 0; }
+.collaboration-deal-bar > div > span { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.collaboration-deal-bar strong { font-size: 12px; line-height: 18px; font-weight: 650; }
+.collaboration-deal-bar > div > span > span { font-size: 10px; line-height: 16px; }
+.collaboration-chat-pane .collaboration-deal-bar > button { min-height: 32px; padding: 6px 10px; border-color: #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #1A1612; font-size: 11px; white-space: nowrap; }
+.collaboration-chat-section .chat-message-list { padding: 16px 18px; background: #FAF8F5; scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+.collaboration-chat-section .chat-message-list > div + div { margin-top: 16px; }
+.collaboration-chat-section .chat-message-content { max-width: min(86%, 560px); }
+.collaboration-chat-section .chat-message-content > div:first-child:not(.chat-message-bubble):not(.chat-deal-sender) { font-size: 11px; line-height: 17px; }
+.collaboration-chat-section .chat-message-content > div:last-child { font-size: 10px; line-height: 15px; }
+.collaboration-chat-section .chat-date-divider > span { padding: 3px 10px; border-color: #EAE4D7; background: #fff; color: #7D715E; font-size: 10px; font-weight: 500; box-shadow: none; }
+.collaboration-chat-section .chat-deal-sender { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; color: #7D715E; font-size: 11px; line-height: 17px; }
+.collaboration-chat-section .chat-deal-sender > span { font-size: 11px; line-height: 17px; font-weight: 500; }
+.collaboration-chat-section .chat-deal-sender .chat-sender-time { margin-left: auto; padding-left: 8px; color: #7D715E; font-size: 10px; line-height: 17px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.collaboration-chat-section .exclusive-deal-card { width: 320px; max-width: 100%; border-color: #EAE4D7; border-radius: 15px; box-shadow: 0 4px 18px rgb(35 29 21 / 4%); }
+.collaboration-chat-section .exclusive-deal-card > header { padding: 11px 12px; gap: 8px; background: #fff; }
+.collaboration-chat-section .exclusive-deal-card > header strong { font-size: 13px; line-height: 20px; }
+.collaboration-chat-section .exclusive-deal-card > header > span:first-child { width: 27px; height: 27px; border: 1px solid #EEDFC6; border-radius: 8px; }
+.collaboration-chat-section .exclusive-deal-card > header > span:last-child { padding: 4px 7px; border-radius: 6px; background: #FFFDFA; font-size: 9px; }
+.collaboration-chat-section .exclusive-deal-card > div { padding: 12px 10px; }
+.collaboration-chat-section .exclusive-deal-card h3 { font-size: 12px; line-height: 18px; font-weight: 600; }
+.collaboration-chat-section .deal-store-name { margin-top: 5px; font-size: 10px; line-height: 16px; }
+.collaboration-chat-section .exclusive-deal-card .deal-commission { margin-top: 11px; padding: 11px; border-radius: 10px; background: #FBF5EB; }
+.collaboration-chat-section .deal-commission-primary strong { font-size: 27px; line-height: 32px; letter-spacing: -0.6px; }
+.collaboration-chat-section .deal-commission-primary > span { font-size: 11px; line-height: 17px; }
+.collaboration-chat-section .deal-commission-standard { line-height: 16px; font-size: 10px; }
+.collaboration-chat-section .deal-commission[data-comparison="true"] { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 12px; }
+.collaboration-chat-section .deal-commission[data-comparison="true"] .deal-commission-primary { flex-direction: column; align-items: flex-start; gap: 4px; }
+.collaboration-chat-section .deal-commission-primary + .deal-commission-standard { flex-direction: column; justify-content: center; align-items: flex-start; gap: 7px; margin: 0; padding: 0 0 0 12px; border-left: 1px solid #EEDFC6; }
+.collaboration-chat-section .deal-commission-primary + .deal-commission-standard strong { font-size: 17px; line-height: 23px; color: #7D715E; }
+.collaboration-chat-section .exclusive-deal-card summary { padding: 6px 0; font-size: 10px; }
+.collaboration-chat-section .exclusive-deal-card .deal-sales-commitment { margin-top: 12px; padding: 10px 11px; border-color: #EAE4D7; border-radius: 9px; background: #FFFFFF; }
+.collaboration-chat-section .deal-sales-commitment h4 { margin: 0; color: #795A2D; font-size: 11px; line-height: 17px; font-weight: 600; }
+.collaboration-chat-section .deal-sales-commitment .deal-commitment-lines { gap: 7px; margin-top: 7px; }
+.collaboration-chat-section .deal-sales-commitment p { margin: 0; color: #7D715E; font-size: 11px; line-height: 18px; overflow-wrap: anywhere; }
+.collaboration-chat-section .deal-commitment-lines p + p { padding-top: 7px; border-top: 1px solid #EAE4D7; }
+.collaboration-chat-section .exclusive-deal-card .deal-pending-note { gap: 6px; font-size: 10px; line-height: 17px; }
+.collaboration-chat-section .exclusive-deal-card > footer { padding: 9px 10px; background: #FFFFFF; }
+.collaboration-chat-section .exclusive-deal-card > footer > .space-y-3 { display: grid; gap: 10px; }
+.collaboration-chat-section .exclusive-deal-card > footer > .space-y-3 > * { margin: 0; }
+.collaboration-chat-section .exclusive-deal-card footer a { line-height: 17px; }
+.collaboration-chat-section .exclusive-deal-card footer .space-y-3 button { width: 28px; height: 28px; border-radius: 7px; }
+.collaboration-chat-section .exclusive-deal-card footer .space-y-3 > div > div { align-items: center; padding: 7px 9px; background: #fff; }
+.collaboration-chat-section .exclusive-deal-card footer .space-y-3 > div:nth-child(2) > div { border-style: dashed; background: #FBF5EB; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets { gap: 9px; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets > div > p { margin-bottom: 5px; font-size: 12px; line-height: 18px; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets > div > div { min-height: 36px; padding: 5px 6px; gap: 5px; border-radius: 8px; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-link { font-size: 14px; line-height: 21px; letter-spacing: 0.25px; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets > div:nth-child(2) span { font-size: 14px; line-height: 21px; letter-spacing: 0.6px; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets > a { justify-self: start; font-size: 12px; line-height: 18px; color: #7D715E; }
+.collaboration-chat-section .exclusive-deal-card .deal-issued-assets button:focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+.collaboration-chat-section .chat-message-bubble { padding: 10px 13px; border-radius: 12px; font-size: 12px; line-height: 20px; box-shadow: 0 2px 6px rgb(35 29 21 / 2%); }
+.collaboration-chat-section .chat-message-bubble.chat-message-own { background: #FBF5EB; border-color: #EEDFC6; border-bottom-right-radius: 4px; }
+.collaboration-chat-section .chat-composer { padding: 10px 12px; background: #fff; }
+.collaboration-chat-section .chat-composer textarea { min-height: 40px; padding: 9px 12px; border-radius: 9px; background: #fff; font-size: 12px; line-height: 20px; }
+.collaboration-chat-section .chat-composer button { border-radius: 9px; }
+.collaboration-chat-section .collaboration-live-invite { width: 430px; max-width: 100%; overflow: hidden; border: 1px solid #EAE4D7; border-radius: 13px; background: #fff; box-shadow: 0 3px 12px rgb(35 29 21 / 4%); color: #1A1612; }
+.collaboration-live-invite > header { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-bottom: 1px solid #EAE4D7; }
+.live-invite-icon { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 8px; background: #FBF5EB; color: #B88E4F; }
+.collaboration-live-invite h3 { margin: 0; color: #1A1612; font-size: 12px; line-height: 18px; font-weight: 650; }
+.collaboration-live-invite header p { margin: 1px 0 0; color: #7D715E; font-size: 10px; line-height: 15px; overflow-wrap: anywhere; }
+.live-invite-introduction { margin: 11px 13px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 18px; }
+.collaboration-live-invite dl { display: grid; gap: 0; margin: 0 13px 12px; padding: 3px 11px; border: 1px solid #EEDFC6; border-radius: 9px; background: #FFFDFA; }
+.collaboration-live-invite dl > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: start; gap: 10px; padding: 9px 0; }
+.collaboration-live-invite dl > div + div { border-top: 1px solid #EAE4D7; }
+.collaboration-live-invite dt { display: flex; align-items: center; gap: 6px; color: #7D715E; font-size: 10px; line-height: 17px; }
+.collaboration-live-invite dt svg { flex-shrink: 0; color: #B88E4F; }
+.collaboration-live-invite dd { margin: 0; color: #1A1612; font-size: 11px; line-height: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.live-invite-note { margin: 0; padding: 10px 13px; border-top: 1px solid #EAE4D7; background: #FAF8F5; color: #7D715E; font-size: 10px; line-height: 17px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .collaboration-chat-pane .collaboration-deal-bar { align-items: stretch; flex-direction: column; gap: 7px; }
+  .collaboration-chat-pane .collaboration-deal-bar { margin: 8px 10px 0; padding: 9px 10px; }
+  .collaboration-chat-pane .collaboration-deal-bar > button { align-self: stretch; justify-content: center; }
+  .collaboration-chat-section .chat-message-list { padding: 10px; }
+  .collaboration-chat-section .chat-message-content { max-width: 92%; }
+  .collaboration-chat-section .exclusive-deal-card { width: 100%; }
+  .collaboration-live-invite dl > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+}
+.collaboration-products { gap: 12px; }
+.collaboration-product-selection { min-height: 42px; padding: 11px 14px; border-radius: 10px; align-items: center; }
+.collaboration-product-selection label { font-size: 11px; font-weight: 600; }
+.collaboration-product-selection input[type="checkbox"] { accent-color: #C59B58; width: 15px; height: 15px; }
+.collaboration-product-grid { align-items: stretch; }
+.collaboration-product-grid .collaboration-product-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgb(35 29 21 / 3%); }
+.collaboration-product-card > div:first-child { gap: 10px; }
+.collaboration-product-card > div:first-child img { width: 64px; height: 76px; padding: 4px; border-radius: 8px; background: #fff; }
+.collaboration-product-card > div:first-child strong { font-size: 12px; line-height: 18px; font-weight: 600; }
+.collaboration-product-card > button { padding: 7px 9px; border-radius: 8px; font-size: 11px; line-height: 17px; font-weight: 500; }
+.collaboration-product-card > div:nth-last-child(2) { padding: 8px 9px; border-radius: 8px; background: #FFFDFA; }
+.collaboration-product-card > div:nth-last-child(2) strong { color: #B88E4F; font-size: 11px; line-height: 17px; font-weight: 600; }
+.collaboration-product-card > div:last-child { margin-top: auto; padding-top: 10px; gap: 7px; }
+.collaboration-product-card > div:last-child button { min-height: 35px; gap: 5px; padding: 6px 5px; border-radius: 8px; font-size: 10px; line-height: 16px; font-weight: 600; }
+.collaboration-product-card > div:last-child button svg { flex-shrink: 0; width: 13px; height: 13px; }
+.collaboration-product-card > div:last-child button span { white-space: nowrap; }
+
+.collaboration-sample-tab { padding: 20px 16px 16px; background: #FAF8F5; }
+.collaboration-samples { gap: 16px; }
+.sample-alert { padding: 11px 14px; border-radius: 11px; line-height: 1.55; }
+.sample-alert-danger { border-color: #F1C9C6; background: #FEF7F6; }
+.sample-alert-warning { border-color: #EEDFC6; background: #FBF5EB; color: #795A2D; }
+.sample-alert-warning svg { color: #B88E4F; }
+.sample-list-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(195px, 230px); align-items: center; gap: 14px; padding: 8px 11px; border: 1px solid #E2C99F; border-radius: 11px; background: #fff; box-shadow: 0 2px 8px rgb(35 29 21 / 3%); }
+.sample-list-heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.sample-list-icon { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid #EEDFC6; border-radius: 9px; background: #FBF5EB; color: #B88E4F; }
+.sample-list-copy { min-width: 0; }
+.sample-list-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sample-list-title-row h3 { margin: 0; color: #1A1612; font-size: 13px; line-height: 18px; font-weight: 650; letter-spacing: -0.15px; }
+.sample-list-copy p { margin: 1px 0 0; color: #7D715E; font-size: 10px; line-height: 15px; }
+.sample-count { display: inline-flex; align-items: center; min-height: 21px; padding: 2px 8px; border: 1px solid #EEDFC6; border-radius: 999px; background: #FBF5EB; color: #8D6936; font-size: 10px; line-height: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.sample-filter { display: grid; gap: 3px; min-width: 0; color: #7D715E; font-size: 9px; line-height: 12px; font-weight: 600; }
+.sample-filter select { min-height: 34px; padding: 5px 30px 5px 9px; border-color: #EAE4D7; border-radius: 7px; color: #1A1612; font-size: 10px; }
+.sample-state-card { padding: 22px; border: 1px solid #EAE4D7; border-radius: 13px; background: #fff; }
+.sample-empty-icon { width: 42px; height: 42px; border-radius: 11px; }
+.sample-request-list { gap: 16px; }
+.collaboration-samples .sample-request-card { gap: 14px; padding: 16px; border-color: #EAE4D7; border-radius: 15px; background: #fff; box-shadow: 0 4px 18px rgb(35 29 21 / 3%); }
+.collaboration-samples .sample-request-card:hover { border-color: #E2C99F; box-shadow: 0 5px 14px rgb(35 29 21 / 5%); }
+.collaboration-samples .sample-request-card[data-focused=true] { border-color: #C59B58; outline: 2px solid #EEDFC6; outline-offset: 2px; scroll-margin: 12px; }
+.sample-request-summary { gap: 13px; }
+.sample-request-image { width: 70px; height: 82px; padding: 6px; border-color: #EAE4D7; border-radius: 11px; background: #FAF8F5; object-fit: contain; }
+.sample-request-title { margin: 1px 0 0; color: #1A1612; font-size: 13px; line-height: 20px; font-weight: 650; }
+.sample-request-badges { gap: 6px; margin-top: 5px; }
+.sample-request-status { min-height: 22px; padding: 3px 8px; border-radius: 6px; font-size: 10px; line-height: 14px; }
+.sample-request-status[data-status="pending"], .sample-request-status[data-status="cancelled"] { border-color: #EAE4D7; background: #FAF8F5; color: #7D715E; }
+.sample-request-status[data-status="approved"], .sample-request-status[data-status="shipped"], .sample-request-status[data-status="received"], .sample-request-status[data-status="video_submitted"], .sample-request-status[data-status="completed"] { border-color: #EEDFC6; background: #FBF5EB; color: #8D6936; }
+.sample-request-status[data-status="overdue"], .sample-request-status[data-status="delivery_issue"], .sample-request-status[data-status="rejected"] { border-color: #F1C9C6; background: #FEF2F1; color: #DC2626; }
+.sample-request-status[data-status="revision_required"] { border-color: #EEDFC6; background: #FFFDFA; color: #795A2D; }
+.sample-request-detail { margin-top: 6px; color: #7D715E; font-size: 11px; line-height: 17px; }
+.sample-request-metadata { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px; margin: 11px 0 0; padding: 0; }
+.sample-request-metadata > div { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 9px 10px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFDFA; }
+.sample-request-metadata dt { color: #7D715E; font-size: 10px; line-height: 15px; }
+.sample-request-metadata dd { margin: 0; color: #1A1612; font-size: 11px; line-height: 17px; font-weight: 500; overflow-wrap: anywhere; }
+.sample-request-metadata .sample-recipient-address { grid-column: auto; }
+.sample-request-reason { margin-top: 7px; padding: 8px 10px; border: 1px solid #F1C9C6; border-radius: 8px; background: #FEF7F6; color: #DC2626; font-size: 11px; line-height: 16px; }
+.sample-video-details { margin-top: 8px; }
+.sample-video-details summary { min-height: 34px; border-color: #EAE4D7; border-radius: 8px; background: #FFFDFA; }
+.sample-request-card > section { margin-top: 0; border-color: #EEDFC6; border-radius: 11px; background: #FFFDFA; }
+.sample-request-card > section > div:first-child { padding: 11px 12px 6px; }
+.sample-request-card > section > div:last-child { padding: 0 12px 12px; }
+.sample-request-actions { justify-content: flex-start; gap: 7px; padding-top: 12px; border-color: #EAE4D7; }
+.sample-request-actions:empty { display: none; }
+.sample-request-actions > button { min-height: 34px; padding: 7px 10px; border-radius: 8px; font-size: 11px; line-height: 16px; font-weight: 600; }
+.sample-request-actions .sample-submit-video { border-color: #EEDFC6; background: #FBF5EB; color: #795A2D; }
+.sample-request-actions .sample-submit-video:hover { border-color: #C59B58; background: #F3EFE6; }
+.sample-request-actions [role="status"] { border: 1px solid #EAE4D7; background: #FAF8F5; }
+
+/* Shipping details are compact only inside the creator's sample tab. */
+.collaboration-samples .sample-waybill { margin: 0; overflow: hidden; border: 1px solid #EAE4D7; border-radius: 12px; background: #fff; }
+.collaboration-samples .sample-waybill > .sample-waybill-heading { gap: 12px; padding: 11px 13px; border-bottom: 1px solid #EAE4D7; background: #FFFFFF; }
+.collaboration-samples .sample-waybill-heading > div > span { width: 32px; height: 32px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; }
+.collaboration-samples .sample-waybill-carrier h4 { font-size: 11px; line-height: 17px; font-weight: 650; }
+.collaboration-samples .sample-waybill-carrier > span { padding: 1px 6px; border: 1px solid #EEDFC6; border-radius: 5px; background: #FBF5EB; font-size: 9px; }
+.collaboration-samples .sample-waybill-heading code { margin-top: 0; color: #7D715E; font-size: 10px; line-height: 16px; }
+.collaboration-samples .sample-waybill-heading > button { min-height: 30px; padding: 5px 9px; border-radius: 7px; background: #fff; font-size: 10px; font-weight: 500; }
+.collaboration-samples .sample-waybill > .sample-waybill-body { padding: 12px 13px; }
+.collaboration-samples .sample-receipt-overview { gap: 10px; padding: 0; }
+.collaboration-samples .sample-receipt-overview p[role="status"] { font-size: 11px; line-height: 17px; }
+.collaboration-samples .sample-receipt-overview p + p { margin-top: 2px; font-size: 10px; line-height: 16px; }
+.collaboration-samples .sample-receipt-overview button { min-height: 34px; padding: 7px 12px; border: 1px solid #C59B58; border-radius: 8px; background: #C59B58; color: #231D15; font-size: 11px; font-weight: 600; box-shadow: 0 2px 5px rgb(197 155 88 / 12%); }
+.collaboration-samples .sample-receipt-overview button:hover { border-color: #C59B58; background: #F3EFE6; }
+.collaboration-samples .sample-receipt-details { margin-top: 12px; padding: 0; border-top: 0; }
+.collaboration-samples .sample-receipt-details .sample-delivery-steps { gap: 8px; margin: 0; padding: 11px 7px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFDFA; }
+.collaboration-samples .sample-receipt-details li { gap: 5px; }
+.collaboration-samples .sample-delivery-steps li > svg { width: 19px; height: 19px; box-shadow: 0 0 0 4px #FFFDFA; }
+.collaboration-samples .sample-delivery-steps li > span[aria-hidden="true"] { top: 9px; }
+.collaboration-samples .sample-delivery-steps li[aria-current="step"] strong { color: #1A1612; }
+.collaboration-samples .sample-receipt-details li strong { font-size: 10px; line-height: 16px; font-weight: 600; }
+.collaboration-samples .sample-receipt-details li small { margin-top: 2px; font-size: 9px; line-height: 15px; font-variant-numeric: tabular-nums; }
+.collaboration-samples .sample-freight { margin-top: 11px; padding-top: 0; border-top: 0; }
+.collaboration-samples .sample-freight__row { gap: 10px 18px; padding: 10px 12px; border: 1px solid #EEDFC6; border-radius: 9px; background: #FBF5EB; }
+.collaboration-samples .sample-freight__amounts dt { font-size: 10px; line-height: 16px; }
+.collaboration-samples .sample-freight__amounts dd { margin-top: 2px; font-size: 13px; line-height: 19px; font-weight: 600; }
+.collaboration-samples .sample-freight__paid { max-width: 185px; font-size: 10px; font-weight: 500; }
+.collaboration-samples .sample-freight__receipt { margin-top: 8px; padding: 10px 11px; border: 1px solid #EAE4D7; border-radius: 9px; background: #FFFFFF; }
+.collaboration-samples .sample-freight__reference { margin: 0; gap: 8px 16px; font-size: 10px; line-height: 16px; }
+.collaboration-samples .sample-freight__confirmation > span,
+.collaboration-samples .sample-freight__timestamp > span { font-size: 9px; line-height: 14px; }
+.collaboration-samples .sample-freight__confirmation code { margin-top: 3px; font-size: 10px; line-height: 17px; color: #1A1612; }
+.collaboration-samples .sample-freight__timestamp { flex-shrink: 0; text-align: right; }
+.collaboration-samples .sample-freight__timestamp time { margin-top: 3px; font-size: 10px; line-height: 17px; color: #1A1612; }
+.collaboration-samples .sample-freight__note { margin-top: 9px; padding-top: 8px; border-top: 1px solid #EAE4D7; gap: 6px; font-size: 10px; line-height: 16px; color: #7D715E; }
+.collaboration-samples .sample-freight__note:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+@media (max-width: 900px) {
+  .sample-request-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .sample-request-metadata .sample-recipient-address { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+  .collaboration-sample-tab { padding: 20px 16px 16px; }
+  .collaboration-samples { gap: 14px; }
+  .sample-alert { padding: 10px 11px; }
+  .sample-list-toolbar { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 9px 10px; }
+  .sample-list-icon { flex-basis: 32px; width: 32px; height: 32px; }
+  .sample-list-title-row h3 { font-size: 12px; }
+  .sample-filter { gap: 3px; }
+  .sample-state-card { min-height: 125px; padding: 18px; }
+  .collaboration-samples .sample-request-card { gap: 11px; padding: 11px; border-radius: 11px; }
+  .sample-request-image { width: 52px; height: 60px; }
+  .sample-request-title { font-size: 12px; line-height: 18px; }
+  .sample-request-actions { justify-content: stretch; }
+  .sample-request-actions > button { flex: 1 1 auto; }
+  .sample-request-summary { gap: 9px; }
+  .sample-request-metadata { grid-template-columns: minmax(0, 1fr); margin: 10px 0 0; padding: 0; }
+  .sample-request-metadata > div { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px 9px; }
+  .sample-request-metadata .sample-recipient-address { grid-column: auto; }
+  .collaboration-samples .sample-waybill > .sample-waybill-heading { flex-wrap: wrap; gap: 8px; padding: 9px 10px; }
+  .collaboration-samples .sample-waybill-heading > button { margin-left: auto; }
+  .collaboration-samples .sample-waybill > .sample-waybill-body { padding: 9px 10px; }
+  .collaboration-samples .sample-receipt-overview > div:last-child { margin-left: auto; }
+  .collaboration-samples .sample-freight__row { padding: 8px 10px; }
+  .collaboration-samples .sample-freight__reference { flex-direction: column; gap: 8px; }
+  .collaboration-samples .sample-freight__timestamp { text-align: left; }
+  .collaboration-samples .sample-receipt-details .sample-delivery-steps { gap: 3px; padding: 10px 3px; }
+  .collaboration-samples .sample-delivery-steps li strong { font-size: 9px; line-height: 14px; }
+}

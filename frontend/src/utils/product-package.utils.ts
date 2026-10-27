@@ -12,12 +12,14 @@ type PackageValues = { barcode?: string | null; packageWeight?: number | null;
 type PackageForm = { barcode: string; packageWeight: number | ''; packageLength: number | '';
   packageWidth: number | ''; packageHeight: number | '' };
 
-/** Legacy products may update sample policy without inventing missing physical measurements. */
+/** Barcode is optional; legacy policy edits preserve unknown physical measurements. */
 export function productPackageInput(form: PackageForm, previous?: PackageValues | null): PackageValues {
   const result: PackageValues = {};
-  if (!previous || form.barcode.trim() || previous.barcode) {
+  if (form.barcode.trim()) {
     if (!isValidEan13(form.barcode.trim())) throw new Error('Nhập barcode EAN-13 gồm 13 chữ số, đúng số kiểm tra trên bao bì.');
     result.barcode = form.barcode.trim();
+  } else if (previous?.barcode) {
+    result.barcode = null;
   }
   for (const key of ['packageWeight', 'packageLength', 'packageWidth', 'packageHeight'] as const) {
     const value = form[key];

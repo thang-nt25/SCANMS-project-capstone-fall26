@@ -135,6 +135,8 @@ function parseCouponVoucher(text: string): ChatCouponVoucher | undefined {
     return {
       id: card.couponId,
       code: card.couponCode,
+      benefitType: card.benefitType,
+      fundingSource: card.fundingSource,
       discountType: card.discountType,
       discountValue: Number(card.discountValue || 0),
       minimumOrderAmount: card.minimumOrderAmount == null ? null : Number(card.minimumOrderAmount),
@@ -256,6 +258,10 @@ function mapServerMessage(raw: any, userId = getCurrentUserId()): ChatMessageIte
     mediaUrl: raw.mediaUrl || undefined,
     mediaType: raw.mediaType || undefined,
     mediaName: raw.mediaName || undefined,
+    senderId: raw.senderId,
+    senderName: raw.sender?.fullName,
+    replyToId: raw.replyToId,
+    replyTo: raw.replyTo || null,
     ...(product ? { product, products: [product] } : {}),
     ...(coupon ? { coupon } : {}),
   };
@@ -607,14 +613,21 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     toast.success('Đã xóa toàn bộ lịch sử các cuộc trò chuyện.');
   };
 
-  const sendMessage = (content: string) => {
-    if (!content.trim() || !activeConversation) return;
+  const pendingReplyMessages = useRef(new Map<string, string>());
+  const sendMessage = async (content: string, replyToId?: string): Promise<boolean> => {
+    if (!content.trim() || !activeConversation) return false;
 
     if (UUID_REGEX.test(activeConversation.id) && localStorage.getItem('token')) {
       const socket = ensureSocket();
+      if (!socket.connected) { toast.error('Chat đang mất kết nối. Tin nhắn được giữ lại để bạn thử lại.'); return false; }
       socket.emit('join_conversation', { conversationId: activeConversation.id });
-      socket.emit('send_message', { conversationId: activeConversation.id, messageText: content.trim() });
-      return;
+      const key = `${activeConversation.id}:${replyToId || ''}:${content.trim()}`;
+      const messageId = pendingReplyMessages.current.get(key) || crypto.randomUUID();
+      pendingReplyMessages.current.set(key, messageId);
+      return new Promise(resolve => socket.timeout(8000).emit('send_message', { conversationId: activeConversation.id, messageText: content.trim(), replyToId, messageId }, (failure: Error | null, result?: { ok: boolean; error?: string }) => {
+        if (failure || !result?.ok) { toast.error(result?.error || 'Chưa gửi được tin nhắn. Vui lòng thử lại.'); resolve(false); }
+        else { pendingReplyMessages.current.delete(key); resolve(true); }
+      }));
     }
 
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -665,9 +678,10 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         })
       );
     }, 1200);
+    return true;
   };
 
-  const sendAttachment = async (file: File, type: ChatAttachmentType, caption = '') => {
+  const sendAttachment = async (file: File, type: ChatAttachmentType, caption = '', replyToId?: string) => {
     if (!localStorage.getItem('token')) throw new Error('Vui lòng đăng nhập để gửi tệp trong chat.');
     if (!activeConversation || !UUID_REGEX.test(activeConversation.id)) {
       throw new Error('Cuộc trò chuyện chưa kết nối với máy chủ. Hãy đóng và mở lại chat của Shop.');
@@ -685,13 +699,18 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
 
     const socket = ensureSocket();
     socket.emit('join_conversation', { conversationId: activeConversation.id });
-    socket.emit('send_message', {
+    await new Promise<void>((resolve, reject) => socket.timeout(12000).emit('send_message', {
       conversationId: activeConversation.id,
       messageText: caption.trim(),
       mediaUrl: attachment.url,
       mediaType: type,
       mediaName: attachment.fileName || file.name,
-    });
+      replyToId,
+      messageId: crypto.randomUUID(),
+    }, (failure: Error | null, result?: { ok: boolean; error?: string }) => {
+      if (failure || !result?.ok) reject(new Error(result?.error || 'Chưa gửi được tệp. Vui lòng thử lại.'));
+      else resolve();
+    }));
   };
 
   const sendProductsInquiry = (productsToSend: ChatProductInfo[]) => {

@@ -16,7 +16,7 @@ export function DealDemoPanel() {
     const timer = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(timer);
   }, [open, startedAt]);
-  if (!import.meta.env.DEV) return null;
+  if (import.meta.env.VITE_ENABLE_DEMO_TOOLS !== 'true') return null;
   const { remaining, expired } = dealDemoState({
     startedAt,
     durationSeconds: duration,

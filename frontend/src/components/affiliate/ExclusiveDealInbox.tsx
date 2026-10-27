@@ -7,12 +7,13 @@ import { DealKpiProgress } from './DealKpiProgress';
 
 export interface ExclusiveDealInboxProps {
   onChat?: (item: any) => void;
+  collaboratorId?: string;
 }
 
 const defaultVipTerms = { discountPercent: 5, minimumOrderAmount: 200000, maximumDiscountAmount: 50000, usageLimitTotal: 20, budgetTotal: 1000000, validDays: 30 };
 type VipTerms = typeof defaultVipTerms;
 
-export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
+export function ExclusiveDealInbox({ onChat, collaboratorId }: ExclusiveDealInboxProps = {}) {
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,13 +28,14 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await referralLinksService.getShopExclusiveDeals());
+      const deals = await referralLinksService.getShopExclusiveDeals();
+      setItems(collaboratorId ? deals.filter(item => item.collaborator?.id === collaboratorId) : deals);
     } catch (error: any) {
       setFeedback(error?.response?.data?.message || 'Không thể tải đề xuất deal.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [collaboratorId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -89,17 +91,9 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
       onChat(item);
       return;
     }
-    const chatInput = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-      'input[placeholder*="Nhập tin nhắn"], textarea[placeholder*="Nhập tin nhắn"], #embedded-chat-input'
-    );
-    if (chatInput) {
-      chatInput.focus();
-      chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return;
-    }
     const kolId = item.collaboratorId || item.collaborator?.id || item.collaborator?.userId;
     if (kolId) {
-      navigate(`/merchant/kol-hub?tab=messages&kol=${kolId}`);
+      navigate(`/merchant/kol-hub?tab=messages&kol=${encodeURIComponent(kolId)}`);
     } else {
       navigate('/merchant/kol-hub?tab=messages');
     }

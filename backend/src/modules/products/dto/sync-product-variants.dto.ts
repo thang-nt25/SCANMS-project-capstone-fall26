@@ -32,7 +32,7 @@ export class ProductVariantInputDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(1, { message: 'Giá bán phân loại phải lớn hơn 0' })
   price?: number;
 
   @IsInt()

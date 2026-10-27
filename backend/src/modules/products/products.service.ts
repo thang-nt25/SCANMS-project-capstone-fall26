@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateProductEditorDto } from './dto/update-product-editor.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { ModerateProductReviewDto } from './dto/moderate-product-review.dto';
 import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy.dto';
@@ -136,12 +137,14 @@ export class ProductsService {
       [dto.categoryName, 'Danh mục sản phẩm'],
       [dto.imageUrl, 'Ảnh chính sản phẩm'],
       [dto.description, 'Mô tả chi tiết sản phẩm'],
-      [dto.ingredients, 'Thành phần sản phẩm'],
       [dto.origin, 'Xuất xứ sản phẩm'],
       [dto.labelInfo, 'Thông tin nhãn mác, cảnh báo và hướng dẫn sử dụng'],
     ];
     for (const [value, label] of requiredText) {
       if (typeof value !== 'string' || !value.trim()) issues.push(label);
+    }
+    if (['Mỹ phẩm & Chăm sóc da', 'Trang điểm & Làm đẹp', 'Chăm sóc cơ thể & Tóc', 'Thực phẩm chức năng & Sức khỏe'].includes(dto.categoryName?.trim()) && !dto.ingredients?.trim()) {
+      issues.push('Thành phần sản phẩm');
     }
 
     if (!Number.isFinite(dto.price) || dto.price <= 0) {
@@ -174,9 +177,6 @@ export class ProductsService {
       issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
 
     const variants = dto.variants || [];
-    if (!variants.length) {
-      issues.push('Thêm ít nhất một phân loại SKU cho sản phẩm');
-    }
 
     const categoryFields: Record<string, Array<[string, string]>> = {
       'Mỹ phẩm & Chăm sóc da': [
@@ -216,13 +216,8 @@ export class ProductsService {
       ['color', 'Màu / phiên bản'],
     ];
     for (const [index, variant] of variants.entries()) {
-      const missingAttributes = expectedFields
-        .filter(([key]) => !variant.attributes?.[key]?.trim())
-        .map(([, label]) => label);
-      if (missingAttributes.length) {
-        issues.push(
-          `Phân loại ${index + 1}: thiếu ${missingAttributes.join(', ')}`,
-        );
+      if (!expectedFields.some(([key]) => variant.attributes?.[key]?.trim())) {
+        issues.push(`Phân loại ${index + 1}: nhập ít nhất một thuộc tính phù hợp danh mục`);
       }
       if (!variant.name?.trim())
         issues.push(`Phân loại ${index + 1}: thiếu tên hiển thị`);
@@ -271,13 +266,13 @@ export class ProductsService {
     };
   }
 
-  private async loadProductEvidence(productIds: string[]) {
+  private async loadProductEvidence(productIds: string[], db?: Prisma.TransactionClient) {
     const byProduct = new Map<
       string,
       Array<{ caption: string | null; urlOrContent: string }>
     >();
     if (!productIds.length) return byProduct;
-    const rows = await this.prisma.mediaAsset.findMany({
+    const rows = await (db || this.prisma).mediaAsset.findMany({
       where: {
         productId: { in: productIds },
         assetType: 'COPYWRITE_TEXT',
@@ -354,6 +349,11 @@ export class ProductsService {
         isVerified: true,
         onboardingStatus: 'VERIFIED',
       };
+    }
+
+    if (query.scope === 'chat-share') {
+      where.isActive = true;
+      where.moderationStatus = ProductModerationStatus.APPROVED;
     }
 
     if (query.category) {
@@ -812,8 +812,16 @@ export class ProductsService {
       details: { path: ['reviewId'], equals: reviewId } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1 });
     if (history[0]?.action === 'PRODUCT_REVIEW_REPORTED') throw new BadRequestException('Báo cáo trước đang chờ sàn xử lý');
     // A report never changes status/isApproved or the product rating.
-    await this.prisma.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORTED',
-      details: { reviewId, productId: review.productId, reason: dto.reason, details: dto.details, evidence: dto.evidence || [] } } });
+    await this.prisma.$transaction(async tx => {
+      const report = await tx.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORTED',
+        details: { reviewId, productId: review.productId, reason: dto.reason, details: dto.details, evidence: dto.evidence || [], images: dto.images || [], videos: dto.videos || [] } } });
+      const staff = await tx.user.findMany({ where: { role: { in: [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER] }, isActive: true, isDeleted: false }, select: { id: true } });
+      if (staff.length) await tx.notification.createMany({ data: staff.map(person => ({
+        userId: person.id, type: 'PRODUCT_REVIEW_REPORTED', title: 'Báo cáo đánh giá cần xử lý',
+        message: `Shop đã báo cáo một đánh giá về sản phẩm “${review.product.title}”. Mở để xem nội dung và bằng chứng.`,
+        data: { reviewId, productId: review.productId, reportId: report.id },
+      })) });
+    });
     return { message: 'Đã gửi báo cáo tới sàn. Đánh giá vẫn hiển thị trong khi chờ xử lý.' };
   }
 
@@ -1243,13 +1251,28 @@ export class ProductsService {
   /**
    * Cập nhật thông tin & % hoa hồng sản phẩm
    */
+  async updateEditor(userId: string, userRole: UserRole, id: string, dto: UpdateProductEditorDto) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await this.update(userId, userRole, id, dto, tx);
+      const variants = await this.syncProductVariants(userId, userRole, id, { variants: dto.variants }, tx);
+      const requiresModeration = updated.requiresModeration || variants.requiresModeration;
+      return { ...updated, requiresModeration,
+        message: requiresModeration ? 'Đã lưu toàn bộ thay đổi và chuyển về hàng đợi kiểm duyệt.' : updated.message,
+        product: await tx.product.findUnique({ where: { id } }), variants: variants.variants };
+    }, { maxWait: 5000, timeout: 20000 });
+    await this.invalidateLandingCache(id);
+    return result;
+  }
+
   async update(
     userId: string,
     userRole: UserRole,
     id: string,
     dto: UpdateProductDto,
+    db?: Prisma.TransactionClient,
   ) {
-    const product = await this.prisma.product.findUnique({
+    const prisma = db || this.prisma;
+    const product = await prisma.product.findUnique({
       where: { id },
       include: {
         store: true,
@@ -1289,7 +1312,7 @@ export class ProductsService {
       userRole === UserRole.SHOP_MANAGER &&
       product.moderationStatus === ProductModerationStatus.REJECTED;
     validateProductPackage(dto);
-    const evidenceByProduct = await this.loadProductEvidence([id]);
+    const evidenceByProduct = await this.loadProductEvidence([id], db);
     const existingEvidenceRows = evidenceByProduct.get(id) || [];
 
     const textChanged = (
@@ -1378,7 +1401,7 @@ export class ProductsService {
       );
     }
     if (dto.sampleQuota !== undefined) {
-      const quotaGuard = await this.prisma.product.updateMany({
+      const quotaGuard = await prisma.product.updateMany({
         where: { id, sampleGrantedCount: { lte: dto.sampleQuota } },
         data: { sampleQuota: dto.sampleQuota },
       });
@@ -1389,7 +1412,7 @@ export class ProductsService {
       }
     }
 
-    const updated = await this.prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id },
       data: {
         ...(dto.sku && { sku: dto.sku.trim().toUpperCase() }),
@@ -1445,7 +1468,7 @@ export class ProductsService {
     });
 
     if (evidenceKindsToReplace.length > 0) {
-      await this.prisma.mediaAsset.updateMany({
+      await prisma.mediaAsset.updateMany({
         where: {
           productId: id,
           assetType: 'COPYWRITE_TEXT',
@@ -1459,12 +1482,12 @@ export class ProductsService {
         data: { isDeleted: true, deletedAt: new Date() },
       });
       if (updatedEvidenceRows.length > 0) {
-        await this.prisma.mediaAsset.createMany({ data: updatedEvidenceRows });
+        await prisma.mediaAsset.createMany({ data: updatedEvidenceRows });
       }
     }
 
     if (dto.subImages !== undefined && Array.isArray(dto.subImages)) {
-      await this.prisma.mediaAsset.deleteMany({
+      await prisma.mediaAsset.deleteMany({
         where: {
           productId: id,
           assetType: 'IMAGE',
@@ -1473,7 +1496,7 @@ export class ProductsService {
 
       for (const imgUrl of dto.subImages.slice(0, 4)) {
         if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
-          await this.prisma.mediaAsset.create({
+          await prisma.mediaAsset.create({
             data: {
               storeId: product.storeId,
               productId: id,
@@ -1487,7 +1510,7 @@ export class ProductsService {
       }
     }
 
-    await this.invalidateLandingCache(id);
+    if (!db) await this.invalidateLandingCache(id);
 
     return {
       message: requiresModeration
@@ -1575,8 +1598,10 @@ export class ProductsService {
     userRole: UserRole,
     productId: string,
     dto: SyncProductVariantsDto,
+    db?: Prisma.TransactionClient,
   ) {
-    const product = await this.prisma.product.findFirst({
+    const prisma = db || this.prisma;
+    const product = await prisma.product.findFirst({
       where: { id: productId, isDeleted: false },
       include: {
         store: true,
@@ -1704,7 +1729,7 @@ export class ProductsService {
       product.moderationStatus === ProductModerationStatus.APPROVED &&
       variantsChanged;
 
-    const conflictingVariants = await this.prisma.productVariant.findMany({
+    const conflictingVariants = await prisma.productVariant.findMany({
       where: {
         sku: { in: normalizedSkus },
         ...(submittedIds.length ? { id: { notIn: submittedIds } } : {}),
@@ -1717,7 +1742,7 @@ export class ProductsService {
       );
     }
 
-    const savedVariants = await this.prisma.$transaction(async (tx) => {
+    const persistVariants = async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
       if (requiresModeration) {
         await tx.product.update({
@@ -1754,7 +1779,7 @@ export class ProductsService {
         where: {
           productId,
           isActive: true,
-          ...(submittedIds.length ? { id: { notIn: submittedIds } } : {}),
+          id: { notIn: saved.map((variant) => variant.id) },
         },
         data: { isActive: false },
       });
@@ -1770,9 +1795,10 @@ export class ProductsService {
         });
       }
       return saved;
-    });
+    };
+    const savedVariants = db ? await persistVariants(db) : await this.prisma.$transaction(persistVariants);
 
-    await this.invalidateLandingCache(productId);
+    if (!db) await this.invalidateLandingCache(productId);
     return {
       message: requiresModeration
         ? 'Đã cập nhật phân loại. Sản phẩm tạm ẩn và chuyển về hàng đợi kiểm duyệt.'

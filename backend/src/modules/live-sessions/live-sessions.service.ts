@@ -235,6 +235,7 @@ export class LiveSessionsService {
     }
     const store = await this.assertStoreOwner(userId, dto.storeId);
     this.assertLiveAllowed(store);
+    if (!dto.title?.trim()) throw new BadRequestException('Tên phiên Live không được để trống.');
     const creator = await this.prisma.storeCollaborator.findFirst({
       where: {
         storeId: dto.storeId,
@@ -416,7 +417,7 @@ export class LiveSessionsService {
           `🔴 LỜI MỜI LIVESTREAM TỪ GIAN HÀNG ${store.name}\n` +
           `Chào ${kolName}, Shop trân trọng gửi lời mời bạn tham gia phiên phát sóng "${dto.title.trim()}".\n\n` +
           `⏰ Lịch phát sóng: ${startsAtVn} – ${endsAtVn}\n` +
-          `💰 Hoa hồng phiên Live: ${dto.commissionRate}%\n` +
+          `💰 Thưởng thêm phiên Live: +${dto.commissionRate}% (cộng vào hoa hồng đủ điều kiện của từng sản phẩm)\n` +
           `🎁 Voucher độc quyền: ${discountText} (Tổng ${dto.usageLimitTotal ?? 'không giới hạn'} lượt)\n` +
           `📦 Sản phẩm ghim: ${productIds.length} sản phẩm chiến lược\n\n` +
           `👉 Bạn vui lòng kiểm tra và xác nhận tham gia phiên live nhé!`;
@@ -426,6 +427,7 @@ export class LiveSessionsService {
           : defaultInviteText;
 
         await tx.chatMessage.create({
+          select: { id: true },
           data: {
             conversationId: conversation.id,
             senderId: userId,
@@ -440,35 +442,6 @@ export class LiveSessionsService {
         this.logger.error('Lỗi tự động gửi tin nhắn mời live qua Chat:', chatErr);
       }
 
-      // Thông báo tới icon chuông của tất cả user khi Chủ Shop tạo phiên live
-      try {
-        const allUsers = await tx.user.findMany({
-          where: { isActive: true, isDeleted: false },
-          select: { id: true },
-        });
-        if (allUsers.length > 0) {
-          const kolName = creator.collaborator?.fullName || 'KOL';
-          const discountInfo = dto.discountValue
-            ? `${dto.discountValue}${dto.discountType === 'PERCENTAGE' ? '%' : '₫'}`
-            : 'ưu đãi độc quyền';
-          await tx.notification.createMany({
-            data: allUsers.map((u) => ({
-              userId: u.id,
-              title: `🔴 Phiên livestream mới: ${dto.title.trim()}`,
-              message: `${store.name} cùng ${kolName} vừa tạo phiên livestream "${dto.title.trim()}" săn deal ${discountInfo}!`,
-              type: 'LIVE_SESSION_BROADCAST',
-              data: {
-                sessionId,
-                storeId: dto.storeId,
-                liveUrl,
-                endsAt: endsAt.toISOString(),
-              },
-            })),
-          });
-        }
-      } catch (broadcastNotifErr) {
-        this.logger.error('Lỗi gửi thông báo livestream tới tất cả user:', broadcastNotifErr);
-      }
       return created;
     });
     return this.prisma.liveShoppingSession.findUnique({ where: { id: session.id }, include: sessionInclude });

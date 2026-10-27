@@ -15,7 +15,7 @@ export interface ProductInquiryCardData {
 export function ProductInquiryCardBubble({ card }: { card: ProductInquiryCardData; isMine: boolean }) {
   const [failedImage, setFailedImage] = useState<string | null>(null);
   return (
-    <article className="w-80 max-w-[min(100%,calc(100vw-48px))] overflow-hidden border border-[#EAE4D7] rounded-[15px] bg-white text-[#1A1612] text-left shadow-[0_3px_12px_rgba(35,29,21,0.02)]">
+    <article className="product-inquiry-card w-80 max-w-[min(100%,calc(100vw-48px))] overflow-hidden border border-[#EAE4D7] rounded-[15px] bg-white text-[#1A1612] text-left shadow-[0_3px_12px_rgba(35,29,21,0.02)]">
       <header className="flex items-center gap-1.5 px-3 pt-2.5 pb-0">
         <span className="w-6 h-6 grid place-items-center shrink-0 rounded-[7px] bg-[#FBF5EB] text-[#B88E4F]"><ShoppingBag size={14} /></span>
         <strong className="text-[10px] font-medium text-[#7D715E]">Trao đổi sản phẩm</strong>
@@ -37,7 +37,7 @@ export function ProductInquiryCardBubble({ card }: { card: ProductInquiryCardDat
         {card.message && <blockquote className="mt-3 p-2.5 border border-[#F0EAE0] rounded-[10px] bg-[#FAF8F5] text-[#7D715E] text-[11px] leading-relaxed whitespace-pre-wrap break-words m-0">{card.message}</blockquote>}
       </div>
       <footer className="px-3 pb-3">
-        <a href={`/products/${card.productSku || card.productId}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-2 min-h-[32px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#8C6226] text-[10px] font-medium hover:bg-[#F3EFE6] transition-colors no-underline">
+        <a href={`/products/${encodeURIComponent(card.productSku || card.productId)}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-2 min-h-[32px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#8C6226] text-[10px] font-medium hover:bg-[#F3EFE6] transition-colors no-underline">
           <span>Xem chi tiết sản phẩm</span>
           <ExternalLink size={13} className="text-[#B88E4F] shrink-0" />
         </a>

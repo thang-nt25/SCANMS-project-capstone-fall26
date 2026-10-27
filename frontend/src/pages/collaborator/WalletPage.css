@@ -1,0 +1,151 @@
+#kol-wallet-page .wallet-bank-manage { margin-top: 12px; padding-top: 13px; border-top: 1px solid #EAE4D7; color: #7D715E; }
+#kol-wallet-page .wallet-bank-management-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; }
+#kol-wallet-page .wallet-bank-management-heading h3 { margin: 0; font-size: 11px; line-height: 18px; font-weight: 600; color: #1A1612; }
+#kol-wallet-page .wallet-bank-management-heading > span { padding: 2px 6px; border: 1px solid #EAE4D7; border-radius: 5px; background: #FFFFFF; font-size: 9px; line-height: 14px; font-variant-numeric: tabular-nums; }
+#kol-wallet-page .wallet-bank-management-name { margin: 5px 0 12px; font-size: 10px; line-height: 17px; overflow-wrap: anywhere; }
+#kol-wallet-page .wallet-bank-management-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#kol-wallet-page .wallet-bank-management-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 9px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; font-size: 11px; line-height: 18px; font-weight: 500; cursor: pointer; }
+#kol-wallet-page .wallet-bank-management-actions .wallet-bank-change { border-color: #EEDFC6; color: #79592C; }
+#kol-wallet-page .wallet-bank-management-actions .wallet-bank-change:hover { background: #FBF5EB; border-color: #C59B58; }
+#kol-wallet-page .wallet-bank-management-actions .wallet-bank-disconnect { color: #DC2626; }
+#kol-wallet-page .wallet-bank-management-actions .wallet-bank-disconnect:hover { border-color: #F1C9C6; background: #FEF7F6; }
+#kol-wallet-page .wallet-bank-management-actions button:disabled { cursor: wait; opacity: .5; }
+#kol-wallet-page .wallet-bank-management-actions button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+#kol-wallet-page .wallet-ledger-reference { flex-wrap: wrap; min-width: 175px; max-width: 280px; }
+#kol-wallet-page .wallet-ledger-reference-details { max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+
+.dashboard-wallet-modal {
+  height: min(760px, calc(100dvh - 40px));
+  box-shadow: 0 24px 80px rgb(35 29 21 / 18%);
+}
+.dashboard-wallet-heading { padding: 16px 20px; background: #fff; }
+.dashboard-wallet-content { flex: 1; background: #faf8f5; padding: 16px; scrollbar-width: thin; scrollbar-color: #eedfc6 transparent; scrollbar-gutter: stable; }
+.wallet-tab-loading { min-height: 360px; padding: 16px; border: 1px solid #eae4d7; border-radius: 12px; background: #fff; }
+.wallet-tab-loading-heading { display: flex; align-items: center; gap: 8px; color: #7d715e; font-size: 12px; }
+.wallet-tab-loading-heading svg { color: #b88e4f; }
+.wallet-tab-skeleton { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+.wallet-tab-skeleton > div { height: 80px; border: 1px solid #eae4d7; border-radius: 10px; background: #faf8f5; }
+.wallet-tab-skeleton > div:last-child { grid-column: 1 / -1; height: 160px; }
+.dashboard-wallet-modal #kol-wallet-page { gap: 14px; padding-bottom: 0; background: transparent !important; }
+.dashboard-wallet-modal #kol-wallet-page > div:first-child { padding: 5px; border-radius: 12px; box-shadow: none; }
+.dashboard-wallet-modal #kol-wallet-page nav { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.dashboard-wallet-modal #kol-wallet-page[data-active-tab="wallet"] nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-wallet-modal #kol-wallet-page nav > button { min-height: 36px; padding: 7px 12px; border-radius: 8px; font-size: 11px; font-weight: 550; border-color: transparent; box-shadow: none; }
+.dashboard-wallet-modal #kol-wallet-page nav > button[aria-pressed="true"] { background: #fbf5eb; border-color: #eedfc6; color: #1a1612; }
+.dashboard-wallet-modal #kol-wallet-page nav > button:nth-child(4) { background: #fff; border-left: 1px solid #eae4d7; border-radius: 0 8px 8px 0; color: #7d715e; }
+
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances { gap: 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div { padding: 16px; gap: 6px; border: 1px solid #eae4d7; border-radius: 12px; background: #fff; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div:first-child { background: #fbf5eb; border-color: #eedfc6; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances strong { font-size: 26px; font-weight: 650; line-height: 34px; margin-top: 0; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div > div:last-child { margin-top: 2px; flex-wrap: wrap; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div > div:last-child > span { font-size: 10px; }
+
+.dashboard-wallet-modal #kol-wallet-page .wallet-payout-stack { grid-template-columns: minmax(260px, .85fr) minmax(0, 1.4fr) !important; gap: 12px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-row,
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-row { padding: 16px !important; border-radius: 12px !important; box-shadow: none !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-row h2,
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-row h2 { font-size: 13px !important; font-weight: 600 !important; line-height: 20px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-row > div { gap: 12px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-row > div > div:first-child { padding-bottom: 12px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-manage { margin-top: 0 !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-row { justify-content: flex-start; gap: 14px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-fields > div:first-child { padding-bottom: 14px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs { gap: 12px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs > div > div:first-child { flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs label { font-size: 11px !important; line-height: 16px; color: #7d715e; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs input,
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs button[aria-haspopup="listbox"] { height: 38px; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 500; box-shadow: none; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs input:focus { border-color: #c59b58; outline: 2px solid #fbf5eb; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs button[aria-pressed] { font-family: inherit; border-radius: 6px; padding: 4px 7px; background: #fff !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs button[aria-pressed="true"] { background: #fbf5eb !important; border-color: #c59b58; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-actions > button { height: 38px !important; border-radius: 9px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-actions > div { line-height: 17px !important; margin-top: 10px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-actions > div strong { font-weight: 550; }
+
+.dashboard-wallet-modal #kol-wallet-page > section:not(.kol-wallet-balances):not(.wallet-payout-stack) { border-radius: 12px; box-shadow: none; background: #fff; }
+.dashboard-wallet-modal #kol-wallet-page > section > button[aria-controls="wallet-cooperation-shops"] { padding: 12px 14px; }
+.dashboard-wallet-modal #wallet-cooperation-shops { padding: 12px 14px; }
+.dashboard-wallet-modal #wallet-cooperation-shops > p { font-size: 11px; line-height: 18px; margin-top: 0; }
+.dashboard-wallet-modal #wallet-cooperation-shops th { font-size: 10px; background: #fff; }
+.dashboard-wallet-modal #wallet-cooperation-shops td { font-size: 11px; padding-top: 10px; padding-bottom: 10px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-header { padding: 3px 10px 3px 3px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-toggle { padding: 11px !important; gap: 10px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-icon { width: 32px !important; height: 32px !important; border-radius: 9px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-title { font-size: 13px !important; font-weight: 600 !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-description { font-size: 10px !important; }
+.dashboard-wallet-modal #kol-wallet-page button:focus-visible { outline: 2px solid #c59b58; outline-offset: 2px; }
+
+/* Compact, consistent hierarchy across the complete wallet dialog. */
+.dashboard-wallet-modal .dashboard-wallet-heading { padding: 12px 18px; }
+.dashboard-wallet-modal .dashboard-wallet-heading > div > span { width: 32px; height: 32px; border-radius: 9px; }
+.dashboard-wallet-modal .dashboard-wallet-heading h2 { font-size: 14px; line-height: 21px; }
+.dashboard-wallet-modal .dashboard-wallet-content { padding: 14px; background: #faf8f5; }
+.dashboard-wallet-modal #kol-wallet-page { gap: 12px; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div { padding: 14px 16px; gap: 4px; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances strong { font-size: 25px; line-height: 32px; letter-spacing: -.5px; }
+.dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div > div:last-child > span:last-child { background: #fff; border-radius: 6px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-payout-stack { align-items: start !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-row,
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-row { padding: 14px 16px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-summary > div:first-child { padding: 10px 0; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-bank-caption { font-size: 10px !important; line-height: 16px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs button[aria-haspopup="listbox"] { background: #fff !important; }
+
+.dashboard-wallet-modal #kol-wallet-page .wallet-cooperation-heading,
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-header { padding: 0 !important; border-bottom: 1px solid #eae4d7; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-cooperation-heading { padding: 12px 14px !important; gap: 10px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-cooperation-heading > span { width: 30px; height: 30px; border: 1px solid #eedfc6; border-radius: 8px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-cooperation-heading h2 { font-size: 13px; line-height: 20px; font-weight: 600; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-toggle { padding: 12px 14px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-icon { width: 30px !important; height: 30px !important; border-radius: 8px !important; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-title { line-height: 20px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-section-description { margin-top: 2px; line-height: 16px; color: #7d715e; }
+.dashboard-wallet-modal #wallet-cooperation-shops { padding: 0; border-top: 0; }
+.dashboard-wallet-modal #wallet-cooperation-shops > div { border: 0; border-radius: 0; max-height: none; }
+.dashboard-wallet-modal #wallet-cooperation-shops > label { margin: 12px 14px; }
+.dashboard-wallet-modal #kol-wallet-page table { font-size: 12px; font-variant-numeric: tabular-nums; }
+.dashboard-wallet-modal #kol-wallet-page table thead { background: #fff; }
+.dashboard-wallet-modal #kol-wallet-page table th { padding: 10px 14px; background: #fff; font-size: 10px; line-height: 16px; font-weight: 550; letter-spacing: 0; text-transform: none; color: #7d715e; }
+.dashboard-wallet-modal #kol-wallet-page table td { padding: 10px 14px; border-color: #eae4d7; font-size: 11px; line-height: 18px; }
+.dashboard-wallet-modal #kol-wallet-page table tbody tr:hover { background: #fdfbf8; }
+.dashboard-wallet-modal #kol-wallet-page table .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
+.dashboard-wallet-modal #kol-wallet-page table .font-extrabold,
+.dashboard-wallet-modal #kol-wallet-page table .font-bold { font-weight: 600; }
+.dashboard-wallet-modal #kol-wallet-page table td > span[class*="inline-flex"] { border-radius: 6px; font-size: 10px; line-height: 16px; font-weight: 500; }
+.dashboard-wallet-modal #kol-wallet-page table [class*="bg-[#ECFDF5]"],
+.dashboard-wallet-modal #kol-wallet-page table [class*="bg-[#EFF6FF]"] { background: #fbf5eb; border-color: #eedfc6; color: #7d715e; }
+.dashboard-wallet-modal #kol-wallet-page table [class*="bg-[#ECFDF5]"] svg,
+.dashboard-wallet-modal #kol-wallet-page table [class*="bg-[#EFF6FF]"] svg { color: #b88e4f; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-balance-flow > span { padding: 0; border: 0; background: transparent !important; border-radius: 0; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-balance-flow { gap: 8px; font-size: 11px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-balance-flow svg { width: 12px; opacity: .75; }
+.dashboard-wallet-modal #wallet-cooperation-shops td:first-child img { object-fit: contain; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-empty-state { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 12px; row-gap: 3px; text-align: left; padding: 22px; align-items: center; justify-content: initial; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-empty-state > div { grid-column: 1; grid-row: 1 / 3; width: 36px; height: 36px; margin: 0; background: #fbf5eb !important; border-color: #eedfc6; border-radius: 10px; box-shadow: none; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-empty-state h4 { grid-column: 2; font-size: 12px; font-weight: 550; line-height: 19px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-empty-state p { grid-column: 2; max-width: none; font-size: 11px; line-height: 18px; margin: 0; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-table-footer { padding: 10px 14px; gap: 8px; background: #fff !important; font-size: 10px; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-table-footer button { min-height: 28px; border-radius: 6px; font-size: 10px; box-shadow: none; }
+.dashboard-wallet-modal #kol-wallet-page .wallet-table-footer strong { font-weight: 550; }
+
+@media (max-width: 767px) {
+  .dashboard-wallet-modal #kol-wallet-page .wallet-history-section table { min-width: 740px; }
+  .dashboard-wallet-modal #kol-wallet-page .wallet-ledger-section table { min-width: 800px; }
+  .dashboard-wallet-modal #kol-wallet-page .wallet-table-footer { align-items: center; }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-wallet-modal #kol-wallet-page .wallet-payout-stack { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 639px) {
+  .dashboard-wallet-heading { padding: 12px 14px; }
+  .dashboard-wallet-heading p { max-width: 240px; font-size: 10px; }
+  .dashboard-wallet-content { padding: 10px; }
+  .dashboard-wallet-modal #kol-wallet-page nav { grid-template-columns: 1fr 1fr; }
+  .dashboard-wallet-modal #kol-wallet-page nav > button:nth-child(4) { border: 1px solid #eae4d7; border-radius: 8px; }
+  .dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances { gap: 8px; }
+  .dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances > div { padding: 12px; }
+  .dashboard-wallet-modal #kol-wallet-page .kol-wallet-balances strong { font-size: 24px; }
+  .dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs { grid-template-columns: minmax(0, 1fr) !important; }
+}

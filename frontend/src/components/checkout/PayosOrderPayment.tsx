@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { CheckCircle2, Clock3, ExternalLink, Loader2, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Clock3, Copy, ExternalLink, Loader2, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
 import api from '../../services/api';
 import { formatMoney } from '../../utils/marketplace.utils';
 
@@ -15,15 +15,17 @@ const unwrap = (response: any) => response?.data?.data || response?.data || resp
 function createLink(code: string) {
   const active = requests.get(code);
   if (active) return active;
-  const request = api.post(`/orders/payos/${encodeURIComponent(code)}/link`, {}, { timeout: 30000 })
+  const request = api.post(`${code}/link`, {}, { timeout: 30000 })
     .then(unwrap).finally(() => requests.delete(code));
   requests.set(code, request);
   return request;
 }
 
-export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeading = true }: {
-  orderCode: string; storeName?: string; onPaid?: () => void; showOrderHeading?: boolean;
+export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeading = true, manualOrderId }: {
+  orderCode: string; storeName?: string; onPaid?: () => void; showOrderHeading?: boolean; manualOrderId?: string;
 }) {
+  const paymentPath = manualOrderId ? `/orders/manual/${encodeURIComponent(manualOrderId)}/payos` : `/orders/payos/${encodeURIComponent(orderCode)}`;
+  const [copied, setCopied] = useState(false);
   const [link, setLink] = useState<PaymentLink | null>(null);
   const [qr, setQr] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,9 +37,9 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
   const mounted = useRef(false);
 
   const prepare = useCallback(async () => {
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setCopied(false);
     try {
-      const result = await createLink(orderCode);
+      const result = await createLink(paymentPath);
       if (!mounted.current) return;
       if (result.paymentStatus === 'PAID') {
         setStatus('PAID'); paidCallback.current?.();
@@ -48,7 +50,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
     } catch (err: any) {
       if (err.status === 409) {
         try {
-          const result = unwrap(await api.get(`/orders/payos/${encodeURIComponent(orderCode)}/status`, { headers: { 'x-skip-cache': 'true' }, timeout: 30000 }));
+          const result = unwrap(await api.get(`${paymentPath}/status`, { headers: { 'x-skip-cache': 'true' }, timeout: 30000 }));
           if (mounted.current && result.paymentStatus === 'PAID') {
             setStatus('PAID'); paidCallback.current?.(); return;
           }
@@ -56,7 +58,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
       }
       if (mounted.current) setError(err.message || 'Không tạo được mã QR. Vui lòng thử lại.');
     } finally { if (mounted.current) setLoading(false); }
-  }, [orderCode]);
+  }, [paymentPath]);
 
   useEffect(() => {
     mounted.current = true;
@@ -81,7 +83,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
     const check = async () => {
       let finished = false;
       try {
-        const result = unwrap(await api.get(`/orders/payos/${encodeURIComponent(orderCode)}/status`, {
+        const result = unwrap(await api.get(`${paymentPath}/status`, {
           headers: { 'x-skip-cache': 'true' }, timeout: 30000,
         }));
         if (!active) return;
@@ -101,7 +103,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
     };
     void check();
     return () => { active = false; window.clearTimeout(timer); };
-  }, [link, orderCode, status]);
+  }, [link, paymentPath, status]);
 
   const expired = ['CANCELLED', 'EXPIRED'].includes(providerStatus);
   return (
@@ -161,6 +163,12 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
               >
                 <ExternalLink size={15} className="text-[#B88E4F]" />Mở trang thanh toán PayOS
               </a>
+              {manualOrderId && <button type="button" onClick={async () => {
+                try { await navigator.clipboard.writeText(link.checkoutUrl!); setCopied(true); }
+                catch { setError('Không sao chép được liên kết. Vui lòng thử lại hoặc mở trang PayOS.'); }
+              }} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] hover:bg-[#FBF5EB]">
+                <Copy size={14} />{copied ? 'Đã sao chép liên kết' : 'Sao chép link gửi khách'}
+              </button>}
             </div>
           </div>
           <p className="mt-3.5 p-2.5 rounded-lg bg-[#FAF8F5] flex items-start gap-2 text-xs leading-relaxed text-[#7D715E]">

@@ -1,3 +1,4 @@
+import { chatMessageSelect } from '../chat/chat-reply';
 import {
   Injectable,
   ForbiddenException,
@@ -382,7 +383,7 @@ export class CampaignsService {
         messageText: cardPayload,
         isRead: false,
       },
-      include: {
+      select: { ...chatMessageSelect,
         sender: {
           select: {
             id: true,
@@ -644,7 +645,7 @@ export class CampaignsService {
         messageText: cardPayload,
         isRead: false,
       },
-      include: {
+      select: { ...chatMessageSelect,
         sender: {
           select: {
             id: true,
@@ -699,7 +700,7 @@ export class CampaignsService {
         messageText: cardPayload,
         isRead: false,
       },
-      include: {
+      select: { ...chatMessageSelect,
         sender: {
           select: {
             id: true,

@@ -79,30 +79,11 @@ import {
   AddressLocationPicker,
   type AddressLocationResult,
 } from '../../components/customer/AddressLocationPicker';
+import { resolveMapShippingAddress } from '../../utils/checkout-address.utils';
 
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
 type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
 export type ProfileSubTab = 'info' | 'addresses' | 'identity' | 'security';
-
-const normalizeAdministrativeName = (value: string) => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/g, 'd')
-  .toLowerCase()
-  .replace(/\b(thanh pho|tinh|quan|huyen|thi xa|thi tran|phuong|xa)\b/g, '')
-  .replace(/[^a-z0-9]/g, '');
-
-const administrativeNamesMatch = (left: string, right: string) => {
-  const normalizedLeft = normalizeAdministrativeName(left);
-  const normalizedRight = normalizeAdministrativeName(right);
-  return Boolean(
-    normalizedLeft &&
-    normalizedRight &&
-    (normalizedLeft === normalizedRight ||
-      normalizedLeft.includes(normalizedRight) ||
-      normalizedRight.includes(normalizedLeft))
-  );
-};
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -888,27 +869,22 @@ export default function CustomerPortalPage() {
   };
 
   const handleAddressLocationChange = (locationResult: AddressLocationResult) => {
-    const matchedProvince = provinces.find((province) =>
-      administrativeNamesMatch(province.name, locationResult.provinceName),
-    );
-    const matchedDistrict = matchedProvince?.districts.find((district) =>
-      administrativeNamesMatch(district.name, locationResult.districtName),
-    );
-    const matchedWard = matchedDistrict?.wards.find((ward) =>
-      administrativeNamesMatch(ward.name, locationResult.wardName),
-    );
+    const resolved = resolveMapShippingAddress(locationResult, provinces);
+    const matchedProvince = provinces.find(province => String(province.code) === resolved.provinceCode);
+    const matchedDistrict = matchedProvince?.districts.find(district => String(district.code) === resolved.districtCode);
+    const matchedWard = matchedDistrict?.wards.find(ward => String(ward.code) === resolved.wardCode);
 
     setAddressForm((current) => ({
       ...current,
       latitude: locationResult.latitude,
       longitude: locationResult.longitude,
-      detailAddress: locationResult.detailAddress || current.detailAddress,
-      provinceCode: matchedProvince ? String(matchedProvince.code) : current.provinceCode,
-      provinceName: matchedProvince?.name || current.provinceName,
-      districtCode: matchedDistrict ? String(matchedDistrict.code) : current.districtCode,
-      districtName: matchedDistrict?.name || current.districtName,
-      wardCode: matchedWard ? String(matchedWard.code) : current.wardCode,
-      wardName: matchedWard?.name || current.wardName,
+      detailAddress: locationResult.detailAddress || (resolved.provinceCode === current.provinceCode && resolved.districtCode === current.districtCode ? current.detailAddress : ''),
+      provinceCode: resolved.provinceCode,
+      provinceName: matchedProvince?.name || '',
+      districtCode: resolved.districtCode,
+      districtName: matchedDistrict?.name || '',
+      wardCode: resolved.wardCode,
+      wardName: matchedWard?.name || '',
     }));
 
     if (!matchedProvince || !matchedDistrict || !matchedWard) {
@@ -2345,6 +2321,7 @@ export default function CustomerPortalPage() {
                 </div>
 
                 <AddressLocationPicker
+                  nationwide
                   latitude={addressForm.latitude}
                   longitude={addressForm.longitude}
                   addressQuery={[

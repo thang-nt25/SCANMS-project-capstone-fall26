@@ -41,8 +41,10 @@ export interface ManualOrderInput {
     province: string;
     district: string;
     ward?: string;
+    latitude?: number;
+    longitude?: number;
   };
-  paymentMethod?: "COD" | "BANK_TRANSFER" | "E_WALLET";
+  paymentMethod?: "MANUAL" | "COD" | "BANK_TRANSFER" | "E_WALLET";
   shippingFee?: number;
   discountCode?: string;
   note?: string;
@@ -99,6 +101,9 @@ export interface StoreOrderItem {
 }
 
 export interface StoreOrderRecord {
+  isManualOrder?: boolean;
+  deliveryLocation?: { latitude: number; longitude: number } | null;
+  note?: string | null;
   id: string;
   externalOrderSn: string;
   createdAt: string;
@@ -139,6 +144,8 @@ export interface StoreOrdersResponse {
 
 export const orderService = {
   async getMyStoreOrders(params?: {
+    customerId?: string;
+    searchField?: 'ALL' | 'ORDER_SN' | 'CUSTOMER_NAME' | 'PHONE' | 'TRACKING' | 'PRODUCT';
     status?: string;
     paymentStatus?: string;
     search?: string;

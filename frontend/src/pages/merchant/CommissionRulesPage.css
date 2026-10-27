@@ -1,0 +1,66 @@
+.commission-workspace { max-width: none; padding-top: 0; padding-bottom: 24px; }
+.commission-workspace > * + * { margin-top: 18px; }
+.commission-workspace .commission-heading { padding: 18px 20px; border-radius: 13px; box-shadow: none; }
+.commission-heading h2 { font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -.35px; }
+.commission-heading p { margin: 5px 0 0; font-size: 11px; line-height: 18px; color: #7D715E; }
+.commission-heading > button { height: 36px; padding-inline: 13px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8C6226; font-size: 11px; font-weight: 550; box-shadow: none; }
+.commission-heading > button:hover { background: #F3EFE6; }
+.commission-tiers, .commission-history { border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+.commission-tiers > div:first-child, .commission-history > div:first-child { padding: 14px 20px; }
+.commission-tiers h3, .commission-history h3 { font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.commission-tiers > div:nth-child(2):not(.grid) { padding: 28px 20px; }
+.commission-tiers > div:nth-child(2) > svg { width: 30px; height: 30px; padding: 8px; box-sizing: content-box; background: #FBF5EB; color: #B88E4F; border-radius: 12px; margin-bottom: 10px; }
+.commission-tiers > div:nth-child(2) > p:first-of-type { font-size: 12px; font-weight: 550; }
+.commission-tiers > .grid { padding: 16px; gap: 12px; }
+.commission-tiers > .grid > div { padding: 16px; border-radius: 11px; box-shadow: none; background: #FFFFFF; border-color: #EAE4D7; }
+.commission-tiers > .grid > div > div:first-child > div:first-child > span { font-size: 13px; font-weight: 600; }
+.commission-tiers .font-bold, .commission-tiers .font-extrabold { font-weight: 600; }
+.commission-tools { align-items: start; gap: 18px; }
+.commission-settlement, .commission-simulator { padding: 20px; border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+.commission-settlement > div:first-child { gap: 12px; padding-bottom: 15px; align-items: center; }
+.commission-settlement h3, .commission-simulator h3 { font-size: 13px; line-height: 20px; font-weight: 600; text-transform: none; letter-spacing: -.1px; }
+.commission-settlement > div:first-child > div:first-child > span { width: 30px; height: 30px; border-radius: 8px; }
+.commission-settlement > div:first-child > div:last-child { flex-shrink: 0; gap: 7px; }
+.commission-settlement > div:first-child > div:last-child input { width: 76px; }
+.commission-workspace input { height: 38px; border-radius: 8px; border-color: #EAE4D7; font-size: 12px; font-weight: 500; background: #FFFFFF; }
+.commission-workspace button[aria-haspopup='listbox'] { min-height: 38px; height: 38px; border-radius: 8px; box-shadow: none; font-size: 12px; font-weight: 500; }
+.commission-settlement label { font-size: 11px; font-weight: 550; gap: 10px; flex-wrap: wrap; }
+.commission-settlement label > span { font-size: 10px; font-weight: 400; }
+.commission-settlement > div:last-child[class*='text-center'] { padding: 20px; border-radius: 9px; font-size: 11px; line-height: 18px; background: #FAF8F5; }
+.commission-settlement > div[class*='bg-gradient'] { background: #FEFCF8; border-radius: 11px; padding: 16px; }
+.commission-settlement > div[class*='bg-gradient'] .font-black { font-weight: 650; }
+.commission-settlement > div[class*='bg-gradient'] .font-extrabold { font-weight: 600; }
+.commission-settlement > div[class*='bg-gradient'] button { border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8C6226; font-size: 11px; font-weight: 550; box-shadow: none; }
+.commission-simulator > div:first-child { gap: 9px; padding-bottom: 15px; margin-bottom: 16px; }
+.commission-simulator > div:first-child > span { width: 30px; height: 30px; border-radius: 8px; }
+.commission-simulator label { font-size: 11px; font-weight: 550; line-height: 18px; display: block; margin-bottom: 5px; }
+.commission-simulator > div:last-child { padding: 14px; border-radius: 9px; background: #FEFCF8; font-size: 11px; }
+.commission-simulator > div:last-child > div { gap: 12px; }
+.commission-simulator > div:last-child .font-bold { font-weight: 550; }
+.commission-simulator > div:last-child > div:last-child { padding-top: 12px; margin-top: 12px; }
+.commission-simulator > div:last-child > div:last-child > span:last-child { font-size: 17px; line-height: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.commission-history > div:nth-child(2):not(.overflow-x-auto) { padding: 24px 20px; font-size: 11px; }
+.commission-history table { min-width: 700px; }
+.commission-history thead { background: #FFFFFF; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.commission-history th { font-weight: 500; padding: 12px 16px; }
+.commission-history td { padding: 13px 16px; font-size: 11px; font-weight: 500; }
+.commission-history td button { padding: 6px 9px; border: 1px solid #EEDFC6; border-radius: 7px; background: #FBF5EB; color: #8C6226; font-weight: 550; }
+.commission-rule-dialog { padding: 22px; border-radius: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.commission-rule-dialog h3 { font-size: 16px; font-weight: 650; }
+.commission-rule-dialog label { font-size: 11px; font-weight: 550; gap: 6px; }
+.commission-rule-dialog input { height: 40px; font-size: 12px; font-weight: 400; border-radius: 8px; background: #FFFFFF; }
+.commission-rule-dialog form > div:last-child > button { border-radius: 8px; font-weight: 550; }
+.commission-rule-dialog form > div:last-child > button:last-child { border: 1px solid #EEDFC6; background: #FBF5EB; color: #8C6226; }
+.commission-workspace button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (min-width: 1024px) { .commission-tools { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); } .commission-tools > div { grid-column: auto; min-width: 0; } }
+@media (max-width: 639px) {
+  .commission-workspace > * + * { margin-top: 14px; }
+  .commission-workspace .commission-heading { padding: 16px; gap: 14px; }
+  .commission-heading h2 { font-size: 16px; }
+  .commission-heading > button { align-self: flex-start; }
+  .commission-settlement, .commission-simulator { padding: 16px; }
+  .commission-settlement > div:first-child { align-items: flex-start; }
+  .commission-settlement > div:first-child > div:last-child { width: 100%; }
+  .commission-settlement > div:first-child > div:last-child > div { flex: 1; }
+  .commission-rule-dialog { padding: 18px; }
+}

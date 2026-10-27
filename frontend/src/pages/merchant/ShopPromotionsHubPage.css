@@ -1,0 +1,81 @@
+#shop-promotions-hub { gap: 18px; }
+#shop-promotions-hub .promotions-tabs [role='tablist'] { padding: 5px; gap: 6px; border-radius: 12px; background: #FFFFFF; border-color: #EAE4D7; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+#shop-promotions-hub .promotions-tabs [role='tab'] { min-height: 40px; padding: 9px 14px; border-radius: 8px; font-size: 12px; font-weight: 550; box-shadow: none; }
+#shop-promotions-hub .promotions-tabs [role='tab'][aria-selected='true'] { background: #FBF5EB; border-color: #EEDFC6; color: #8C6226; }
+#shop-promotions-hub .promotions-coupons > div { max-width: none; padding-top: 0; }
+#shop-promotions-hub .promotions-coupons > div > * + * { margin-top: 16px; }
+#shop-promotions-hub .coupon-issuer { padding: 20px; border-radius: 14px; box-shadow: none; }
+#shop-promotions-hub .coupon-issuer h2 { font-size: 18px; line-height: 25px; letter-spacing: -.35px; font-weight: 650; }
+#shop-promotions-hub .coupon-issuer p { margin-top: 4px; font-size: 11px; line-height: 18px; }
+#shop-promotions-hub .coupon-issuer > div > div:first-child > div:first-child { width: 36px; height: 36px; border: 0; border-radius: 10px; background: #FBF5EB; }
+#shop-promotions-hub .coupon-issuer button { height: 36px; border-radius: 8px; font-size: 11px; font-weight: 550; background: #FFFFFF; color: #7D715E; border: 1px solid #EAE4D7; }
+#shop-promotions-hub .coupon-issuer > div > div:last-child > button:last-child { background: #FBF5EB; color: #8C6226; border-color: #EEDFC6; }
+#shop-promotions-hub .coupon-issuer > div > div:last-child > span { padding: 8px 10px; border-radius: 8px; font-size: 11px; background: #FFFFFF; }
+#shop-promotions-hub .coupon-metrics { gap: 12px; }
+#shop-promotions-hub .coupon-metrics > div { min-height: 112px; padding: 16px 18px; border-radius: 12px; box-shadow: none; }
+#shop-promotions-hub .coupon-metrics > div > div { margin-bottom: 12px; }
+#shop-promotions-hub .coupon-metrics > div > div > span { font-size: 11px; font-weight: 500; }
+#shop-promotions-hub .coupon-metrics > div > div > div { width: 28px; height: 28px; border: 0; border-radius: 8px; background: #FBF5EB; }
+#shop-promotions-hub .coupon-metrics > div > p { font-size: 25px; line-height: 30px; font-weight: 650; letter-spacing: -.5px; color: #1A1612; font-variant-numeric: tabular-nums; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] { border: 1px solid #EAE4D7; border-radius: 12px; padding: 14px 16px; background: #FFFFFF; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] { gap: 6px; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button { padding: 7px 10px; border-radius: 7px; font-size: 11px; border-color: transparent; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button[aria-pressed='true'] { border-color: #EEDFC6; background: #FBF5EB; color: #8C6226; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > .grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 10px; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] { border-radius: 9px; border-color: #EAE4D7; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] > div { padding: 10px 12px; background: #FEFCF9; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] h2 { font-size: 11px; font-weight: 550; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] ul { padding-inline: 12px; border-color: #EAE4D7; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dl { gap: 12px; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dt { font-size: 10px; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dd { font-size: 12px; }
+#shop-promotions-hub .coupon-filters { padding: 14px; border-radius: 12px; margin-bottom: 0; box-shadow: none; gap: 12px; flex-wrap: wrap; }
+#shop-promotions-hub .coupon-filters > div:first-child { gap: 6px; }
+#shop-promotions-hub .coupon-filters > div:first-child > button { min-height: 36px; padding: 8px 11px; border-radius: 8px; font-size: 11px; font-weight: 550; }
+#shop-promotions-hub .coupon-filters > div:last-child { gap: 10px; flex: 1; justify-content: flex-end; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:first-child { border-radius: 8px; background: #FAF8F5; padding: 3px; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:first-child button { font-size: 10px; font-weight: 500; border-radius: 6px; padding: 6px 9px; box-shadow: none; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:last-child { min-width: 180px; max-width: 300px; flex: 1; }
+#shop-promotions-hub .coupon-filters input { height: 36px; border-radius: 8px; font-size: 11px; background: #FFFFFF; }
+#shop-promotions-hub .coupon-list { gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+#shop-promotions-hub .coupon-card { border-radius: 13px; border-color: #EAE4D7; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
+#shop-promotions-hub .coupon-card:hover { box-shadow: 0 4px 12px rgb(35 29 21 / 5%); border-color: #D7C5A8; }
+#shop-promotions-hub .coupon-card > .absolute { display: none; }
+#shop-promotions-hub .coupon-card-heading { padding: 16px; border-bottom: 1px solid #EAE4D7; background: #FFFFFF; }
+#shop-promotions-hub .coupon-card-heading > div:first-child { gap: 8px; flex-wrap: wrap; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div { gap: 10px; min-width: 0; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:first-child { width: 36px; height: 36px; border: 0; border-radius: 9px; background: #FBF5EB; box-shadow: none; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:last-child { min-width: 0; }
+#shop-promotions-hub .coupon-card-heading .font-mono { font-size: 15px; line-height: 22px; letter-spacing: .4px; font-weight: 650; overflow-wrap: anywhere; }
+#shop-promotions-hub .coupon-card-heading p { font-size: 12px; line-height: 20px; font-weight: 600; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > span { border-radius: 6px; padding: 4px 7px; font-size: 9px; line-height: 14px; font-weight: 550; text-transform: none; }
+#shop-promotions-hub .coupon-card-heading > div:last-child { padding-top: 10px; margin-top: 12px; }
+#shop-promotions-hub .coupon-card-heading > div:last-child > span { border-color: #EAE4D7; border-radius: 5px; font-size: 10px; font-weight: 500; background: #FAF8F5; color: #7D715E; }
+#shop-promotions-hub .coupon-card-body { padding: 16px; }
+#shop-promotions-hub .coupon-card-body .font-bold { font-weight: 550; }
+#shop-promotions-hub .coupon-card-body > div:first-child { padding-bottom: 2px; }
+#shop-promotions-hub .coupon-card-body > div:first-child > div > span:last-child { display: block; margin-top: 3px; font-size: 12px; }
+#shop-promotions-hub .coupon-card-body > div[class*='bg-'] { padding: 10px 12px; border-radius: 8px; background: #FAF8F5; }
+#shop-promotions-hub .coupon-card-body .h-1\.5 { height: 4px; }
+#shop-promotions-hub .coupon-card-body .bg-amber-600 { background: #C59B58; }
+#shop-promotions-hub .coupon-card > div:last-child:not(.coupon-card-heading) { border-color: #EAE4D7; }
+#shop-promotions-hub .coupon-card > div:last-child > button { min-height: 32px; border-radius: 7px; font-size: 11px; font-weight: 550; box-shadow: none; }
+#shop-promotions-hub .coupon-card > div:last-child > button:first-child { background: #FFFFFF; border-color: #EAE4D7; color: #8C6226; }
+#shop-promotions-hub button:focus-visible, #shop-promotions-hub a:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (max-width: 1100px) {
+  #shop-promotions-hub .coupon-filters { align-items: stretch; flex-direction: column; }
+  #shop-promotions-hub .coupon-filters > div:last-child { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 639px) {
+  #shop-promotions-hub .promotions-tabs [role='tab'] { padding: 8px 6px; font-size: 10px; gap: 5px; }
+  #shop-promotions-hub .promotions-tabs [role='tab'] svg { width: 13px; height: 13px; }
+  #shop-promotions-hub .coupon-issuer { padding: 16px; }
+  #shop-promotions-hub .coupon-issuer h2 { font-size: 16px; }
+  #shop-promotions-hub .coupon-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  #shop-promotions-hub .coupon-metrics > div { padding: 13px; min-height: 110px; }
+  #shop-promotions-hub .coupon-metrics > div > p { font-size: 22px; }
+  #shop-promotions-hub .coupon-metrics > div > div > span { font-size: 10px; }
+  #shop-promotions-hub .coupon-filters > div:first-child { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  #shop-promotions-hub .coupon-filters > div:first-child > button { padding: 7px 5px; justify-content: center; font-size: 10px; gap: 4px; flex-wrap: wrap; }
+  #shop-promotions-hub .coupon-filters > div:last-child > div:last-child { max-width: none; flex-basis: 100%; }
+}

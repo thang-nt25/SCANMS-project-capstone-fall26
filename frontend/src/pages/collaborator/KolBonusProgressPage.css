@@ -1,0 +1,59 @@
+.creator-bonus-page > div { gap: 14px; }
+.bonus-invitation { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border: 1px solid #EEDFC6; border-radius: 12px; background: #FFFFFF; }
+.bonus-invitation-icon { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border: 1px solid #EEDFC6; border-radius: 10px; background: #FBF5EB; color: #B88E4F; }
+.bonus-invitation-copy { flex: 1; min-width: 0; }
+.bonus-invitation-copy strong { font-size: 13px; line-height: 21px; font-weight: 600; overflow-wrap: anywhere; }
+.bonus-invitation-copy > div { margin-top: 3px; font-size: 11px; line-height: 18px; }
+.bonus-invitation-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.bonus-invitation-actions > button { min-height: 34px; padding: 7px 12px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 11px; line-height: 18px; font-weight: 500; }
+.bonus-invitation-actions > button:last-child { --action-bg: #FBF5EB; --action-hover: #F3EFE6; --action-border: #EEDFC6; --action-border-hover: #C59B58; border-color: #EEDFC6; background: #FBF5EB; font-weight: 600; }
+.bonus-invitation-actions > button:disabled { opacity: .55; cursor: wait; }
+.bonus-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 15px; padding: 18px; border: 1px solid #EAE4D7; border-radius: 13px; background: #FFFFFF; }
+.bonus-toolbar > header { grid-column: 1 / -1; padding-bottom: 15px; }
+.bonus-toolbar > header > div > span { width: 34px; height: 34px; border: 1px solid #EEDFC6; border-radius: 9px; }
+.bonus-toolbar > header h2 { font-size: 17px; line-height: 25px; font-weight: 600; letter-spacing: -.3px; }
+.bonus-toolbar > header p { margin-top: 3px; font-size: 11px; line-height: 18px; }
+.bonus-toolbar > [role=group] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: fit-content; gap: 7px; padding: 0; border: 0; background: #FFFFFF; }
+.bonus-toolbar > [role=group] > button { height: 38px; padding: 8px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; font-size: 11px; line-height: 20px; font-weight: 500; white-space: nowrap; box-shadow: none; }
+.bonus-toolbar > [role=group] > button[aria-pressed=true] { border-color: #EEDFC6; background: #FBF5EB; color: #79592C; font-weight: 600; }
+.bonus-period-filters { display: grid; grid-template-columns: minmax(170px, 220px) 110px 100px; align-items: center; gap: 8px; min-width: 0; }
+.bonus-period-filters > div { width: 100%; min-width: 0; }
+.bonus-period-filters button[aria-haspopup=listbox] { width: 100%; height: 38px; min-height: 38px; padding: 8px 10px; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 400; box-shadow: none; }
+.bonus-period-filters button[aria-haspopup=listbox]:disabled { background: #FAF8F5; }
+.bonus-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 38px 22px; border: 1px solid #EAE4D7; border-radius: 13px; background: #FFFFFF; text-align: center; }
+.bonus-empty-state > div { width: 44px; height: 44px; margin: 0 0 2px; border: 1px solid #EEDFC6; border-radius: 12px; background: #FBF5EB; }
+.bonus-empty-state h3 { margin: 0; font-size: 15px; line-height: 23px; font-weight: 600; letter-spacing: -.2px; }
+.bonus-empty-state p { max-width: 440px; margin: 0; color: #7D715E; font-size: 11px; line-height: 20px; }
+.creator-bonus-page > div > section, .creator-bonus-page > div > details { border-radius: 13px; background: #FFFFFF; box-shadow: none; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] { padding: 0; border: 0; background: transparent; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] > div { gap: 12px; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article { min-width: 0; padding: 16px; border-radius: 12px; background: #FFFFFF; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article > strong { font-size: 24px; line-height: 32px; font-weight: 650; white-space: normal; overflow-wrap: anywhere; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article:nth-child(2) > strong { font-size: 16px; line-height: 24px; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article h2, .creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article p { font-size: 11px; line-height: 18px; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] { padding: 18px; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] aside { background: #FFFFFF; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] [role=progressbar] { height: 7px; background: #FAF8F5; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] [role=progressbar] > div { background: #E4C995; }
+.creator-bonus-page table th { font-size: 10px; line-height: 18px; }
+.creator-bonus-page table td { font-size: 11px; line-height: 19px; }
+.creator-bonus-page :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@media (max-width: 1279px) {
+  .bonus-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .bonus-period-filters { justify-self: end; }
+}
+@media (max-width: 767px) {
+  .bonus-invitation { flex-wrap: wrap; padding: 14px; gap: 10px; }
+  .bonus-invitation-copy { flex-basis: calc(100% - 48px); }
+  .bonus-invitation-actions { margin-left: 48px; }
+  .bonus-toolbar { padding: 15px; gap: 12px; }
+  .bonus-toolbar > header { padding-bottom: 12px; }
+  .bonus-toolbar > header h2 { font-size: 15px; }
+  .bonus-toolbar > [role=group] { width: 100%; }
+  .bonus-period-filters { width: 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .bonus-period-filters > div:first-child { grid-column: 1 / -1; }
+  .bonus-empty-state { padding: 30px 18px; }
+}
+@media (max-width: 379px) {
+  .bonus-toolbar > [role=group] > button { gap: 4px; padding-inline: 6px; font-size: 10px; }
+}

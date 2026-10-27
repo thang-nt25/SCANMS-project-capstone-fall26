@@ -1,8 +1,12 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AssetType } from '@prisma/client';
 
 export class QueryMediaDto {
+  @IsOptional()
+  @IsIn(['library', 'visual-library'])
+  scope?: 'library' | 'visual-library';
+
   @IsOptional()
   @IsString()
   storeId?: string;

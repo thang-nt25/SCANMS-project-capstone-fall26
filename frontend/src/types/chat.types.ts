@@ -21,7 +21,11 @@ export interface ChatMessage {
   isRead: boolean;
   createdAt: string;
   sender: ChatUser;
+  replyToId?: string | null;
+  replyTo?: ChatReply | null;
 }
+
+export type ChatReply = Omit<ChatMessage, 'replyToId' | 'replyTo' | 'isRead'>;
 
 export interface Conversation {
   _count?: { chatMessages: number };
@@ -72,6 +76,8 @@ export interface ChatStoreInfo {
 }
 
 export interface ChatCouponVoucher {
+  benefitType?: string;
+  fundingSource?: string;
   id: string;
   code: string;
   discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
@@ -115,6 +121,10 @@ export interface ChatChatMessageItem {
   mediaUrl?: string;
   mediaType?: ChatAttachmentType;
   mediaName?: string;
+  senderId?: string;
+  senderName?: string;
+  replyToId?: string | null;
+  replyTo?: ChatReply | null;
 }
 
 export type ChatMessageItem = ChatChatMessageItem;
@@ -139,8 +149,8 @@ export interface ScanmsChatContextType {
   closeChat: () => void;
   toggleMinimize: () => void;
   selectConversation: (id: string) => void;
-  sendMessage: (content: string) => void;
-  sendAttachment: (file: File, type: ChatAttachmentType, caption?: string) => Promise<void>;
+  sendMessage: (content: string, replyToId?: string) => Promise<boolean>;
+  sendAttachment: (file: File, type: ChatAttachmentType, caption?: string, replyToId?: string) => Promise<void>;
   sendProductsInquiry: (products: ChatProductInfo[]) => boolean;
   shareCouponVoucher: (coupon: ChatCouponVoucher) => boolean;
   clearActiveProduct: () => void;

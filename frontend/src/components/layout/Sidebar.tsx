@@ -183,7 +183,6 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       return (
         currentPath.startsWith('/collaborator/collaboration') ||
         currentPath.startsWith('/collaborator/sample-requests') ||
-        currentPath.startsWith('/collaborator/samples') ||
         currentPath.startsWith('/collaborator/messages') ||
         currentPath.startsWith('/collaborator/campaigns') ||
         currentPath === '/chat'

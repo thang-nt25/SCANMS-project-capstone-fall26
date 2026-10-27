@@ -1707,15 +1707,19 @@ model ChatMessage {
   mediaUrl       String?  @map("media_url")
   mediaType      String?  @map("media_type") @db.VarChar(20)
   mediaName      String?  @map("media_name") @db.VarChar(255)
+  replyToId      String?  @map("reply_to_id") @db.Uuid
   isRead         Boolean  @default(false) @map("is_read")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   sender       User         @relation("SentChatMessages", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replyTo      ChatMessage?  @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replies      ChatMessage[] @relation("ChatMessageReplies")
 
   @@index([conversationId], map: "idx_fk_chat_messages_conv")
   @@index([senderId], map: "idx_fk_chat_messages_sender")
+  @@index([replyToId], map: "idx_fk_chat_messages_reply")
   @@map("chat_messages")
 }
 

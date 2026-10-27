@@ -37,5 +37,18 @@ export function useWorkspaceResource<T>(url: string) {
       });
     return () => controller.abort();
   }, [url, revision]);
+  useEffect(() => {
+    const update = () => { if (!document.hidden && !loading) refresh(); };
+    const timer = window.setInterval(update, 30000);
+    window.addEventListener('focus', update);
+    document.addEventListener('visibilitychange', update);
+    window.addEventListener('scanms_media_updated', update);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', update);
+      document.removeEventListener('visibilitychange', update);
+      window.removeEventListener('scanms_media_updated', update);
+    };
+  }, [loading, refresh]);
   return { data, loading, error, updatedAt, refresh };
 }

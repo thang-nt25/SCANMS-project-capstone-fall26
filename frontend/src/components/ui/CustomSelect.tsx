@@ -75,7 +75,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     : options;
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${className}`} onKeyDownCapture={event => {
+      if (isOpen && event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsOpen(false);
+      }
+    }}>
       {/* Hidden input for HTML form validation */}
       {required && (
         <input

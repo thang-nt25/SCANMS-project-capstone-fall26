@@ -274,6 +274,22 @@ export class OrdersController {
     return this.manualOrdersService.createManualOrder(manager, dto);
   }
 
+  @Post('manual/:orderId/payos/link')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  async createManualPayosLink(@Param('orderId', ParseUUIDPipe) orderId: string, @CurrentUser() manager: OrderManagerIdentity) {
+    return this.payosPaymentService.createLink(orderId, manager.id, manager);
+  }
+
+  @Get('manual/:orderId/payos/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  async getManualPayosStatus(@Param('orderId', ParseUUIDPipe) orderId: string, @CurrentUser() manager: OrderManagerIdentity) {
+    return this.payosPaymentService.getStatus(orderId, manager.id, manager);
+  }
+
   @Post('import-excel')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)

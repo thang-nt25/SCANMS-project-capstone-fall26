@@ -5,6 +5,7 @@ export interface MediaAsset {
   storeId: string;
   productId?: string;
   collaboratorId?: string | null;
+  sampleRequestId?: string | null;
   title: string;
   assetType: 'IMAGE' | 'VIDEO' | 'COPYWRITE_TEXT';
   urlOrContent: string;
@@ -22,6 +23,19 @@ export interface MediaAsset {
 }
 
 export const mediaService = {
+  async getAllMediaAssets() {
+    const assets = new Map<string, MediaAsset>();
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const res = await this.getMediaAssets({ page, limit: 100 });
+      const items: MediaAsset[] = res?.items || (Array.isArray(res) ? res : []);
+      for (const item of items) assets.set(item.id, item);
+      totalPages = res?.pagination?.totalPages || 1;
+      page++;
+    } while (page <= totalPages);
+    return [...assets.values()];
+  },
   async getMediaAssets(params?: {
     productId?: string;
     assetType?: string;

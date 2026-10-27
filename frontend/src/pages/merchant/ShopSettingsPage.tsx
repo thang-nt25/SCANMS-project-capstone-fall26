@@ -12,7 +12,6 @@ import {
   ImageIcon,
   Building2,
   FileText,
-  ChevronDown,
   Mail,
   MapPin,
   Phone,
@@ -300,41 +299,41 @@ export default function ShopSettingsPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.04fr_0.96fr] xl:gap-5">
-        <div className="space-y-4 xl:space-y-5">
-          <section className="settings-brand space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+      <form onSubmit={handleSave} className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 xl:gap-5">
+        <div className="flex flex-col gap-4 xl:gap-5 lg:contents">
+          <section className="settings-brand space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 lg:col-start-1 lg:row-start-1 lg:row-span-2">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Store className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Nhận diện thương hiệu</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Logo và thông tin cơ bản của gian hàng</p>
+                <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Nhận diện thương hiệu</h2>
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
+              <label htmlFor="settings-store-name" className="mb-2 block text-xs font-medium text-[#1A1612]">
                 Tên gian hàng <span className="text-rose-600">*</span>
               </label>
               <input
+                id="settings-store-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="VD: Sora Skin Official Store"
-                className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
+                className="h-10 w-full rounded-lg border border-[#EAE4D7] bg-white px-3 text-[13px] font-medium text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10"
                 required
               />
             </div>
 
-            <div className="settings-logo flex flex-col gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
+            <div className="settings-logo flex flex-col gap-2.5 border-t border-[#EAE4D7] pt-4">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-[#1A1612]">
                 <ImageIcon className="h-3.5 w-3.5 text-[#B88E4F]" />
                 <span>Logo đại diện <strong className="text-rose-600">*</strong></span>
-              </label>
+              </span>
 
               <div className="flex items-center gap-3">
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8D4B0] bg-[#F3EFE6]">
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-white">
                   {logoUrl ? (
                     <img
                       src={logoUrl}
@@ -349,7 +348,7 @@ export default function ShopSettingsPage() {
                   )}
                 </div>
 
-                <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-center text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FDFBF7]">
+                <label className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]/50 px-3 text-xs font-medium text-[#1A1612] transition hover:border-[#C59B58] ${uploadingLogo ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
                   {uploadingLogo ? (
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#B88E4F]" />
                   ) : (
@@ -371,79 +370,76 @@ export default function ShopSettingsPage() {
               onDescriptionChange={setDescription} onCopy={() => void copyStorefrontUrl()} />
           </section>
 
-          <details className="group space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
-            <summary className="flex cursor-pointer items-center gap-3 list-none [&::-webkit-details-marker]:hidden">
+          <section className="space-y-4 self-start rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 lg:col-span-2 lg:col-start-1 lg:row-start-3">
+            <header className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <FileText className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Chính sách công khai</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Đổi trả, bảo hành và giao nhận. Bấm để chỉnh sửa.</p>
+                <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Chính sách công khai</h2>
               </div>
-              <ChevronDown className="ml-auto h-[18px] w-[18px] shrink-0 text-[#B88E4F] transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
-            </summary>
+            </header>
 
-<div className="space-y-3 border-t border-[#EAE4D7] pt-3">
+            <div className="grid grid-cols-1 gap-4 border-t border-[#EAE4D7] pt-4 sm:grid-cols-2">
               {([
                 ['Đổi trả & hoàn tiền', policyReturn, setPolicyReturn, 'Cam kết đổi trả trong 7-14 ngày nếu lỗi nhà sản xuất...'],
                 ['Bảo hành & chất lượng', policyWarranty, setPolicyWarranty, 'Cam kết 100% hàng chính hãng có tem niêm phong...'],
                 ['Giao nhận & đồng kiểm', policyShipping, setPolicyShipping, 'Hỗ trợ đồng kiểm khi nhận hàng, giao nhanh 2-3 ngày...'],
-              ] as const).map(([label, value, setValue, placeholder]) => (
-                <div key={label}>
-                  <label className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
+              ] as const).map(([label, value, setValue, placeholder], index) => (
+                <div key={label} className="min-w-0">
+                  <label htmlFor={`store-policy-${index}`} className="mb-2 block text-xs font-medium text-[#1A1612]">
                     {label}
                   </label>
                   <textarea
+                    id={`store-policy-${index}`}
                     value={value}
                     onChange={(event) => setValue(event.target.value)}
                     maxLength={500}
-                    rows={2}
+                    rows={3}
                     placeholder={placeholder}
-                    className="min-h-[88px] w-full resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-sm text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white"
+                    className="block min-h-[104px] w-full resize-y rounded-lg border border-[#EAE4D7] bg-white px-3 py-2.5 text-[13px] leading-relaxed text-[#1A1612] outline-none transition placeholder:text-[#A39784] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10"
                   />
                 </div>
               ))}
             </div>
-          </details>
+          </section>
         </div>
 
-        <div className="space-y-4 xl:space-y-5">
-          <section className="settings-affiliate space-y-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+        <div className="flex flex-col gap-4 xl:gap-5 lg:contents">
+          <section className="settings-affiliate space-y-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 lg:col-start-2 lg:row-start-1">
             <div className="flex items-center gap-3 border-b border-[#EAE4D7] pb-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                 <Percent className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h2 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Tiếp thị liên kết</h2>
-                <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Mức hoa hồng và thời hạn ghi nhận đơn</p>
+                <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Tiếp thị liên kết</h2>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#1A1612]">
                   <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
-                  Hoa hồng nền SCANMS (%)
-                </label>
-                <input
-                  type="number"
-                  value={10}
-                  readOnly
-                  disabled
-                  className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 text-sm font-semibold text-[#1A1612] outline-none transition hover:border-[#B88E4F]/50 focus:border-[#C59B58]"
-                />
-                <span className="text-xs text-[#7D715E]">Cố định 10% theo chuẩn sàn SCANMS</span>
+                  Hoa hồng nền SCANMS
+                </span>
+                <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]/40 px-3">
+                  <span className="text-base font-semibold tabular-nums text-[#B88E4F]">10%</span>
+                  <span className="text-[10px] font-medium text-[#7D715E]">Cố định theo sàn</span>
+                </div>
               </div>
 
               <div className="min-w-0">
-                <label className="mb-1.5 flex min-h-7 items-start gap-1.5 text-xs font-semibold text-[#1A1612]">
+                <label htmlFor="settings-attribution-trigger" className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#1A1612]">
                   <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   Thời hạn ghi nhận đơn
                 </label>
                 <Select
+                  id="settings-attribution"
+                  aria-label="Thời hạn ghi nhận đơn"
+                  portal
                   value={String(attributionWindowDays)}
                   onChange={(e) => setAttributionWindowDays(Number(e.target.value))}
-                  className="h-11 w-full"
+                  className="h-10 w-full rounded-lg text-[13px] shadow-none"
                 >
                   <option value="7">7 ngày</option>
                   <option value="14">14 ngày</option>
@@ -454,7 +450,7 @@ export default function ShopSettingsPage() {
             </div>
           </section>
 
-          <section className="settings-owner rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5">
+          <section className="settings-owner rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-[0_2px_10px_rgba(35,29,21,0.03)] sm:p-5 lg:col-start-2 lg:row-start-2">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -462,8 +458,7 @@ export default function ShopSettingsPage() {
                       <Building2 className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="m-0 text-sm font-bold text-[#1A1612] sm:text-base">Thông tin chủ shop</h3>
-                      <p className="m-0 mt-0.5 text-xs text-[#7D715E]">Thông tin liên hệ và pháp lý</p>
+                      <h3 className="m-0 text-sm font-semibold text-[#1A1612]">Thông tin chủ shop</h3>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
@@ -615,19 +610,19 @@ export default function ShopSettingsPage() {
                   </div>
                 ) : (
                   <div className="settings-owner-details">
-                  <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                  <div className="settings-owner-info grid grid-cols-1 gap-x-5 gap-y-0 sm:grid-cols-2">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Người đại diện</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.representativeName || 'Chưa cập nhật'}</p>
+                        <p className="m-0 mt-0.5 break-words text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.representativeName || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Loại hình kinh doanh</p>
-                        <p className="m-0 mt-0.5 text-sm font-semibold text-[#1A1612]">
+                        <p className="m-0 mt-0.5 text-[13px] font-medium leading-relaxed text-[#1A1612]">
                           {shopOwnerDetails.businessType === 'INDIVIDUAL'
                             ? 'Cá nhân'
                             : shopOwnerDetails.businessType === 'HOUSEHOLD'
@@ -638,45 +633,45 @@ export default function ShopSettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Điện thoại liên hệ</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactPhone || 'Chưa cập nhật'}</p>
+                        <p className="m-0 mt-0.5 break-words text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.contactPhone || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Email nhận đối soát</p>
-                        <p className="m-0 mt-0.5 break-all text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.contactEmail || 'Chưa cập nhật'}</p>
+                        <p className="m-0 mt-0.5 break-all text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.contactEmail || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Mã số thuế</p>
-                        <p className="m-0 mt-0.5 break-words font-mono text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.taxCode || 'Chưa cập nhật'}</p>
+                        <p className="m-0 mt-0.5 break-words font-mono text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.taxCode || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
+                    <div className="flex min-w-0 items-start gap-2.5 border-b border-[#EAE4D7]/70 py-3">
                       <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">
                         <p className="m-0 text-[11px] text-[#7D715E]">Trụ sở chính & Pháp lý</p>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.businessAddress || 'Chưa cập nhật'}</p>
+                        <p className="m-0 mt-0.5 break-words text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.businessAddress || 'Chưa cập nhật'}</p>
                       </div>
                     </div>
-                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
+                    <div className="mt-4 flex min-w-0 items-start gap-2.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]/30 p-3 sm:col-span-2">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="m-0 text-[11px] font-bold text-[#1A1612]">Kho lấy hàng xuất đi (GHN)</p>
-                          <span className="text-[10px] rounded bg-[#FBF5EB] px-1.5 py-0.5 font-bold text-[#8A642C] border border-[#EEDFC6]">Pickup Warehouse</span>
+                          <p className="m-0 text-xs font-semibold text-[#1A1612]">Kho lấy hàng</p>
+                          <span className="text-[10px] rounded-md bg-white px-2 py-0.5 font-medium text-[#B88E4F] border border-[#EEDFC6]">GHN</span>
                         </div>
-                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.warehouseAddress || 'Chưa cập nhật'}</p>
-                        <div className="mt-2 pt-2 border-t border-[#EAE4D7]/70 flex items-center justify-between text-xs text-[#7D715E]">
-                          <span>Kho nhận hàng hoàn trả:</span>
-                          <span className="font-semibold text-[#1A1612]">{shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.warehouseAddress || 'Trùng với kho lấy hàng'}</span>
+                        <p className="m-0 mt-0.5 break-words text-[13px] font-medium leading-relaxed text-[#1A1612]">{shopOwnerDetails.warehouseAddress || 'Chưa cập nhật'}</p>
+                        <div className="mt-3 grid gap-1 border-t border-[#EAE4D7] pt-2 text-xs text-[#7D715E]">
+                          <span>Kho nhận hàng hoàn trả</span>
+                          <span className="break-words font-medium leading-relaxed text-[#1A1612]">{!shopOwnerDetails.returnWarehouseAddress || shopOwnerDetails.returnWarehouseAddress.trim() === shopOwnerDetails.warehouseAddress.trim() ? 'Dùng chung kho lấy hàng' : shopOwnerDetails.returnWarehouseAddress}</span>
                         </div>
                       </div>
                     </div>
@@ -689,7 +684,6 @@ export default function ShopSettingsPage() {
         </div>
 
         <div className="settings-save-bar flex flex-wrap items-center justify-between gap-3 border border-[#EAE4D7] bg-white p-3 rounded-xl lg:col-span-2">
-          <p className="m-0 text-[11px] text-[#7D715E]">Thay đổi của bạn sẽ được áp dụng lên trang gian hàng.</p>
           <Button
             type="submit"
             variant="gold"

@@ -20,6 +20,7 @@ test('compact sample shipment shows status while collapsed and preserves deliver
     const creates = [], tracking = [], syncs = [];
     let receiptReads = 0;
     let payments = 0;
+    const videoSubmissions = [];
     let receipt = { receivedAt: null, deadlineAt: null, videoUrl: null, deliveryStatus: 'NOT_STARTED', simulationStartedAt: null };
     const clickText = (page, label) => page.evaluate(label => {
       const button = [...document.querySelectorAll('button')].find(button => button.textContent.trim() === label || button.getAttribute('aria-label') === label);
@@ -51,7 +52,11 @@ test('compact sample shipment shows status while collapsed and preserves deliver
               if (payments === 1) return request.respond({ status: 503, headers, body: JSON.stringify({ message: 'Chưa lưu được thanh toán thử' }) });
               receipt.shippingPayment = { status: 'PAID_SIMULATED', amount: 49000, reference: 'SBX-SHIP-QA', paidAt: new Date().toISOString(), payer: 'SHOP', codAmount: 0 };
             }
-            if (url.pathname.endsWith('/video')) receipt.videoUrl = JSON.parse(request.postData()).videoUrl;
+            if (url.pathname.endsWith('/video')) {
+              const payload = JSON.parse(request.postData());
+              videoSubmissions.push({ path: url.pathname, payload });
+              receipt.videoUrl = payload.videoUrl;
+            }
             if (url.pathname.endsWith('/expire')) receipt.status = 'OVERDUE';
             data = { ...receipt, status: receipt.videoUrl ? 'VIDEO_SUBMITTED' : receipt.status || (receipt.receivedAt ? 'RECEIVED' : 'SHIPPED') };
           }
@@ -102,7 +107,7 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       const charges = '[aria-label="Phí vận chuyển hàng mẫu"]';
       assert.match(await page.$eval(charges, el => el.innerText), /Shop chịu 100% phí ship\s+49.000 đ/);
       assert.match(await page.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL\s+0 đ/);
-      assert.match(await page.$eval(charges, el => el.innerText), /không trừ ví hoặc thanh toán thật/);
+      assert.match(await page.$eval(charges, el => el.innerText), /Thanh toán cước thử/);
       await (await page.$(charges)).screenshot({ path: join(tmpdir(), 'scanms-sample-payment-desktop.png') });
       await page.setViewport({ width:390, height:844 });
       assert.equal(await page.$eval(charges, el => el.scrollWidth <= el.clientWidth + 1), true);
@@ -158,15 +163,17 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       receipt.shippingPayment = null;
       const orders = await open('/merchant/orders?tab=samples', 'SHOP_MANAGER');
       await orders.waitForFunction(sel => document.querySelector(sel)?.innerText.includes('Quá hạn nộp video'), {}, badge);
+      await orders.click('button[title="Chi tiết hàng mẫu"]');
+      await orders.waitForSelector(charges);
       assert.match(await orders.$eval(charges, el => el.innerText), /Chờ GHN xác nhận cước/);
       assert.equal(await orders.$eval(charges + ' button', el => el.disabled), true);
       await orders.close();
       receipt.shippingPayment = savedPayment;
       const kol = await open('/collaborator/collaboration?shop=' + storeId + '&tab=samples', 'COLLABORATOR');
-      await kol.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Nộp video'));
+      await kol.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Nộp video kiểm thử'));
+      assert.equal(await kol.$$('.sample-submit-video').then(buttons => buttons.length), 0, 'Sandbox must not offer real review submission');
       await kol.waitForSelector('button[aria-label="Theo dõi hành trình bưu kiện"]');
       assert.match(await kol.$eval(charges, el => el.innerText), /Thu hộ COD từ KOL\s+0 đ/);
-      assert.match(await kol.$eval(charges, el => el.innerText), /Bạn nhận mẫu miễn phí/);
       assert.match(await kol.$eval(charges, el => el.innerText), /Shop đã thanh toán cước mô phỏng/);
       assert.equal(await kol.$$eval(charges + ' button', els => els.length), 0);
       await clickText(kol, 'Theo dõi hành trình bưu kiện');
@@ -174,6 +181,18 @@ test('compact sample shipment shows status while collapsed and preserves deliver
       await clickText(kol, 'Thu gọn');
       assert.match(await kol.$eval(badge, el => el.innerText), /Quá hạn nộp video/);
       assert.equal(await kol.$$eval(receiptSection + ' ol', els => els.length), 0);
+      await clickText(kol, 'Nộp video kiểm thử');
+      await kol.waitForSelector('.kol-video-form');
+      await kol.type('.kol-video-form input[type="text"]', 'QA sandbox video');
+      await kol.type('.kol-video-form input[type="url"]', 'https://www.youtube.com/watch?v=qa-sandbox');
+      await clickText(kol, 'Lưu video kiểm thử');
+      await kol.waitForSelector('.kol-video-form', { hidden: true });
+      await kol.waitForFunction(sel => document.querySelector(sel)?.innerText.includes('Đã nộp video'), {}, badge);
+      assert.equal(videoSubmissions.length, 1);
+      assert.equal(videoSubmissions[0].path, '/api/shipping/ghn/sandbox-sample/TEST-ISSUED/video');
+      assert.equal(videoSubmissions[0].payload.title, 'QA sandbox video');
+      assert.equal(videoSubmissions[0].payload.videoUrl, 'https://www.youtube.com/watch?v=qa-sandbox');
+      assert.equal(await kol.$$('.sample-submit-video').then(buttons => buttons.length), 0);
       await kol.close();
       assert.deepEqual(syncs, []);
       assert.equal(payments, 2, 'only the failed attempt and successful retry submit payment');

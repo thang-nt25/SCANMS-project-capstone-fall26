@@ -70,7 +70,10 @@ for (const savedEnvironment of ['TEST', 'LIVE', null, 'REJECTED', 'SUCCESS']) te
     await page.waitForFunction(() => !document.querySelector('.shipping-dispatch-modal'));
     await page.waitForSelector('button[title="Tra cứu hành trình vận chuyển GHN"]');
     assert.equal(await page.$('button[title="Nhập mã vận đơn & giao hàng"]'), null);
-    assert.match(await page.$eval('table', el => el.innerText), /QA-SAVED/);
+    await page.click('button[title="Thao tác khác"]');
+    await page.waitForSelector('[aria-label="Thông tin đơn DH-QA-RECOVER"]');
+    assert.match(await page.$eval('[aria-label="Thông tin đơn DH-QA-RECOVER"]', el => el.innerText), /QA-SAVED/);
+    await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.body.innerText.includes('QA-SAVED'));
     const content = await page.$eval('body', el => el.innerText);
       if (savedEnvironment === 'TEST' || savedEnvironment === 'SUCCESS') assert.match(content, /Đã tạo vận đơn GHN sandbox/);

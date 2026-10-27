@@ -16,6 +16,8 @@ import { CouponStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { chatNotificationPreview } from './chat-notification';
 import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
+import { liveVoucherActive } from '../coupons/voucher-pricing';
+import { chatReplySelect, chatMessageSelect } from './chat-reply';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -31,6 +33,23 @@ function isExclusiveDealMessage(messageText?: string): boolean {
 
 @Injectable()
 export class ChatService {
+  private repliesSchemaCache = { checkedAt: 0, enabled: false };
+
+  async getCapabilities() {
+    if (Date.now() - this.repliesSchemaCache.checkedAt > 30000) {
+      let enabled = false;
+      try {
+        const rows = await this.prisma.$queryRaw<Array<{ enabled: boolean }>>`
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = current_schema() AND table_name = 'chat_messages' AND column_name = 'reply_to_id'
+          ) AS enabled`;
+        enabled = rows[0]?.enabled === true;
+      } catch { /* Existing messaging remains available while the migration is pending. */ }
+      this.repliesSchemaCache = { checkedAt: Date.now(), enabled };
+    }
+    return { messageReplies: this.repliesSchemaCache.enabled };
+  }
   constructor(
     private prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
@@ -147,6 +166,15 @@ export class ChatService {
         recipient.role !== (customerId ? 'CUSTOMER' : 'COLLABORATOR')
       ) {
         throw new BadRequestException('Người nhận không hợp lệ');
+      }
+      if (customerId) {
+        const customer = await this.prisma.user.findFirst({
+          where: { id: customerId, ...this.shopCustomerWhere(storeId) },
+          select: { id: true },
+        });
+        if (!customer) {
+          throw new ForbiddenException('Chỉ được liên hệ khách đã mua hàng hoặc đã nhắn tin với gian hàng.');
+        }
       }
     }
 
@@ -453,6 +481,12 @@ export class ChatService {
           displayCode: true,
           discountType: true,
           discountValue: true,
+          benefitType: true,
+          fundingSource: true,
+          budgetTotal: true,
+          budgetUsed: true,
+          campaign: { select: { isActive: true, startDate: true, endDate: true } },
+          liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } },
           minimumOrderAmount: true,
           maximumDiscountAmount: true,
           usageLimitTotal: true,
@@ -476,7 +510,10 @@ export class ChatService {
       if (
         !coupon ||
         (coupon.usageLimitTotal !== null &&
-          coupon.usageCount >= coupon.usageLimitTotal)
+          coupon.usageCount >= coupon.usageLimitTotal) ||
+        (coupon.budgetTotal != null && Number(coupon.budgetUsed) >= Number(coupon.budgetTotal)) ||
+        !liveVoucherActive(coupon.liveSession, now) ||
+        (coupon.scopeType === 'CAMPAIGN' && (!coupon.campaign?.isActive || coupon.campaign.startDate > now || coupon.campaign.endDate <= now))
       ) {
         throw new BadRequestException('Mã giảm giá đã hết hạn hoặc hết lượt.');
       }
@@ -487,6 +524,8 @@ export class ChatService {
         couponCode: coupon.displayCode,
         discountType: coupon.discountType,
         discountValue: Number(coupon.discountValue),
+        benefitType: coupon.benefitType,
+        fundingSource: coupon.fundingSource,
         minimumOrderAmount: coupon.minimumOrderAmount
           ? Number(coupon.minimumOrderAmount)
           : null,
@@ -518,6 +557,7 @@ export class ChatService {
   ) {
     // Xác nhận user là thành viên
     const conversation = await this.getConversationById(conversationId, userId);
+    const { messageReplies } = await this.getCapabilities();
 
     const messages = await this.prisma.chatMessage.findMany({
       where: { conversationId },
@@ -532,6 +572,7 @@ export class ChatService {
         mediaUrl: true,
         mediaType: true,
         mediaName: true,
+        ...(messageReplies ? { replyToId: true, replyTo: { select: chatReplySelect } } : {}),
         isRead: true,
         createdAt: true,
         sender: {
@@ -558,8 +599,21 @@ export class ChatService {
       : orderedMessages;
   }
 
+  async getMessage(conversationId: string, userId: string, messageId: string) {
+    const conversation = await this.getConversationById(conversationId, userId);
+    const message = await this.prisma.chatMessage.findFirst({
+      where: { id: messageId, conversationId }, select: chatReplySelect,
+    });
+    if (!message) throw new NotFoundException('Tin nhắn gốc không còn tồn tại.');
+    if ((conversation.customerId || conversation.collaborator?.role === 'CUSTOMER') && isExclusiveDealMessage(message.messageText)) {
+      throw new ForbiddenException('Không thể truy cập trao đổi nội bộ trong hội thoại khách hàng.');
+    }
+    return message;
+  }
+
   async exploreMessages(conversationId: string, userId: string, query: ChatExplorerQuery) {
     const conversation = await this.getConversationById(conversationId, userId);
+    const { messageReplies } = await this.getCapabilities();
     const where = buildExplorerWhere(conversationId, userId, query);
     // A cursor from another conversation must never influence this query.
     if (query.cursor) {
@@ -581,6 +635,7 @@ export class ChatService {
         id: true, conversationId: true, senderId: true, messageText: true,
         mediaUrl: true, mediaType: true, mediaName: true, createdAt: true, isRead: true,
         sender: { select: { id: true, fullName: true, role: true } },
+        ...(messageReplies ? { replyToId: true, replyTo: { select: chatReplySelect } } : {}),
       },
     });
     const page = rows.slice(0, 30);
@@ -654,12 +709,15 @@ export class ChatService {
     mediaType?: ChatAttachmentType,
     mediaName?: string,
     messageId?: string,
+    replyToId?: string,
   ) {
     // Derive the recipient from the authorized conversation, never from the FE.
     const conversation = await this.getConversationById(
       conversationId,
       senderId,
     );
+    const { messageReplies } = await this.getCapabilities();
+    if (replyToId && !messageReplies) throw new BadRequestException('Tính năng trả lời trích dẫn đang chờ cập nhật cơ sở dữ liệu.');
     const fromShop = conversation.store.ownerId === senderId;
     const recipientId = fromShop
       ? conversation.customerId || conversation.collaboratorId
@@ -670,17 +728,7 @@ export class ChatService {
     if (messageId) {
       const existing = await this.prisma.chatMessage.findUnique({
         where: { id: messageId },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              fullName: true,
-              role: true,
-              avatarUrl: true,
-              collaboratorProfile: { select: { avatarUrl: true } },
-            },
-          },
-        },
+        select: { ...chatMessageSelect, ...(messageReplies ? { replyToId: true, replyTo: { select: chatReplySelect } } : {}) },
       });
       if (existing) {
         if (
@@ -690,6 +738,19 @@ export class ChatService {
           throw new ForbiddenException('Mã tin nhắn không hợp lệ');
         }
         return existing;
+      }
+    }
+    if (replyToId) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(replyToId)) {
+        throw new BadRequestException('Tin nhắn được trả lời không hợp lệ.');
+      }
+      const original = await this.prisma.chatMessage.findFirst({
+        where: { id: replyToId, conversationId },
+        select: { id: true, messageText: true },
+      });
+      if (!original) throw new BadRequestException('Tin nhắn gốc không còn tồn tại trong hội thoại này.');
+      if ((conversation.customerId || conversation.collaborator?.role === 'CUSTOMER') && isExclusiveDealMessage(original.messageText)) {
+        throw new ForbiddenException('Không thể trích dẫn trao đổi nội bộ vào hội thoại khách hàng.');
       }
     }
     const savedId = messageId || randomUUID();
@@ -705,6 +766,7 @@ export class ChatService {
             mediaUrl,
             mediaType,
             mediaName,
+            ...(replyToId ? { replyToId } : {}),
           },
           select: {
             id: true,
@@ -714,6 +776,7 @@ export class ChatService {
             mediaUrl: true,
             mediaType: true,
             mediaName: true,
+            ...(messageReplies ? { replyToId: true, replyTo: { select: chatReplySelect } } : {}),
             isRead: true,
             createdAt: true,
             sender: {
@@ -760,17 +823,7 @@ export class ChatService {
       if (messageId && error?.code === 'P2002') {
         const existing = await this.prisma.chatMessage.findUnique({
           where: { id: messageId },
-          include: {
-            sender: {
-              select: {
-                id: true,
-                fullName: true,
-                role: true,
-                avatarUrl: true,
-                collaboratorProfile: { select: { avatarUrl: true } },
-              },
-            },
-          },
+          select: { ...chatMessageSelect, ...(messageReplies ? { replyToId: true, replyTo: { select: chatReplySelect } } : {}) },
         });
         if (
           existing?.senderId === senderId &&
@@ -822,6 +875,37 @@ export class ChatService {
           ],
         },
       },
+    });
+  }
+
+  private shopCustomerWhere(storeId: string): Prisma.UserWhereInput {
+    return {
+      role: 'CUSTOMER', isActive: true, isDeleted: false,
+      OR: [
+        { customerOrders: { some: { storeId } } },
+        { customerConversations: { some: { storeId } } },
+      ],
+    };
+  }
+
+  async searchCustomers(ownerId: string, q?: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { ownerId, isDeleted: false }, select: { id: true },
+    });
+    if (!store) throw new ForbiddenException('Bạn chưa sở hữu gian hàng.');
+    const keyword = (q || '').trim().slice(0, 200);
+    return this.prisma.user.findMany({
+      where: {
+        ...this.shopCustomerWhere(store.id),
+        ...(keyword ? { AND: [{ OR: [
+          { fullName: { contains: keyword, mode: 'insensitive' } },
+          { email: { contains: keyword, mode: 'insensitive' } },
+          { phoneNumber: { contains: keyword, mode: 'insensitive' } },
+        ] }] } : {}),
+      },
+      select: { id: true, fullName: true, avatarUrl: true },
+      orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+      take: 50,
     });
   }
 

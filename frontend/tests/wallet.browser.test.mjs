@@ -22,6 +22,7 @@ test(
     });
     try {
       const page = await browser.newPage();
+      await page.setCacheEnabled(false);
       await page.setViewport({ width: 1365, height: 1000 });
       await page.evaluateOnNewDocument(() => {
         localStorage.setItem("token", "isolated-browser-test-token");
@@ -34,6 +35,12 @@ test(
           }),
         );
         localStorage.setItem("scanms-current-role", "kol");
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { window.qaCopied = value; } } });
+        const nativeInterval = window.setInterval.bind(window);
+        window.setInterval = (callback, delay, ...args) => {
+          if (delay === 30000) window.qaWalletPoll = () => callback(...args);
+          return nativeInterval(callback, delay, ...args);
+        };
       });
       const summary = {
         stores: [
@@ -62,15 +69,21 @@ test(
       let withdrawals = [];
       let postCount = 0;
       let ledgerPaging = false;
+      let ledgerReads = 0;
+      let failSync = false;
       await page.setRequestInterception(true);
       page.on("request", (request) => {
         void (async () => {
           const requestUrl = new URL(request.url());
+          if (requestUrl.pathname === '/src/services/chat-socket.service.ts') {
+            await request.respond({ status: 200, contentType: 'application/javascript', body: 'const s={on(){return this},off(){return this},emit(){},connect(){return this}};export const getChatSocket=()=>s;export const isChatSocketAuthenticated=()=>false;export const disconnectChatSocket=()=>{};' });
+            return;
+          }
           if (requestUrl.pathname.startsWith("/api/")) {
             const headers = {
               "Access-Control-Allow-Origin": url.origin,
               "Access-Control-Allow-Credentials": "true",
-              "Access-Control-Allow-Headers": "Authorization, Content-Type",
+              "Access-Control-Allow-Headers": "Authorization, Content-Type, x-skip-cache",
               "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
             };
             if (request.method() === "OPTIONS") {
@@ -117,6 +130,11 @@ test(
                 availableBalance: summary.availableBalance,
               };
             } else if (requestUrl.pathname === "/api/wallets/me/ledger") {
+              ledgerReads++;
+              if (failSync) {
+                await request.respond({ status: 503, contentType: 'application/json', headers, body: JSON.stringify({ message: 'Mock sync unavailable' }) });
+                return;
+              }
               const requestedPage = Number(requestUrl.searchParams.get('page') || 1);
               data = {
                 entries: withdrawals.map((withdrawal) => ({
@@ -127,7 +145,8 @@ test(
                   balanceBefore: "500000.31",
                   balanceAfter: "300000.21",
                   referenceId: ledgerPaging && requestedPage === 2 ? 'older-page-reference' : withdrawal.id,
-                  referenceType: "PAYOUT_REQUEST",
+                  referenceType: ledgerPaging && requestedPage === 2 ? 'COMMISSION' : 'PAYOUT_REQUEST',
+                  referenceDetails: { storeName: 'Test Shop', orderId: ledgerPaging && requestedPage === 2 ? 'order-full-id' : null, orderCode: ledgerPaging && requestedPage === 2 ? 'SCANMS-ORDER-123' : null, period: null },
                   createdAt: withdrawal.createdAt,
                 })),
                 total: ledgerPaging ? 11 : withdrawals.length,
@@ -211,7 +230,7 @@ test(
         await page.waitForFunction(
           () =>
             document
-              .querySelector("tbody")
+              .querySelector(".wallet-history-section tbody")
               ?.textContent.includes("ui-test-"),
           { timeout: 5000 },
         );
@@ -231,14 +250,17 @@ test(
       );
       assert.ok(ledgerText.includes("-200.000,1"));
       assert.ok(ledgerText.includes("300.000,21"));
-      assert.ok(ledgerText.includes("PAYOUT_REQUEST"));
+      assert.ok(ledgerText.includes("Yêu cầu rút tiền"));
+      assert.ok(ledgerText.includes('Test Shop'));
+      await page.click('button[title="Sao chép toàn bộ mã tham chiếu"]');
+      assert.equal(await page.evaluate(() => window.qaCopied), 'ui-test-request');
       assert.ok(
         (
-          await page.$eval('[role="status"]', (element) => element.textContent)
+          await page.$eval('#kol-wallet-page [role="status"]', (element) => element.textContent)
         ).includes("thành công"),
       );
       assert.ok(
-        (await page.$eval("tbody", (element) => element.textContent)).includes(
+        (await page.$eval(".wallet-history-section tbody", (element) => element.textContent)).includes(
           "Chờ xử lý",
         ),
       );
@@ -248,7 +270,7 @@ test(
       await page.waitForFunction(
         () =>
           getComputedStyle(document.querySelector('form button[type="submit"]'))
-            .backgroundColor === "rgb(251, 245, 235)",
+            .backgroundColor === "rgb(197, 155, 88)",
         { timeout: 5000 },
       ).catch(async error => { throw new Error(`Unexpected withdrawal CTA: ${await page.$eval('form button[type="submit"]', el => JSON.stringify({ disabled: el.disabled, color: getComputedStyle(el).backgroundColor, className: el.className }))}`, { cause: error }); });
       assert.equal(
@@ -256,21 +278,55 @@ test(
           'form button[type="submit"]',
           (element) => getComputedStyle(element).backgroundColor,
         ),
-        "rgb(251, 245, 235)",
+        "rgb(197, 155, 88)",
       );
 
       ledgerPaging = true;
-      await page.waitForFunction(() => !document.querySelector('button[aria-label="Tải lại ví"]').disabled);
-      await page.evaluate(() => document.querySelector('button[aria-label="Tải lại ví"]').click());
-      await page.waitForFunction(() => !document.querySelector('button[aria-label="Trang giao dịch sau"]').disabled);
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('button[aria-label="Trang giao dịch sau"]')?.disabled === false, { timeout: 5000 }).catch(async error => {
+        throw new Error(`Ledger pagination not ready: ${await page.$eval('#kol-wallet-page', el => el.textContent)}`, { cause: error });
+      });
       await page.click('button[aria-label="Trang giao dịch sau"]');
       await page.waitForFunction(() => document.querySelector('table[aria-label="Sổ cái tài chính"] tbody')?.textContent.includes('older-pa'));
+      assert.ok((await page.$eval('table[aria-label="Sổ cái tài chính"] tbody', el => el.textContent)).includes('Hoa hồng'));
+      assert.ok((await page.$eval('table[aria-label="Sổ cái tài chính"] tbody', el => el.textContent)).includes('SCANMS-ORDER-123'));
+      assert.ok(await page.$('span[title="older-page-reference"]'));
+
+      // External changes update the current page without interrupting input or making writes.
+      await page.type('#withdrawal-amount', '250000');
+      const beforeFocus = ledgerReads;
+      summary.pendingBalance = '950000.00';
+      await page.evaluate(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('focus')); });
+      await page.waitForFunction(() => document.querySelector('.kol-wallet-balances')?.textContent.includes('950.000'));
+      assert.equal(ledgerReads, beforeFocus + 1, 'overlapping focus refreshes are coalesced');
+      assert.equal(await page.$eval('#withdrawal-amount', el => el.value), '250000');
+      assert.equal(await page.$eval('#withdrawal-amount', el => el.disabled), false);
+      assert.ok(await page.$('span[title="older-page-reference"]'), 'refresh preserves ledger page two');
+      assert.equal(postCount, 1);
+
+      summary.pendingBalance = '960000.00';
+      await page.evaluate(() => window.qaWalletPoll());
+      await page.waitForFunction(() => document.querySelector('.kol-wallet-balances')?.textContent.includes('960.000'));
+      failSync = true;
+      await page.evaluate(() => window.qaWalletPoll());
+      await page.waitForSelector('[data-testid="wallet-sync-error"]');
+      assert.ok((await page.$eval('.kol-wallet-balances', el => el.textContent)).includes('960.000'));
+      assert.equal(await page.$eval('#withdrawal-amount', el => el.value), '250000');
+      failSync = false;
+      await page.click('[data-testid="wallet-sync-error"] button');
+      await page.waitForFunction(() => !document.querySelector('[data-testid="wallet-sync-error"]'));
+
+      const beforeHidden = ledgerReads;
+      await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: true }); window.qaWalletPoll(); });
+      await new Promise(resolve => setTimeout(resolve, 100));
+      assert.equal(ledgerReads, beforeHidden, 'hidden pages do not poll');
+      await page.evaluate(() => { delete document.hidden; });
 
       // The total wallet can have money while the selected store cannot pay it.
       summary.stores[0].availableBalance = '0.00';
       summary.unallocatedAvailableBalance = summary.availableBalance;
       summary.canWithdraw = false;
-      await page.click('button[aria-label="Tải lại ví"]');
+      await page.reload();
       await page.waitForFunction(() => document.querySelector('form button[type="submit"]')?.disabled);
       assert.ok((await page.$eval('.kol-wallet-notice', element => element.textContent)).includes('chưa thể rút'));
       assert.ok(!(await page.$eval('.kol-wallet-balances', element => element.textContent)).includes('Đủ điều kiện rút'));
@@ -285,7 +341,7 @@ test(
 
       summary.kycStatus = "UNVERIFIED";
       summary.canWithdraw = false;
-      await page.click('button[aria-label="Tải lại ví"]');
+      await page.reload();
       await page.waitForFunction(
         () => document.querySelector('form button[type="submit"]')?.disabled && document.querySelector('.kol-wallet-transfer')?.textContent.includes('Mở hồ sơ KYC'),
       );

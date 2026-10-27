@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check } from 'lucide-react';
+import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, CalendarDays } from 'lucide-react';
 import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 import KolBonusProgressPage from './KolBonusProgressPage';
 import { KolTierExplanation } from '../../components/affiliate/KolTierExplanation';
+import './KolTierStatusPage.css';
 
 const currency = (value: number) => `${value.toLocaleString('vi-VN')} ₫`;
+const tierTone = (name: string) => {
+  const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+  const tones: Record<string, string> = {
+    dong: 'bronze', bronze: 'bronze', bac: 'silver', silver: 'silver',
+    vang: 'gold', gold: 'gold', 'kim cuong': 'diamond', diamond: 'diamond',
+  };
+  return tones[normalized] || 'brand';
+};
 const samePolicy = (left: TierPolicy, right: TierPolicy) =>
   left.id === right.id || (
     left.name.trim().toLowerCase() === right.name.trim().toLowerCase() &&
@@ -62,7 +71,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
   const retry = () => setLoadRevision(revision => revision + 1);
 
   return (
-    <div className="flex flex-col gap-3 min-w-0 text-[#1A1612] text-left">
+    <div className="creator-tier-page flex flex-col gap-3 min-w-0 text-[#1A1612] text-left">
       <nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 border border-[#EAE4D7] rounded-xl bg-white" aria-label="Cấp bậc và vinh danh">
         <Link
           to="/collaborator/tiers"
@@ -107,7 +116,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
       ) : view === 'bonus' ? (
         <KolBonusProgressPage embedded />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-w-0">
+        <div className="creator-tier-layout">
           {loading ? (
             <section className="flex items-center justify-center p-6 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#7D715E]" role="status">
               Đang tải cấp bậc và tiến độ…
@@ -118,23 +127,30 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               <button className="px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] font-medium hover:bg-[#FAF8F5]" onClick={retry}>Thử lại</button>
             </section>
           ) : (
-            <section className="flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-current-title">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
+            <section data-tier-tone={tierTone(currentTier.name)} className="tier-current-card flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-current-title">
+              <div className="tier-current-heading flex items-center justify-between gap-3">
+                <div className="tier-current-identity flex items-center gap-3 min-w-0">
                   <span className="grid place-items-center w-12 h-12 shrink-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                     <Crown className="w-6 h-6" aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-[#7D715E]">Cấp bậc hiện tại</p>
-                    <h2 id="tier-current-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] truncate">{currentTier.name}</h2>
-                    <p className="text-xs text-[#7D715E] mt-0.5">
-                      Thưởng <strong className="text-[#1A1612] font-semibold">+{Number(currentTier.extraBonusPercentage)}%</strong> cho đơn hàng đủ điều kiện
-                    </p>
+                    <div className="tier-current-name-row">
+                      <h2 id="tier-current-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] truncate">{currentTier.name}</h2>
+                      <span className="tier-current-bonus">+{Number(currentTier.extraBonusPercentage)}% thưởng</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="tier-heading-review" title="Dựa trên GMV tháng vừa kết thúc. Thông báo khi hạng thay đổi.">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <div>
+                    <span>Lần xét tiếp theo</span>
+                    <strong>{tierStatus.nextEvaluationAt ? new Date(tierStatus.nextEvaluationAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Ho_Chi_Minh' }) : '00:15 ngày 1 mỗi tháng'}</strong>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 my-4">
+              <div className="tier-summary-metrics grid grid-cols-3 gap-2 my-4">
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
                   <span className="text-[11px] text-[#7D715E]">GMV tháng trước</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
@@ -180,7 +196,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                   <Check className="w-4 h-4 text-[#059669]" aria-hidden="true" /> Bạn đang ở cấp bậc cao nhất trong hệ thống đối tác.
                 </p>
               )}
-              <div className="flex items-center justify-between gap-2 pt-3 mt-auto text-xs border-t border-[#EAE4D7]">
+              <div className="tier-sample-benefit flex items-center justify-between gap-2 pt-3 mt-auto text-xs border-t border-[#EAE4D7]">
                 <div className="flex items-center gap-1.5 text-[#7D715E]">
                   <Gift className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                   <span>Sản phẩm mẫu:</span>
@@ -191,7 +207,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
           )}
 
           {/* Policy Panel */}
-          <section className="flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-policy-title">
+          <section className="tier-policy-card flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-policy-title">
             <header className="flex items-center justify-between gap-3 mb-3.5">
               <div className="flex items-center gap-2.5">
                 <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
@@ -199,7 +215,6 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                 </span>
                 <div>
                   <h2 id="tier-policy-title" className="text-sm font-semibold text-[#1A1612]">Cấp bậc &amp; quyền lợi</h2>
-                  <p className="text-[11px] text-[#7D715E]">Xét hạng theo GMV hợp lệ của tháng trước.</p>
                 </div>
               </div>
               <span className="px-2 py-0.5 border border-[#EAE4D7] rounded-md text-[11px] text-[#7D715E]">
@@ -217,7 +232,8 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                   return (
                     <article
                       key={policy.id}
-                      className={`p-3 border rounded-lg transition-colors ${
+                      data-current-tier={Boolean(isCurrent)}
+                      className={`tier-policy-item p-3 border rounded-lg transition-colors ${
                         isCurrent
                           ? 'border-[#EEDFC6] bg-[#FBF5EB]'
                           : 'border-[#EAE4D7] bg-white'
@@ -243,13 +259,10 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                 })
               )}
             </div>
-            <p className="mt-auto pt-3 border-t border-[#EAE4D7] text-[11px] text-[#7D715E]">
-              Hạng có hiệu lực sau khi hệ thống đánh giá. Hạn mức mẫu do từng Shop xét duyệt.
-            </p>
           </section>
 
           {/* Featured Creators */}
-          <section className="col-span-full p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-featured-title">
+          <section className="tier-featured-card col-span-full p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-featured-title">
             <header className="flex items-center justify-between flex-wrap gap-3 mb-3.5">
               <div className="flex items-center gap-2.5">
                 <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
@@ -257,7 +270,6 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                 </span>
                 <div>
                   <h2 id="tier-featured-title" className="text-sm font-semibold text-[#1A1612]">Nhà sáng tạo nổi bật tháng này</h2>
-                  <p className="text-[11px] text-[#7D715E]">Xếp hạng theo doanh số ghi nhận khi giao / hoàn tất trong tháng.</p>
                 </div>
               </div>
               <Link className="inline-flex items-center gap-1 text-xs font-medium text-[#7D715E] hover:text-[#B88E4F] transition-colors" to="/collaborator/leaderboard">
@@ -273,11 +285,11 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
             ) : !podiumEntries.length ? (
               <p className="py-4 text-center text-xs text-[#7D715E]">Chưa có Creator đủ điều kiện vinh danh trong tháng này.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#EAE4D7]">
+              <div className="tier-featured-grid">
                 {podiumEntries.map(({ creator }) => {
                   const rank = creator!.rank;
                   return (
-                    <article className="p-3 sm:px-4 flex flex-col justify-between gap-3 min-w-0" key={creator!.collaboratorId}>
+                    <article data-rank={rank} className="p-3 sm:px-4 flex flex-col justify-between gap-3 min-w-0" key={creator!.collaboratorId}>
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="relative grid place-items-center w-9 h-9 shrink-0 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] font-semibold text-xs overflow-hidden" aria-hidden="true">
                           {creator?.fullName?.charAt(0) || rank}

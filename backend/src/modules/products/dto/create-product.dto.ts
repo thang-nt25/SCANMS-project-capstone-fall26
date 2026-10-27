@@ -11,7 +11,6 @@ import {
   IsUUID,
   IsInt,
   ArrayMaxSize,
-  ArrayMinSize,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -21,10 +20,10 @@ import { ProductPackageDto } from './product-package.dto';
 
 export class CreateProductDto extends ProductPackageDto {
   @ApiProperty({
-    description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm',
+    description: 'Danh sách phân loại; để trống nếu sản phẩm chỉ có một loại',
   })
+  @IsOptional()
   @IsArray()
-  @ArrayMinSize(1, { message: 'Sản phẩm cần có ít nhất một phân loại SKU' })
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => ProductVariantInputDto)
@@ -68,10 +67,10 @@ export class CreateProductDto extends ProductPackageDto {
   @IsNotEmpty({ message: 'Mô tả chi tiết sản phẩm không được để trống' })
   description: string;
 
-  @ApiProperty({ description: 'Thành phần sản phẩm hoặc mỹ phẩm' })
+  @ApiPropertyOptional({ description: 'Thành phần: bắt buộc với mỹ phẩm, chăm sóc và sức khỏe; tùy chọn với ngành hàng khác' })
   @IsString()
-  @IsNotEmpty({ message: 'Thành phần sản phẩm không được để trống' })
-  ingredients: string;
+  @IsOptional()
+  ingredients?: string;
 
   @ApiProperty({ description: 'Quốc gia hoặc nơi sản xuất/xuất xứ' })
   @IsString()

@@ -151,6 +151,29 @@ export const ShopCouponsPage: React.FC = () => {
   // Store Products for Scope Picker
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; price: number; imageUrl?: string }>>([]);
   const [platformSubsidy, setPlatformSubsidy] = useState<PlatformSubsidySummary | null>(null);
+  const [subsidyView, setSubsidyView] = useState<'PENDING' | 'HISTORY'>('PENDING');
+  const [subsidyLoading, setSubsidyLoading] = useState(false);
+  const [subsidyError, setSubsidyError] = useState('');
+  const [subsidyReload, setSubsidyReload] = useState(0);
+
+  useEffect(() => {
+    if (!storeId) return;
+    const controller = new AbortController();
+    setSubsidyLoading(true);
+    setSubsidyError('');
+    couponService.getStorePlatformSubsidies(storeId, controller.signal)
+      .then((rows) => {
+        if (!controller.signal.aborted) setPlatformSubsidy(rows.find((row) => row.storeId === storeId) || null);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setPlatformSubsidy(null);
+          setSubsidyError('Không tải được dữ liệu tài trợ. Vui lòng chọn lại mục để thử lại.');
+        }
+      })
+      .finally(() => { if (!controller.signal.aborted) setSubsidyLoading(false); });
+    return () => controller.abort();
+  }, [storeId, subsidyView, subsidyReload]);
   const [storeCampaigns, setStoreCampaigns] = useState<Array<{ id: string; name?: string; title?: string; storeId: string; isActive: boolean; startDate: string; endDate: string }>>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [voucherProductSearch, setVoucherProductSearch] = useState('');
@@ -290,7 +313,6 @@ export const ShopCouponsPage: React.FC = () => {
         }
         await Promise.all([
           fetchStoreCoupons(foundStore.id),
-          couponService.getStorePlatformSubsidies(foundStore.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null)),
           fetchStoreProducts(foundStore.id),
           api.get('/campaigns/shop').then((res: any) => {
             const payload = res?.data?.data || res?.data || res;
@@ -350,7 +372,8 @@ export const ShopCouponsPage: React.FC = () => {
         const payload = res?.data?.data || res?.data || res;
         setStoreCampaigns((Array.isArray(payload) ? payload : []).filter((campaign: any) => campaign.storeId === selected.id && campaign.isActive && new Date(campaign.endDate) > new Date()));
       }).catch(() => setStoreCampaigns([]));
-      couponService.getStorePlatformSubsidies(selected.id).then((rows) => setPlatformSubsidy(rows[0] || null)).catch(() => setPlatformSubsidy(null));
+      setSubsidyView('PENDING');
+      setPlatformSubsidy(null);
     }
   };
 
@@ -633,15 +656,16 @@ export const ShopCouponsPage: React.FC = () => {
     return matchesSearch;
   });
 
+  // Excess reimbursements still need reconciliation and must remain visible.
+  const subsidyNeedsReview = (order: PlatformSubsidySummary['orders'][number]) =>
+    order.outstandingAmount > 0 || order.paidAmount > order.amount;
+  const pendingSubsidies = platformSubsidy?.orders.filter(subsidyNeedsReview) ?? [];
+  const completedSubsidies = platformSubsidy?.orders.filter((order) => !subsidyNeedsReview(order)) ?? [];
+  const visibleSubsidies = subsidyView === 'PENDING' ? pendingSubsidies : completedSubsidies;
+
   return (
     <div className="promotions-coupons w-full text-[#1A1612]">
       <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
-        {platformSubsidy && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm" aria-label="Đối soát voucher sàn">
-          <h2 className="font-bold">Voucher sàn tài trợ cho Shop</h2>
-          <p className="mt-1">{platformSubsidy.orderCount} đơn · Sàn tài trợ {platformSubsidy.amount.toLocaleString('vi-VN')}₫ · Đã ghi nhận chuyển hoàn {platformSubsidy.paidAmount.toLocaleString('vi-VN')}₫ · Còn phải hoàn {platformSubsidy.outstandingAmount.toLocaleString('vi-VN')}₫</p>
-          <details className="mt-2"><summary className="cursor-pointer font-semibold text-[#B88E4F]">Xem theo đơn hàng</summary><ul className="mt-2 space-y-1">{platformSubsidy.orders.map((order) => <li key={order.orderId}>{order.orderCode}: tài trợ {order.amount.toLocaleString('vi-VN')}₫, đã ghi nhận {order.paidAmount.toLocaleString('vi-VN')}₫, còn lại {order.outstandingAmount.toLocaleString('vi-VN')}₫{order.paidAmount > order.amount ? ' — cần đối soát khoản hoàn vượt sau khi đơn đổi trạng thái' : ''}{order.payments.map((payment, index) => <span key={`${payment.bankReference}-${index}`} className="block pl-3 text-xs text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</span>)}</li>)}</ul></details>
-          {!platformSubsidy.reimbursementReady && <p className="mt-2 text-[#DC2626]">Chức năng ghi nhận chuyển hoàn đang chờ cập nhật database.</p>}
-        </section>}
         <section aria-label="Phát hành voucher gian hàng" className="coupon-issuer rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-3">
@@ -686,19 +710,6 @@ export const ShopCouponsPage: React.FC = () => {
               <span>Phát hành voucher mới</span>
             </button>
             </div>
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#EAE4D7] pt-3">
-            <span className="mr-1 text-xs text-[#7D715E]">Mẫu nhanh</span>
-            {([
-              { id: 'DISCOUNT_10', label: 'Giảm 10%', icon: Zap },
-              { id: 'FLAT_50K', label: 'Giảm 50K', icon: Coins },
-              { id: 'FREESHIP', label: 'Freeship 25K', icon: Gift },
-            ] as const).map((preset) => (
-              <button key={preset.id} type="button" onClick={() => { applyPreset(preset.id); setIsCreateModalOpen(true); }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#7D715E] transition-colors hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#B88E4F] cursor-pointer">
-                <preset.icon className="h-3.5 w-3.5 text-[#B88E4F]" />{preset.label}
-              </button>
-            ))}
           </div>
         </section>
 
@@ -763,6 +774,44 @@ export const ShopCouponsPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {(subsidyLoading || subsidyError || (platformSubsidy && platformSubsidy.orders.length > 0)) && <section aria-label="Tài trợ voucher sàn" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Trạng thái tài trợ">
+            {([
+              { value: 'PENDING', label: 'Chờ hoàn / đối soát', count: pendingSubsidies.length },
+              { value: 'HISTORY', label: 'Lịch sử tài trợ', count: completedSubsidies.length },
+            ] as const).map((view) => <button key={view.value} type="button" aria-pressed={subsidyView === view.value} onClick={() => { setSubsidyLoading(true); setSubsidyError(''); setSubsidyView(view.value); setSubsidyReload((value) => value + 1); }} className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${subsidyView === view.value ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#F3EFE6]'}`}>
+              {view.label}<span className="rounded-full bg-[#F3EFE6] px-1.5 py-0.5 text-[10px] tabular-nums text-[#7D715E]">{subsidyLoading ? '…' : view.count}</span>
+            </button>)}
+          </div>
+          {subsidyLoading && <p role="status" className="flex items-center gap-2 text-xs text-[#7D715E]"><Loader2 className="h-4 w-4 animate-spin" />Đang cập nhật tài trợ…</p>}
+          {subsidyError && <p role="alert" className="text-xs text-[#DC2626]">{subsidyError}</p>}
+          {!subsidyLoading && !subsidyError && visibleSubsidies.length === 0 && <p role="status" className="m-0 rounded-xl border border-[#EAE4D7] bg-white px-4 py-3 text-xs text-[#7D715E]">{subsidyView === 'PENDING' ? 'Không có khoản tài trợ chờ hoàn hoặc cần đối soát.' : 'Chưa có khoản tài trợ đã hoàn tất.'}</p>}
+          <div key={subsidyView} className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">{!subsidyLoading && !subsidyError && visibleSubsidies.map((order) => <section key={order.orderId} className="min-w-0 overflow-hidden rounded-2xl border border-[#EEDFC6] bg-white text-xs" aria-label={`Đối soát voucher sàn ${order.orderCode}`}>
+          <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 bg-[#FBF5EB] px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <Ticket className="h-4 w-4 shrink-0 text-[#B88E4F]" aria-hidden="true" />
+              <h2 className="m-0 text-sm font-semibold">Voucher sàn tài trợ cho Shop</h2>
+            </div>
+          </div>
+          <ul aria-label="Chi tiết tài trợ theo đơn hàng" className="m-0 list-none divide-y divide-[#EAE4D7] border-t border-[#EEDFC6] px-4">
+            <li className="py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1.5">
+                <span className="font-semibold">{order.orderCode}</span>
+                {subsidyView === 'HISTORY' && <span className="rounded-full bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-medium text-[#B88E4F]">Đã hoàn tất</span>}
+                <dl className="m-0 grid w-full grid-cols-3 gap-2 tabular-nums">
+                  <div><dt className="text-[11px] text-[#7D715E]">Tài trợ</dt><dd className="m-0 mt-1 break-words font-medium">{order.amount.toLocaleString('vi-VN')}₫</dd></div>
+                  <div><dt className="text-[11px] text-[#7D715E]">Đã hoàn</dt><dd className="m-0 mt-1 break-words font-medium">{order.paidAmount.toLocaleString('vi-VN')}₫</dd></div>
+                  <div><dt className="text-[11px] text-[#7D715E]">Còn lại</dt><dd className="m-0 mt-1 break-words font-semibold text-[#B88E4F]">{order.outstandingAmount.toLocaleString('vi-VN')}₫</dd></div>
+                </dl>
+              </div>
+              {order.paidAmount > order.amount && <p className="mb-0 mt-1.5 text-[#DC2626]">Cần đối soát khoản hoàn vượt sau khi đơn đổi trạng thái.</p>}
+              {order.payments.map((payment, index) => <p key={`${payment.bankReference}-${index}`} className="mb-0 mt-1.5 break-words text-[11px] text-[#7D715E]">Giao dịch {payment.bankReference} · {payment.amount.toLocaleString('vi-VN')}₫ · {new Date(payment.paidAt).toLocaleDateString('vi-VN')}</p>)}
+            </li>
+          </ul>
+          {platformSubsidy && !platformSubsidy.reimbursementReady && <p className="m-0 border-t border-[#EAE4D7] px-4 py-2 text-[#DC2626]">Chức năng ghi nhận chuyển hoàn đang chờ cập nhật database.</p>}
+        </section>)}</div>
+        </section>}
 
         {/* Tab Selection & Search Filters */}
         <div className="coupon-filters bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1008,7 +1057,7 @@ export const ShopCouponsPage: React.FC = () => {
                   </div>
 
                   {/* Body Info */}
-                  <div className="p-4 space-y-3 text-xs flex-1">
+                  <div className="coupon-card-body p-4 space-y-3 text-xs flex-1">
                     <div className="grid grid-cols-2 gap-2 text-[#7D715E]">
                       <div>
                         <span className="block text-[11px]">Đơn tối thiểu:</span>

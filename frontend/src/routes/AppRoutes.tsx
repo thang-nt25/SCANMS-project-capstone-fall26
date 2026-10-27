@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
+const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
 
 /**
  * Tự động retry dynamic import module nếu gặp lỗi kết nối hoặc Vite HMR reload
@@ -275,6 +276,7 @@ function AppRoutes() {
               <Route path="admin/users" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+              <Route path="admin/internal-traffic-test" element={<InternalTrafficTestPage />} />
               <Route path="admin/audit" element={<AuditLogsPage />} />
               <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
               <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />

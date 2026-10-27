@@ -21,6 +21,9 @@ interface Props {
   onChange: (location: AddressLocationResult) => void;
   nationwide?: boolean;
   resetKey?: number;
+  allowDeviceLocation?: boolean;
+  areaOnly?: boolean;
+  fallbackAddressQuery?: string;
 }
 
 const DEFAULT_POSITION: [number, number] = [10.8231, 106.6297];
@@ -125,13 +128,14 @@ function fromPhoton(feature: any) {
   };
 }
 
-export function AddressLocationPicker({ latitude, longitude, addressQuery, onChange, nationwide = false, resetKey = 0 }: Props) {
+export function AddressLocationPicker({ latitude, longitude, addressQuery, onChange, nationwide = false, resetKey = 0, allowDeviceLocation = true, areaOnly = false, fallbackAddressQuery }: Props) {
   const [draftPosition, setDraftPosition] = useState<[number, number] | null>(
     latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null,
   );
   const [isLocating, setIsLocating] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [deviceSuggestion, setDeviceSuggestion] = useState<AddressLocationResult | null>(null);
   const [mapError, setMapError] = useState(false);
   const [tileRevision, setTileRevision] = useState(0);
   const lookupSequence = useRef(0);
@@ -159,9 +163,10 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
     setIsResolving(false);
     setMessage(null);
     setDraftPosition(latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null);
-    // Explicit parent reset also cancels pending lookups when coordinates were already empty.
+    setDeviceSuggestion(null);
+    // Manual edits cancel suggestions and pending GPS/geocoder callbacks even without saved coordinates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
+  }, [resetKey, addressQuery]);
 
   const requestJson = useCallback(async (url: URL, sequence: number) => {
     const waitMs = Math.max(0, 1100 - (Date.now() - lastLookupAt.current));
@@ -176,7 +181,11 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
     return response.json();
   }, []);
 
-  const reverseGeocode = useCallback(async (nextLatitude: number, nextLongitude: number) => {
+  const reverseGeocode = useCallback(async (nextLatitude: number, nextLongitude: number, fromDevice = false) => {
+    locationSequence.current += 1;
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    setIsLocating(false);
+    setDeviceSuggestion(null);
     setDraftPosition([nextLatitude, nextLongitude]);
     setIsResolving(true);
     setMessage(null);
@@ -201,8 +210,14 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
       }
       if (!payload || sequence !== lookupSequence.current) return;
       if (payload.address?.country_code !== 'vn') throw new Error('Vui lòng chọn vị trí giao hàng tại Việt Nam.');
-      onChange(toResult(payload, nextLatitude, nextLongitude));
-      setMessage('Đã xác định địa chỉ. Vui lòng kiểm tra lại các trường bên trên.');
+      const result = toResult(payload, nextLatitude, nextLongitude);
+      if (fromDevice) {
+        setDeviceSuggestion(result);
+        setMessage('Đây là vị trí thiết bị. Địa chỉ giao hàng chỉ đổi khi bạn xác nhận bên dưới.');
+      } else {
+        onChange(result);
+        setMessage('Đã tìm được vị trí. Kiểm tra địa chỉ tìm được trước khi dùng để giao hàng.');
+      }
     } catch (error: any) {
       if (sequence === lookupSequence.current) {
         setMessage(error instanceof TypeError || error?.name === 'TimeoutError' ? 'Đã đặt ghim nhưng không kết nối được dịch vụ địa chỉ. Vui lòng nhập địa chỉ chi tiết ở trên hoặc thử lại.' : error?.message || 'Không thể xác định địa chỉ tại vị trí này');
@@ -213,6 +228,10 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
   }, [onChange, requestJson]);
 
   const locateMe = () => {
+    if (!allowDeviceLocation) return;
+    lookupSequence.current += 1;
+    setIsResolving(false);
+    setDeviceSuggestion(null);
     if (!navigator.geolocation) {
       setMessage('Trình duyệt này không hỗ trợ định vị GPS.');
       return;
@@ -231,7 +250,7 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
         if (sequence !== locationSequence.current) return;
         if (locationTimer.current) clearTimeout(locationTimer.current);
         setIsLocating(false);
-        void reverseGeocode(coords.latitude, coords.longitude);
+        void reverseGeocode(coords.latitude, coords.longitude, true);
       },
       (error) => {
         if (sequence !== locationSequence.current) return;
@@ -250,6 +269,10 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
   };
 
   const searchAddress = async () => {
+    locationSequence.current += 1;
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    setIsLocating(false);
+    setDeviceSuggestion(null);
     if (!addressQuery.trim()) {
       setMessage('Hãy nhập địa chỉ chi tiết trước khi tìm trên bản đồ.');
       return;
@@ -258,33 +281,44 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
     setMessage(null);
     const sequence = ++lookupSequence.current;
     try {
-      const url = new URL('/search', NOMINATIM_URL);
-      url.searchParams.set('format', 'jsonv2');
-      url.searchParams.set('addressdetails', '1');
-      url.searchParams.set('accept-language', 'vi');
-      url.searchParams.set('countrycodes', 'vn');
-      url.searchParams.set('limit', '1');
-      url.searchParams.set('q', addressQuery.trim());
-      let payload;
-      try { payload = await requestJson(url, sequence); }
-      catch {
+      let match: any;
+      const queries = [...new Set([addressQuery.trim(), ...(areaOnly && fallbackAddressQuery?.trim() ? [fallbackAddressQuery.trim()] : [])])];
+      for (const query of queries) {
+        const url = new URL('/search', NOMINATIM_URL);
+        url.searchParams.set('format', 'jsonv2');
+        url.searchParams.set('addressdetails', '1');
+        url.searchParams.set('accept-language', 'vi');
+        url.searchParams.set('countrycodes', 'vn');
+        url.searchParams.set('limit', '1');
+        url.searchParams.set('q', query);
+        try { const payload = await requestJson(url, sequence); match = payload?.[0]; }
+        catch { /* Try the alternate provider for unavailable or empty search results. */ }
         if (sequence !== lookupSequence.current) return;
-        const fallback = new URL('/api/', PHOTON_URL);
-        fallback.searchParams.set('q', addressQuery.trim());
-        fallback.searchParams.set('limit', '5');
-        const result = await requestJson(fallback, sequence);
-        payload = (result?.features || []).map(fromPhoton).filter((match: any) => match.address.country_code === 'vn');
+        if (!match) {
+          const fallback = new URL('/api/', PHOTON_URL);
+          fallback.searchParams.set('q', query);
+          fallback.searchParams.set('limit', '5');
+          try {
+            const result = await requestJson(fallback, sequence);
+            match = (result?.features || []).map(fromPhoton).find((candidate: any) => candidate.address.country_code === 'vn');
+          } catch { /* A broader administrative query can still locate the area. */ }
+        }
+        if (sequence !== lookupSequence.current) return;
+        if (match) break;
       }
       if (sequence !== lookupSequence.current) return;
-      const match = payload?.[0];
       if (!match) throw new Error('Không tìm thấy địa chỉ. Hãy thêm số nhà hoặc tên đường.');
       if (match.address?.country_code !== 'vn') throw new Error('Vui lòng chọn vị trí giao hàng tại Việt Nam.');
       const nextLatitude = Number(match.lat);
       const nextLongitude = Number(match.lon);
       if (!Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude)) throw new Error('Chưa xác định được tọa độ địa chỉ. Vui lòng thử lại.');
       setDraftPosition([nextLatitude, nextLongitude]);
-      onChange(toResult(match, nextLatitude, nextLongitude));
-      setMessage('Đã đặt ghim theo địa chỉ bạn nhập.');
+      if (areaOnly) {
+        setMessage('Đã tìm được khu vực gần đúng. Nhập số nhà, tên đường rồi tìm lại, hoặc bấm đúng điểm giao hàng trên bản đồ.');
+      } else {
+        onChange(toResult(match, nextLatitude, nextLongitude));
+        setMessage('Đã đặt ghim theo địa chỉ bạn nhập.');
+      }
     } catch (error: any) {
       if (sequence === lookupSequence.current) setMessage(error?.message || 'Không thể tìm địa chỉ');
     } finally {
@@ -305,21 +339,29 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
             <strong className="flex items-center gap-2 text-xs font-black text-[#1A1612]">
               <MapPin className="w-4 h-4 text-[#B88E4F]" /> Vị trí giao hàng
             </strong>
-            <span className="block mt-1 text-[11px] text-[#7D715E]">
-              Bấm bản đồ hoặc kéo ghim để chọn vị trí.
-            </span>
+            {allowDeviceLocation && <span className="block mt-1 text-[11px] text-[#7D715E]">
+              Tìm theo địa chỉ đã nhập hoặc dùng vị trí thiết bị. Bạn có thể chọn nơi giao khác.
+            </span>}
           </div>
           <div className="address-location-actions flex gap-2 shrink-0">
             <button type="button" onClick={searchAddress} disabled={isLocating || isResolving} className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 text-[11px] font-bold text-[#B88E4F] hover:bg-[#F3EFE6] disabled:opacity-50 flex items-center gap-1.5">
               <Search className="w-3.5 h-3.5" /> Tìm địa chỉ
             </button>
-            <button type="button" onClick={locateMe} disabled={isLocating || isResolving} className="address-location-locate rounded-xl bg-[#C59B58] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50 flex items-center gap-1.5">
+            {allowDeviceLocation && <button type="button" onClick={locateMe} disabled={isLocating || isResolving} className="address-location-locate rounded-xl bg-[#C59B58] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50 flex items-center gap-1.5">
               {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crosshair className="w-3.5 h-3.5" />}
-              Vị trí của tôi
-            </button>
+              Vị trí
+            </button>}
           </div>
         </div>
         {message && <p role="status" aria-live="polite" className="mt-3 text-xs leading-relaxed text-[#7D715E]">{message}</p>}
+        {deviceSuggestion && <div className="mt-3 rounded-xl border border-[#EEDFC6] bg-white p-3 text-xs" data-device-location-suggestion>
+          <strong className="font-semibold text-[#1A1612]">Địa chỉ gợi ý từ thiết bị</strong>
+          <p className="mt-1 leading-relaxed text-[#7D715E]">{deviceSuggestion.formattedAddress || [deviceSuggestion.detailAddress, deviceSuggestion.wardName, deviceSuggestion.districtName, deviceSuggestion.provinceName].filter(Boolean).join(', ')}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => { onChange(deviceSuggestion); setDeviceSuggestion(null); setMessage('Đã dùng vị trí thiết bị. Bạn vẫn có thể nhập địa chỉ khác hoặc chọn lại ghim.'); }} className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 font-medium text-[#1A1612]">Dùng vị trí này</button>
+            <button type="button" onClick={() => { setDeviceSuggestion(null); setDraftPosition(latitude != null && longitude != null ? [Number(latitude), Number(longitude)] : null); setMessage('Đã giữ địa chỉ đang nhập.'); }} className="rounded-lg border border-[#EAE4D7] px-3 py-2 text-[#7D715E]">Giữ địa chỉ đang nhập</button>
+          </div>
+        </div>}
         {mapError && <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#7D715E]"><AlertCircle size={15} />Chưa tải được nền bản đồ. Kiểm tra kết nối rồi thử lại.<button type="button" onClick={() => { setMapError(false); setTileRevision(value => value + 1); }} className="flex items-center gap-1 font-semibold text-[#B88E4F]"><RefreshCw size={13} />Tải lại bản đồ</button></div>}
       </div>
 
@@ -350,10 +392,7 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
         )}
       </div>
 
-      <div className="address-location-status flex items-start justify-between gap-3 px-4 py-3 text-[10px]">
-        <span className="text-[#7D715E]">
-          Dữ liệu địa chỉ OpenStreetMap. Kiểm tra địa chỉ trước khi lưu.
-        </span>
+      <div className="address-location-status flex items-start justify-end gap-3 px-4 py-3 text-[10px]">
         <span className="font-mono text-[#7D715E] shrink-0">{coordinateLabel}</span>
       </div>
     </section>
