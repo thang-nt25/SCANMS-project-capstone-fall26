@@ -646,11 +646,6 @@ export const KolCouponsPage: React.FC = () => {
                           {coupon.displayCode}
                         </span>
                       </div>
-                        </span>
-                        <span className="text-sm sm:text-base font-mono font-black text-[#1A1612] tracking-normal truncate block" title={coupon.displayCode}>
-                          {coupon.displayCode}
-                        </span>
-                      </div>
                       <button
                         type="button"
                         onClick={() => handleCopy(coupon.displayCode)}
@@ -963,7 +958,6 @@ export const KolCouponsPage: React.FC = () => {
 
 
               <div className="kol-coupon-proposal-code space-y-4">
-              <div className="space-y-4">
                 {/* 1. Nhập mã voucher */}
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">

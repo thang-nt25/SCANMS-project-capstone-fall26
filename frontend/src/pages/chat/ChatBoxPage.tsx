@@ -1643,7 +1643,6 @@ export default function ChatBoxPage({
               openConversationRef.current(draftConv);
             }
           }
-          }
         }
       } else if (targetCollaboratorId) {
         const effectiveCollabId = LEGACY_ID_MAP[targetCollaboratorId] || targetCollaboratorId;
@@ -1682,8 +1681,6 @@ export default function ChatBoxPage({
           };
           if (isMounted) {
             openConversationRef.current(draftConv);
-          }
-        }
           }
         }
       } else if (activeConvIdRef.current) {
@@ -2269,12 +2266,6 @@ export default function ChatBoxPage({
       resolve(false);
       return;
     }
-    const socket = getChatSocket();
-    if (!socket.connected) {
-      showErrorToast('Mất kết nối chat, vui lòng thử lại.');
-      resolve(false);
-      return;
-    }
     const voucherPayload = {
       type: 'COUPON_VOUCHER',
       couponId: coupon.id,
@@ -2302,19 +2293,9 @@ export default function ChatBoxPage({
         return;
       }
       pendingMessageIds.current.delete(retryKey);
+      showSuccessToast(`Đã chia sẻ mã giảm giá ${coupon.displayCode || coupon.code}.`);
       setReplyTarget(null);
       resolve(true);
-    });
-    }, (err: Error | null, res?: { ok: boolean; error?: string }) => {
-      if (err || !res?.ok) {
-        showErrorToast(res?.error || 'Không gửi được mã giảm giá.');
-        resolve(false);
-      } else {
-        pendingMessageIds.current.delete(retryKey);
-        showSuccessToast(`Đã chia sẻ mã giảm giá ${coupon.displayCode || coupon.code}.`);
-        setReplyTarget(null);
-        resolve(true);
-      }
     });
   });
 
@@ -3001,7 +2982,6 @@ export default function ChatBoxPage({
                               />
                             );
                           }
-                          }
 
                           const couponCard = tryParseCouponVoucherCard(msg.messageText);
                           if (couponCard) {
@@ -3206,28 +3186,6 @@ export default function ChatBoxPage({
                       </button>
                     </>
                   ) : isCustomerChat && (!onlyCustomerChats || hideHeaderInChat) ? (
-                    <>
-                      <button
-                        type="button"
-                        id="btn-composer-voucher"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                        title="Tặng Voucher ưu đãi cho khách"
-                        onClick={() => setShowCouponModal(true)}
-                      >
-                        <Ticket className="w-5 h-5" />
-                      </button>
-                      <button
-                        type="button"
-                        id="btn-composer-product"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#7D715E] transition hover:bg-[#FBF5EB] hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                        title="Gợi ý sản phẩm cho khách"
-                        onClick={() => setShowProductModal(true)}
-                      >
-                        <ShoppingBag className="w-5 h-5" />
-                      </button>
-                    </>
-                  ) : null
-                ) : currentUser?.role === 'COLLABORATOR' ? (
                     <>
                       <button
                         type="button"

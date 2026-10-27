@@ -45,7 +45,7 @@ const date = (value?: string | number | null) =>
       });
 type Action = 'video' | 'issue' | 'cancel';
 
-export default function SampleRequestsPage() {
+export default function SampleRequestsPage({ embedded: _embedded = false }: { embedded?: boolean } = {}) {
   const { data, loading, error, refresh, updatedAt } = useWorkspaceResource<
     SampleRequest[]
   >('/sample-requests/my');

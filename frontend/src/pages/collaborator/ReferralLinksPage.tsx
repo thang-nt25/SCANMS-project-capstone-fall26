@@ -27,6 +27,7 @@ import {
   Store,
   Download,
   ShieldAlert,
+  ShieldCheck,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -2004,7 +2005,6 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
                                     ? 'bg-[#FBF5EB] border-l-4 border-l-[#B88E4F]'
                                     : 'hover:bg-[#FAF8F5]'
                                 }`}
-                                    }`}
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     <img
@@ -2024,9 +2024,8 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
                                     </div>
                                   </div>
                                       <span className="text-[10px] font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded-md">
-                                        Hoa hồng: {p.commissionRate || 10}%
+                                        Hoa hồng: {(p as any).commissionRate || p.customCommissionRate || 10}%
                                       </span>
-                                  </span>
                                 </button>
                               );
                             })}

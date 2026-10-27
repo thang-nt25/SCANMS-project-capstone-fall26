@@ -437,8 +437,8 @@ export default function OrdersManagementPage({
     return () => {
       active = false;
       window.clearInterval(timer);
-      window.removeEventListener('focus', triggerQuietRevalidate);
-      document.removeEventListener('visibilitychange', triggerQuietRevalidate);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
       window.removeEventListener('scanms_order_updated', handleOrderEvent);
     };
 }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery, searchField]);
@@ -1080,7 +1080,7 @@ export default function OrdersManagementPage({
                 <span>Hàng mẫu KOL</span>
               </button>
             </div>
-            {activeOrderView === "COMMERCIAL" ? (
+            {activeOrderView === "COMMERCIAL" && (
               <div className="merchant-orders-toolbar-actions">
                 <button
                   type="button"

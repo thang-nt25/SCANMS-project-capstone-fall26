@@ -4,6 +4,7 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { applyTheme } from '../../utils/theme.utils';
+import { SeedDataNotice } from '../common/SeedDataNotice';
 
 export default function MainLayout() {
   const location = useLocation();
