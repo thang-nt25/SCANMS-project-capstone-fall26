@@ -340,7 +340,7 @@ export function ConversationExplorer({
                 >
                   <div className="mb-2 flex flex-wrap justify-between gap-1 text-xs">
                     <span className="font-semibold text-[#1A1612]">
-                      {item.sender.fullName}
+                      {item.sender?.fullName || 'Người gửi'}
                     </span>
                     <time dateTime={item.createdAt} className="text-[#7D715E]">
                       {new Date(item.createdAt).toLocaleString("vi-VN", {

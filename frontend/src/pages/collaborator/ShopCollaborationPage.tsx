@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type UIEvent } from 'react';
 import './ShopCollaborationPage.css';
 import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
+import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
@@ -351,6 +352,8 @@ export default function ShopCollaborationPage() {
       previousFocus?.focus();
     };
   }, [showDiscoverModal]);
+
+  const [dealPickerStoreId, setDealPickerStoreId] = useState<string | null>(null);
 
   // Sidebar Collapse state (Thu gọn / Mở rộng thanh bên gian hàng)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -1495,6 +1498,18 @@ setActiveTab('samples');
             {/* 1. CHAT TAB */}
             {activeTab === 'messages' && (
               <div className="collaboration-chat-section h-full w-full overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-2 bg-[#FAF8F5] border-b border-[#EAE4D7] shrink-0">
+                  <div className="text-xs text-[#7D715E]">
+                    Trao đổi trực tiếp với <strong className="text-[#1A1612] font-semibold">{selectedStore.name}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDealPickerStoreId(selectedStore.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
+                  >
+                    <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
+                  </button>
+                </div>
                 <div className="flex-1 min-h-0">
                   <ChatBoxPage
                     embedded
@@ -2907,6 +2922,19 @@ setActiveTab('samples');
           </div>
         );
       })()}
+
+      {selectedStore && dealPickerStoreId === selectedStore.id && (
+        <DealProductPicker
+          key={selectedStore.id}
+          storeId={selectedStore.id}
+          storeName={selectedStore.name}
+          onClose={() => setDealPickerStoreId(null)}
+          onSelect={(product) => {
+            setDealPickerStoreId(null);
+            handleOpenDealModal(product);
+          }}
+        />
+      )}
     </div>
   );
 }

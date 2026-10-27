@@ -14,7 +14,7 @@ export function useChatReply(userId?: string, conversationId?: string | null) {
     setSaved(message ? JSON.stringify({
       id: message.id, conversationId: message.conversationId, senderId: message.senderId,
       messageText: chatReplyPreview(message), mediaType: message.mediaType, mediaName: message.mediaName?.slice(0, 255),
-      createdAt: message.createdAt, sender: { id: message.sender.id, fullName: message.sender.fullName, role: message.sender.role },
+      createdAt: message.createdAt, sender: message.sender ? { id: message.sender.id, fullName: message.sender.fullName, role: message.sender.role } : { id: message.senderId, fullName: 'Người gửi', role: 'USER' },
     }) : '');
   };
   return [selected, select] as const;

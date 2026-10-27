@@ -6,7 +6,7 @@ import './ChatReply.css';
 export function ChatReplyQuote({ message, currentUserId, onCancel, onLocate }: {
   message: ChatReply; currentUserId?: string; onCancel?: () => void; onLocate?: () => void;
 }) {
-  const name = message.senderId === currentUserId ? 'Bạn' : message.sender.fullName || 'Người gửi';
+  const name = message.senderId === currentUserId ? 'Bạn' : message.sender?.fullName || 'Người gửi';
   const content = <><strong>{onCancel ? `Đang trả lời ${name}` : name}</strong><span>{chatReplyPreview(message)}</span></>;
   return <div className={`chat-reply-quote${onCancel ? ' chat-reply-draft' : ''}`} role={onCancel ? 'status' : undefined}>
     {onCancel && <CornerUpLeft size={16} aria-hidden="true" />}

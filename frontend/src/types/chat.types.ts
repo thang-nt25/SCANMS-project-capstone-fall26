@@ -20,7 +20,7 @@ export interface ChatMessage {
   mediaName?: string;
   isRead: boolean;
   createdAt: string;
-  sender: ChatUser;
+  sender?: ChatUser;
   replyToId?: string | null;
   replyTo?: ChatReply | null;
 }

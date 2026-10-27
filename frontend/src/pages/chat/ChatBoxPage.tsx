@@ -2178,7 +2178,15 @@ export default function ChatBoxPage({
 
   const chooseReply = (message: ChatMessage) => {
     if (sendingRef.current || !messageReplies) return;
-    setReplyTarget(message);
+    const safeMessage: ChatMessage = {
+      ...message,
+      sender: message.sender || {
+        id: message.senderId,
+        fullName: message.senderId === currentUser?.id ? (currentUser?.fullName || 'Bạn') : (activeConv ? getOtherParty(activeConv) : 'Người gửi'),
+        role: message.senderId === currentUser?.id ? (currentUser?.role || 'USER') : 'USER'
+      }
+    };
+    setReplyTarget(safeMessage);
     messageInputRef.current?.focus();
   };
   const locateReply = async (message: ChatReply) => {
@@ -3038,7 +3046,7 @@ export default function ChatBoxPage({
                             </div>
                           );
                         })()}
-                        {messageReplies && <button type="button" className="chat-reply-action" disabled={isSending} onClick={() => chooseReply(msg)} aria-label={`Trả lời tin nhắn của ${msg.senderId === currentUser?.id ? 'bạn' : msg.sender.fullName}`}><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
+                        {messageReplies && <button type="button" className="chat-reply-action" disabled={isSending} onClick={() => chooseReply(msg)} aria-label={`Trả lời tin nhắn của ${msg.senderId === currentUser?.id ? 'bạn' : (msg.sender?.fullName || (activeConv ? getOtherParty(activeConv) : 'đối phương'))}`}><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
 
                         {!(embedded && hideHeaderInChat && !isMine && hasSenderHeader) && <div
                           className={`flex items-center gap-1 px-1 text-[10px] text-[#7D715E]/80 ${isMine ? 'justify-end' : 'justify-start'
