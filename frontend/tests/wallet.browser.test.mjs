@@ -57,7 +57,7 @@ test(
         availableBalance: "500000.31",
         pendingBalance: "900000.00",
         minimumWithdrawalAmount: "200000.00",
-        withdrawalTaxPolicy: { threshold: "2000000.00", rate: "0.10" },
+        withdrawalTaxPolicy: { threshold: "0.00", rate: "0.10" },
         kycStatus: "VERIFIED",
         canWithdraw: true,
         bankAccount: {
@@ -116,8 +116,8 @@ test(
                 store: { name: "Test Shop" },
                 batchId: null,
                 amount: body.amount,
-                taxAmount: "0.00",
-                netAmount: body.amount,
+                taxAmount: "20000.01",
+                netAmount: "180000.09",
                 taxCalculated: true,
                 status: "PENDING",
                 createdAt: new Date().toISOString(),
@@ -222,6 +222,14 @@ test(
         await page.$eval("#withdrawal-amount", (input) => input.value),
         "200000.10",
       );
+      assert.ok((await page.$eval(
+        '[data-testid="withdrawal-tax-preview"]',
+        element => element.textContent,
+      )).includes("20.000,01"));
+      assert.ok((await page.$eval(
+        '[data-testid="withdrawal-net-preview"]',
+        element => element.textContent,
+      )).includes("180.000,09"));
       await page.$eval("form", (form) => {
         form.requestSubmit();
         form.requestSubmit();

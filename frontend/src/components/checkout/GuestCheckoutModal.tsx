@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutOrderConfirmation';
 import { CheckoutItemsSection } from './CheckoutItemsSection';
-import { CheckoutVoucherSection } from './CheckoutVoucherSection';
 import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
 import { ScanMSLogo } from '../common/ScanMSLogo';
-import { CheckoutVoucherPicker } from './CheckoutVoucherPicker';
-import type { PublicStoreCoupon } from '@/services/coupon.service';
-import { voucherSlot } from '@/utils/voucher-intent';
+import {
+  ScanmsCheckoutVoucherModal,
+  type AppliedShopVoucher,
+  type AppliedPlatformVoucher,
+} from './ScanmsCheckoutVoucherModal';
 import {
   ArrowLeft,
   ChevronDown,
@@ -20,6 +21,8 @@ import {
   Save,
   Plus,
   Trash2,
+  Ticket,
+  ChevronRight,
 } from 'lucide-react';
 
 function normalizeVietnameseAddress(str: string): string {
@@ -394,23 +397,16 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [singleQuantity] = useState(initialQuantity);
   const [selectedVariantId] = useState<string | undefined>(initialVariantId);
 
-  // Coupons
-  const [couponCode, setCouponCode] = useState(initialCouponCode);
+  // SCANMS 3-Tier Vouchers
+  const [isScanmsVoucherModalOpen, setIsScanmsVoucherModalOpen] = useState(false);
+  const [appliedShopCoupons, setAppliedShopCoupons] = useState<Record<string, AppliedShopVoucher>>({});
+  const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<AppliedPlatformVoucher | null>(null);
+  const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<AppliedPlatformVoucher | null>(null);
+  const [, setCouponCode] = useState(initialCouponCode);
   const [extraVoucherDismissed, setExtraVoucherDismissed] = useState(false);
   const [extraVoucherBusy, setExtraVoucherBusy] = useState(false);
-  const [voucherTargetStoreId, setVoucherTargetStoreId] = useState('');
-  const [platformCouponCode, setPlatformCouponCode] = useState('');
-  const [shippingCouponCode, setShippingCouponCode] = useState('');
-  const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
-  const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<{ code: string; discountAmount: number } | null>(null);
-  const [stackedCouponBusy, setStackedCouponBusy] = useState<'GOODS' | 'SHIPPING' | null>(null);
   const [autoCouponDismissed, setAutoCouponDismissed] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discountAmount: number;
-    discountType: string;
-  } | null>(null);
   const [couponMessage, setCouponMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -547,17 +543,43 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     return Array.from(map.values());
   }, [activeItems]);
 
-  const targetVoucherStoreId = voucherTargetStoreId || itemsGroupedByShop[0]?.store.id || store?.id || '';
+  const targetVoucherStoreId = itemsGroupedByShop[0]?.store.id || store?.id || '';
+  const setAppliedCoupon = useCallback(
+    (val: { code: string; discountAmount: number; discountType?: string } | null) => {
+      if (val && targetVoucherStoreId) {
+        setAppliedShopCoupons((prev) => ({
+          ...prev,
+          [targetVoucherStoreId]: {
+            ...val,
+            storeId: targetVoucherStoreId,
+            storeName: itemsGroupedByShop.find((g) => g.store.id === targetVoucherStoreId)?.store.name,
+          },
+        }));
+      } else if (!val) {
+        setAppliedShopCoupons({});
+      }
+    },
+    [targetVoucherStoreId, itemsGroupedByShop],
+  );
   const targetVoucherSubtotal = itemsGroupedByShop.find((group) => group.store.id === targetVoucherStoreId)?.subtotal || 0;
   const voucherBasisKey = activeItems.map((item) => `${item.store.id}:${item.productId}:${item.variantId || ''}:${item.quantity}:${item.price}`).join('|') + `:${customerPhone.trim()}`;
   const voucherValidationBasis = `${targetVoucherStoreId}:${voucherBasisKey}:${shippingFeesByStore[targetVoucherStoreId] || 0}`;
   const voucherValidationBasisRef = useRef(voucherValidationBasis);
   voucherValidationBasisRef.current = voucherValidationBasis;
   const previousVoucherBasis = useRef(voucherBasisKey);
+  const shippingVoucherBasis = JSON.stringify(shippingFeesByStore);
+  const previousShippingVoucherBasis = useRef(shippingVoucherBasis);
+  useEffect(() => {
+    if (previousShippingVoucherBasis.current !== shippingVoucherBasis) {
+      previousShippingVoucherBasis.current = shippingVoucherBasis;
+      // A shipping discount is a preview of a particular quote, not a fixed credit.
+      setAppliedShippingCoupon(null);
+    }
+  }, [shippingVoucherBasis]);
   useEffect(() => {
     if (previousVoucherBasis.current !== voucherBasisKey) {
       previousVoucherBasis.current = voucherBasisKey;
-      setAppliedCoupon(null);
+      setAppliedShopCoupons({});
       setAppliedPlatformCoupon(null);
       setAppliedShippingCoupon(null);
     }
@@ -595,33 +617,21 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   }, [activeItems]);
   const activeUnitCount = activeItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  const finalTotal = Math.max(0, rawSubtotal - discountAmount - (appliedPlatformCoupon?.discountAmount || 0)) + Math.max(0, (shippingFee || 0) - (appliedShippingCoupon?.discountAmount || 0));
+  const totalShopDiscount = useMemo(() => {
+    return Object.values(appliedShopCoupons).reduce((sum, c) => sum + (Number(c.discountAmount) || 0), 0);
+  }, [appliedShopCoupons]);
+  const platformDiscount = appliedPlatformCoupon ? Number(appliedPlatformCoupon.discountAmount) || 0 : 0;
+  const shippingDiscount = appliedShippingCoupon ? Number(appliedShippingCoupon.discountAmount) || 0 : 0;
+  const totalCombinedDiscount = totalShopDiscount + platformDiscount + shippingDiscount;
+  const appliedVoucherCount = Object.keys(appliedShopCoupons).length + (appliedPlatformCoupon ? 1 : 0) + (appliedShippingCoupon ? 1 : 0);
 
-  const applyStackedCoupon = async (benefitType: 'GOODS' | 'SHIPPING', selectedCode?: string) => {
-    const code = selectedCode ?? (benefitType === 'GOODS' ? platformCouponCode : shippingCouponCode);
-    if (!code.trim()) return;
-    const basis = voucherValidationBasisRef.current;
-    if (benefitType === 'GOODS') setAppliedPlatformCoupon(null);
-    else setAppliedShippingCoupon(null);
-    try {
-      setStackedCouponBusy(benefitType);
-      const response: any = await api.post('/coupons/preview-stacked', {
-        code: code.trim(), storeId: targetVoucherStoreId,
-        benefitType, goodsSubtotal: targetVoucherSubtotal, shippingFee: shippingFeesByStore[targetVoucherStoreId] || 0,
-        shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code || undefined, customerPhone: customerPhone.trim() || undefined,
-      });
-      const result = response?.data || response;
-      if (basis !== voucherValidationBasisRef.current) return;
-      if (benefitType === 'GOODS') setAppliedPlatformCoupon(result);
-      else setAppliedShippingCoupon(result);
-      const successMessage = `Đã áp dụng mã ${result.code} thành công! Giảm ${formatMoney(Number(result.discountAmount) || 0)}${benefitType === 'SHIPPING' ? ' phí vận chuyển' : ' tiền hàng'}.`;
-      setErrorMessage(null);
-      setCouponMessage({ type: 'success', text: successMessage });
-      toast.success(successMessage);
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Voucher không hợp lệ.'); }
-    finally { setStackedCouponBusy(null); }
-  };
+  const appliedCoupon = useMemo(() => {
+    const list = Object.values(appliedShopCoupons);
+    return list.length > 0 ? list[0] : null;
+  }, [appliedShopCoupons]);
+  const discountAmount = totalShopDiscount;
+
+  const finalTotal = Math.max(0, rawSubtotal - totalShopDiscount - platformDiscount) + Math.max(0, (shippingFee || 0) - shippingDiscount);
 
   // Check PayOS Availability
   useEffect(() => {
@@ -1076,80 +1086,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const isEmailValid = (email: string) =>
     !email.trim() || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim());
 
-  // Validate coupon
-  const handleValidateCoupon = async (selectedCode?: string) => {
-    const code = selectedCode ?? couponCode;
-    if (!code.trim()) return;
-    const basis = voucherValidationBasisRef.current;
-    setCouponLoading(true);
-    setCouponMessage(null);
-    try {
-      const targetStoreId = targetVoucherStoreId;
-      const res: any = await api.post('/coupons/validate', {
-        code: code.trim(),
-        storeId: targetStoreId,
-        customerPhone: customerPhone.trim() || undefined,
-        items: activeItems.filter((item) => item.store.id === targetStoreId).map((item) => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPrice: item.price,
-        })),
-        hasProductDiscount: false,
-        hasShopVoucher: false,
-        hasPlatformVoucher: Boolean(appliedPlatformCoupon),
-      });
-
-      const data = res?.data || res;
-      if (basis !== voucherValidationBasisRef.current) return;
-      setAppliedCoupon({
-        code: data.code,
-        discountAmount: Number(data.discountAmount) || 0,
-        discountType: data.discountType,
-      });
-      setAppliedPlatformCoupon(null);
-      const successMessage = `Đã áp dụng mã ${data.code} thành công! Giảm ${formatMoney(Number(data.discountAmount) || 0)} tiền hàng.`;
-      setErrorMessage(null);
-      setCouponMessage({
-        type: 'success',
-        text: successMessage,
-      });
-      toast.success(successMessage);
-    } catch (err: any) {
-      setAppliedCoupon(null);
-      setCouponMessage({
-        type: 'error',
-        text: err?.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc không áp dụng được.',
-      });
-    } finally {
-      setCouponLoading(false);
-    }
-  };
-
-  const handleRemoveCoupon = () => {
-    setAutoCouponDismissed(true);
-    setCouponLoading(false);
-    setAppliedCoupon(null);
-    setAppliedPlatformCoupon(null);
-    setCouponCode('');
-    setCouponMessage(null);
-  };
-
-  const chooseCheckoutVoucher = async (voucher: PublicStoreCoupon) => {
-    if (couponLoading || stackedCouponBusy || extraVoucherBusy) return;
-    const slot = voucherSlot(voucher);
-    if (slot === 'SHOP') {
-      setAutoCouponDismissed(true);
-      setCouponCode(voucher.code);
-      await handleValidateCoupon(voucher.code);
-    } else {
-      setExtraVoucherDismissed(true);
-      if (slot === 'PLATFORM') setPlatformCouponCode(voucher.code);
-      else setShippingCouponCode(voucher.code);
-      await applyStackedCoupon(slot === 'PLATFORM' ? 'GOODS' : 'SHIPPING', voucher.code);
-    }
-  };
-
   const liveCouponCodes = [...new Set(activeItems.map((item) => item.liveCouponCode).filter(Boolean))];
   const autoCouponCode = initialCouponCode || (liveCouponCodes.length === 1 ? liveCouponCodes[0]! : '');
   const extraVoucherCode = initialExtraVoucher?.code;
@@ -1162,8 +1098,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     setExtraVoucherBusy(true);
     const code = extraVoucherCode;
     const benefitType = extraVoucherBenefit;
-    if (benefitType === 'GOODS') { setPlatformCouponCode(code); setAppliedPlatformCoupon(null); }
-    else { setShippingCouponCode(code); setAppliedShippingCoupon(null); }
+    if (benefitType === 'GOODS') { setAppliedPlatformCoupon(null); }
+    else { setAppliedShippingCoupon(null); }
     const timer = window.setTimeout(() => {
       void api.post('/coupons/preview-stacked', {
         code, storeId: targetVoucherStoreId, benefitType,
@@ -1215,20 +1151,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
     setAddressValidationField(null);
-    if (couponLoading || extraVoucherBusy || stackedCouponBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
-
-    const pendingVoucherLabels = [
-      couponCode.trim() && !appliedCoupon ? 'Voucher Shop / KOL' : null,
-      platformCouponCode.trim() && !appliedPlatformCoupon ? 'Voucher SCANMS' : null,
-      shippingCouponCode.trim() && !appliedShippingCoupon ? 'Voucher vận chuyển' : null,
-    ].filter(Boolean);
-    if (pendingVoucherLabels.length) {
-      const message = `Chưa thể đặt hàng: mã tại ${pendingVoucherLabels.join(', ')} chưa được áp dụng thành công. Chỉ được dùng 1 voucher tiền hàng Shop hoặc KOL cho mỗi Shop. Vui lòng bấm “Áp dụng” đúng loại voucher hoặc xóa mã chưa dùng.`;
-      setErrorMessage(message);
-      setCouponMessage({ type: 'error', text: message });
-      document.getElementById('checkout-vouchers-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
+    if (couponLoading || extraVoucherBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -1339,6 +1262,11 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         })),
       );
 
+      const finalCouponsByStore: Record<string, string> = {};
+      for (const [sId, v] of Object.entries(appliedShopCoupons)) {
+        if (v?.code) finalCouponsByStore[sId] = v.code;
+      }
+
       const payload = {
         storeId: activeItems[0]?.store.id || store?.id,
         customerName: trimmedName,
@@ -1348,12 +1276,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         policyAccepted: true,
         orderNotes: orderNotes.trim() || undefined,
         paymentMethod,
-        couponCode: itemsGroupedByShop.length === 1 ? appliedCoupon?.code || undefined : undefined,
-        couponsByStore: appliedCoupon ? { [targetVoucherStoreId]: appliedCoupon.code } : undefined,
-        platformCouponsByStore: appliedPlatformCoupon ? { [targetVoucherStoreId]: appliedPlatformCoupon.code } : undefined,
-        shippingCouponsByStore: appliedShippingCoupon ? { [targetVoucherStoreId]: appliedShippingCoupon.code } : undefined,
-        platformCouponCode: itemsGroupedByShop.length === 1 ? appliedPlatformCoupon?.code || undefined : undefined,
-        shippingCouponCode: itemsGroupedByShop.length === 1 ? appliedShippingCoupon?.code || undefined : undefined,
+        couponCode: Object.values(appliedShopCoupons)[0]?.code || undefined,
+        couponsByStore: Object.keys(finalCouponsByStore).length > 0 ? finalCouponsByStore : undefined,
+        platformCouponsByStore: appliedPlatformCoupon ? { [appliedPlatformCoupon.storeId || targetVoucherStoreId]: appliedPlatformCoupon.code } : undefined,
+        shippingCouponsByStore: appliedShippingCoupon ? { [appliedShippingCoupon.storeId || targetVoucherStoreId]: appliedShippingCoupon.code } : undefined,
+        platformCouponCode: appliedPlatformCoupon?.code || undefined,
+        shippingCouponCode: appliedShippingCoupon?.code || undefined,
         idempotencyKey,
         items: normalizedItems,
       };
@@ -1962,32 +1890,85 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               onEditCart={() => { editCheckoutCart(activeItems); onClose(); }}
               onContinueShopping={() => { continueShoppingFromCheckout(activeItems); onClose(); navigate('/marketplace#catalog-section'); }}
             />
-            {targetVoucherStoreId && (
-              <div className="mb-4">
-                <CheckoutVoucherPicker
-                  key={targetVoucherStoreId}
-                  storeId={targetVoucherStoreId}
-                  productIds={activeItems.filter((item) => item.store.id === targetVoucherStoreId).map((item) => item.productId)}
-                  goodsSubtotal={targetVoucherSubtotal}
-                  shippingFee={shippingFeesByStore[targetVoucherStoreId] || 0}
-                  busy={couponLoading || !!stackedCouponBusy || extraVoucherBusy}
-                  selected={{ SHOP: appliedCoupon?.code, PLATFORM: appliedPlatformCoupon?.code, SHIPPING: appliedShippingCoupon?.code }}
-                  onApply={(voucher) => { void chooseCheckoutVoucher(voucher); }}
-                />
-              </div>
-            )}
-            <CheckoutVoucherSection
+            {/* ========================================================================= */}
+            {/* BLOCK 2.5: SCANMS VOUCHER TRIGGER */}
+            {/* ========================================================================= */}
+            <div className="bg-white border border-[#EAE4D7] rounded-xl p-4 transition-all hover:border-[#C59B58]/60 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsScanmsVoucherModalOpen(true)}
+                className="w-full flex items-center justify-between gap-3 text-left group cursor-pointer"
+                id="open-scanms-voucher-modal-btn"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#C59B58] group-hover:scale-105 transition-transform">
+                    <Ticket className="w-4 h-4 text-[#C59B58]" />
+                  </div>
+                  <span className="text-sm font-bold text-[#1A1612]">SCANMS Voucher</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {appliedVoucherCount > 0 ? (
+                    <span className="inline-block px-2.5 py-1 bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] rounded-md text-xs font-bold">
+                      Đã áp dụng {appliedVoucherCount} mã (−{formatMoney(totalCombinedDiscount)})
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-[#7D715E] group-hover:text-[#C59B58] transition-colors">
+                      Chọn hoặc nhập mã
+                    </span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-[#7D715E] group-hover:text-[#C59B58] group-hover:translate-x-0.5 transition-all" />
+                </div>
+              </button>
+
+              {/* Thông báo coupon nếu có */}
+              {couponMessage && (
+                <div className={`mt-2.5 text-xs font-medium px-2.5 py-1.5 rounded-md ${couponMessage.type === 'error' ? 'bg-red-50 text-[#DC2626] border border-red-200' : 'bg-amber-50 text-[#8A642C] border border-[#EEDFC6]'}`}>
+                  {couponMessage.text}
+                </div>
+              )}
+            </div>
+
+            {/* SCANMS Voucher Modal Component */}
+            <ScanmsCheckoutVoucherModal
+              isOpen={isScanmsVoucherModalOpen}
+              onClose={() => setIsScanmsVoucherModalOpen(false)}
+              onRequestSignIn={() => {
+                setIsScanmsVoucherModalOpen(false);
+                setShowPasswordLogin(true);
+                window.requestAnimationFrame(() => {
+                  const gate = document.getElementById('mandatory-auth-gate');
+                  gate?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  gate?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+                });
+              }}
               groups={itemsGroupedByShop}
-              targetStoreId={targetVoucherStoreId}
-              onTargetChange={id => { setVoucherTargetStoreId(id); setAppliedCoupon(null); setAppliedPlatformCoupon(null); setAppliedShippingCoupon(null); setCouponMessage(null); }}
-              shop={{ value: couponCode, applied: Boolean(appliedCoupon), busy: couponLoading,
-                onChange: value => { setCouponCode(value); setAutoCouponDismissed(true); setCouponLoading(false); setAppliedCoupon(null); setCouponMessage(null); },
-                onApply: handleValidateCoupon, onRemove: handleRemoveCoupon }}
-              platform={{ value: platformCouponCode, applied: Boolean(appliedPlatformCoupon), busy: stackedCouponBusy === 'GOODS',
-                onChange: value => { setPlatformCouponCode(value); setAppliedPlatformCoupon(null); }, onApply: () => { void applyStackedCoupon('GOODS'); }, onRemove: () => { setAppliedPlatformCoupon(null); setPlatformCouponCode(''); } }}
-              shipping={{ value: shippingCouponCode, applied: Boolean(appliedShippingCoupon), busy: stackedCouponBusy === 'SHIPPING',
-                onChange: value => { setShippingCouponCode(value); setAppliedShippingCoupon(null); }, onApply: () => { void applyStackedCoupon('SHIPPING'); }, onRemove: () => { setAppliedShippingCoupon(null); setShippingCouponCode(''); } }}
-              message={couponMessage}
+              shippingFeesByStore={shippingFeesByStore}
+              totalShippingFee={shippingFee || 0}
+              rawGoodsSubtotal={rawSubtotal}
+              customerPhone={customerPhone}
+              appliedShopCoupons={appliedShopCoupons}
+              appliedPlatformCoupon={appliedPlatformCoupon}
+              appliedShippingCoupon={appliedShippingCoupon}
+              onApplyShopCoupon={(storeId, v) => {
+                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
+                setAppliedShopCoupons((prev) => ({
+                  ...prev,
+                  [storeId]: { ...v, storeId },
+                }));
+              }}
+              onRemoveShopCoupon={(storeId) => {
+                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
+                setAppliedShopCoupons((prev) => {
+                  const next = { ...prev };
+                  delete next[storeId];
+                  return next;
+                });
+              }}
+              onApplyPlatformCoupon={(v) => setAppliedPlatformCoupon(v)}
+              onRemovePlatformCoupon={() => setAppliedPlatformCoupon(null)}
+              onApplyShippingCoupon={(v) => setAppliedShippingCoupon(v)}
+              onRemoveShippingCoupon={() => setAppliedShippingCoupon(null)}
             />
 
             <section className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left" aria-labelledby="checkout-payment-title">
@@ -1995,7 +1976,12 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               <dl className="checkout-totals grid gap-[12px] w-full max-w-[440px] m-[0_0_0_auto] p-[22px_24px] [&_>_div]:flex [&_>_div]:items-baseline [&_>_div]:justify-between [&_>_div]:gap-[20px] [&_>_div]:text-[color:#7D715E]! [&_>_div]:text-[12px] [&_>_div]:leading-[1.65] [&_dt]:min-w-0 [&_dd]:min-w-0 [&_dd]:max-w-[240px] [&_dd]:m-0 [&_dd]:text-[color:#1A1612]! [&_dd]:text-right [&_dd]:tabular-nums [&_dd]:[overflow-wrap:anywhere] [&_.checkout-total-discount_dd]:text-[color:#8A642C]! [&_.checkout-total-final]:items-center [&_.checkout-total-final]:mt-[3px] [&_.checkout-total-final]:pt-[16px] [&_.checkout-total-final]:border-t [&_.checkout-total-final]:border-t-[#EAE4D7] [@media_(max-width:639px)]:max-w-none [@media_(max-width:639px)]:p-[18px_16px]" aria-label="Chi tiết thanh toán">
                 <div><dt>Tổng tiền hàng ({activeUnitCount} sản phẩm)</dt><dd>{formatMoney(rawSubtotal)}</dd></div>
                 <div><dt>Phí vận chuyển GHN</dt><dd role="status">{shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}{shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}</dd></div>
-                {appliedCoupon && <div className="checkout-total-discount"><dt>Voucher Shop / KOL ({appliedCoupon.code})</dt><dd>−{formatMoney(discountAmount)}</dd></div>}
+                {totalShopDiscount > 0 && (
+                  <div className="checkout-total-discount">
+                    <dt>Voucher Gian hàng & KOL ({Object.values(appliedShopCoupons).map((c) => c.code).join(', ')})</dt>
+                    <dd>−{formatMoney(totalShopDiscount)}</dd>
+                  </div>
+                )}
                 {appliedPlatformCoupon && <div className="checkout-total-discount"><dt>Voucher SCANMS ({appliedPlatformCoupon.code})</dt><dd>−{formatMoney(appliedPlatformCoupon.discountAmount)}</dd></div>}
                 {appliedShippingCoupon && <div className="checkout-total-discount"><dt>Voucher vận chuyển ({appliedShippingCoupon.code})</dt><dd>−{formatMoney(appliedShippingCoupon.discountAmount)}</dd></div>}
                 <div className="checkout-total-final [&_dd]:text-[color:#1A1612]! [&_dd]:text-[26px] [&_dd]:font-[650] [&_dd]:tracking-[-.5px]! [&_dd]:leading-[1.35] [&_dd_>_span]:text-[color:#7D715E]! [&_dd_>_span]:text-[13px] [&_dd_>_span]:font-[500] [@media_(max-width:639px)]:[&_dd]:text-[24px]"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>

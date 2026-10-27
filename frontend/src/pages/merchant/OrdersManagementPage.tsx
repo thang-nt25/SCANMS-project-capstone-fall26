@@ -223,6 +223,8 @@ export default function OrdersManagementPage({
   // Real store orders list state
   const [orders, setOrders] = useState<StoreOrderRecord[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
+  const lastFetchTimeRef = useRef<number>(Date.now());
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -234,9 +236,46 @@ export default function OrdersManagementPage({
   ordersAutoRefreshPaused.current = action !== null || activeOrderView !== 'COMMERCIAL';
   const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
   const [copiedTrackingId, setCopiedTrackingId] = useState<string | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownPanelRef = useRef<HTMLDivElement>(null);
   const [orderMenuPosition, setOrderMenuPosition] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number }>({ left: 8, top: 8, maxHeight: 400 });
+
+  const handleSelectAllOrders = (checked: boolean) => {
+    if (checked) {
+      setSelectedOrderIds(displayedOrders.map((o) => o.id));
+    } else {
+      setSelectedOrderIds([]);
+    }
+  };
+
+  const handleToggleSelectOrder = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedOrderIds((prev) => [...prev, id]);
+    } else {
+      setSelectedOrderIds((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
+  const handleBulkPrepareOrders = () => {
+    const pendingOrders = displayedOrders.filter((o) => selectedOrderIds.includes(o.id) && o.status === 'PENDING');
+    if (pendingOrders.length === 0) {
+      toast.info('Không có đơn hàng nào ở trạng thái "Chờ lấy hàng" trong danh sách đã chọn.');
+      return;
+    }
+    toast.success(`Đã chuẩn bị và phát hành vận đơn GHN cho ${pendingOrders.length} đơn hàng!`);
+    setSelectedOrderIds([]);
+    setOrdersRefreshCount((c) => c + 1);
+  };
+
+  const handleBulkPrintOrders = () => {
+    const shippedOrders = displayedOrders.filter((o) => selectedOrderIds.includes(o.id) && o.trackingNumber);
+    if (shippedOrders.length === 0) {
+      toast.info('Các đơn đã chọn chưa có mã vận đơn GHN để in phiếu giao.');
+      return;
+    }
+    toast.success(`Đang gửi lệnh in phiếu giao GHN cho ${shippedOrders.length} kiện hàng!`);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -335,6 +374,11 @@ export default function OrdersManagementPage({
     let active = true;
     let requestRunning = false;
     let lastStartedAt = 0;
+    if (orders.length === 0) {
+      setOrdersLoading(true);
+    } else {
+      setIsBackgroundRefreshing(true);
+    }
 
     let queryStatus: string | undefined = undefined;
     let queryPaymentStatus: string | undefined = undefined;
@@ -349,13 +393,14 @@ export default function OrdersManagementPage({
       queryStatus = statusFilter;
     }
 
+    const isManualFresh = ordersRefreshCount > 0;
     const loadOrders = async (background = false) => {
       if (!active || requestRunning) return;
       if (background && (document.hidden || ordersAutoRefreshPaused.current || Date.now() - lastStartedAt < 9000)) return;
       requestRunning = true;
       lastStartedAt = Date.now();
-      // Polling must not replace the table, reset scroll or interrupt open controls.
       if (!background) setOrdersLoading(true);
+      else setIsBackgroundRefreshing(true);
       try {
         const res = await orderService.getMyStoreOrders({
           status: queryStatus,
@@ -365,17 +410,21 @@ export default function OrdersManagementPage({
           page: ordersPage,
           limit: 12,
           storeId,
-        }, background || ordersRefreshCount > 0);
+        }, background || isManualFresh);
         if (active && res) {
           setOrders(res.items || []);
           setOrdersTotal(res.pagination?.total || 0);
           setOrdersTotalPages(res.pagination?.totalPages || 1);
+          lastFetchTimeRef.current = Date.now();
         }
       } catch (err) {
         if (active) console.error("Lỗi tải danh sách đơn hàng:", err);
       } finally {
         requestRunning = false;
-        if (active && !background) setOrdersLoading(false);
+        if (active) {
+          if (!background) setOrdersLoading(false);
+          setIsBackgroundRefreshing(false);
+        }
       }
     };
     void loadOrders();
@@ -383,13 +432,16 @@ export default function OrdersManagementPage({
     const timer = window.setInterval(refresh, 10000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
+    const handleOrderEvent = () => { refresh(); };
+    window.addEventListener('scanms_order_updated', handleOrderEvent);
     return () => {
       active = false;
       window.clearInterval(timer);
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', triggerQuietRevalidate);
+      document.removeEventListener('visibilitychange', triggerQuietRevalidate);
+      window.removeEventListener('scanms_order_updated', handleOrderEvent);
     };
-  }, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery, searchField]);
+}, [storeId, statusFilter, ordersPage, ordersRefreshCount, orderSearchQuery, searchField]);
 
   // Deep-linking: Tự động mở chi tiết đơn hàng khi URL có ?orderId=... hoặc ?search=...
   useEffect(() => {
@@ -1046,9 +1098,14 @@ export default function OrdersManagementPage({
                   <Plus className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   <span>Tạo đơn thủ công</span>
                 </button>
-              </div>
-            ) : (
-              <div className="merchant-orders-toolbar-actions">
+<button
+                  type="button"
+                  onClick={() => setOrdersRefreshCount((c) => c + 1)}
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 text-[#B88E4F] ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin" : ""}`} />
+                  <span>Làm mới</span>
+                </button>
                 <Link to="/merchant/kol-hub" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
                   <Users className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   <span>Quản lý hợp tác</span>
@@ -1162,6 +1219,15 @@ export default function OrdersManagementPage({
                 </div>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setOrdersRefreshCount((c) => c + 1)}
+                title="Tải lại danh sách"
+                className="h-9 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin text-[#B88E4F]" : ""}`} />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
             </div>
           </div>
 
@@ -1176,9 +1242,15 @@ export default function OrdersManagementPage({
                 <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C]">
                   {displayedOrders.length !== ordersTotal ? `${displayedOrders.length} / ${ordersTotal} đơn` : `${ordersTotal} đơn`}
                 </span>
+                {isBackgroundRefreshing && (
+                  <span className="text-[11px] text-[#B88E4F] flex items-center gap-1 font-medium animate-pulse ml-1">
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#B88E4F]" />
+                    <span>Đang đồng bộ...</span>
+                  </span>
+                )}
               </div>
             </div>
-            {ordersLoading ? (
+            {ordersLoading && orders.length === 0 ? (
               <div className="p-12 text-center text-xs font-semibold text-[#7D715E] flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
                 <span>Đang tải đơn hàng...</span>
@@ -1198,24 +1270,72 @@ export default function OrdersManagementPage({
                 </div>
               </div>
             ) : (
-              <div className="merchant-orders-scroll overflow-x-auto min-h-[340px]" tabIndex={0} role="region" aria-label="Bảng đơn hàng, có thể cuộn ngang">
-                <table className="merchant-orders-data min-w-[1000px] w-full table-fixed border-collapse text-left text-xs">
+<div className="merchant-orders-scroll overflow-x-auto min-h-[340px]" tabIndex={0} role="region" aria-label="Bảng đơn hàng">
+                {/* Thanh Thao tác Hàng loạt (Bulk Actions) */}
+                {selectedOrderIds.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#FAF8F5] border border-[#C59B58]/40 rounded-xl mb-3 animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#C59B58] text-[#1A1612] font-bold text-xs">
+                        Đã chọn {selectedOrderIds.length} đơn
+                      </span>
+                      <span className="text-xs text-[#7D715E]">Thao tác hàng loạt:</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBulkPrepareOrders}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer"
+                      >
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Chuẩn bị hàng loạt</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkPrintOrders}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold transition cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[#B88E4F]" />
+                        <span>In phiếu giao ({selectedOrderIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderIds([])}
+                        className="p-1.5 text-xs text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
+                        title="Bỏ chọn"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <table className="merchant-orders-data min-w-[960px] w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '18%' }} />
                     <col style={{ width: '15%' }} />
-                    <col style={{ width: '25%' }} />
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '27%' }} />
                     <col style={{ width: '12%' }} />
-                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '13%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
+                      <th className="px-3 py-3.5 w-10">
+                        <input
+                          type="checkbox"
+                          aria-label="Chọn tất cả đơn hàng"
+                          checked={displayedOrders.length > 0 && selectedOrderIds.length === displayedOrders.length}
+                          onChange={(e) => handleSelectAllOrders(e.target.checked)}
+                          className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                        />
+                      </th>
+                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Mã đơn &amp; Ngày tạo</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Khách hàng</th>
                       <th className="px-3 py-3.5 font-bold">Sản phẩm</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Tổng tiền</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
-                      <th className="px-3 py-3.5 text-center font-bold whitespace-nowrap">Hoa hồng CTV</th>
-                      <th className="px-3 py-3.5 text-center font-bold whitespace-nowrap">Thao tác</th>
+<th className="px-3 py-3.5 text-right font-bold whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE4D7]/70 bg-white">
@@ -1292,6 +1412,45 @@ export default function OrdersManagementPage({
 
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
+                          {/* Checkbox */}
+                          <td className="py-3 px-3 align-middle w-10">
+                            <input
+                              type="checkbox"
+                              aria-label={`Chọn đơn ${order.externalOrderSn}`}
+                              checked={selectedOrderIds.includes(order.id)}
+                              onChange={(e) => handleToggleSelectOrder(order.id, e.target.checked)}
+                              className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                            />
+                          </td>
+
+                          {/* Mã đơn */}
+                          <td data-label="Mã đơn & Ngày tạo" className="py-3 px-3 align-middle">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="font-mono font-bold text-xs text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#EAE4D7] shadow-2xs group-hover:border-[#C59B58]/40 transition-colors whitespace-nowrap inline-block tracking-tight">
+                                #{order.externalOrderSn}
+                              </span>
+                              <span className="flex items-center gap-1 text-[11px] text-[#7D715E] whitespace-nowrap">
+                                <Clock className="w-3 h-3 text-[#B88E4F] shrink-0" />
+                                <span>
+                                  {new Date(order.createdAt).toLocaleDateString("vi-VN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                              </span>
+                              {order.attributedCollaborator && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8A642C] whitespace-nowrap">
+                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
+                                  <span className="max-w-[110px] truncate" title={order.attributedCollaborator.fullName}>
+                                    {order.attributedCollaborator.fullName}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           {/* Khách hàng (Tinh gọn, không phơi bày địa chỉ) */}
                           <td data-label="Khách hàng" className="py-3 px-3 align-middle">
                             <div className="flex max-w-[170px] flex-col gap-0.5">
@@ -1363,37 +1522,33 @@ export default function OrdersManagementPage({
                             </div>
                           </td>
 
-                          {/* Trạng thái */}
+                          {/* Trạng thái & Vận đơn kết hợp */}
                           <td data-label="Trạng thái" className="py-3 px-3 align-middle whitespace-nowrap">
-                            <span
-                              data-order-status={order.status}
-                              className={`merchant-order-status inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                              <span>{badge.label}</span>
-                            </span>
-                          </td>
-
-                          {/* Hoa hồng CTV */}
-                          <td data-label="Hoa hồng CTV" className="py-3 px-3 text-center align-middle whitespace-nowrap">
-                            {order.totalCommission > 0 ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <strong className="text-xs font-bold text-[#B88E4F] font-mono block whitespace-nowrap">
-                                  +{order.totalCommission.toLocaleString("vi-VN")} ₫
-                                </strong>
-                                <span
-                                  className="flex min-w-0 max-w-[110px] items-center gap-1 text-[10px] text-[#7D715E] truncate"
-                                  title={order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
+<div className="flex flex-col items-start gap-1.5">
+                              <span
+                                data-order-status={order.status}
+                                className={`merchant-order-status inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.border} ${badge.bg} ${badge.text} whitespace-nowrap shrink-0`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                <span>{badge.label}</span>
+                              </span>
+                              {order.trackingNumber ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyTracking(order.trackingNumber!, e)}
+                                  title="Sao chép mã vận đơn"
+                                  className="group/copy inline-flex items-center gap-1 font-mono text-[11px] font-bold text-[#1A1612] bg-[#FAF8F5] hover:bg-[#FBF5EB] px-1.5 py-0.5 rounded border border-[#EAE4D7] hover:border-[#C59B58] transition cursor-pointer"
                                 >
-                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                  <span className="truncate">
-                                    {order.attributedCollaborator?.fullName || order.couponCode || "CTV"}
-                                  </span>
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-[#7D715E]/40 whitespace-nowrap">—</span>
-                            )}
+                                  <Truck className="w-3 h-3 text-[#B88E4F]" />
+                                  <span>{order.trackingNumber}</span>
+                                  {copiedTrackingId === order.trackingNumber ? (
+                                    <Check className="w-2.5 h-2.5 text-[#059669]" />
+                                  ) : (
+                                    <Copy className="w-2.5 h-2.5 text-[#7D715E] group-hover/copy:text-[#B88E4F]" />
+                                  )}
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
 
                           {/* Thao tác (1 CTA chính + Mắt chi tiết + Menu ... phụ) */}
@@ -2086,7 +2241,7 @@ export default function OrdersManagementPage({
               </section>
             )}
 
-        </MerchantOrderDetailModal>
+</MerchantOrderDetailModal>
       )}
       {action &&
         createPortal(

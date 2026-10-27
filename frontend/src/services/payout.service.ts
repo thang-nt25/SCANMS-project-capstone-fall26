@@ -26,11 +26,24 @@ export interface MerchantPayout {
   processedAt: string | null;
 }
 export interface MerchantPayoutHistory {
+  summary?: MerchantPayoutSummary;
+  totalPages?: number;
   maxBillBytes: number;
   requests: MerchantPayout[];
   total: number;
   page: number;
   limit: number;
+}
+export type MerchantPayoutFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'TAX' | 'KYC';
+export interface MerchantPayoutSummary {
+  scope: 'STORE';
+  timeZone: string;
+  dayStart: string;
+  dayEndExclusive: string;
+  pending: { count: number; netAmount: string };
+  approvedToday: { count: number; netAmount: string };
+  withheldTax: { count: number; amount: string };
+  kycPendingCount: number;
 }
 export interface MerchantPayoutBatch {
   id: string;
@@ -42,11 +55,14 @@ interface Envelope<T> {
 }
 
 export const payoutService = {
-  async list(storeId: string, page: number, status: PayoutStatus | "") {
+  async list(storeId: string, page: number, status: PayoutStatus | "", filters?: { search?: string; filter?: MerchantPayoutFilter }) {
     return (
       await api.get<never, Envelope<MerchantPayoutHistory>>(
         `/stores/${storeId}/payouts`,
-        { params: { page, limit: 10, ...(status ? { status } : {}) } },
+        { params: { page, limit: 10, ...(status ? { status } : {}),
+          ...(filters?.search?.trim() ? { search: filters.search.trim() } : {}),
+          ...(filters?.filter && filters.filter !== 'ALL' ? { filter: filters.filter } : {}),
+        } },
       )
     ).data;
   },

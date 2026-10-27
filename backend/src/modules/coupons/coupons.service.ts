@@ -196,7 +196,13 @@ export class CouponsService {
     const now = new Date();
     const coupons = await this.prisma.coupon.findMany({
       where: {
-        ...(ids ? { id: { in: ids } } : {}),
+        ...(ids
+          ? { id: { in: ids } }
+          : {
+              fundingSource: 'PLATFORM_FUNDED',
+              collaborator: { role: { not: UserRole.COLLABORATOR } },
+              liveSessionId: null,
+            }),
         status: CouponStatus.ACTIVE,
         deletedAt: null,
         store: { isActive: true, isDeleted: false },
@@ -339,6 +345,11 @@ export class CouponsService {
         storeId,
         status: CouponStatus.ACTIVE,
         deletedAt: null,
+        fundingSource: CouponFundingSource.SHOP_FUNDED,
+        collaborator: {
+          role: { not: UserRole.COLLABORATOR },
+        },
+        liveSessionId: null,
         store: {
           isDeleted: false,
           isActive: true,
@@ -751,6 +762,13 @@ export class CouponsService {
         storeId: dto.storeId,
         campaignId: dto.campaignId || null,
         status: CouponStatus.PENDING_APPROVAL,
+        discountType: dto.discountType || 'PERCENTAGE',
+        discountValue: dto.discountValue !== undefined ? Number(dto.discountValue) : 0,
+        minimumOrderAmount: dto.minimumOrderAmount ? Number(dto.minimumOrderAmount) : null,
+        maximumDiscountAmount: dto.maximumDiscountAmount ? Number(dto.maximumDiscountAmount) : null,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        scopeType: (dto.scopeType as any) || 'STORE_WIDE',
         stackableWithShopVoucher: false,
         stackableWithPlatformVoucher: true,
       },
@@ -2012,6 +2030,9 @@ export class CouponsService {
         },
         couponProducts: true,
         couponCategories: true,
+        collaborator: {
+          select: { id: true, role: true, fullName: true },
+        },
         liveSession: {
           select: {
             id: true,
@@ -2268,7 +2289,8 @@ export class CouponsService {
       const price = item.variantId ? dbVariantMap.get(item.variantId)?.price ?? product.price : product.price;
       return Number(product.originalPrice || 0) > Number(price);
     });
-    if ((dto.hasProductDiscount || hasDirectDiscount) && !coupon.stackableWithProductDiscount) {
+    const isKolCoupon = Boolean((coupon as any).collaborator && (coupon as any).collaborator.role === UserRole.COLLABORATOR);
+    if ((dto.hasProductDiscount || hasDirectDiscount) && !coupon.stackableWithProductDiscount && !isKolCoupon) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
         errorCode: 'COUPON_NOT_STACKABLE',

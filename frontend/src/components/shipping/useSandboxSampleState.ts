@@ -72,9 +72,9 @@ export function useSandboxSampleState(code: string) {
 export function sandboxSampleStatusLabel(state: SandboxSampleState | null) {
   if (!state) return 'Đang cập nhật';
   if (state.videoUrl || state.status === 'VIDEO_SUBMITTED') return 'Đã nộp video';
-  if (state.status === 'OVERDUE') return 'Quá hạn nộp video';
-  if (state.receivedAt || state.deliveryStatus === 'DELIVERED') return 'Đã nhận hàng · Chờ video';
-  if (state.deliveryStatus === 'IN_TRANSIT') return 'Đang vận chuyển';
+  if (state.status === 'OVERDUE') return 'Quá hạn';
+  if (state.receivedAt || state.deliveryStatus === 'DELIVERED') return 'Chờ video';
+  if (state.deliveryStatus === 'IN_TRANSIT') return 'Đang giao';
   if (state.simulationStartedAt || state.deliveryStatus === 'WAITING_PICKUP') return 'Chờ lấy hàng';
-  return 'Chờ bắt đầu hành trình';
+  return 'Chờ giao hàng';
 }

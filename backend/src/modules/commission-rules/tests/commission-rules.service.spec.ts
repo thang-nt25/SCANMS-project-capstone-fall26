@@ -134,6 +134,7 @@ describe('CommissionRulesService', () => {
       create: jest.fn(),
     },
     $executeRawUnsafe: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([]),
     $transaction: jest.fn(async (cb) => {
       return cb(mockPrismaService);
     }),

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TrendingUp, ChevronDown, Calendar, Clock } from "lucide-react";
 import {
   referralLinksService,
   type DealKpiProgress as Progress,
@@ -56,60 +57,87 @@ export function DealKpiProgress({ id }: { id: string }) {
   const date = (value: string | null) =>
     value ? new Date(value).toLocaleString("vi-VN") : "Chưa bắt đầu";
   return (
-    <section className="my-2 w-full rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+    <div className="mb-3 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] overflow-hidden transition-all text-xs">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="w-full text-left text-xs font-bold text-[#B88E4F]"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition-colors cursor-pointer select-none"
       >
-        {open ? "Ẩn" : "Xem"} tiến độ số đơn & thời hạn
+        <span className="flex items-center gap-2 text-[#7D715E]">
+          <span className="p-1 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+            <TrendingUp className="w-3.5 h-3.5" />
+          </span>
+          <span className="font-bold text-[#1A1612]">Cam kết KPI & Hạn chót</span>
+        </span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#7D715E] bg-white px-2 py-0.5 rounded-md border border-[#EAE4D7]">
+          <span>{open ? 'Thu gọn' : 'Xem tiến độ'}</span>
+          <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
       {open && (
-        <div className="mt-3 space-y-2 text-xs text-[#7D715E]" aria-busy={busy}>
+        <div className="p-3 pt-2 space-y-2.5 text-xs text-[#7D715E] border-t border-[#EAE4D7] bg-white" aria-busy={busy}>
           {error && (
-            <p role="alert" className="text-[#DC2626]">
+            <p role="alert" className="text-xs text-[#DC2626] font-medium bg-rose-50 p-2 rounded-lg border border-rose-200">
               {error}
             </p>
           )}
-          {!progress && busy && <p role="status">Đang lấy số liệu...</p>}
+          {!progress && busy && (
+            <div className="py-2 text-center text-[#7D715E]">Đang đồng bộ số liệu tiến độ...</div>
+          )}
           {progress && (
             <>
-              <p className="font-semibold text-[#1A1612]">
-                {labels[progress.state]}
-              </p>
-              <p>
-                <strong>
-                  {progress.completedOrders}/{progress.targetOrders ?? "—"}
-                </strong>{" "}
-                đơn hoàn tất · {progress.pendingOrders} đơn đang xử lý
-              </p>
-              <progress
-                max={100}
-                value={progress.percent}
-                className="h-2 w-full accent-[#C59B58]"
-                aria-label="Tiến độ KPI số đơn"
-              />
-              <p>Bắt đầu: {date(progress.startsAt)}</p>
-              <p>Hết kỳ: {date(progress.endsAt)}</p>
-              <p>Kết thúc đối soát: {date(progress.settlementEndsAt)}</p>
-              <p>
-                Chỉ tính đơn tạo trong kỳ, hoàn tất và chưa hoàn tiền. Mỗi đơn
-                chỉ tính một lần cho sản phẩm của Deal.
-              </p>
-              <p>Cập nhật: {date(progress.serverTime)}</p>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#1A1612]">
+                  {labels[progress.state]}
+                </span>
+                <span className="font-bold text-[#B88E4F] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-full text-[11px]">
+                  {progress.percent}% hoàn thành
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#7D715E]">Đơn hàng hợp lệ đã chốt</span>
+                  <span className="font-bold text-[#1A1612]">
+                    {progress.completedOrders} / {progress.targetOrders ?? '—'} đơn
+                  </span>
+                </div>
+                <div className="w-full bg-[#FAF8F5] rounded-full h-1.5 border border-[#EAE4D7] overflow-hidden">
+                  <div
+                    className="bg-[#C59B58] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
+                  />
+                </div>
+                {progress.pendingOrders > 0 && (
+                  <p className="text-[10.5px] text-[#7D715E]">
+                    Có {progress.pendingOrders} đơn đang vận chuyển/chờ đối soát.
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-[#7D715E] border-t border-[#EAE4D7]">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-[#B88E4F]" />
+                  <span>Bắt đầu: <strong className="text-[#1A1612]">{date(progress.startsAt)}</strong></span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[#B88E4F]" />
+                  <span>Hạn deal: <strong className="text-[#1A1612]">{date(progress.endsAt)}</strong></span>
+                </div>
+              </div>
             </>
           )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setReload((value) => value + 1)}
-            className="rounded-lg border border-[#EEDFC6] bg-white px-3 py-1.5 disabled:opacity-50"
-          >
-            Làm mới
-          </button>
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setReload((value) => value + 1)}
+              className="text-[11px] font-semibold text-[#B88E4F] hover:text-[#1A1612] bg-[#FAF8F5] border border-[#EEDFC6] px-2.5 py-1 rounded-lg hover:bg-[#F3EFE6] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {busy ? 'Đang cập nhật...' : 'Làm mới số liệu'}
+            </button>
+          </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

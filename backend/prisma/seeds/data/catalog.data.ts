@@ -16,10 +16,43 @@ export const SHOPS = [
   { name: 'Herbal Spa', slug: 'herbal-spa' },
 ] as const;
 
+export const SHOP_DESCRIPTIONS: Record<string, string> = {
+  'sora-skin':
+    'Thương hiệu mỹ phẩm dưỡng da ứng dụng hoạt chất sinh học nồng độ cao, chuyên sâu điều trị & phục hồi hàng rào bảo vệ da.',
+  'aura-bio':
+    'Dược mỹ phẩm sinh học thuần chay, chiết xuất thảo mộc hữu cơ lành tính cho làn da nhạy cảm.',
+  'greenbio':
+    'Chuỗi cung ứng thực phẩm dinh dưỡng, hạt ngũ cốc cao cấp & nông sản hữu cơ sấy lạnh đạt chuẩn quốc tế.',
+  'lumiere-lab':
+    'Viện nghiên cứu & phát triển giải pháp chăm sóc tóc & cơ thể sinh học cao cấp theo công nghệ châu Âu.',
+  oribe:
+    'Mỹ phẩm thảo dược thiên nhiên an toàn, giải pháp chăm sóc da dịu nhẹ cho mọi thành viên trong gia đình.',
+  'co-mem':
+    'Mỹ phẩm thiên nhiên Lành và Thật, không hương liệu tổng hợp, an toàn tuyệt đối cho mẹ bầu và trẻ nhỏ.',
+  cocoon:
+    'Mỹ phẩm thuần chay 100% từ thực vật Việt Nam như cà phê Đắk Lắk, hoa hồng Cao Bằng, bưởi Bến Tre.',
+  'nature-queen':
+    'Dầu gội & sản phẩm thảo dược hữu cơ chất lượng cao xuất khẩu Mỹ và châu Âu từ thảo mộc truyền thống.',
+  'sao-thai-duong':
+    'Thương hiệu dược liệu hàng đầu Việt Nam với hơn 20 năm nghiên cứu phát triển tinh hoa y học cổ truyền.',
+  'bach-hoa-song-xanh':
+    'Hệ sinh thái sản phẩm tiêu dùng xanh, thân thiện môi trường và an toàn cho sức khỏe gia đình.',
+  'dermedic-vn':
+    'Dược mỹ phẩm điều trị chuyên sâu từ nguồn khoáng Ba Lan dành riêng cho các vấn đề da liễu.',
+  biocosmetics:
+    'Mỹ phẩm công nghệ sinh học tiên tiến, tăng cường hấp thu dưỡng chất và nuôi dưỡng tế bào da.',
+  'an-an':
+    'Nhang trầm & các sản phẩm thảo mộc organic sạch 100%, bảo tồn giá trị văn hóa và an toàn hô hấp.',
+  medimix:
+    'Xà bông & thảo dược trị liệu Ayurvedic truyền thống của Ấn Độ với công thức 18 loại thảo mộc quý.',
+  'herbal-spa':
+    'Liệu pháp chăm sóc cơ thể & thư giãn từ tinh dầu tự nhiên và thảo dược quý nguồn gốc bản địa.',
+};
+
 /** Catalogue fixtures use existing repository photos, whose sources are documented in assets/products/real/README.md. */
 export const PRODUCT_TEMPLATES = [
   {
-    name: 'Serum Vitamin C 15%',
+    name: 'Serum Vitamin C',
     category: 'Chăm sóc da',
     image: 'vitamin-c-15-serum.jpg',
     price: 250_000,

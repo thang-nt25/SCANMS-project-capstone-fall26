@@ -24,7 +24,7 @@ export class QueryCouponsDto {
     description: 'Lọc theo gian hàng (Shop)',
   })
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   storeId?: string;
 
   @ApiPropertyOptional({

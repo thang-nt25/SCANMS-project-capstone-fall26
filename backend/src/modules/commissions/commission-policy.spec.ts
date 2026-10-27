@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { validateSync } from 'class-validator';
 import { CreateExclusiveDealDto } from '../affiliate-deals/dto/create-exclusive-deal.dto';
-import { additiveCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from './commission-policy';
+import { additiveCommissionRate, campaignBonusRate, liveBonusRate, splitCommissionFunding, tierBonusByName } from './commission-policy';
 
 describe('Word additive commission contract', () => {
   const now = new Date('2026-10-16T12:00:00Z');
@@ -12,12 +12,20 @@ describe('Word additive commission contract', () => {
   const combinations: number[][] = [];
   for (const tier of [0, 1, 2, 3]) for (const deal of [0, 1, 2, 3])
     for (const sale of [0, 1, 2]) for (const flash of [0, 2, 3]) combinations.push([tier, deal, sale, flash]);
-  it.each(combinations)('adds tier %s, deal %s, campaign %s, live %s without overriding', (tier, deal, sale, flash) => {
-    expect(additiveCommissionRate(tier, deal, sale, flash)).toBe(10 + tier + deal + sale + flash);
+  it.each(combinations)('adds tier %s, max(deal %s, campaign %s), live %s correctly', (tier, deal, sale, flash) => {
+    expect(additiveCommissionRate(tier, deal, sale, flash)).toBe(10 + tier + Math.max(deal, sale) + flash);
   });
-  it('caps the aggregate defensively at 25%, with a valid all-in maximum of 21%', () => {
-    expect(additiveCommissionRate(3, 3, 2, 3)).toBe(21);
+  it('caps the aggregate defensively at 25%, with valid all-in maximum of 19% (10 + 3 + max(3,2) + 3)', () => {
+    expect(additiveCommissionRate(3, 3, 2, 3)).toBe(19);
     expect(additiveCommissionRate(30, 30, 20, 30)).toBe(25);
+  });
+  it('correctly splits funding between shop and platform (tier funded by platform)', () => {
+    // Basic KOL (tier 0): Shop pays 10%, platform 0%
+    expect(splitCommissionFunding(0, 0, 0, 0)).toEqual({ totalRate: 10, shopRate: 10, platformRate: 0 });
+    // Diamond KOL (tier 3) with basic product: Shop pays 10%, platform pays 3%
+    expect(splitCommissionFunding(3, 0, 0, 0)).toEqual({ totalRate: 13, shopRate: 10, platformRate: 3 });
+    // Diamond KOL with 2% deal and 3% live: Shop pays 10 + 2 + 3 = 15%, platform pays 3% -> Total 18%
+    expect(splitCommissionFunding(3, 2, 1, 3)).toEqual({ totalRate: 18, shopRate: 15, platformRate: 3 });
   });
   it.each([['Đồng (Bronze)', 0], ['Bạc (Silver)', 1], ['Vàng (Gold)', 2], ['Kim Cương (Diamond)', 3],
     ['Vàng', 2], ['Kim Cương', 3]] as const)('maps %s to the canonical bonus %s', (name, rate) => {
@@ -52,9 +60,11 @@ describe('Word additive commission contract', () => {
     const dto = Object.assign(new CreateExclusiveDealDto(), {
       productId: '11111111-1111-4111-8111-111111111111', proposedCommissionRate,
       salesCommitment: 'Thực hiện video review', videoReviewCommitment: true,
+      targetOrders: 50, commitmentDays: 30,
     });
     expect(validateSync(dto)).toHaveLength(0);
     dto.videoReviewCommitment = false;
     expect(validateSync(dto).map(error => error.property)).toContain('videoReviewCommitment');
   });
 });
+

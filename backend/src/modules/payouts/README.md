@@ -11,17 +11,18 @@ Money is a decimal string, not a JavaScript floating-point number. Client-provid
 
 ## Tax: assignment business rule, not legal advice
 
-PayoutTaxService implements the specified rule: gross withdrawals at least 2,000,000 VND have 10% withheld; smaller withdrawals have no withholding. Tax is rounded to two decimals using Decimal ROUND_HALF_UP; net equals gross minus tax.
+PayoutTaxService withholds 10% from every new withdrawal, regardless of amount. This project business rule replaces the former 2,000,000 VND threshold. Tax is rounded to two decimals using Decimal ROUND_HALF_UP; net equals gross minus tax. The wallet-summary API keeps its compatible threshold field at `0.00` and rate at `0.10`.
 
 | Gross        | Tax        | Net          |
 | ------------ | ---------- | ------------ |
-| 1,999,999.99 | 0.00       | 1,999,999.99 |
+| 1,000,000.00 | 100,000.00 | 900,000.00   |
+| 1,999,999.99 | 200,000.00 | 1,799,999.99 |
 | 2,000,000.00 | 200,000.00 | 1,800,000.00 |
 | 2,000,000.05 | 200,000.01 | 1,800,000.04 |
 
 The payout stores gross/tax/net snapshots in its existing columns. The wallet is debited once, by gross; tax is not a second wallet movement. API responses return decimal strings and taxCalculated. Historical FR-22 requests with default zero net are marked unknown; neither their snapshots nor old ledger entries are rewritten. The UI displays “Chưa tính thuế” / “Chưa xác định” for them.
 
-A pending payout is not a completed bank transfer. FR-24 introduces the reviewed merchant flow below without changing the FR-23 tax formula.
+The updated rule applies when creating a request; existing requests keep their stored tax/net snapshots, including already-approved requests below the former threshold. No migration or retrospective financial rewrite is required. A pending payout is not a completed bank transfer. FR-24 introduces the reviewed merchant flow below using these stored snapshots.
 
 ## Transaction and ledger invariants
 

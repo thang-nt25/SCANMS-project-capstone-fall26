@@ -331,12 +331,15 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
     (store) => store.storeId === storeId,
   );
   const grossMinor = validPreviewAmount ? toMinorUnits(amount.trim()) : 0n;
-  const selectedStoreCanWithdraw = Boolean(
-    wallet?.canWithdraw && selectedStore?.isActive &&
-    toMinorUnits(selectedStore.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount),
+  const isWithdrawEligible = Boolean(
+    wallet?.canWithdraw &&
+      (selectedStore
+        ? selectedStore.isActive &&
+          toMinorUnits(selectedStore.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)
+        : toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)),
   );
   const taxMinor =
-    wallet && grossMinor >= toMinorUnits(wallet.withdrawalTaxPolicy.threshold)
+    wallet && grossMinor > 0n
       ? (grossMinor * toMinorUnits(wallet.withdrawalTaxPolicy.rate) + 50n) /
         100n
       : 0n;
@@ -350,11 +353,6 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
     if (!wallet || submissionInFlight.current || loading) return;
     setError("");
     setSuccess("");
-    if (!selectedStore?.isActive) {
-      toast.error("Vui lòng chọn gian hàng phụ trách chi trả.");
-      setError("Chọn shop có số dư khả dụng để rút tiền.");
-      return;
-    }
     if (!wallet.bankAccount) {
       toast.error("Vui lòng liên kết tài khoản ngân hàng thụ hưởng trước khi tạo yêu cầu rút.");
       setError("Vui lòng liên kết tài khoản ngân hàng thụ hưởng trước khi tạo yêu cầu rút.");
@@ -389,18 +387,13 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
       setError("Số dư khả dụng không đủ để thực hiện rút tiền.");
       return;
     }
-    if (minorUnits > toMinorUnits(selectedStore.availableBalance)) {
-      toast.error(`Số dư khả dụng tại ${selectedStore.storeName} không đủ (${formatMoney(selectedStore.availableBalance)}).`);
-      setError("Số dư khả dụng tại shop đã chọn không đủ.");
-      return;
-    }
 
     submissionInFlight.current = true;
     setSubmitting(true);
     try {
       const result = await walletService.createWithdrawal(
         normalizedAmount,
-        selectedStore.storeId,
+        storeId ? storeId : undefined,
       );
       setSuccess(`${result.message}. Mã yêu cầu: ${result.request.id}`);
       setAmount("");
@@ -519,6 +512,9 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]"><Wallet size={15} className="text-[#B88E4F]" /> Số dư khả dụng</div>
           <strong className="col-span-full text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-1">{wallet ? formatMoney(wallet.availableBalance) : "—"}</strong>
           <div className="col-span-full flex items-center justify-between gap-2 mt-1">
+
+            <span className="text-[11px] text-[#7D715E]">Rút trực tiếp về tài khoản ngân hàng liên kết.</span>
+
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-medium text-[#7D715E]">
               {wallet?.canWithdraw ? <CheckCircle2 size={12} className="text-[#059669]" /> : <Clock3 size={12} />}
               {loading ? 'Đang tải' : wallet?.canWithdraw ? 'Đủ điều kiện rút' : 'Chưa đủ điều kiện'}
@@ -538,8 +534,10 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
       </section>
 
 
-      {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (TIKTOK SHOP & SHOPEE CREATOR COMPACT STYLE) */}
-      <section className={cn("wallet-payout-stack", embedded && "wallet-payout-stack grid! grid-cols-[minmax(260px,_.7fr)_minmax(0,_1.3fr)]! items-stretch! gap-[16px]! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ")}>
+
+      {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (SCANMS CREATOR COMPACT STYLE) */}
+      <section className="wallet-payout-stack grid! grid-cols-[minmax(260px,_.7fr)_minmax(0,_1.3fr)]! items-stretch! gap-[16px]! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ">
+
         {/* Cột 1: Quản lý tài khoản ngân hàng thụ hưởng (VietQR) */}
         <div className={cn("wallet-bank-row", embedded && "wallet-bank-row [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_>_div]:grid! [&_>_div]:grid-cols-[minmax(0,1fr)]! [&_>_div]:gap-[14px]! [&_>_div_>_div:first-child]:flex-row! [&_>_div_>_div:first-child]:items-center! [&_>_div_>_div:first-child]:justify-between! [&_>_div_>_div:first-child]:gap-[8px]! [&_>_div_>_div:first-child]:[border-top:0]! [&_>_div_>_div:first-child]:[border-right:0]! [&_>_div_>_div:first-child]:[border-left:0]! [&_>_div_>_div:first-child]:[border-bottom:1px_solid_#eae4d7]! [&_>_div_>_div:first-child]:p-[0_0_12px]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! [@media(max-width:639px)]:p-[14px]! ")}>
           <div>
@@ -778,7 +776,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           </div>
         </div>
 
-        {/* Cột 2: Form Tạo yêu cầu rút tiền (Shopee / TikTok Creator Studio Standard) */}
+        {/* Cột 2: Form Tạo yêu cầu rút tiền (SCANMS Creator Studio Standard) */}
         <form
           aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
@@ -800,20 +798,26 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
               </span>
             </div>
 
-            <div className={cn("wallet-withdraw-inputs", embedded && "wallet-withdraw-inputs grid! grid-cols-[1fr_1fr]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:639px)]:grid-cols-[1fr]! [@media(max-width:639px)]:gap-[12px]! ")}>
-            {/* Shop phụ trách chi trả */}
+
+            <div className="wallet-withdraw-inputs grid! grid-cols-[1fr_1fr]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:639px)]:grid-cols-[1fr]! [@media(max-width:639px)]:gap-[12px]! ">
+            {/* Nguồn hoa hồng */}
+
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label
                   htmlFor="withdrawal-store"
                   className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider"
                 >
-                  Gian hàng phụ trách chi trả
+                  Nguồn hoa hồng
                 </label>
-                {selectedStore && (
+                {selectedStore ? (
                   <span className="text-[11px] font-semibold text-[#B88E4F] flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     <span>Ví chờ: {formatMoney(selectedStore.pendingBalance)}</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-[#B88E4F] flex items-center gap-1">
+                    <span>Toàn sàn</span>
                   </span>
                 )}
               </div>
@@ -822,12 +826,11 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 id="withdrawal-store"
                 value={storeId}
                 onChange={(event: { target: { value: string } }) => setStoreId(event.target.value)}
-                required
                 disabled={loading || submitting}
                 className="w-full h-9.5 sm:h-10 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/40 hover:bg-white focus:bg-white px-3 text-xs sm:text-sm text-[#1A1612] focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"
               >
                 <option value="">
-                  -- Chọn gian hàng muốn rút hoa hồng --
+                  Toàn bộ hoa hồng tích lũy ({wallet ? formatMoney(wallet.availableBalance) : '0 ₫'})
                 </option>
                 {wallet?.stores.map((store) => (
                   <option
@@ -835,7 +838,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     value={store.storeId}
                     disabled={!store.isActive}
                   >
-                    {store.storeName} — Khả dụng: {formatMoney(store.availableBalance)}
+                    {store.storeName} — {formatMoney(store.availableBalance)}
                   </option>
                 ))}
               </Select>
@@ -850,17 +853,17 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 >
                   Số tiền muốn rút (VNĐ)
                 </label>
-                {selectedStore && Number(selectedStore.availableBalance) > 0 && (
+                {wallet && Number(selectedStore ? selectedStore.availableBalance : wallet.availableBalance) > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      // Điền toàn bộ số dư khả dụng
-                      const raw = selectedStore.availableBalance.replace(/[^0-9.]/g, '');
+                      const maxVal = selectedStore ? selectedStore.availableBalance : wallet.availableBalance;
+                      const raw = maxVal.replace(/[^0-9.]/g, '');
                       setAmount(raw);
                     }}
                     className="text-[11px] font-bold text-[#B88E4F] hover:text-[#1A1612] transition cursor-pointer select-none"
                   >
-                    Rút toàn bộ ({formatMoney(selectedStore.availableBalance)})
+                    Rút toàn bộ ({formatMoney(selectedStore ? selectedStore.availableBalance : wallet.availableBalance)})
                   </button>
                 )}
               </div>
@@ -869,9 +872,9 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 <input
                   id="withdrawal-amount"
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
                   placeholder="VD: 500000"
                   required
                   maxLength={16}
@@ -881,6 +884,24 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-[#7D715E] pointer-events-none select-none">
                   VNĐ
                 </span>
+              </div>
+
+
+              {/* Quick shortcut pills */}
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10.5px] text-[#7D715E] font-medium mr-0.5">Gợi ý nhanh:</span>
+                {[200000, 500000, 1000000].map((quickVal) => (
+                  <button
+                    key={quickVal}
+                    type="button"
+                    onClick={() => setAmount(quickVal.toString())}
+                    disabled={submitting || loading}
+                    aria-pressed={amount === quickVal.toString()}
+                    className="px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[10.5px] font-mono font-semibold text-[#1A1612] transition cursor-pointer disabled:opacity-40"
+                  >
+                    {new Intl.NumberFormat("vi-VN").format(quickVal)} ₫
+                  </button>
+                ))}
               </div>
 
             </div>
@@ -897,7 +918,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                   <div className="flex justify-between gap-3 text-xs text-[#7D715E]">
                     <span className="flex items-center gap-1">
                       <span>Thuế khấu trừ ({Number(wallet.withdrawalTaxPolicy.rate) * 100}%)</span>
-                      <span className="text-[10px] text-[#A89E90]">(từ {formatMoney(wallet.withdrawalTaxPolicy.threshold)})</span>
+                      <span className="text-[10px] text-[#A89E90]">(mọi lệnh rút mới)</span>
                     </span>
                     <span className="font-semibold font-mono text-[#DC2626]" data-testid="withdrawal-tax-preview">
                       -{previewMoney(taxMinor)}
@@ -918,7 +939,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           <div className={cn("wallet-withdraw-actions", embedded && "wallet-withdraw-actions pt-[0]! w-full! [&_>_button]:h-[42px]! [&_>_button]:[border:1px_solid_#c59b58]! [&_>_button]:bg-[#c59b58]! [&_>_button]:text-[#1a1612]! [&_>_button]:text-[length:12px]! [&_>_button]:font-[600]! [&_>_button:not(:disabled):hover]:bg-[#b88e4f]! [&_>_button:disabled]:bg-[#f3efe6]! [&_>_button:disabled]:border-[#eae4d7]! [&_>_button:disabled]:text-[#7d715e]! [&_>_button:disabled]:opacity-[.7]! [&_>_div]:[border:0]! [&_>_div]:p-[0]! [&_>_div]:bg-[transparent]! [&_>_div]:text-[length:10px]! [&_>_div]:leading-[16px]! ")}>
             <button
               type="submit"
-              disabled={submitting || loading || !selectedStoreCanWithdraw}
+              disabled={submitting || loading || !isWithdrawEligible}
               className="scanms-brand-action w-full h-10 sm:h-11 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[#1A1612] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
             >
               {submitting ? (
@@ -928,27 +949,39 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
               )}
               <span>{submitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu rút tiền"}</span>
             </button>
-            {wallet && !selectedStoreCanWithdraw && (
-              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1">
-                <p className="font-semibold">Bạn chưa thể rút tiền khi chưa đủ các điều kiện sau:</p>
+            {wallet && !isWithdrawEligible && (
+              <div className="kol-wallet-notice mt-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-1.5">
+                <div className="font-bold text-[#1A1612]">Điều kiện rút tiền:</div>
                 {!wallet.bankAccount && (
-                  <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
-                    <AlertCircle size={13} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
+
+                  <div className="text-[#D97706] font-medium flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+
                     <span>Chưa liên kết tài khoản ngân hàng nhận tiền.</span>
-                  </p>
+                  </div>
                 )}
                 {wallet.kycStatus !== 'VERIFIED' && (
-                  <p className="m-0 text-[#D97706] font-semibold flex items-center gap-1">
-                    <AlertCircle size={13} className="shrink-0 text-[#B88E4F]" aria-hidden="true" />
-                    <span>Hồ sơ định danh KYC cần được thẩm định trước khi rút tiền.</span>
-                    <button type="button" onClick={() => setSearchParams({ tab: 'kyc' })} className="underline text-[#B88E4F]">Mở hồ sơ KYC</button>
-                  </p>
+
+                  <div className="text-[#D97706] font-medium flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Hồ sơ định danh KYC cần được thẩm định trước khi rút.</span>
+                    <button type="button" onClick={() => setSearchParams({ tab: 'kyc' })} className="underline text-[#B88E4F] ml-1 cursor-pointer">Mở hồ sơ KYC</button>
+                  </div>
+
                 )}
-                {!selectedStore && <p className="m-0">Chưa có gian hàng có số dư được phân bổ để rút tiền.</p>}
                 {selectedStore && Number(selectedStore.availableBalance) < Number(wallet.minimumWithdrawalAmount) && (
-                  <p className="m-0 text-[#7D715E]">
-                    Số dư khả dụng tại shop này hiện là <strong className="font-mono text-[#1A1612]">{formatMoney(selectedStore.availableBalance)}</strong> (Cần tối thiểu {formatMoney(wallet.minimumWithdrawalAmount)} để thực hiện lệnh rút).
-                  </p>
+
+                  <div className="text-[#7D715E] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Số dư khả dụng tại gian hàng này: <strong className="font-mono text-[#1A1612]">{formatMoney(selectedStore.availableBalance)}</strong> (Tối thiểu {formatMoney(wallet.minimumWithdrawalAmount)}).</span>
+                  </div>
+                )}
+                {!selectedStore && Number(wallet.availableBalance) < Number(wallet.minimumWithdrawalAmount) && (
+                  <div className="text-[#7D715E] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>Số dư khả dụng tối thiểu để tạo yêu cầu rút: <strong className="font-mono text-[#1A1612]">{formatMoney(wallet.minimumWithdrawalAmount)}</strong>.</span>
+                  </div>
+
                 )}
               </div>
             )}
@@ -957,7 +990,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
       </section>
 
 
-              {/* 1. LỊCH SỬ YÊU CẦU RÚT TIỀN (FINTECH & TIKTOK/SHOPEE COMPACT E-COMMERCE STYLE) */}
+              {/* 1. LỊCH SỬ YÊU CẦU RÚT TIỀN (FINTECH & SCANMS COMPACT E-COMMERCE STYLE) */}
       <WalletCooperationStores stores={wallet?.cooperationStores} />
 
       <section className="wallet-history-section overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-xs">

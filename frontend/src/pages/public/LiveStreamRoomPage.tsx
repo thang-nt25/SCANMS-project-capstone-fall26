@@ -1746,7 +1746,7 @@ export default function LiveStreamRoomPage() {
             </div>
           )}
 
-          {/* BOTTOM STREAM CONTROLS: TÚI ĐỒ LIVE & REACTION EMOJI DOCK (TIKTOK / SHOPEE STYLE) */}
+          {/* BOTTOM STREAM CONTROLS: TÚI ĐỒ LIVE & REACTION EMOJI DOCK (SCANMS LIVE STYLE) */}
           <div
             onClick={(e) => e.stopPropagation()}
             className={cn('live-stream-bottom-controls absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-auto gap-[12px]! ', isReactionDockExpanded && 'live-controls-reactions-open [@media(max-width:_639px)]:[&_>_div:first-child]:hidden! [@media(max-width:_639px)]:[&_.live-reaction-dock.is-expanded]:flex-1! [@media(max-width:_639px)]:[&_.live-reaction-dock.is-expanded]:w-full! ')}

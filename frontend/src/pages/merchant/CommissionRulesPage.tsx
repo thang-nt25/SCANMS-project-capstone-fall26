@@ -12,7 +12,8 @@ import {
   ToggleLeft,
   ToggleRight,
   X,
-  AlertTriangle,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
@@ -24,15 +25,25 @@ import {
   type SettlementHistoryItem,
 } from '../../services/commission-rules.service';
 import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
-import { settlementStatus } from '@/utils/settlement-status';
-import './CommissionRulesPage.css';
 
-type KolPartner = {
-  id: string;
+type KolMember = {
+  collaboratorId: string;
   fullName: string;
-  email?: string;
-  avatarUrl?: string;
-  followers?: number;
+  email: string;
+  avatarUrl?: string | null;
+  totalFollowers?: number;
+  primaryChannel?: {
+    platformName: string;
+    channelName: string;
+    followerCount?: number;
+  } | null;
+  validRevenue: string;
+  validOrdersCount: number;
+  currentMilestone: any | null;
+  nextMilestone: any | null;
+  estimatedTotalBonus: string;
+  settlementStatus: string;
+  settlement: any | null;
 };
 
 export const CommissionRulesPage: React.FC = () => {
@@ -65,14 +76,18 @@ export const CommissionRulesPage: React.FC = () => {
     isActive: true,
   });
 
-  // Partner KOLs & Live KPI Progress State
-  const [kolList, setKolList] = useState<KolPartner[]>([]);
-  const [selectedKolId, setSelectedKolId] = useState<string>('');
+  // Month & Team Progress State
   const [selectedYear, setSelectedYear] = useState<string>(currentVnYear);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentVnMonth);
   const settleYearMonth = `${selectedYear}-${selectedMonth}`;
   const isCurrentMonth = settleYearMonth === currentVnYearMonth;
 
+  const [teamProgress, setTeamProgress] = useState<any | null>(null);
+  const [teamLoading, setTeamLoading] = useState<boolean>(false);
+  const [batchSettleLoading, setBatchSettleLoading] = useState<boolean>(false);
+
+  // Drill-down Single KOL Inspector State
+  const [selectedKolId, setSelectedKolId] = useState<string>('');
   const [kolProgress, setKolProgress] = useState<any | null>(null);
   const [kolProgressLoading, setKolProgressLoading] = useState<boolean>(false);
   const [settleLoading, setSettleLoading] = useState<boolean>(false);
@@ -85,41 +100,17 @@ export const CommissionRulesPage: React.FC = () => {
   // Settlement History State
   const [historyList, setHistoryList] = useState<SettlementHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
-  const [statusNow, setStatusNow] = useState(() => new Date());
-  const [settlementOverview, setSettlementOverview] = useState<{ key: string; rows: Array<{ id: string; name: string; progress: any }>; failed: number } | null>(null);
-  const overviewKey = `${storeId}/${settleYearMonth}`;
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setStatusNow(new Date()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setSettlementOverview(null);
-    if (!storeId || !kolList.length || !/^\d{4}-(0[1-9]|1[0-2])$/.test(settleYearMonth)) return;
-    void (async () => {
-      const rows: Array<{ id: string; name: string; progress: any }> = [];
-      let failed = 0;
-      // Bound concurrency so large partner lists do not flood the API.
-      for (let start = 0; start < kolList.length && active; start += 4) {
-        const batch = kolList.slice(start, start + 4);
-        const results = await Promise.allSettled(batch.map((kol) => commissionRulesService.getKolProgress(storeId, kol.id, settleYearMonth)));
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') rows.push({ id: batch[index].id, name: batch[index].fullName, progress: result.value });
-          else failed++;
-        });
-      }
-      if (active) setSettlementOverview({ key: overviewKey, rows, failed });
-    })();
-    return () => { active = false; };
-  }, [storeId, settleYearMonth, overviewKey, kolList, historyList, rules]);
 
   const formatVND = (amount: string | number) => `${Number(amount || 0).toLocaleString('vi-VN')} ₫`;
 
+  const isValidUUID = (id?: string | null): boolean => {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  };
+
   // 1. Load Rules
   const loadRules = useCallback(async (sId: string) => {
-    if (!sId) return;
+    if (!isValidUUID(sId)) return;
     try {
       setLoading(true);
       const data = await commissionRulesService.getRules(sId);
@@ -131,62 +122,29 @@ export const CommissionRulesPage: React.FC = () => {
     }
   }, []);
 
-  // 2. Load History
-  const loadHistory = useCallback(async (sId?: string, ym?: string) => {
-    const targetStore = sId || storeId;
-    const targetMonth = ym || settleYearMonth;
-    if (!targetStore) return;
+  // 2. Load Team Progress
+  const loadTeamProgress = useCallback(async (sId: string, ym: string) => {
+    if (!isValidUUID(sId)) return;
     try {
-      setHistoryLoading(true);
-      const history = await commissionRulesService.getSettlementHistory(targetStore, targetMonth);
-      setHistoryList(history);
-    } catch (err: any) {
-      console.warn('Lỗi tải lịch sử đối soát', err);
+      setTeamLoading(true);
+      const data = await commissionRulesService.getTeamProgress(sId, ym);
+      setTeamProgress(data);
+      if (data?.members && data.members.length > 0) {
+        setSelectedKolId((prev) => {
+          const exists = data.members.some((m: any) => m.collaboratorId === prev);
+          return exists ? prev : data.members[0].collaboratorId;
+        });
+      }
+    } catch (err) {
+      console.warn('Lỗi tải tiến độ đội ngũ KOL:', err);
     } finally {
-      setHistoryLoading(false);
-    }
-  }, [settleYearMonth, storeId]);
-
-  // 3. Load Partner KOLs
-  const loadKolPartners = useCallback(async (sId: string) => {
-    if (!sId) return;
-    try {
-      const res: any = await api.get('/store-collaborators/shop', { params: { storeId: sId } });
-      const members = res?.members || res?.data?.members || [];
-      let list: KolPartner[] = members
-        .map((m: any) => ({
-          id: m.collaborator?.id,
-          fullName: m.collaborator?.fullName,
-          email: m.collaborator?.email,
-          avatarUrl: m.collaborator?.collaboratorProfile?.avatarUrl || m.collaborator?.avatarUrl,
-          followers: m.collaborator?.collaboratorProfile?.totalFollowers || 0,
-        }))
-        .filter((k: KolPartner) => Boolean(k.id));
-
-      if (list.length === 0) {
-        const catRes: any = await api.get('/live-sessions/shop/catalog', { params: { storeId: sId } });
-        const creators = catRes?.creators || catRes?.data?.creators || [];
-        list = creators.map((c: any) => ({
-          id: c.id,
-          fullName: c.fullName,
-          email: '',
-          avatarUrl: c.avatarUrl,
-          followers: c.collaboratorProfile?.totalFollowers || 0,
-        }));
-      }
-
-      setKolList(list);
-      if (list.length > 0) {
-        setSelectedKolId((prev) => prev || list[0].id);
-      }
-    } catch (e) {
-      console.warn('Không tải được danh sách KOL đối tác', e);
+      setTeamLoading(false);
     }
   }, []);
 
-  // 4. Load KOL Live KPI Progress
+  // 3. Load Single KOL Progress
   const loadKolProgress = useCallback(async (kolId: string, ym: string, sId: string) => {
-    if (!kolId || !sId) return;
+    if (!isValidUUID(kolId) || !isValidUUID(sId)) return;
     try {
       setKolProgressLoading(true);
       const progress = await commissionRulesService.getKolProgress(sId, kolId, ym);
@@ -198,7 +156,23 @@ export const CommissionRulesPage: React.FC = () => {
     }
   }, []);
 
-  // 5. Initial auth and load
+  // 4. Load History
+  const loadHistory = useCallback(async (sId?: string, ym?: string) => {
+    const targetStore = sId || storeId;
+    const targetMonth = ym || settleYearMonth;
+    if (!isValidUUID(targetStore)) return;
+    try {
+      setHistoryLoading(true);
+      const history = await commissionRulesService.getSettlementHistory(targetStore, targetMonth);
+      setHistoryList(history);
+    } catch (err: any) {
+      console.warn('Lỗi tải lịch sử đối soát', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [settleYearMonth, storeId]);
+
+  // Initial Auth & Store Resolver
   useEffect(() => {
     let active = true;
     const init = async () => {
@@ -208,47 +182,62 @@ export const CommissionRulesPage: React.FC = () => {
         const user = userRes?.data || userRes;
         if (!active) return;
         if (user?.role) setCurrentUserRole(user.role);
+
         const myStore = user?.stores?.[0] || user?.ownedStores?.[0] || user?.store;
-        if (myStore?.id) {
+        if (myStore?.id && isValidUUID(myStore.id)) {
           sId = myStore.id;
           setStoreId(sId);
           localStorage.setItem('current_store_id', sId);
-        } else if (!sId) {
-          sId = 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
-          setStoreId(sId);
+        } else if (!isValidUUID(sId)) {
+          try {
+            const storesRes: any = await api.get('/stores/me');
+            const list = storesRes?.data || storesRes || [];
+            if (list?.[0]?.id && isValidUUID(list[0].id)) {
+              sId = list[0].id;
+              setStoreId(sId);
+              localStorage.setItem('current_store_id', sId);
+            }
+          } catch {}
         }
 
-        await Promise.all([loadRules(sId), loadKolPartners(sId), loadHistory(sId, settleYearMonth)]);
+        if (isValidUUID(sId)) {
+          await Promise.all([
+            loadRules(sId),
+            loadTeamProgress(sId, settleYearMonth),
+            loadHistory(sId, settleYearMonth),
+          ]);
+        }
       } catch (err) {
         if (!active) return;
-        const fallbackId = storeId || 'a7e7bd20-bebc-44c9-a98b-004de44cf773';
-        setStoreId(fallbackId);
-        void loadRules(fallbackId);
-        void loadKolPartners(fallbackId);
-        void loadHistory(fallbackId, settleYearMonth);
+        if (isValidUUID(storeId)) {
+          void loadRules(storeId);
+          void loadTeamProgress(storeId, settleYearMonth);
+          void loadHistory(storeId, settleYearMonth);
+        }
       }
     };
     void init();
     return () => {
       active = false;
     };
-  }, [loadHistory, loadKolPartners, loadRules, settleYearMonth, storeId]);
+  }, [loadHistory, loadRules, loadTeamProgress, settleYearMonth]);
 
-  // Update kol progress when kol or month changes
+  // When selectedKolId or month changes, reload single inspector
   useEffect(() => {
     if (storeId && selectedKolId) {
       void loadKolProgress(selectedKolId, settleYearMonth, storeId);
     }
   }, [loadKolProgress, selectedKolId, settleYearMonth, storeId]);
 
-  // Update history when month changes
+  // When month changes, reload team progress & history
   useEffect(() => {
     if (storeId) {
+      void loadTeamProgress(storeId, settleYearMonth);
       void loadHistory(storeId, settleYearMonth);
     }
-  }, [loadHistory, settleYearMonth, storeId]);
+  }, [loadHistory, loadTeamProgress, settleYearMonth, storeId]);
 
-  // Run simulator on mount or revenue change
+  // Simulator
   useEffect(() => {
     if (!storeId || !simRevenue) return;
     const timer = setTimeout(async () => {
@@ -292,7 +281,7 @@ export const CommissionRulesPage: React.FC = () => {
           bonusPercentage: ruleForm.bonusPercentage.trim(),
           isActive: ruleForm.isActive,
         });
-        toast.success('Đã thêm bậc thưởng mới.');
+        toast.success('Tạo bậc thưởng thành công.');
       }
       setIsModalOpen(false);
       setEditingRule(null);
@@ -305,6 +294,7 @@ export const CommissionRulesPage: React.FC = () => {
         isActive: true,
       });
       loadRules(storeId);
+      loadTeamProgress(storeId, settleYearMonth);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Lưu bậc thưởng thất bại.');
     }
@@ -315,6 +305,7 @@ export const CommissionRulesPage: React.FC = () => {
       await commissionRulesService.updateStatus(storeId, rule.id, !rule.isActive);
       toast.success(!rule.isActive ? 'Đã kích hoạt bậc thưởng.' : 'Đã tạm dừng bậc thưởng.');
       loadRules(storeId);
+      loadTeamProgress(storeId, settleYearMonth);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Cập nhật trạng thái thất bại.');
     }
@@ -327,14 +318,16 @@ export const CommissionRulesPage: React.FC = () => {
       toast.success('Đã xóa bậc thưởng.');
       setDeletingRule(null);
       loadRules(storeId);
+      loadTeamProgress(storeId, settleYearMonth);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại.');
     }
   };
 
-  const handleSettle = async () => {
+  // Single settle
+  const handleSettleSingle = async () => {
     if (!selectedKolId) {
-      toast.error('Chọn KOL đối tác để chốt thưởng.');
+      toast.error('Chọn đối tác KOL để chốt đối soát.');
       return;
     }
     try {
@@ -346,8 +339,11 @@ export const CommissionRulesPage: React.FC = () => {
         isCurrentMonth
       );
       toast.success(res.message || 'Chốt thưởng thành công.');
-      loadHistory(storeId, settleYearMonth);
-      loadKolProgress(selectedKolId, settleYearMonth, storeId);
+      await Promise.all([
+        loadHistory(storeId, settleYearMonth),
+        loadKolProgress(selectedKolId, settleYearMonth, storeId),
+        loadTeamProgress(storeId, settleYearMonth),
+      ]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Chốt thưởng thất bại.');
     } finally {
@@ -355,12 +351,44 @@ export const CommissionRulesPage: React.FC = () => {
     }
   };
 
+  // Batch settle all eligible
+  const handleBatchSettle = async () => {
+    if (!storeId) return;
+    const eligibleCount = teamProgress?.summary?.eligibleCount || 0;
+    if (eligibleCount === 0) {
+      toast.info('Kỳ này chưa có đối tác nào chạm mốc thưởng để chốt.');
+      return;
+    }
+    const confirm = window.confirm(
+      `Xác nhận chốt đối soát hàng loạt cho tất cả ${eligibleCount} đối tác đạt mốc thưởng tháng ${selectedMonth}/${selectedYear}?`
+    );
+    if (!confirm) return;
+
+    try {
+      setBatchSettleLoading(true);
+      const res = await commissionRulesService.settleAll(storeId, settleYearMonth);
+      toast.success(res.message || 'Chốt đối soát hàng loạt thành công!');
+      await Promise.all([
+        loadTeamProgress(storeId, settleYearMonth),
+        loadHistory(storeId, settleYearMonth),
+        selectedKolId ? loadKolProgress(selectedKolId, settleYearMonth, storeId) : Promise.resolve(),
+      ]);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi chốt đối soát hàng loạt.');
+    } finally {
+      setBatchSettleLoading(false);
+    }
+  };
+
   const handleApprove = async (settlementId: string) => {
     try {
       const res = await commissionRulesService.approveSettlement(storeId, settlementId);
       toast.success(res.message || 'Đã duyệt kỳ thưởng.');
-      loadHistory(storeId, settleYearMonth);
-      if (selectedKolId) loadKolProgress(selectedKolId, settleYearMonth, storeId);
+      await Promise.all([
+        loadHistory(storeId, settleYearMonth),
+        loadTeamProgress(storeId, settleYearMonth),
+        selectedKolId ? loadKolProgress(selectedKolId, settleYearMonth, storeId) : Promise.resolve(),
+      ]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Duyệt thất bại.');
     }
@@ -369,73 +397,106 @@ export const CommissionRulesPage: React.FC = () => {
   const handlePayout = async (settlementId: string) => {
     try {
       const res = await commissionRulesService.payoutSettlement(storeId, settlementId);
-      toast.success(res.message || 'Đã chi trả tiền thưởng vào ví KOL.');
-      loadHistory(storeId, settleYearMonth);
-      if (selectedKolId) loadKolProgress(selectedKolId, settleYearMonth, storeId);
+      toast.success(res.message || 'Đã chi trả tiền thưởng vào ví đối tác.');
+      await Promise.all([
+        loadHistory(storeId, settleYearMonth),
+        loadTeamProgress(storeId, settleYearMonth),
+        selectedKolId ? loadKolProgress(selectedKolId, settleYearMonth, storeId) : Promise.resolve(),
+      ]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Chi trả thất bại.');
     }
   };
 
-  const selectedKol = useMemo(() => kolList.find((k) => k.id === selectedKolId), [kolList, selectedKolId]);
-  const currentProgress = kolProgress?.storeId === storeId && kolProgress?.collaboratorId === selectedKolId && kolProgress?.yearMonth === settleYearMonth ? kolProgress : null;
-  const closingStatus = currentProgress ? settlementStatus(settleYearMonth, currentProgress, statusNow) : null;
-  const overduePartners = settlementOverview?.key === overviewKey ? settlementOverview.rows.filter((row) => settlementStatus(settleYearMonth, row.progress, statusNow).tone === 'overdue') : [];
-  const duePartners = settlementOverview?.key === overviewKey ? settlementOverview.rows.filter((row) => settlementStatus(settleYearMonth, row.progress, statusNow).tone === 'due') : [];
+  const selectedMember = useMemo(
+    () => teamProgress?.members?.find((m: KolMember) => m.collaboratorId === selectedKolId),
+    [teamProgress, selectedKolId]
+  );
 
   return (
     <div className="commission-workspace mx-auto w-full max-w-[1560px] space-y-5 pb-12 pt-2 text-[#1A1612]">
-      {/* Top Header */}
-      <div className="commission-heading flex w-full flex-col gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 shadow-2xs sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div>
-          <h2 className="m-0 text-sm font-bold leading-snug tracking-tight text-[#1A1612]">
-            Chính sách thưởng doanh số & Đối soát KPI
-          </h2>
-          <p>Thiết lập bậc thưởng, theo dõi doanh số và đối soát với KOL.</p>
+      {/* TOP HEADER */}
+      <div className="commission-heading flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#1A1612] tracking-tight">
+              Thưởng doanh số & Đối soát KPI
+            </h2>
+          </div>
         </div>
 
-        {!isReadOnlyAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingRule(null);
-              setRuleForm({
-                name: '',
-                description: '',
-                minMonthlyRevenue: '',
-                achievementBonus: '0',
-                bonusPercentage: '',
-                isActive: true,
-              });
-              setIsModalOpen(true);
-            }}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-3.5 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition"
-          >
-            <Plus className="h-4 w-4" /> Thêm bậc thưởng
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Month & Year Selectors */}
+          <div className="flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
+            <Select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-8 border-none bg-transparent text-xs font-bold focus:ring-0"
+            >
+              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </Select>
+            <input
+              type="number"
+              min="2020"
+              max="2030"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="h-8 w-16 border-none bg-transparent px-1 text-xs font-bold outline-none"
+            />
+          </div>
+
+          {!isReadOnlyAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingRule(null);
+                setRuleForm({
+                  name: '',
+                  description: '',
+                  minMonthlyRevenue: '',
+                  achievementBonus: '0',
+                  bonusPercentage: '',
+                  isActive: true,
+                });
+                setIsModalOpen(true);
+              }}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-3.5 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition"
+            >
+              <Plus className="h-4 w-4" /> Thêm bậc thưởng
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* BLOCK 1: PERFORMANCE TIERS GRID */}
-      <section className="commission-tiers overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-4 py-3 sm:px-5">
-          <h3 className="m-0 text-xs font-extrabold uppercase tracking-wider text-[#1A1612]">
-            Bảng bậc thưởng KPI ({rules.length} bậc)
-          </h3>
+      {/* BLOCK 1: COMMISSION RULES GRID */}
+      <section className="commission-tiers space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Award className="h-4 w-4 text-[#B88E4F]" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#7D715E]">
+              Bậc thưởng tháng ({rules.length} bậc)
+            </h3>
+          </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-xs text-[#7D715E]">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center text-xs text-[#7D715E]">
             Đang tải chính sách thưởng…
           </div>
         ) : rules.length === 0 ? (
-          <div className="p-8 text-center">
-            <Award className="mx-auto mb-2 h-7 w-7 text-[#C59B58]/60" />
-            <p className="text-xs font-bold text-[#1A1612]">Chưa thiết lập bậc thưởng nào</p>
-            <p className="mt-1 text-[11px] text-[#7D715E]">Thêm bậc thưởng để khuyến khích đối tác KOL đẩy số.</p>
+          <div className="rounded-2xl border border-dashed border-[#EAE4D7] bg-white p-6 text-center">
+            <Award className="mx-auto mb-2 h-6 w-6 text-[#C59B58]/60" />
+            <p className="text-xs font-bold text-[#1A1612]">Chưa thiết lập bậc thưởng</p>
           </div>
         ) : (
-          <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rules.map((rule) => (
               <div
                 key={rule.id}
@@ -444,7 +505,7 @@ export const CommissionRulesPage: React.FC = () => {
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 border-b border-[#F0EAE0] pb-2.5">
+                  <div className="flex items-center justify-between gap-2 border-b border-[#F0EAE0] pb-2">
                     <span className="font-bold text-sm text-[#1A1612] truncate">{rule.name}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
@@ -457,7 +518,7 @@ export const CommissionRulesPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-[10px] text-[#7D715E]">Doanh số từ</span>
                       <p className="font-bold text-[#1A1612] mt-0.5">{formatVND(rule.minMonthlyRevenue)}</p>
@@ -467,21 +528,21 @@ export const CommissionRulesPage: React.FC = () => {
                       <p className="font-bold text-[#B88E4F] mt-0.5">{formatVND(rule.achievementBonus)}</p>
                     </div>
                     <div className="col-span-2 rounded-lg bg-[#FAF8F5] p-2 border border-[#EAE4D7]/60">
-                      <span className="text-[10px] text-[#7D715E]">Thưởng phần vượt</span>
+                      <span className="text-[10px] text-[#7D715E]">Thưởng vượt mốc</span>
                       <p className="font-extrabold text-[#B88E4F] text-xs mt-0.5">+{rule.bonusPercentage}% doanh số vượt</p>
                     </div>
                   </div>
                 </div>
 
                 {!isReadOnlyAdmin && (
-                  <div className="mt-3.5 flex items-center justify-end gap-1.5 border-t border-[#F0EAE0] pt-2.5">
+                  <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-[#F0EAE0] pt-2">
                     <button
                       type="button"
                       onClick={() => handleToggleRuleStatus(rule)}
-                      className="rounded-lg p-1.5 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]"
-                      title={rule.isActive ? 'Tạm dừng bậc' : 'Kích hoạt bậc'}
+                      className="rounded-lg p-1 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]"
+                      title={rule.isActive ? 'Tạm dừng' : 'Kích hoạt'}
                     >
-                      {rule.isActive ? <ToggleRight className="h-5 w-5 text-[#B88E4F]" /> : <ToggleLeft className="h-5 w-5" />}
+                      {rule.isActive ? <ToggleRight className="h-4 w-4 text-[#B88E4F]" /> : <ToggleLeft className="h-4 w-4" />}
                     </button>
                     <button
                       type="button"
@@ -497,18 +558,18 @@ export const CommissionRulesPage: React.FC = () => {
                         });
                         setIsModalOpen(true);
                       }}
-                      className="rounded-lg p-1.5 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612]"
-                      title="Chỉnh sửa bậc"
+                      className="rounded-lg p-1 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612]"
+                      title="Sửa"
                     >
-                      <Edit2 className="h-4 w-4" />
+                      <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeletingRule(rule)}
-                      className="rounded-lg p-1.5 text-[#7D715E] hover:bg-rose-50 hover:text-rose-600"
-                      title="Xóa bậc"
+                      className="rounded-lg p-1 text-[#7D715E] hover:bg-rose-50 hover:text-rose-600"
+                      title="Xóa"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 )}
@@ -518,91 +579,258 @@ export const CommissionRulesPage: React.FC = () => {
         )}
       </section>
 
-      {/* BLOCK 2: LIVE KPI TRACKING & SETTLEMENT WORKSPACE */}
-      <section className="commission-tools grid gap-4 lg:grid-cols-12">
-        {/* Left: KOL Selector & Live Performance Card (8 cols) */}
-        <div className="space-y-3 lg:col-span-8">
-          <div className="commission-settlement rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#F0EAE0] pb-3">
+      {/* BLOCK 2: KOL TEAM PERFORMANCE & SETTLEMENT TABLE */}
+      <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#F0EAE0] pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
+              <Users className="h-4 w-4" />
+            </span>
+            <div>
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
-                  <TrendingUp className="h-4 w-4" />
-                </span>
-                <div>
-                  <h3 className="font-extrabold text-sm text-[#1A1612]">Theo dõi doanh số & Chốt đối soát</h3>
-                </div>
-              </div>
-
-              {/* Month Picker */}
-              <div className="flex items-center gap-2">
-                <Select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="h-9 text-xs font-bold"
+                <h3 className="font-extrabold text-sm text-[#1A1612]">Đối soát đội ngũ KOL</h3>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                    isCurrentMonth
+                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]'
+                  }`}
                 >
-                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
-                    <option key={m} value={m}>
-                      Tháng {m}
-                    </option>
-                  ))}
-                </Select>
-                <input
-                  type="number"
-                  min="2020"
-                  max="2030"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="h-9 w-20 rounded-xl border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold outline-none focus:border-[#C59B58]"
-                />
+                  {isCurrentMonth ? '⏳ Đang tích lũy' : '🏁 Kỳ đã kết thúc'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!isReadOnlyAdmin && (
+              <button
+                type="button"
+                disabled={batchSettleLoading || (teamProgress?.summary?.eligibleCount || 0) === 0}
+                onClick={handleBatchSettle}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-3.5 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition disabled:opacity-40"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {batchSettleLoading
+                  ? 'Đang chốt…'
+                  : `Chốt đối soát toàn bộ (${teamProgress?.summary?.eligibleCount || 0})`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => loadTeamProgress(storeId, settleYearMonth)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAE4D7] text-[#7D715E] hover:bg-[#FAF8F5]"
+              title="Làm mới"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Quick Stat Summary Cards */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
+          <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+            <span className="text-[10px] text-[#7D715E] flex items-center gap-1">
+              <Users className="h-3 w-3 text-[#B88E4F]" /> Tổng đối tác
+            </span>
+            <p className="mt-1 font-black text-sm text-[#1A1612]">
+              {teamProgress?.summary?.totalCollaborators || 0} KOL
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+            <span className="text-[10px] text-[#7D715E] flex items-center gap-1">
+              <TrendingUp className="h-3 w-3 text-[#B88E4F]" /> Doanh số hợp lệ
+            </span>
+            <p className="mt-1 font-black text-sm text-[#1A1612]">
+              {formatVND(teamProgress?.summary?.totalRevenue || 0)}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+            <span className="text-[10px] text-[#7D715E] flex items-center gap-1">
+              <Award className="h-3 w-3 text-[#B88E4F]" /> Quỹ thưởng ước tính
+            </span>
+            <p className="mt-1 font-black text-sm text-[#B88E4F]">
+              {formatVND(teamProgress?.summary?.totalEstimatedBonus || 0)}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
+            <span className="text-[10px] text-[#7D715E] flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Đã chốt sổ
+            </span>
+            <p className="mt-1 font-black text-sm text-emerald-700">
+              {teamProgress?.summary?.settledCount || 0} đối tác
+            </p>
+          </div>
+        </div>
+
+        {/* Team Performance Matrix Table */}
+        {teamLoading ? (
+          <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-8 text-center text-xs text-[#7D715E]">
+            Đang quét dữ liệu doanh số đội ngũ đối tác tháng {selectedMonth}/{selectedYear}…
+          </div>
+        ) : !teamProgress?.members || teamProgress.members.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-8 text-center text-xs text-[#7D715E]">
+            Shop chưa có đối tác KOL nào tham gia bán hàng trong kỳ này.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#EAE4D7]">
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
+                <tr>
+                  <th className="p-3">KOL Đối tác</th>
+                  <th className="p-3 text-center">Đơn hoàn tất</th>
+                  <th className="p-3">Doanh số hợp lệ</th>
+                  <th className="p-3">Bậc chạm mốc</th>
+                  <th className="p-3">Thưởng ước tính</th>
+                  <th className="p-3">Trạng thái</th>
+                  <th className="p-3 text-right">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F0EAE0]">
+                {teamProgress.members.map((m: KolMember) => {
+                  const isSelected = m.collaboratorId === selectedKolId;
+                  return (
+                    <tr
+                      key={m.collaboratorId}
+                      onClick={() => setSelectedKolId(m.collaboratorId)}
+                      className={`cursor-pointer transition ${
+                        isSelected
+                          ? 'bg-[#FBF5EB] font-medium'
+                          : 'hover:bg-[#FAF8F5]/80'
+                      }`}
+                    >
+                      <td className="p-3">
+                        <div className="flex items-center gap-2.5">
+                          {m.avatarUrl ? (
+                            <img
+                              src={m.avatarUrl}
+                              alt=""
+                              className="h-8 w-8 rounded-full object-cover border border-[#EEDFC6]"
+                            />
+                          ) : (
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C59B58] text-white font-bold text-xs">
+                              {m.fullName?.[0] || 'K'}
+                            </span>
+                          )}
+                          <div>
+                            <span className="font-bold text-[#1A1612] block">{m.fullName}</span>
+                            <span className="text-[10px] text-[#7D715E]">
+                              {m.primaryChannel
+                                ? `${m.primaryChannel.platformName} (${(m.primaryChannel.followerCount || 0).toLocaleString('vi-VN')})`
+                                : m.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3 text-center font-bold text-[#1A1612]">
+                        {m.validOrdersCount || 0}
+                      </td>
+
+                      <td className="p-3 font-bold text-[#1A1612]">
+                        {formatVND(m.validRevenue)}
+                      </td>
+
+                      <td className="p-3">
+                        <span className="font-bold text-[#B88E4F]">
+                          {m.currentMilestone?.name || 'Chưa đạt'}
+                        </span>
+                      </td>
+
+                      <td className="p-3 font-black text-sm text-[#B88E4F]">
+                        {formatVND(m.estimatedTotalBonus)}
+                      </td>
+
+                      <td className="p-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            m.settlement?.status === 'PAID'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                              : m.settlement
+                              ? 'border-blue-200 bg-blue-50 text-blue-800'
+                              : isCurrentMonth
+                              ? 'border-amber-200 bg-amber-50 text-amber-800'
+                              : 'border-orange-200 bg-orange-50 text-orange-800'
+                          }`}
+                        >
+                          {m.settlement?.status === 'PAID'
+                            ? '✓ Đã chi trả'
+                            : m.settlement
+                            ? 'Đã chốt sổ'
+                            : isCurrentMonth
+                            ? '⏳ Đang tích lũy'
+                            : 'Chờ chốt'}
+                        </span>
+                      </td>
+
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedKolId(m.collaboratorId);
+                          }}
+                          className={`rounded-lg p-1.5 transition ${
+                            isSelected
+                              ? 'bg-[#C59B58] text-white'
+                              : 'text-[#7D715E] hover:bg-[#FAF8F5]'
+                          }`}
+                          title="Xem chi tiết"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* BLOCK 3: DRILL-DOWN INSPECTOR & SIMULATOR */}
+      <section className="grid gap-4 lg:grid-cols-12">
+        {/* Left: Selected KOL Detailed Calculation (8 cols) */}
+        <div className="space-y-3 lg:col-span-8">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
+                  <Award className="h-4 w-4" />
+                </span>
+                <h3 className="font-extrabold text-xs uppercase tracking-wider text-[#1A1612]">
+                  Chi tiết tiến độ: {selectedMember?.fullName || 'Chọn KOL'}
+                </h3>
               </div>
             </div>
 
-            {/* KOL Partner Dropdown */}
-            <p className="m-0 text-[11px] text-[#7D715E]">Hạn chốt: hết ngày 5 tháng kế tiếp · Giờ Việt Nam</p>
-            {(overduePartners.length > 0 || duePartners.length > 0) && <div role="status" className={`rounded-xl border p-3 text-xs ${overduePartners.length ? 'border-red-200 bg-red-50 text-[#DC2626]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]'}`}>
-              <p className="m-0 flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4 shrink-0" />{overduePartners.length ? `${overduePartners.length} KOL quá hạn chốt đối soát` : `${duePartners.length} KOL đến kỳ đối soát`}</p>
-              <div className="mt-2 flex flex-wrap gap-2">{[...overduePartners, ...duePartners].map((partner) => <button key={partner.id} type="button" onClick={() => setSelectedKolId(partner.id)} className="cursor-pointer rounded-lg border border-current/20 bg-white px-2 py-1 text-xs hover:underline">{partner.name}</button>)}</div>
-            </div>}
-            {settlementOverview?.key === overviewKey && settlementOverview.failed > 0 && <p role="status" className="text-xs text-[#7D715E]">Chưa kiểm tra được {settlementOverview.failed} KOL. Cảnh báo tổng hợp chưa đầy đủ.</p>}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#5F5547] flex items-center justify-between">
-                <span>Chọn đối tác KOL nhận thưởng</span>
-                <span className="text-[11px] font-normal text-[#7D715E]">
-                  {kolList.length} KOL đối tác của Shop
-                </span>
-              </label>
-              <Select
-                value={selectedKolId}
-                onChange={(e) => setSelectedKolId(e.target.value)}
-                className="h-10 text-xs font-semibold w-full"
-              >
-                <option value="">Chọn KOL để xem tiến độ</option>
-                {kolList.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.fullName} {k.followers ? `(${(k.followers || 0).toLocaleString('vi-VN')} followers)` : ''}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {/* KOL Performance Metrics Card */}
             {kolProgressLoading ? (
               <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-6 text-center text-xs text-[#7D715E]">
-                Đang quét đơn hàng hoàn tất của tháng {selectedMonth}/{selectedYear}…
+                Đang quét đơn hàng hoàn tất…
               </div>
-            ) : currentProgress ? (
-              <div className={`space-y-3 rounded-2xl border bg-gradient-to-br from-[#FBF5EB] to-white p-4 ${closingStatus?.tone === 'overdue' ? 'border-red-200' : 'border-[#EEDFC6]'}`}>
+            ) : kolProgress ? (
+              <div className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EEDFC6]/60 pb-3">
                   <div className="flex items-center gap-2.5">
-                    {selectedKol?.avatarUrl ? (
-                      <img src={selectedKol.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover border border-[#EEDFC6]" />
+                    {selectedMember?.avatarUrl ? (
+                      <img
+                        src={selectedMember.avatarUrl}
+                        alt=""
+                        className="h-9 w-9 rounded-full object-cover border border-[#EEDFC6]"
+                      />
                     ) : (
                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#C59B58] text-white font-bold text-xs">
-                        {selectedKol?.fullName?.[0] || 'K'}
+                        {selectedMember?.fullName?.[0] || 'K'}
                       </span>
                     )}
                     <div>
-                      <span className="font-extrabold text-sm text-[#1A1612]">{selectedKol?.fullName}</span>
+                      <span className="font-extrabold text-sm text-[#1A1612]">
+                        {selectedMember?.fullName}
+                      </span>
                       <p className="text-[10px] text-[#7D715E]">
                         Kỳ đối soát: <strong>Tháng {selectedMonth}/{selectedYear}</strong>
                       </p>
@@ -611,12 +839,12 @@ export const CommissionRulesPage: React.FC = () => {
 
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-bold border ${
-                      closingStatus?.tone === 'overdue'
-                        ? 'border-red-200 bg-red-50 text-[#DC2626]'
-                        : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]'
+                      isCurrentMonth
+                        ? 'border-amber-200 bg-amber-50 text-amber-800'
+                        : 'border-[#EEDFC6] bg-white text-[#B88E4F]'
                     }`}
                   >
-                    {closingStatus?.label}
+                    {isCurrentMonth ? '⏳ Kỳ đang tích lũy (Ước tính)' : '🏁 Kỳ đã kết thúc'}
                   </span>
                 </div>
 
@@ -624,53 +852,71 @@ export const CommissionRulesPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
                   <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5">
                     <span className="text-[10px] text-[#7D715E]">Doanh số hợp lệ</span>
-                    <p className="mt-0.5 font-black text-sm text-[#1A1612]">{formatVND(kolProgress.monthlyRevenue)}</p>
-                    <span className="text-[10px] text-[#7D715E]">{kolProgress.orderCount || 0} đơn hoàn tất</span>
+                    <p className="mt-0.5 font-black text-sm text-[#1A1612]">
+                      {formatVND(kolProgress.validRevenue)}
+                    </p>
+                    <span className="text-[10px] text-[#7D715E]">
+                      {kolProgress.validOrdersCount || 0} đơn hoàn tất
+                    </span>
                   </div>
 
                   <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5">
                     <span className="text-[10px] text-[#7D715E]">Bậc KPI đạt</span>
-                    <p className="mt-0.5 font-bold text-sm text-[#B88E4F] truncate" title={kolProgress.highestReachedRule?.name}>
-                      {kolProgress.highestReachedRule?.name || 'Chưa đạt mốc'}
+                    <p className="mt-0.5 font-bold text-sm text-[#B88E4F] truncate">
+                      {kolProgress.currentMilestone?.name || 'Chưa đạt mốc'}
                     </p>
-                    <span className="text-[10px] text-[#7D715E]">Cố định: {formatVND(kolProgress.achievementBonus)}</span>
+                    <span className="text-[10px] text-[#7D715E]">
+                      Cố định: {formatVND(kolProgress.achievementBonus)}
+                    </span>
                   </div>
 
                   <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 sm:col-span-2">
                     <span className="text-[10px] text-[#7D715E]">Tổng thưởng đối soát</span>
-                    <p className="mt-0.5 font-black text-base text-[#B88E4F]">{formatVND(kolProgress.totalBonus)}</p>
-                    {kolProgress.nextRule ? (
+                    <p className="mt-0.5 font-black text-base text-[#B88E4F]">
+                      {formatVND(kolProgress.estimatedTotalBonus)}
+                    </p>
+                    {kolProgress.nextMilestone ? (
                       <span className="text-[10px] text-[#7D715E]">
-                        Thiếu {formatVND(kolProgress.missingRevenueToNextMilestone)} để lên bậc {kolProgress.nextRule.name}
+                        Thiếu {formatVND(kolProgress.nextMilestone.missingRevenue)} để lên bậc {kolProgress.nextMilestone.name}
                       </span>
-                    ) : kolProgress.highestReachedRule ? (
+                    ) : (
                       <span className="text-[10px] text-emerald-700 font-bold">✓ Đã đạt bậc cao nhất</span>
-                    ) : null}
+                    )}
                   </div>
                 </div>
 
                 {/* Settlement Action Bar */}
                 {!isReadOnlyAdmin && (
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EEDFC6]/60 pt-3">
-                    {!isCurrentMonth && <span className="text-[11px] text-[#7D715E]">
-                      Chốt chính thức để lập phiếu chi trả vào ví đối tác.
-                    </span>}
+                    <span className="text-[11px] text-[#7D715E]">
+                      {kolProgress.settlement
+                        ? `Đã chốt sổ trạng thái: ${kolProgress.settlement.status}`
+                        : isCurrentMonth
+                        ? 'Chốt sớm sẽ ghi nhận thưởng dự kiến tháng hiện tại.'
+                        : 'Chốt chính thức để lập phiếu chi trả vào ví đối tác.'}
+                    </span>
 
                     <button
                       type="button"
-                      disabled={settleLoading || !selectedKolId}
-                      onClick={handleSettle}
+                      disabled={settleLoading || !selectedKolId || Boolean(kolProgress.settlement)}
+                      onClick={handleSettleSingle}
                       className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition disabled:opacity-50"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      {settleLoading ? 'Đang chốt…' : isCurrentMonth ? 'Chốt sớm kỳ này (Dự kiến)' : 'Chốt đối soát tháng'}
+                      {settleLoading
+                        ? 'Đang chốt…'
+                        : kolProgress.settlement
+                        ? 'Đã chốt đối soát'
+                        : isCurrentMonth
+                        ? 'Chốt sớm kỳ này (Dự kiến)'
+                        : 'Chốt đối soát đối tác này'}
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] p-5 text-center text-xs text-[#7D715E]">
-                Chọn một đối tác KOL để xem chi tiết doanh số và tính thưởng.
+                Nhấp vào một đối tác trong bảng trên để xem chi tiết tính thưởng.
               </div>
             )}
           </div>
@@ -678,12 +924,14 @@ export const CommissionRulesPage: React.FC = () => {
 
         {/* Right: Quick Simulator (4 cols) */}
         <div className="space-y-3 lg:col-span-4">
-          <div className="commission-simulator rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-3">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-3">
             <div className="flex items-center gap-2 border-b border-[#F0EAE0] pb-2.5">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
                 <Calculator className="h-4 w-4" />
               </span>
-              <h3 className="font-extrabold text-xs uppercase tracking-wider text-[#1A1612]">Mô phỏng tính thưởng</h3>
+              <h3 className="font-extrabold text-xs uppercase tracking-wider text-[#1A1612]">
+                Mô phỏng tính thưởng
+              </h3>
             </div>
 
             <div className="space-y-1">
@@ -722,27 +970,34 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
       </section>
 
-      {/* BLOCK 3: SETTLEMENT HISTORY TABLE */}
-      <section className="commission-history overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-        <div className="flex items-center justify-between border-b border-[#EAE4D7] px-4 py-3 sm:px-5">
+      {/* BLOCK 4: SETTLEMENT HISTORY TABLE */}
+      <section className="commission-history space-y-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-[#B88E4F]" />
-            <h3 className="m-0 text-xs font-extrabold uppercase tracking-wider text-[#1A1612]">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#7D715E]">
               Lịch sử đối soát tháng {selectedMonth}/{selectedYear} ({historyList.length})
             </h3>
           </div>
+          <button
+            type="button"
+            onClick={() => loadHistory(storeId, settleYearMonth)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:underline"
+          >
+            <RefreshCw className="h-3 w-3" /> Tải lại
+          </button>
         </div>
 
         {historyLoading ? (
-          <div className="p-6 text-center text-xs text-[#7D715E]">
+          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center text-xs text-[#7D715E]">
             Đang tải lịch sử đối soát…
           </div>
         ) : historyList.length === 0 ? (
-          <div className="p-6 text-center text-xs text-[#7D715E]">
+          <div className="rounded-2xl border border-dashed border-[#EAE4D7] bg-white p-6 text-center text-xs text-[#7D715E]">
             Chưa có lượt chốt đối soát nào cho kỳ tháng {selectedMonth}/{selectedYear}.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-2xs">
             <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
                 <tr>
@@ -812,7 +1067,7 @@ export const CommissionRulesPage: React.FC = () => {
       {/* CREATE / EDIT RULE MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="commission-rule-dialog w-full max-w-md rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-xl space-y-4">
+          <div className="w-full max-w-md rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-3">
               <h3 className="font-extrabold text-sm text-[#1A1612]">
                 {editingRule ? 'Chỉnh sửa bậc thưởng' : 'Thêm bậc thưởng mới'}
@@ -839,28 +1094,42 @@ export const CommissionRulesPage: React.FC = () => {
               </label>
 
               <label className="grid gap-1 font-bold text-[#5F5547]">
-                Doanh số tối thiểu (₫) *
+                <div className="flex items-center justify-between">
+                  <span>Doanh số tối thiểu (₫) *</span>
+                  {ruleForm.minMonthlyRevenue && Number(ruleForm.minMonthlyRevenue) > 0 && (
+                    <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
+                      {Number(ruleForm.minMonthlyRevenue).toLocaleString('vi-VN')} ₫
+                    </span>
+                  )}
+                </div>
                 <input
                   required
                   type="number"
                   min="0"
                   value={ruleForm.minMonthlyRevenue}
                   onChange={(e) => setRuleForm({ ...ruleForm, minMonthlyRevenue: e.target.value })}
-                  placeholder="Ví dụ: 50.000.000"
-                  className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal outline-none focus:border-[#C59B58]"
+                  placeholder="Ví dụ: 50000000"
+                  className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal font-mono outline-none focus:border-[#C59B58]"
                 />
               </label>
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="grid gap-1 font-bold text-[#5F5547]">
-                  Thưởng cố định (₫)
+                  <div className="flex items-center justify-between">
+                    <span>Thưởng cố định (₫)</span>
+                    {ruleForm.achievementBonus && Number(ruleForm.achievementBonus) > 0 && (
+                      <span className="text-[10px] font-bold font-mono text-[#B88E4F]">
+                        {Number(ruleForm.achievementBonus).toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     min="0"
                     value={ruleForm.achievementBonus}
                     onChange={(e) => setRuleForm({ ...ruleForm, achievementBonus: e.target.value })}
-                    placeholder="2.000.000"
-                    className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal outline-none focus:border-[#C59B58]"
+                    placeholder="2000000"
+                    className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal font-mono outline-none focus:border-[#C59B58]"
                   />
                 </label>
 

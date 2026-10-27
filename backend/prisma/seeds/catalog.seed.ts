@@ -12,6 +12,7 @@ import {
   PRODUCT_TEMPLATES,
   RETURN_POLICY,
   SHOPS,
+  SHOP_DESCRIPTIONS,
   WARRANTY_POLICY,
 } from './data/catalog.data';
 
@@ -28,7 +29,9 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
       name: shop.name,
       slug: `seed-${shop.slug}`,
       logoUrl: assetUrl(context, logo),
-      description: `${shop.name} — gian hàng minh họa cho các luồng mua sắm và tiếp thị liên kết trên SCANMS.`,
+      description:
+        SHOP_DESCRIPTIONS[shop.slug] ||
+        `${shop.name} — Thương hiệu chính hãng hợp tác cùng sàn SCANMS, cam kết nguồn gốc xuất xứ và dịch vụ hậu mãi uy tín.`,
       defaultCommissionRate: 10,
       isActive: true,
       isVerified: true,
@@ -80,7 +83,7 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
         id,
         storeId,
         sku,
-        title: `${template.name} ${shop.name} ${template.size}`,
+        title: template.name,
         categoryName: template.category,
         description: `<h2>${template.name}</h2><p>Bộ dữ liệu minh họa Capstone SCANMS; hình ảnh chụp sản phẩm cùng loại có thể mang thương hiệu khác.</p><p>Quy cách: ${template.size} hoặc ${template.largeSize}; đóng gói tiêu chuẩn hoặc hộp quà. Thông tin sử dụng thực tế cần đối chiếu nhãn của nhà sản xuất.</p>`,
         labelInfo: `EAN-13 nội bộ demo: ${demoEan13(index)}. Kiện mẫu: 500 g; 20 × 15 × 10 cm. Dữ liệu minh họa, không phải mã đăng ký GS1 hay chứng nhận công bố.`,

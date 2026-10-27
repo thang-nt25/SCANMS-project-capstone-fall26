@@ -1080,6 +1080,11 @@ export class OrdersService {
             `PRODUCT_OUT_OF_STOCK: Phân loại sản phẩm "${variant?.name || prod.title}" của gian hàng "${store.name}" không đủ số lượng tồn kho (yêu cầu: ${item.quantity}).`,
           );
         }
+        await tx.$executeRaw`
+          UPDATE products
+          SET stock_quantity = GREATEST(0, stock_quantity - ${item.quantity}), updated_at = NOW()
+          WHERE id = ${item.productId}::uuid
+        `;
       } else {
         const updatedCount = await tx.$executeRaw`
           UPDATE products
@@ -2281,30 +2286,42 @@ export class OrdersService {
         dto.couponsByStore?.[storeId] || dto.couponCode || undefined;
       let couponValidationResult: any = null;
       if (storeCoupon?.trim()) {
-        couponValidationResult = await this.couponsService.validateCoupon(
-          {
-            code: storeCoupon.trim(),
-            storeId,
-            customerPhone: customerPhone || undefined,
-            items: storeItems,
-            hasProductDiscount: anyProductHasDirectDiscount,
-            hasShopVoucher: false,
-            hasPlatformVoucher: false,
-          },
-          undefined,
-          undefined,
-          undefined,
-        );
+        try {
+          couponValidationResult = await this.couponsService.validateCoupon(
+            {
+              code: storeCoupon.trim(),
+              storeId,
+              customerPhone: customerPhone || undefined,
+              items: storeItems,
+              hasProductDiscount: anyProductHasDirectDiscount,
+              hasShopVoucher: false,
+              hasPlatformVoucher: false,
+            },
+            undefined,
+            undefined,
+            undefined,
+          );
+        } catch (err: any) {
+          // Nếu người dùng chỉ định rõ couponsByStore cho shop này, báo lỗi thật
+          if (dto.couponsByStore?.[storeId]) {
+            throw err;
+          }
+          // Nếu là fallback từ couponCode chung và mã thuộc về shop khác trong giỏ hàng, an toàn bỏ qua cho shop này
+          couponValidationResult = null;
+        }
       }
 
+      const effectiveStoreCoupon = couponValidationResult ? storeCoupon : undefined;
       const subIdempotencyKey = `${baseIdempotencyKey}_store_${storeId}`;
       const subDto: CreateOrderDto = {
         ...dto,
         storeId,
         items: storeItems,
-        couponCode: storeCoupon,
-        platformCouponCode: dto.platformCouponsByStore?.[storeId] || dto.platformCouponCode,
-        shippingCouponCode: dto.shippingCouponsByStore?.[storeId] || dto.shippingCouponCode,
+        couponCode: effectiveStoreCoupon,
+        // An explicit per-shop map is authoritative: never leak the fallback
+        // code into another shop's child order during a multi-store checkout.
+        platformCouponCode: dto.platformCouponsByStore ? dto.platformCouponsByStore[storeId] : dto.platformCouponCode,
+        shippingCouponCode: dto.shippingCouponsByStore ? dto.shippingCouponsByStore[storeId] : dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
       };
       const subPayloadHash = computeOrderPayloadHash(
@@ -3085,6 +3102,11 @@ export class OrdersService {
             SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
             WHERE id = ${item.variantId}::uuid
           `;
+          await tx.$executeRaw`
+            UPDATE products
+            SET stock_quantity = stock_quantity + ${item.quantity}, updated_at = NOW()
+            WHERE id = ${item.productId}::uuid
+          `;
         } else {
           await tx.$executeRaw`
             UPDATE products
@@ -3773,9 +3795,9 @@ export class OrdersService {
     userId: string,
     userRole: string,
     query: {
-      status?: OrderStatus;
-      paymentStatus?: string;
+      status?: OrderStatus | 'RETURNS';
       customerId?: string;
+      paymentStatus?: string;
       search?: string;
       searchField?: string;
       page?: number | string;
@@ -3825,16 +3847,14 @@ export class OrdersService {
     if (targetStoreId) {
       where.storeId = targetStoreId;
     }
-    if (query.customerId) {
-      where.customerId = query.customerId;
-    }
-    if ((query.status as string) === 'RETURNS') {
-      where.OR = [
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.status === 'RETURNS') {
+      where.AND = [{ OR: [
         { status: OrderStatus.RETURNED },
         { status: OrderStatus.RETURN_REQUESTED },
         { status: OrderStatus.DISPUTED },
         { returnRequest: { isNot: null } },
-      ];
+      ] }];
     } else if (query.status) {
       where.status = query.status;
     }
@@ -3846,7 +3866,8 @@ export class OrdersService {
     }
     if (query.search?.trim()) {
       // Keep search conjunctive with status, ownership and return-request filters.
-      where.AND = [storeOrderSearch(query.search.trim(), query.searchField)];
+      const searchCond = storeOrderSearch(query.search.trim(), query.searchField);
+      where.AND = where.AND ? [...(where.AND as any[]), searchCond] : [searchCond];
     }
 
     const [total, orders] = await Promise.all([
@@ -3861,7 +3882,17 @@ export class OrdersService {
             select: { id: true, name: true, slug: true, logoUrl: true },
           },
           attributedCollaborator: {
-            select: { id: true, fullName: true, email: true },
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              collaboratorProfile: {
+                select: {
+                  avatarUrl: true,
+                  tier: { select: { name: true } },
+                },
+              },
+            },
           },
           orderItems: {
             include: {
@@ -3922,10 +3953,15 @@ export class OrdersService {
           attributedCollaborator: order.attributedCollaborator,
           couponCode:
             order.couponCodeSnapshot || order.coupon?.displayCode || null,
-          totalCommission: order.commissions.reduce(
-            (sum, c) => sum + Number(c.commissionAmount || 0),
-            0,
-          ),
+          totalCommission: order.commissions.length > 0
+            ? order.commissions.reduce(
+                (sum, c) => sum + Number(c.commissionAmount || 0),
+                0,
+              )
+            : order.orderItems.reduce(
+                (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
+                0,
+              ),
           returnRequest: order.returnRequest,
           items: order.orderItems.map((item) => ({
             productId: item.productId,

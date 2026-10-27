@@ -34,6 +34,7 @@ export function AnimatedPasswordField({ value, onChange, state, autoComplete = '
       onPointerLeave={() => setGaze({ x: 0, y: 0 })}>
       <input ref={input} id="login-password" name={name} autoComplete={autoComplete} readOnly={!editable}
         type={revealed ? 'text' : 'password'} value={value} required placeholder="Mật khẩu"
+        data-lpignore="true" data-1p-ignore="true" data-form-type="other"
         onChange={event => { setTouched(true); onChange(event.target.value); }}
         onFocus={() => { setEditable(true); setFocused(true); setTouched(true); setBlink(n => n + 1); }}
         onBlur={() => { setFocused(false); setGaze({ x: 0, y: 0 }); }}

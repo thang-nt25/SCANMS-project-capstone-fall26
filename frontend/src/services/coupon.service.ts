@@ -25,6 +25,8 @@ export interface PlatformSubsidySummary {
 }
 
 export interface PublicStoreCoupon {
+  store?: { id: string; name: string; slug?: string };
+  storeId?: string;
   fundingSource?: CouponFundingSource;
   benefitType?: 'GOODS' | 'SHIPPING';
   id: string;
@@ -45,6 +47,8 @@ export interface EligibleProductCoupon {
   id: string;
   code: string;
   displayCode: string;
+  discountType?: DiscountType;
+  discountValue?: number;
   discountAmount: number;
   minimumOrderAmount: number;
   expiresAt: string | null;
@@ -147,6 +151,14 @@ export interface CreateCouponPayload {
   storeId: string;
   code: string;
   campaignId?: string;
+  discountType?: DiscountType;
+  discountValue?: number;
+  minimumOrderAmount?: number;
+  maximumDiscountAmount?: number;
+  startsAt?: string;
+  expiresAt?: string;
+  scopeType?: CouponScope;
+  note?: string;
 }
 
 export interface CreateStoreCouponPayload {

@@ -165,6 +165,13 @@ export default function StoreReferralLinksPage() {
 
   return (
     <div className="promotions-links mx-auto flex w-full min-w-0 max-w-[1520px] flex-col gap-4 pb-8 pt-3 font-sans text-[#1A1612] sm:pt-4">
+      {/* Header Giám sát */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-base font-bold text-[#1A1612] m-0">Hiệu suất link tiếp thị đối tác</h2>
+        </div>
+      </div>
+
       {/* Search & Filter Bar */}
       <div className="referral-filters rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-[0_3px_12px_rgba(35,29,21,0.035)] sm:p-4">
         <form onSubmit={handleSearch} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_200px_180px_auto] xl:items-center">

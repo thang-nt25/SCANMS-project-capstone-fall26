@@ -12,6 +12,9 @@ interface CacheEntry {
 
 const MAX_CACHE_ENTRIES = 120;
 const memoryCache = new Map<string, CacheEntry>();
+let session: string | null = null;
+let revision = 0;
+const DEFAULT_CACHE_TTL_MS = 30_000;
 
 // Danh sách các tiền tố URL an toàn được phép lưu tạm (Cache-friendly GET requests)
 const CACHEABLE_URL_PREFIXES = [
@@ -41,6 +44,14 @@ function generateKey(url: string, params?: any): string {
 }
 
 export const apiCache = {
+  /** An account switch must never reuse another account's private API payload. */
+  setSession(nextSession: string | null): void {
+    if (session === nextSession) return;
+    session = nextSession;
+    this.clear();
+  },
+
+  get revision(): number { return revision; },
   /**
    * Kiểm tra xem URL này có đủ điều kiện lưu tạm không
    */
@@ -51,6 +62,9 @@ export const apiCache = {
       url.includes('/auth/') ||
       url.includes('/refresh') ||
       url.includes('/otp') ||
+      url.includes('/orders') ||
+      url.includes('/chat/') ||
+      url.includes('/coupons') ||
       url.includes('/sample-requests') ||
       url.includes('/wallets') ||
       url.includes('/payouts') ||
@@ -99,7 +113,7 @@ export const apiCache = {
     // Kiểm tra nếu có thiết lập TTL hữu hạn riêng biệt
     if (entry.ttlMs && entry.ttlMs !== Infinity) {
       const now = Date.now();
-      if (now - entry.timestamp > entry.ttlMs) {
+      if (now - entry.timestamp >= entry.ttlMs) {
         memoryCache.delete(key);
         return null;
       }
@@ -116,16 +130,15 @@ export const apiCache = {
    * Kiểm tra xem dữ liệu đã có trong cache chưa
    */
   has(url: string, params?: any): boolean {
-    const key = generateKey(url, params);
-    return memoryCache.has(key);
+    return this.get(url, params) !== null;
   },
 
   /**
    * Lưu tạm dữ liệu vào bộ nhớ RAM
-   * Mặc định lưu suốt phiên làm việc của Tab (ttlMs = Infinity) cho tới khi F5 hoặc Mutate
+   * Catalogue data expires after 30 seconds even without a local mutation.
    * Có cơ chế giới hạn MAX_CACHE_ENTRIES = 120 để chống rò rỉ RAM (Zero Memory Leak)
    */
-  set(url: string, params: any, data: any, ttlMs: number = Infinity): void {
+  set(url: string, params: any, data: any, ttlMs: number = DEFAULT_CACHE_TTL_MS): void {
     const key = generateKey(url, params);
 
     // Nếu đã chạm trần 120 mục, xóa mục cũ nhất (mục đầu tiên trong Map)
@@ -148,6 +161,7 @@ export const apiCache = {
    */
   invalidate(urlPattern?: string | null): void {
     if (urlPattern === null) return; // Bỏ qua nếu là thao tác vô hại (như đánh dấu đã đọc)
+    revision++;
     if (!urlPattern) {
       memoryCache.clear();
       return;
@@ -163,6 +177,18 @@ export const apiCache = {
    * Xóa toàn bộ bộ nhớ tạm
    */
   clear(): void {
+    revision++;
     memoryCache.clear();
+  },
+
+  /** Order and return mutations also change stock, reports and voucher quotas. */
+  invalidateAffected(url?: string): void {
+    const domain = this.getAffectedDomain(url);
+    this.invalidate(domain);
+    if (domain === '/orders' || domain === '/returns') {
+      for (const related of ['/products', '/stores', '/coupons', '/analytics', '/referral-links']) {
+        this.invalidate(related);
+      }
+    }
   },
 };

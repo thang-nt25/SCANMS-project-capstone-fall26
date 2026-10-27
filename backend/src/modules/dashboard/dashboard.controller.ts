@@ -18,6 +18,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   DashboardAnalyticsQueryDto,
   TopBreakdownQueryDto,
+  QueryReferralOrdersDto,
 } from './dto/dashboard-analytics.dto';
 
 @ApiTags('FR-28 — Realtime Sales & Performance Analytics')
@@ -160,5 +161,64 @@ export class DashboardController {
       user.id,
       days ? parseInt(days) : 30,
     );
+  }
+
+  // ─── 7. Danh sách Đơn hàng tiếp thị của KOL (Referral Orders Tracker) ───
+  @Get('collaborator/referral-orders')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn hàng khách mua qua link tiếp thị của KOL',
+    description: 'Bao gồm chi tiết sản phẩm, trạng thái giao hàng, hoa hồng tạm tính và đối soát',
+  })
+  getCollaboratorReferralOrders(
+    @CurrentUser() user: any,
+    @Query() dto: QueryReferralOrdersDto,
+  ) {
+    return this.dashboardService.getCollaboratorReferralOrders(user.id, dto);
+  }
+
+  // ─── 8. Danh sách Đơn hàng tiếp thị của 1 KOL cho Shop Manager ─────────
+  @Get('shop/kol-orders')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lấy danh sách đơn hàng tiếp thị của một KOL trong gian hàng',
+  })
+  getShopKolOrders(
+    @CurrentUser() user: any,
+    @Query('kolId') kolId: string,
+    @Query() dto: QueryReferralOrdersDto,
+  ) {
+    return this.dashboardService.getShopKolOrders(
+      user.id,
+      user.role,
+      kolId || dto.kolId || '',
+      dto,
+    );
+  }
+
+  // ─── 9. Báo cáo Sản phẩm mang lại hoa hồng cho KOL ────────────────────
+  @Get('collaborator/top-products')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lấy danh sách sản phẩm mang lại hoa hồng cho KOL kèm bóc tách nguồn hoa hồng',
+  })
+  getCollaboratorTopProducts(
+    @CurrentUser() user: any,
+    @Query('limit') limit?: string,
+  ) {
+    return this.dashboardService.getCollaboratorTopProducts(
+      user.id,
+      limit ? parseInt(limit) : 10,
+    );
+  }
+
+  // ─── 10. Tổng hợp hiệu suất các phiên Livestream của KOL ──────────────
+  @Get('collaborator/live-sessions-summary')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lấy báo cáo tổng hợp doanh số và hoa hồng từ các phiên Livestream của KOL',
+  })
+  getCollaboratorLiveSessionsSummary(@CurrentUser() user: any) {
+    return this.dashboardService.getCollaboratorLiveSessionsSummary(user.id);
   }
 }

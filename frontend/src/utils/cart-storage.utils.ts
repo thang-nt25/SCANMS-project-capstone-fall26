@@ -16,7 +16,9 @@ export const getSelectedStorageKey = (userId?: string | null): string => {
 export const normalizeStoredCartItem = (rawItem: any): CartItem => {
   const item = rawItem && typeof rawItem === 'object' ? rawItem : {};
   const currentVariantId = typeof item.variantId === 'string' ? item.variantId.trim() : '';
-  const variants = Array.isArray(item.availableVariants) ? item.availableVariants : [];
+  const variants: CartVariantInfo[] = Array.isArray(item.availableVariants)
+    ? item.availableVariants.filter((variant: any) => variant && typeof variant.id === 'string')
+    : [];
   const tokens = new Set(
     [currentVariantId, item.sku, item.variantName]
       .filter((value): value is string => typeof value === 'string')
@@ -28,26 +30,39 @@ export const normalizeStoredCartItem = (rawItem: any): CartItem => {
     : variants.find((variant: CartVariantInfo) =>
         UUID_RE.test(variant.id) &&
         [variant.id, variant.sku, variant.name]
-          .map((value) => value?.trim().toLocaleLowerCase())
+          .map((value) => typeof value === 'string' ? value.trim().toLocaleLowerCase() : '')
           .some((token) => token && tokens.has(token)),
       ) || (variants.length === 1 && UUID_RE.test(String(variants[0]?.id || '')) ? variants[0] : null);
 
   return {
     ...item,
+    availableVariants: variants,
     ...(matchedVariant
       ? {
           variantId: matchedVariant.id,
           variantName: matchedVariant.name || item.variantName,
           sku: matchedVariant.sku || item.sku,
-          price: matchedVariant.price !== null && matchedVariant.price !== undefined
+          price: matchedVariant.price !== null && matchedVariant.price !== undefined && Number.isFinite(Number(matchedVariant.price)) && Number(matchedVariant.price) >= 0
             ? Number(matchedVariant.price)
             : item.price,
-          stockQuantity: matchedVariant.stockQuantity ?? item.stockQuantity,
+          stockQuantity: Number.isSafeInteger(matchedVariant.stockQuantity) && matchedVariant.stockQuantity >= 0 ? matchedVariant.stockQuantity : item.stockQuantity,
         }
       : {}),
     imageUrl: getSafeProductImageUrl(item.imageUrl, item.title, item.variantName),
   } as CartItem;
 };
+
+/** Corrupt one row must not crash the storefront or discard every valid row. */
+export const isStoredCartItem = (item: any): item is CartItem => Boolean(
+  item && typeof item === 'object' &&
+  typeof item.cartItemId === 'string' && item.cartItemId.trim() &&
+  typeof item.productId === 'string' && item.productId.trim() &&
+  item.store && typeof item.store.id === 'string' && item.store.id.trim() &&
+  typeof item.store.name === 'string' && typeof item.title === 'string' &&
+  Number.isFinite(item.price) && item.price >= 0 &&
+  Number.isSafeInteger(item.quantity) && item.quantity > 0 &&
+  Number.isSafeInteger(item.stockQuantity) && item.stockQuantity >= 0,
+);
 
 export const loadCartFromStorage = (uid: string | null): CartItem[] => {
   try {
@@ -56,7 +71,9 @@ export const loadCartFromStorage = (uid: string | null): CartItem[] => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        return parsed.map(normalizeStoredCartItem);
+        return parsed.filter(isStoredCartItem).flatMap(item => {
+          try { return [normalizeStoredCartItem(item)]; } catch { return []; }
+        });
       }
     }
   } catch {
@@ -71,7 +88,7 @@ export const loadSelectedFromStorage = (uid: string | null): string[] => {
     const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return [...new Set(parsed.filter((id): id is string => typeof id === 'string' && Boolean(id.trim())))];
     }
   } catch {
     // Fallback

@@ -80,16 +80,19 @@ export interface ChatCouponVoucher {
   fundingSource?: string;
   id: string;
   code: string;
+  displayCode?: string;
   discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
   discountValue: number;
   minimumOrderAmount: number | null;
   maximumDiscountAmount: number | null;
   remainingUses: number | null;
+  usageLimitTotal?: number | null;
+  usageCount?: number;
   expiresAt: string | null;
   scopeType: string;
-  products: Array<{ id: string; title: string }>;
-  categories: string[];
-  storeName: string;
+  products?: Array<{ id: string; title: string }>;
+  categories?: string[];
+  storeName?: string;
 }
 
 export interface ChatExclusiveDeal {
@@ -149,9 +152,9 @@ export interface ScanmsChatContextType {
   closeChat: () => void;
   toggleMinimize: () => void;
   selectConversation: (id: string) => void;
-  sendMessage: (content: string, replyToId?: string) => Promise<boolean>;
+  sendMessage: (content: string, replyToId?: string) => Promise<boolean> | void;
   sendAttachment: (file: File, type: ChatAttachmentType, caption?: string, replyToId?: string) => Promise<void>;
-  sendProductsInquiry: (products: ChatProductInfo[]) => boolean;
+  sendProductsInquiry: (products: ChatProductInfo[]) => boolean | Promise<boolean>;
   shareCouponVoucher: (coupon: ChatCouponVoucher) => boolean;
   clearActiveProduct: () => void;
   deleteConversation: (id: string) => Promise<boolean>;

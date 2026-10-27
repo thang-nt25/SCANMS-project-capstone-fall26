@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Tag,
+  Ticket,
   Plus,
   Copy,
   Check,
@@ -17,11 +18,14 @@ import {
   Loader2,
   Sparkles,
   ChevronDown,
+  DollarSign,
 } from 'lucide-react';
 import {
   couponService,
   type CouponItem,
   type CouponStatus,
+  type DiscountType,
+  type CouponScope,
 } from '../../services/coupon.service';
 import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
@@ -130,9 +134,29 @@ export const KolCouponsPage: React.FC = () => {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const storeDropdownRef = useRef<HTMLDivElement>(null);
   const [proposeCode, setProposeCode] = useState('');
+  const [proposeDiscountType, setProposeDiscountType] = useState<DiscountType>('PERCENTAGE');
+  const [proposeDesiredPercent, setProposeDesiredPercent] = useState<number>(15);
+  const [proposeFixedAmount, setProposeFixedAmount] = useState<number>(30000);
+  const [proposeMaxDiscount, setProposeMaxDiscount] = useState<number>(50000);
+  const [proposeMinOrder, setProposeMinOrder] = useState<number>(150000);
+  const [proposeValidityDays, setProposeValidityDays] = useState<number>(30);
+  const [proposeScopeType, setProposeScopeType] = useState<CouponScope>('STORE_WIDE');
+  const [proposeNote, setProposeNote] = useState<string>('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
+
+  const handleNumericInput = (rawText: string, setter: (val: number) => void) => {
+    const digits = rawText.replace(/\D/g, '');
+    if (!digits) {
+      setter(0);
+      return;
+    }
+    const parsed = parseInt(digits, 10);
+    setter(Number.isNaN(parsed) ? 0 : parsed);
+  };
+
+
   const selectedStore = approvedStores.find(
     (store) => (store.id || store.storeId) === selectedStoreId,
   ) || approvedStores[0];
@@ -245,10 +269,19 @@ export const KolCouponsPage: React.FC = () => {
     window.addEventListener('message', handleSync);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('focus', handleFocus);
+
+    const handleOpenPropose = () => {
+      setIsModalOpen(true);
+      setModalError(null);
+      setModalSuccess(null);
+    };
+    window.addEventListener('scanms_open_propose_coupon', handleOpenPropose);
+
     return () => {
       window.removeEventListener('message', handleSync);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('scanms_open_propose_coupon', handleOpenPropose);
     };
   }, []);
 
@@ -373,9 +406,23 @@ export const KolCouponsPage: React.FC = () => {
     try {
       setModalLoading(true);
       setModalError(null);
+
+      const startsAt = new Date().toISOString();
+      const expiresAt = proposeValidityDays > 0
+        ? new Date(Date.now() + proposeValidityDays * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+
       await couponService.proposeCoupon({
         storeId: selectedStoreId,
         code: trimmedCode,
+        discountType: proposeDiscountType,
+        discountValue: proposeDiscountType === 'PERCENTAGE' ? proposeDesiredPercent : proposeFixedAmount,
+        minimumOrderAmount: proposeMinOrder > 0 ? proposeMinOrder : undefined,
+        maximumDiscountAmount: proposeDiscountType === 'PERCENTAGE' && proposeMaxDiscount > 0 ? proposeMaxDiscount : undefined,
+        startsAt,
+        expiresAt,
+        scopeType: proposeScopeType,
+        note: proposeNote.trim() || undefined,
       });
 
 
@@ -452,7 +499,7 @@ export const KolCouponsPage: React.FC = () => {
               <span className="text-xs font-medium text-[#7D715E]">
                 Hoa hồng dự kiến
               </span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <Sparkles className="w-4 h-4 text-[#B88E4F]" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-[#B88E4F]">
               +{Number(summary.totalCommission || 0).toLocaleString('vi-VN')} ₫
@@ -524,19 +571,6 @@ export const KolCouponsPage: React.FC = () => {
               </button>
             ))}
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsModalOpen(true);
-              setModalError(null);
-              setModalSuccess(null);
-            }}
-            className="inline-flex items-center justify-center gap-2 min-h-[40px] shrink-0 px-3.5 py-2 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-xs font-semibold whitespace-nowrap cursor-pointer hover:bg-[#F3EFE6] hover:border-[#C59B58] transition"
-          >
-            <Plus className="w-4 h-4" />
-            Đề xuất mã mới
-          </button>
         </div>
 
 
@@ -563,7 +597,7 @@ export const KolCouponsPage: React.FC = () => {
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-sm font-medium transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Đề xuất mã đầu tiên
@@ -581,59 +615,80 @@ export const KolCouponsPage: React.FC = () => {
               return (
                 <div
                   key={coupon.id}
-                  className="kol-coupon-card bg-white rounded-xl border border-[#EAE4D7] p-5 shadow-xs hover:border-[#C59B58] transition-all duration-200 flex flex-col justify-between"
-                >
-                  <div>
 
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Store className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                        <span className="text-xs font-semibold text-[#1A1612] truncate">
+                  className="kol-coupon-card bg-white rounded-2xl border border-[#EAE4D7] shadow-xs hover:border-[#C59B58] hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+                >
+                  {/* Top Ticket Header */}
+                  <div className="bg-gradient-to-br from-[#FAF8F5] via-[#FBF5EB] to-[#F3EFE6] p-4 pb-4 border-b border-dashed border-[#EEDFC6] relative">
+                    {/* Header Store & Status */}
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Store className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                        <span className="text-xs font-bold text-[#1A1612] truncate">
                           {coupon.store?.name || 'Gian hàng đối tác'}
                         </span>
                       </div>
                       <span
-                        className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border shrink-0 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0 ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
                       >
                         {statusCfg.label}
                       </span>
                     </div>
 
 
-                    <div className="kol-coupon-code border border-[#EAE4D7] rounded-xl p-3 flex items-center justify-between mb-4">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-[#7D715E] tracking-wider block">
-                          MÃ COUPON
+                    {/* Voucher Code Box */}
+                    <div className="kol-coupon-code flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#7D715E] block">
+                          MÃ VOUCHER ĐỘC QUYỀN
                         </span>
-                        <span className="text-lg font-mono font-bold text-[#1A1612] tracking-wide">
+                        <span className="text-sm sm:text-base font-mono font-black text-[#1A1612] tracking-normal truncate block" title={coupon.displayCode}>
+                          {coupon.displayCode}
+                        </span>
+                      </div>
+                        </span>
+                        <span className="text-sm sm:text-base font-mono font-black text-[#1A1612] tracking-normal truncate block" title={coupon.displayCode}>
                           {coupon.displayCode}
                         </span>
                       </div>
                       <button
+                        type="button"
                         onClick={() => handleCopy(coupon.displayCode)}
-                        className="p-2 rounded-lg bg-white border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#1A1612] transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg bg-[#FAF8F5] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[#B88E4F] hover:text-[#1A1612] text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
                         title="Sao chép mã"
                       >
                         {copiedCode === coupon.displayCode ? (
-                          <Check className="w-4 h-4 text-emerald-600" />
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[11px] text-emerald-700">Đã chép</span>
+                          </>
                         ) : (
-                          <Copy className="w-4 h-4" />
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Chép mã</span>
+                          </>
                         )}
                       </button>
                     </div>
 
+                    {/* Ticket Notches at side edges */}
+                    <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-[#FAF8F5] rounded-full border border-[#EAE4D7]" />
+                    <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-[#FAF8F5] rounded-full border border-[#EAE4D7]" />
+                  </div>
 
-                    <div className="kol-coupon-details space-y-2 mb-4 text-xs text-[#7D715E]">
+
+                  {/* Bottom Ticket Body */}
+                  <div className="kol-coupon-details p-4 pt-3 flex flex-col justify-between flex-1">
+                    <div className="space-y-2 mb-4 text-xs text-[#7D715E]">
                       {coupon.status === 'PENDING_APPROVAL' ? (
-                        <div className="bg-amber-50/60 p-2.5 rounded-lg border border-amber-200/60 flex items-start gap-2">
+                        <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80 flex items-start gap-2">
                           <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <p className="text-[11px] text-amber-800">
-                            Yêu cầu đang chờ Shop xác nhận và cấu hình tỷ lệ
-                            giảm giá, ngân sách và thời hạn.
+                          <p className="text-[11px] text-amber-800 leading-relaxed">
+                            Yêu cầu đang chờ Shop xác nhận cấu hình mức giảm, ngân sách và thời hạn áp dụng.
                           </p>
                         </div>
                       ) : coupon.status === 'REJECTED' ? (
-                        <div className="bg-red-50/70 p-2.5 rounded-lg border border-red-200 flex items-start gap-2">
+                        <div className="bg-red-50/70 p-2.5 rounded-xl border border-red-200 flex items-start gap-2">
                           <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="text-[11px] font-semibold text-red-800">
@@ -646,7 +701,7 @@ export const KolCouponsPage: React.FC = () => {
                           </div>
                         </div>
                       ) : coupon.status === 'BLOCKED' ? (
-                        <div className="bg-red-50/70 p-2.5 rounded-lg border border-red-200 flex items-start gap-2">
+                        <div className="bg-red-50/70 p-2.5 rounded-xl border border-red-200 flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="text-[11px] font-semibold text-red-800">
@@ -662,7 +717,7 @@ export const KolCouponsPage: React.FC = () => {
                         <>
                           <div className="flex items-center justify-between">
                             <span>Ưu đãi áp dụng:</span>
-                            <span className="font-semibold text-[#1A1612]">
+                            <span className="font-bold text-[#1A1612]">
                               {isDiscountPercent
                                 ? `Giảm ${discountVal}%`
                                 : `Giảm ${discountVal.toLocaleString('vi-VN')} ₫`}
@@ -709,9 +764,9 @@ export const KolCouponsPage: React.FC = () => {
                       )}
                     </div>
 
-
                     {(coupon.status === 'ACTIVE' || coupon.status === 'PAUSED') && (
-                      <div className="kol-coupon-earnings mb-4 p-2.5 rounded-lg border border-[#EAE4D7] text-xs space-y-1.5">
+
+                      <div className="kol-coupon-earnings mb-4 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[#7D715E]">Doanh số tạo ra:</span>
                           <span className="font-bold text-[#1A1612]">
@@ -726,45 +781,47 @@ export const KolCouponsPage: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  </div>
 
+                    <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[#7D715E]">
+                        Tạo ngày:{' '}
+                        {new Date(coupon.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
 
-                  <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-[#7D715E]">
-                      Tạo lúc:{' '}
-                      {new Date(coupon.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
+                      <div className="flex items-center gap-1.5">
+                        {coupon.status === 'ACTIVE' && (
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePause(coupon)}
+                            className="p-1.5 rounded-lg text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] transition-colors cursor-pointer"
+                            title="Tạm ngưng mã"
+                          >
+                            <Pause className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
-                    <div className="flex items-center gap-1.5">
-                      {coupon.status === 'ACTIVE' && (
-                        <button
-                          onClick={() => handleTogglePause(coupon)}
-                          className="p-1.5 rounded-lg text-[#7D715E] hover:bg-stone-100 hover:text-[#1A1612] transition-colors cursor-pointer"
-                          title="Tạm ngưng mã"
-                        >
-                          <Pause className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                        {coupon.status === 'PAUSED' && coupon.approvedBy && coupon.approvedAt && (
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePause(coupon)}
+                            className="p-1.5 rounded-lg text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors cursor-pointer"
+                            title="Kích hoạt lại"
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
-                      {coupon.status === 'PAUSED' && coupon.approvedBy && coupon.approvedAt && (
-                        <button
-                          onClick={() => handleTogglePause(coupon)}
-                          className="p-1.5 rounded-lg text-[#B88E4F] hover:bg-[#FBF5EB] transition-colors cursor-pointer"
-                          title="Kích hoạt lại"
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      {(coupon.status === 'PENDING_APPROVAL' || coupon.status === 'REJECTED') && (
-                        <button
-                          onClick={() => setDeleteTarget(coupon)}
-                          className="p-1.5 rounded-lg text-[#7D715E] hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
-                          title="Xóa mềm mã"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                        {(coupon.status === 'PENDING_APPROVAL' || coupon.status === 'REJECTED') && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(coupon)}
+                            className="p-1.5 rounded-lg text-[#7D715E] hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                            title="Xóa mềm mã"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -777,24 +834,34 @@ export const KolCouponsPage: React.FC = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="kol-coupon-proposal bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] overflow-hidden my-auto flex flex-col text-left">
-            <div className="kol-coupon-proposal-heading border-b border-[#EAE4D7] flex items-center shrink-0">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]" aria-hidden="true"><Tag className="w-4 h-4" /></span>
-              <div>
-                <h3 id="coupon-proposal-title" className="text-lg font-bold text-[#1A1612]">
-                  Đề xuất mã riêng
-                </h3>
+
+          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="kol-coupon-proposal bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col text-left">
+            <div className="kol-coupon-proposal-heading px-5 py-4 border-b border-[#EAE4D7] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]" aria-hidden="true">
+                  <Ticket className="w-4 h-4" />
+                </span>
+                <div className="min-w-0">
+                  <h3 id="coupon-proposal-title" className="text-sm sm:text-base font-bold text-[#1A1612]">
+                    Đề xuất mã giảm giá riêng
+                  </h3>
+                  <p className="text-xs text-[#7D715E] mt-0.5">
+                    Tạo mã ưu đãi mang dấu ấn thương hiệu cá nhân của bạn.
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                type="button" aria-label="Đóng đề xuất mã giảm giá"
-                className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-lg hover:bg-stone-100 cursor-pointer"
+                type="button"
+                aria-label="Đóng đề xuất mã giảm giá"
+                className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-lg hover:bg-[#F3EFE6] transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleProposeSubmit} className="kol-coupon-proposal-form overflow-y-auto">
+
+            <form onSubmit={handleProposeSubmit} className="kol-coupon-proposal-form overflow-y-auto p-5 space-y-4">
               {modalError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -894,68 +961,375 @@ export const KolCouponsPage: React.FC = () => {
               </div>
 
 
-              <div className="kol-coupon-proposal-code">
-                <div className="flex items-center justify-between gap-2">
-                  <label htmlFor="coupon-proposal-code" className="block text-xs font-semibold text-[#1A1612] mb-1.5">
-                    Mã giảm giá của bạn <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[10px] font-mono text-[#7D715E]" aria-label={`${proposeCode.length} trên 20 ký tự`}>{proposeCode.length}/20</span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="coupon-proposal-code"
-                    aria-describedby="coupon-code-feedback"
-                    aria-invalid={Boolean(trimmedCode && !isCodeValid)}
-                    autoComplete="off"
-                    value={proposeCode}
-                    onChange={(e) => setProposeCode(e.target.value)}
-                    placeholder="Ví dụ: THANGVIP10"
-                    maxLength={20}
-                    className="w-full px-3.5 py-2.5 text-sm font-mono uppercase bg-white border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58] transition-colors"
-                    required
-                  />
-                  {trimmedCode && (
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold">
-                      {isCodeValid ? (
-                        <Check className="w-4 h-4 text-emerald-600" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
-                      )}
+
+              <div className="kol-coupon-proposal-code space-y-4">
+              <div className="space-y-4">
+                {/* 1. Nhập mã voucher */}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <label htmlFor="coupon-proposal-code" className="block text-xs font-semibold text-[#1A1612]">
+                      Mã giảm giá đề xuất <span className="text-[#DC2626]">*</span>
+                    </label>
+                    <span className="text-[11px] font-medium text-[#7D715E]">
+                      {proposeCode.length}/20 ký tự
+
                     </span>
-                  )}
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="coupon-proposal-code"
+                      aria-describedby="coupon-code-feedback"
+                      aria-invalid={Boolean(trimmedCode && !isCodeValid)}
+                      autoComplete="off"
+                      value={proposeCode}
+                      onChange={(e) => setProposeCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
+                      placeholder="Ví dụ: THANGVIP10"
+                      maxLength={20}
+                      className="w-full px-3.5 py-2.5 text-sm font-bold tracking-wider uppercase bg-[#FAF8F5] focus:bg-white border border-[#EAE4D7] rounded-xl focus:outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 transition-all text-[#1A1612]"
+                      required
+                    />
+                    {trimmedCode && (
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold">
+                        {isCodeValid ? (
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-[#DC2626]" />
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Gợi ý đuôi mã nhanh */}
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-[#7D715E]">Gợi ý nhanh:</span>
+                    {['VIP10', 'SALE15', 'DEAL20', 'SPECIAL'].map((suf) => (
+                      <button
+                        key={suf}
+                        type="button"
+                        onClick={() => {
+                          const prefix = trimmedCode ? trimmedCode.replace(/\d+$/, '') : 'THANG';
+                          setProposeCode((prefix + suf).slice(0, 20));
+                        }}
+                        className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] hover:border-[#C59B58] hover:bg-[#FBF5EB] text-[10.5px] font-semibold text-[#7D715E] hover:text-[#B88E4F] transition-colors cursor-pointer"
+                      >
+                        +{suf}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
+                {/* 2. Cấu hình điều kiện ưu đãi đề xuất */}
+                <div className="space-y-3 pt-1 border-t border-[#EAE4D7]">
+                  {/* Hình thức giảm giá */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
+                      Hình thức giảm giá mong muốn
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setProposeDiscountType('PERCENTAGE')}
+                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          proposeDiscountType === 'PERCENTAGE'
+                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
+                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
+                        }`}
+                      >
+                        <Percent className="w-3.5 h-3.5" />
+                        <span>Giảm theo phần trăm (%)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProposeDiscountType('FIXED_AMOUNT')}
+                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          proposeDiscountType === 'FIXED_AMOUNT'
+                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
+                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
+                        }`}
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        <span>Giảm tiền cố định (VNĐ)</span>
+                      </button>
+                    </div>
+                  </div>
 
-                <p id="coupon-code-feedback" className={`mt-1.5 text-xs ${trimmedCode && !isCodeValid ? 'text-[#DC2626]' : 'text-[#7D715E]'}`} aria-live="polite">
-                  {!trimmedCode ? '4–20 ký tự, gồm chữ cái và số.' : isCodeValid ? 'Mã hợp lệ, sẵn sàng gửi đề xuất.' : !isLengthValid ? 'Mã cần có từ 4 đến 20 ký tự.' : !isAlphanumeric ? 'Chỉ dùng chữ A–Z và số, không có khoảng trắng.' : !hasLetter ? 'Mã cần có ít nhất một chữ cái.' : 'Mã chứa từ khóa không được phép sử dụng.'}
-                </p>
+                  {/* Giá trị giảm */}
+                  {proposeDiscountType === 'PERCENTAGE' ? (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Mức giảm (%)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={5}
+                            max={50}
+                            value={proposeDesiredPercent || ''}
+                            onChange={(e) => setProposeDesiredPercent(Number(e.target.value) || 0)}
+                            className="w-full px-3 py-2 text-xs font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                            placeholder="15"
+                          />
+                          <span className="text-xs font-bold text-[#7D715E]">%</span>
+                        </div>
+                        <div className="flex gap-1 mt-1">
+                          {[10, 15, 20, 25].map((pct) => (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => setProposeDesiredPercent(pct)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                                proposeDesiredPercent === pct
+                                  ? 'bg-[#B88E4F] text-white'
+                                  : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                              }`}
+                            >
+                              {pct}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Giảm tối đa (VNĐ)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={proposeMaxDiscount ? String(proposeMaxDiscount) : ''}
+                          onChange={(e) => handleNumericInput(e.target.value, setProposeMaxDiscount)}
+                          placeholder="50000"
+                          className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                        />
+                        <div className="flex items-center justify-between text-[10px] mt-0.5">
+                          <span className="text-[#7D715E]">Trần giảm bảo vệ Shop</span>
+                          {proposeMaxDiscount > 0 && (
+                            <span className="font-bold text-[#B88E4F] font-mono">
+                              {proposeMaxDiscount.toLocaleString('vi-VN')} ₫
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Số tiền giảm cố định (VNĐ)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={proposeFixedAmount ? String(proposeFixedAmount) : ''}
+                        onChange={(e) => handleNumericInput(e.target.value, setProposeFixedAmount)}
+                        placeholder="30000"
+                        className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      />
+                      {proposeFixedAmount > 0 && (
+                        <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
+                          Quy đổi: {proposeFixedAmount.toLocaleString('vi-VN')} ₫
+                        </div>
+                      )}
+                      <div className="flex gap-1.5 mt-1">
+                        {[20000, 30000, 50000, 100000].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setProposeFixedAmount(amt)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                              proposeFixedAmount === amt
+                                ? 'bg-[#B88E4F] text-white'
+                                : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                            }`}
+                          >
+                            {(amt / 1000).toLocaleString('vi-VN')}K
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Giá trị đơn tối thiểu */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Giá trị đơn hàng tối thiểu (VNĐ)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={proposeMinOrder ? String(proposeMinOrder) : ''}
+                      onChange={(e) => handleNumericInput(e.target.value, setProposeMinOrder)}
+                      placeholder="150000"
+                      className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                    />
+                    {proposeMinOrder > 0 && (
+                      <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
+                        Áp dụng đơn từ: {proposeMinOrder.toLocaleString('vi-VN')} ₫
+                      </div>
+                    )}
+                    <div className="flex gap-1.5 mt-1 flex-wrap">
+                      {[0, 100000, 150000, 200000, 300000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setProposeMinOrder(amt)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
+                            proposeMinOrder === amt
+                              ? 'bg-[#B88E4F] text-white'
+                              : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
+                          }`}
+                        >
+                          {amt === 0 ? 'Không giới hạn' : `${(amt / 1000).toLocaleString('vi-VN')}K`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phạm vi & Thời hạn */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Phạm vi áp dụng
+                      </label>
+                      <select
+                        value={proposeScopeType}
+                        onChange={(e) => setProposeScopeType(e.target.value as CouponScope)}
+                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      >
+                        <option value="STORE_WIDE">Toàn bộ gian hàng</option>
+                        <option value="PRODUCTS">Sản phẩm review chỉ định</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                        Thời hạn hiệu lực
+                      </label>
+                      <select
+                        value={proposeValidityDays}
+                        onChange={(e) => setProposeValidityDays(Number(e.target.value))}
+                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
+                      >
+                        <option value={14}>14 ngày (Đợt review)</option>
+                        <option value={30}>30 ngày (Tháng này)</option>
+                        <option value={60}>60 ngày (Dài hạn)</option>
+                        <option value={0}>Vô thời hạn</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Cam kết review */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Kế hoạch đẩy số / Mục đích sử dụng
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={proposeNote}
+                      onChange={(e) => setProposeNote(e.target.value)}
+                      placeholder="VD: Em chuẩn bị lên video review trên TikTok và ghim mã trong giỏ hàng..."
+                      className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. LIVE INTERACTIVE VOUCHER PREVIEW (Vé Ưu Đãi Trực Quan Thời Gian Thực) */}
+                <div className="pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#7D715E] mb-1.5">
+                    <span className="flex items-center gap-1 text-[#B88E4F]">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Xem trước hiển thị trên App khách hàng</span>
+                    </span>
+                    <span>Bản mẫu ưu đãi</span>
+                  </div>
+
+                  <div className="relative rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-[#FAF8F5] to-[#FBF5EB] p-3.5 shadow-2xs overflow-hidden">
+                    {/* Đường rãnh vé khuyết 2 bên */}
+                    <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border border-[#EEDFC6]" />
+                    <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border border-[#EEDFC6]" />
+
+                    <div className="flex items-center justify-between gap-3 pl-2 pr-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#B88E4F] uppercase tracking-wider">
+                          <Ticket className="w-3.5 h-3.5" />
+                          <span>Voucher Độc Quyền KOL</span>
+                        </div>
+                        <div className="mt-1 text-base sm:text-lg font-black tracking-widest text-[#1A1612] truncate font-sans">
+                          {trimmedCode || 'THANGVIP10'}
+                        </div>
+                        <div className="text-[11px] text-[#7D715E] mt-0.5 truncate">
+                          Áp dụng tại: <strong>{selectedStore?.name || selectedStore?.storeName || 'Gian hàng đối tác'}</strong>
+                        </div>
+                        <div className="text-[10px] text-[#B88E4F] font-semibold mt-0.5">
+                          {proposeDiscountType === 'PERCENTAGE'
+                            ? `Giảm ${proposeDesiredPercent}%${proposeMaxDiscount ? ` (Tối đa ${(proposeMaxDiscount / 1000).toLocaleString('vi-VN')}K)` : ''}`
+                            : `Giảm ${(proposeFixedAmount / 1000).toLocaleString('vi-VN')}K₫`}
+                          {proposeMinOrder > 0 ? ` · Đơn từ ${(proposeMinOrder / 1000).toLocaleString('vi-VN')}K` : ''}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right border-l border-dashed border-[#EEDFC6] pl-3 py-1">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-white border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F]">
+                          Chờ duyệt
+                        </span>
+                        <div className="text-[10px] text-[#7D715E] mt-1">
+                          {proposeValidityDays > 0 ? `${proposeValidityDays} ngày` : 'Dài hạn'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
+                  <div className={`flex items-center gap-1.5 ${isLengthValid ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
+                    <span>{isLengthValid ? '✓' : '•'}</span>
+                    <span>Từ 4 đến 20 ký tự</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${isAlphanumeric && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
+                    <span>{isAlphanumeric && proposeCode ? '✓' : '•'}</span>
+                    <span>Chỉ dùng chữ cái & số</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
+                    <span>{hasLetter ? '✓' : '•'}</span>
+                    <span>Có ít nhất 1 chữ cái</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${!isBanned && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
+                    <span>{!isBanned && proposeCode ? '✓' : '•'}</span>
+                    <span>Không chứa từ khóa cấm</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] text-[#7D715E]">
+                  <Clock className="w-4 h-4 text-[#B88E4F] shrink-0" />
+                  <span>Sau khi gửi, Chủ Shop sẽ thiết lập hạn mức giảm (10% - 20%) và ngân sách kích hoạt mã.</span>
+                </div>
               </div>
 
+              <div className="kol-coupon-proposal-footer pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
 
-              <p className="flex items-start gap-1.5 mt-3 text-[11px] leading-relaxed text-[#7D715E]"><Clock className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" /> Mã sẽ được Shop xét duyệt trước khi sử dụng.</p>
-
-              <div className="kol-coupon-proposal-footer border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#7D715E] hover:bg-stone-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#7D715E] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={!isCodeValid || modalLoading || approvedStores.length === 0 || !selectedStoreId}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl disabled:cursor-not-allowed text-xs font-semibold transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-all cursor-pointer active:scale-95"
                 >
                   {modalLoading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Đang gửi...
+                      <span>Đang gửi đề xuất...</span>
                     </>
                   ) : (
-                    'Gửi đề xuất mã'
+                    <span>Gửi đề xuất mã</span>
                   )}
                 </button>
               </div>

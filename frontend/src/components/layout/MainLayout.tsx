@@ -4,7 +4,6 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { applyTheme } from '../../utils/theme.utils';
-import { SeedDataNotice } from '../common/SeedDataNotice';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -41,8 +40,12 @@ export default function MainLayout() {
     };
 
     window.addEventListener('auth-user-updated', handleUserUpdated);
-    return () => window.removeEventListener('auth-user-updated', handleUserUpdated);
-  }, [location.pathname]);
+    window.addEventListener('scanms_workspace_changed', handleUserUpdated);
+    return () => {
+      window.removeEventListener('auth-user-updated', handleUserUpdated);
+      window.removeEventListener('scanms_workspace_changed', handleUserUpdated);
+    };
+  }, []);
 
   const handleLogout = () => {
     authService.logout();

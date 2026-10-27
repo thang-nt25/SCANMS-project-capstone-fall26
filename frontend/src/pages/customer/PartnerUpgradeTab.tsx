@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Sparkles,
+  Megaphone,
   Store,
   ArrowRight,
   ShieldCheck,
@@ -292,7 +292,7 @@ export const PartnerUpgradeTab: React.FC = () => {
     {
       type: 'kol' as const,
       title: 'Đối tác KOL',
-      icon: Sparkles,
+      icon: Megaphone,
       status: kolApp?.status,
       description:
         kolApp?.status === 'VERIFIED'
@@ -326,7 +326,7 @@ export const PartnerUpgradeTab: React.FC = () => {
       <header className="flex items-center justify-between gap-[20px] p-[22px_24px] border border-[#EAE4D7] rounded-[18px] bg-white max-[640px]:p-[18px]">
         <div>
           <span className="block text-[#B88E4F] text-[11px] font-[600] mb-[6px]">Đồng hành cùng SCANMS</span>
-          <h2 className="m-0 text-[24px] leading-[1.3] font-[700] tracking-[-0.7px] text-[#1A1612] max-[640px]:text-[21px]">Nâng cấp đối tác</h2>
+          <h2 className="m-0 text-[24px] leading-[1.3] font-[700] tracking-[-0.7px] text-[#1A1612] max-[640px]:text-[21px]">Hợp tác với chúng tôi</h2>
           <p className="m-[7px_0_0] text-[13px] text-[#7D715E] leading-[1.7] max-w-[760px] max-[640px]:text-[12px]">
             Trở thành KOL tiếp thị liên kết hoặc mở gian hàng. Chọn vai trò phù
             hợp và hoàn thiện hồ sơ đăng ký.

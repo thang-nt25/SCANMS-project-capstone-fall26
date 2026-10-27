@@ -1,4 +1,5 @@
 import api from './api';
+import { fetchAllMediaPages, type MediaPage } from '../utils/media-pagination';
 
 export interface MediaAsset {
   id: string;
@@ -23,27 +24,19 @@ export interface MediaAsset {
 }
 
 export const mediaService = {
-  async getAllMediaAssets() {
-    const assets = new Map<string, MediaAsset>();
-    let page = 1;
-    let totalPages = 1;
-    do {
-      const res = await this.getMediaAssets({ page, limit: 100 });
-      const items: MediaAsset[] = res?.items || (Array.isArray(res) ? res : []);
-      for (const item of items) assets.set(item.id, item);
-      totalPages = res?.pagination?.totalPages || 1;
-      page++;
-    } while (page <= totalPages);
-    return [...assets.values()];
-  },
   async getMediaAssets(params?: {
     productId?: string;
     assetType?: string;
     page?: number;
     limit?: number;
-  }) {
-    const res: any = await api.get('/media', { params });
+  }, options?: { signal?: AbortSignal; fresh?: boolean }): Promise<MediaPage<MediaAsset>> {
+    const res: any = await api.get('/media', { params, signal: options?.signal,
+      headers: options?.fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data;
+  },
+
+  async getAllMediaAssets(options: { signal?: AbortSignal; onProgress?: (loaded: number, total: number) => void } = {}) {
+    return fetchAllMediaPages((page, limit) => mediaService.getMediaAssets({ page, limit }, { signal: options.signal, fresh: true }), options);
   },
 
   async createMediaAsset(data: {

@@ -18,6 +18,15 @@ describe('Withdrawal DTO validation', () => {
     expect(dto).toEqual({ amount: '200000.10', storeId });
   });
 
+  it('accepts the UUID v5 Sora Skin shop used by seeded withdrawal wallets', async () => {
+    const seededShopId = '2f67001b-09a5-5958-85fd-5f401831c871';
+    const dto = await pipe.transform(
+      { amount: '1000000', storeId: seededShopId },
+      { type: 'body', metatype: CreateWithdrawalDto },
+    );
+    expect(dto).toEqual({ amount: '1000000', storeId: seededShopId });
+  });
+
   it.each([
     {},
     { amount: 200000 },

@@ -17,6 +17,7 @@ import {
   ReceiptApprovalDto,
 } from './dto/manage-payout.dto';
 import { PayoutBillService, StoredPayoutBill } from './payout-bill.service';
+import { merchantPayoutScopes, merchantPayoutWhere } from './merchant-payout-query';
 
 @Injectable()
 export class MerchantPayoutsService {
@@ -75,31 +76,39 @@ export class MerchantPayoutsService {
     query: QueryMerchantPayoutsDto,
   ) {
     await this.assertStoreOwnership(storeId, userId);
-    const where = {
-      storeId,
-      ...(query.status ? { status: query.status } : {}),
-    };
-    const [requests, total] = await this.prisma.$transaction([
-      this.prisma.payoutRequest.findMany({
-        where,
-        include: {
-          collaborator: {
-            select: {
-              fullName: true,
-              email: true,
-              phoneNumber: true,
-              collaboratorProfile: {
-                select: { avatarUrl: true, taxCode: true, kycStatus: true },
-              },
-            },
-          },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-      }),
-      this.prisma.payoutRequest.count({ where }),
-    ]);
+    const now = new Date();
+    const where = merchantPayoutWhere(storeId, query, now);
+    const scopes = merchantPayoutScopes(storeId, now);
+    const limit = query.limit ?? 10;
+    const result = await this.prisma.$transaction(async (tx) => {
+      const total = await tx.payoutRequest.count({ where });
+      // Filtering/approval may remove the last row on the last page.
+      const page = Math.min(query.page ?? 1, Math.max(1, Math.ceil(total / limit)));
+      const [requests, pending, approvedToday, tax, kycPendingCount] = await Promise.all([
+        tx.payoutRequest.findMany({
+          where,
+          include: { collaborator: { select: {
+            fullName: true, email: true, phoneNumber: true,
+            collaboratorProfile: { select: { avatarUrl: true, taxCode: true, kycStatus: true } },
+          } } },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * limit, take: limit,
+        }),
+        tx.payoutRequest.aggregate({ where: scopes.pending, _count: { _all: true }, _sum: { netAmount: true } }),
+        tx.payoutRequest.aggregate({ where: scopes.approvedToday, _count: { _all: true }, _sum: { netAmount: true } }),
+        tx.payoutRequest.aggregate({ where: scopes.tax, _count: { _all: true }, _sum: { taxAmount: true } }),
+        tx.payoutRequest.count({ where: scopes.kyc }),
+      ]);
+      return { requests, total, page, summary: {
+        scope: 'STORE' as const, timeZone: 'Asia/Ho_Chi_Minh',
+        dayStart: scopes.start.toISOString(), dayEndExclusive: scopes.end.toISOString(),
+        pending: { count: pending._count._all, netAmount: pending._sum.netAmount?.toFixed(2) ?? '0.00' },
+        approvedToday: { count: approvedToday._count._all, netAmount: approvedToday._sum.netAmount?.toFixed(2) ?? '0.00' },
+        withheldTax: { count: tax._count._all, amount: tax._sum.taxAmount?.toFixed(2) ?? '0.00' },
+        kycPendingCount,
+      } };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+    const { requests, total, page, summary } = result;
     return {
       requests: requests.map((request) => ({
         ...this.serializePayout(request),
@@ -114,8 +123,10 @@ export class MerchantPayoutsService {
           request.collaborator.collaboratorProfile?.kycStatus ?? 'UNVERIFIED',
       })),
       total,
-      page: query.page,
-      limit: query.limit,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      summary,
       maxBillBytes: this.bills.maxBillBytes,
     };
   }
@@ -283,14 +294,13 @@ export class MerchantPayoutsService {
     request: PayoutRequest,
   ) {
     if (
-      !request.storeId ||
       request.amount.lessThanOrEqualTo(0) ||
       request.taxAmount.lessThan(0) ||
       request.netAmount.lessThanOrEqualTo(0) ||
       !request.netAmount.plus(request.taxAmount).equals(request.amount)
     )
       throw new BadRequestException(
-        'Payout thiếu shop hoặc snapshot thuế hợp lệ; cần đối soát',
+        'Payout thiếu snapshot thuế hợp lệ; cần đối soát',
       );
     const debit = await tx.financialLedger.findFirst({
       where: {
@@ -298,14 +308,14 @@ export class MerchantPayoutsService {
         referenceType: 'PAYOUT_REQUEST',
         transactionType: 'PAYOUT_WITHDRAW',
         balanceBucket: 'AVAILABLE',
-        storeId: request.storeId,
+        ...(request.storeId ? { storeId: request.storeId } : {}),
         wallet: { collaboratorId: request.collaboratorId },
         amount: request.amount.negated(),
       },
     });
     if (!debit)
       throw new BadRequestException(
-        'Payout chưa có ledger trừ tiền đúng shop; cần đối soát',
+        'Payout chưa có ledger trừ tiền hợp lệ; cần đối soát',
       );
   }
 

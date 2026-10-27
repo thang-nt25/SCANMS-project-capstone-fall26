@@ -98,15 +98,15 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         <h3 className="m-0 text-xs leading-relaxed font-semibold break-words text-[#1A1612]">{card.productTitle || 'Sản phẩm'}</h3>
         {card.storeName && <p className="deal-store-name m-0 mt-1 text-[#7D715E] text-[10px] leading-relaxed break-words">Gian hàng <strong className="ml-1 text-[#1A1612] font-normal">{card.storeName}</strong></p>}
         {(card.publicCommissionRate != null || rate != null) && (
-          <div className="deal-commission mt-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2.5" data-comparison={rate != null && card.publicCommissionRate != null}>
-            {rate != null && <div className="deal-commission-primary flex items-center justify-between gap-3">
-              <span className="text-[#795A2D] text-[11px] font-medium">Hoa hồng độc quyền</span>
-              <strong className="text-2xl leading-tight font-semibold tabular-nums text-[#B88E4F]">{rate}<small className="text-[13px] ml-0.5 font-normal">%</small></strong>
-            </div>}
-            {card.publicCommissionRate != null && <div className="deal-commission-standard flex items-center justify-between gap-3 text-[10px] text-[#7D715E]">
-              <span>Hoa hồng tiêu chuẩn</span>
-              <strong className="font-medium tabular-nums">{card.publicCommissionRate}%</strong>
-            </div>}
+          <div className="deal-commission grid grid-cols-2 mt-2.5 p-2 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]" data-comparison={rate != null && card.publicCommissionRate != null}>
+            <div className="deal-commission-standard">
+              <span className="text-[#7D715E] text-[10px]">Hoa hồng sàn</span>
+              <strong className="block mt-0.5 text-xl leading-tight font-semibold tabular-nums text-[#1A1612]">{(card.publicCommissionRate ?? 10)}<small className="text-[13px] ml-0.5 font-normal">%</small></strong>
+            </div>
+            <div className="deal-commission-primary pl-3 border-l border-[#EEDFC6]">
+              <span className="text-[#8C6226] text-[10px]">Hoa hồng độc quyền</span>
+              <strong className="block mt-0.5 text-xl leading-tight font-semibold tabular-nums text-[#B88E4F]">{rate ?? '—'}<small className="text-[13px] ml-0.5 font-normal">%</small></strong>
+            </div>
           </div>
         )}
         {card.isRevision && card.currentCommissionRate != null && <p className="mt-2 text-[#7D715E] text-[10px] leading-relaxed">Mức đang áp dụng <strong className="ml-1 text-[#1A1612] font-medium">{card.currentCommissionRate}%</strong></p>}

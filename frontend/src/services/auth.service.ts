@@ -239,6 +239,12 @@ export const authService = {
     const user = this.getCurrentUser();
     if (!user) return 'customer';
 
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (currentPath.startsWith('/merchant') || currentPath.startsWith('/shop')) return 'shop';
+    if (currentPath.startsWith('/collaborator')) return 'kol';
+    if (currentPath.startsWith('/admin')) return 'admin';
+    if (currentPath.startsWith('/customer')) return 'customer';
+
     const availableWorkspaces = this.getUserAvailableWorkspaces(user).map((w) => w.key);
 
     const stored = localStorage.getItem('scanms-active-workspace') as any;

@@ -517,8 +517,12 @@ export function ScanmsFloatingChatWidget() {
       : messages.filter((message) => !parseExclusiveDealMessage(message.content));
   }, [activeConversation?.messages, canSeeAffiliateDeals]);
 
-  // Filter conversations in left list
+  // Filter conversations in left list: chỉ hiện các shop đã có tin nhắn ít nhất 1 lần
   const filteredConversations = conversations.filter((conversation) => {
+    const hasMessages =
+      (conversation.messages && conversation.messages.length > 0) ||
+      Boolean(conversation.lastMessage && conversation.lastMessage !== 'Bắt đầu cuộc trò chuyện' && conversation.lastMessage !== '');
+    if (!hasMessages) return false;
     const matchesName = conversation.store.name.toLocaleLowerCase('vi').includes(searchLeftQuery.trim().toLocaleLowerCase('vi'));
     const unread = (conversation.unreadCount || 0) > 0;
     return matchesName && (conversationFilter === 'ALL' || (conversationFilter === 'UNREAD' ? unread : !unread));
@@ -1221,12 +1225,14 @@ export function ScanmsFloatingChatWidget() {
 
         {/* Messages Scroll Area */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 bg-[#F8F9FA]/40">
-          {/* Date separator: Ngày hôm qua / Ngày hôm nay */}
-          <div className="text-center my-1.5">
-            <span className="inline-block px-3 py-0.5 bg-[#EAE4D7]/80 text-[#7D715E] text-[10.5px] font-medium rounded-full">
-              Ngày hôm qua
-            </span>
-          </div>
+          {/* Date separator: chỉ hiện khi đã có tin nhắn */}
+          {visibleMessages.length > 0 && (
+            <div className="text-center my-1.5">
+              <span className="inline-block px-3 py-0.5 bg-[#EAE4D7]/80 text-[#7D715E] text-[10.5px] font-medium rounded-full">
+                Ngày hôm nay
+              </span>
+            </div>
+          )}
 
           {/* SCANMS UI 1 Yellow Notice Box */}
           <div className="p-2.5 bg-[#FFF9E6] border border-[#FFE082] rounded-lg text-[11px] text-[#7A5A00] leading-relaxed flex items-start gap-2 shadow-2xs">
@@ -1245,6 +1251,13 @@ export function ScanmsFloatingChatWidget() {
               </a>
             </div>
           </div>
+
+          {/* Empty state hint */}
+          {visibleMessages.length === 0 && (
+            <div className="py-8 text-center text-xs text-[#7D715E] leading-relaxed">
+              Chưa có tin nhắn nào.<br />Nhập nội dung bên dưới để bắt đầu trò chuyện với gian hàng.
+            </div>
+          )}
 
           {/* Message Bubbles */}
           {visibleMessages.map((msg) => {
@@ -1285,8 +1298,8 @@ export function ScanmsFloatingChatWidget() {
                     <p className="mt-2 text-[11px] font-medium text-[#8F682E]">{chatVoucherHint(coupon)}</p>
                     {coupon.minimumOrderAmount && <div className="mt-1 text-[11px] text-[#7D715E]">Đơn tối thiểu {coupon.minimumOrderAmount.toLocaleString('vi-VN')}₫</div>}
                     {coupon.maximumDiscountAmount && coupon.discountType === 'PERCENTAGE' && <div className="text-[11px] text-[#7D715E]">Giảm tối đa {coupon.maximumDiscountAmount.toLocaleString('vi-VN')}₫</div>}
-                    {coupon.scopeType === 'PRODUCTS' && <div className="mt-1 text-[11px] text-[#7D715E]">Áp dụng cho {coupon.products.length} sản phẩm trong danh sách Shop.</div>}
-                    {coupon.scopeType === 'CATEGORIES' && <div className="mt-1 text-[11px] text-[#7D715E]">Danh mục: {coupon.categories.join(', ') || 'theo điều kiện của Shop'}.</div>}
+                    {coupon.scopeType === 'PRODUCTS' && <div className="mt-1 text-[11px] text-[#7D715E]">Áp dụng cho {coupon.products?.length || 0} sản phẩm trong danh sách Shop.</div>}
+                    {coupon.scopeType === 'CATEGORIES' && <div className="mt-1 text-[11px] text-[#7D715E]">Danh mục: {coupon.categories?.join(', ') || 'theo điều kiện của Shop'}.</div>}
                     {coupon.expiresAt && <div className="mt-1 text-[11px] text-[#7D715E]">Hạn đến {new Date(coupon.expiresAt).toLocaleDateString('vi-VN')}</div>}
                     <div className="mt-2 border-t border-[#F3EFE6] pt-2 text-right text-[10px] text-[#7D715E]">{msg.timestamp}</div>
                   </article>
@@ -1689,5 +1702,3 @@ export function ScanmsFloatingChatWidget() {
   </>
 );
 }
-
-export const ShopeeFloatingChatWidget = ScanmsFloatingChatWidget;

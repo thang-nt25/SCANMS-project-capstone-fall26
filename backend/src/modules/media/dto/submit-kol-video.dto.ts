@@ -56,7 +56,7 @@ export class SubmitKolVideoDto {
     description: 'ID chiến dịch nếu video nộp cho một chiến dịch cụ thể',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'campaignId phải là định dạng UUID hợp lệ' })
+  @IsUUID('all', { message: 'campaignId phải là định dạng UUID hợp lệ' })
   campaignId?: string;
 
   @ApiPropertyOptional({

@@ -1,0 +1,298 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="RpKLaq5lOce_xegdBvrz" name="Sequence FR27">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=22;fontStyle=1;spacing=0;" value="FR-27 VIP Campaign Invitations through Chat — Sequence Diagram" vertex="1">
+          <mxGeometry height="35" width="1700" x="20" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="precondition" parent="1" style="text;align=left;verticalAlign=top;spacing=8;strokeColor=none;fillColor=none;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;spacing=0;" value="Preconditions: authenticated Shop owner and KOL; existing campaign and Shop–KOL conversation; Socket.IO /chat connected." vertex="1">
+          <mxGeometry height="25" width="1700" x="20" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="head0" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="Shop Manager" vertex="1">
+          <mxGeometry height="55" width="30" x="85" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="life0" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="175" as="sourcePoint" />
+            <mxPoint x="100" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head1" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="Shop Browser" vertex="1">
+          <mxGeometry height="40" width="190" x="225" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life1" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="175" as="sourcePoint" />
+            <mxPoint x="320" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head2" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":CampaignsController" vertex="1">
+          <mxGeometry height="40" width="190" x="445" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life2" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="175" as="sourcePoint" />
+            <mxPoint x="540" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head3" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":CampaignsService" vertex="1">
+          <mxGeometry height="40" width="190" x="665" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life3" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="175" as="sourcePoint" />
+            <mxPoint x="760" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head4" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":PrismaService" vertex="1">
+          <mxGeometry height="40" width="190" x="885" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life4" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="980" y="175" as="sourcePoint" />
+            <mxPoint x="980" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head5" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value=":ChatGateway" vertex="1">
+          <mxGeometry height="40" width="190" x="1105" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life5" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1200" y="175" as="sourcePoint" />
+            <mxPoint x="1200" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head6" parent="1" style="rounded=0;align=center;verticalAlign=middle;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=14;" value="KOL Browser" vertex="1">
+          <mxGeometry height="40" width="190" x="1325" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="life6" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1420" y="175" as="sourcePoint" />
+            <mxPoint x="1420" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="head7" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#FFFFFF;strokeColor=#000000;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;" value="KOL" vertex="1">
+          <mxGeometry height="55" width="30" x="1625" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="life7" edge="1" parent="1" style="dashed=1;endArrow=none;strokeColor=#000000;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1640" y="175" as="sourcePoint" />
+            <mxPoint x="1640" y="1535" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="activation0" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="620" width="8" x="316" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="activation1" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="532" width="8" x="536" y="249" as="geometry" />
+        </mxCell>
+        <mxCell id="activation2" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="444" width="8" x="756" y="293" as="geometry" />
+        </mxCell>
+        <mxCell id="activation3" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="66" width="8" x="976" y="337" as="geometry" />
+        </mxCell>
+        <mxCell id="activation4" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="70" width="8" x="976" y="447" as="geometry" />
+        </mxCell>
+        <mxCell id="activation5" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="88" width="8" x="1196" y="561" as="geometry" />
+        </mxCell>
+        <mxCell id="activation6" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="44" width="8" x="1416" y="649" as="geometry" />
+        </mxCell>
+        <mxCell id="activation7" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="576" width="8" x="1416" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="activation8" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="488" width="8" x="536" y="929" as="geometry" />
+        </mxCell>
+        <mxCell id="activation9" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="400" width="8" x="756" y="973" as="geometry" />
+        </mxCell>
+        <mxCell id="activation10" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="66" width="8" x="976" y="1017" as="geometry" />
+        </mxCell>
+        <mxCell id="activation11" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="70" width="8" x="976" y="1127" as="geometry" />
+        </mxCell>
+        <mxCell id="activation12" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="88" width="8" x="1196" y="1241" as="geometry" />
+        </mxCell>
+        <mxCell id="activation13" parent="1" style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
+          <mxGeometry height="220" width="8" x="316" y="1285" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="1. Select campaign; add note; Send VIP invitation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="205" as="sourcePoint" />
+            <mxPoint x="316" y="205" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="2. POST /campaigns/chat/{conversationId}/invite">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="324" y="249" as="sourcePoint" />
+            <mxPoint x="536" y="249" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="3. inviteInChat(userId, conversationId, dto)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="544" y="293" as="sourcePoint" />
+            <mxPoint x="756" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="4. inviteInChat → inviteCollaborator: read conversation,&#xa;campaign, KOL and existing invitation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="337" as="sourcePoint" />
+            <mxPoint x="976" y="337" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="5. Conversation, campaign, KOL and participant state">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="403" as="sourcePoint" />
+            <mxPoint x="764" y="403" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="6. [ownership, campaign, bonus and KOL checks pass] campaignParticipant.upsert(INVITED);&#xa;_sendCampaignInviteCard: read conversation; chatMessage.create(JSON); update lastMessageAt">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="447" as="sourcePoint" />
+            <mxPoint x="976" y="447" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="7. Participant and saved CAMPAIGN_INVITE message">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="517" as="sourcePoint" />
+            <mxPoint x="764" y="517" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="8. broadcastNewMessage(conversationId, message, collaboratorId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="561" as="sourcePoint" />
+            <mxPoint x="1196" y="561" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=open;endFill=0;" value="9. new_message(message)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1196" y="605" as="sourcePoint" />
+            <mxPoint x="324" y="605" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=open;endFill=0;" value="10. new_message(message)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1204" y="649" as="sourcePoint" />
+            <mxPoint x="1416" y="649" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=open;endFill=0;" value="11. Show VIP card and bonus rate">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1424" y="693" as="sourcePoint" />
+            <mxPoint x="1640" y="693" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="12. Result; record audit and notify KOL (best effort)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="756" y="737" as="sourcePoint" />
+            <mxPoint x="544" y="737" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="13. 200 OK { participant, campaign, chatMessage }">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="536" y="781" as="sourcePoint" />
+            <mxPoint x="324" y="781" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="14. Show invitation sent">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="316" y="825" as="sourcePoint" />
+            <mxPoint x="100" y="825" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="15. Accept or reject invitation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1640" y="885" as="sourcePoint" />
+            <mxPoint x="1424" y="885" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="16. PATCH /campaigns/invitations/{participantId}/accept or /reject">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1416" y="929" as="sourcePoint" />
+            <mxPoint x="544" y="929" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="17. acceptInvitation(userId, id) or rejectInvitation(userId, id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="544" y="973" as="sourcePoint" />
+            <mxPoint x="756" y="973" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="18. Read invitation; verify recipient and state;&#xa;campaignParticipant.update(ACCEPTED + joinedAt / REJECTED)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="1017" as="sourcePoint" />
+            <mxPoint x="976" y="1017" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m19" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="19. Updated participant">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="1083" as="sourcePoint" />
+            <mxPoint x="764" y="1083" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m20" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="20. _sendAcceptNotice / _sendRejectNotice: find conversation;&#xa;chatMessage.create(CAMPAIGN_ACCEPTED / CAMPAIGN_REJECTED); update lastMessageAt">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="1127" as="sourcePoint" />
+            <mxPoint x="976" y="1127" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m21" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="21. Saved response message">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="976" y="1197" as="sourcePoint" />
+            <mxPoint x="764" y="1197" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m22" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;" value="22. broadcastNewMessage(conversationId, message, shopOwnerId)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="764" y="1241" as="sourcePoint" />
+            <mxPoint x="1196" y="1241" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m23" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=open;endFill=0;" value="23. new_message(response)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1196" y="1285" as="sourcePoint" />
+            <mxPoint x="324" y="1285" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m24" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;endArrow=open;endFill=0;" value="24. new_message(response)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1204" y="1329" as="sourcePoint" />
+            <mxPoint x="1416" y="1329" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m25" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="25. Updated participant; audit and Shop notification (best effort)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="756" y="1373" as="sourcePoint" />
+            <mxPoint x="544" y="1373" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m26" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="26. 200 OK — ACCEPTED or REJECTED">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="544" y="1417" as="sourcePoint" />
+            <mxPoint x="1416" y="1417" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m27" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="27. Show response status">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1424" y="1461" as="sourcePoint" />
+            <mxPoint x="1640" y="1461" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m28" edge="1" parent="1" style="html=0;endArrow=block;endFill=1;strokeColor=#000000;labelBackgroundColor=#FFFFFF;html=0;fontFamily=Times New Roman;fontSize=13;fontColor=#000000;fontSize=12;dashed=1;endArrow=open;endFill=0;" value="28. Show KOL response in chat">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="316" y="1505" as="sourcePoint" />
+            <mxPoint x="100" y="1505" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

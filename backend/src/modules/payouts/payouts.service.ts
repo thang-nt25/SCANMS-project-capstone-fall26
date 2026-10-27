@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { KycStatus, PayoutStatus, Prisma, UserRole } from '@prisma/client';
+import { isUUID } from 'class-validator';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { WithdrawalPolicyService } from '../wallets/withdrawal-policy.service';
@@ -50,13 +51,12 @@ export class PayoutsService {
       throw new BadRequestException('Số tiền rút không hợp lệ');
     }
     const amount = new Prisma.Decimal(dto.amount);
+    const storeId = dto.storeId?.trim() || null;
     if (
-      typeof dto.storeId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        dto.storeId,
-      )
+      storeId !== null &&
+      !isUUID(storeId, 'all')
     ) {
-      throw new BadRequestException('Chọn shop hợp lệ để yêu cầu rút tiền');
+      throw new BadRequestException('Mã shop không hợp lệ');
     }
     const taxCalculation = this.taxService.calculateTax(amount);
     if (amount.lessThan(this.policy.minimumAmount)) {
@@ -67,19 +67,23 @@ export class PayoutsService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-        const store = await tx.store.findUnique({
-          where: { id: dto.storeId },
-          include: { owner: { select: { isActive: true, isDeleted: true } } },
-        });
-        if (
-          !store ||
-          store.isDeleted ||
-          !store.owner.isActive ||
-          store.owner.isDeleted
-        ) {
-          throw new BadRequestException(
-            'Shop không tồn tại hoặc không hoạt động',
-          );
+        let validatedStoreId: string | null = null;
+        if (storeId) {
+          const store = await tx.store.findUnique({
+            where: { id: storeId },
+            include: { owner: { select: { isActive: true, isDeleted: true } } },
+          });
+          if (
+            !store ||
+            store.isDeleted ||
+            !store.owner.isActive ||
+            store.owner.isDeleted
+          ) {
+            throw new BadRequestException(
+              'Shop không tồn tại hoặc không hoạt động',
+            );
+          }
+          validatedStoreId = store.id;
         }
         const user = await tx.user.findUnique({
           where: { id: collaboratorId },
@@ -128,13 +132,13 @@ export class PayoutsService {
             collaboratorId,
             amount,
             { id: requestId, type: 'PAYOUT_REQUEST' },
-            store.id,
+            validatedStoreId ?? undefined,
           );
         const request = await tx.payoutRequest.create({
           data: {
             id: requestId,
             collaboratorId,
-            storeId: store.id,
+            storeId: validatedStoreId,
             amount,
             taxAmount: taxCalculation.taxAmount,
             netAmount: taxCalculation.netAmount,

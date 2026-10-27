@@ -175,7 +175,9 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         currentPath.startsWith('/collaborator/referral-links') ||
         currentPath.startsWith('/collaborator/links') ||
         currentPath.startsWith('/collaborator/media-hub') ||
-        currentPath.startsWith('/collaborator/coupons')
+        currentPath.startsWith('/collaborator/coupons') ||
+        currentPath.startsWith('/collaborator/samples') ||
+        currentPath.startsWith('/collaborator/sample-requests')
       );
     }
 
@@ -222,7 +224,8 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
         (currentPath.startsWith('/merchant/promotions') && !location.search.includes('tab=live-sessions')) ||
         currentPath.startsWith('/merchant/coupons') ||
         currentPath.startsWith('/merchant/commission-rules') ||
-        currentPath.startsWith('/merchant/referral-links')
+        currentPath.startsWith('/merchant/referral-links') ||
+        currentPath.startsWith('/merchant/campaigns')
       );
     }
 

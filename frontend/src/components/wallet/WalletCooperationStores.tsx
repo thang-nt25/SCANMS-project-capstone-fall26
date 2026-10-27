@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { Search, Store } from 'lucide-react';
+import { ChevronDown, Search, Store } from 'lucide-react';
 import type { WalletSummary } from '../../types/wallet.types';
 
 const labels = { APPROVED: 'Đã duyệt hợp tác', PENDING: 'Chờ duyệt', REJECTED: 'Đã từ chối', BLOCKED: 'Đã ngừng hợp tác' };
 export function WalletCooperationStores({ stores = [] }: { stores?: WalletSummary['cooperationStores'] }) {
+  const [open, setOpen] = useState(true);
   const [query, setQuery] = useState('');
   const money = (value: string) => `${Number(value).toLocaleString('vi-VN')} đ`;
   const list = stores.filter(store => store.storeName.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi')));
   return <section className="wallet-cooperation-section overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-    <div className="wallet-cooperation-heading flex w-full items-center gap-3 px-4 py-3 text-left">
+    <button type="button" aria-expanded={open} aria-controls="wallet-cooperation-shops" onClick={() => setOpen(value => !value)} className="wallet-cooperation-heading flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#FAF8F5]">
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><Store size={18} /></span>
-      <h2 className="m-0 flex flex-1 items-center gap-2 text-sm font-semibold text-[#1A1612]">Gian hàng hợp tác <span className="rounded-md bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-normal text-[#7D715E]">{stores.length} gian hàng</span></h2>
-    </div>
-    <div id="wallet-cooperation-shops" className="border-t border-[#EAE4D7] p-4">
+      <h2 className="m-0 flex-1 text-sm font-bold text-[#1A1612]">Gian hàng đối tác <span className="ml-1 text-xs font-normal text-[#7D715E]">({stores.length})</span></h2>
+      <ChevronDown size={17} className={`text-[#B88E4F] transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
+    {open && <div id="wallet-cooperation-shops" className="border-t border-[#EAE4D7] p-4">
       {stores.length > 6 && <label className="mb-3 flex max-w-sm items-center gap-2 rounded-xl border border-[#EAE4D7] px-3 py-2 text-[#7D715E]"><Search size={15} /><input aria-label="Tìm gian hàng hợp tác" value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm tên Shop…" className="w-full bg-transparent text-xs outline-none" /></label>}
       <div className="max-h-80 overflow-auto rounded-xl border border-[#EAE4D7]">
         <table className="w-full min-w-[530px] text-left text-xs">
@@ -23,8 +25,7 @@ export function WalletCooperationStores({ stores = [] }: { stores?: WalletSummar
             <td className="px-3 py-3 text-right font-semibold tabular-nums text-[#1A1612]">{money(store.availableBalance)}</td><td className="px-3 py-3 text-right tabular-nums text-[#7D715E]">{money(store.pendingBalance)}</td>
           </tr>)}</tbody>
         </table>
-        {!list.length && <p className="p-5 text-center text-xs text-[#7D715E]">{query ? 'Không tìm thấy Shop phù hợp.' : 'Chưa có quan hệ hợp tác với Shop nào.'}</p>}
       </div>
-    </div>
+    </div>}
   </section>;
 }

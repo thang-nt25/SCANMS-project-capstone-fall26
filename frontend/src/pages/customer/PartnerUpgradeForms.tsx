@@ -10,7 +10,7 @@ import {
   Info,
   Send,
   ShieldCheck,
-  Sparkles,
+  Megaphone,
   Store,
 } from 'lucide-react';
 import { CustomSelect } from '../../components/ui/CustomSelect';
@@ -110,7 +110,7 @@ function FormHeader({ shop = false }: { shop?: boolean }) {
     <header className="flex items-center justify-between gap-[18px] p-[20px_22px] border-b border-[#EAE4D7] max-[640px]:flex-wrap max-[640px]:p-[17px]">
       <div className="flex items-center gap-[12px] min-w-0">
         <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-          {shop ? <Store size={20} /> : <Sparkles size={20} />}
+          {shop ? <Store size={20} /> : <Megaphone size={20} />}
         </span>
         <div>
           <h3 className="m-0 text-[17px] font-[650] tracking-[-0.4px] leading-[1.5] text-[#1A1612] max-[640px]:text-[15px]">
