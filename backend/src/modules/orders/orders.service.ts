@@ -3865,9 +3865,8 @@ export class OrdersService {
       };
     }
     if (query.search?.trim()) {
-      // Keep search conjunctive with status, ownership and return-request filters.
       const searchCond = storeOrderSearch(query.search.trim(), query.searchField);
-      where.AND = where.AND ? [...(where.AND as any[]), searchCond] : [searchCond];
+      where.OR = searchCond.OR;
     }
 
     const [total, orders] = await Promise.all([
