@@ -37,7 +37,13 @@ test('collaboration deep link renders the selected shop and chat without crashin
       if (request.method() === 'OPTIONS') return request.respond({ status: 204, headers });
       let data = [];
       if (url.pathname === '/api/auth/me') data = user;
-      if (url.pathname === '/api/chat/conversations') data = [conversation];
+      if (url.pathname === '/api/chat/conversations') data = [conversation, {
+        id: '33333333-3333-4333-8333-333333333333',
+        storeId: '44444444-4444-4444-8444-444444444444',
+        store: { id: '44444444-4444-4444-8444-444444444444', name: 'Shop chưa có tin nhắn' },
+        collaboratorId: user.id, collaborator: user,
+        messageCount: 0, _count: { chatMessages: 0 }, chatMessages: [],
+      }];
       if (url.pathname.endsWith('/messages')) {
         data = Array.from({ length: 10 }, (_, index) => ({
           id: `history-${index}`, conversationId: conversation.id, senderId: 'shop-owner',
@@ -61,6 +67,7 @@ test('collaboration deep link renders the selected shop and chat without crashin
     await page.waitForFunction(() => document.body.textContent.includes('Tin nhắn lịch sử 10') || document.body.textContent.includes('Đã xảy ra sự cố khi tải trang'));
     const loaded = await page.$eval('body', element => element.textContent);
     assert.ok(!loaded.includes('Đã xảy ra sự cố khi tải trang'), loaded);
+    assert.ok(loaded.includes('Shop chưa có tin nhắn'), 'existing empty conversations remain in the shop list');
     for (let index = 1; index <= 10; index++) assert.ok(loaded.includes(`Tin nhắn lịch sử ${index}`));
     await page.waitForSelector('#subtab-messages [aria-label="10 tin nhắn"]');
     assert.ok(loaded.includes('Đã tải 10 tin nhắn'));

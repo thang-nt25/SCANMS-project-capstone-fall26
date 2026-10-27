@@ -547,13 +547,9 @@ export default function ShopCollaborationPage() {
         const storeId = st.id || conv.storeId;
         if (storeId && !mappedStores.some((store) => store.id === storeId)) {
           const lastMsg = conv.chatMessages?.[0];
-          const hasMessage = Boolean(lastMsg?.messageText || lastMsg?.mediaName || (conv.messageCount && conv.messageCount > 0));
           const hasDeal = dealStoreIds.has(storeId);
 
-          // QUY TẮC CỐT LÕI: Chỉ hiện các gian hàng đã xin deal hoa hồng hoặc nhắn tin ít nhất 1 lần
-          if (!hasMessage && !hasDeal) {
-            return;
-          }
+          // Keep every existing conversation, including contacts with no messages yet.
 
           mappedStores.push({
             id: storeId,
