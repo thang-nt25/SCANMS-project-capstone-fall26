@@ -17,11 +17,9 @@ import {
   Search,
   Copy,
   Check,
-  Trash2,
   GripVertical,
   MessageSquare,
 } from 'lucide-react';
-import { ConfirmModal } from '../ui/ConfirmModal';
 import { useScanmsChat, isUnsafeShopLogo, parseExclusiveDealMessage, type ChatCouponVoucher, type ChatExclusiveDeal } from '../../context/ScanmsChatContext';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
@@ -250,45 +248,9 @@ export function ScanmsFloatingChatWidget() {
     shareCouponVoucher,
     clearActiveProduct,
     openChat,
-    deleteConversation,
-    clearConversationMessages,
-    clearAllConversations,
   } = useScanmsChat();
 
   const [inputText, setInputText] = useState('');
-  const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
-  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
-  const [isClearMessagesModalOpen, setIsClearMessagesModalOpen] = useState(false);
-  const [isClearingMessages, setIsClearingMessages] = useState(false);
-  const [isClearAllConversationsModalOpen, setIsClearAllConversationsModalOpen] = useState(false);
-
-  const handleConfirmDeleteConversation = async () => {
-    if (!conversationToDelete) return;
-    setIsDeletingConversation(true);
-    try {
-      await deleteConversation(conversationToDelete.id);
-      setConversationToDelete(null);
-    } finally {
-      setIsDeletingConversation(false);
-    }
-  };
-
-  const handleConfirmClearMessages = async () => {
-    if (!activeConversation) return;
-    setIsClearingMessages(true);
-    try {
-      await clearConversationMessages(activeConversation.id);
-      setIsClearMessagesModalOpen(false);
-    } finally {
-      setIsClearingMessages(false);
-    }
-  };
-
-  const handleConfirmClearAll = () => {
-    clearAllConversations();
-    setIsClearAllConversationsModalOpen(false);
-  };
-
   useEffect(() => {
     if (isOpen && (isAuthRoute || !isAuthenticated)) {
       closeChat();
@@ -964,16 +926,6 @@ export function ScanmsFloatingChatWidget() {
               <span className="font-semibold text-xs sm:text-sm">({totalUnread > 0 ? totalUnread : filteredConversations.length})</span>
             </div>
             <div className="flex items-center gap-1 text-[#757575]">
-              {conversations.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsClearAllConversationsModalOpen(true)}
-                  className="p-1 text-[#7D715E] hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                  title="Xóa toàn bộ lịch sử trò chuyện"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
               <button
                 type="button"
                 onClick={toggleMinimize}
@@ -1081,17 +1033,6 @@ export function ScanmsFloatingChatWidget() {
                           <span className="text-[10px] text-[#999999] whitespace-nowrap group-hover:hidden">
                             {c.lastTime}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConversationToDelete(c);
-                            }}
-                            className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded hover:bg-rose-50 text-[#7D715E] hover:text-rose-600 transition cursor-pointer"
-                            title="Xóa cuộc trò chuyện này"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
@@ -1149,17 +1090,6 @@ export function ScanmsFloatingChatWidget() {
             </div>
 
           <div className="flex items-center gap-1.5 text-[#757575]">
-            {activeConversation && activeConversation.messages.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsClearMessagesModalOpen(true)}
-                className="flex items-center gap-1 px-1.5 py-1 text-xs text-[#7D715E] hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer select-none"
-                title="Xóa lịch sử tin nhắn trong cuộc trò chuyện này"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-medium hidden sm:inline">Xóa lịch sử</span>
-              </button>
-            )}
             <button
               type="button"
               onClick={toggleMinimize}
@@ -1613,43 +1543,6 @@ export function ScanmsFloatingChatWidget() {
         </div>
       </div>
 
-      {/* Modal xác nhận xóa 1 cuộc trò chuyện */}
-      <ConfirmModal
-        isOpen={Boolean(conversationToDelete)}
-        onClose={() => setConversationToDelete(null)}
-        onConfirm={handleConfirmDeleteConversation}
-        title="Xóa cuộc trò chuyện?"
-        message={`Bạn có chắc muốn xóa cuộc trò chuyện với "${conversationToDelete?.store?.name || 'gian hàng'}"? Toàn bộ lịch sử tin nhắn của cuộc trò chuyện này sẽ bị xóa khỏi danh sách.`}
-        confirmText="Xóa cuộc trò chuyện"
-        cancelText="Hủy"
-        variant="danger"
-        isLoading={isDeletingConversation}
-      />
-
-      {/* Modal xác nhận xóa lịch sử tin nhắn cuộc trò chuyện hiện tại */}
-      <ConfirmModal
-        isOpen={isClearMessagesModalOpen}
-        onClose={() => setIsClearMessagesModalOpen(false)}
-        onConfirm={handleConfirmClearMessages}
-        title="Xóa lịch sử tin nhắn?"
-        message={`Bạn có chắc muốn xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện với "${activeConversation?.store?.name || 'Shop'}"? Hành động này không thể hoàn tác.`}
-        confirmText="Xóa sạch tin nhắn"
-        cancelText="Hủy"
-        variant="danger"
-        isLoading={isClearingMessages}
-      />
-
-      {/* Modal xác nhận xóa tất cả các cuộc trò chuyện */}
-      <ConfirmModal
-        isOpen={isClearAllConversationsModalOpen}
-        onClose={() => setIsClearAllConversationsModalOpen(false)}
-        onConfirm={handleConfirmClearAll}
-        title="Xóa toàn bộ lịch sử chat?"
-        message="Bạn có chắc muốn xóa tất cả các cuộc trò chuyện và lịch sử chat trên thiết bị này? Hành động này sẽ dọn sạch danh sách tin nhắn."
-        confirmText="Xóa tất cả"
-        cancelText="Hủy"
-        variant="danger"
-      />
     </div>
   </>
 );

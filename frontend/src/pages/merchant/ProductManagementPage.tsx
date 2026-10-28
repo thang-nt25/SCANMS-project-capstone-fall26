@@ -552,11 +552,6 @@ export default function ProductManagementPage() {
     { id: 'spec-1', key: 'Chất liệu vải', value: '' },
     { id: 'spec-2', key: 'Kiểu dáng / Form dáng', value: '' },
   ]);
-  const [variantSamplePolicies, setVariantSamplePolicies] = useState<Record<string, {
-    inheritProductPolicy: boolean;
-    sampleEnabled: boolean;
-    sampleQuota: number;
-  }>>({});
   const [formImage, setFormImage] = useState('');
   const [formSubImages, setFormSubImages] = useState<string[]>([]);
   const [formVariants, setFormVariants] = useState<ProductVariantItem[]>([]);
@@ -951,7 +946,6 @@ export default function ProductManagementPage() {
     setFormSampleEnabled(false);
     setFormSampleQuota('');
     setFormSpecifications(getDefaultSpecsForCategory(''));
-    setVariantSamplePolicies({});
     setFormImage('');
     setFormSubImages([]);
     setFormVariants([]);
@@ -1047,13 +1041,6 @@ export default function ProductManagementPage() {
     setFormPackageHeight(p.packageHeight ?? '');
     setFormSampleEnabled(p.sampleEnabled === true);
     setFormSampleQuota(Number(p.sampleQuota) || 0);
-    setVariantSamplePolicies(Object.fromEntries(
-      (Array.isArray(p.variants) ? p.variants : []).map((variant: any) => [variant.id, {
-        inheritProductPolicy: variant.sampleEnabled == null && variant.sampleQuota == null,
-        sampleEnabled: variant.sampleEnabled ?? (p.sampleEnabled === true),
-        sampleQuota: Number(variant.sampleQuota ?? p.sampleQuota) || 0,
-      }]),
-    ));
     setFormImage(p.imageUrl || '');
     const existingVariants = Array.isArray(p.variants) ? p.variants : [];
     setFormVariants(existingVariants.map((variant: any) => ({
@@ -1485,19 +1472,15 @@ export default function ProductManagementPage() {
           originalPrice: formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined,
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
-          stockQuantity: effectiveStock,
+          // syncProductVariants updates the parent total from the saved SKU quantities.
+          // Sending the new total first would conflict with the old SKU quantities.
+          ...(formVariants.length === 0 ? { stockQuantity: effectiveStock } : {}),
           sampleEnabled: formSampleEnabled,
           sampleQuota: Number(formSampleQuota),
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
         });
         const variantUpdate = await productService.syncProductVariants(editingProduct.id, formVariants);
-        for (const variant of editingProduct.variants || []) {
-          const policy = variantSamplePolicies[variant.id];
-          if (policy && formVariants.some((item) => item.id === variant.id)) {
-            await productService.updateVariantSamplePolicy(editingProduct.id, variant.id, policy);
-          }
-        }
         showToast(productUpdate?.requiresModeration || variantUpdate?.requiresModeration
           ? 'Đã lưu thay đổi. Sản phẩm tạm ẩn và chờ Ban Quản Trị kiểm duyệt lại.'
           : 'Cập nhật sản phẩm & hoa hồng thành công!');
@@ -1631,8 +1614,10 @@ export default function ProductManagementPage() {
   return (
     <div className="product-management @container/product-management space-y-4 text-left w-full min-w-0 text-[#1A1612]">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+        <div role={toastMsg === saveError ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastMsg === saveError ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
+          {toastMsg === saveError
+            ? <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0" />
+            : <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />}
           <span>{toastMsg}</span>
         </div>
       )}

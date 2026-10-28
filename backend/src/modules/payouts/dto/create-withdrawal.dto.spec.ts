@@ -27,6 +27,14 @@ describe('Withdrawal DTO validation', () => {
     expect(dto).toEqual({ amount: '1000000', storeId: seededShopId });
   });
 
+  it('accepts a withdrawal without a shop for a shared collaborator balance', async () => {
+    const dto = await pipe.transform(
+      { amount: '200000' },
+      { type: 'body', metatype: CreateWithdrawalDto },
+    );
+    expect(dto).toEqual({ amount: '200000' });
+  });
+
   it.each([
     {},
     { amount: 200000 },
