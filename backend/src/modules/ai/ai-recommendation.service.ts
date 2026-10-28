@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import {
   RecommendKolsQueryDto,
   KolMatchResultDto,
@@ -18,7 +19,10 @@ import { textMatchesCategory } from './category-match.utils';
 
 @Injectable()
 export class AiRecommendationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   // ─── 1. GỢI Ý TOP KOLS PHÙ HỢP CHO SẢN PHẨM HOẶC BỘ LỌC ───────────────
   async getRecommendedKols(
@@ -27,6 +31,10 @@ export class AiRecommendationService {
     currentUserRole: string,
     onlyCollaboratorId?: string,
   ): Promise<AiRecommendationResponseDto> {
+    const cacheKey = `ai:recommend:kols:${query.productId || 'none'}:${query.category || 'all'}:${query.minTier || 'all'}:${query.limit || '5'}:${onlyCollaboratorId || 'all'}`;
+    const cached = await this.cacheService.get<AiRecommendationResponseDto>(cacheKey);
+    if (cached) return cached;
+
     let targetProduct: any = null;
     let targetCategory = query.category;
     let targetPrice = 0;
@@ -441,7 +449,7 @@ export class AiRecommendationService {
     const limit = query.limit || 5;
     const topRecommended = matchResults.slice(0, limit);
 
-    return {
+    const recommendationResult: AiRecommendationResponseDto = {
       calculatedAt: new Date().toISOString(),
       targetProduct: targetProduct
         ? {
@@ -460,6 +468,8 @@ export class AiRecommendationService {
       totalKolsScanned: collaborators.length,
       recommendedKols: topRecommended,
     };
+    await this.cacheService.set(cacheKey, recommendationResult, 120);
+    return recommendationResult;
   }
 
   // ─── 2. PHÂN TÍCH CHUYÊN SÂU 1-1 GIỮA 1 SẢN PHẨM VÀ 1 KOL CỤ THỂ ─────

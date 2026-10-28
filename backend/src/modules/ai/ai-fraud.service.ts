@@ -6,6 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { createHash } from 'node:crypto';
 import {
   FraudScanQueryDto,
@@ -32,7 +33,10 @@ interface IncidentActionRecord {
 export class AiFraudService {
   private readonly logger = new Logger(AiFraudService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   /**
    * Quét toàn diện traffic phát hiện bất thường & gian lận (AI Anti-Fraud Traffic Scan)
@@ -59,6 +63,9 @@ export class AiFraudService {
     const windowDays = { '24h': 1, '7d': 7, '30d': 30, all: null }[timeframe];
     if (windowDays === undefined) throw new BadRequestException('Khoảng thời gian không hợp lệ.');
     const now = new Date();
+    const cacheKey = `ai:fraud:scan:${timeframe}:${targetStoreId || 'all'}:${query.collaboratorId || 'all'}:${query.status || 'all'}:${requesterUser.role}`;
+    const cached = await this.cacheService.get<FraudScanSummaryDto>(cacheKey);
+    if (cached) return cached;
     const period = { ...(windowDays === null ? {} : { gte: new Date(now.getTime() - windowDays * 86400000) }), lte: now };
     const orderFilter = { status: { notIn: ['CANCELLED', 'RETURNED'] as any }, createdAt: period };
 
@@ -215,10 +222,20 @@ export class AiFraudService {
       if (analysis.riskScore >= 70) {
         const hash = createHash('sha256').update(`AI_FRAUD_FLAG:v1:${link.id}:${timeframe}:${now.toISOString().slice(0, 10)}`).digest('hex').slice(0, 32);
         const eventId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20)}`;
-        await this.prisma.auditLog.upsert({ where: { eventId }, update: {}, create: {
-          eventId, userId: requesterUser.id, action: 'AI_FRAUD_FLAG',
-          details: { incidentId, linkId: link.id, storeId: link.storeId, timeframe, totalClicks, totalOrders: totalOrdersCount, riskScore: analysis.riskScore, anomalies: analysis.anomalies, ruleVersion: 1 },
-        } });
+        try {
+          await this.prisma.auditLog.upsert({
+            where: { eventId },
+            update: {},
+            create: {
+              eventId,
+              userId: requesterUser.id,
+              action: 'AI_FRAUD_FLAG',
+              details: { incidentId, linkId: link.id, storeId: link.storeId, timeframe, totalClicks, totalOrders: totalOrdersCount, riskScore: analysis.riskScore, anomalies: analysis.anomalies, ruleVersion: 1 },
+            },
+          });
+        } catch (e) {
+          this.logger.debug('Audit log record skipped', e);
+        }
       }
       if (analysis.riskScore >= 70 && !countedCollaborators.has(link.collaboratorId)) {
         potentialSavedAmount += pendingAmount;
@@ -272,9 +289,11 @@ export class AiFraudService {
     const lowRiskCount = incidents.filter(
       (i) => i.riskLevel === 'LOW_RISK',
     ).length;
-    const cleanCount = incidents.filter((i) => i.riskLevel === 'CLEAN').length;
-
-    return {
+    const cleanCount = Math.max(
+      0,
+      referralLinks.length - (criticalCount + suspiciousCount + lowRiskCount),
+    );
+    const summaryResult: FraudScanSummaryDto = {
       totalScannedLinks: referralLinks.length,
       totalScannedClicks,
       totalIncidents: incidents.filter((i) => i.riskScore >= 40).length,
@@ -286,6 +305,8 @@ export class AiFraudService {
       scanTimestamp: new Date(),
       incidents,
     };
+    await this.cacheService.set(cacheKey, summaryResult, 60); // 60s TTL
+    return summaryResult;
   }
 
   /**
@@ -422,6 +443,8 @@ export class AiFraudService {
         details: { incidentId, linkId, storeId: referralLink.storeId, collaboratorId: referralLink.collaboratorId, note: actionDto.note!.trim(), actorName: actorUser.fullName || actorUser.email },
       } });
     });
+
+    await this.cacheService.delPrefix('ai:fraud:scan:');
 
     const updatedIncident = await this.getIncidentById(incidentId, {
       id: actorUser.id,

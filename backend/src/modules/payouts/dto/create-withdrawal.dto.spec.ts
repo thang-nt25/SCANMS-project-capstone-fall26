@@ -32,7 +32,7 @@ describe('Withdrawal DTO validation', () => {
     { amount: 200000 },
     { amount: null },
     { amount: {} },
-    { amount: '200000', storeId: undefined },
+    { amount: '200000', storeId: '' },
     { amount: '200000', storeId: 'bad' },
     { amount: '200000.001' },
     { amount: '200000', collaboratorId: 'other-user' },

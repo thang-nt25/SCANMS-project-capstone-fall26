@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { UserRole, OrderStatus } from '@prisma/client';
 import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
 import {
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   private async resolveAnalyticsScope(userId: string, role: string, requestedStoreId?: string) {
     if (role === UserRole.SHOP_MANAGER) {
@@ -101,6 +105,10 @@ export class DashboardService {
     role: string,
     dto: DashboardAnalyticsQueryDto,
   ) {
+    const cacheKey = `dashboard:overview:${role}:${userId}:${dto.storeId || ''}:${dto.range || ''}:${dto.days || ''}:${dto.startDate || ''}:${dto.endDate || ''}:${dto.campaignId || ''}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
     const { startDate, endDate, prevStartDate, prevEndDate } =
       this.resolveDateRange(dto);
 
@@ -266,65 +274,35 @@ export class DashboardService {
     let estimatedCommission = 0;
     let pendingOrdersCount = 0;
     if (!isShop) {
-      const pendingOrders = await this.prisma.order.findMany({
-        where: {
-          attributedCollaboratorId: userId,
-          status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED] },
-        },
-        include: {
-          orderItems: {
-            select: {
-              calculatedCommissionAmount: true,
-            },
-          },
-          commissions: {
-            where: { status: { in: ['APPROVED', 'PAID'] } },
-            select: { id: true },
-          },
-        },
-      });
-
-      const unfinalizedOrders = pendingOrders.filter(
-        (o) => o.commissions.length === 0,
-      );
-      pendingOrdersCount = unfinalizedOrders.length;
-      for (const o of unfinalizedOrders) {
-        for (const item of o.orderItems) {
-          estimatedCommission += Number(item.calculatedCommissionAmount || 0);
-        }
-      }
+      const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
+        SELECT COALESCE(SUM(oi."calculatedCommissionAmount"), 0) AS "estimatedCommission",
+               COUNT(DISTINCT o.id) AS "pendingOrdersCount"
+        FROM "orders" o
+        JOIN "order_items" oi ON oi."orderId" = o.id
+        LEFT JOIN "commissions" c ON c."orderId" = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o."attributedCollaboratorId" = ${userId}
+          AND o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
+          AND c.id IS NULL
+      `;
+      estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
+      pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
     } else if (storeId) {
-      const pendingOrders = await this.prisma.order.findMany({
-        where: {
-          storeId,
-          attributedCollaboratorId: { not: null },
-          status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED] },
-        },
-        include: {
-          orderItems: {
-            select: {
-              calculatedCommissionAmount: true,
-            },
-          },
-          commissions: {
-            where: { status: { in: ['APPROVED', 'PAID'] } },
-            select: { id: true },
-          },
-        },
-      });
-
-      const unfinalizedOrders = pendingOrders.filter(
-        (o) => o.commissions.length === 0,
-      );
-      pendingOrdersCount = unfinalizedOrders.length;
-      for (const o of unfinalizedOrders) {
-        for (const item of o.orderItems) {
-          estimatedCommission += Number(item.calculatedCommissionAmount || 0);
-        }
-      }
+      const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
+        SELECT COALESCE(SUM(oi."calculatedCommissionAmount"), 0) AS "estimatedCommission",
+               COUNT(DISTINCT o.id) AS "pendingOrdersCount"
+        FROM "orders" o
+        JOIN "order_items" oi ON oi."orderId" = o.id
+        LEFT JOIN "commissions" c ON c."orderId" = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o."storeId" = ${storeId}
+          AND o."attributedCollaboratorId" IS NOT NULL
+          AND o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
+          AND c.id IS NULL
+      `;
+      estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
+      pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
     }
 
-    return {
+    const overviewResult = {
       period: {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
@@ -362,6 +340,8 @@ export class DashboardService {
         activeReferralLinks: activeLinksCount,
       },
     };
+    await this.cacheService.set(cacheKey, overviewResult, 30);
+    return overviewResult;
   }
 
   // ─── 2. CHUỖI THỜI GIAN BIỂU ĐỒ (TIME-SERIES METRICS) ────────────────
@@ -371,11 +351,15 @@ export class DashboardService {
     dto: DashboardAnalyticsQueryDto,
   ) {
     const { startDate, endDate, interval } = this.resolveDateRange(dto);
-
     const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
 
+    const cacheKey = `dashboard:timeseries:${role}:${userId}:${dto.storeId || ''}:${dto.range || ''}:${dto.days || ''}:${dto.startDate || ''}:${dto.endDate || ''}:${interval}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
+    let result;
     if (interval === AnalyticsTimeInterval.HOURLY) {
-      return this._getHourlyTimeSeries(
+      result = await this._getHourlyTimeSeries(
         userId,
         isShop,
         storeId,
@@ -383,7 +367,7 @@ export class DashboardService {
         endDate,
       );
     } else {
-      return this._getDailyTimeSeries(
+      result = await this._getDailyTimeSeries(
         userId,
         isShop,
         storeId,
@@ -391,6 +375,8 @@ export class DashboardService {
         endDate,
       );
     }
+    await this.cacheService.set(cacheKey, result, 30);
+    return result;
   }
 
   // ─── 3. TOP SẢN PHẨM BÁN CHẠY NHẤT (TOP PRODUCTS BREAKDOWN) ───────────
@@ -407,6 +393,10 @@ export class DashboardService {
     const limit = dto.limit || 5;
 
     const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
+
+    const cacheKey = `dashboard:topproducts:${role}:${userId}:${dto.storeId || ''}:${dto.range || ''}:${dto.startDate || ''}:${dto.endDate || ''}:${limit}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
 
     const orderWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -470,7 +460,7 @@ export class DashboardService {
       .sort((a, b) => b.grossRevenue - a.grossRevenue)
       .slice(0, limit);
 
-    return sortedProducts.map((p, idx) => ({
+    const result = sortedProducts.map((p, idx) => ({
       rank: idx + 1,
       productId: p.product.id,
       title: p.product.title,
@@ -482,6 +472,8 @@ export class DashboardService {
       quantitySold: p.quantitySold,
       grossRevenue: p.grossRevenue,
     }));
+    await this.cacheService.set(cacheKey, result, 45);
+    return result;
   }
 
   // ─── 4. TOP KÊNH TRUYỀN THÔNG HIỆU QUẢ (CHANNELS BREAKDOWN) ───────────
@@ -497,6 +489,10 @@ export class DashboardService {
     });
 
     const { storeId, isShop } = await this.resolveAnalyticsScope(userId, role, dto.storeId);
+
+    const cacheKey = `dashboard:topchannels:${role}:${userId}:${dto.storeId || ''}:${dto.range || ''}:${dto.startDate || ''}:${dto.endDate || ''}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
 
     const clickWhere: any = {
       createdAt: { gte: startDate, lte: endDate },
@@ -590,6 +586,7 @@ export class DashboardService {
             : 0,
       }));
 
+    await this.cacheService.set(cacheKey, result, 45);
     return result;
   }
 
@@ -705,26 +702,45 @@ export class DashboardService {
       }));
     }
 
+    const campIds = rawCampaigns.map((c) => c.id);
+    const allOrdersWhere: any = {
+      referralLink: { campaignId: { in: campIds } },
+      createdAt: { gte: startDate, lte: endDate },
+      status: { in: ['DELIVERED', 'COMPLETED'] },
+    };
+    if (role === UserRole.COLLABORATOR) {
+      allOrdersWhere.attributedCollaboratorId = userId;
+    }
+
+    // Tối ưu N+1: Lấy toàn bộ đơn hàng của tất cả chiến dịch trong 1 query duy nhất
+    const allOrders = campIds.length
+      ? await this.prisma.order.findMany({
+          where: allOrdersWhere,
+          select: {
+            id: true,
+            finalAmount: true,
+            referralLink: { select: { campaignId: true } },
+            commissions: { select: { commissionAmount: true } },
+          },
+        })
+      : [];
+
+    const ordersByCampId = new Map<string, typeof allOrders>();
+    for (const o of allOrders) {
+      const cId = o.referralLink?.campaignId;
+      if (cId) {
+        let list = ordersByCampId.get(cId);
+        if (!list) {
+          list = [];
+          ordersByCampId.set(cId, list);
+        }
+        list.push(o);
+      }
+    }
+
     const results: any[] = [];
     for (const camp of rawCampaigns) {
-      const orderWhere: any = {
-        referralLink: { campaignId: camp.id },
-        createdAt: { gte: startDate, lte: endDate },
-        status: { in: ['DELIVERED', 'COMPLETED'] },
-      };
-      if (role === UserRole.COLLABORATOR) {
-        orderWhere.attributedCollaboratorId = userId;
-      }
-
-      const orders = await this.prisma.order.findMany({
-        where: orderWhere,
-        select: {
-          id: true,
-          finalAmount: true,
-          commissions: { select: { commissionAmount: true } },
-        },
-      });
-
+      const orders = ordersByCampId.get(camp.id) || [];
       const totalOrders = orders.length;
       const totalRevenue = orders.reduce(
         (sum, o) => sum + Number(o.finalAmount || 0),
@@ -1419,6 +1435,10 @@ export class DashboardService {
 
   // ─── 10. TỔNG HỢP HIỆU SUẤT LIVESTREAM CỦA KOL (LIVE SESSION SUMMARY) ───
   async getCollaboratorLiveSessionsSummary(collaboratorId: string) {
+    const cacheKey = `dashboard:livesummary:${collaboratorId}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
     const liveSessions = await this.prisma.liveShoppingSession.findMany({
       where: { creatorId: collaboratorId },
       include: {
@@ -1433,38 +1453,62 @@ export class DashboardService {
       take: 20,
     });
 
-    const sessions = await Promise.all(
-      liveSessions.map(async (sess) => {
-        const liveOrders = await this.prisma.order.findMany({
-          where: {
-            attributedCollaboratorId: collaboratorId,
-            storeId: sess.storeId,
-            createdAt: { gte: sess.startsAt, lte: sess.endsAt },
-            status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
-          },
-          include: {
-            orderItems: {
-              select: {
-                quantity: true,
-                unitPrice: true,
-                calculatedCommissionAmount: true,
-              },
-            },
-          },
-        });
+    if (!liveSessions.length) {
+      const emptyRes = {
+        success: true,
+        totalSessions: 0,
+        totals: {
+          totalLiveRevenue: 0,
+          totalLiveCommission: 0,
+          totalLiveOrders: 0,
+        },
+        sessions: [],
+      };
+      await this.cacheService.set(cacheKey, emptyRes, 45);
+      return emptyRes;
+    }
 
-        const ordersCount = liveOrders.length;
-        let unitsSold = 0;
-        let grossRevenue = 0;
-        let commissionEarned = 0;
+    // Tối ưu N+1: Gộp 20 câu query thành 1 query duy nhất quét toàn bộ khoảng thời gian
+    const minStartsAt = new Date(Math.min(...liveSessions.map(s => s.startsAt.getTime())));
+    const maxEndsAt = new Date(Math.max(...liveSessions.map(s => (s.endsAt ? s.endsAt.getTime() : Date.now()))));
+    const storeIds = [...new Set(liveSessions.map(s => s.storeId))];
 
-        for (const ord of liveOrders) {
-          for (const it of ord.orderItems) {
-            unitsSold += it.quantity;
-            grossRevenue += Number(it.unitPrice) * it.quantity;
-            commissionEarned += Number(it.calculatedCommissionAmount || 0);
-          }
+    const allLiveOrders = await this.prisma.order.findMany({
+      where: {
+        attributedCollaboratorId: collaboratorId,
+        storeId: { in: storeIds },
+        createdAt: { gte: minStartsAt, lte: maxEndsAt },
+        status: { in: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+      },
+      include: {
+        orderItems: {
+          select: {
+            quantity: true,
+            unitPrice: true,
+            calculatedCommissionAmount: true,
+          },
+        },
+      },
+    });
+
+    const sessions = liveSessions.map((sess) => {
+      const sessEndsAt = sess.endsAt || new Date();
+      const liveOrders = allLiveOrders.filter(
+        (o) => o.storeId === sess.storeId && o.createdAt >= sess.startsAt && o.createdAt <= sessEndsAt
+      );
+
+      const ordersCount = liveOrders.length;
+      let unitsSold = 0;
+      let grossRevenue = 0;
+      let commissionEarned = 0;
+
+      for (const ord of liveOrders) {
+        for (const it of ord.orderItems) {
+          unitsSold += it.quantity;
+          grossRevenue += Number(it.unitPrice) * it.quantity;
+          commissionEarned += Number(it.calculatedCommissionAmount || 0);
         }
+      }
 
         return {
           id: sess.id,
@@ -1484,8 +1528,7 @@ export class DashboardService {
             commissionEarned,
           },
         };
-      }),
-    );
+      });
 
     const totalLiveRevenue = sessions.reduce((sum, s) => sum + s.metrics.grossRevenue, 0);
     const totalLiveCommission = sessions.reduce((sum, s) => sum + s.metrics.commissionEarned, 0);

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import {
   Prisma,
@@ -11,6 +12,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
@@ -21,6 +23,7 @@ export class CommissionRulesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletsService: WalletsService,
+    @Optional() private readonly cache: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
   private lockBonusLedger(
@@ -2474,6 +2477,10 @@ export class CommissionRulesService {
     const currentVnYearMonth = this.getVietnamYearMonth(new Date());
     const targetYearMonth = yearMonth || currentVnYearMonth;
 
+    const cacheKey = `commissions:team_progress:${storeId}:${targetYearMonth}`;
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       select: { id: true, name: true, logoUrl: true },
@@ -2553,7 +2560,7 @@ export class CommissionRulesService {
       }
     }
 
-    return {
+    const result = {
       storeId,
       storeName: store?.name || '',
       yearMonth: targetYearMonth,
@@ -2566,6 +2573,9 @@ export class CommissionRulesService {
       },
       members,
     };
+
+    await this.cache.set(cacheKey, result, 30);
+    return result;
   }
 
   // Chốt đối soát hàng loạt cho tất cả KOL đạt điều kiện trong kỳ tháng

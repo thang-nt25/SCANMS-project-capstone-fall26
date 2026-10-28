@@ -909,3 +909,15 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return this.isRedisActive() ? this.redisClient : null;
   }
 }
+
+export const NOOP_CACHE_SERVICE: any = {
+  get: async () => null,
+  set: async () => {},
+  del: async () => {},
+  delPrefix: async () => 0,
+  checkRateLimit: async () => ({ allowed: true, current: 1, limit: 100, resetInSeconds: 60 }),
+  recordClickRateLimitMetric: () => {},
+  getClickRateLimitMetrics: () => ({ status: 'HEALTHY' }),
+  isRedisActive: () => false,
+  getRedisClient: () => null,
+};
