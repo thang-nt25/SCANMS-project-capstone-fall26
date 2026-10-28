@@ -2,13 +2,13 @@ name: SCANMS CI/CD Quality Gate Pipeline
 
 on:
   push:
-    branches: [ main, dev, develop ]
+    branches: [ main, dev, develop, thang ]
   pull_request:
-    branches: [ main, dev, develop ]
+    branches: [ main, dev, develop, thang ]
 
 jobs:
   backend-build-check:
-    name: Backend Build & Type Check
+    name: Backend Build, Type Check & Automated Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +30,14 @@ jobs:
 
       - name: Build Backend (NestJS Compile Check)
         run: cd backend && npm run build
+
+      - name: Run Backend Unit Tests (Automated CI Verification)
+        run: cd backend && npm test
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          JWT_SECRET: "ci_super_secret_jwt_key_test_12345678"
+          NODE_ENV: "test"
 
   frontend-build-check:
     name: Frontend Build & Type Check
