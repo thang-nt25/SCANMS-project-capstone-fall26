@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { PayosPaymentService } from '../orders/payos-payment.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
@@ -73,6 +74,7 @@ export class LiveSessionsService {
     private readonly prisma: PrismaService,
     private readonly payosPaymentService: PayosPaymentService,
     private readonly walletsService: WalletsService,
+    private readonly cache: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
   async getUserSummary(userId: string) {
@@ -440,9 +442,16 @@ export class LiveSessionsService {
         this.logger.error('Lỗi tự động gửi tin nhắn mời live qua Chat:', chatErr);
       }
 
-      // Thông báo tới icon chuông của tất cả user khi Chủ Shop tạo phiên live
+      return created;
+    });
+
+    // Background broadcast notification & cache invalidation
+    setImmediate(async () => {
       try {
-        const allUsers = await tx.user.findMany({
+        await this.cache.del('live:public:list');
+        await this.cache.delPrefix('live:public:');
+
+        const allUsers = await this.prisma.user.findMany({
           where: { isActive: true, isDeleted: false },
           select: { id: true },
         });
@@ -451,7 +460,7 @@ export class LiveSessionsService {
           const discountInfo = dto.discountValue
             ? `${dto.discountValue}${dto.discountType === 'PERCENTAGE' ? '%' : '₫'}`
             : 'ưu đãi độc quyền';
-          await tx.notification.createMany({
+          await this.prisma.notification.createMany({
             data: allUsers.map((u) => ({
               userId: u.id,
               title: `🔴 Phiên livestream mới: ${dto.title.trim()}`,
@@ -469,8 +478,8 @@ export class LiveSessionsService {
       } catch (broadcastNotifErr) {
         this.logger.error('Lỗi gửi thông báo livestream tới tất cả user:', broadcastNotifErr);
       }
-      return created;
     });
+
     return this.prisma.liveShoppingSession.findUnique({ where: { id: session.id }, include: sessionInclude });
   }
 
@@ -665,6 +674,10 @@ export class LiveSessionsService {
   }
 
   async getPublicSessionForProduct(productId: string) {
+    const cacheKey = `live:public:product:${productId}`;
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const now = new Date();
     const session = await this.prisma.liveShoppingSession.findFirst({
       where: {
@@ -681,15 +694,21 @@ export class LiveSessionsService {
       },
       orderBy: { startsAt: 'asc' },
     });
-    if (!session) return { session: null, serverTime: now.toISOString() };
+    if (!session) {
+      const emptyResult = { session: null, serverTime: now.toISOString() };
+      await this.cache.set(cacheKey, emptyResult, 10);
+      return emptyResult;
+    }
     const { governance: _privateGovernance, ...publicSession } = session;
-    return {
+    const result = {
       session: {
         ...publicSession,
         remainingUses: session.coupon?.usageLimitTotal === null ? null : Math.max(0, (session.coupon?.usageLimitTotal ?? 0) - (session.coupon?.usageCount ?? 0)),
       },
       serverTime: now.toISOString(),
     };
+    await this.cache.set(cacheKey, result, 20);
+    return result;
   }
 
   async getPublicSessionsForProducts(productIdsCsv?: string) {
@@ -923,6 +942,10 @@ export class LiveSessionsService {
   }
 
   async getPublicLiveList() {
+    const cacheKey = 'live:public:list';
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const now = new Date();
     const sessions = await this.prisma.liveShoppingSession.findMany({
       where: {
@@ -933,7 +956,7 @@ export class LiveSessionsService {
       orderBy: [{ status: 'asc' }, { startsAt: 'asc' }],
       take: 20,
     });
-    return Promise.all(sessions.map(async ({ governance, ...session }) => {
+    const result = await Promise.all(sessions.map(async ({ governance, ...session }) => {
       const pinnedId = governance && typeof governance === 'object' && !Array.isArray(governance)
         ? governance.pinnedProductId : null;
       const pinnedProduct = session.products.find((row) => row.productId === pinnedId)?.product ?? null;
@@ -942,6 +965,9 @@ export class LiveSessionsService {
         : { currentViewers: null };
       return { ...session, pinnedProduct, viewerCount: stats.currentViewers };
     }));
+
+    await this.cache.set(cacheKey, result, 15);
+    return result;
   }
 
   async releaseVoucher(userId: string, sessionId: string, dto: { couponId: string; quantity: number }) {

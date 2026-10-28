@@ -32,7 +32,7 @@ import { UpdateCouponPolicyDto } from './dto/update-policy.dto';
 import { SoftDeleteCouponDto } from './dto/soft-delete-coupon.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { QueryCouponsDto } from './dto/query-coupons.dto';
-import { CacheService } from '../../core/cache/cache.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { liveVoucherActive } from './voucher-pricing';
 import { ProductCouponQueryDto } from './dto/product-coupon-query.dto';
 import { voucherMatchesProduct, voucherProductWhere } from './voucher-discovery';
@@ -60,7 +60,7 @@ export class CouponsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
   private async updateCurrentCoupon(
@@ -331,6 +331,10 @@ export class CouponsService {
   }
 
   async getPublicStoreCoupons(storeId: string, productId?: string) {
+    const cacheKey = `coupons:public:${storeId}:${productId || 'all'}`;
+    const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const now = new Date();
     let selectedProduct: { id: string; categoryName: string | null } | null = null;
     if (productId) {
@@ -391,7 +395,7 @@ export class CouponsService {
       orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }],
     });
 
-    return coupons
+    const result = coupons
       .filter(
         (coupon) =>
           (!selectedProduct || voucherMatchesProduct(coupon, selectedProduct)) &&
@@ -426,6 +430,9 @@ export class CouponsService {
         categories: coupon.couponCategories.map((item) => item.categoryName),
         storeName: coupon.store.name,
       }));
+
+    await this.cacheService?.set?.(cacheKey, result, 45);
+    return result;
   }
 
   // =========================================================================
@@ -1366,8 +1373,15 @@ export class CouponsService {
     });
 
     // Invalidate caches
-    await this.cacheService.del(`coupon_code_${codeNormalized}`);
-    await this.cacheService.del(`store_coupons_${storeId}`);
+    try {
+      await Promise.all([
+        this.cacheService?.del?.(`coupon_code_${codeNormalized}`),
+        this.cacheService?.del?.(`store_coupons_${storeId}`),
+        this.cacheService?.delPrefix?.(`coupons:public:${storeId}:`),
+      ]);
+    } catch {
+      // safe fallback in unit test environments
+    }
 
     this.logger.log(
       `Shop ${storeId} created store voucher "${codeNormalized}" successfully by user ${userId}`,

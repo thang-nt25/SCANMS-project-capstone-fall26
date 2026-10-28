@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tag, Calendar, Handshake, Trophy, Link2 } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
@@ -12,6 +12,11 @@ export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const activeTab = searchParams.get('tab') || 'coupons';
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => ({ [activeTab]: true }));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'live-sessions') {
@@ -72,32 +77,32 @@ export default function ShopPromotionsHubPage() {
       />
 
       <div className="w-full min-w-0">
-        {activeTab === 'coupons' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['coupons'] && (
+          <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <ShopCouponsPage />
           </div>
         )}
 
-        {activeTab === 'campaigns' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['campaigns'] && (
+          <div className={activeTab === 'campaigns' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <ShopCampaignsPage embedded />
           </div>
         )}
 
-        {activeTab === 'exclusive-deals' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['exclusive-deals'] && (
+          <div className={activeTab === 'exclusive-deals' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <ExclusiveDealInbox />
           </div>
         )}
 
-        {activeTab === 'commission-rules' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['commission-rules'] && (
+          <div className={activeTab === 'commission-rules' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <CommissionRulesPage />
           </div>
         )}
 
-        {activeTab === 'referral-links' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['referral-links'] && (
+          <div className={activeTab === 'referral-links' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <StoreReferralLinksPage />
           </div>
         )}

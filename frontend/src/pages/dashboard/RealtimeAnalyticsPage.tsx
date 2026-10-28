@@ -75,12 +75,12 @@ export const RealtimeAnalyticsPage: React.FC = () => {
       setError(null);
       const params = { range, ...(range === 'custom' && appliedDates ? appliedDates : {}) };
       const [ovData, tsData, prodData, chanData, funData, campData] = await Promise.all([
-        analyticsService.getRealtimeOverview(params, true),
-        analyticsService.getTimeSeries(params, true),
-        analyticsService.getTopProducts({ ...params, limit: 5 }),
-        analyticsService.getTopChannels({ ...params, limit: 6 }),
-        analyticsService.getConversionFunnel(params),
-        analyticsService.getCampaignPerformance(params),
+        analyticsService.getRealtimeOverview(params, showIndicator),
+        analyticsService.getTimeSeries(params, showIndicator),
+        analyticsService.getTopProducts({ ...params, limit: 5 }, showIndicator),
+        analyticsService.getTopChannels({ ...params, limit: 6 }, showIndicator),
+        analyticsService.getConversionFunnel(params, showIndicator),
+        analyticsService.getCampaignPerformance(params, showIndicator),
       ]);
       if (request !== requestSequence.current) return;
       setOverview(ovData);
@@ -98,10 +98,10 @@ export const RealtimeAnalyticsPage: React.FC = () => {
   }, [range, appliedDates]);
 
   useEffect(() => {
-    setLoading(true);
-    // Do not show metrics from the previous period under the new filter.
-    setOverview(null); setTimeSeries([]); setTopProducts([]); setTopChannels([]); setFunnel(null); setCampaigns([]); setLastUpdated(null);
-    void fetchData();
+    if (!overview) {
+      setLoading(true);
+    }
+    void fetchData(false);
     return () => { requestSequence.current += 1; };
   }, [fetchData]);
 

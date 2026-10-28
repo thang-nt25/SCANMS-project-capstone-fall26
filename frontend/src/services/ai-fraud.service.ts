@@ -79,8 +79,8 @@ export const aiFraudService = {
   /**
    * Quét toàn diện traffic và tính toán chỉ số rủi ro
    */
-  scanTraffic: async (params?: FraudScanFilterParams): Promise<FraudScanSummary> => {
-    const res = await api.get('/ai/fraud/scan', { params, headers: { 'x-skip-cache': '1' } });
+  scanTraffic: async (params?: FraudScanFilterParams, fresh = false): Promise<FraudScanSummary> => {
+    const res = await api.get('/ai/fraud/scan', { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data?.data || res.data || res;
   },
 

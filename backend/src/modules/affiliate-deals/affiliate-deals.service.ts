@@ -11,6 +11,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ReferralLinksService } from '../referral-links/referral-links.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
@@ -49,6 +50,7 @@ export class AffiliateDealsService {
     private readonly prisma: PrismaService,
     private readonly chatGateway: ChatGateway,
     private readonly referralLinksService: ReferralLinksService,
+    private readonly cache: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
   private isSystemReviewer(role: UserRole) {
@@ -294,6 +296,10 @@ export class AffiliateDealsService {
   }
 
   async getShopActivePartners(userId: string, role: UserRole) {
+    const cacheKey = `affiliate:deals:active_partners:${userId}:${role}`;
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const rawDeals = await this.prisma.exclusiveDealProposal.findMany({
       where: {
         ...(this.isSystemReviewer(role) ? {} : { store: { ownerId: userId } }),
@@ -402,7 +408,7 @@ export class AffiliateDealsService {
       }),
     );
 
-    return {
+    const output = {
       success: true,
       totalPartners: new Set(results.map((r) => r.collaboratorId)).size,
       totalActiveDeals: results.filter((r) => !r.isExpired).length,
@@ -415,6 +421,9 @@ export class AffiliateDealsService {
           : 10,
       deals: results,
     };
+
+    await this.cache.set(cacheKey, output, 45);
+    return output;
   }
 
   async createProposal(collaboratorId: string, dto: CreateExclusiveDealDto) {
@@ -857,6 +866,7 @@ export class AffiliateDealsService {
       proposal.collaboratorId,
       card,
     );
+    await this.cache.delPrefix('affiliate:deals:active_partners:');
     return {
       ...link,
       vipVoucherCode: vipCode,
@@ -912,6 +922,7 @@ export class AffiliateDealsService {
         decidedAt: new Date().toISOString(),
       },
     );
+    await this.cache.delPrefix('affiliate:deals:active_partners:');
     return {
       id: proposalId,
       status: ExclusiveDealStatus.REJECTED,
@@ -1160,6 +1171,7 @@ export class AffiliateDealsService {
       proposal.collaboratorId,
     );
     const { chatMessage: _message, ...response } = result;
+    await this.cache.delPrefix('affiliate:deals:active_partners:');
     return response;
   }
 

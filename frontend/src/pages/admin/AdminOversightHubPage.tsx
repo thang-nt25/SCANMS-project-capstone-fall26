@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { Link2, Tag, Radio, Store } from 'lucide-react';
 import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
@@ -7,9 +8,15 @@ import { authService } from '../../services/auth.service';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import AdminCouponsPage from './AdminCouponsPage';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
+
 export default function AdminOversightHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'links';
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => ({ [activeTab]: true }));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
+  }, [activeTab]);
 
   const user = authService.getCurrentUser();
   if (user && user.role === 'SHOP_MANAGER') {
@@ -69,20 +76,29 @@ export default function AdminOversightHubPage() {
       />
 
       <div className="w-full min-h-[500px]">
-        {activeTab === 'links' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['links'] && (
+          <div className={activeTab === 'links' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <AdminReferralLinksPage />
           </div>
         )}
 
-        {activeTab === 'coupons' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['coupons'] && (
+          <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <AdminCouponsPage />
           </div>
         )}
 
-        {activeTab === 'live-sessions' && <AdminLiveSessionsPage />}
-        {activeTab === 'sponsorship' && <SponsoredPlacementsPanel admin />}
+        {visitedTabs['live-sessions'] && (
+          <div className={activeTab === 'live-sessions' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
+            <AdminLiveSessionsPage />
+          </div>
+        )}
+
+        {visitedTabs['sponsorship'] && (
+          <div className={activeTab === 'sponsorship' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
+            <SponsoredPlacementsPanel admin />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2216,14 +2216,14 @@ export default function ChatBoxPage({
 
             {/* Collapsed List: Avatars only */}
             <div className="flex-1 w-full overflow-y-auto py-2.5 px-2 space-y-2.5 no-scrollbar flex flex-col items-center">
-              {filteredConversations.map((conv) => {
+              {filteredConversations.map((conv, idx) => {
                 const lastMsg = conv.chatMessages?.[0];
                 const isActive = conv.id === activeConvId;
                 const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
                 const otherParty = getOtherParty(conv);
 
                 return (
-                  <div key={conv.id} className="relative group">
+                  <div key={`${conv.id}-${idx}`} className="relative group">
                     <button
                       type="button"
                       onClick={() => openConversation(conv)}
@@ -2357,7 +2357,7 @@ export default function ChatBoxPage({
                 </div>
               )}
 
-              {filteredConversations.map((conv) => {
+              {filteredConversations.map((conv, idx) => {
                 const lastMsg = conv.chatMessages?.[0];
                 const isActive = conv.id === activeConvId;
                 const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
@@ -2365,7 +2365,7 @@ export default function ChatBoxPage({
 
                 return (
                   <div
-                    key={conv.id}
+                    key={`${conv.id}-${idx}`}
                     id={`conv-item-${conv.id}`}
                     data-active={isActive}
                     className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
@@ -2666,7 +2666,7 @@ export default function ChatBoxPage({
                   new Date(msg.createdAt).toDateString();
 
                 return (
-                  <div key={msg.id} className="space-y-2">
+                  <div key={msg.id ? `${msg.id}-${idx}` : `msg-${idx}`} className="space-y-2">
                     {showDate && (
                       <div className="chat-date-divider my-4 flex items-center justify-center">
                         <span className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] font-semibold text-[#7D715E] shadow-2xs">

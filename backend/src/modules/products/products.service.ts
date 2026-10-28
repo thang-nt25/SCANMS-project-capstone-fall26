@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { CacheService } from '../../core/cache/cache.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
@@ -64,13 +64,32 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly cacheService: CacheService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
+  public async invalidateMarketplaceCache(): Promise<void> {
+    try {
+      await Promise.all([
+        this.cacheService?.delPrefix?.('marketplace:products:'),
+        this.cacheService?.del?.('marketplace:categories'),
+        this.cacheService?.del?.('marketplace:stores:list'),
+      ]);
+    } catch {
+      // safe fallback in unit test environments
+    }
+  }
+
   public async invalidateLandingCache(productId?: string): Promise<void> {
-    await this.cacheService.delPrefix(
-      productId ? `landing:v2:${productId}:` : 'landing:v2:',
-    );
+    try {
+      await Promise.all([
+        this.cacheService?.delPrefix?.(
+          productId ? `landing:v2:${productId}:` : 'landing:v2:',
+        ),
+        this.invalidateMarketplaceCache(),
+      ]);
+    } catch {
+      // safe fallback in unit test environments
+    }
   }
 
   private buildProductEvidenceRows(
@@ -585,6 +604,10 @@ export class ProductsService {
     }
 
     const options = { search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit };
+    const cacheKey = `marketplace:products:catalog:${JSON.stringify(options)}:${includeCommission ? '1' : '0'}`;
+    const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const [total, ranked] = await Promise.all([
       search ? this.prisma.$queryRaw<{ total: bigint }[]>(catalogCountQuery(options)).then(rows => Number(rows[0]?.total || 0))
         : this.prisma.product.count({ where }),
@@ -640,7 +663,7 @@ export class ProductsService {
       }) : [];
     const itemsById = new Map(items.map((item) => [item.id, item]));
 
-    return {
+    const response = {
       items: ranked.flatMap((row) => {
         const item = itemsById.get(row.id);
         return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount), matchKind: row.matchKind || 'direct' }] : [];
@@ -652,6 +675,8 @@ export class ProductsService {
         totalPages: Math.ceil(total / safeLimit),
       },
     };
+    await this.cacheService?.set?.(cacheKey, response, 45); // TTL 45s
+    return response;
   }
 
   /**
@@ -661,12 +686,23 @@ export class ProductsService {
     if (typeof search !== 'string') throw new BadRequestException('Từ khóa tìm kiếm không hợp lệ');
     const query = search.trim().replace(/\s+/g, ' ').slice(0, 80);
     if (query.length < 2) return [];
+
+    const cacheKey = `marketplace:suggest:${query.toLowerCase()}`;
+    const cached = this.cacheService?.get ? await this.cacheService.get<any[]>(cacheKey) : null;
+    if (cached) return cached;
+
     const products = await this.prisma.$queryRaw<CatalogSuggestionRow[]>(catalogSuggestionsQuery(query));
-    return products.map(product => ({ ...product, price: Number(product.price) }));
+    const result = products.map(product => ({ ...product, price: Number(product.price) }));
+    await this.cacheService?.set?.(cacheKey, result, 300); // 5 minutes
+    return result;
   }
 
   async getPublicCategories() {
-    const products = await this.prisma.product.findMany({
+    const cached = this.cacheService?.get ? await this.cacheService.get<{ name: string; count: number }[]>('marketplace:categories') : null;
+    if (cached) return cached;
+
+    const groups = await this.prisma.product.groupBy({
+      by: ['categoryName'],
       where: {
         isDeleted: false,
         isActive: true,
@@ -680,28 +716,29 @@ export class ProductsService {
           owner: { isActive: true },
         },
       },
-      select: { categoryName: true },
+      _count: { id: true },
     });
 
-    const countsMap = new Map<string, number>();
-    products.forEach((p) => {
-      const cat = p.categoryName?.trim();
-      if (cat) {
-        countsMap.set(cat, (countsMap.get(cat) || 0) + 1);
-      }
-    });
+    const result = groups
+      .filter((g) => g.categoryName && g.categoryName.trim())
+      .map((g) => ({
+        name: g.categoryName!.trim(),
+        count: g._count.id,
+      }))
+      .sort((a, b) => b.count - a.count);
 
-    return Array.from(countsMap.entries()).map(([name, count]) => ({
-      name,
-      count,
-    }));
+    await this.cacheService?.set?.('marketplace:categories', result, 300); // 5 minutes
+    return result;
   }
 
   /**
    * Lấy danh sách các gian hàng đối tác đang có sản phẩm kinh doanh
    */
   async getPublicStores() {
-    return this.prisma.store.findMany({
+    const cached = this.cacheService?.get ? await this.cacheService.get<any[]>('marketplace:stores:list') : null;
+    if (cached) return cached;
+
+    const stores = await this.prisma.store.findMany({
       where: {
         isDeleted: false,
         isActive: true,

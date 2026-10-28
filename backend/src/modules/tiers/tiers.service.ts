@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { Prisma, type CollaboratorTier } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { tierBonusByName } from '../commissions/commission-policy';
@@ -8,7 +9,10 @@ import { goodsDiscount } from '../coupons/voucher-pricing';
 @Injectable()
 export class TiersService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TiersService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   async onApplicationBootstrap() {
     try {
@@ -37,18 +41,24 @@ export class TiersService implements OnApplicationBootstrap {
    * Lấy danh mục tất cả cấp bậc KOL
    */
   async getAllTiers() {
+    const cached = await this.cache.get<any>('tiers:all');
+    if (cached) return cached;
+
     const tiers = await this.prisma.collaboratorTier.findMany({
       orderBy: [{ minRevenueThreshold: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
     // Older seed runs may have created identical policies with different IDs.
     // Collapse those policies for display without deleting or reassigning profiles.
     const seen = new Set<string>();
-    return tiers.map(tier => ({ ...tier, extraBonusPercentage: new Prisma.Decimal(this.tierBonus(tier)) })).filter((tier) => {
+    const result = tiers.map(tier => ({ ...tier, extraBonusPercentage: new Prisma.Decimal(this.tierBonus(tier)) })).filter((tier) => {
       const key = this.policyKey(tier);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
+
+    await this.cache.set('tiers:all', result, 300);
+    return result;
   }
 
   private policyKey(tier: CollaboratorTier) {
