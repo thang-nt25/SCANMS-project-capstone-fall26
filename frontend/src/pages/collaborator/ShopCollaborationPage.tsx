@@ -80,6 +80,7 @@ export interface PartnerStore {
   location?: string;
   totalProducts?: number;
   unreadCount?: number;
+  messageCount?: number;
   pendingSamplesCount?: number;
   lastMessageText?: string;
   lastMessageAt?: string;
@@ -563,17 +564,14 @@ export default function ShopCollaborationPage() {
         const storeId = st.id || conv.storeId;
         if (storeId && !mappedStores.some((store) => store.id === storeId)) {
           const lastMsg = conv.chatMessages?.[0];
-          const hasMessage = Boolean(lastMsg?.messageText || lastMsg?.mediaName || (conv.messageCount && conv.messageCount > 0));
           const hasDeal = dealStoreIds.has(storeId);
 
-          // QUY TẮC CỐT LÕI: Chỉ hiện các gian hàng đã xin deal hoa hồng hoặc nhắn tin ít nhất 1 lần
-          if (!hasMessage && !hasDeal) {
-            return;
-          }
+          // Keep every existing conversation, including contacts with no messages yet.
 
           mappedStores.push({
             id: storeId,
             conversationId: conv.id,
+            messageCount: typeof conv.messageCount === 'number' ? conv.messageCount : undefined,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
             logoUrl: getShopLogoUrl(st.logoUrl),
@@ -710,7 +708,7 @@ export default function ShopCollaborationPage() {
         const sampleData: any = results[1].status === 'fulfilled' ? ((results[1].value as any)?.data ?? results[1].value) : null;
 
         const currentStore = stores.find((s) => s.id === storeId);
-        const msgCount = currentStore ? (currentStore.unreadCount ? 1 : 0) : null;
+        const msgCount = currentStore?.messageCount ?? null;
 
         setTabCounts({
           storeId,

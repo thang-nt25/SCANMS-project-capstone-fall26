@@ -161,7 +161,7 @@ export class ChatController {
 
   // Xóa cuộc trò chuyện
   @Delete('conversations/:conversationId')
-  @ApiOperation({ summary: 'Xóa hoàn toàn cuộc trò chuyện và lịch sử chat' })
+  @ApiOperation({ summary: 'Vô hiệu hóa xóa cuộc trò chuyện chung để bảo vệ lịch sử chat' })
   @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
   deleteConversation(
     @Param('conversationId', ParseUUIDPipe) conversationId: string,
@@ -173,7 +173,7 @@ export class ChatController {
   // Xóa lịch sử tin nhắn trong cuộc trò chuyện
   @Delete('conversations/:conversationId/messages')
   @ApiOperation({
-    summary: 'Xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện',
+    summary: 'Vô hiệu hóa xóa lịch sử chung để bảo vệ cả hai bên',
   })
   @ApiParam({ name: 'conversationId', type: 'string', format: 'uuid' })
   clearMessages(
