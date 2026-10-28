@@ -202,11 +202,12 @@ export function PublicHeader({
 
   return (
     <header className={`scanms-site-header ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs`}>
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
+      <div className="max-w-[1520px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <ScanMSLogo size="md" className="scanms-header-logo" />
+            <span className="sm:hidden"><ScanMSLogo size="sm" showSubtitle={false} className="scanms-header-logo" /></span>
+            <span className="hidden sm:inline-flex"><ScanMSLogo size="md" className="scanms-header-logo" /></span>
           </Link>
         </div>
 
@@ -214,7 +215,7 @@ export function PublicHeader({
           onClear={() => onSearchSubmit?.('')}
           className="hidden lg:block min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2" />
 
-        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-3.5 shrink-0">
           {/* Quick Tracking Button */}
           <button
             type="button"
@@ -225,13 +226,14 @@ export function PublicHeader({
                 navigate('/tracking');
               }
             }}
-            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:border-[#C59B58]/70 hover:bg-[#FAF8F5] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group active:scale-[0.98]"
+            className="inline-flex items-center gap-2 px-1.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:border-[#C59B58]/70 hover:bg-[#FAF8F5] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group active:scale-[0.98]"
             title="Tra cứu lộ trình đơn hàng & vận chuyển"
+            aria-label="Tra cứu đơn hàng"
           >
             <span className="w-6 h-6 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] group-hover:bg-[#F3EFE6] group-hover:border-[#C59B58]/40 flex items-center justify-center transition-colors">
               <Package className="w-3.5 h-3.5 text-[#B88E4F] group-hover:scale-110 transition-transform" />
             </span>
-            <span>Tra cứu đơn</span>
+            <span className="hidden sm:inline">Tra cứu đơn</span>
           </button>
 
           {/* Quick Cart Button - SCANMS Standard Minimalist Cart Icon */}
@@ -530,10 +532,12 @@ export function PublicHeader({
             <div className="flex items-center gap-1.5">
               <Link
                 to={loginUrl}
-                className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                className="inline-flex items-center gap-2 whitespace-nowrap px-2 sm:px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                aria-label="Đăng nhập hoặc đăng ký"
+                title="Đăng nhập hoặc đăng ký"
               >
                 <User className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
-                Đăng nhập / Đăng ký
+                <span className="hidden sm:inline">Đăng nhập / Đăng ký</span>
               </Link>
             </div>
           )}
