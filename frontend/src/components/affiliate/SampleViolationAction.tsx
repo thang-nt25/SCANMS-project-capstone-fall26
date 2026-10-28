@@ -13,15 +13,7 @@ export default function SampleViolationAction({ request, blocked, onSuccess }: {
   if (blocked) return <span className="sample-violation-state text-[#7D715E]! text-[length:11px]! leading-[1.6]! ">Admin đã khóa quyền nhận mẫu</span>;
   if (report) return <span className="sample-violation-state text-[#7D715E]! text-[length:11px]! leading-[1.6]! " title={report.details?.reason}>Đã báo cáo · Chờ Admin xét duyệt</span>;
   const canReport = hasSampleDeadlineViolation(request);
-  if (!canReport) {
-    if (!['RECEIVED', 'REVISION_REQUIRED'].includes(request.status)) return null;
-    const deadline = request.revisionDeadlineAt || request.deadlineAt;
-    const deadlineLabel = deadline ? new Date(deadline).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : null;
-    return <div className="sample-violation-unavailable flex! flex-col! [align-items:flex-end]! gap-[5px]! max-w-full! [&_small]:text-[#7D715E]! [&_small]:text-[length:10px]! [&_small]:leading-[1.5]! [&_small]:text-right! ">
-      <button type="button" disabled className="sample-violation-button inline-flex! items-center! gap-[6px]! p-[8px_11px]! [border:1px_solid_#EEDFC6]! rounded-[9px]! bg-[#FBF5EB]! text-[#B88E4F]! text-[length:12px]! cursor-pointer! [&:hover:not(:disabled)]:border-[#C59B58]! [&:disabled]:bg-[#FAF8F5]! [&:disabled]:border-[#EAE4D7]! [&:disabled]:text-[#7D715E]! [&:disabled]:cursor-not-allowed! [&:focus-visible]:[outline:2px_solid_#C59B58]! [&:focus-visible]:outline-offset-[2px]! " title={deadlineLabel ? `Có thể báo cáo khi KOL chưa nộp video sau hạn ${deadlineLabel}.` : 'Chưa xác lập hạn nộp video.'}><ShieldAlert size={14} />Báo cáo quá hạn</button>
-      <small>{deadlineLabel ? `Chưa quá hạn · ${deadlineLabel}` : 'Chưa xác lập hạn video'}</small>
-    </div>;
-  }
+  if (!canReport) return null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

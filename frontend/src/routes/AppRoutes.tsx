@@ -42,6 +42,7 @@ const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsP
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
 const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutApprovalPage'));
+const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopRevenueWalletPage'));
 
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
@@ -66,6 +67,7 @@ const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleReq
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
 const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
+const AdminFinancePayoutsPage = lazy(() => import('../pages/admin/AdminFinancePayoutsPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
 const AiFraudSentinelPage = lazy(() => import('../pages/admin/AiFraudSentinelPage'));
@@ -194,9 +196,10 @@ function AppRoutes() {
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
               <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
-              <Route path="merchant/wallet" element={<WalletPage />} />
-              <Route path="shop/wallet" element={<WalletPage />} />
-              <Route path="stores/:storeId/payouts" element={<PayoutApprovalPage />} />
+              <Route path="merchant/campaigns-manage" element={<ShopCampaignsPage />} />
+              <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
+              <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
+              <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
               <Route path="merchant/settings" element={<ShopSettingsPage />} />
               <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
 
@@ -221,7 +224,7 @@ function AppRoutes() {
               <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
-              <Route path="merchant/campaigns" element={<ShopCampaignsPage />} />
+              <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions?tab=campaigns" replace />} />
               <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -273,6 +276,8 @@ function AppRoutes() {
             <Route element={<RouteContent />}>
               <Route path="admin/analytics" element={<AdminAnalyticsHubPage />} />
               <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
+              <Route path="admin/payouts" element={<AdminFinancePayoutsPage />} />
+              <Route path="admin/finance" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />

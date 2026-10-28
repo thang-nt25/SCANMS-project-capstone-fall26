@@ -79,12 +79,10 @@ export default function LoginPage() {
 
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
-    if (selectedRole !== role) {
-      const account = getDemoLogin(selectedRole);
-      const remembered = getRememberedIdentifier(selectedRole);
-      setIdentifier(remembered || account?.identifier || '');
-      setPassword(account?.password || '');
-    }
+    const account = getDemoLogin(selectedRole);
+    const remembered = getRememberedIdentifier(selectedRole);
+    setIdentifier(remembered || account?.identifier || '');
+    setPassword(account?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);
     setError(null);
@@ -92,9 +90,18 @@ export default function LoginPage() {
   };
 
   const navigateAfterLogin = (userRole?: string) => {
-    if (returnTo) {
-      navigate(returnTo);
-      return;
+    if (returnTo && !returnTo.startsWith('/login') && !returnTo.startsWith('/register')) {
+      const isPrivilegedRole =
+        userRole === 'SHOP_MANAGER' ||
+        userRole === 'COLLABORATOR' ||
+        userRole === 'SYSTEM_ADMIN' ||
+        userRole === 'SYSTEM_MANAGER';
+      const isCustomerOnlyUrl =
+        returnTo.startsWith('/customer/') || returnTo === '/marketplace' || returnTo === '/';
+      if (!isPrivilegedRole || !isCustomerOnlyUrl) {
+        navigate(returnTo);
+        return;
+      }
     }
     if (userRole === 'SHOP_MANAGER') {
       navigate('/merchant/dashboard');
@@ -115,9 +122,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     setPasswordAuthState('checking');
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const submittedIdentifier = String(formData.get('username') || identifier).trim();
-    const submittedPassword = String(formData.get('password') || password);
+    const submittedIdentifier = identifier.trim();
+    const submittedPassword = password;
 
     try {
       const res: any = await authService.login(submittedIdentifier, submittedPassword);

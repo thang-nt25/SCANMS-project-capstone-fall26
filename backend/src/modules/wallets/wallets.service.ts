@@ -370,7 +370,7 @@ export class WalletsService {
     collaboratorId: string,
     amount: Prisma.Decimal,
     reference: LedgerReference,
-    storeId: string,
+    storeId?: string,
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, Check, Loader2, MessageSquare, ShieldAlert, Sparkles, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, Loader2, MessageSquare, ShieldAlert, Handshake, X } from 'lucide-react';
 import { referralLinksService } from '../../services/referral-links.service';
 import { Select } from '../ui/Select';
 import { DealKpiProgress } from './DealKpiProgress';
@@ -108,12 +108,12 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
   const pendingCount = items.filter((item) => item.status === 'PENDING').length;
 
   return (
-    <section className="rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-sm">
+    <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-extrabold text-[#1A1612]"><Sparkles className="h-4 w-4 text-[#B88E4F]" /> Đề xuất Exclusive Deal</h2>
-          <p className="mt-0.5 text-xs text-[#7D715E]">KOL đề xuất mức hoa hồng độc quyền và cam kết doanh số.</p>
-        </div>
+        <h2 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
+          <Handshake className="h-5 w-5 text-[#B88E4F]" />
+          Thỏa thuận hoa hồng độc quyền
+        </h2>
         <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-xs font-bold text-[#B88E4F]">{pendingCount} đang chờ</span>
       </div>
 

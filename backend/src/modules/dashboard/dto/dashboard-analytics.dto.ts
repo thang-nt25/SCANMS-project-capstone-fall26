@@ -1,4 +1,4 @@
-﻿import {
+import {
   IsOptional,
   IsString,
   IsEnum,
@@ -146,3 +146,41 @@ export class TopBreakdownQueryDto {
   @IsDateString()
   endDate?: string;
 }
+
+export class QueryReferralOrdersDto {
+  @ApiPropertyOptional({ description: 'Trang hiện tại', example: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Số đơn trên mỗi trang', example: 20, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({ description: 'Lọc trạng thái đơn', example: 'ALL' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm (Mã đơn, Tên khách, Tên sản phẩm)' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Lọc theo ID KOL (dành cho Shop Manager)' })
+  @IsOptional()
+  @IsUUID()
+  kolId?: string;
+
+  @ApiPropertyOptional({ description: 'Lọc theo ID Gian hàng' })
+  @IsOptional()
+  @IsUUID()
+  storeId?: string;
+}
+

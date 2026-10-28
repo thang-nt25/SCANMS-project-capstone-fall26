@@ -293,6 +293,130 @@ export class AffiliateDealsService {
     }));
   }
 
+  async getShopActivePartners(userId: string, role: UserRole) {
+    const rawDeals = await this.prisma.exclusiveDealProposal.findMany({
+      where: {
+        ...(this.isSystemReviewer(role) ? {} : { store: { ownerId: userId } }),
+        status: ExclusiveDealStatus.APPROVED,
+        closedAt: null,
+      },
+      include: {
+        collaborator: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phoneNumber: true,
+            collaboratorProfile: {
+              select: {
+                avatarUrl: true,
+                tier: { select: { name: true } },
+                totalFollowers: true,
+              },
+            },
+            socialChannels: {
+              where: { isPrimary: true },
+              select: {
+                platformName: true,
+                channelName: true,
+                channelUrl: true,
+                followerCount: true,
+              },
+              take: 1,
+            },
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            imageUrl: true,
+            price: true,
+          },
+        },
+        referralLink: {
+          select: {
+            shortCode: true,
+            totalClicks: true,
+            totalOrders: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // Mỗi KOL chỉ có duy nhất 1 Deal độc quyền có hiệu lực trên cùng 1 sản phẩm (bản mới nhất)
+    const uniqueMap = new Map<string, (typeof rawDeals)[0]>();
+    for (const deal of rawDeals) {
+      const key = `${deal.storeId}:${deal.collaboratorId}:${deal.productId}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, deal);
+      }
+    }
+    const deals = Array.from(uniqueMap.values());
+
+    const results = await Promise.all(
+      deals.map(async (deal) => {
+        let progress: any = null;
+        try {
+          progress = await this.calculateProgress(deal);
+        } catch {}
+
+        const now = new Date();
+        const isExpired = deal.commitmentEndsAt ? new Date(deal.commitmentEndsAt) < now : false;
+
+        return {
+          id: deal.id,
+          collaboratorId: deal.collaboratorId,
+          collaboratorName: deal.collaborator?.fullName || 'Nhà Sáng Tạo',
+          collaboratorEmail: deal.collaborator?.email,
+          collaboratorAvatar: deal.collaborator?.collaboratorProfile?.avatarUrl,
+          collaboratorTier: deal.collaborator?.collaboratorProfile?.tier?.name || 'KOL VIP',
+          primaryChannel: deal.collaborator?.socialChannels?.[0] || null,
+          productId: deal.productId,
+          productTitle: deal.product?.title,
+          productImage: deal.product?.imageUrl,
+          productPrice: Number(deal.product?.price || 0),
+          dealCommissionRate: Number(deal.approvedCommissionRate || deal.proposedCommissionRate || 10),
+          publicCommissionRate: 10,
+          targetOrders: deal.targetOrders || 0,
+          commitmentDays: deal.commitmentDays || 30,
+          commitmentEndsAt: deal.commitmentEndsAt,
+          isExpired,
+          progress: progress || {
+            completedOrders: 0,
+            pendingOrders: 0,
+            validRevenue: 0,
+            targetOrders: deal.targetOrders || 0,
+            status: isExpired ? 'EXPIRED' : 'IN_PROGRESS',
+            percentComplete: 0,
+          },
+          referralLink: deal.referralLink
+            ? {
+                shortCode: deal.referralLink.shortCode,
+                totalClicks: deal.referralLink.totalClicks,
+                totalOrders: deal.referralLink.totalOrders,
+              }
+            : null,
+        };
+      }),
+    );
+
+    return {
+      success: true,
+      totalPartners: new Set(results.map((r) => r.collaboratorId)).size,
+      totalActiveDeals: results.filter((r) => !r.isExpired).length,
+      averageCommissionRate:
+        results.length > 0
+          ? Math.round(
+              results.reduce((sum, r) => sum + r.dealCommissionRate, 0) /
+                results.length,
+            )
+          : 10,
+      deals: results,
+    };
+  }
+
   async createProposal(collaboratorId: string, dto: CreateExclusiveDealDto) {
     if (dto.videoReviewCommitment !== true) {
       throw new BadRequestException(
@@ -712,6 +836,7 @@ export class AffiliateDealsService {
       productTitle: proposal.product.title,
       status: ExclusiveDealStatus.APPROVED,
       previousCommissionRate: currentRate,
+      publicCommissionRate: 10,
       approvedCommissionRate: Number(proposal.proposedCommissionRate),
       message:
         currentRate === null

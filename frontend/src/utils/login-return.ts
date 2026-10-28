@@ -8,9 +8,10 @@ export function safeLoginReturn(path: string | null | undefined): string | null 
   } catch { return null; }
 }
 
-export function productLoginUrl(returnTo: string): string {
+export function productLoginUrl(returnTo: string, defaultRole?: string): string {
   const safePath = safeLoginReturn(returnTo);
-  const params = new URLSearchParams({ role: 'customer' });
+  const params = new URLSearchParams();
+  if (defaultRole) params.set('role', defaultRole);
   if (safePath) params.set('redirect', safePath);
-  return `/login?${params}`;
+  return `/login${params.toString() ? `?${params}` : ''}`;
 }

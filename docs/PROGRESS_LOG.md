@@ -460,6 +460,31 @@
 - **CSDL**: Bảng `sample_requests`, `orders`, `order_items`, `wallets`, `collaborator_profiles`
 - **Ghi chú**: Đã kiểm tra build TypeScript sạch lỗi 100% cả Backend (`npx tsc --noEmit`) và Frontend (`npx tsc -b`). Sẵn sàng nghiệm thu.
 
+### [2026-10-26] Thành viên: Nguyễn Thành Thắng (Leader)
+- **Trạng thái**: COMPLETED (Hoàn thiện Trọn bộ Slide Review 2 & Hội đồng 17 Trang, Bộ Ma trận UAT Test Cases Chi tiết 5 Main Flows, Tái cơ cấu Hệ thống Tài chính & Chi trả Payouts Đa cấp, và Nâng cấp Trực quan Hub Khuyến mại / Deal Đối Tác)
+- **Hạng mục đã thực hiện**:
+  1. **Bộ Slide Thuyết Trình Review 2 Master & Hội Đồng (`docs/review 2/SCANMS_Thuyet_Trinh_Review_2_Va_Hoi_Dong.pptx`, `.pdf`)**:
+     - Thiết kế trọn vẹn 17 slides độ phân giải cao 3000x1688 chuẩn 16:9, sử dụng 100% shape và text box vector có thể chỉnh sửa tự do.
+     - Tuân thủ nghiêm ngặt hệ thống nhận diện thương hiệu độc quyền **Vàng Be (Warm Sand & Brand Gold)**, bố cục thoáng đãng, sang trọng, tinh gọn lượng chữ.
+     - Tích hợp 5 slide Ma trận kiểm thử UAT (Slide 08, 10, 12, 14, 16) đồng bộ dưới từng sơ đồ luồng nghiệp vụ chính, chia 2 cột đối xứng rõ ràng: *Kỳ vọng thành công (Happy Path)* và *Xử lý thất bại & ngoại lệ (Fail-Safe & Mã lỗi HTTP)*.
+  2. **Bộ Dữ Liệu Kiểm Thử UAT Chuẩn Doanh Nghiệp (`docs/review 2/SCANMS_Demo_Test_Cases_Review2.xlsx`)**:
+     - 6 sheets chuyên biệt: 1 Dashboard thống kê tổng quan và 5 sheet chi tiết cho 20 kịch bản kiểm thử (Pre-conditions, Test steps, Input payload, Expected output, Status 100% PASS).
+  3. **Tái Cơ Cấu Kiến Trúc Tài Chính, Ví & Duyệt Chi Trả Payouts Đa Cấp**:
+     - Xây dựng giao diện Quản trị Tài chính Sàn (`AdminFinancePayoutsPage.tsx`) và Ví Doanh thu Shop (`ShopRevenueWalletPage.tsx`).
+     - Tái thiết kế màn hình duyệt chi trả (`PayoutApprovalPage.tsx`) tuân thủ tính toàn vẹn kế toán, tuyệt đối không nuốt lỗi, chặn sinh mã ngân hàng giả khi API backend báo lỗi.
+     - Backend API: Bổ sung `admin-payouts.controller.ts`, hoàn thiện `payouts.service.ts`, `merchant-payouts.service.ts`, và kiểm soát sổ cái tài chính `wallets.service.ts`.
+  4. **Nâng Cấp Hub Khuyến Mại & Đàm Phán Tiếp Thị Đối Tác 2 Chiều**:
+     - Giao diện Shop Promotions Hub (`ShopPromotionsHubPage.tsx`), quản lý mã ưu đãi (`ShopCouponsPage.tsx`), chiến dịch (`ShopCampaignsPage.tsx`), và hiệu suất KOL (`ShopKolHubPage.tsx`).
+     - Tích hợp thẻ đàm phán ưu đãi trong Chat Socket.IO (`CouponProposalCardBubble.tsx`, `ProposeCouponInChatModal.tsx`).
+     - Bổ sung thẻ đo lường phiên Live (`KolLivePerformanceCard.tsx`) và bảng hoa hồng sản phẩm (`KolProductCommissionTable.tsx`).
+  5. **Bộ Kịch Bản Kiểm Thử Hồi Quy Tự Động (E2E Regression Suites)**:
+     - `e2e_affiliate_full_journey.py`, `test_all_merchant_features.py`, `test_v3_refactored_financial_flows.py` kiểm thử toàn vẹn hành trình tiếp thị, tạo đơn, hoa hồng và rút tiền.
+- **Màn hình UI**: `frontend/src/pages/admin/AdminFinancePayoutsPage.tsx`, `frontend/src/pages/merchant/ShopRevenueWalletPage.tsx`, `frontend/src/pages/merchant/PayoutApprovalPage.tsx`, `frontend/src/pages/merchant/ShopPromotionsHubPage.tsx`, `frontend/src/pages/merchant/ShopCouponsPage.tsx`, `frontend/src/pages/merchant/ShopCampaignsPage.tsx`, `frontend/src/pages/merchant/ShopKolHubPage.tsx`, `frontend/src/pages/merchant/ProductManagementPage.tsx`, `frontend/src/pages/merchant/OrdersManagementPage.tsx`
+- **API Endpoint**: `GET /api/v1/payouts/admin/requests`, `PATCH /api/v1/payouts/admin/:id/approve`, `PATCH /api/v1/payouts/admin/:id/reject`, `POST /api/v1/coupons`, `GET /api/v1/merchant/payouts/overview`, `GET /api/v1/orders/merchant`
+- **Backend File**: `backend/src/modules/payouts/admin-payouts.controller.ts`, `backend/src/modules/payouts/payouts.service.ts`, `backend/src/modules/wallets/wallets.service.ts`, `backend/src/modules/orders/orders.service.ts`, `backend/src/modules/commission-rules/commission-rules.service.ts`
+- **CSDL**: Bảng `payout_requests`, `wallets`, `wallet_transactions`, `coupons`, `commission_rules`, `affiliate_deals`
+- **Ghi chú**: Đã đóng gói thành 13 commits độc lập theo chuẩn Conventional Commits và push an toàn lên nhánh `origin/thang`.
+
 ---
 
 ## 🛠️ CÁCH SỬ DỤNG SKILL `scanms-progress-tracker`:

@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronDown, CreditCard, FlaskConical, Loader2, Truck } f
 import api from '../../services/api';
 import { SandboxSampleReceipt } from './SandboxSampleReceipt';
 import { sandboxSampleStatusLabel, useSandboxSampleState } from './useSandboxSampleState';
+export { useSandboxSampleState, sandboxSampleStatusLabel };
 
 export function SampleGhnEnvironmentPicker({ value, onChange, allowLive = true, disabled = false }: {
   value: 'LIVE' | 'TEST';
