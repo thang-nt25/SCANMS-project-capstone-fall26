@@ -1661,7 +1661,9 @@ export class ProductsService {
         Object.entries(raw)
           .map(([key, value]) => {
             if (
-              !/^[a-z][a-z0-9_]{0,29}$/.test(key) ||
+              // Existing catalog SKUs also have Vietnamese display keys such as
+              // "Dung tích / Khối lượng" and "Đóng gói". Keep those keys editable.
+              !/^[\p{L}][\p{L}\p{N}_ /().-]{0,59}$/u.test(key) ||
               typeof value !== 'string' ||
               value.trim().length > 80
             ) {
