@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { ProductModerationStatus, UserRole } from '@prisma/client';
 import { ProductsService } from '../products.service';
 
@@ -12,7 +13,9 @@ describe('sample policy and product approval visibility', () => {
       product: { findUnique: jest.fn().mockResolvedValue(product), count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }), update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ ...product, ...data })) },
       mediaAsset: { findMany: jest.fn().mockResolvedValue([]) },
+      productVariant: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn().mockResolvedValue({ count: 4 }) },
     };
+    prisma.$transaction = jest.fn((callback: (tx: any) => Promise<any>) => callback(prisma));
     const service = new ProductsService(prisma, {} as any, { delPrefix: jest.fn() } as any);
     return { service, prisma };
   }
@@ -36,5 +39,23 @@ describe('sample policy and product approval visibility', () => {
     expect(prisma.product.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
       storeId, moderationStatus: 'APPROVED', isActive: true,
     }) }));
+  });
+  it('sets every active SKU to zero with a parent stock edit', async () => {
+    const { service, prisma } = fixture();
+    prisma.productVariant.findMany.mockResolvedValue(Array.from({ length: 4 }, () => ({ stockQuantity: 51 })));
+    await service.update('shop-owner', UserRole.SHOP_MANAGER, productId, { stockQuantity: 0 });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.product.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ stockQuantity: 0 }) }));
+    expect(prisma.productVariant.updateMany).toHaveBeenCalledWith({
+      where: { productId, isActive: true },
+      data: { stockQuantity: 0 },
+    });
+  });
+  it('rejects an ambiguous parent stock edit when SKUs have different quantities', async () => {
+    const { service, prisma } = fixture();
+    prisma.productVariant.findMany.mockResolvedValue([{ stockQuantity: 51 }, { stockQuantity: 51 }]);
+    await expect(service.update('shop-owner', UserRole.SHOP_MANAGER, productId, { stockQuantity: 100 }))
+      .rejects.toThrow(BadRequestException);
+    expect(prisma.product.update).not.toHaveBeenCalled();
   });
 });

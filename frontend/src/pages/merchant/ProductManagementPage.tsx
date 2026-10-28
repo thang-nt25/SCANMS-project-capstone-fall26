@@ -1485,7 +1485,9 @@ export default function ProductManagementPage() {
           originalPrice: formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined,
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
-          stockQuantity: effectiveStock,
+          // syncProductVariants updates the parent total from the saved SKU quantities.
+          // Sending the new total first would conflict with the old SKU quantities.
+          ...(formVariants.length === 0 ? { stockQuantity: effectiveStock } : {}),
           sampleEnabled: formSampleEnabled,
           sampleQuota: Number(formSampleQuota),
           imageUrl: formImage,

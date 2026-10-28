@@ -1369,6 +1369,22 @@ export class ProductsService {
       evidenceKindsToReplace,
     );
 
+    // Validate inventory before any other update (including the sample quota guard).
+    const activeVariants = dto.stockQuantity !== undefined
+      ? await this.prisma.productVariant.findMany({
+          where: { productId: id, isActive: true },
+          select: { stockQuantity: true },
+        })
+      : [];
+    if (activeVariants.length && dto.stockQuantity !== undefined && dto.stockQuantity > 0) {
+      const variantTotal = activeVariants.reduce((sum, variant) => sum + variant.stockQuantity, 0);
+      if (dto.stockQuantity !== variantTotal) {
+        throw new BadRequestException(
+          'Sản phẩm có phân loại: hãy cập nhật tồn kho của từng SKU thay vì sửa tổng tồn kho.',
+        );
+      }
+    }
+
     if (
       dto.sampleQuota !== undefined &&
       dto.sampleQuota < product.sampleGrantedCount
@@ -1389,7 +1405,8 @@ export class ProductsService {
       }
     }
 
-    const updated = await this.prisma.product.update({
+    // A parent-only zero-stock edit also clears every active SKU atomically.
+    const updateProduct = (db: typeof this.prisma) => db.product.update({
       where: { id },
       data: {
         ...(dto.sku && { sku: dto.sku.trim().toUpperCase() }),
@@ -1443,6 +1460,16 @@ export class ProductsService {
         }),
       },
     });
+    const updated = activeVariants.length && dto.stockQuantity === 0
+      ? await this.prisma.$transaction(async (tx) => {
+          const result = await updateProduct(tx as typeof this.prisma);
+          await tx.productVariant.updateMany({
+            where: { productId: id, isActive: true },
+            data: { stockQuantity: 0 },
+          });
+          return result;
+        })
+      : await updateProduct(this.prisma);
 
     if (evidenceKindsToReplace.length > 0) {
       await this.prisma.mediaAsset.updateMany({
