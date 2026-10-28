@@ -210,8 +210,9 @@ erDiagram
     PRODUCT ||--o{ SAMPLE_REQUEST : "provides (cung cấp mẫu thử)"
     PRODUCT }o--o{ SALES_ORDER : "contained in (chứa trong đơn hàng M:N)"
     
-    CAMPAIGN ||--o{ EXCLUSIVE_DEAL : "contracts (thỏa thuận deal riêng)"
-    CAMPAIGN ||--o{ COMMISSION_RULE : "governs (áp dụng quy tắc thưởng)"
+    STORE ||--o{ EXCLUSIVE_DEAL : "contracts (thỏa thuận deal riêng)"
+    STORE ||--o{ COMMISSION_RULE : "sets rules (cấu hình mốc thưởng doanh số tháng FR-09)"
+    CAMPAIGN ||--o{ PRODUCT : "promotes (quảng bá các sản phẩm trong chiến dịch)"
     
     REFERRAL_LINK ||--o{ TRACKING_SESSION : "logs clicks (ghi nhận phiên click)"
     
@@ -241,29 +242,41 @@ erDiagram
 ### 5.1. Phá vỡ triệt để các quan hệ Nhiều - Nhiều ($M:N$)
 Để chuyển từ mô hình Khái niệm sang mô hình Logic, toàn bộ các quan hệ $M:N$ bắt buộc phải được chuẩn hóa thông qua các Thực thể kết hợp (Associative Entities) độc lập:
 
-1. **`CAMPAIGN` $M:N$ `COLLABORATOR`** $ightarrow$ Tách thành thực thể **`CAMPAIGN_PARTICIPANTS`**:
+1. **`CAMPAIGN` $M:N$ `COLLABORATOR`** $
+ightarrow$ Tách thành thực thể **`CAMPAIGN_PARTICIPANTS`**:
    - Lưu trữ: Ngày tham gia, mức hoa hồng cam kết riêng, trạng thái lời mời (`INVITED`, `ACCEPTED`, `REJECTED`).
-2. **`CAMPAIGN` $M:N$ `PRODUCT`** $ightarrow$ Tách thành thực thể **`CAMPAIGN_PRODUCTS`**:
+2. **`CAMPAIGN` $M:N$ `PRODUCT`** $
+ightarrow$ Tách thành thực thể **`CAMPAIGN_PRODUCTS`**:
    - Xác định danh sách mặt hàng được đẩy số riêng trong chiến dịch.
-3. **`SALES_ORDER` $M:N$ `PRODUCT_VARIANT`** $ightarrow$ Tách thành thực thể **`ORDER_ITEMS`**:
+3. **`SALES_ORDER` $M:N$ `PRODUCT_VARIANT`** $
+ightarrow$ Tách thành thực thể **`ORDER_ITEMS`**:
    - Lưu trữ: Số lượng mua, đơn giá tại thời điểm đặt, biến thể sản phẩm (SKU/Color/Size), tỷ lệ hoa hồng chốt tại thời điểm mua.
-4. **`COUPON` $M:N$ `PRODUCT`** $ightarrow$ Tách thành thực thể **`COUPON_PRODUCTS`**:
+4. **`COUPON` $M:N$ `PRODUCT`** $
+ightarrow$ Tách thành thực thể **`COUPON_PRODUCTS`**:
    - Xác định danh sách sản phẩm được phép áp dụng voucher ưu đãi.
-5. **`COUPON` $M:N$ `CATEGORY`** $ightarrow$ Tách thành thực thể **`COUPON_CATEGORIES`**:
+5. **`COUPON` $M:N$ `CATEGORY`** $
+ightarrow$ Tách thành thực thể **`COUPON_CATEGORIES`**:
    - Xác định toàn bộ danh mục hàng hóa được hưởng khuyến mãi.
-6. **`COUPON` $M:N$ `CUSTOMER`** $ightarrow$ Tách thành thực thể **`CUSTOMER_SAVED_COUPONS`**:
+6. **`COUPON` $M:N$ `CUSTOMER`** $
+ightarrow$ Tách thành thực thể **`CUSTOMER_SAVED_COUPONS`**:
    - Quản lý ví voucher cá nhân của khách hàng đã thu thập mã.
-7. **`COUPON` $M:N$ `SALES_ORDER`** $ightarrow$ Tách thành **`COUPON_REDEMPTIONS`** & **`STACKED_VOUCHER_REDEMPTIONS`**:
+7. **`COUPON` $M:N$ `SALES_ORDER`** $
+ightarrow$ Tách thành **`COUPON_REDEMPTIONS`** & **`STACKED_VOUCHER_REDEMPTIONS`**:
    - Ghi nhận lịch sử khấu trừ voucher đơn lẻ và cơ chế cộng dồn (Shop Voucher + Platform Voucher).
-8. **`LIVE_SESSION` $M:N$ `PRODUCT_VARIANT`** $ightarrow$ Tách thành thực thể **`LIVE_SESSION_PRODUCTS`**:
+8. **`LIVE_SESSION` $M:N$ `PRODUCT_VARIANT`** $
+ightarrow$ Tách thành thực thể **`LIVE_SESSION_PRODUCTS`**:
    - Lưu trữ: Thứ tự ghim giới thiệu (`pinned_order`), giá sốc độc quyền phiên live, tồn kho cấp riêng cho live.
-9. **`LIVE_SESSION` $M:N$ `CUSTOMER`** $ightarrow$ Tách thành **`LIVE_SESSION_VIEWERS`** & **`LIVE_SESSION_CLAIMS`**:
+9. **`LIVE_SESSION` $M:N$ `CUSTOMER`** $
+ightarrow$ Tách thành **`LIVE_SESSION_VIEWERS`** & **`LIVE_SESSION_CLAIMS`**:
    - Quản lý lượt người xem thực tế, thời lượng xem và lịch sử săn deal chốt đơn trong phòng live.
-10. **`CUSTOMER` $M:N$ `PRODUCT_VARIANT`** $ightarrow$ Tách thành **`CUSTOMER_CART_ITEMS`** & **`CUSTOMER_WISHLISTS`**:
+10. **`CUSTOMER` $M:N$ `PRODUCT_VARIANT`** $
+ightarrow$ Tách thành **`CUSTOMER_CART_ITEMS`** & **`CUSTOMER_WISHLISTS`**:
     - Quản lý chi tiết giỏ hàng và danh sách sản phẩm yêu thích của người mua.
-11. **`STORE` $M:N$ `COLLABORATOR`** $ightarrow$ Tách thành thực thể **`STORE_COLLABORATORS`**:
+11. **`STORE` $M:N$ `COLLABORATOR`** $
+ightarrow$ Tách thành thực thể **`STORE_COLLABORATORS`**:
     - Quản lý mối quan hệ hợp tác trực tiếp giữa Merchant và KOL được duyệt.
-12. **`RETURN_REQUEST` $M:N$ `ORDER_ITEM`** $ightarrow$ Tách thành thực thể **`RETURN_ITEMS`**:
+12. **`RETURN_REQUEST` $M:N$ `ORDER_ITEM`** $
+ightarrow$ Tách thành thực thể **`RETURN_ITEMS`**:
     - Ghi nhận chi tiết từng mặt hàng và số lượng người mua yêu cầu hoàn trả trong một đơn hàng.
 
 ### 5.2. Rà soát chuẩn hóa dữ liệu 1NF - 2NF - 3NF
@@ -1835,5 +1848,7 @@ Toàn bộ các tệp sơ đồ ERD của hệ thống SCANMS được lưu tr�
   2. `Tab 2: 02 - Logical ERD (Master 61 Entities)` (61 Bảng 3NF, 10 Cột cân bằng, kiểu dữ liệu logic chuẩn DAMA-DMBOK)
   3. `Tab 3: 03 - Physical ERD (Master 61 Tables)` (61 Bảng PostgreSQL DDL types, 10 Phân hệ phân cột cân bằng, 126 ràng buộc PK/FK/[UQ])
 - **Cách mở & chỉnh sửa:**
-  - Mở trực tiếp trên web: [https://app.diagrams.net/](https://app.diagrams.net/) $ightarrow$ Chọn *Open Existing Diagram* $ightarrow$ Chọn file `.drawio`.
+  - Mở trực tiếp trên web: [https://app.diagrams.net/](https://app.diagrams.net/) $
+ightarrow$ Chọn *Open Existing Diagram* $
+ightarrow$ Chọn file `.drawio`.
   - Mở trực tiếp trong VS Code: Cài Extension *Draw.io Integration* (`hediet.vscode-drawio`) để xem và chỉnh sửa đồ họa tương tác ngay trong IDE.

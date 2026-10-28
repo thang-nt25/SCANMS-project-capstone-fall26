@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 
 export type NotificationCategory = 'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM';
 
@@ -39,12 +41,17 @@ function getCategoryFilter(category: Exclude<NotificationCategory, 'ALL'>) {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   /**
-   * Tự động dọn dẹp các thông báo phiên live đã kết thúc để không còn hiện trong danh sách và chuông của user
+   * Tự động dọn dẹp các thông báo phiên live đã kết thúc qua Cron Job định kỳ 10 phút
+   * (Không chạy trong luồng đọc GET của người dùng)
    */
-  private async cleanupExpiredLiveBroadcasts() {
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async cleanupExpiredLiveBroadcasts() {
     try {
       const nowIso = new Date().toISOString();
       await this.prisma.notification.deleteMany({
@@ -113,7 +120,6 @@ export class NotificationsService {
    * Lấy danh sách thông báo của người dùng kèm bộ lọc 3 danh mục (Đơn Hàng, Khuyến Mãi, SCANMS)
    */
   async getUserNotifications(userId: string, query?: GetNotificationsQuery) {
-    await this.cleanupExpiredLiveBroadcasts();
     await this.ensureSeedNotifications(userId);
 
     const page = Math.max(1, Number(query?.page) || 1);
@@ -171,7 +177,10 @@ export class NotificationsService {
    * Đếm nhanh số lượng thông báo chưa đọc (phục vụ hiển thị badge chuông báo)
    */
   async getUnreadCount(userId: string) {
-    await this.cleanupExpiredLiveBroadcasts();
+    const cacheKey = `notif:unread:${userId}`;
+    const cached = await this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [unreadCount, orderUnread, promotionUnread, systemUnread] =
       await Promise.all([
         this.prisma.notification.count({ where: { userId, isRead: false } }),
@@ -186,7 +195,7 @@ export class NotificationsService {
         }),
       ]);
 
-    return {
+    const result = {
       unreadCount,
       categoryUnreadCounts: {
         ORDER: orderUnread,
@@ -194,6 +203,8 @@ export class NotificationsService {
         SYSTEM: systemUnread,
       },
     };
+    await this.cacheService.set(cacheKey, result, 15); // 15s TTL
+    return result;
   }
 
   /**
@@ -204,6 +215,7 @@ export class NotificationsService {
       where: { id: notificationId, userId },
       data: { isRead: true },
     });
+    await this.cacheService.del(`notif:unread:${userId}`);
     return { success: true };
   }
 
@@ -215,6 +227,7 @@ export class NotificationsService {
       where: { userId, isRead: false },
       data: { isRead: true },
     });
+    await this.cacheService.del(`notif:unread:${userId}`);
     return { success: true, updatedCount: result.count };
   }
 
@@ -229,7 +242,7 @@ export class NotificationsService {
     data?: any;
   }) {
     try {
-      return await this.prisma.notification.create({
+      const created = await this.prisma.notification.create({
         data: {
           userId: data.userId,
           title: data.title,
@@ -238,6 +251,8 @@ export class NotificationsService {
           data: data.data || null,
         },
       });
+      await this.cacheService.del(`notif:unread:${data.userId}`);
+      return created;
     } catch (err) {
       this.logger.warn(`Không thể tạo notification: ${err}`);
       return null;

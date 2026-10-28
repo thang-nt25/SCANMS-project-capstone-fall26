@@ -249,34 +249,34 @@ export const analyticsService = {
     return (res.data as any)?.data || res.data;
   },
 
-  getTopProducts: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }) => {
+  getTopProducts: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }, fresh = false) => {
     const res = await api.get<{ data?: TopProductItem[] } | TopProductItem[]>(
       '/dashboard/realtime/top-products',
-      { params, headers: { 'x-skip-cache': '1' } },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },
 
-  getTopChannels: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }) => {
+  getTopChannels: async (params?: { range?: string; limit?: number; startDate?: string; endDate?: string }, fresh = false) => {
     const res = await api.get<{ data?: TopChannelItem[] } | TopChannelItem[]>(
       '/dashboard/realtime/top-channels',
-      { params, headers: { 'x-skip-cache': '1' } },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },
 
-  getConversionFunnel: async (params?: { range?: string; startDate?: string; endDate?: string }) => {
+  getConversionFunnel: async (params?: { range?: string; startDate?: string; endDate?: string }, fresh = false) => {
     const res = await api.get<{ data?: FunnelResponse } | FunnelResponse>(
       '/dashboard/realtime/funnel',
-      { params, headers: { 'x-skip-cache': '1' } },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },
 
-  getCampaignPerformance: async (params?: { range?: string; startDate?: string; endDate?: string }) => {
+  getCampaignPerformance: async (params?: { range?: string; startDate?: string; endDate?: string }, fresh = false) => {
     const res = await api.get<{ data?: CampaignPerformanceItem[] } | CampaignPerformanceItem[]>(
       '/dashboard/realtime/campaigns',
-      { params, headers: { 'x-skip-cache': '1' } },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },

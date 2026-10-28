@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, Trophy, Sparkles } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
@@ -5,9 +6,15 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import RealtimeAnalyticsPage from '../dashboard/RealtimeAnalyticsPage';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 import KolRecommendationPage from '../merchant/KolRecommendationPage';
+
 export default function AdminAnalyticsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'realtime';
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => ({ [activeTab]: true }));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
+  }, [activeTab]);
 
   const handleTabChange = (tabId: string) => {
     setSearchParams({ tab: tabId }, { replace: true });
@@ -51,20 +58,20 @@ export default function AdminAnalyticsHubPage() {
       />
 
       <div className="w-full min-h-[500px]">
-        {activeTab === 'realtime' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['realtime'] && (
+          <div className={activeTab === 'realtime' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <RealtimeAnalyticsPage />
           </div>
         )}
 
-        {activeTab === 'leaderboard' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['leaderboard'] && (
+          <div className={activeTab === 'leaderboard' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <LeaderboardPage alignToContainer />
           </div>
         )}
 
-        {activeTab === 'ai-matching' && (
-          <div className="animate-in fade-in-50 duration-200">
+        {visitedTabs['ai-matching'] && (
+          <div className={activeTab === 'ai-matching' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <KolRecommendationPage />
           </div>
         )}

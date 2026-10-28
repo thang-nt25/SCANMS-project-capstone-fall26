@@ -55,11 +55,12 @@ interface Envelope<T> {
 }
 
 export const payoutService = {
-  async list(storeId: string, page: number, status: PayoutStatus | "", filters?: { search?: string; filter?: MerchantPayoutFilter }) {
+  async list(storeId: string, page: number, status: PayoutStatus | "", filters?: { search?: string; filter?: MerchantPayoutFilter; fresh?: boolean }) {
     return (
       await api.get<never, Envelope<MerchantPayoutHistory>>(
         `/stores/${storeId}/payouts`,
-        { params: { page, limit: 10, ...(status ? { status } : {}),
+        { headers: filters?.fresh ? { 'x-skip-cache': 'true' } : undefined,
+          params: { page, limit: 10, ...(status ? { status } : {}),
           ...(filters?.search?.trim() ? { search: filters.search.trim() } : {}),
           ...(filters?.filter && filters.filter !== 'ALL' ? { filter: filters.filter } : {}),
         } },

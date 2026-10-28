@@ -1,8 +1,21 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { ProductsService } from '../products.service';
+import { SyncProductVariantsDto } from '../dto/sync-product-variants.dto';
 
 describe('Product variant images', () => {
+  it('accepts deterministic UUID v5 IDs of seeded variants when saving stock', async () => {
+    const dto = plainToInstance(SyncProductVariantsDto, {
+      variants: [{
+        id: '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1',
+        sku: 'SEED-002-V1', name: '100 ml', price: 160000,
+        stockQuantity: 20, imageUrl: 'https://example.com/product.jpg',
+      }],
+    });
+    expect(await validate(dto)).toEqual([]);
+  });
   const productId = 'a1a1a1a1-1111-4111-8111-111111111111';
   const variantId = 'b2b2b2b2-2222-4222-8222-222222222222';
   const prisma: any = {
@@ -109,6 +122,29 @@ describe('Product variant images', () => {
     expect(prisma.product.update).toHaveBeenCalledWith({
       where: { id: productId },
       data: { stockQuantity: 20 },
+    });
+  });
+
+  it('saves stock for seeded SKUs with Vietnamese attribute keys without requesting moderation', async () => {
+    const seededId = '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1';
+    const attributes = { 'Đóng gói': 'Tiêu chuẩn', 'Dung tích / Khối lượng': '100 ml' };
+    prisma.product.findFirst.mockResolvedValue({
+      id: productId, price: 160000, moderationStatus: 'APPROVED',
+      store: { ownerId: 'shop-owner', isVerified: true, onboardingStatus: 'VERIFIED' },
+      variants: [{ id: seededId, sku: 'SEED-002-V1', name: '100 ml / Tiêu chuẩn',
+        attributes, price: 160000, imageUrl: 'https://example.com/product.jpg',
+        stockQuantity: 0, isActive: true }],
+    });
+    const result = await service.syncProductVariants('shop-owner', UserRole.SHOP_MANAGER, productId, {
+      variants: [{ id: seededId, sku: 'SEED-002-V1', name: '100 ml / Tiêu chuẩn',
+        attributes, price: 160000, imageUrl: 'https://example.com/product.jpg', stockQuantity: 20 }],
+    });
+    expect(result.requiresModeration).toBe(false);
+    expect(prisma.productVariant.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: seededId }, data: expect.objectContaining({ stockQuantity: 20, attributes }),
+    }));
+    expect(prisma.product.update).toHaveBeenCalledWith({
+      where: { id: productId }, data: { stockQuantity: 20 },
     });
   });
 

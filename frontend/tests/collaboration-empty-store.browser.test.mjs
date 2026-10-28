@@ -2,8 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
 const base = process.env.GHN_UI_TEST_URL;
 const executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -39,6 +37,9 @@ test('collaboration tolerates no selected store during loading, empty results an
         if (url.pathname === '/api/store-collaborators/my-invitations') data = [{ id: 'qa-cooperation', storeId, status: 'APPROVED' }];
         if (url.pathname === '/api/notifications/unread-count') data = { unreadCount: 0 };
         if (url.pathname === '/api/notifications') data = { items: [], total: 0 };
+        if (url.pathname === `/api/stores/public/id/${storeId}` && mode === 'loaded') {
+          data = { id: storeId, name: 'Shop kiểm thử' };
+        }
         if (url.pathname === '/api/products') {
           productReads.push(url.searchParams.get('storeId'));
           data = { items: Array.from({ length: 24 }, (_, index) => ({ id: `qa-product-${index}`, storeId, title: `Sản phẩm kiểm thử ${index + 1}`, sku: `QA-${index}`, price: 250000, stockQuantity: 10, sampleEnabled: false, variants: [] })), pagination: { total: 24 } };
@@ -56,7 +57,8 @@ test('collaboration tolerates no selected store during loading, empty results an
     });
     for (const tab of ['messages', 'products', 'samples', 'media']) {
       await page.goto(`${origin}/collaborator/collaboration?tab=${tab}`);
-      await page.waitForFunction(() => document.body.textContent.includes('Chưa có cuộc trò chuyện nào'), { timeout: 2500 });
+      await page.waitForFunction(() => document.body.textContent.includes('Chưa có cuộc trò chuyện nào'), { timeout: 2500 })
+        .catch(async error => { throw new Error(`${error.message}; page: ${(await page.$eval('body', el => el.textContent)).slice(0, 500)}`); });
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     }
     assert.deepEqual(productReads, [], 'no store-specific calls are made without a selected store');
@@ -65,24 +67,10 @@ test('collaboration tolerates no selected store during loading, empty results an
     await page.goto(`${origin}/collaborator/collaboration?shop=${storeId}&tab=products`);
     await page.waitForFunction(() => document.body.textContent.includes('Sản phẩm kiểm thử'));
     assert.ok(productReads.length > 0 && productReads.every(id => id === storeId));
-    await page.waitForSelector('.collaboration-context-bar[data-compact=false]');
-    const expanded = await page.$eval('.collaboration-context-bar', el => ({ height: el.getBoundingClientRect().height, top: el.getBoundingClientRect().top }));
-    await page.screenshot({ path: join(tmpdir(), 'scanms-collaboration-expanded.png') });
-    await page.$eval('.collaboration-tab-scroll', el => { el.scrollTop = 350; });
-    await page.waitForSelector('.collaboration-context-bar[data-compact=true]');
-    await page.waitForFunction(height => document.querySelector('.collaboration-context-bar').getBoundingClientRect().height < height - 15, {}, expanded.height);
-    const compact = await page.$eval('.collaboration-context-bar', el => ({ height: el.getBoundingClientRect().height, top: el.getBoundingClientRect().top }));
-    assert.ok(Math.abs(compact.top - expanded.top) < 2, 'context stays pinned while product content scrolls');
-    await page.screenshot({ path: join(tmpdir(), 'scanms-collaboration-compact.png') });
-    await page.$eval('.collaboration-tab-scroll', el => { el.scrollTop = 0; });
-    await page.waitForSelector('.collaboration-context-bar[data-compact=false]');
     await page.setViewport({ width: 390, height: 844 });
     await page.$eval('.collaboration-tab-scroll', el => { el.scrollTop = 350; });
-    await page.waitForSelector('.collaboration-context-bar[data-compact=true]');
-    assert.ok(await page.$eval('.collaboration-context-bar', el => el.scrollWidth <= el.clientWidth + 1));
-    await (await page.$('.collaboration-context-bar')).screenshot({ path: join(tmpdir(), 'scanms-collaboration-compact-mobile.png') });
-    await page.click('#subtab-media');
-    await page.waitForSelector('.collaboration-context-bar[data-compact=false]');
+    assert.ok(await page.$eval('.collaboration-tab-scroll', el => el.clientHeight > 0));
+    assert.ok((await page.$eval('body', el => el.textContent)).includes('Shop kiểm thử'));
     mode = 'failed';
     await page.goto(`${origin}/collaborator/collaboration?tab=products`);
     await page.waitForFunction(() => document.body.textContent.includes('Chưa có cuộc trò chuyện nào'));

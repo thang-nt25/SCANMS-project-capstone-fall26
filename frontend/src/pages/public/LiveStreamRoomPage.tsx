@@ -870,6 +870,7 @@ export default function LiveStreamRoomPage() {
     let active = true;
 
     const syncLiveStats = async () => {
+      if (document.hidden) return;
       const revision = pinRevision.current;
       try {
         const res: any = await api.post(

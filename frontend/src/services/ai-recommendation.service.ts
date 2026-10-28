@@ -72,16 +72,18 @@ export const aiRecommendationService = {
   getRecommendationsForProduct: async (
     productId: string,
     params?: RecommendKolsParams,
+    fresh = false,
   ): Promise<AiRecommendationResponse> => {
-    const res = await api.get(`/ai/recommend-kols/${productId}`, { params, headers: { 'x-skip-cache': 'true' } });
+    const res = await api.get(`/ai/recommend-kols/${productId}`, { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data?.data || res.data || res;
   },
 
   // Gợi ý KOLs theo bộ lọc tùy chỉnh
   getGeneralRecommendations: async (
     params?: RecommendKolsParams,
+    fresh = false,
   ): Promise<AiRecommendationResponse> => {
-    const res = await api.get('/ai/recommend-kols', { params, headers: { 'x-skip-cache': 'true' } });
+    const res = await api.get('/ai/recommend-kols', { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data?.data || res.data || res;
   },
 
