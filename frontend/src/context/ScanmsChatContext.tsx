@@ -499,56 +499,14 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
 
   const deleteConversation = async (conversationId: string): Promise<boolean> => {
     if (!conversationId) return false;
-
-    if (UUID_REGEX.test(conversationId) && localStorage.getItem('token')) {
-      try {
-        await api.delete(`/chat/conversations/${conversationId}`);
-      } catch (err: any) {
-        console.warn('Backend delete conversation failed, proceeding with local removal:', err);
-      }
-    }
-
-    setConversations((prev) => {
-      const remaining = prev.filter((c) => c.id !== conversationId);
-      return remaining;
-    });
-
-    setActiveConversationId((current) => {
-      if (current === conversationId) {
-        const remaining = conversations.filter((c) => c.id !== conversationId);
-        return remaining.length > 0 ? remaining[0].id : '';
-      }
-      return current;
-    });
-
-    toast.success('Đã xóa cuộc trò chuyện khỏi danh sách.');
-    return true;
+    toast.error('Tạm ngừng xóa cuộc trò chuyện để bảo vệ lịch sử của cả hai bên.');
+    return false;
   };
 
   const clearConversationMessages = async (conversationId: string): Promise<boolean> => {
     if (!conversationId) return false;
-
-    if (UUID_REGEX.test(conversationId) && localStorage.getItem('token')) {
-      try {
-        await api.delete(`/chat/conversations/${conversationId}/messages`);
-      } catch (err: any) {
-        console.warn('Backend clear messages failed:', err);
-      }
-    }
-
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== conversationId) return c;
-        return {
-          ...c,
-          messages: [],
-          lastMessage: 'Bắt đầu cuộc trò chuyện',
-        };
-      })
-    );
-
-    toast.success('Đã xóa sạch lịch sử tin nhắn.');
-    return true;
+    toast.error('Tạm ngừng xóa lịch sử để bảo vệ tin nhắn của cả hai bên.');
+    return false;
   };
 
   const clearAllConversations = () => {
