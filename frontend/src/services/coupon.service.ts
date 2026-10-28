@@ -216,16 +216,17 @@ export const couponService = {
     storeId: string,
     params: { productId: string; variantId?: string; quantity: number },
     signal?: AbortSignal,
+    fresh = false,
   ): Promise<EligibleProductCoupon[]> => {
     const res: any = await api.get(`/coupons/stores/${storeId}/product-eligible`, {
-      params, signal, headers: { 'x-skip-cache': 'true' },
+      params, signal, headers: fresh ? { 'x-skip-cache': 'true' } : undefined,
     });
     const payload = res?.data?.data ?? res?.data ?? res;
     return Array.isArray(payload) ? payload : [];
   },
 
-  getPublicStoreCoupons: async (storeId: string, productId?: string, signal?: AbortSignal): Promise<PublicStoreCoupon[]> => {
-    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, signal, headers: { 'x-skip-cache': '1' } });
+  getPublicStoreCoupons: async (storeId: string, productId?: string, signal?: AbortSignal, fresh = false): Promise<PublicStoreCoupon[]> => {
+    const res: any = await api.get(`/coupons/stores/${storeId}/available`, { params: { productId }, signal, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     const payload = res?.data?.data ?? res?.data ?? res;
     if (Array.isArray(payload)) return payload;
     return Array.isArray(payload?.items) ? payload.items : [];

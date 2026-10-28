@@ -383,7 +383,7 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (currentTab !== 'orders') return;
     const refresh = () => { if (!document.hidden) refreshOrdersRef.current(); };
-    const timer = window.setInterval(refresh, 10000);
+    const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {
@@ -395,7 +395,9 @@ export default function CustomerPortalPage() {
 
   useEffect(() => {
     const id = selectedOrderDetails?.id;
+    const status = selectedOrderDetails?.status;
     if (!id) return;
+    if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'RETURNED' || status === 'REFUNDED') return;
     let active = true;
     const refresh = async () => {
       if (document.hidden) return;
@@ -404,9 +406,9 @@ export default function CustomerPortalPage() {
         if (active) setSelectedOrderDetails(current => current?.id === id ? order : current);
       } catch { /* Keep the open order visible during a temporary connection failure. */ }
     };
-    const timer = window.setInterval(() => void refresh(), 10000);
+    const timer = window.setInterval(() => void refresh(), 25000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [selectedOrderDetails?.id]);
+  }, [selectedOrderDetails?.id, selectedOrderDetails?.status]);
 
   useEffect(() => {
     if (currentTab === 'profile') {
@@ -426,6 +428,7 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (!currentUser?.id) return;
     const interval = window.setInterval(() => {
+      if (document.hidden) return;
       void refreshUnreadCounts();
       if (currentTab === 'notifications' && notificationsPage === 1) {
         void fetchNotifications(activeNotifCategory, 1, false, true);

@@ -24,10 +24,10 @@ const CACHEABLE_URL_PREFIXES = [
   '/chat/conversations',
   '/wallets',
   '/payouts',
+  '/dashboard',
   '/analytics',
   '/audit',
-  '/kyc/profile',
-  '/kyc/pending',
+  '/kyc',
   '/social-channels',
   '/sample-requests',
   '/media',
@@ -36,6 +36,14 @@ const CACHEABLE_URL_PREFIXES = [
   '/coupons',
   '/referral-links',
   '/returns',
+  '/leaderboard',
+  '/live-sessions',
+  '/affiliate-deals',
+  '/store-collaborators',
+  '/customer',
+  '/ai',
+  '/shipping',
+  '/notifications',
 ];
 
 function generateKey(url: string, params?: any): string {
@@ -57,18 +65,14 @@ export const apiCache = {
    */
   isCacheable(url?: string): boolean {
     if (!url) return false;
-    // Không cache các endpoint auth hoặc nhạy cảm
+    // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||
       url.includes('/refresh') ||
       url.includes('/otp') ||
-      url.includes('/orders') ||
-      url.includes('/chat/') ||
-      url.includes('/coupons') ||
-      url.includes('/sample-requests') ||
-      url.includes('/wallets') ||
-      url.includes('/payouts') ||
-      url.includes('/wallets/top-up-demo')
+      url.includes('/wallets/top-up-demo') ||
+      url.includes('/payos/') ||
+      url.includes('/checkout')
     ) {
       return false;
     }
@@ -98,6 +102,9 @@ export const apiCache = {
     if (url.includes('/kyc')) return '/kyc';
     if (url.includes('/returns')) return '/returns';
     if (url.includes('/campaigns')) return '/campaigns';
+    if (url.includes('/live-sessions')) return '/live-sessions';
+    if (url.includes('/affiliate-deals')) return '/affiliate-deals';
+    if (url.includes('/customer')) return '/customer';
     return null;
   },
 

@@ -36,30 +36,30 @@ export const walletService = {
   async payosTopUpStatus(id: string) {
     return (await api.get<never, ApiEnvelope<PayosWalletTopUp>>(`/wallets/top-up-payos/${encodeURIComponent(id)}/status`, { timeout: 20000, headers: { 'x-skip-cache': 'true' } })).data;
   },
-  async getMyLedger(page = 1): Promise<LedgerHistory> {
+  async getMyLedger(page = 1, fresh = false): Promise<LedgerHistory> {
     return (
       await api.get<LedgerHistory, ApiEnvelope<LedgerHistory>>(
         "/wallets/me/ledger",
-        { params: { page, limit: 10 }, headers: { 'x-skip-cache': 'true' } },
+        { params: { page, limit: 10 }, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
       )
     ).data;
   },
   async cancelPayosTopUp(id: string) {
     return (await api.post<never, ApiEnvelope<PayosWalletTopUp>>(`/wallets/top-up-payos/${encodeURIComponent(id)}/cancel`, {}, { timeout: 30000 })).data;
   },
-  async getMyWallet(): Promise<WalletSummary> {
+  async getMyWallet(fresh = false): Promise<WalletSummary> {
     return (
-      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me", { headers: { 'x-skip-cache': 'true' } })
+      await api.get<WalletSummary, ApiEnvelope<WalletSummary>>("/wallets/me", { headers: fresh ? { 'x-skip-cache': 'true' } : undefined })
     ).data;
   },
 
-  async getMyWithdrawals(page = 1): Promise<WithdrawalHistory> {
+  async getMyWithdrawals(page = 1, fresh = false): Promise<WithdrawalHistory> {
     return (
       await api.get<WithdrawalHistory, ApiEnvelope<WithdrawalHistory>>(
         "/wallets/withdrawals",
         {
           params: { page, limit: 10 },
-          headers: { 'x-skip-cache': 'true' },
+          headers: fresh ? { 'x-skip-cache': 'true' } : undefined,
         },
       )
     ).data;

@@ -21,13 +21,13 @@ export interface TierStatus {
 }
 
 export const tierService = {
-  async getAllTiers(): Promise<TierPolicy[]> {
-    const res: any = await api.get('/tiers', { headers: { 'x-skip-cache': 'true' } });
+  async getAllTiers(fresh = false): Promise<TierPolicy[]> {
+    const res: any = await api.get('/tiers', { headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data;
   },
 
-  async getMyTierStatus(): Promise<TierStatus> {
-    const res: any = await api.get('/tiers/my-status', { headers: { 'x-skip-cache': 'true' } });
+  async getMyTierStatus(fresh = false): Promise<TierStatus> {
+    const res: any = await api.get('/tiers/my-status', { headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res.data;
   },
 
