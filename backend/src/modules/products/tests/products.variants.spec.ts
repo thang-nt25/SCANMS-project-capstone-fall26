@@ -1,8 +1,21 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { ProductsService } from '../products.service';
+import { SyncProductVariantsDto } from '../dto/sync-product-variants.dto';
 
 describe('Product variant images', () => {
+  it('accepts deterministic UUID v5 IDs of seeded variants when saving stock', async () => {
+    const dto = plainToInstance(SyncProductVariantsDto, {
+      variants: [{
+        id: '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1',
+        sku: 'SEED-002-V1', name: '100 ml', price: 160000,
+        stockQuantity: 20, imageUrl: 'https://example.com/product.jpg',
+      }],
+    });
+    expect(await validate(dto)).toEqual([]);
+  });
   const productId = 'a1a1a1a1-1111-4111-8111-111111111111';
   const variantId = 'b2b2b2b2-2222-4222-8222-222222222222';
   const prisma: any = {
