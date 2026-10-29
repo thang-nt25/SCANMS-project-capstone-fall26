@@ -9,7 +9,6 @@ import {
   Package,
   BarChart3,
   UserCheck,
-  Sparkles,
   Search,
   ExternalLink,
   TrendingUp,
@@ -1414,7 +1413,7 @@ return true;
           <Plus className="h-4 w-4" /> Tìm nhà sáng tạo
         </button>
         <button type="button" onClick={() => setAiMatchingMode(true)} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2.5 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]">
-          <Sparkles className="h-4 w-4" /> AI Tìm Kiếm KOL Mới
+          <Search className="h-4 w-4" /> Đề xuất KOL bằng AI
         </button>
         {discoveryModal}
         {inviteModal}
@@ -1490,7 +1489,7 @@ return true;
             onClick={() => setAiMatchingMode(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-white text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
           >
-            <Sparkles size={13} />
+            <Search size={13} />
             <span>Gợi ý KOL</span>
           </button>
         </div>
@@ -1852,7 +1851,7 @@ return true;
                       className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
                       title="Tìm kiếm KOL phù hợp bằng AI Matching"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                      <Search className="w-3.5 h-3.5 text-[#C59B58]" />
                       <span>Tìm với AI</span>
                     </button>
                     <button
@@ -2871,11 +2870,11 @@ onClick={() => {
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
                             Giá trị TB đơn (AOV)
                           </span>
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
-                            <Sparkles className="h-4 w-4" />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                            <ShoppingBag className="h-4 w-4" />
                           </div>
                         </div>
-                        <div className="text-2xl font-black tracking-tight text-[#1A1612]">
+                        <div className="text-2xl font-bold font-mono tabular-nums tracking-tight text-[#1A1612]">
                           {displayAov > 0 ? `${displayAov.toLocaleString('vi-VN')} ₫` : '0 ₫'}
                         </div>
                         <div className="mt-1.5 text-[11px] text-[#7D715E]">

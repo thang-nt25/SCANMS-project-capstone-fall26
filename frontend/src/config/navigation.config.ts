@@ -18,6 +18,8 @@ import {
   Radio,
   Bell,
   ReceiptText,
+  UserPlus,
+  Megaphone,
   type LucideProps,
 } from 'lucide-react';
 
@@ -47,6 +49,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/customer/wishlist', label: 'Sản phẩm yêu thích', icon: Heart, section: 'MUA SẮM & VÍ' },
       { path: '/customer/notifications', label: 'Thông báo', icon: Bell, section: 'MUA SẮM & VÍ' },
       { path: '/customer/profile', label: 'Hồ sơ cá nhân', icon: User, section: 'TÀI KHOẢN & BẢO MẬT' },
+      { path: '/customer/upgrade', label: 'Đăng ký Đối tác Tiếp thị', icon: Megaphone, section: 'TÀI KHOẢN & BẢO MẬT' },
     ],
   },
   COLLABORATOR: {
@@ -82,7 +85,8 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Báo cáo Doanh số & GMV', icon: TrendingUp, section: 'TỔNG QUAN & BÁO CÁO' },
       { path: '/admin/payouts', label: 'Chi trả & Dòng tiền Sàn', icon: ReceiptText, section: 'TỔNG QUAN & BÁO CÁO' },
-      { path: '/admin/users', label: 'Tài khoản & Phân quyền', icon: Users, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
+      { path: '/admin/personnel', label: 'Nhân sự & Bổ nhiệm Shop', icon: UserPlus, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
+      { path: '/admin/users', label: 'Thẩm định eKYC Đối tác', icon: ShieldCheck, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
       { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu KOL', icon: Package, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
       { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/customer-reviews', label: 'Đánh giá & khiếu nại', icon: Box, section: 'KIỂM DUYỆT SÀN' },
@@ -96,7 +100,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Chuyên Viên Vận Hành Sàn',
     items: [
       { path: '/admin/analytics', label: 'Báo cáo Vận hành', icon: TrendingUp, section: 'TỔNG QUAN' },
-      { path: '/admin/users', label: 'Thẩm định KYC', icon: Users, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
+      { path: '/admin/users', label: 'Thẩm định eKYC Đối tác', icon: ShieldCheck, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu', icon: Package, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/customer-reviews', label: 'Đánh giá & khiếu nại', icon: Box, section: 'KIỂM DUYỆT SÀN' },

@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  Megaphone,
-  Store,
   ArrowRight,
   ShieldCheck,
   Clock3,
   CheckCircle2,
   CircleAlert,
   RefreshCw,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import {
   kycService,
   type UpgradeStatusResponse,
   type ApplyKolData,
-  type ApplyShopData,
 } from '../../services/kyc.service';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
-
-import { KolUpgradeForm, ShopUpgradeForm } from './PartnerUpgradeForms';
+import { KolUpgradeForm } from './PartnerUpgradeForms';
 
 const createEmptyKolForm = (): ApplyKolData => ({
   platform: '' as ApplyKolData['platform'],
@@ -37,24 +35,6 @@ const createEmptyKolForm = (): ApplyKolData => ({
   backCardUrl: '',
 });
 
-const createEmptyShopForm = (): ApplyShopData => ({
-  shopName: '',
-  description: '',
-  warehouseAddress: '',
-  businessType: '' as ApplyShopData['businessType'],
-  taxCode: '',
-  businessLicenseUrl: '',
-  brandAuthorizationUrl: '',
-  contactPhone: '',
-  contactEmail: '',
-  bankName: '',
-  bankAccountNumber: '',
-  bankAccountName: '',
-  idCardNumber: '',
-  frontCardUrl: '',
-  backCardUrl: '',
-});
-
 function ApplicationBadge({ status }: { status?: string | null }) {
   const verified = status === 'VERIFIED';
   const rejected = status === 'REJECTED';
@@ -63,7 +43,7 @@ function ApplicationBadge({ status }: { status?: string | null }) {
   const label = verified
     ? 'Đã xác minh'
     : rejected
-      ? 'Cần nộp lại'
+      ? 'Cần bổ sung'
       : status === 'NEEDS_INFO'
         ? 'Cần bổ sung'
         : status === 'DRAFT'
@@ -73,7 +53,7 @@ function ApplicationBadge({ status }: { status?: string | null }) {
             : 'Chưa đăng ký';
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${
+      className={`inline-flex items-center gap-1.5 border rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
         empty
           ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]'
           : rejected
@@ -83,7 +63,7 @@ function ApplicationBadge({ status }: { status?: string | null }) {
               : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#8F682E]'
       }`}
     >
-      {!empty && <Icon size={12} />}
+      <Icon size={13} />
       {label}
     </span>
   );
@@ -91,43 +71,10 @@ function ApplicationBadge({ status }: { status?: string | null }) {
 
 export const PartnerUpgradeTab: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [activePartnerType, setActivePartnerType] = useState<'kol' | 'shop'>(
-    location.pathname.endsWith('/upgrade/shop') ? 'shop' : 'kol',
-  );
-  const [statusData, setStatusData] = useState<UpgradeStatusResponse | null>(
-    null,
-  );
+  const [statusData, setStatusData] = useState<UpgradeStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
   const [kolForm, setKolForm] = useState(createEmptyKolForm);
-  const [shopForm, setShopForm] = useState(createEmptyShopForm);
-
-  useEffect(() => {
-    setKolForm(createEmptyKolForm());
-    setShopForm(createEmptyShopForm());
-    if (location.pathname.endsWith('/upgrade/shop'))
-      setActivePartnerType('shop');
-    if (location.pathname.endsWith('/upgrade/kol')) setActivePartnerType('kol');
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const clearRestoredForm = (event: PageTransitionEvent) => {
-      if (!event.persisted) return;
-      setKolForm(createEmptyKolForm());
-      setShopForm(createEmptyShopForm());
-    };
-    window.addEventListener('pageshow', clearRestoredForm);
-    return () => window.removeEventListener('pageshow', clearRestoredForm);
-  }, []);
-
-  const selectPartnerType = (type: 'kol' | 'shop') => {
-    if (type === activePartnerType) return;
-    if (type === 'kol') setKolForm(createEmptyKolForm());
-    else setShopForm(createEmptyShopForm());
-    setActivePartnerType(type);
-  };
 
   const loadStatus = async () => {
     setLoading(true);
@@ -152,15 +99,15 @@ export const PartnerUpgradeTab: React.FC = () => {
       return;
     }
     if (!kolForm.channelUrl?.trim()) {
-      toast.error('Vui lòng nhập đường link kênh mạng xã hội');
+      toast.error('Vui lòng nhập liên kết kênh');
       return;
     }
     if (!kolForm.idCardNumber?.trim() || kolForm.idCardNumber.length < 9) {
-      toast.error('Vui lòng nhập số CCCD/CMND hợp lệ');
+      toast.error('Vui lòng nhập số CCCD/CMND hợp lệ (9 - 12 chữ số)');
       return;
     }
     if (!kolForm.frontCardUrl?.trim() || !kolForm.backCardUrl?.trim()) {
-      toast.error('Vui lòng tải lên đầy đủ ảnh CCCD mặt trước và mặt sau');
+      toast.error('Vui lòng tải lên ảnh CCCD mặt trước và mặt sau');
       return;
     }
     if (!kolForm.bankName?.trim()) {
@@ -168,103 +115,18 @@ export const PartnerUpgradeTab: React.FC = () => {
       return;
     }
     if (!kolForm.bankAccountNumber?.trim() || !kolForm.bankAccountName?.trim()) {
-      toast.error(
-        'Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng để nhận hoa hồng',
-      );
+      toast.error('Vui lòng nhập thông tin tài khoản ngân hàng thụ hưởng');
       return;
     }
 
     setSubmitting(true);
     try {
       await kycService.applyKolUpgrade(kolForm);
-      toast.success(
-        'Gửi hồ sơ đăng ký KOL thành công! Ban Quản Trị SCANMS sẽ xét duyệt trong 24h.',
-      );
+      toast.success('Đã gửi hồ sơ đăng ký đối tác tiếp thị');
       loadStatus();
       authService.getMe();
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || 'Không thể gửi hồ sơ, vui lòng thử lại',
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleShopSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!shopForm.businessType) {
-      toast.error('Vui lòng chọn hình thức kinh doanh');
-      return;
-    }
-    if (!shopForm.shopName.trim()) {
-      toast.error('Vui lòng nhập tên gian hàng');
-      return;
-    }
-    if (!shopForm.warehouseAddress.trim()) {
-      toast.error(
-        'Địa chỉ kho xuất hàng là bắt buộc theo Nghị định 85/2021/NĐ-CP',
-      );
-      return;
-    }
-    if (!shopForm.taxCode.trim()) {
-      toast.error(
-        'Vui lòng nhập mã số thuế doanh nghiệp / hộ kinh doanh / cá nhân',
-      );
-      return;
-    }
-    if (!shopForm.contactPhone.trim()) {
-      toast.error('Vui lòng nhập số hotline hỗ trợ khách hàng');
-      return;
-    }
-    if (!shopForm.contactEmail.trim()) {
-      toast.error('Vui lòng nhập email đối soát thanh toán');
-      return;
-    }
-    if (
-      !shopForm.idCardNumber?.trim() ||
-      !/^\d{9,12}$/.test(shopForm.idCardNumber)
-    ) {
-      toast.error('Vui lòng nhập số CCCD người đại diện hợp lệ (9 - 12 số)');
-      return;
-    }
-    if (!shopForm.frontCardUrl || !shopForm.backCardUrl) {
-      toast.error(
-        'Vui lòng tải lên ảnh CCCD mặt trước và mặt sau của người đại diện',
-      );
-      return;
-    }
-    if (!shopForm.businessLicenseUrl) {
-      toast.error('Vui lòng tải lên giấy phép đăng ký kinh doanh');
-      return;
-    }
-    if (!shopForm.bankName?.trim()) {
-      toast.error('Vui lòng chọn ngân hàng nhận tiền doanh thu bán hàng');
-      return;
-    }
-    if (
-      !shopForm.bankAccountNumber?.trim() ||
-      !shopForm.bankAccountName?.trim()
-    ) {
-      toast.error(
-        'Vui lòng nhập đầy đủ số tài khoản và tên chủ tài khoản nhận doanh thu',
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await kycService.applyShopUpgrade(shopForm);
-      toast.success(
-        'Gửi hồ sơ mở Gian Hàng thành công! Ban Quản Trị SCANMS sẽ thẩm định giấy phép.',
-      );
-      loadStatus();
-      authService.getMe();
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message ||
-          'Không thể gửi hồ sơ gian hàng, vui lòng thử lại',
-      );
+      toast.error(err?.response?.data?.message || 'Không thể gửi hồ sơ');
     } finally {
       setSubmitting(false);
     }
@@ -272,193 +134,185 @@ export const PartnerUpgradeTab: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="grid gap-[16px] text-left min-w-0 text-[#1A1612] max-[640px]:gap-[12px]">
-        <div className="border border-[#EAE4D7] rounded-[18px] bg-white p-[30px_22px] grid gap-[14px] justify-items-start">
-          <RefreshCw className="h-5 w-5 animate-spin text-[#B88E4F]" />
-          <p className="m-0 text-[13px] text-[#7D715E] leading-[1.7]">Đang tải hồ sơ đối tác…</p>
-        </div>
+      <div className="border border-[#EAE4D7] rounded-2xl bg-white p-10 text-center text-[#7D715E]">
+        <RefreshCw className="h-5 w-5 animate-spin text-[#C59B58] mx-auto mb-2" />
+        <p className="text-xs">Đang tải hồ sơ...</p>
       </div>
     );
   }
 
   const kolApp = statusData?.kolApplication;
-  const shopApp = statusData?.shopApplication;
-  const shopStatus =
-    shopApp?.onboardingStatus ||
-    (shopApp?.isVerified ? 'VERIFIED' : shopApp ? 'PENDING_APPROVAL' : null);
-  const canSubmitShopApplication =
-    !shopStatus || ['DRAFT', 'NEEDS_INFO', 'REJECTED'].includes(shopStatus);
-  const choices = [
-    {
-      type: 'kol' as const,
-      title: 'Đối tác KOL',
-      icon: Megaphone,
-      status: kolApp?.status,
-      description:
-        kolApp?.status === 'VERIFIED'
-          ? 'Tạo liên kết tiếp thị, theo dõi hoa hồng và kết nối với các gian hàng.'
-          : kolApp?.status === 'UNVERIFIED'
-            ? 'Hồ sơ đã gửi đang được xem xét. Điền thông tin nếu cần cập nhật hồ sơ.'
-            : kolApp?.status === 'REJECTED'
-              ? 'Kiểm tra ghi chú xét duyệt, bổ sung thông tin và gửi lại hồ sơ.'
-              : 'Giới thiệu sản phẩm từ các gian hàng và nhận hoa hồng tiếp thị liên kết.',
-      action: kolApp ? 'Cập nhật hồ sơ KOL' : 'Đăng ký KOL',
-    },
-    {
-      type: 'shop' as const,
-      title: 'Mở gian hàng',
-      icon: Store,
-      status: shopStatus,
-      description:
-        shopStatus === 'VERIFIED'
-          ? 'Quản lý sản phẩm, đơn hàng và hợp tác cùng KOL trên SCANMS.'
-          : shopStatus === 'NEEDS_INFO' || shopStatus === 'REJECTED'
-            ? 'Bổ sung thông tin theo ghi chú xét duyệt và gửi lại hồ sơ gian hàng.'
-            : shopStatus === 'PENDING_APPROVAL'
-              ? 'Hồ sơ đang chờ xét duyệt. Bạn sẽ nhận thông báo khi có kết quả.'
-              : 'Kinh doanh sản phẩm và kết nối với mạng lưới nhà sáng tạo trên SCANMS.',
-      action: shopApp ? 'Trạng thái hồ sơ gian hàng' : 'Đăng ký gian hàng',
-    },
-  ];
+  const isVerified = kolApp?.status === 'VERIFIED';
+  const isPending = kolApp?.status === 'UNVERIFIED';
+  const isRejected = kolApp?.status === 'REJECTED';
 
   return (
-    <div className="grid gap-[16px] text-left min-w-0 text-[#1A1612] max-[640px]:gap-[12px] max-[767px]:pb-[64px]">
-      <header className="flex items-center justify-between gap-[20px] p-[22px_24px] border border-[#EAE4D7] rounded-[18px] bg-white max-[640px]:p-[18px]">
+    <div className="space-y-5 text-[#1A1612]">
+      {/* Clean Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 lg:p-6 border border-[#EAE4D7] rounded-2xl bg-white shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
         <div>
-          <span className="block text-[#B88E4F] text-[11px] font-[600] mb-[6px]">Đồng hành cùng SCANMS</span>
-          <h2 className="m-0 text-[24px] leading-[1.3] font-[700] tracking-[-0.7px] text-[#1A1612] max-[640px]:text-[21px]">Hợp tác với chúng tôi</h2>
-          <p className="m-[7px_0_0] text-[13px] text-[#7D715E] leading-[1.7] max-w-[760px] max-[640px]:text-[12px]">
-            Trở thành KOL tiếp thị liên kết hoặc mở gian hàng. Chọn vai trò phù
-            hợp và hoàn thiện hồ sơ đăng ký.
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-[#1A1612]">
+            Đăng ký Đối tác Tiếp thị
+          </h1>
+          <p className="mt-1 text-xs text-[#7D715E]">
+            Định danh cá nhân (eKYC) để nhận thù lao tiếp thị và liên kết phân phối sản phẩm chính hãng.
           </p>
         </div>
-        <div className="hidden min-[1101px]:flex items-center gap-[9px] shrink-0 border-l border-[#EAE4D7] pl-[22px] text-[#7D715E] text-[12px] leading-[1.6]">
-          <ShieldCheck size={22} className="text-[#B88E4F] shrink-0" />
-          <span>
-            <strong className="block text-[#1A1612] text-[13px] font-[600]">Một tài khoản, nhiều vai trò</strong>Tiếp tục mua sắm và
-            chuyển đổi linh hoạt.
-          </span>
+        <div className="shrink-0">
+          <ApplicationBadge status={kolApp?.status} />
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-[14px] max-[640px]:grid-cols-1 max-[640px]:gap-[10px]" aria-label="Chọn loại đối tác">
-        {choices.map((choice) => (
-          <article
-            key={choice.type}
-            className={`flex flex-col p-[18px] border rounded-[16px] bg-white transition-[border-color] duration-150 min-w-0 max-[640px]:p-[15px] ${activePartnerType === choice.type ? 'border-[#C59B58] shadow-[0_0_0_1px_#EEDFC6]' : 'border-[#EAE4D7] hover:border-[#EEDFC6]'}`}
-          >
-            <button
-              type="button"
-              className="flex w-full items-start gap-[12px] text-left cursor-pointer bg-transparent border-0 p-0"
-              aria-pressed={activePartnerType === choice.type}
-              onClick={() => selectPartnerType(choice.type)}
-            >
-              <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <choice.icon size={19} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center justify-between gap-[10px] flex-wrap">
-                  <strong className="text-[15px] font-[650] leading-[1.5] text-[#1A1612]">{choice.title}</strong>
-                  <ApplicationBadge status={choice.status} />
-                </span>
-                <span className="block mt-[6px] text-[12px] text-[#7D715E] leading-[1.65] min-h-[40px] max-[640px]:min-h-0">
-                  {choice.description}
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`flex items-center justify-between w-full mt-[14px] rounded-[10px] border p-[9px_12px] text-[12px] font-[600] cursor-pointer transition ${activePartnerType === choice.type ? 'text-[#8F682E] bg-[#FBF5EB] border-[#EEDFC6]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#C59B58]'}`}
-              onClick={() =>
-                choice.status === 'VERIFIED'
-                  ? authService.switchWorkspace(choice.type, navigate)
-                  : selectPartnerType(choice.type)
-              }
-            >
-              {choice.status === 'VERIFIED'
-                ? choice.type === 'kol'
-                  ? 'Vào không gian KOL'
-                  : 'Vào quản lý gian hàng'
-                : activePartnerType === choice.type
-                  ? 'Đang chọn hồ sơ này'
-                  : choice.action}
-              {activePartnerType === choice.type &&
-              choice.status !== 'VERIFIED' ? (
-                <CheckCircle2 size={15} />
-              ) : (
-                <ArrowRight size={15} />
-              )}
-            </button>
-          </article>
-        ))}
-      </div>
-
-      {activePartnerType === 'kol' && (
-        <KolUpgradeForm
-          form={kolForm}
-          setForm={setKolForm}
-          onSubmit={handleKolSubmit}
-          submitting={submitting}
-          rejectionReason={
-            kolApp?.status === 'REJECTED'
-              ? kolApp.socialLinksJson?.rejectionReason
-              : undefined
-          }
-        />
-      )}
-      {activePartnerType === 'shop' &&
-        (canSubmitShopApplication ? (
-          <ShopUpgradeForm
-            form={shopForm}
-            setForm={setShopForm}
-            onSubmit={handleShopSubmit}
-            submitting={submitting}
-            reviewNote={
-              shopStatus === 'NEEDS_INFO' || shopStatus === 'REJECTED'
-                ? shopApp?.onboardingReviewNote
-                : undefined
-            }
-          />
-        ) : (
-          <section className="p-[30px_22px] grid gap-[14px] justify-items-start border border-[#EAE4D7] rounded-[18px] bg-white shadow-xs">
-            <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-              {shopStatus === 'VERIFIED' ? <CheckCircle2 size={20} /> : <Clock3 size={20} />}
-            </span>
-            <h3 className="m-0 text-[18px] font-[650] text-[#1A1612]">
-              {shopStatus === 'VERIFIED'
-                ? 'Gian hàng đã được xác minh'
-                : 'Hồ sơ đang chờ xét duyệt'}
-            </h3>
-            <p className="m-0 text-[13px] text-[#7D715E] leading-[1.7] max-w-[680px]">
-              {shopStatus === 'VERIFIED'
-                ? 'Gian hàng đã được kích hoạt. Bạn có thể vào không gian quản lý để đăng sản phẩm và hợp tác cùng KOL.'
-                : 'SCANMS đang kiểm tra hồ sơ của bạn. Kết quả hoặc yêu cầu bổ sung sẽ được gửi qua thông báo.'}
-            </p>
-            {shopApp?.onboardingReviewNote && shopStatus !== 'VERIFIED' && (
-              <div className="flex items-start gap-[10px] border border-[#EEDFC6] rounded-[12px] p-[12px_14px] bg-[#FBF5EB] text-[12px] text-[#7D715E] leading-[1.7] w-full">
-                <CircleAlert size={17} className="text-[#B88E4F] shrink-0 mt-[2px]" />
+      {/* 60/40 Split Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column (60%): Form / Status Screen */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+          {isVerified ? (
+            <div className="p-6 border border-[#EEDFC6] rounded-2xl bg-[#FBF5EB] space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white border border-[#EEDFC6] flex items-center justify-center text-[#059669]">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
                 <div>
-                  <strong className="block text-[#8F682E] font-[600]">Ghi chú xét duyệt</strong>
-                  {shopApp.onboardingReviewNote}
+                  <h3 className="text-base font-bold text-[#1A1612]">
+                    Tài khoản đã kích hoạt (Hạng khởi điểm: Đồng)
+                  </h3>
+                  <p className="text-xs text-[#7D715E] mt-0.5">
+                    Hưởng hoa hồng cơ sở 10% chuẩn hệ thống và toàn quyền sử dụng bộ công cụ tiếp thị.
+                  </p>
                 </div>
               </div>
-            )}
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-[9px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[11px] p-[11px_18px] text-[12px] font-[650] whitespace-nowrap cursor-pointer transition-[background] duration-150 shadow-xs max-[640px]:w-full"
-              onClick={() =>
-                shopStatus === 'VERIFIED'
-                  ? authService.switchWorkspace('shop', navigate)
-                  : void loadStatus()
-              }
-            >
-              {shopStatus === 'VERIFIED' ? <ArrowRight size={15} /> : <RefreshCw size={15} />}
-              {shopStatus === 'VERIFIED'
-                ? 'Vào quản lý gian hàng'
-                : 'Kiểm tra trạng thái'}
-            </button>
-          </section>
-        ))}
+              <button
+                type="button"
+                onClick={() => authService.switchWorkspace('kol', navigate)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-semibold text-xs shadow-xs transition active:scale-[0.98] cursor-pointer"
+              >
+                Vào Không gian Tiếp thị
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : isPending ? (
+            <div className="p-6 border border-[#EEDFC6] rounded-2xl bg-white space-y-4 shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#8F682E]">
+                  <Clock3 className="w-5 h-5 text-[#C59B58]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1A1612]">
+                    Hồ sơ đang chờ thẩm định (SLA 24h)
+                  </h3>
+                  <p className="text-xs text-[#7D715E] mt-0.5">
+                    Bộ phận vận hành đang đối soát thông tin CCCD và tài khoản ngân hàng thụ hưởng.
+                  </p>
+                </div>
+              </div>
+              <div className="pt-2">
+                <KolUpgradeForm
+                  form={kolForm}
+                  setForm={setKolForm}
+                  onSubmit={handleKolSubmit}
+                  submitting={submitting}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="border border-[#EAE4D7] rounded-2xl bg-white shadow-[0_1px_2px_rgba(35,29,21,0.02)] overflow-hidden">
+              {isRejected && (
+                <div className="flex items-start gap-2.5 p-3.5 bg-[#FAF8F5] border-b border-[#F5D8D4] text-[#DC2626] text-xs">
+                  <CircleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-semibold mb-0.5">Hồ sơ cần cập nhật lại</strong>
+                    {kolApp?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra lại ảnh CCCD và thông tin kênh.'}
+                  </div>
+                </div>
+              )}
+              <KolUpgradeForm
+                form={kolForm}
+                setForm={setKolForm}
+                onSubmit={handleKolSubmit}
+                submitting={submitting}
+                rejectionReason={
+                  kolApp?.status === 'REJECTED'
+                    ? kolApp.socialLinksJson?.rejectionReason
+                    : undefined
+                }
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Right Column (40%): Executive Policy Card */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+          <div className="p-5 rounded-2xl bg-white border border-[#EAE4D7] shadow-[0_1px_2px_rgba(35,29,21,0.02)] space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-[#EAE4D7]">
+              <ShieldCheck className="w-4 h-4 text-[#C59B58]" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
+                Chính sách đối tác tiếp thị
+              </h3>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-[#FAF8F5]">
+                <span className="text-[#7D715E]">Hoa hồng cơ sở</span>
+                <span className="font-semibold text-[#1A1612] font-mono">10% (Hạng Đồng)</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#FAF8F5]">
+                <span className="text-[#7D715E]">Hàng mẫu thử</span>
+                <span className="font-semibold text-[#1A1612]">14 ngày trải nghiệm</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#FAF8F5]">
+                <span className="text-[#7D715E]">Deal độc quyền</span>
+                <span className="font-semibold text-[#1A1612] font-mono">VIP 13% – 16%</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#FAF8F5]">
+                <span className="text-[#7D715E]">Rút tiền Napas 24/7</span>
+                <span className="font-semibold text-[#1A1612]">Khấu trừ 10% TNCN</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-[#7D715E]">Thời gian duyệt</span>
+                <span className="font-semibold text-[#059669]">Cam kết trong 24h</span>
+              </div>
+            </div>
+
+            {/* Compact Flow */}
+            <div className="pt-2 border-t border-[#EAE4D7]">
+              <div className="text-[11px] font-semibold text-[#7D715E] uppercase tracking-wider mb-2">
+                Quy trình tiếp nhận
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
+                  <span className="font-bold text-[#1A1612] block">1. Nộp eKYC</span>
+                  <span className="text-[#7D715E]">Khai báo kênh & CCCD</span>
+                </div>
+                <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
+                  <span className="font-bold text-[#1A1612] block">2. Thẩm định</span>
+                  <span className="text-[#7D715E]">Đối soát thông tin</span>
+                </div>
+                <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
+                  <span className="font-bold text-[#1A1612] block">3. Hạng Đồng</span>
+                  <span className="text-[#7D715E]">Hoa hồng 10%</span>
+                </div>
+                <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
+                  <span className="font-bold text-[#1A1612] block">4. Lấy Smart Link</span>
+                  <span className="text-[#7D715E]">Bắt đầu tiếp thị</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Helpline */}
+            <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between text-[11px] text-[#7D715E]">
+              <span className="inline-flex items-center gap-1">
+                <Phone className="w-3 h-3 text-[#C59B58]" /> 1900 6868
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Mail className="w-3 h-3 text-[#C59B58]" /> creator@scanms.vn
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
+
+export default PartnerUpgradeTab;

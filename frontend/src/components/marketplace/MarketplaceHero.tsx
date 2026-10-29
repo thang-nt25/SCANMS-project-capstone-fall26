@@ -16,9 +16,9 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   const slides = [
     {
       image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
-      eyebrow: 'SCANMS · SÀN ĐA GIAN HÀNG',
+      eyebrow: 'SCANMS · MẠNG LƯỚI TIẾP THỊ & CỘNG TÁC VIÊN',
       title: partner ? partner.activeCampaign!.name : 'Một điểm đến. Nhiều lựa chọn chính hãng.',
-      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và chọn sản phẩm phù hợp với bạn.` : 'Khám phá sản phẩm từ nhiều gian hàng đối tác, kết nối cùng những nhà sáng tạo bạn yêu thích.',
+      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và lấy liên kết tiếp thị.` : 'Nền tảng quản lý đội ngũ cộng tác viên bán hàng và tiếp thị liên kết, cung cấp công cụ Smart Link, mã QR và tài nguyên số chính hãng.',
       label: partner ? `Ghé thăm ${partner.name}` : 'Khám phá gian hàng',
       href: partner ? `/shops/${partner.id}` : '#featured-stores',
     },
@@ -94,7 +94,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
             </div>
           ))}
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-[#EAE4D7] bg-white/90 px-4 py-3 sm:px-6">
-            <div className="hidden gap-4 text-[11px] font-semibold text-[#7D715E] md:flex"><span className="flex items-center gap-1.5"><Store size={15} /> Đa gian hàng</span><span className="flex items-center gap-1.5"><ShieldCheck size={15} /> Đối tác xác minh</span></div>
+            <div className="hidden gap-4 text-[11px] font-semibold text-[#7D715E] md:flex"><span className="flex items-center gap-1.5"><Store size={15} /> Nhãn hàng trực thuộc</span><span className="flex items-center gap-1.5"><ShieldCheck size={15} /> Đối tác eKYC xác minh</span></div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => move(-1)} aria-label="Banner trước" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowLeft size={16} /></button>
               {slides.map((slide, index) => <button type="button" key={slide.image} onClick={() => setActive(index)} aria-label={`Xem banner ${index + 1}`} aria-current={index === active ? 'true' : undefined} className="flex h-10 w-8 items-center justify-center"><span className={`h-1.5 rounded-full ${index === active ? 'w-6 bg-[#C59B58]' : 'w-2 bg-[#EAE4D7]'}`} /></button>)}

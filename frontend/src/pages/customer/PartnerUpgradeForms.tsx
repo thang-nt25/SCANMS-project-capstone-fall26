@@ -86,18 +86,18 @@ function Section({
 }: {
   number: number;
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
     <section className="min-w-0">
-      <div className="flex items-start gap-[10px] mb-[17px]">
-        <span className="flex items-center justify-center shrink-0 w-[26px] h-[26px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[600]">
+      <div className="flex items-center gap-[10px] mb-[16px]">
+        <span className="flex items-center justify-center shrink-0 w-[24px] h-[24px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[700] font-mono">
           {number}
         </span>
         <div>
-          <h4 className="m-0 text-[14px] leading-[1.6] font-[650] text-[#1A1612]">{title}</h4>
-          <p className="m-[2px_0_0] text-[11px] text-[#7D715E] leading-[1.6]">{description}</p>
+          <h4 className="m-0 text-[13px] leading-[1.4] font-[700] text-[#1A1612] uppercase tracking-wide">{title}</h4>
+          {description && <p className="m-[2px_0_0] text-[11px] text-[#7D715E] leading-[1.5]">{description}</p>}
         </div>
       </div>
       {children}
@@ -107,19 +107,19 @@ function Section({
 
 function FormHeader({ shop = false }: { shop?: boolean }) {
   return (
-    <header className="flex items-center justify-between gap-[18px] p-[20px_22px] border-b border-[#EAE4D7] max-[640px]:flex-wrap max-[640px]:p-[17px]">
+    <header className="flex items-center justify-between gap-[16px] p-[18px_22px] border-b border-[#EAE4D7] bg-[#FAF8F5]/60 max-[640px]:p-[16px]">
       <div className="flex items-center gap-[12px] min-w-0">
-        <span className="w-[40px] h-[40px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-          {shop ? <Store size={20} /> : <Megaphone size={20} />}
+        <span className="w-[36px] h-[36px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
+          {shop ? <Store size={18} /> : <Megaphone size={18} />}
         </span>
         <div>
-          <h3 className="m-0 text-[17px] font-[650] tracking-[-0.4px] leading-[1.5] text-[#1A1612] max-[640px]:text-[15px]">
-            {shop ? 'Hồ sơ mở gian hàng' : 'Hồ sơ đăng ký KOL'}
+          <h3 className="m-0 text-[15px] font-[700] tracking-[-0.2px] text-[#1A1612]">
+            {shop ? 'Hồ sơ pháp lý gian hàng (Merchant)' : 'Hồ sơ định danh Cộng tác viên (KOL/KOC)'}
           </h3>
-          <p className="m-[3px_0_0] text-[12px] text-[#7D715E] leading-[1.6]">
+          <p className="m-[2px_0_0] text-[12px] text-[#7D715E]">
             {shop
-              ? 'Thông tin kinh doanh, giấy tờ và tài khoản nhận doanh thu.'
-              : 'Thông tin kênh, giấy tờ định danh và tài khoản nhận hoa hồng.'}
+              ? 'Xác thực tư cách pháp nhân kinh doanh và tài khoản đối soát doanh thu.'
+              : 'Xác thực số liệu kênh truyền thông, CCCD gắn chip và tài khoản thụ hưởng.'}
           </p>
         </div>
       </div>
@@ -135,26 +135,22 @@ function FormFooter({
   shop?: boolean;
 }) {
   return (
-    <footer className="border-t border-[#EAE4D7] p-[17px_22px] flex items-center justify-between gap-[20px] max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:gap-[13px] max-[640px]:p-[17px]">
-      <p className="flex items-center gap-[9px] text-[11px] text-[#7D715E] leading-[1.6] m-0">
-        <ShieldCheck size={18} className="text-[#B88E4F] shrink-0" />
-        <span>
-          Thông tin dùng để xác minh hồ sơ và đối soát.
-          <br />
-          Các mục có dấu * là bắt buộc.
-        </span>
+    <footer className="border-t border-[#EAE4D7] p-[16px_22px] flex items-center justify-between gap-[20px] bg-[#FAF8F5]/40 max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:p-[16px]">
+      <p className="flex items-center gap-[8px] text-[11px] text-[#7D715E] leading-[1.5] m-0">
+        <ShieldCheck size={16} className="text-[#B88E4F] shrink-0" />
+        <span>Dữ liệu eKYC được mã hóa và đối soát bảo mật theo quy chế sàn SCANMS.</span>
       </p>
       <button
         type="submit"
         disabled={submitting}
-        className="inline-flex items-center justify-center gap-[9px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[11px] p-[11px_18px] text-[12px] font-[650] whitespace-nowrap cursor-pointer transition-[background] duration-150 disabled:opacity-55 disabled:cursor-wait max-[640px]:w-full"
+        className="inline-flex items-center justify-center gap-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[10px] px-[20px] py-[10px] text-[12px] font-[700] tracking-wide cursor-pointer transition-colors duration-150 disabled:opacity-55 max-[640px]:w-full"
       >
-        <Send size={15} />
+        <Send size={14} />
         {submitting
           ? 'Đang gửi hồ sơ…'
           : shop
-            ? 'Gửi hồ sơ mở gian hàng'
-            : 'Gửi hồ sơ KOL'}
+            ? 'Nộp hồ sơ gian hàng'
+            : 'Nộp hồ sơ định danh'}
       </button>
     </footer>
   );
@@ -163,27 +159,25 @@ function FormFooter({
 function ShopReviewGuide() {
   return (
     <details className="border border-[#EAE4D7] rounded-[11px] bg-white text-[12px] text-[#7D715E] leading-[1.6] [&[open]_.shop-guide-arrow]:rotate-180">
-      <summary className="flex items-center gap-[9px] p-[11px_13px] cursor-pointer list-none select-none max-[640px]:flex-wrap [&::-webkit-details-marker]:none">
-        <ShieldCheck aria-hidden="true" size={17} className="text-[#B88E4F] shrink-0" />
-        <span className="font-[550] text-[#1A1612]">Hồ sơ được xét duyệt trước khi mở quyền bán hàng</span>
-        <span className="ml-auto inline-flex items-center gap-[6px] text-[#8F682E] font-[600] whitespace-nowrap text-[12px] max-[640px]:ml-[26px]">
-          <span>Xem quy trình</span>
-          <ChevronDown aria-hidden="true" size={14} className="shop-guide-arrow transition-transform duration-200" />
+      <summary className="flex items-center gap-[9px] p-[11px_14px] cursor-pointer list-none select-none [&::-webkit-details-marker]:none">
+        <ShieldCheck aria-hidden="true" size={16} className="text-[#B88E4F] shrink-0" />
+        <span className="font-[600] text-[#1A1612]">Tiêu chuẩn xét duyệt hồ sơ mở gian hàng</span>
+        <span className="ml-auto inline-flex items-center gap-[6px] text-[#8F682E] font-[600] text-[11px]">
+          <span>Chi tiết quy trình</span>
+          <ChevronDown aria-hidden="true" size={13} className="shop-guide-arrow transition-transform duration-200" />
         </span>
       </summary>
-      <div className="grid grid-cols-2 gap-[18px] p-[13px] border-t border-[#EAE4D7] max-[640px]:grid-cols-1 max-[640px]:gap-[12px]">
+      <div className="grid grid-cols-2 gap-[16px] p-[14px] border-t border-[#EAE4D7] bg-[#FAF8F5]/30 max-[640px]:grid-cols-1">
         <div>
-          <strong className="block text-[#1A1612] text-[12px] font-[600] mb-[4px]">1. Xác minh gian hàng</strong>
-          <p className="m-0 leading-[1.6]">
-            Đối chiếu thông tin kinh doanh, giấy tờ người đại diện, kho hàng và
-            tài khoản nhận tiền.
+          <strong className="block text-[#1A1612] text-[11px] font-[700] uppercase tracking-wide mb-[4px]">1. Thẩm định pháp lý</strong>
+          <p className="m-0 text-[11px] leading-[1.6] text-[#7D715E]">
+            Đối chiếu mã số thuế doanh nghiệp/hộ kinh doanh, CCCD đại diện hợp pháp và kho hàng thực tế.
           </p>
         </div>
         <div>
-          <strong className="block text-[#1A1612] text-[12px] font-[600] mb-[4px]">2. Kiểm tra sản phẩm</strong>
-          <p className="m-0 leading-[1.6]">
-            Giấy tờ nguồn gốc và các tài liệu liên quan được kiểm tra khi gian
-            hàng đăng sản phẩm.
+          <strong className="block text-[#1A1612] text-[11px] font-[700] uppercase tracking-wide mb-[4px]">2. Kiểm duyệt hàng hóa</strong>
+          <p className="m-0 text-[11px] leading-[1.6] text-[#7D715E]">
+            Thẩm định giấy phép công bố sản phẩm và hóa đơn chứng từ xuất xứ trước khi kích hoạt gian hàng.
           </p>
         </div>
       </div>
@@ -278,8 +272,8 @@ export function KolUpgradeForm({
         )}
         <Section
           number={1}
-          title="Kênh truyền thông"
-          description="Cung cấp kênh chính và ảnh xác nhận quyền quản trị."
+          title="Kênh truyền thông & Lưu lượng"
+          description="Nền tảng phát triển nội dung và số liệu người theo dõi thực tế."
         >
           <div className="grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
             <Field label="Nền tảng chính" id="kol-platform" required>
@@ -352,8 +346,8 @@ export function KolUpgradeForm({
         <div className="grid grid-cols-2 gap-[20px] pt-[22px] border-t border-[#EAE4D7] max-[1100px]:grid-cols-1">
           <Section
             number={2}
-            title="Định danh cá nhân"
-            description="Ảnh rõ nét, đầy đủ bốn góc của giấy tờ."
+            title="Định danh công dân (CCCD)"
+            description="Ảnh chụp 2 mặt CCCD gắn chip rõ nét phục vụ đối chiếu eKYC."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <TextField
@@ -396,8 +390,8 @@ export function KolUpgradeForm({
           </Section>
           <Section
             number={3}
-            title="Tài khoản nhận hoa hồng"
-            description="Tên chủ tài khoản cần khớp với thông tin định danh."
+            title="Tài khoản thanh toán Napas 24/7"
+            description="Tài khoản ngân hàng thụ hưởng hoa hồng tiếp thị định kỳ."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <BankDetails prefix="kol" form={form} onChange={patch} />
@@ -458,8 +452,8 @@ export function ShopUpgradeForm({
         )}
         <Section
           number={1}
-          title="Gian hàng & liên hệ"
-          description="Thông tin kinh doanh và liên hệ để xét duyệt hồ sơ."
+          title="Thông tin pháp lý & Liên hệ"
+          description="Tên gian hàng, loại hình đăng ký kinh doanh và kho hàng vận hành."
         >
           <div className="grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
             <div className="col-span-2 max-[640px]:col-span-1">
@@ -535,8 +529,8 @@ export function ShopUpgradeForm({
         <div className="grid grid-cols-2 gap-[20px] pt-[22px] border-t border-[#EAE4D7] max-[1100px]:grid-cols-1">
           <Section
             number={2}
-            title="Giấy tờ kinh doanh & định danh"
-            description="Tải ảnh chụp hoặc bản scan rõ nét, đầy đủ thông tin."
+            title="Giấy phép kinh doanh & Đại diện pháp luật"
+            description="Bản scan giấy chứng nhận ĐKKD và CCCD người đại diện pháp luật."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <TextField
@@ -592,8 +586,8 @@ export function ShopUpgradeForm({
           </Section>
           <Section
             number={3}
-            title="Tài khoản nhận doanh thu"
-            description="Thông tin nhận tiền sau khi đơn hàng được đối soát."
+            title="Tài khoản thanh toán doanh thu"
+            description="Tài khoản ngân hàng chính thức nhận quyết toán dòng tiền sau ký quỹ Escrow."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <BankDetails prefix="shop" form={form} onChange={patch} />

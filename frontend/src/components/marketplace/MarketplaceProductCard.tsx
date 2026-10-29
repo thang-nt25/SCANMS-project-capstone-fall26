@@ -78,7 +78,14 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <Link to={product.storeId ? `/shops/${product.storeId}` : '/search'} className="mb-2 inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F]"><Store size={13} className="shrink-0" /><span className="truncate">{product.brand}</span></Link>
         <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm"><Link to={`/products/${product.sku || product.id}`} className="hover:text-[#B88E4F]">{product.name}</Link></h3>
-        <p className="mb-2 mt-2 text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</p>
+        <div className="mb-2 mt-1.5 flex items-center justify-between gap-1 flex-wrap">
+          <span className="text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
+          {product.commissionRate && product.commissionRate > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
+              Hoa hồng KOC: {product.commissionRate}%
+            </span>
+          )}
+        </div>
         <div className="mt-auto flex flex-wrap items-baseline gap-x-2 border-t border-[#EAE4D7] pt-3"><strong className="text-sm text-[#1A1612] sm:text-base">{formatMoney(price)}</strong>{product.origPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(product.origPrice)}</del>}</div>
         {variants.length > 0 && (choosing || variantId) && <div ref={choiceRef} className="marketplace-variant-choice [scroll-margin-block:16px] [&[data-required=true]_.marketplace-variant-select]:border-[#DC2626] [&[data-required=true]_.marketplace-variant-select]:bg-[#FBF5EB] [&[data-required=true]_.marketplace-variant-select]:outline-[#DC2626] mt-3" data-required={needsSelection}>
           <label htmlFor={choiceId} className="block text-[10px] text-[#7D715E]">{choiceCopy.label}</label>

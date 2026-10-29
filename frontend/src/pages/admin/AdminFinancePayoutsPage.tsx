@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw,
   Search,
-  ShieldCheck,
-  Building2,
   ReceiptText,
   Landmark,
   Eye,
@@ -56,7 +54,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 };
 
 export default function AdminFinancePayoutsPage() {
-  const [activeTab, setActiveTab] = useState<'kol' | 'merchant' | 'escrow'>('kol');
+  const [activeTab, setActiveTab] = useState<'kol' | 'escrow'>('kol');
   const [loading, setLoading] = useState(true);
   const [payouts, setPayouts] = useState<PayoutItem[]>([]);
   const [stats, setStats] = useState<PayoutStats | null>(null);
@@ -186,13 +184,10 @@ export default function AdminFinancePayoutsPage() {
             <ReceiptText className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-[#1A1612]">Quản trị Chi trả & Dòng tiền Sàn</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
-                <ShieldCheck className="w-3 h-3" />
-                Trung tâm quyết toán Escrow
-              </span>
-            </div>
+            <h1 className="text-lg font-bold text-[#1A1612]">Quản trị Chi trả & Dòng tiền Vận hành</h1>
+            <p className="text-xs text-[#7D715E] mt-0.5">
+              Phê duyệt giải ngân thù lao tiếp thị Napas 24/7 và giám sát tài khoản bảo chứng tạm giữ Escrow 14 ngày.
+            </p>
           </div>
         </div>
 
@@ -220,20 +215,7 @@ export default function AdminFinancePayoutsPage() {
           }`}
         >
           <ReceiptText className="w-4 h-4" />
-          <span>Chi trả hoa hồng KOL ({stats?.pending.count ?? 0} chờ duyệt)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('merchant')}
-          className={`pb-3 px-4 text-xs font-bold transition flex items-center gap-2 border-b-2 cursor-pointer ${
-            activeTab === 'merchant'
-              ? 'border-[#B88E4F] text-[#B88E4F]'
-              : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>Chi trả doanh thu Shop</span>
+          <span>Danh sách Yêu cầu Chi trả ({stats?.pending.count ?? 0} lệnh chờ duyệt)</span>
         </button>
 
         <button
@@ -246,7 +228,7 @@ export default function AdminFinancePayoutsPage() {
           }`}
         >
           <Landmark className="w-4 h-4" />
-          <span>Ký quỹ & Thu phí Sàn</span>
+          <span>Bảo chứng Tạm giữ Escrow (14 ngày SLA)</span>
         </button>
       </div>
 
@@ -259,11 +241,11 @@ export default function AdminFinancePayoutsPage() {
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Chờ phê duyệt
               </div>
-              <div className="text-xl font-black text-amber-700">
+              <div className="text-2xl font-bold font-mono tabular-nums text-amber-700">
                 {formatMoney(stats?.pending.netAmount || '0')}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                {stats?.pending.count ?? 0} yêu cầu cần xử lý
+                {stats?.pending.count ?? 0} yêu cầu chờ thẩm định
               </div>
             </div>
 
@@ -271,35 +253,35 @@ export default function AdminFinancePayoutsPage() {
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Đã giải ngân
               </div>
-              <div className="text-xl font-black text-emerald-700">
+              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-700">
                 {formatMoney(stats?.approved.netAmount || '0')}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                {stats?.approved.count ?? 0} yêu cầu thành công
+                {stats?.approved.count ?? 0} lệnh chuyển thành công
               </div>
             </div>
 
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Thuế TNCN đã giữ (10%)
+                Thuế TNCN đã khấu trừ (10%)
               </div>
-              <div className="text-xl font-black text-[#1A1612]">
+              <div className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
                 {formatMoney(stats?.approved.taxAmount || '0')}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                Nộp Kho bạc Nhà nước
+                Lũy kế thuế TNCN khấu trừ 10%
               </div>
             </div>
 
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ chuyển khoản
+                Chờ chuyển khoản Napas
               </div>
-              <div className="text-xl font-black text-blue-700">
+              <div className="text-2xl font-bold font-mono tabular-nums text-blue-700">
                 {stats?.processingCount ?? 0}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                Lô VietQR đã xuất
+                Lệnh chi Napas 24/7 đang xử lý
               </div>
             </div>
           </div>
@@ -455,145 +437,8 @@ export default function AdminFinancePayoutsPage() {
         </div>
       )}
 
-      {/* Tab 2: Chi trả doanh thu Shop */}
-      {activeTab === 'merchant' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ phê duyệt giải ngân
-              </div>
-              <div className="text-xl font-black text-amber-700">
-                12.500.000 ₫
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">1 yêu cầu rút doanh thu</div>
-            </div>
-
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Đã giải ngân cho gian hàng
-              </div>
-              <div className="text-xl font-black text-emerald-700">
-                28.400.000 ₫
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">1 lệnh hoàn tất đối soát</div>
-            </div>
-
-            <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Phí rút doanh thu
-              </div>
-              <div className="text-xl font-black text-[#1A1612]">
-                0 ₫
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Sàn miễn phí giao dịch Napas247</div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAF8F5] text-[#7D715E] border-b border-[#EAE4D7] font-bold">
-                  <tr>
-                    <th className="p-3.5">Mã Lệnh / Ngày</th>
-                    <th className="p-3.5">Gian Hàng</th>
-                    <th className="p-3.5">Tài Khoản Thụ Hưởng</th>
-                    <th className="p-3.5 text-right">Doanh Thu Rút</th>
-                    <th className="p-3.5 text-right">Phí Xử Lý</th>
-                    <th className="p-3.5 text-right font-black text-[#1A1612]">Thực Chuyển</th>
-                    <th className="p-3.5 text-center">Trạng Thái</th>
-                    <th className="p-3.5 text-center">Thao Tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EAE4D7]">
-                  <tr className="hover:bg-[#FAF8F5]/60 transition">
-                    <td className="p-3.5">
-                      <div className="font-mono text-[11px] font-bold text-[#1A1612]">WD-ST-99810</div>
-                      <div className="text-[10px] text-[#7D715E]">25/10/2026</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-bold text-[#1A1612]">Sora Skin Official</div>
-                      <div className="text-[10px] text-[#7D715E]">Mã Shop: SHP-SORA-01</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-[#1A1612]">MBBank</div>
-                      <div className="font-mono font-bold text-[#B88E4F]">0988776655</div>
-                      <div className="text-[10px] text-[#7D715E] uppercase">CONG TY TNHH SORA SKIN</div>
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-xs text-[#7D715E]">
-                      12.500.000 ₫
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-xs text-[#7D715E]">
-                      0 ₫
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-sm font-black text-[#1A1612]">
-                      12.500.000 ₫
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">
-                        Chờ duyệt
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => toast.success('Đã xác nhận giải ngân doanh thu cho Sora Skin Official')}
-                          className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold transition cursor-pointer"
-                        >
-                          Duyệt & Tải UNC
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toast.info('Đã từ chối yêu cầu rút')}
-                          className="px-2 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition cursor-pointer"
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr className="hover:bg-[#FAF8F5]/60 transition">
-                    <td className="p-3.5">
-                      <div className="font-mono text-[11px] font-bold text-[#1A1612]">WD-ST-99750</div>
-                      <div className="text-[10px] text-[#7D715E]">24/10/2026</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-bold text-[#1A1612]">Aura Bio Cosmetics</div>
-                      <div className="text-[10px] text-[#7D715E]">Mã Shop: SHP-AURA-02</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-[#1A1612]">Vietcombank</div>
-                      <div className="font-mono font-bold text-[#B88E4F]">0071001234567</div>
-                      <div className="text-[10px] text-[#7D715E] uppercase">CTY CP AURA VIET NAM</div>
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-xs text-[#7D715E]">
-                      28.400.000 ₫
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-xs text-[#7D715E]">
-                      0 ₫
-                    </td>
-                    <td className="p-3.5 text-right font-mono text-sm font-black text-[#1A1612]">
-                      28.400.000 ₫
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        Đã giải ngân
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <span className="text-[11px] text-[#7D715E] italic">Hoàn tất</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Ký quỹ & Thu phí Sàn */}
+      {/* Tab 2: Bảo chứng Tạm giữ Escrow */}
+      
       {activeTab === 'escrow' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -601,30 +446,30 @@ export default function AdminFinancePayoutsPage() {
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Tài khoản Ký quỹ Escrow (Ngân hàng)
               </div>
-              <div className="text-xl font-black text-[#1A1612]">
+              <div className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
                 {formatMoney('158400000')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Tiền khách thanh toán đang giữ an toàn</div>
+              <div className="text-[11px] text-[#7D715E] mt-1">Tổng tiền thanh toán đơn hàng đang trong SLA 14 ngày</div>
             </div>
 
             <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Doanh thu Phí Sàn Tích Lũy (3%)
               </div>
-              <div className="text-xl font-black text-emerald-700">
+              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-700">
                 {formatMoney('14250000')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Lợi nhuận gộp dịch vụ sàn TMĐT</div>
+              <div className="text-[11px] text-[#7D715E] mt-1">Phí dịch vụ hạ tầng tiếp thị toàn sàn (3%)</div>
             </div>
 
             <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
                 Thuế TNCN Đã Tạm Giữ
               </div>
-              <div className="text-xl font-black text-[#B88E4F]">
+              <div className="text-2xl font-bold font-mono tabular-nums text-[#B88E4F]">
                 {formatMoney(stats?.approved.taxAmount || '0')}
               </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Chuẩn bị nộp quyết toán thuế quý</div>
+              <div className="text-[11px] text-[#7D715E] mt-1">Dự phòng quyết toán thuế TNCN đối tác quý hiện tại</div>
             </div>
           </div>
 
