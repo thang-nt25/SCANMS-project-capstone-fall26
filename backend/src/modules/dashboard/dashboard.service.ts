@@ -275,12 +275,12 @@ export class DashboardService {
     let pendingOrdersCount = 0;
     if (!isShop) {
       const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
-        SELECT COALESCE(SUM(oi."calculatedCommissionAmount"), 0) AS "estimatedCommission",
+        SELECT COALESCE(SUM(oi.calculated_commission_amount), 0) AS "estimatedCommission",
                COUNT(DISTINCT o.id) AS "pendingOrdersCount"
         FROM "orders" o
-        JOIN "order_items" oi ON oi."orderId" = o.id
-        LEFT JOIN "commissions" c ON c."orderId" = o.id AND c.status IN ('APPROVED', 'PAID')
-        WHERE o."attributedCollaboratorId" = ${userId}
+        JOIN "order_items" oi ON oi.order_id = o.id
+        LEFT JOIN "commissions" c ON c.order_id = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o.attributed_collaborator_id = ${userId}::uuid
           AND o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
           AND c.id IS NULL
       `;
@@ -288,13 +288,13 @@ export class DashboardService {
       pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
     } else if (storeId) {
       const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
-        SELECT COALESCE(SUM(oi."calculatedCommissionAmount"), 0) AS "estimatedCommission",
+        SELECT COALESCE(SUM(oi.calculated_commission_amount), 0) AS "estimatedCommission",
                COUNT(DISTINCT o.id) AS "pendingOrdersCount"
         FROM "orders" o
-        JOIN "order_items" oi ON oi."orderId" = o.id
-        LEFT JOIN "commissions" c ON c."orderId" = o.id AND c.status IN ('APPROVED', 'PAID')
-        WHERE o."storeId" = ${storeId}
-          AND o."attributedCollaboratorId" IS NOT NULL
+        JOIN "order_items" oi ON oi.order_id = o.id
+        LEFT JOIN "commissions" c ON c.order_id = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o.store_id = ${storeId}::uuid
+          AND o.attributed_collaborator_id IS NOT NULL
           AND o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
           AND c.id IS NULL
       `;

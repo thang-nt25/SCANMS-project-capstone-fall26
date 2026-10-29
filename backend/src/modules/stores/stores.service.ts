@@ -645,4 +645,33 @@ export class StoresService {
     await this.cache?.set?.(cacheKey, result, 60);
     return result;
   }
+
+  async getAllStoresAdmin() {
+    return this.prisma.store.findMany({
+      where: { isDeleted: false },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        ownerId: true,
+        isVerified: true,
+        isActive: true,
+        defaultCommissionRate: true,
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            products: { where: { isDeleted: false } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
 }
