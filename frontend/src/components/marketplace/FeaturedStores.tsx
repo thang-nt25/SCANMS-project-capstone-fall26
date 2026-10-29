@@ -27,8 +27,8 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
         <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7" {...interactionProps}>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">THƯƠNG HIỆU TRÊN SCANMS</p>
-            <h2 id="featured-stores-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Gian hàng đối tác tiêu biểu</h2>
+            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">HỆ THỐNG PHÂN PHỐI DOANH NGHIỆP</p>
+            <h2 id="featured-stores-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Nhãn Hàng & Thương Hiệu Trực Thuộc</h2>
           </div>
           <div className="ml-auto flex shrink-0 gap-1">
             <button type="button" onClick={() => scroll(-1)} aria-label="Gian hàng trước" className="rounded-full border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]"><ArrowLeft size={16} /></button>

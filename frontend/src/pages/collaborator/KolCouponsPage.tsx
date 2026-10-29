@@ -476,52 +476,52 @@ export const KolCouponsPage: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[#7D715E]">
+              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                 Doanh số qua Coupon
               </span>
-              <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+              <DollarSign className="w-4 h-4 text-[#B88E4F]" />
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-[#1A1612]">
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
               {Number(summary.totalSales || 0).toLocaleString('vi-VN')} ₫
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[#7D715E]">
+              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                 Hoa hồng dự kiến
               </span>
-              <Sparkles className="w-4 h-4 text-[#B88E4F]" />
+              <Tag className="w-4 h-4 text-[#B88E4F]" />
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-[#B88E4F]">
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#B88E4F]">
               +{Number(summary.totalCommission || 0).toLocaleString('vi-VN')} ₫
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[#7D715E]">
+              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                 Đơn hàng / Lượt dùng
               </span>
               <Percent className="w-4 h-4 text-[#B88E4F]" />
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-[#1A1612]">
-              {summary.totalOrders || 0} đơn ({totalRedemptions} lượt)
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
+              {summary.totalOrders || 0} <span className="text-xs font-normal text-[#7D715E]">đơn ({totalRedemptions} lượt)</span>
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[#7D715E]">
+              <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                 Mã đang hoạt động
               </span>
-              <Tag className="w-4 h-4 text-[#B88E4F]" />
+              <Ticket className="w-4 h-4 text-[#B88E4F]" />
             </div>
-            <p className="text-xl sm:text-2xl font-bold text-[#1A1612]">
-              {activeCount} / {totalCount} mã
+            <p className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
+              {activeCount} <span className="text-xs font-normal text-[#7D715E]">/ {totalCount} mã</span>
             </p>
             <span className="text-[11px] text-[#7D715E] block mt-0.5">
-              ({pendingCount} mã chờ duyệt)
+              ({pendingCount} mã chờ Shop duyệt)
             </span>
           </div>
         </div>
@@ -581,9 +581,8 @@ export const KolCouponsPage: React.FC = () => {
             <h3 className="text-lg font-semibold text-[#1A1612] mb-1">
               Chưa có mã giảm giá nào
             </h3>
-            <p className="text-sm text-[#7D715E] max-w-md mx-auto mb-5">
-              Bạn có thể bắt đầu tạo mã giảm giá riêng (ví dụ: THANGVIP10,
-              NHATXINH) để chia sẻ cho khách hàng và đẩy doanh số nhận hoa hồng.
+            <p className="text-xs text-[#7D715E] max-w-md mx-auto mb-5 leading-relaxed">
+              Tạo mã giảm giá độc quyền mang dấu ấn cá nhân để phân phối cho người theo dõi, tăng tỷ lệ hoàn tất đơn và nhận hoa hồng tiếp thị.
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
