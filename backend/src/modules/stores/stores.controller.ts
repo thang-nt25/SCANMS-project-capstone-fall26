@@ -93,6 +93,15 @@ export class StoresController {
     return this.storesService.updateMyStore(ownerId, dto);
   }
 
+  @Get('all-admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy toàn bộ cửa hàng trực thuộc để quản trị và phân quyền' })
+  async getAllStoresAdmin() {
+    return this.storesService.getAllStoresAdmin();
+  }
+
   @Get('marketplace')
   @ApiOperation({
     summary:

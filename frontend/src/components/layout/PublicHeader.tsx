@@ -410,11 +410,11 @@ export function PublicHeader({
                         to="/customer/upgrade"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#B88E4F] bg-gradient-to-r from-[#FBF5EB] to-[#F7EDE0] hover:from-[#F3EFE6] hover:to-[#EAE4D7] rounded-xl border border-[#EEDFC6] transition mt-1 shadow-2xs group"
-                        title="Đăng ký hợp tác KOL Tiếp Thị hoặc Mở Shop"
+                        title="Đăng ký Đối tác Sáng tạo & Tiếp thị liên kết (Creator Network)"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0 group-hover:scale-105 transition-transform" />
-                          <span className="truncate">Hợp tác với chúng tôi</span>
+                          <span className="truncate">Đăng ký Đối tác Tiếp thị</span>
                         </div>
                         <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-[#C59B58] text-white shrink-0 shadow-2xs">
                           MỚI

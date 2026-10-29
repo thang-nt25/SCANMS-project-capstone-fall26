@@ -573,11 +573,29 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy hồ sơ đối tác');
     }
 
+    let bronzeTierId: string | undefined = undefined;
+    if (dto.status === 'VERIFIED') {
+      const bronzeTier = await this.prisma.collaboratorTier.findFirst({
+        where: {
+          OR: [
+            { name: { contains: 'Đồng', mode: 'insensitive' } },
+            { name: { contains: 'Bronze', mode: 'insensitive' } },
+            { minRevenueThreshold: 0 },
+          ],
+        },
+        orderBy: { minRevenueThreshold: 'asc' },
+      });
+      if (bronzeTier) {
+        bronzeTierId = bronzeTier.id;
+      }
+    }
+
     const updatedProfile = await this.prisma.collaboratorProfile.update({
       where: { id: profileId },
       data: {
         kycStatus:
           dto.status === 'VERIFIED' ? KycStatus.VERIFIED : KycStatus.REJECTED,
+        ...(dto.status === 'VERIFIED' && bronzeTierId ? { tierId: bronzeTierId } : {}),
       },
     });
 

@@ -67,6 +67,7 @@ const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleReq
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
 const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
 const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
+const AdminPersonnelPage = lazyRetry(() => import('../pages/admin/AdminPersonnelPage'));
 const AdminFinancePayoutsPage = lazy(() => import('../pages/admin/AdminFinancePayoutsPage'));
 
 // AI Anti-Fraud Sentinel & Traffic Defense
@@ -245,6 +246,7 @@ function AppRoutes() {
 
               {/* Collaborator Consolidated Hubs */}
               <Route path="collaborator/marketing" element={<MarketingToolkitPage />} />
+              <Route path="collaborator/marketing-toolkit" element={<Navigate to="/collaborator/marketing" replace />} />
               <Route path="collaborator/live-sessions" element={<CollaboratorLiveSessionsPage />} />
               <Route path="collaborator/collaboration" element={<ShopCollaborationPage />} />
               <Route path="collaborator/profile" element={<CreatorProfilePage />} />
@@ -278,7 +280,10 @@ function AppRoutes() {
               <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
               <Route path="admin/payouts" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/finance" element={<AdminFinancePayoutsPage />} />
+              <Route path="admin/personnel" element={<AdminPersonnelPage />} />
+              <Route path="admin/internal-staff" element={<AdminPersonnelPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
+              <Route path="admin/kyc" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />
               <Route path="admin/audit" element={<AuditLogsPage />} />
