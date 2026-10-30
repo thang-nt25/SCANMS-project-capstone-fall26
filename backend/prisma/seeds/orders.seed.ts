@@ -31,12 +31,12 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       const id = seedId(`order:${key}`);
       const storeIndex =
         purchase === 0
-          ? Math.floor(customerIndex / 2)
-          : (customerIndex + 3) % SHOPS.length;
+          ? customerIndex % SHOPS.length
+          : (customerIndex + 1) % SHOPS.length;
       const storeId = seedId(`store:${storeIndex}`);
-      // Secondary purchases exercise the five additional creators, including Diamond tier.
+      // Secondary purchases exercise the additional creators (indices 16..19, including Diamond tier).
       const creatorIndex =
-        purchase === 1 && storeIndex < 5 ? storeIndex + 15 : storeIndex;
+        purchase === 1 ? storeIndex + 16 : storeIndex;
       const collaboratorId = seedId(`creator:${creatorIndex}`);
       const status =
         purchase === 0
@@ -56,16 +56,25 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         : daysFrom(context, purchase === 0 ? -43 : completed ? -23 : -4);
       const deliveredAt = delivered
         ? historicalLive
-          ? new Date(createdAt.getTime() + 2 * 86_400_000)
-          : daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
+        ? new Date(createdAt.getTime() + 2 * 86_400_000)
+        : daysFrom(context, purchase === 0 ? -40 : completed ? -20 : -2)
         : null;
       const completedAt = completed
         ? new Date(deliveredAt!.getTime() + 14 * 86_400_000)
         : null;
+      const pair =
+        purchase === 0
+          ? ([[0, 1], [1, 2], [2, 0]] as const)[
+              Math.floor(customerIndex / 4) % 3
+            ]
+          : null;
       const products =
         purchase === 0
-          ? [data.products[storeIndex * 2], data.products[storeIndex * 2 + 1]]
-          : [data.products[storeIndex * 2 + (customerIndex % 2)]];
+          ? [
+              data.products[storeIndex * 3 + pair![0]],
+              data.products[storeIndex * 3 + pair![1]],
+            ]
+          : [data.products[storeIndex * 3 + (customerIndex % 3)]];
       // Four bulk purchases fund two legitimate demo payouts of 2m VND with 10% PIT.
       const quantity = purchase === 0 && customerIndex < 4 ? 30 : 1;
       const subtotalAmount = products.reduce(
@@ -273,7 +282,10 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           commissionSnapshotAt: createdAt,
           createdAt,
         });
-        if (completed)
+        const productReviewCount = data.reviews.filter(
+          (row) => row.productId === product.id,
+        ).length;
+        if (completed && productReviewCount < 3)
           data.reviews.push({
             id: seedId(`review:${key}:${itemIndex}`),
             productId: product.id!,

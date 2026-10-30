@@ -11,9 +11,12 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
     const completed = status === 'COMPLETED';
     const received = completed || status === 'RECEIVED';
     const granted = status !== 'PENDING';
-    const productIndex = (index % 15) * 2;
+    const productIndex = index % data.products.length;
     const product = data.products[productIndex];
-    const variant = data.variants[productIndex * 4];
+    const variant =
+      data.variants.find((v) => v.productId === product.id) ||
+      data.variants[productIndex * 4] ||
+      data.variants[0];
     const channel = data.socialChannels[index];
     const sampleId = seedId(`sample:${index}`);
     const receivedAt = received

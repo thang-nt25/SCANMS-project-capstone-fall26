@@ -124,6 +124,7 @@ main().catch((error: unknown) => {
   ]
     .filter((value): value is string => Boolean(value))
     .reduce((text, value) => text.split(value).join('[redacted]'), message);
+  console.error(error);
   console.error(`Seed failed: ${safeMessage}`);
   process.exitCode = 1;
 });

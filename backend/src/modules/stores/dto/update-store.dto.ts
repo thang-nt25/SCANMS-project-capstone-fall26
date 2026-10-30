@@ -14,6 +14,15 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStoreDto {
   @ApiPropertyOptional({
+    example: 'Mỹ phẩm & Chăm sóc da',
+    description: 'Ngành hàng kinh doanh chuyên biệt của Gian hàng',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  categoryName?: string;
+
+  @ApiPropertyOptional({
     description: 'Chính sách đổi trả của Shop (tối đa 500 ký tự)',
   })
   @IsOptional()

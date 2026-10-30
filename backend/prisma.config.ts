@@ -7,6 +7,6 @@ export default defineConfig({
     seed: 'node prisma/seed-runner.cjs',
   },
   datasource: {
-    url: process.env.DIRECT_URL ? env('DIRECT_URL') : env('DATABASE_URL'),
+    url: env('DATABASE_URL'),
   },
 });

@@ -24,7 +24,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       data.campaignProducts.push({
         id: seedId(`campaign-product:${index}:${slot}`),
         campaignId,
-        productId: seedId(`product:${index * 2 + slot}`),
+        productId: seedId(`product:${index * 3 + slot}`),
         createdAt,
       });
     data.coupons.push({
@@ -149,7 +149,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       createdAt,
     });
     for (let slot = 0; slot < 2; slot++) {
-      const productIndex = storeIndex * 2 + slot;
+      const productIndex = storeIndex * 3 + slot;
       const productId = seedId(`product:${productIndex}`);
       data.couponProducts.push({
         id: seedId(`coupon-product:${creatorIndex}:${slot}`),
@@ -170,7 +170,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
         createdAt,
       });
     }
-    const product = data.products[storeIndex * 2];
+    const product = data.products[storeIndex * 3];
     const proposalId = seedId(`deal:${creatorIndex}`);
     // VIP deal still stores base + bonus (12); checkout extracts +2 via exclusiveDealBonus.
     data.deals.push({
@@ -247,17 +247,18 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
   });
 
   for (let index = 0; index < 5; index++) {
+    const storeIndex = index % SHOPS.length;
     const sessionId = seedId(`live:${index}`);
     const active = index < 2;
     const startsAt = daysFrom(context, active ? -1 / 48 : -40 - index);
     const endsAt = new Date(startsAt.getTime() + 2 * 3_600_000);
     data.liveSessions.push({
       id: sessionId,
-      storeId: seedId(`store:${index}`),
+      storeId: seedId(`store:${storeIndex}`),
       creatorId: seedId(`creator:${index}`),
-      createdBy: seedId(`shop-owner:${index}`),
-      title: `${SHOPS[index].name} — Chia sẻ trải nghiệm cùng KOC`,
-      coverImageUrl: data.products[index * 2].imageUrl,
+      createdBy: seedId(`shop-owner:${storeIndex}`),
+      title: `${SHOPS[storeIndex].name} — Chia sẻ trải nghiệm cùng KOC`,
+      coverImageUrl: data.products[storeIndex * 3].imageUrl,
       description:
         'Phòng minh họa Capstone; KOC cần mở phát sóng để có tín hiệu video trực tiếp.',
       platform: 'SCANMS',
@@ -271,18 +272,20 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       governance: {
         seedSource: 'SYNTHETIC_CAPSTONE',
         intendedBonusPercentage: 2,
-        pinnedProductId: seedId(`product:${index * 2}`),
+        pinnedProductId: seedId(`product:${storeIndex * 3}`),
       },
       createdAt: new Date(startsAt.getTime() - 86_400_000),
     });
-    for (let slot = 0; slot < 2; slot++)
+    for (let slot = 0; slot < 2; slot++) {
+      const pIdx = storeIndex * 3 + slot;
       data.liveProducts.push({
         id: seedId(`live-product:${index}:${slot}`),
         sessionId,
-        productId: seedId(`product:${index * 2 + slot}`),
-        variantId: seedId(`variant:${index * 2 + slot}:0`),
+        productId: seedId(`product:${pIdx}`),
+        variantId: seedId(`variant:${pIdx}:0`),
         createdAt: startsAt,
       });
+    }
     // Historical attendance is stored as rows; active rooms start at zero real viewers.
     if (!active)
       for (let viewer = 0; viewer < 5 + index; viewer++)
@@ -324,9 +327,9 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
   data.users
     .filter((user) => user.role === 'CUSTOMER')
     .forEach((customer, index) => {
-      const storeIndex = Math.floor(index / 2);
+      const storeIndex = index % SHOPS.length;
       const conversationId = seedId(`customer-conversation:${index}`);
-      const product = data.products[storeIndex * 2];
+      const product = data.products[storeIndex * 3];
       const sentAt = daysFrom(context, -0.5);
       data.conversations.push({
         id: conversationId,

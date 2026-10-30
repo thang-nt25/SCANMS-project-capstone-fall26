@@ -32,7 +32,7 @@ export function buildFinance(data: SeedDataset, context: SeedContext): void {
         type: 'COMMISSION_APPROVED',
         referenceId: seedId(`topup:${index}`),
         referenceType: 'TOPUP_DEMO',
-        amount: index < 4 ? 50_000_000 : 3_000_000,
+        amount: index < 4 ? 100_000_000 : 10_000_000,
         at: daysFrom(context, -46),
       });
     });

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
+import { storeService } from '../../services/store.service';
 import { productPackageInput } from '../../utils/product-package.utils';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
@@ -348,6 +349,8 @@ export default function ProductManagementPage() {
   const currentStoreId = localStorage.getItem('current_store_id') || undefined;
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [storeCategory, setStoreCategory] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -787,6 +790,22 @@ export default function ProductManagementPage() {
   };
   loadProductsRef.current = loadProducts;
 
+  useEffect(() => {
+    if (!isAdminOrManager && !isKol) {
+      storeService
+        .getMyStore()
+        .then((s) => {
+          if (s?.categoryName) {
+            setStoreCategory(s.categoryName);
+          }
+          if (s?.name) {
+            setStoreName(s.name);
+          }
+        })
+        .catch((err) => console.warn('Không thể tải ngành hàng của shop:', err));
+    }
+  }, [isAdminOrManager, isKol]);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
@@ -925,8 +944,17 @@ export default function ProductManagementPage() {
     setFormSku('PROD-' + Math.random().toString(36).substring(2, 7).toUpperCase());
     setFormTitle('');
     setFormBarcode('');
-    setFormCategory('');
+    const initialCategory = storeCategory || '';
+    setFormCategory(initialCategory);
     setFormCustomCategory('');
+    if (initialCategory) {
+      const cat = STANDARD_CATEGORIES.find((c) => c.name === initialCategory);
+      const prefix = cat?.prefix || 'PROD';
+      const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+      setFormSku(`${prefix}-${randomCode}`);
+    } else {
+      setFormSku('');
+    }
     setFormDescription('');
     setFormIngredients('');
     setFormOrigin('');
@@ -945,7 +973,7 @@ export default function ProductManagementPage() {
     setFormPackageHeight('');
     setFormSampleEnabled(false);
     setFormSampleQuota('');
-    setFormSpecifications(getDefaultSpecsForCategory(''));
+    setFormSpecifications(getDefaultSpecsForCategory(initialCategory));
     setFormImage('');
     setFormSubImages([]);
     setFormVariants([]);
@@ -2172,15 +2200,23 @@ export default function ProductManagementPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-3.5">
                   <div>
-                    <label className="text-xs font-semibold text-[#1A1612] block mb-1.5">
-                      Danh mục sản phẩm <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-[#1A1612]">
+                        Danh mục sản phẩm <span className="text-rose-500">*</span>
+                      </label>
+                      {storeCategory && (
+                        <span className="text-[10.5px] font-bold text-[#8C6B32] bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EEDFC6] flex items-center gap-1">
+                          <ShieldCheck size={11} className="text-[#B88E4F]" /> Ngành hàng cố định
+                        </span>
+                      )}
+                    </div>
                     <Select
                       id="form-category-select"
                       value={formCategory}
                       onChange={(e) => handleCategoryChange(e.target.value)}
+                      disabled={Boolean(storeCategory)}
                       required
-                      className="w-full text-xs"
+                      className={`w-full text-xs ${storeCategory ? 'bg-[#F3EFE6]/60 cursor-not-allowed opacity-90' : ''}`}
                     >
                       <option value="" disabled>Chọn danh mục</option>
                       {STANDARD_CATEGORIES.map((cat) => (
@@ -2189,6 +2225,11 @@ export default function ProductManagementPage() {
                         </option>
                       ))}
                     </Select>
+                    {storeCategory && (
+                      <p className="mt-1 text-[11px] text-[#7D715E] flex items-center gap-1">
+                        🔒 Khóa theo phân ngành của <strong>{storeName || 'Gian hàng'}</strong> ({storeCategory}).
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -2253,7 +2294,7 @@ export default function ProductManagementPage() {
                       onChange={(e) => {
                         const title = e.target.value;
                         setFormTitle(title);
-                        if (!formCategory) {
+                        if (!formCategory && !storeCategory) {
                           const suggestedCategory = inferCategoryFromTitle(title);
                           if (suggestedCategory) handleCategoryChange(suggestedCategory);
                         }
