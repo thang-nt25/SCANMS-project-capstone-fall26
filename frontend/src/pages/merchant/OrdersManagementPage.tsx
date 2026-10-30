@@ -325,8 +325,14 @@ export default function OrdersManagementPage({
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
   const [manualPaymentOrder, setManualPaymentOrder] = useState<Pick<CreatedManualOrder, 'id' | 'externalOrderSn'> | null>(null);
   const [returnResponse, setReturnResponse] = useState('');
+  const [returnRejectionReason, setReturnRejectionReason] = useState<'' | 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER'>('');
   const [returnError, setReturnError] = useState('');
   const [respondingReturn, setRespondingReturn] = useState(false);
+  useEffect(() => {
+    setReturnResponse('');
+    setReturnRejectionReason('');
+    setReturnError('');
+  }, [selectedOrderDetails?.id]);
   const [shippingModalOrder, setShippingModalOrder] = useState<StoreOrderRecord | null>(null);
   const [shippingCarrier, setShippingCarrier] = useState("GHN");
   const [shippingTrackingNumber, setShippingTrackingNumber] = useState("");
@@ -654,6 +660,10 @@ export default function OrdersManagementPage({
   };
 
   const handleReturnDecision = async (decision: 'APPROVE' | 'REJECT') => {
+    if (decision === 'REJECT' && !returnRejectionReason) {
+      setReturnError('Vui lòng chọn lý do từ chối và giải thích cụ thể cho khách.');
+      return;
+    }
     if (!selectedOrderDetails?.returnRequest || returnResponse.trim().length < 10) {
       const errText = 'Vui lòng ghi rõ hướng xử lý (ít nhất 10 ký tự).';
       setReturnError(errText);
@@ -668,6 +678,7 @@ export default function OrdersManagementPage({
       const result = await orderService.respondReturnRequest(selectedOrderDetails.id, {
         decision,
         response: returnResponse.trim(),
+        ...(decision === 'REJECT' && returnRejectionReason ? { rejectionReason: returnRejectionReason } : {}),
       });
       toast.success(decision === 'APPROVE' ? 'Đã chấp thuận yêu cầu đổi trả' : 'Đã từ chối yêu cầu đổi trả', {
         description: result.message || 'Hệ thống đã cập nhật và gửi thông báo phản hồi tới người mua.',
@@ -675,6 +686,7 @@ export default function OrdersManagementPage({
       setActionSuccessMsg(result.message);
       setSelectedOrderDetails(null);
       setReturnResponse('');
+      setReturnRejectionReason('');
       setOrdersRefreshCount((count) => count + 1);
     } catch (error) {
       const errMsg = messageOf(error);
@@ -2224,14 +2236,23 @@ export default function OrdersManagementPage({
                 {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response rounded-lg border border-[#EAE4D7] bg-white p-3"><span className="text-[11px] font-medium text-[#7D715E]">Phản hồi của gian hàng</span><p className="mt-1 break-words leading-relaxed">{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="space-y-2">
-                    <label className="block font-bold">Hướng xử lý gửi khách
-                      <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={1000} rows={3}
+                    <label className="block font-semibold">Lý do từ chối <span className="font-normal text-[#7D715E]">(bắt buộc khi từ chối)</span>
+                      <select value={returnRejectionReason} onChange={event => setReturnRejectionReason(event.target.value as typeof returnRejectionReason)} className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal">
+                        <option value="">Chọn lý do</option>
+                        <option value="EVIDENCE_MISMATCH">Bằng chứng chưa xác nhận lỗi được phản ánh</option>
+                        <option value="PRODUCT_MISMATCH">Sản phẩm yêu cầu không khớp đơn hàng</option>
+                        <option value="OUTSIDE_POLICY">Yêu cầu chưa đáp ứng điều kiện đổi trả</option>
+                        <option value="OTHER">Lý do khác</option>
+                      </select>
+                    </label>
+                    <label className="block font-bold">Giải thích / hướng xử lý gửi khách
+                      <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={850} rows={3} placeholder="Nêu rõ tình trạng sản phẩm, bằng chứng và căn cứ chấp nhận hoặc từ chối."
                         className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('APPROVE')}
                         className="rounded-xl bg-[#C59B58] px-4 py-2 font-bold text-white disabled:opacity-50">Duyệt yêu cầu</button>
-                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
+                      <button type="button" disabled={respondingReturn || !returnRejectionReason || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
                         className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối</button>
                     </div>
                     {returnError && <p role="alert" className="text-[#DC2626]">{returnError}</p>}

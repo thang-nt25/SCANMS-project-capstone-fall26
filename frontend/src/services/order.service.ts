@@ -187,7 +187,7 @@ export const orderService = {
     return response.data;
   },
 
-  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string }) {
+  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string; rejectionReason?: 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER' }) {
     const response = (await api.patch(`/orders/${orderId}/return-request/respond`, data)) as unknown as ApiEnvelope<{
       message: string;
       returnRequest: StoreReturnRequest;

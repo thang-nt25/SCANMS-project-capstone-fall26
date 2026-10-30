@@ -1,0 +1,40 @@
+.live-now { scroll-margin-top: 9rem; background: #faf8f5; padding: 20px 0; color: #1a1612; text-align: left; }
+.live-now__container { width: 100%; max-width: 1248px; margin: 0 auto; padding: 0 24px; }
+.live-now__panel { padding: 20px 24px 22px; border: 1px solid #eae4d7; border-radius: 16px; background: #fff; }
+.live-now__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.live-now__title { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.live-now__title-icon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 10px; background: #fbf5eb; color: #b88e4f; }
+.live-now__title h2 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.4; letter-spacing: -.3px; }
+.live-now__count { white-space: nowrap; border-radius: 6px; background: #fbf5eb; padding: 4px 7px; color: #8c6226; font-size: 11px; font-weight: 600; }
+.live-now__more, .live-now__retry { display: inline-flex; min-height: 40px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; border: 0; background: transparent; padding: 0; color: #7d715e; font-size: 12px; font-weight: 600; cursor: pointer; }
+.live-now__more:hover, .live-now__retry:hover { color: #9b6f32; }
+.live-now :is(a, button):focus-visible { outline: 2px solid #b88e4f; outline-offset: 3px; border-radius: 6px; }
+.live-now__empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; border-top: 1px solid #f0ebe3; padding: 18px 0 2px; }
+.live-now__empty-title { margin: 0; color: #1a1612; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.live-now__empty-description { margin: 4px 0 0; color: #7d715e; font-size: 12px; line-height: 1.5; }
+.live-now__retry:disabled { cursor: wait; opacity: .6; }
+.live-now__loading { margin-top: 16px; border-top: 1px solid #f0ebe3; padding-top: 18px; }
+.live-now__loading span { display: block; width: min(250px, 75%); height: 28px; border-radius: 6px; background: #f3efe6; }
+.live-now__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+@media (min-width: 641px) and (max-width: 1023px) {
+  .live-now__container { padding-inline: 16px; }
+}
+@media (max-width: 768px) {
+  .live-now__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .live-now { padding: 14px 0; }
+  .live-now__container { padding: 0 12px; }
+  .live-now__panel { padding: 16px 14px 18px; border-radius: 14px; }
+  .live-now__title { gap: 8px; }
+  .live-now__title-icon { width: 34px; height: 34px; }
+  .live-now__title h2 { font-size: 16px; }
+  .live-now__count { font-size: 10px; }
+  .live-now__more { gap: 4px; font-size: 11px; }
+  .live-now__empty { margin-top: 12px; padding-top: 15px; }
+  .live-now__grid { gap: 10px; }
+}
+@media (max-width: 380px) {
+  .live-now__title { flex-wrap: wrap; }
+  .live-now__count { margin-left: 42px; }
+}

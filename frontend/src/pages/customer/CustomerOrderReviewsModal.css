@@ -1,0 +1,37 @@
+.order-reviews-dialog { position: fixed; inset: 0; margin: auto; width: min(760px, calc(100% - 32px)); max-height: min(760px, calc(100dvh - 48px)); padding: 0; overflow: hidden; border: 1px solid #EAE4D7; border-radius: 16px; background: #FFFFFF; color: #1A1612; box-shadow: 0 24px 70px rgb(35 29 21 / 18%); }
+.order-reviews-dialog[open] { display: flex; flex-direction: column; }
+.order-reviews-dialog::backdrop { background: rgb(35 29 21 / 36%); backdrop-filter: blur(2px); }
+.order-reviews-heading { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 26px 30px 22px; }
+.order-reviews-heading h2 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.4; }
+.order-reviews-heading p { margin: 7px 0 0; font-size: 12px; color: #7D715E; overflow-wrap: anywhere; }
+.order-reviews-close { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #FFFFFF; color: #7D715E; cursor: pointer; }
+.order-reviews-close:hover { background: #FAF8F5; }
+.order-reviews-content { min-height: 160px; overflow-y: auto; overscroll-behavior: contain; padding: 0 30px; }
+.order-review-entry { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; padding: 24px 0; border-top: 1px solid #EAE4D7; }
+.order-review-avatar { position: relative; display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid #EEDFC6; border-radius: 50%; background: #FBF5EB; color: #B88E4F; font-size: 20px; }
+.order-review-avatar img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+.order-review-author { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.order-review-author strong { font-size: 14px; font-weight: 600; }
+.order-review-author > span { font-size: 11px; color: #7D715E; }
+.order-review-stars { display: flex; gap: 2px; margin-top: 7px; color: #EAE4D7; }
+.order-review-stars .is-filled { fill: #C59B58; color: #C59B58; }
+.order-review-context { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; font-size: 12px; color: #7D715E; line-height: 1.5; }
+.order-review-comment { margin: 16px 0 0; font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.order-review-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.order-review-images img { width: 80px; height: 80px; object-fit: cover; border: 1px solid #EAE4D7; border-radius: 6px; }
+.order-review-video { display: block; width: min(100%, 320px); max-height: 240px; margin-top: 14px; border-radius: 6px; }
+.order-review-moderation { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; padding: 14px 16px; background: #FAF8F5; border-radius: 6px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.order-review-moderation strong { font-weight: 500; }
+.order-review-empty { margin: 20px 0; color: #7D715E; font-size: 14px; }
+.order-reviews-footer { display: flex; flex-shrink: 0; justify-content: flex-end; padding: 18px 30px 26px; }
+.order-reviews-footer button { min-width: 140px; min-height: 40px; border: 1px solid #EEDFC6; border-radius: 6px; background: #FBF5EB; color: #795A2D; font-size: 14px; font-weight: 500; cursor: pointer; }
+.order-reviews-footer button:hover { background: #F3EFE6; }
+.order-reviews-dialog :is(button, a, video):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+@media (max-width: 540px) {
+  .order-reviews-heading { padding: 20px; }
+  .order-reviews-heading h2 { font-size: 19px; }
+  .order-reviews-content { padding: 0 20px; }
+  .order-review-entry { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 20px 0; }
+  .order-review-avatar { width: 36px; height: 36px; font-size: 17px; }
+  .order-reviews-footer { padding: 14px 20px 20px; }
+}

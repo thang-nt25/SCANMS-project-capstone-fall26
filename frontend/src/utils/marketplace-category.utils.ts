@@ -1,8 +1,8 @@
 export const HOME_CATEGORY_GROUPS = [
   { id: 'skin', label: 'Chăm sóc da', terms: ['cham soc da', 'duong da', 'skincare', 'serum', 'sua rua mat', 'chong nang'] },
   { id: 'makeup', label: 'Trang điểm', terms: ['trang diem', 'makeup', 'son moi', 'phan nen', 'mascara'] },
-  { id: 'body', label: 'Chăm sóc cơ thể', terms: ['co the', 'body', 'sua tam', 'cham soc toc', 'dau goi'] },
-  { id: 'health', label: 'Thực phẩm sức khỏe', terms: ['suc khoe', 'thuc pham', 'vitamin', 'health', 'dinh duong'] },
+  { id: 'body', label: 'Cơ thể & tóc', terms: ['co the', 'body', 'sua tam', 'cham soc toc', 'dau goi'] },
+  { id: 'health', label: 'Sức khỏe', terms: ['suc khoe', 'thuc pham bo sung', 'thuc pham chuc nang', 'vitamin', 'health', 'dinh duong'] },
 ] as const;
 
 export function normalizeCategory(value: string): string {

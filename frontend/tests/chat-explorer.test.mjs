@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('../src/utils/chat-explorer.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { chatContentUrl, chatContentText, parseChatContent } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { chatContentUrl, chatContentText, parseChatContent, parseCampaignCard } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 
 test('shared content URLs preserve their destination and resolve internal files', () => {
   assert.equal(chatContentUrl('/uploads/bao-gia.pdf', 'https://scanms.vn/merchant/customer-messages'), 'https://scanms.vn/uploads/bao-gia.pdf');
@@ -31,4 +31,14 @@ test('ordinary messages and unknown structured messages keep their original cont
   }
   assert.equal(parseChatContent('null'), null);
   assert.equal(parseChatContent('[]'), null);
+});
+
+test('campaign invitations and decisions are recognized without treating regular messages as cards', () => {
+  for (const type of ['CAMPAIGN_INVITE', 'CAMPAIGN_ACCEPTED', 'CAMPAIGN_REJECTED']) {
+    const card = { type, campaignId: 'test', campaignName: 'Chiến dịch', participantId: 'participant' };
+    assert.deepEqual(parseCampaignCard(JSON.stringify(card)), card);
+  }
+  for (const text of ['hello', 'null', '[]', '{', '{"type":"PRODUCT_INQUIRY"}']) {
+    assert.equal(parseCampaignCard(text), null);
+  }
 });

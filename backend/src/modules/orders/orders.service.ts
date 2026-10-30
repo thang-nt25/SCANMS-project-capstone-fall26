@@ -54,6 +54,7 @@ import {
 import {
   RespondReturnRequestDto,
   ReturnDecision,
+  RETURN_REJECTION_REASONS,
 } from './dto/respond-return-request.dto';
 import {
   ExternalOrderPlatform,
@@ -3997,10 +3998,18 @@ export class OrdersService {
     ) {
       throw new BadRequestException('Quyết định xử lý không hợp lệ');
     }
-    const response = dto.response?.trim();
-    if (!response || response.length < 10) {
-      throw new BadRequestException('Phản hồi phải có ít nhất 10 ký tự');
+    const explanation = dto.response?.trim();
+    if (!explanation || explanation.length < 10 || explanation.length > 1000) {
+      throw new BadRequestException('Phản hồi phải có từ 10 đến 1000 ký tự');
     }
+    const rejectionLabel = dto.rejectionReason && Object.prototype.hasOwnProperty.call(RETURN_REJECTION_REASONS, dto.rejectionReason)
+      ? RETURN_REJECTION_REASONS[dto.rejectionReason] : null;
+    if (dto.decision === ReturnDecision.REJECT && !rejectionLabel) {
+      throw new BadRequestException('Vui lòng chọn lý do từ chối cụ thể');
+    }
+    const response = dto.decision === ReturnDecision.REJECT
+      ? `Lý do: ${rejectionLabel}\nGiải thích: ${explanation}` : explanation;
+    if (response.length > 1000) throw new BadRequestException('Phản hồi đầy đủ không được vượt quá 1000 ký tự');
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -4166,6 +4175,7 @@ export class OrdersService {
       carrierName: carrierName || currentRaw.carrierName || 'GHTK Express',
       fulfillmentNote: dto.note?.trim() || currentRaw.fulfillmentNote,
       fulfillmentUpdatedAt: new Date().toISOString(),
+      ...(dto.status === OrderStatus.SHIPPING ? { shopConfirmedAt: currentRaw.shopConfirmedAt || new Date().toISOString() } : {}),
     };
 
     const updateData: Prisma.OrderUpdateInput = {

@@ -48,7 +48,22 @@ export function getSafeProductImageUrl(
     !imageUrl.includes('placeholder.png') &&
     !imageUrl.includes('placeholder')
   ) {
-    return imageUrl.trim();
+    const source = imageUrl.trim();
+    // Seed photos belong to this frontend, not a particular development port.
+    // Keep remote/CDN and uploaded image URLs unchanged.
+    try {
+      const url = new URL(source);
+      if (
+        ['http:', 'https:'].includes(url.protocol) &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+        url.pathname.startsWith('/assets/')
+      ) {
+        return `${url.pathname}${url.search}${url.hash}`;
+      }
+    } catch {
+      // Relative asset paths are already resolved against the current website.
+    }
+    return source;
   }
 
   // A missing photo must not silently display a different product or brand.
@@ -56,4 +71,10 @@ export function getSafeProductImageUrl(
   void title;
   void categoryName;
   return '/assets/product-placeholder.svg';
+}
+
+export function handleProductImageError(event: { currentTarget: HTMLImageElement }): void {
+  const image = event.currentTarget;
+  const fallback = new URL(getSafeProductImageUrl(), image.ownerDocument.baseURI).href;
+  if (image.src !== fallback) image.src = fallback;
 }

@@ -11,11 +11,12 @@ function campaignDate(value?: string) {
   };
 }
 
-export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
+export function CampaignCardBubble({ card, isMine, participantId, onRespond, canRespond = true }: {
   card: any;
   isMine: boolean;
   participantId?: string;
   onRespond?: () => void;
+  canRespond?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [statusOverride, setStatusOverride] = useState<'ACCEPTED' | 'REJECTED' | null>(null);
@@ -37,7 +38,7 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
   }, [card.type, effectiveParticipantId, stateRevision]);
 
   const respond = async (decision: 'ACCEPTED' | 'REJECTED') => {
-    if (pending.current || !currentState || currentState.status !== 'INVITED') return;
+    if (!canRespond || pending.current || !currentState || currentState.status !== 'INVITED') return;
     if (!effectiveParticipantId) {
       setFeedbackError('Không tìm thấy mã định danh lời mời.');
       return;
@@ -64,6 +65,19 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
 
   const isAccepted = status === 'ACCEPTED';
   const isRejected = status === 'REJECTED';
+
+  if (card.type === 'CAMPAIGN_ACCEPTED' || card.type === 'CAMPAIGN_REJECTED') {
+    const accepted = card.type === 'CAMPAIGN_ACCEPTED';
+    return (
+      <div className="w-[330px] max-w-full rounded-2xl border border-[#EEDFC6] bg-white p-3.5 text-left text-[#1A1612]">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          {accepted ? <CheckCircle2 size={17} className="shrink-0 text-[#059669]" /> : <XCircle size={17} className="shrink-0 text-[#7D715E]" />}
+          {accepted ? 'Đã chấp nhận lời mời' : 'Đã từ chối lời mời'}
+        </div>
+        <p className="mb-0 mt-1.5 break-words text-xs text-[#7D715E]">{card.campaignName || card.title || 'Chiến dịch'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-[330px] max-w-full border border-[#EEDFC6] rounded-2xl overflow-hidden bg-white text-[#1A1612] shadow-[0_3px_12px_rgba(35,29,21,0.03)] text-left">
@@ -130,6 +144,8 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond }: {
           <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Chiến dịch đã kết thúc</span></div>
         ) : isMine ? (
           <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Đã gửi lời mời<small className="block text-[10px] mt-0.5">Đang chờ đối tác phản hồi</small></span></div>
+        ) : !canRespond ? (
+          <div className="flex items-center gap-2 text-[11px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" /><span>Đang chờ đối tác phản hồi</span></div>
         ) : (
           <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
             <button type="button" id={`btn-reject-campaign-${card.campaignId}`} disabled={loading || !currentState} onClick={() => void respond('REJECTED')} className="min-h-[34px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-[11px] hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-55">Từ chối</button>

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { returnService, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
@@ -9,6 +9,7 @@ import { PickupBookingForm } from '../../components/returns/PickupBookingForm';
 import { DisputeModal } from '../../components/returns/DisputeModal';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { carrierStatusLabel } from '@/utils/return-status.utils';
+import { canRequestReturnReview } from '../../utils/return-actions';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
@@ -22,14 +23,15 @@ function ErrorText({ error }: { error: unknown }) {
 }
 
 function CustomerActions({ request }: { request: ReturnDetail }) {
-  const [showDispute, setShowDispute] = useState(false);
+  const [searchParams] = useSearchParams();
+  const mayDispute = canRequestReturnReview(request);
+  const [showDispute, setShowDispute] = useState(() => mayDispute && searchParams.get('dispute') === '1');
   const [carrierName, setCarrierName] = useState(request.customerShipment?.carrierName ?? '');
   const [trackingNumber, setTrackingNumber] = useState(request.customerShipment?.trackingNumber ?? '');
   const correction = useReturnAction(request.id, returnService.correctShipment);
   const completion = useReturnAction(request.id, returnService.confirmCompletion);
   const inspectionOverdue = ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
     Boolean(request.receivedAt) && new Date(request.receivedAt!).getTime() <= Date.now() - 48 * 60 * 60 * 1000;
-  const mayDispute = (['SHOP_REJECTED', 'EXPIRED', 'INSPECTION_REJECTED', 'REFUND_FAILED'].includes(request.status) || inspectionOverdue) && !request.dispute;
   const mayComplete = request.status === 'EXCHANGE_SHIPPED' ||
     (request.status === 'AWAITING_CUSTOMER_CONFIRMATION' && request.refund?.status === 'SUCCEEDED');
 
@@ -118,10 +120,10 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
         {completion.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận kết quả · Hoàn tất'}
       </button>}
       {mayDispute && <button type="button" onClick={() => setShowDispute(true)}
-        className="rounded-xl border border-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#8A6736]">Gửi khiếu nại</button>}
+        className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-sm font-semibold text-[#8A6736]">Yêu cầu SCANMS xem xét</button>}
     </div>
     <ErrorText error={completion.error} />
-    {showDispute && <DisputeModal returnId={request.id} onClose={() => setShowDispute(false)} />}
+    {showDispute && mayDispute && <DisputeModal returnId={request.id} onClose={() => setShowDispute(false)} />}
   </div>;
 }
 
@@ -278,8 +280,17 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <p className="mt-1 text-sm text-[#7D715E]">Gian hàng: {detail.data.order.storeName}</p>
           </header>
           <ReturnTimeline request={detail.data} />
-          {detail.data.shopResponse && <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-            Phản hồi của Shop: {detail.data.shopResponse}</p>}
+          {detail.data.shopResponse && <section className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm">
+            <h2 className="font-semibold">Phản hồi của Shop</h2>
+            {(() => {
+              const event = [...detail.data.events].reverse().find(event => ['REQUESTED_TO_SHOP_APPROVED', 'REQUESTED_TO_SHOP_REJECTED'].includes(event.type));
+              return event && <time dateTime={event.createdAt} className="mt-1 block text-xs text-[#7D715E]">Phản hồi lúc {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</time>;
+            })()}
+            <p className="mt-3 whitespace-pre-wrap break-words leading-relaxed">{detail.data.shopResponse}</p>
+            {mode === 'customer' && ['SHOP_REJECTED', 'INSPECTION_REJECTED'].includes(detail.data.status) && <p className="mt-3 rounded-lg bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">
+              Đây là phản hồi của Shop, chưa phải kết quả phân xử của SCANMS. Nếu không đồng ý, bạn có thể yêu cầu SCANMS xem xét hồ sơ và bằng chứng.
+            </p>}
+          </section>}
           <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">

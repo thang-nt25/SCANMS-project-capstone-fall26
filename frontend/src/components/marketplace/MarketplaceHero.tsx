@@ -26,9 +26,9 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
       image: '/assets/marketplace/scanms-affiliate-banner-v2.png',
       eyebrow: 'KHÁM PHÁ CÙNG NHÀ SÁNG TẠO',
       title: 'Chọn sản phẩm hay, cùng KOC bạn thích.',
-      description: 'Tìm sản phẩm trong mạng lưới tiếp thị liên kết SCANMS và khám phá thêm nhiều thương hiệu.',
-      label: 'Khám phá sản phẩm KOC',
-      href: '/search?commission=true',
+      description: 'Xem KOC giới thiệu sản phẩm trong các phiên Live và khám phá thêm nhiều gian hàng đối tác.',
+      label: 'Khám phá Live cùng KOC',
+      href: null,
     },
     {
       image: '/assets/marketplace/scanms-live-banner-v2.png',
@@ -59,7 +59,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
 
   return (
     <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-7">
-      <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+      <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
         <div
           role="region" aria-roledescription="carousel" aria-label="Chương trình nổi bật SCANMS"
           className="relative overflow-hidden rounded-3xl border border-[#EAE4D7] bg-[#FAF8F5] shadow-[0_16px_44px_rgba(93,70,35,0.10)]"

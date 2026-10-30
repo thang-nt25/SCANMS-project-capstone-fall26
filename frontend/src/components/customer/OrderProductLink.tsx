@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-export function OrderProductLink({ productId, title, children, className = '', onNavigate }: {
-  productId?: string; title?: string; children: ReactNode; className?: string; onNavigate?: () => void;
+export function OrderProductLink({ productId, title, children, className = '', onNavigate, plain = false }: {
+  productId?: string; title?: string; children: ReactNode; className?: string; onNavigate?: () => void; plain?: boolean;
 }) {
-  if (!productId) return <span className={className}>{children}</span>;
+  if (!productId || plain) return <span className={className}>{children}</span>;
   return <Link to={`/products/${encodeURIComponent(productId)}`}
     data-order-product-link aria-label={`Xem sản phẩm ${title || 'trong đơn hàng'}`}
     className={`${className} no-underline hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-2`}

@@ -31,6 +31,8 @@ import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import type { ChatAttachmentType, ChatReply, ChatMessageItem } from '@/types/chat.types';
 import { ExclusiveDealCardBubble } from './ExclusiveDealCardBubble';
+import { CampaignCardBubble } from './CampaignCardBubble';
+import { parseCampaignCard } from '@/utils/chat-explorer';
 import { useChatReply } from '@/hooks/useChatReply';
 import { useChatCapabilities } from '@/hooks/useChatCapabilities';
 import { ChatReplyQuote } from './ChatReplyQuote';
@@ -517,12 +519,11 @@ export function ScanmsFloatingChatWidget() {
       : messages.filter((message) => !parseExclusiveDealMessage(message.content));
   }, [activeConversation?.messages, canSeeAffiliateDeals]);
 
-  // Filter conversations in left list: chỉ hiện các shop đã có tin nhắn ít nhất 1 lần
-  const filteredConversations = conversations.filter((conversation) => {
-    const hasMessages =
-      (conversation.messages && conversation.messages.length > 0) ||
-      Boolean(conversation.lastMessage && conversation.lastMessage !== 'Bắt đầu cuộc trò chuyện' && conversation.lastMessage !== '');
-    if (!hasMessages) return false;
+  // Keep the shop just opened visible, even before the first message is sent.
+  const visibleConversations = activeConversation && !conversations.some(conversation => conversation.id === activeConversation.id)
+    ? [activeConversation, ...conversations]
+    : conversations;
+  const filteredConversations = visibleConversations.filter((conversation) => {
     const matchesName = conversation.store.name.toLocaleLowerCase('vi').includes(searchLeftQuery.trim().toLocaleLowerCase('vi'));
     const unread = (conversation.unreadCount || 0) > 0;
     return matchesName && (conversationFilter === 'ALL' || (conversationFilter === 'UNREAD' ? unread : !unread));
@@ -1264,7 +1265,19 @@ export function ScanmsFloatingChatWidget() {
             const isUser = msg.sender === 'user';
             const hasProducts = msg.products && msg.products.length > 0;
             const exclusiveDeal = parseExclusiveDealMessage(msg.content);
+            const campaignCard = parseCampaignCard(msg.content);
             const renderMessage = () => {
+
+            if (campaignCard) {
+              return (
+                <div className={`my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div className="max-w-[90%]">
+                    <CampaignCardBubble card={campaignCard} isMine={isUser} canRespond={!isUser && currentUser?.role === 'COLLABORATOR'} />
+                    <div className={`mt-1 text-[10px] text-[#7D715E] ${isUser ? 'text-right' : 'text-left'}`}>{msg.timestamp}</div>
+                  </div>
+                </div>
+              );
+            }
 
             if (exclusiveDeal) {
               return (

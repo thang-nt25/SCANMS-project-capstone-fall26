@@ -164,6 +164,7 @@ function AppRoutes() {
         <Route path="/customer" element={<CustomerPortalPage />} />
         <Route path="/customer/portal" element={<CustomerPortalPage />} />
         <Route path="/customer/orders" element={<CustomerPortalPage />} />
+        <Route path="/customer/orders/:orderId" element={<CustomerPortalPage />} />
         <Route path="/customer/profile" element={<CustomerPortalPage />} />
         <Route path="/customer/identity" element={<CustomerPortalPage />} />
         <Route path="/customer/addresses" element={<CustomerPortalPage />} />

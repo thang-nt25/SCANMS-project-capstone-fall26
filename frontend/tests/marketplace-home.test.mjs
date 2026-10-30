@@ -20,3 +20,10 @@ test('homepage category matching is accent/case independent and unknown filters 
   assert.equal(matchesHomeCategory('CHĂM SÓC DA', 'skin'), true);
   assert.equal(matchesHomeCategory('Chăm sóc da', 'unknown'), true);
 });
+
+test('health categories do not include ordinary groceries just because they contain food', () => {
+  assert.equal(matchesHomeCategory('Thực phẩm chức năng', 'health'), true);
+  assert.equal(matchesHomeCategory('Thực phẩm tươi sống', 'health'), false);
+  assert.equal(matchesHomeCategory('Thực phẩm khô & bánh kẹo', 'health'), false);
+  assert.equal(matchesHomeCategory('Chăm sóc cơ thể & Tóc', 'body'), true);
+});

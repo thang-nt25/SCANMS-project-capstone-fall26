@@ -27,21 +27,25 @@ test('notification popover fits the viewport and scrolls to the final item while
     const categoryOf = item => item.type.startsWith('ORDER_') ? 'ORDER' : item.type.startsWith('VOUCHER_') ? 'PROMOTION' : 'SYSTEM';
     const unread = () => notifications.filter(item => !item.isRead).length;
     const errors = [], mutations = [];
+    let failReadAll = false;
     page.on('pageerror', error => errors.push(error.message));
     await page.evaluateOnNewDocument(user => {
       localStorage.setItem('token', 'qa-notifications-only'); localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('scanms_chat_sound', 'off');
+      localStorage.setItem('scanms_live_broadcasts', JSON.stringify([{ id: 'local-live', sessionId: 'qa-live', title: 'Live local', storeName: 'QA', creatorName: 'QA', liveUrl: '/live/qa-live', isLive: true, createdAt: new Date().toISOString(), endsAt: '2099-01-01T00:00:00Z' }]));
     }, user);
     await page.setRequestInterception(true);
     page.on('request', request => {
       const url = new URL(request.url());
+      if (url.pathname === '/@vite/client') return request.respond({ status: 200, contentType: 'application/javascript', body: 'export const createHotContext=()=>({accept(){},acceptExports(){},prune(){},decline(){},dispose(){},invalidate(){},on(){},off(){},send(){},data:{}});export const injectQuery=url=>url;const styles=new Map();export function updateStyle(id,css){let el=styles.get(id);if(!el){el=document.createElement("style");styles.set(id,el);document.head.append(el)}el.textContent=css}export function removeStyle(id){styles.get(id)?.remove();styles.delete(id)}' });
       if (url.pathname === '/src/services/chat-socket.service.ts') return request.respond({ status: 200, contentType: 'application/javascript', body: 'const s={connected:false,active:false,on(){return this},off(){return this},emit(){},connect(){return this}};export const getChatSocket=()=>s;export const isChatSocketAuthenticated=()=>false;export const disconnectChatSocket=()=>{};' });
       if (url.pathname.startsWith('/api/') || url.port === '3000') {
-        const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'content-type,authorization', 'Access-Control-Allow-Methods': 'GET,PATCH,OPTIONS' };
+        const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'content-type,authorization,x-skip-cache', 'Access-Control-Allow-Methods': 'GET,PATCH,PUT,OPTIONS' };
         if (request.method() === 'OPTIONS') return request.respond({ status: 204, headers });
         let data = [];
         if (url.pathname === '/api/auth/me') data = user;
         if (url.pathname === '/api/customer/profile') data = { user, stats: {} };
+        if (url.pathname === '/api/customer/cart') data = { items: [], syncedAt: new Date().toISOString() };
         if (url.pathname === '/api/notifications/unread-count') data = { unreadCount: unread(), categoryUnreadCounts: {} };
         if (url.pathname === '/api/notifications') {
           const category = url.searchParams.get('category') || 'ALL';
@@ -50,6 +54,7 @@ test('notification popover fits the viewport and scrolls to the final item while
         }
         if (request.method() === 'PATCH') {
           assert.ok(url.pathname.startsWith('/api/notifications/'));
+          if (failReadAll && url.pathname.endsWith('/read-all')) return request.respond({ status: 503, headers, body: JSON.stringify({ message: 'QA unavailable' }) });
           mutations.push(url.pathname);
           if (url.pathname.endsWith('/read-all')) notifications.forEach(item => { item.isRead = true; });
           else notifications.find(item => url.pathname.includes(`/${item.id}/`)).isRead = true;
@@ -65,7 +70,8 @@ test('notification popover fits the viewport and scrolls to the final item while
     const list = '.scanms-notifications-list';
     await page.setViewport({ width: 1440, height: 900 });
     await page.goto(`${base}/customer/orders`);
-    await page.waitForSelector(bell);
+    await page.waitForSelector(bell).catch(async error => { throw new Error(error.message + '; ' + errors.join('; ') + '; ' + await page.$eval('body', el => el.innerText.slice(-1800))); });
+    await page.waitForFunction(selector => document.querySelector(selector).getAttribute('aria-label') === 'Thông báo: 20 chưa đọc', {}, bell);
     for (const [width, height] of [[1440, 900], [1024, 600], [390, 640], [320, 480], [800, 320]]) {
       await page.setViewport({ width, height });
       await page.click(bell);
@@ -108,6 +114,11 @@ test('notification popover fits the viewport and scrolls to the final item while
     assert.ok(mutations.includes('/api/notifications/notice-0/read'));
     await page.click(bell);
     await page.waitForSelector(`${panel} .scanms-notification-item`);
+    failReadAll = true;
+    await page.$$eval(`${panel} header button`, buttons => buttons.find(button => button.textContent.includes('Đọc tất cả')).click());
+    await page.waitForFunction(() => document.body.innerText.includes('Chưa lưu được trạng thái đã đọc'));
+    assert.equal(await page.$eval(bell, el => el.getAttribute('aria-label')), 'Thông báo: 19 chưa đọc');
+    failReadAll = false;
     await page.$$eval(`${panel} header button`, buttons => buttons.find(button => button.textContent.includes('Đọc tất cả')).click());
     await page.waitForFunction(selector => document.querySelector(selector).getAttribute('aria-label') === 'Thông báo: 0 chưa đọc', {}, bell);
     await page.click(`${panel} footer button`);

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock3, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock3, AlertCircle, ArrowLeft } from 'lucide-react';
+import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeader';
+import { Sidebar } from '../../components/layout/Sidebar';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { PayosOrderPayment } from '../../components/checkout/PayosOrderPayment';
 import { toast } from '../../utils/toast';
+import './PayosReturnPage.css';
 
 export default function PayosReturnPage() {
   const navigate = useNavigate();
@@ -14,6 +17,7 @@ export default function PayosReturnPage() {
   const [status, setStatus] = useState<'loading' | 'PAID' | 'WAITING_PAYMENT' | 'CANCELLED' | 'error'>('loading');
   const [confirmedOrderCode, setConfirmedOrderCode] = useState('');
   const loggedIn = Boolean(localStorage.getItem('token') && authService.getCurrentUser());
+  const backToOrder = '/customer/orders';
 
   useEffect(() => {
     if (manual || !loggedIn || !orderCode) return;
@@ -57,30 +61,31 @@ export default function PayosReturnPage() {
     : 'Đang chờ PayOS xác nhận';
 
   return (
-    <main className="min-h-screen bg-[#FAF8F5] px-4 py-16 text-[#1A1612]">
-      <div className="mx-auto max-w-lg rounded-3xl border border-[#EAE4D7] bg-white p-8 text-center shadow-sm">
-        <div className="mb-5 flex justify-center">{icon}</div>
-        <h1 className="text-2xl font-black">{title}</h1>
-        <p className="mt-3 text-sm text-[#7D715E]">
+    <div className="payos-buyer-layout">
+    <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />
+    <div className="payos-buyer-workspace">
+    <aside className="payos-buyer-sidebar"><Sidebar currentUser={authService.getCurrentUser()} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>
+    <main className="payos-return-page">
+      <div className="payos-return-card">
+        <div className="payos-return-top"><Link to={backToOrder} state={{ returnedOrderCode: orderCode, clearOrderSearch: true }}><ArrowLeft size={16} />Trở lại</Link><span>Mã đơn hàng: <strong>{orderCode || 'Chưa có mã đơn'}</strong></span></div>
+        <header className="payos-return-heading">
+        <div className="payos-return-icon">{icon}</div>
+        <div><h1>{title}</h1>
+        <p>
           {!loggedIn ? 'Đăng nhập để xem trạng thái thanh toán của đơn hàng.'
             : !orderCode ? 'Liên kết chưa có mã đơn hàng. Vui lòng mở thanh toán từ mục Đơn mua.'
             : status === 'CANCELLED' ? 'Đơn này không còn nhận thanh toán.'
             : status === 'PAID' ? `Đơn ${orderCode} đã được xác nhận thanh toán.`
-            : 'Trang PayOS chuyển hướng về không tự xác nhận tiền. SCANMS đang kiểm tra kết quả từ máy chủ PayOS.'}
+            : 'Quét mã để thanh toán. SCANMS sẽ tự động cập nhật khi PayOS xác nhận nhận đủ tiền.'}
         </p>
-        {loggedIn && orderCode && (status === 'WAITING_PAYMENT' || status === 'error') && (
-          <div className="mt-5"><PayosOrderPayment key={orderCode} orderCode={orderCode} onPaid={() => { setConfirmedOrderCode(orderCode); setStatus('PAID'); }} /></div>
-        )}
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          {!loggedIn ? (
-            <Link to={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-              className="rounded-xl bg-[#C59B58] px-5 py-3 text-sm font-bold text-[#1A1612]">Đăng nhập</Link>
-          ) : (
-            <Link to="/customer/orders" className="rounded-xl bg-[#C59B58] px-5 py-3 text-sm font-bold text-[#1A1612]">Xem đơn mua</Link>
-          )}
-          <Link to="/marketplace" className="rounded-xl border border-[#EAE4D7] px-5 py-3 text-sm font-bold">Về sàn</Link>
         </div>
+        </header>
+        {loggedIn && orderCode && (status === 'WAITING_PAYMENT' || status === 'error') && (
+          <div className="payos-return-payment"><PayosOrderPayment key={orderCode} orderCode={orderCode} onPaid={() => { setConfirmedOrderCode(orderCode); setStatus('PAID'); }} /></div>
+        )}
       </div>
     </main>
+    </div>
+    </div>
   );
 }

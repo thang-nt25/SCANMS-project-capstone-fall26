@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import type { Notification, Prisma } from '@prisma/client';
 
 export type NotificationCategory = 'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM';
 
@@ -40,6 +41,80 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private async withOrderProductImages(userId: string, items: Notification[]) {
+    const dataOf = (item: Notification): Prisma.JsonObject => {
+      if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) {
+        return item.data as Prisma.JsonObject;
+      }
+      if (typeof item.data === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(item.data);
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Prisma.JsonObject
+            : {};
+        } catch {
+          return {};
+        }
+      }
+      return {};
+    };
+    const orderIds = [...new Set(items.map(item => dataOf(item).orderId)
+      .filter((id): id is string => typeof id === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))];
+    const orderCodes = [...new Set(items.map(item => dataOf(item).externalOrderSn)
+      .filter((code): code is string => typeof code === 'string' && code.trim().length > 0))];
+    if (!orderIds.length && !orderCodes.length) return items;
+
+    try {
+      // Resolve old notices by public order code as well as newer notices by UUID.
+      const orders = await this.prisma.order.findMany({
+        where: {
+          AND: [
+            {
+              OR: [
+                ...(orderIds.length ? [{ id: { in: orderIds } }] : []),
+                ...(orderCodes.length ? [{ externalOrderSn: { in: orderCodes } }] : []),
+              ],
+            },
+            {
+              OR: [
+                { customerId: userId },
+                { attributedCollaboratorId: userId },
+                { store: { is: { ownerId: userId } } },
+              ],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          orderItems: {
+            take: 1,
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            select: { product: { select: { title: true, imageUrl: true } }, variant: { select: { imageUrl: true } } },
+          },
+        },
+      });
+      const images = new Map(orders.map(order => {
+        const item = order.orderItems[0];
+        return [order.id, item ? { productImageUrl: item.variant?.imageUrl || item.product.imageUrl, productTitle: item.product.title } : null] as const;
+      }));
+      const ordersByCode = new Map(orders.map(order => [order.externalOrderSn, order.id] as const));
+      return items.map(item => {
+        const data = dataOf(item);
+        const orderId = typeof data.orderId === 'string' && images.has(data.orderId)
+          ? data.orderId
+          : typeof data.externalOrderSn === 'string'
+            ? ordersByCode.get(data.externalOrderSn)
+            : undefined;
+        const product = orderId ? images.get(orderId) : null;
+        return product?.productImageUrl ? { ...item, data: { ...data, ...product } } : item;
+      });
+    } catch (error) {
+      this.logger.warn('Could not load product thumbnails for notifications: ' + String(error));
+      return items;
+    }
+  }
 
   /**
    * Tự động dọn dẹp các thông báo phiên live đã kết thúc để không còn hiện trong danh sách và chuông của user
@@ -126,7 +201,7 @@ export class NotificationsService {
     }
 
     const [
-      items,
+      notifications,
       total,
       unreadCount,
       orderUnread,
@@ -151,6 +226,8 @@ export class NotificationsService {
         where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
       }),
     ]);
+
+    const items = await this.withOrderProductImages(userId, notifications);
 
     return {
       items,

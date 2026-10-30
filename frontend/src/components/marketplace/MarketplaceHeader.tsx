@@ -22,7 +22,7 @@ export function MarketplaceHeader({ onOpenTracking, onOpenLive }: {
   }, []);
 
   return <div className="marketplace-header sticky top-0 z-40 bg-white shadow-[0_2px_8px_rgb(35_29_21/4%)]" data-compact={compact}>
-    <PublicHeader sticky={false} onOpenTracking={onOpenTracking} />
-    <MarketplaceShortcuts onOpenLive={onOpenLive} compact={compact} />
+    <PublicHeader sticky={false} onOpenTracking={onOpenTracking}
+      navigation={<MarketplaceShortcuts onOpenLive={onOpenLive} compact={compact} />} />
   </div>;
 }

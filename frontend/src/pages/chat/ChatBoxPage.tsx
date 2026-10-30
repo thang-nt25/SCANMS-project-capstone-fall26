@@ -47,6 +47,7 @@ import api from '../../services/api';
 import type { ChatMessage, ChatReply, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
+import { parseCampaignCard } from '@/utils/chat-explorer';
 import { ExclusiveDealCardBubble } from '../../components/chat/ExclusiveDealCardBubble';
 import { LiveInviteMessage, parseLiveInvite } from '../../components/chat/LiveInviteMessage';
 import { ProductInquiryCardBubble, type ProductInquiryCardData } from '../../components/chat/ProductInquiryCardBubble';
@@ -236,16 +237,6 @@ function isProfaneText(text: string): boolean {
 
 
 
-
-function tryParseCampaignCard(text: string) {
-  try {
-    const obj = JSON.parse(text);
-    if (['CAMPAIGN_INVITE', 'CAMPAIGN_ACCEPTED', 'CAMPAIGN_REJECTED'].includes(obj.type)) return obj;
-  } catch {
-
-  }
-  return null;
-}
 
 function tryParseCouponProposalCard(text: string) {
   if (!text || !text.startsWith('{')) return null;
@@ -2996,9 +2987,9 @@ export default function ChatBoxPage({
                             return <CouponVoucherCardBubble card={couponCard} />;
                           }
 
-                          const card = tryParseCampaignCard(msg.messageText);
+                          const card = parseCampaignCard(msg.messageText);
                           if (card) {
-                            return <CampaignCardBubble card={card} isMine={isMine} />;
+                            return <CampaignCardBubble card={card} isMine={isMine} canRespond={!isMine && currentUser?.role === 'COLLABORATOR'} />;
                           }
 
                           return (

@@ -1,3 +1,5 @@
+import type { ChatCard } from '@/types/campaigns.types';
+
 /** Resolve shared files and links without allowing executable URLs or credentials. */
 export function chatContentUrl(value?: string, baseUrl?: string): string | undefined {
   if (!value?.trim()) return undefined;
@@ -16,6 +18,12 @@ export function parseChatContent(text: string): Record<string, unknown> | null {
     return card && typeof card === 'object' && !Array.isArray(card) && typeof card.type === 'string'
       ? card : null;
   } catch { return null; }
+}
+
+export function parseCampaignCard(text: string): ChatCard | null {
+  const card = parseChatContent(text);
+  if (!card || !['CAMPAIGN_INVITE', 'CAMPAIGN_ACCEPTED', 'CAMPAIGN_REJECTED'].includes(card.type as string)) return null;
+  return card as unknown as ChatCard;
 }
 
 export function chatContentText(text: string): string {

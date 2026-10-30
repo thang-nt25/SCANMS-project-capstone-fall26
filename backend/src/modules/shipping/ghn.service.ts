@@ -584,6 +584,7 @@ export class GhnService {
       ghnEnvironment,
       ghnRawResponse: ghnResponseData,
       ghnShippedAt: new Date().toISOString(),
+      shopConfirmedAt: rawPayload.shopConfirmedAt || new Date().toISOString(),
       ...(ghnEnvironment === GhnEnvironment.TEST && this.simulationEnabled()
         ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
     };

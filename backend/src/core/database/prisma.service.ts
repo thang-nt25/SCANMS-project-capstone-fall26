@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   OnModuleInit,
   OnModuleDestroy,
   Optional,
@@ -14,6 +15,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  private readonly logger = new Logger(PrismaService.name);
   private readonly pool: Pool;
 
   constructor(@Optional() private readonly configService?: ConfigService) {
@@ -33,9 +35,17 @@ export class PrismaService
     const pool = new Pool({
       connectionString,
       max: poolMax,
-      idleTimeoutMillis: 20000,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 15000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
       ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+    });
+
+    pool.on('error', (err) => {
+      this.logger.warn(
+        `PostgreSQL idle client connection closed by remote host (auto-reconnecting): ${err.message}`,
+      );
     });
 
     const adapter = new PrismaPg(pool);

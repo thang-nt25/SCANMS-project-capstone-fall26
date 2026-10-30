@@ -8,7 +8,7 @@ export function OrderTrackingShortcut({ sectionRef }: { sectionRef: Ref<HTMLElem
   const [kind, setKind] = useState<'orderSn' | 'phone'>('orderSn');
   return (
     <section ref={sectionRef} id="tracking-section" aria-labelledby="tracking-shortcut-title" className="scroll-mt-36 border-t border-[#EAE4D7] bg-[#F3EFE6] py-8">
-      <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+      <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
         <div className="grid gap-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-left lg:grid-cols-[260px_1fr] lg:items-center">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><Truck size={22} /></span>

@@ -107,7 +107,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
 
   const expired = ['CANCELLED', 'EXPIRED'].includes(providerStatus);
   return (
-    <section className="min-w-0 mb-3.5 last:mb-0 p-4 sm:p-4.5 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-left" aria-label={`Thanh toán PayOS ${orderCode}`}>
+    <section className="payos-order-payment min-w-0 mb-3.5 last:mb-0 p-4 sm:p-4.5 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-left" aria-label={`Thanh toán PayOS ${orderCode}`}>
       {(showOrderHeading || status === 'PAID') && (
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-[#EAE4D7]">
           <div>
@@ -133,7 +133,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
       )}
       {status !== 'PAID' && status !== 'CANCELLED' && !loading && link && !expired && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-[234px_minmax(0,1fr)] gap-4 sm:gap-4.5 pt-3.5">
+          <div className="payos-payment-columns grid grid-cols-1 sm:grid-cols-[234px_minmax(0,1fr)] gap-4 sm:gap-4.5 pt-3.5">
             <div className="flex flex-col items-center self-start bg-white">
               <span className="px-2.5 py-1 rounded-md bg-[#FBF5EB] text-[10px] tracking-wider font-semibold text-[#B88E4F]">VIETQR · PAYOS</span>
               <div className="grid place-items-center max-w-full my-2.5 p-2.5 border border-[#EAE4D7] rounded-xl bg-white">
@@ -142,7 +142,7 @@ export function PayosOrderPayment({ orderCode, storeName, onPaid, showOrderHeadi
               <p className="m-0 text-[11px] text-[#7D715E] text-center">Quét mã để chuyển khoản</p>
             </div>
             <div className="min-w-0">
-              <div className="py-2.5 px-3.5 rounded-[10px] bg-[#FBF5EB]">
+              <div className="payos-payment-amount py-2.5 px-3.5 rounded-[10px] bg-[#FBF5EB]">
                 <p className="m-0 text-xs text-[#7D715E]">Số tiền cần thanh toán</p>
                 <strong className="block mt-0.5 text-2xl font-semibold tracking-tight leading-snug tabular-nums text-[#1A1612]">{formatMoney(link.amount ?? 0)}</strong>
               </div>

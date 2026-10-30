@@ -1,0 +1,71 @@
+.payos-return-page { min-height: 100dvh; padding: 36px 24px; background: #FAF8F5; color: #1A1612; }
+.payos-return-card { width: min(880px, 100%); margin: 0 auto; border: 1px solid #EAE4D7; border-radius: 18px; background: #FFFFFF; box-shadow: 0 8px 30px rgb(35 29 21 / 4%); overflow: hidden; }
+.payos-return-heading { display: flex; align-items: center; gap: 16px; padding: 24px 28px; border-bottom: 1px solid #EAE4D7; }
+.payos-return-icon { display: grid; flex-shrink: 0; place-items: center; width: 50px; height: 50px; border: 1px solid #EEDFC6; border-radius: 14px; background: #FFFFFF; }
+.payos-return-icon svg { width: 27px; height: 27px; }
+.payos-return-heading h1 { margin: 0; font-size: 23px; font-weight: 650; line-height: 1.35; }
+.payos-return-heading p { max-width: 620px; margin: 7px 0 0; color: #7D715E; font-size: 13px; line-height: 1.7; }
+.payos-return-payment { padding: 22px 28px 0; }
+.payos-return-payment .payos-order-payment { padding: 0; border: 0; border-radius: 0; }
+.payos-return-payment .payos-order-payment > div:first-child { padding-bottom: 14px; }
+.payos-return-payment .payos-order-payment h3 { font-size: 15px; }
+.payos-return-payment .payos-payment-columns { grid-template-columns: minmax(260px, 1fr) minmax(0, 1fr); gap: 28px; padding-top: 20px; }
+.payos-return-payment .payos-payment-columns > div:first-child { padding: 6px 16px; }
+.payos-return-payment .payos-payment-columns img { width: 236px; height: 236px; }
+.payos-return-payment .payos-payment-columns > div:first-child > span { background: #FFFFFF; color: #7D715E; letter-spacing: .06em; }
+.payos-return-payment .payos-payment-amount { padding: 14px 16px; border: 1px solid #EEDFC6; background: #FFFFFF; }
+.payos-return-payment .payos-payment-amount strong { font-size: 29px; color: #1A1612; }
+.payos-return-payment .payos-payment-columns dl { margin: 15px 0; padding-bottom: 15px; gap: 10px; }
+.payos-return-payment .payos-payment-columns dl > div { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 12px; font-size: 12px; }
+.payos-return-payment .payos-payment-columns dd { word-break: normal; overflow-wrap: anywhere; font-weight: 500; }
+.payos-return-payment .payos-payment-columns ol { gap: 9px; margin-bottom: 16px; }
+.payos-return-payment .payos-order-payment :is(a, button) { background: #FFFFFF; border-color: #EEDFC6; color: #795A2D; border-radius: 8px; }
+.payos-return-payment .payos-order-payment :is(a, button):hover { background: #FAF8F5; }
+.payos-return-payment .payos-order-payment > p:last-child { margin-bottom: 0; border: 1px solid #EAE4D7; background: #FFFFFF; }
+.payos-return-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 20px 28px; margin-top: 20px; border-top: 1px solid #EAE4D7; }
+.payos-return-footer a { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 9px 20px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FFFFFF; color: #795A2D; font-size: 13px; font-weight: 500; text-decoration: none; }
+.payos-return-footer a:hover { background: #FAF8F5; }
+.payos-return-card :is(button, a):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+@media (max-width: 640px) {
+  .payos-return-page { padding: 16px 12px; }
+  .payos-return-card { border-radius: 14px; }
+  .payos-return-heading { padding: 20px 18px; align-items: flex-start; gap: 12px; }
+  .payos-return-heading h1 { font-size: 19px; }
+  .payos-return-icon { width: 40px; height: 40px; border-radius: 10px; }
+  .payos-return-heading p { font-size: 12px; }
+  .payos-return-payment { padding: 18px 18px 0; }
+  .payos-return-payment .payos-payment-columns { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .payos-return-payment .payos-payment-columns img { width: 224px; height: 224px; }
+  .payos-return-footer { padding: 16px 18px; }
+  .payos-return-footer a { flex: 1; }
+}
+.payos-buyer-layout { min-height: 100dvh; background: #FAF8F5; }
+.payos-buyer-workspace { display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 20px; max-width: 1248px; margin: 0 auto; padding: 0 24px 24px; }
+.payos-buyer-sidebar { min-width: 0; }
+.payos-buyer-workspace .payos-return-page { min-height: 0; padding: 20px 0 0; }
+.payos-buyer-workspace .payos-return-card { width: 100%; border-radius: 6px; box-shadow: none; }
+.payos-return-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #EAE4D7; font-size: 14px; line-height: 1.5; }
+.payos-return-top :is(a, span, strong) { font-size: inherit; font-weight: 500; }
+.payos-return-top a svg { width: 18px; height: 18px; }
+.payos-return-top a { display: inline-flex; align-items: center; gap: 6px; color: #7D715E; text-decoration: none; white-space: nowrap; }
+.payos-return-top span { text-align: right; overflow-wrap: anywhere; }
+.payos-return-top strong { font-weight: 500; }
+.payos-buyer-workspace .payos-return-heading { padding: 16px 20px; gap: 12px; }
+.payos-buyer-workspace .payos-return-heading h1 { font-size: 20px; }
+.payos-buyer-workspace .payos-return-heading p { font-size: 12px; margin-top: 4px; }
+.payos-buyer-workspace .payos-return-icon { width: 40px; height: 40px; }
+.payos-buyer-workspace .payos-return-payment { padding: 16px 20px 20px; }
+.payos-buyer-workspace .payos-payment-columns { grid-template-columns: minmax(220px, .9fr) minmax(0, 1.1fr); gap: 20px; padding-top: 14px; }
+.payos-buyer-workspace .payos-payment-columns img { width: 212px; height: 212px; }
+.payos-buyer-workspace .payos-payment-columns ol { gap: 6px; margin-bottom: 12px; }
+.payos-buyer-workspace .payos-payment-amount { padding: 10px 14px; }
+.payos-buyer-workspace .payos-payment-amount strong { font-size: 26px; }
+.payos-buyer-workspace .payos-return-footer { padding: 14px 20px; margin-top: 14px; }
+@media (max-width: 1023px) {
+  .payos-buyer-workspace { grid-template-columns: minmax(0, 1fr); padding: 0 16px 20px; }
+  .payos-buyer-sidebar { display: none; }
+}
+@media (max-width: 640px) {
+  .payos-buyer-workspace .payos-payment-columns { grid-template-columns: minmax(0, 1fr); }
+  .payos-return-top { align-items: center; padding: 14px 16px; }
+}

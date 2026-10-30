@@ -1,0 +1,15 @@
+.marketplace-shortcuts { border-bottom: 1px solid #eae4d7; background: #fff; }
+.marketplace-shortcuts__items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.marketplace-shortcuts__item { position: relative; display: flex; min-width: 0; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 0; background: transparent; padding: 8px 12px; color: #7d715e; font-size: 12px; font-weight: 550; line-height: 1.4; text-decoration: none; cursor: pointer; }
+.marketplace-shortcuts__item svg { flex-shrink: 0; color: #b88e4f; stroke-width: 1.7; }
+.marketplace-shortcuts__item::after { position: absolute; right: 28%; bottom: 0; left: 28%; height: 2px; background: #b88e4f; content: ''; opacity: 0; }
+.marketplace-shortcuts__item:hover { color: #1a1612; }
+.marketplace-shortcuts__item[aria-current] { color: #8c6226; font-weight: 650; }
+.marketplace-shortcuts__item[aria-current]::after { opacity: 1; }
+.marketplace-shortcuts__item:focus-visible { outline: 2px solid #b88e4f; outline-offset: -4px; border-radius: 6px; }
+.marketplace-shortcuts[data-compact="true"] .marketplace-shortcuts__item { min-height: 40px; }
+@media (max-width: 640px) {
+  .marketplace-shortcuts__items { padding: 0 12px; }
+  .marketplace-shortcuts__item { min-height: 42px; gap: 6px; padding: 8px 4px; font-size: 11px; }
+  .marketplace-shortcuts__item svg { width: 15px; height: 15px; }
+}
