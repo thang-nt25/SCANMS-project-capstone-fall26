@@ -79,7 +79,7 @@ describe('Capstone dataset business integrity', () => {
     const reviews = buildDataset(context);
     reviews.reviews[0].images = [];
     expect(() => validateDataset(reviews)).toThrow(
-      'review must include five stars, text and feedback image',
+      'review must include four to five stars, text and feedback image',
     );
   });
 
@@ -93,15 +93,15 @@ describe('Capstone dataset business integrity', () => {
   it('builds the complete linked dataset deterministically', () => {
     const data = buildDataset(context);
     expect(buildDataset(context)).toEqual(data);
-    expect(data.stores).toHaveLength(15);
+    expect(data.stores).toHaveLength(4);
     expect(data.profiles).toHaveLength(20);
     expect(data.users.filter((row) => row.role === 'CUSTOMER')).toHaveLength(
       30,
     );
-    expect(data.products).toHaveLength(30);
-    expect(data.variants).toHaveLength(120);
+    expect(data.products).toHaveLength(12);
+    expect(data.variants).toHaveLength(48);
     expect(data.orders).toHaveLength(60);
-    expect(data.reviews).toHaveLength(66);
+    expect(data.reviews).toHaveLength(36);
     expect(data.samples).toHaveLength(20);
     expect(data.payouts).toHaveLength(2);
     expect(
@@ -126,7 +126,7 @@ describe('Capstone dataset business integrity', () => {
   it('provides an inventory opening balance that accounts for every sold/reserved and sample unit', () => {
     const data = buildDataset(context);
     const baseline = inventoryBaseline(data);
-    expect(baseline).toHaveLength(120);
+    expect(baseline).toHaveLength(48);
     for (const entry of baseline)
       expect(
         entry.openingStock - entry.soldOrReserved - entry.grantedSamples,
@@ -138,7 +138,7 @@ describe('Capstone dataset business integrity', () => {
   });
 
   it('uses valid restricted-circulation EAN-13 checksums and UUID v5 identifiers', () => {
-    for (let index = 0; index < 30; index++) {
+    for (let index = 0; index < 12; index++) {
       const barcode = demoEan13(index);
       expect(barcode).toMatch(/^200\d{10}$/);
       expect(

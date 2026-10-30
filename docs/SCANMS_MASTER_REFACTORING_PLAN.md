@@ -14,6 +14,12 @@
 1. [Phần 1: Tổng Quan Bản Sắc & Phân Tích So Sánh Benchmark Quốc Tế](#phần-1-tổng-quan-bản-sắc--phân-tích-so-sánh-benchmark-quốc-tế)
 2. [Phần 2: Bảng Đối Chiếu Đa Chiều Toàn Diện: Cách Cũ (Sàn Chợ Mở) vs Cách Mới (Hệ Thống Doanh Nghiệp)](#phần-2-bảng-đối-chiếu-đa-chiều-toàn-diện-cách-cũ-sàn-chợ-mở-vs-cách-mới-hệ-thống-doanh-nghiệp)
 3. [Phần 3: Phân Tích Chuyên Sâu Nút Thắt 1: Quản Lý Hàng Hóa, Kho Bãi & Kiểm Duyệt Maker-Checker](#phần-3-phân-tích-chuyên-sâu-nút-thắt-1-quản-lý-hàng-hóa-kho-bãi--kiểm-duyệt-maker-checker)
+   * 3.1. Kịch Bản Cửa Hàng & Mô Hình Kho Bãi Theo Ngành Hàng
+   * 3.2. Quy Trình Nhập Liệu Sản Phẩm Chuẩn 6 Khối Tuần Tự
+   * 3.3. Quy Trình Kiểm Duyệt Sản Phẩm 2 Bước Chuẩn Mực: "Maker - Checker"
+   * 3.4. Cơ Chế Khóa Ngành Hàng Cố Định Khi Tạo Sản Phẩm & Phân Tích So Sánh Quốc Tế
+   * 3.5. Quy Trình Khởi Tạo Cửa Hàng Mới & Nguyên Tắc Bất Biến 1 Role SHOP_MANAGER
+   * 3.6. Kế Hoạch Tái Cấu Trúc Seed Data Mới Chuẩn Hệ Thống Quản Lý CTV & Tiếp Thị Liên Kết
 4. [Phần 4: Phân Tích Chuyên Sâu Nút Thắt 2: Dòng Tiền, Kế Toán Doanh Nghiệp & Cơ Chế Chi Trả (Payout)](#phần-4-phân-tích-chuyên-sâu-nút-thắt-2-dòng-tiền-kế-toán-doanh-nghiệp--cơ-chế-chi-trả-payout)
 5. [Phần 5: Các Nghiệp Vụ Chuyển Đổi Liên Hoàn (Đổi Trả, Mẫu Thử, Deal VIP, Chống Gian Lận, Livestream)](#phần-5-các-nghiệp-vụ-chuyển-đổi-liên-hoàn-đổi-trả-mẫu-thử-deal-vip-chống-gian-lận-livestream)
 6. [Phần 6: Kế Hoạch Tái Cấu Trúc UI: Cổng Đăng Ký Đối Tác (PartnerUpgradeTab) & Admin Personnel Page](#phần-6-kế-hoạch-tái-cấu-trúc-ui-cổng-đăng-ký-đối-tác-partnerupgradetab--admin-personnel-page)
@@ -197,6 +203,103 @@ flowchart TD
       "moderationNote": "Hồ sơ giấy phép công bố mỹ phẩm số 1234/24/CBMP-HCM hợp lệ. Duyệt mở bán."
     }
     ```
+
+---
+
+### 3.4. Cơ Chế Khóa Ngành Hàng Cố Định Khi Tạo Sản Phẩm (Store-Category Lock Enforcement) & Phân Tích So Sánh Quốc Tế
+
+#### A. Quy Tắc Nghiệp Vụ Bắt Buộc: "Cửa Hàng Nào Chuyên Sâu Ngành Hàng Đó"
+Trong một hệ thống Quản lý Đối tác Tiếp thị (Affiliate Network), việc định vị rõ ràng chuyên môn của từng Cửa hàng/Nhãn hàng trực thuộc là điều kiện tiên quyết:
+* **Mỗi Cửa hàng gắn chặt với 1 Ngành hàng cố định (`primaryCategory`):**
+  * 🏪 `Sora Skincare & Cosmetics` $\rightarrow$ Ngành hàng cố định: **Mỹ phẩm & Chăm sóc da (Cosmetics & Skincare)**
+  * 🏪 `Aura Activewear & Apparel` $\rightarrow$ Ngành hàng cố định: **Thời trang & Thể thao (Fashion & Apparel)**
+  * 🏪 `GreenBio Health & Nutrition` $\rightarrow$ Ngành hàng cố định: **Dinh dưỡng & Sức khỏe (Health & Nutrition)**
+  * 🏪 `Lumière Smart Living` $\rightarrow$ Ngành hàng cố định: **Gia dụng & Tiện ích thông minh (Smart Living & Gadgets)**
+* **Cơ chế Khóa tại Giao diện Thêm Sản phẩm (`ProductManagementPage.tsx`):**
+  * Khi `SHOP_MANAGER` mở modal "+ Thêm sản phẩm mới", ô nhập liệu **"Ngành hàng / Danh mục sản phẩm" (Category)** tự động hiển thị giá trị ngành hàng của Cửa hàng mà nhân sự đó phụ trách, và bị **KHÓA CỨNG (Disabled / Readonly)**.
+  * Nhân sự không thể can thiệp, chỉnh sửa hay chọn ngành hàng khác từ dropdown.
+* **Cơ chế Kiểm soát Chặt chẽ tại Backend (`POST /api/v1/products`):**
+  * Backend tự động lấy `store.category` gắn vào sản phẩm mới tạo.
+  * Nếu payload cố tình gửi danh mục sai lệch với ngành hàng của Store, hệ thống lập tức từ chối với lỗi `400 Bad Request: "Sản phẩm không thuộc ngành hàng được ủy quyền của gian hàng này"`.
+
+#### B. Phân Tích, Đánh Giá & So Sánh Benchmark Quốc Tế
+
+| Nền tảng Quốc tế | Cơ chế Quản lý Ngành hàng | Phân tích Nghiệp vụ & Kỹ thuật | So sánh & Bài học Áp dụng cho SCANMS |
+| :--- | :--- | :--- | :--- |
+| **TikTok Shop (Seller Center)** | **Category Whitelisting & Qualification Matrix** | TikTok Shop áp dụng cơ chế kiểm soát danh mục rất nghiêm ngặt (*Restricted Categories*). Người bán đăng ký ngành hàng nào (ví dụ *Beauty & Personal Care*) thì chỉ được cấp quyền đăng sản phẩm trong đúng cây danh mục đó. Muốn bán thêm ngành hàng khác, shop phải nộp hồ sơ chứng nhận độc lập (*Category Qualification*) để được mở quyền. | **Cực kỳ tối ưu cho Affiliate Marketing:** TikTok hiểu sâu sắc rằng Nhà sáng tạo nội dung (Creator/KOC) nhận link và xin mẫu thử theo sở trường (Niche). Việc khóa ngành hàng giúp KOC Beauty không bao giờ gặp phải chảo chống dính hay áo quần trong kho sản phẩm của shop mỹ phẩm. SCANMS áp dụng trực tiếp cơ chế này. |
+| **Shopee Mall & LazMall** | **Authorized Brand Category Bound** | Gian hàng chính hãng (Mall) chỉ được phép mở bán các SKU thuộc đúng thương hiệu và danh mục đã được cấp phép theo hợp đồng phân phối độc quyền. Sàn khóa chặt danh mục bằng thỏa thuận pháp lý B2B. | **Kiểm soát Chất lượng & Pháp lý:** Mỗi ngành hàng có điều kiện kiểm định y tế, tem nhãn phụ và chính sách đổi trả khác nhau (Mỹ phẩm cần bảo quản tem seal, thời trang cần chính sách đổi size). Khóa ngành hàng giúp SCANMS bảo vệ uy tín thương hiệu công ty và đồng nhất quy trình logistics. |
+| **Amazon (Brand Registry)** | **Product Classifier & Single-Vertical Stores** | Amazon yêu cầu mỗi thương hiệu phải xác lập mã phân loại hàng hóa (*Product Classifier*). Các nhãn hàng D2C trên Amazon tạo *Brand Storefront* chuyên biệt cho từng dòng sản phẩm. | **Tối ưu Hóa AI Matching:** Amazon định vị khách hàng tìm sản phẩm theo nhãn hàng chuyên sâu. SCANMS học hỏi cách phân bổ để thuật toán AI gợi ý (FR-30) so khớp chuẩn xác KOC theo thế mạnh ngành hàng. |
+| **Tập đoàn Bán lẻ Đa Thương hiệu (House of Brands - Masan, Vinamilk, Coolmate)** | **Single-Vertical Business Units** | Doanh nghiệp chia tách các Brand con thành từng đơn vị độc lập: Coolmate chuyên đồ nam, 84RISING chuyên đồ nữ, CM24 chuyên mỹ phẩm nam. Không bao giờ bán chung chạ lộn xộn. | **Chuẩn mực Bản sắc Đề tài:** SCANMS là nền tảng quản trị của một Doanh nghiệp Bán lẻ Đa Ngành. Mỗi Store đại diện cho 1 Nhãn hàng D2C chuyên biệt của tập đoàn. |
+
+---
+
+### 3.5. Quy Trình Khởi Tạo Cửa Hàng Mới & Nguyên Tắc Bất Biến 1 Role `SHOP_MANAGER`
+
+#### A. Khắc Phục Lỗ Hổng Kiến Trúc & Database
+* **Thực trạng trước đây:** Bảng `stores` chỉ có 1 cột `owner_id`. Khi Super Admin bổ nhiệm thêm Manager mới cho Shop tại trang nhân sự, code cũ chạy `update({ where: { id: storeId }, data: { ownerId: newUser.id } })`, dẫn đến việc Manager cũ bị ghi đè và mất quyền quản trị. Đồng thời, trên giao diện Admin chưa có nút tạo Store mới.
+* **Giải pháp Chuẩn Hóa:**
+  1. Bổ sung liên kết `storeId` trên model `User` (`storeId String? @db.Uuid`).
+  2. Khi Admin bổ nhiệm Manager phụ trách Shop, hệ thống cập nhật `newUser.storeId = store.id`.
+  3. Logic kiểm tra quyền truy cập Shop của Manager: Hệ thống kiểm tra `store.ownerId === user.id || user.storeId === store.id`.
+
+#### B. Nguyên Tắc Bất Biến 5 Roles (Không Sinh Thêm Role Phụ)
+* Hệ thống tuân thủ tuyệt đối **5 Roles cốt lõi** đã chốt cho Đồ án Capstone:
+  1. `CUSTOMER`: Khách hàng mua hàng qua link/voucher tiếp thị, theo dõi vận đơn GHN.
+  2. `COLLABORATOR`: KOC/KOL đối tác tiếp thị, nộp eKYC, sinh Smart Link/QR, mượn mẫu thử 14 ngày, nhận hoa hồng Napas 24/7.
+  3. `SHOP_MANAGER`: Quản lý toàn diện nhãn hàng trực thuộc (sản phẩm, tồn kho, duyệt mẫu thử, duyệt deal VIP, voucher, đơn hàng GHN).
+  4. `SYSTEM_MANAGER`: Chuyên viên vận hành sàn (Duyệt eKYC, kiểm duyệt sản phẩm Maker-Checker, phân xử tranh chấp mẫu thử, giám sát gian lận).
+  5. `SYSTEM_ADMIN`: Quản trị tối cao (Bổ nhiệm nhân sự nội bộ, khởi tạo Cửa hàng mới, Executive Financial Dashboard).
+* **Một Cửa Hàng có thể có Nhiều Quản lý cùng mang Role `SHOP_MANAGER`:**
+  * Cả 2 hoặc 3 nhân sự cùng làm việc cho một nhãn hàng **đều mang chung 1 vai trò là `SHOP_MANAGER`**, và đều có `storeId` trỏ về cùng một Cửa hàng.
+  * Cả hai đều có toàn quyền điều hành nghiệp vụ của nhãn hàng đó mà **không cần đẻ thêm bất kỳ role phụ nào** (như `WAREHOUSE_STAFF` hay `DEAL_STAFF`), giữ vững 100% ma trận phân quyền RBAC đã đăng ký với Hội đồng chấm thi.
+
+#### C. Quy Trình Super Admin Khởi Tạo Gian Hàng Mới (`AdminStoresModal`)
+Quản trị viên tối cao (`SYSTEM_ADMIN`) mở modal "+ Tạo Gian Hàng Mới":
+1. Nhập Tên Gian hàng / Thương hiệu (`name`, `slug`).
+2. Chọn **1 Ngành hàng cố định duy nhất** (`primaryCategory` từ danh sách 4 ngành hàng cốt lõi).
+3. Nhập **Địa chỉ Kho xuất hàng GHN (Pickup Warehouse)**: Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, Địa chỉ cụ thể để tích hợp API GHN lấy hàng.
+4. Nhập Tỷ lệ hoa hồng mở sàn cơ sở (`defaultCommissionRate: 10%`).
+5. Chỉ định hoặc tạo mới tài khoản `SHOP_MANAGER` phụ trách đầu tiên.
+
+---
+
+### 3.6. Kế Hoạch Tái Cấu Trúc Seed Data Mới Chuẩn Hệ Thống Quản Lý CTV & Tiếp Thị Liên Kết
+
+#### A. Đánh Giá & Nhận Xét Hạn Chế Của Bộ Seed Data Cũ
+* **Quá nhiều gian hàng lan man:** Bộ dữ liệu seed cũ có quá nhiều shop ảo không rõ bản sắc, gây phân tán và thiếu tính tập trung của một Doanh nghiệp bán lẻ có chiến lược.
+* **Sản phẩm chưa chuẩn Tiếp thị Liên kết:** Nhiều sản phẩm thiếu các thông tin quan trọng của một chiến dịch Affiliate: hoa hồng base $10\%$ chưa thống nhất, thiếu chính sách suất mượn mẫu thử 14 ngày SLA, thiếu tài nguyên đa phương tiện (ảnh studio, video review chân thực của KOC), thiếu quy cách đóng gói cân nặng để GHN tính cước.
+
+#### B. Định Hình Bộ Seed Data Mới Tinh Gọn (4 Cửa Hàng Trực Thuộc Chuyên Sâu)
+Thu gọn toàn bộ hệ thống về đúng **4 Cửa hàng Trực thuộc Chuẩn mực** đại diện cho 4 ngành hàng có tỷ trọng tiếp thị liên kết (KOL/KOC Affiliate) cao nhất thị trường Việt Nam:
+1. 🏪 **Store 1: Sora Skincare & Cosmetics**
+   * Ngành hàng cố định: `Mỹ phẩm & Chăm sóc da chuyên sâu`
+   * Kho bãi: Kho Mát Tiêu Chuẩn GMP, Khu Công Nghệ Cao, TP.Thủ Đức, TP.HCM (`from_district_id: 1442`, `from_ward_code: 20109`)
+   * Tệp KOC mục tiêu: Beauty Bloggers, Dược mỹ phẩm Reviewers, KOC Makeup.
+   * Sản phẩm chủ lực: Serum Vitamin C 15% Dưỡng Sáng, Kem Chống Nắng Phổ Rộng SPF50+, Nước Tẩy Trang Rau Má Dịu Nhẹ.
+2. 🏪 **Store 2: Aura Activewear & Apparel**
+   * Ngành hàng cố định: `Thời trang & May mặc thể thao năng động`
+   * Kho bãi: Kho May Mặc Thời Trang, 128/4 Hoàng Hoa Thám, Tân Bình, TP.HCM (`from_district_id: 1444`, `from_ward_code: 20708`)
+   * Tệp KOC mục tiêu: Fashion TikTokers, Gymer / Vận động viên, KOC Biến hình thời trang.
+   * Sản phẩm chủ lực: Áo Khoác Gió Thông Hơi Chống Nước, Quần Legging Thể Thao Nâng Mông, Balo Đa Năng Chống Trộm.
+3. 🏪 **Store 3: GreenBio Health & Nutrition**
+   * Ngành hàng cố định: `Dinh dưỡng, Thảo mộc & Sức khỏe thiên nhiên`
+   * Kho bãi: Kho Dược Liệu & Thực Phẩm Sức Khỏe, Tân Phú, TP.HCM (`from_district_id: 1452`, `from_ward_code: 21011`)
+   * Tệp KOC mục tiêu: KOC Eat-Clean, Huấn luyện viên Yoga/Pilates, Bác sĩ/Dược sĩ gia đình.
+   * Sản phẩm chủ lực: Hạt Granola Nướng Mật Ong Rừng, Trà Thảo Mộc Thanh Nhiệt Giảm Stress, Bột Collagen Thủy Phân Vị Đào.
+4. 🏪 **Store 4: Lumière Smart Living**
+   * Ngành hàng cố định: `Thiết bị gia dụng & Đồ bếp thông minh`
+   * Kho bãi: Kho Tổng Thiết Bị, Lô B4 KCN Tân Bình, TP.HCM (`from_district_id: 1452`, `from_ward_code: 21011`)
+   * Tệp KOC mục tiêu: Food Bloggers, Mẹ đảm đang nội trợ, Reviewers đồ gia dụng thông minh.
+   * Sản phẩm chủ lực: Nồi Chiên Không Dầu Điện Tử 5.5L, Máy Ép Chậm Trục Xoắn Ngang, Chảo Vân Đá Đáy Từ Chống Dính.
+
+#### C. Tiêu Chuẩn Sản Phẩm Trong Seed Data Mới
+Mỗi sản phẩm bắt buộc phải có đầy đủ 6 khối:
+* Cố định đúng ngành hàng của Store.
+* Mã vạch EAN-13 chuẩn nội bộ (không trùng lặp).
+* Bảng ma trận biến thể 2 tầng (Màu sắc/Kích cỡ hoặc Dung tích/Mùi hương) có tồn kho và giá bán riêng.
+* Trọng lượng và kích thước đóng gói để GHN tính cước tức thời.
+* Chính sách KOC: Base Commission $10\%$, cho phép mượn mẫu thử 14 ngày (SLA), cam kết nộp video review.
+* Tài nguyên Media Hub: Ít nhất 3 ảnh studio góc chụp sạch sẽ + 1 video quay trải nghiệm thực tế.
 
 ---
 
@@ -508,16 +611,19 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 - **Tác vụ 1.2:** Cập nhật `AppRoutes.tsx` và `navigation.config.ts`: Trỏ `/admin/personnel` đến `AdminPersonnelPage`, tách bạch `/admin/kyc` cho `KycApprovalPage`.
 - **Tác vụ 1.3:** Tái cấu trúc `PartnerUpgradeTab.tsx`: Bỏ hoàn toàn tab Shop, triển khai layout 2 cột sang trọng (Warm Sand Gold) làm Cổng Đăng Ký KOC chuyên nghiệp.
 - **Tác vụ 1.4:** Bổ sung API `POST /api/v1/users/internal-staff` tại `users.controller.ts` để Super Admin tạo Shop Manager gán theo StoreId.
+- **Tác vụ 1.5:** Bổ sung modal "+ Tạo Gian Hàng Mới" cho Super Admin (Tên shop, Ngành hàng cố định, Địa chỉ kho xuất hàng GHN), đồng thời hỗ trợ nhiều nhân sự cùng mang role `SHOP_MANAGER` quản lý 1 shop qua trường `storeId` trên `User` (không sinh role mới).
 
 ### GIAI ĐOẠN 2: Tinh Chỉnh Động Cơ Thù Lao Ưu Tiên & Khởi Tạo Hạng Đồng
 - **Tác vụ 2.1:** Cập nhật hàm tính hoa hồng trong `commission-policy.ts` và `commission-rules.service.ts`: Áp dụng quy tắc $\max(\text{Deal}, \text{Campaign}, \text{Tier}, \text{Base}) + \text{Live Bonus}$.
 - **Tác vụ 2.2:** Đảm bảo khi KOC được duyệt eKYC thành công trong `kyc.service.ts`, hệ thống tự động gán Hạng khởi đầu là **Đồng (Bronze)** với Base Rate $10\%$.
 - **Tác vụ 2.3:** Kiểm tra tính độc lập của tác vụ chốt thưởng tháng `settleMonthlyBonus()` (FR-09) tách biệt khỏi luồng thanh toán đơn hàng POS.
 
-### GIAI ĐOẠN 3: Dọn Dẹp Dữ Liệu Mẫu ShopKolHub & Kết Nối AI Smart Matcher Thật
+### GIAI ĐOẠN 3: Khóa Ngành Hàng Sản Phẩm, Tái Cấu Trúc Seed Data & Dọn Dẹp ShopKolHub
 - **Tác vụ 3.1:** Mở tệp `ShopKolHubPage.tsx`: Xóa bỏ mảng 4 đơn hàng ảo hardcoded (`#SCN-99824`...) và công tắc "Đang bật số liệu mẫu".
 - **Tác vụ 3.2:** Kết nối bảng danh sách KOL với endpoint `GET /api/v1/collaborators/recommendations` dựa trên danh mục hàng hóa của Store.
 - **Tác vụ 3.3:** Hiển thị số liệu hiệu suất thực tế (Doanh số đem lại, Tỷ lệ chuyển đổi CR%, Điểm tín nhiệm hoàn thành video mẫu thử).
+- **Tác vụ 3.4:** Khóa cứng trường Ngành hàng (Category) khi `SHOP_MANAGER` tạo sản phẩm mới (`ProductManagementPage.tsx` & `POST /api/v1/products`) theo đúng ngành hàng độc quyền của Cửa hàng phụ trách.
+- **Tác vụ 3.5:** Tái cấu trúc bộ Seed Data mới tinh gọn: Chuẩn hóa 4 Cửa hàng Trực thuộc Chuyên Sâu (Sora Skincare, Aura Activewear, GreenBio Health, Lumière Smart Living) với đầy đủ 6 khối logic, barcode EAN-13, quy cách đóng gói GHN, tài nguyên Media Hub và chính sách mẫu thử 14 ngày SLA.
 
 ### GIAI ĐOẠN 4: Chuẩn Hóa Quản Lý Tài Chính, Rút Tiền Payouts & Thuế TNCN
 - **Tác vụ 4.1:** Mở tệp `AdminFinancePayoutsPage.tsx`: Xóa bỏ tab "Rút tiền Gian hàng (Merchant)", chỉ giữ lại luồng chi trả thù lao cho KOC.
