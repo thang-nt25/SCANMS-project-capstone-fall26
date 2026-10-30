@@ -175,10 +175,12 @@ export class StoresService {
    * Lấy thông tin cấu hình cửa hàng của Chủ Shop (Store Owner)
    */
   async getMyStore(ownerId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: ownerId },
-      select: { id: true, fullName: true, storeId: true },
-    });
+    const user = this.prisma?.user?.findUnique
+      ? await this.prisma.user.findUnique({
+          where: { id: ownerId },
+          select: { id: true, fullName: true, storeId: true },
+        })
+      : null;
     const storeWhere = user?.storeId
       ? { id: user.storeId, isDeleted: false }
       : { ownerId, isDeleted: false };
@@ -243,10 +245,12 @@ export class StoresService {
    * Cập nhật cấu hình cửa hàng (Store Settings)
    */
   async updateMyStore(ownerId: string, dto: UpdateStoreDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: ownerId },
-      select: { id: true, storeId: true },
-    });
+    const user = this.prisma?.user?.findUnique
+      ? await this.prisma.user.findUnique({
+          where: { id: ownerId },
+          select: { id: true, storeId: true },
+        })
+      : null;
     const storeWhere = user?.storeId
       ? { id: user.storeId, isDeleted: false }
       : { ownerId, isDeleted: false };

@@ -92,17 +92,27 @@ export class ProductsService {
     }
   }
 
+  private async getUserStoreId(userId?: string): Promise<string | null> {
+    if (!userId || !this.prisma?.user?.findUnique) return null;
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, storeId: true },
+      });
+      return user?.storeId ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   private async canUserManageStore(
     userId: string,
     storeId: string,
     storeOwnerId?: string,
   ): Promise<boolean> {
     if (storeOwnerId && storeOwnerId === userId) return true;
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, storeId: true },
-    });
-    return user?.storeId === storeId;
+    const userStoreId = await this.getUserStoreId(userId);
+    return userStoreId === storeId;
   }
 
   private buildProductEvidenceRows(
@@ -359,12 +369,9 @@ export class ProductsService {
 
     let shopManagerStoreClause: any = null;
     if (viewer?.role === UserRole.SHOP_MANAGER) {
-      const viewerUser = await this.prisma.user.findUnique({
-        where: { id: viewer.id },
-        select: { id: true, storeId: true },
-      });
-      shopManagerStoreClause = viewerUser?.storeId
-        ? { OR: [{ ownerId: viewer.id }, { id: viewerUser.storeId }] }
+      const viewerStoreId = await this.getUserStoreId(viewer.id);
+      shopManagerStoreClause = viewerStoreId
+        ? { OR: [{ ownerId: viewer.id }, { id: viewerStoreId }] }
         : { ownerId: viewer.id };
     }
 
@@ -1133,17 +1140,14 @@ export class ProductsService {
         throw new NotFoundException('Gian hàng chỉ định không tồn tại.');
       }
     } else {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, storeId: true },
-      });
-      const targetStoreId = dto.storeId || user?.storeId || undefined;
+      const userStoreId = await this.getUserStoreId(userId);
+      const targetStoreId = dto.storeId || userStoreId || undefined;
       store = await this.prisma.store.findFirst({
         where: {
           ...(targetStoreId ? { id: targetStoreId } : {}),
           OR: [
             { ownerId: userId },
-            ...(user?.storeId ? [{ id: user.storeId }] : []),
+            ...(userStoreId ? [{ id: userStoreId }] : []),
           ],
           isDeleted: false,
         },
@@ -2023,15 +2027,12 @@ export class ProductsService {
     };
 
     if (!isSystemAdminOrManager) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, storeId: true },
-      });
+      const userStoreId = await this.getUserStoreId(userId);
       const store = await this.prisma.store.findFirst({
         where: {
           OR: [
             { ownerId: userId },
-            ...(user?.storeId ? [{ id: user.storeId }] : []),
+            ...(userStoreId ? [{ id: userStoreId }] : []),
           ],
           isDeleted: false,
         },

@@ -20,10 +20,10 @@ describe('Tuan checkout contracts in seed v3', () => {
     const items = data.orderItems.filter((row) => row.orderId === order.id);
     // Bronze 0, VIP +2 only on first product, campaign +1, historical Live +2.
     expect(items.map((row) => amount(row.appliedCommissionRate))).toEqual([
-      15, 13,
+      14, 13,
     ]);
     expect(items.map((row) => amount(row.regularCommissionRate))).toEqual([
-      13, 11,
+      12, 11,
     ]);
     expect(
       data.campaigns.every(

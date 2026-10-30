@@ -121,8 +121,8 @@ export function validateDataset(data: SeedDataset): void {
       'shop base commission must be 10%',
     );
     assertSeed(
-      data.products.filter((row) => row.storeId === store.id).length === 2,
-      'each shop needs two products',
+      data.products.filter((row) => row.storeId === store.id).length === 3,
+      'each shop needs three products',
     );
     const onboarding = jsonObject(store.onboardingData);
     const warehouse = jsonObject(store.returnWarehouse);
