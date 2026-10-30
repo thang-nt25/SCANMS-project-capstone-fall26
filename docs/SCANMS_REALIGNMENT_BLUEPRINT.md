@@ -197,6 +197,41 @@ flowchart TD
 
 ---
 
+### 1.14. Phân Định Trách Nhiệm Chuẩn Kiểm Toán (Segregation of Duties - SoD): SYSTEM_ADMIN (Giám Đốc) vs SYSTEM_MANAGER (Kế Toán / Vận Hành)
+
+> [!IMPORTANT]
+> **Giải Quyết Triệt Để Nguy Cơ Quá Tải / Nghẽn Cổ Chai (Bottleneck) Ở Cấp Lãnh Đạo:**
+> Trong các tập đoàn và sàn TMĐT lớn, Tổng Giám Đốc (`SYSTEM_ADMIN`) **tuyệt đối không ngồi duyệt từng lệnh rút tiền 500k, 1 triệu của KOL hằng ngày**. Toàn bộ tác vụ chi trả sự vụ được ủy quyền cho Chuyên viên Vận hành / Kế toán viên (`SYSTEM_MANAGER`), trong khi `SYSTEM_ADMIN` tập trung nắm giữ 5 Trụ cột Quyền lực Chiến lược.
+
+#### A. Trách Nhiệm Vận Hành & Kế Toán Hằng Ngày Của `SYSTEM_MANAGER` (Finance Operations Lead)
+1. **Thẩm định & Duyệt eKYC:** Đối soát CCCD, số tài khoản ngân hàng và kênh mạng xã hội của KOC đăng ký mới.
+2. **Kiểm duyệt Sản phẩm (Product Moderation):** Thẩm định pháp chế, giấy phép công bố và tính hợp lệ của sản phẩm do Shop Manager nhập lên sàn.
+3. **Phê duyệt Lệnh Rút Tiền Hằng Ngày (Daily Payout Approvals):**
+   * Đối soát số dư khả dụng (đã vượt qua 7 ngày Escrow sạch không khiếu nại).
+   * Tự động tính toán và khấu trừ **$10\%$ Thuế TNCN tại nguồn** theo luật thuế.
+   * Bấm nút **"Duyệt giải ngân Napas 24/7"** (`POST /api/v1/payouts/:id/approve`) để chuyển tiền về tài khoản ngân hàng của KOC.
+4. **Trọng tài Hoàn tiền & Thu hồi Chiết khấu (Dispute Mediation & Clawback):**
+   * Phân xử khiếu nại giữa Khách hàng và Shop; duyệt hoàn tiền vào Ví khách.
+   * Kích hoạt động cơ **Clawback Engine** thu hồi thù lao KOC về $0₫$ đối với các đơn hàng bị trả/hoàn tiền.
+
+#### B. 5 Trụ Cột Quyền Lực Chiến Lược Của `SYSTEM_ADMIN` (Tổng Giám Đốc / CEO & Executive Board)
+1. **🏛️ Quản Trị Cơ Cấu Tổ Chức & Nhân Sự Cấp Cao (Độc Quyền `/admin/personnel`):**
+   * Độc quyền khởi tạo Cửa hàng mới (Store Initialization), chọn ngành hàng độc quyền và gán kho xuất hàng GHN.
+   * Bổ nhiệm nhân sự: Phân công ai làm `SHOP_MANAGER` điều hành nhãn hàng nào, ai làm `SYSTEM_MANAGER` nắm quyền kế toán vận hành; tước quyền hoặc khóa tài khoản nhân viên vi phạm.
+2. **📊 Báo Cáo Tài Chính & Hiệu Suất Cấp Cao (Executive Financial Dashboard `/admin/analytics`):**
+   * Giám sát Tổng GMV toàn sàn, Tổng Doanh thu Doanh nghiệp và Tỷ trọng Chi phí Tiếp thị (Affiliate Expense Ratio).
+   * Theo dõi Dòng tiền bảo chứng Escrow Master Account và Tổng hợp Báo cáo Quyết toán Thuế TNCN đã khấu trừ để nộp về Chi cục Thuế Nhà nước.
+3. **🎯 Thẩm Định Ngoại Lệ Ngân Sách (Special Budget Overrides):**
+   * Phê duyệt Deal VIP vượt trần ($> 16\%$) khi Shop Manager muốn mời Siêu KOC triệu followers.
+   * Phê duyệt Chiến dịch Khuyến mãi (Flash Sale / Xả kho) đảm bảo giá bán không vi phạm Giá sàn (`floorPrice`).
+4. **🛡️ Giám Sát An Ninh, Chống Gian Lận & Kiểm Toán Bất Biến (`/admin/fraud-sentinel`, `/admin/audit-logs`):**
+   * Giám sát AI Fraud Sentinel chặn Click Flooding, Cookie Stuffing và các đường dây tự mua trục lợi.
+   * Soi xét Nhật Ký Kiểm Toán Bất Biến (`AuditLog`) để giám sát tính liêm chính của `SYSTEM_MANAGER` khi duyệt chi tiền.
+5. **👑 Quyền Hạn Kế Thừa Tối Cao (Master Fallback):**
+   * Kế thừa $100\%$ quyền hạn của `SYSTEM_MANAGER` để trực tiếp can thiệp giải quyết khủng hoảng khi cần thiết.
+
+---
+
 # PHẦN 2: CƠ CHẾ THÙ LAO MỚI CHUẨN DOANH NGHIỆP
 *(Quy tắc Mức Ưu Đãi Tốt Nhất – Minh Bạch & Kiểm Soát Ngân Sách)*
 
@@ -633,7 +668,8 @@ flowchart TD
          │                          │                          │    Duyệt chi Napas 24/7  │
          │                          │                          │─────────────────────────>│
          │                          │                          │                          │ 6. Ghi Sổ Cái Bất Biến
-         │<───────────────────────────────────────────────────────────────────────────────│    Ting ting tiền về STK
+         │<────────────────────────────────────────────────────┴──────────────────────────│    Ting ting tiền về STK
+         │                          │                          │                          │    & Xem Executive Dash
 ```
 
 ### 1. Kịch Bản Thao Tác Chi Tiết Từng Bước (Live Action Walkthrough)
@@ -645,18 +681,18 @@ flowchart TD
   * Động cơ tài chính quét tổng doanh số sạch của Thảo Nhi trong tháng đạt $52.000.000₫$ (vượt mốc chỉ tiêu 50 triệu):
     * Tự động khởi tạo giao dịch cộng thưởng nóng **$2.000.000₫$** vào ví KOC với mã bút toán `MONTHLY_BONUS_REWARD`.
     * Đồng thời, hệ thống tự động **Nâng Hạng KOC từ ĐỒNG lên BẠC (Silver)**, mở khóa quyền hưởng Base Rate $11\%$ từ tháng tiếp theo.
-* **Bước 5.3 (`COLLABORATOR` - Tạo lệnh rút tiền Payout):**
+* **Bước 5.3 (`COLLABORATOR` - Tạo lệnh rút thu nhập Payout):**
   * Thảo Nhi mở Ví Đối Tác ([`/collaborator/wallet`](file:///c:/HW/CAPSTONE/frontend/src/pages/collaborator/WalletPage.tsx)).
-  * Tổng số dư khả dụng hiện có: $72.000₫ + 2.000.000₫ = 2.072.000₫$.
-  * Bấm nút **"Rút tiền về tài khoản ngân hàng"**, nhập số tiền rút $2.072.000₫$ về STK MB Bank chính chủ đã eKYC.
+  * Tổng thu nhập khả dụng hiện có: $72.000₫ + 2.000.000₫ = 2.072.000₫$.
+  * Bấm nút **"Rút thu nhập về tài khoản ngân hàng"**, nhập số tiền rút $2.072.000₫$ về STK MB Bank chính chủ đã eKYC.
 * **Bước 5.4 (`Hệ thống` - Khóa dòng CSDL & Tự động khấu trừ 10% Thuế TNCN):**
   * Backend thực thi truy vấn an toàn **Khóa dòng CSDL (`SELECT ... FOR UPDATE`)** để loại trừ hoàn toàn nguy cơ click đúp làm âm số dư ví (Double-Spending).
   * Kiểm tra số tiền rút $\ge 2.000.000₫$ theo quy định của Luật Quản lý Thuế Việt Nam đối với thu nhập vãng lai của cá nhân tiếp thị:
     $$\text{Tiền Thuế TNCN Khấu Trừ (10\%)} = 2.072.000₫ \times 10\% = 207.200₫$$
     $$\text{Số Tiền Thực Nhận Giải Ngân} = 2.072.000₫ - 207.200₫ = 1.864.800₫$$
   * Trạng thái lệnh rút ghi nhận: `PENDING_ADMIN_APPROVAL`.
-* **Bước 5.5 (`SYSTEM_MANAGER` / `SYSTEM_ADMIN` - Đối soát & Phê duyệt giải ngân):**
-  * Kế toán công ty mở trang Quản trị Chi trả ([`/admin/finance/payouts`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminFinancePayoutsPage.tsx)).
+* **Bước 5.5 (`SYSTEM_MANAGER` - Kế toán Vận hành Đối soát & Phê duyệt Giải ngân):**
+  * Chuyên viên vận hành / Kế toán viên mở trang Quản trị Chi trả ([`/admin/finance/payouts`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminFinancePayoutsPage.tsx)).
   * Thấy yêu cầu rút tiền của Thảo Nhi hiển thị rõ ràng:
     * *Số tiền yêu cầu:* $2.072.000₫$
     * *Khấu trừ thuế TNCN (10%):* **$207.200₫$**
@@ -664,6 +700,12 @@ flowchart TD
     * *Chỉ số an toàn gian lận:* **100% An toàn (Xanh)**
   * Kế toán bấm nút **"Duyệt giải ngân Napas 24/7"** (`POST /api/v1/payouts/:id/approve`).
   * Hệ thống chuyển lệnh sang trạng thái `APPROVED`, ghi bút toán kép vào Sổ cái kế toán `FinancialLedger` và nhật ký kiểm toán `AuditLog`. KOC nhận được thông báo ting ting tiền về tài khoản ngân hàng kèm email sao kê chi tiết.
+* **Bước 5.6 (`SYSTEM_ADMIN` - Giám đốc Theo Dõi Executive Dashboard & Giám Sát Kiểm Toán):**
+  * Tổng Giám Đốc mở trang Executive Financial Dashboard ([`/admin/analytics`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminAnalyticsHubPage.tsx)):
+    * Thấy chỉ số **GMV toàn tập đoàn** tăng trưởng thực tế.
+    * Thấy **Tỷ lệ chi phí thù lao KOC/Doanh thu** nằm trong ngưỡng an toàn ($11.4\% < 15\%$).
+    * Thấy **Tổng số tiền Thuế TNCN $207.200₫$** vừa được tự động gom vào Báo cáo Thuế Doanh nghiệp phục vụ quyết toán định kỳ với Cơ quan Thuế.
+  * Giám đốc mở trang **Nhật Ký Kiểm Toán (`/admin/audit-logs`)** để kiểm tra tính tuân thủ quy trình của `SYSTEM_MANAGER`, đảm bảo toàn bộ dòng tiền vận hành minh bạch $100\%$.
 
 ---
 
@@ -734,12 +776,15 @@ Livestream không phải là 1 trong 5 Main Flows bắt buộc để chấm đi�
 | **Chủ Shop (Shop Manager)** | **Giám đốc Nhãn hàng / Quản lý Ngành hàng (Brand Manager)** |
 | **Sàn TMĐT** | **Nền tảng Quản trị Mạng lưới Tiếp thị Liên kết (Affiliate Network Management System)** |
 | **Cộng tác viên bán dạo / Cò mồi** | **Nhà sáng tạo Nội dung / Đối tác Tiếp thị (Creator / Affiliate Partner)** |
-| **Tiền hoa hồng** | **Chiết khấu Bán hàng (Sales Margin) / Thu nhập Tiếp thị (Earnings)** |
+| **Tiền hoa hồng (Commission)** | • Trên Giao diện UI & Ví tiền: **Thu Nhập Đối Tác / Thu Nhập Tiếp Thị** *(Partner Earnings - chuẩn TikTok Creator Rewards)*<br>• Trong Thuật toán & Hợp đồng Deal: **Tỷ Lệ Thù Lao Đối Tác** *(Partner Remuneration Rate)*<br>• Khi Báo cáo & Thuyết trình: **Cơ Chế Thù Lao & Đãi Ngộ Đối Tác** *(Partner Remuneration & Performance Rewards)* |
 | **Chợ hoa hồng** | **Kho Tiếp thị Sản phẩm & Chiến dịch Nhãn hàng (Campaign & Product Hub)** |
+| **Voucher giảm giá sàn / Freeship** | **Coupon Độc Quyền Định Danh KOC (KOL-Exclusive Attribution Coupon - e.g. `THAONHI16`)** |
+| **Giá giảm tùy ý lúc tạo hàng** | **Giá Niêm Yết (List Price / MSRP) & Khóa Giá Sàn Bảo Vệ (Floor Price / MAP)** |
 | **Xin hàng mẫu miễn phí** | **Thẩm duyệt & Tài trợ Hàng mẫu Trải nghiệm (Sample Sponsorship)** |
 | **Phạt bùng hàng mẫu** | **Chế tài Vi phạm Cam kết Truyền thông SLA 14 Ngày (SLA Enforcement)** |
-| **Rút tiền hoa hồng** | **Quyết toán Thu nhập & Thưởng Doanh số Đối tác (Partner Earnings Settlement)** |
+| **Rút tiền hoa hồng** | **Quyết toán Thu nhập & Rút Tiền Đối Tác (Partner Earnings Payout Settlement)** |
 | **Sàn xử kiện Shop vs Khách** | **Bảo chứng Tạm giữ Escrow & Thu hồi Chiết khấu khi Hoàn hàng (Clawback Engine)** |
+| **Admin duyệt mọi lệnh tiền** | **Phân Tách Trách Nhiệm SoD: System Manager Duyệt Chi Trả Payout Hằng Ngày vs System Admin Giám Sát Executive Dashboard** |
 
 ---
 
@@ -756,6 +801,7 @@ Livestream không phải là 1 trong 5 Main Flows bắt buộc để chấm đi�
 | **Quản Lý Giá Bán & Khuyến Mãi** | Người bán tự do gõ đè giá giảm tùy tiện, dễ dẫn tới bán phá giá hoặc bán lỗ. | **Khóa Giá Sàn Bảo Vệ (`floorPrice`):** Tạo hàng chỉ nhập Giá niêm yết. Giảm giá phải lập **Đề xuất Chiến dịch Khuyến mãi** chờ Admin phê duyệt Maker-Checker, cấm bán dưới giá sàn. |
 | **Hệ Thống Voucher / Mã Giảm Giá** | Tràn ngập voucher freeship, voucher hoàn xu, mã giảm chớp nhoáng gây biến chất thành chợ bán lẻ tạp nham. | **Xóa sạch voucher rác, chỉ duy trì DUY NHẤT: Coupon Độc Quyền Định Danh KOC (`THAONHI16`)** vừa giảm giá độc quyền cho fan, vừa là **Vũ khí Bắt dấu vết Đơn hàng số 1 (Attribution)**. |
 | **Động Cơ Tính Thù Lao Tiếp Thị** | Cộng dồn nhiều nguồn vô lý ($10\% + \text{Tier} + \text{Deal} + \text{Live}$... lên $> 30\%$), làm thủng biên lợi nhuận. | **Quy tắc Ưu đãi Tốt nhất (Best-Benefit Override - Không cộng dồn):** Lấy $\max(\text{Deal VIP } 16\%, \text{Chiến dịch}, \text{Tier}, \text{Base } 10\%)$. Thưởng Live (+2%) và Thưởng tháng FR-09 tính độc lập. |
+| **Phân Định Trách Nhiệm Chi Trả (Segregation of Duties - SoD)** | Dồn hết mọi việc duyệt tiền cho Admin tối cao gây nghẽn cổ chai, hoặc thả lỏng cho bot tự động duyệt thiếu kiểm soát. | **Phân tách 2 cấp chuẩn mực:** `SYSTEM_MANAGER` (Kế toán Vận hành) trực tiếp đối soát và duyệt lệnh Payout hằng ngày; `SYSTEM_ADMIN` (Giám đốc) nắm giữ Executive Financial Dashboard, giám sát dòng tiền Escrow và soi xét Nhật ký Kiểm toán `AuditLog`. |
 
 ---
 
@@ -763,7 +809,7 @@ Livestream không phải là 1 trong 5 Main Flows bắt buộc để chấm đi�
 
 | Thành viên | Main Flow Phụ trách Trình bày & Demo | Trọng tâm Bảo vệ Kỹ thuật & Code (Defense Focus) |
 | :--- | :--- | :--- |
-| **1. Nguyễn Thành Thắng** *(Leader)* | **Main Flow 1** *(Onboarding Nhân Sự, eKYC Đối Tác & Liên Kết MXH FR-07)* + **Nửa sau Main Flow 5** *(Khóa dòng CSDL, Thuế TNCN 10% & Payout)* | Kiến trúc RBAC 5 Roles, Cấp tài khoản nội bộ vs Đăng ký ngoài, Quy trình thẩm định eKYC & Kênh MXH, Khóa dòng `SELECT ... FOR UPDATE` chống race-condition rút tiền, Thuật toán tính Thuế TNCN 10% & Sổ cái tài chính bất biến. |
+| **1. Nguyễn Thành Thắng** *(Leader)* | **Main Flow 1** *(Onboarding Nhân Sự, eKYC Đối Tác & Liên Kết MXH FR-07)* + **Nửa sau Main Flow 5** *(Executive Financial Dashboard, Phân tách SoD, Thuế TNCN 10% & Sổ cái)* | Kiến trúc RBAC 5 Roles, Cấp tài khoản nội bộ vs Đăng ký ngoài, Quy trình thẩm định eKYC & Kênh MXH, Phân tách trách nhiệm (SoD) giữa Admin chiến lược và Manager kế toán, Khóa dòng `SELECT ... FOR UPDATE` chống race-condition rút tiền, Thuật toán tính Thuế TNCN 10% & Sổ cái tài chính bất biến. |
 | **2. Phan Xuân Thịnh** | **Main Flow 2** *(Khóa Ngành Hàng, Hợp Tác 2 Chiều & AI Matchmaker)* + **Nửa đầu Main Flow 3** *(Chat Realtime & Thỏa thuận VIP)* | Thuật toán AI Ma trận Trọng số 4 Trục trong `ai-recommendation.service.ts`, Thị trường hợp tác 2 chiều (Shop mời Top KOC & KOC xin hợp tác), Kiến trúc WebSocket Socket.IO đàm phán gửi Thẻ mời chiến dịch VIP realtime. |
 | **3. Nguyễn Đình Tuấn** | **Nửa sau Main Flow 3** *(Tài Trợ Hàng Mẫu SLA 14 Ngày)* + **Nửa đầu Main Flow 4** *(Attribution, Link/QR, Coupon Định Danh & Chống Tự Mua)* | Quản trị hàng mẫu và đồng hồ SLA 14 ngày `deal-kpi.policy.ts`, Bộ sinh Smart Link / Dynamic QR, Coupon Attribution `THAONHI16`, Động cơ AI Fraud Sentinel phát hiện gian lận tự mua (Self-referral). |
 | **4. Nguyễn Phú Quý** | **Nửa sau Main Flow 4** *(Giao Nhận GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Clawback)* + **Nửa đầu Main Flow 5** *(Bảo Chứng Escrow & Thưởng Mốc Doanh Số FR-09)* | Tích hợp vận đơn GHN, Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên hoa hồng vs Hoàn tiền kích hoạt Clawback Engine, Cơ chế Tạm giữ Bảo chứng Escrow 7-14 ngày, Thuật toán quyết toán thưởng mốc tháng FR-09 & thăng hạng KOC. |
