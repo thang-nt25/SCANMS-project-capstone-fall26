@@ -411,12 +411,31 @@ Trong một doanh nghiệp bán lẻ D2C sở hữu mạng lưới tiếp thị,
      $$\text{Nếu } \text{Gross Amount} \ge 2.000.000\text{₫} \implies \text{Tax Amount} = \text{Gross Amount} \times 10\%$$
      $$\text{Net Amount (Số tiền thực nhận)} = \text{Gross Amount} - \text{Tax Amount}$$
    * Giao diện hiển thị rõ ràng bảng tính thuế để KOC nắm rõ trước khi xác nhận.
-4. **Bước 4: Admin phê duyệt & Chuyển khoản thực tế:**
-   * `SYSTEM_ADMIN` truy cập `AdminFinancePayoutsPage.tsx`, kiểm tra danh sách lệnh rút tiền `PENDING`.
+4. **Bước 4: System Manager (Kế toán Vận hành) phê duyệt & Chuyển khoản thực tế:**
+   * `SYSTEM_MANAGER` (Chuyên viên Vận hành / Kế toán viên) truy cập `AdminFinancePayoutsPage.tsx`, kiểm tra danh sách lệnh rút tiền `PENDING`.
    * Bấm **"Phê duyệt chi trả"**:
      * Gọi cổng thanh toán ngân hàng (Napas 24/7 / MBBank API).
      * **Xóa bỏ triệt để đoạn code mock tự sinh mã `MBB...`:** Nếu API ngân hàng phản hồi lỗi, hệ thống phải bắt lỗi chính xác, hiển thị thông báo đỏ và **giữ nguyên trạng thái `PENDING`**, tuyệt đối không nuốt lỗi.
      * Khi ngân hàng xác nhận giao dịch thành công, cập nhật trạng thái `COMPLETED`, lưu mã `bankRefCode`, trừ tiền trong Escrow và xuất biên lai thuế điện tử.
+
+---
+
+### 4.4. Phân Định Trách Nhiệm Tài Chính Chuẩn Kiểm Toán (Segregation of Duties - SoD): SYSTEM_ADMIN vs SYSTEM_MANAGER
+
+> [!IMPORTANT]
+> **Giải Quyết Triệt Để Nguy Cơ Nghẽn Cổ Chai (Bottleneck) Ở Cấp Lãnh Đạo:**
+> Tổng Giám Đốc (`SYSTEM_ADMIN`) tuyệt đối không ngồi duyệt từng lệnh rút tiền 500k, 1 triệu của KOL hằng ngày. Hệ thống phân tách 2 tầng trách nhiệm minh bạch:
+
+1. **`SYSTEM_MANAGER` (Chuyên Viên Vận Hành / Kế Toán Chi Trả):**
+   * Đối soát số dư ví sạch (hết 7 ngày Escrow) và phê duyệt lệnh rút tiền (Payout) hằng ngày.
+   * Tự động khấu trừ $10\%$ Thuế TNCN tại nguồn khi duyệt chi.
+   * Xử lý khiếu nại hoàn tiền đổi trả và kích hoạt Clawback Engine thu hồi thù lao về $0₫$.
+2. **`SYSTEM_ADMIN` (Tổng Giám Đốc / CEO & Executive Board) — 5 Trụ Cột Chiến Lược:**
+   * **🏛️ Quản trị Cơ cấu & Bổ nhiệm Nhân sự (`/admin/personnel`):** Độc quyền tạo Store mới, bổ nhiệm/thu hồi quyền `SHOP_MANAGER` và `SYSTEM_MANAGER`.
+   * **📊 Executive Financial Dashboard (`/admin/analytics`):** Báo cáo Doanh thu GMV toàn sàn, Tỷ lệ chi phí tiếp thị (Affiliate Expense Ratio), Tổng tiền ký quỹ Escrow và Báo cáo Quyết toán Thuế TNCN toàn công ty nộp Nhà nước.
+   * **🎯 Thẩm định Ngoại lệ Ngân sách:** Phê duyệt Deal VIP vượt trần ($> 16\%$) cho Siêu KOC; phê duyệt Chiến dịch Giảm giá (Flash Sale) bảo đảm trên Giá sàn (`floorPrice`).
+   * **🛡️ Giám sát An ninh & Kiểm toán (`/admin/fraud-sentinel`, `/admin/audit-logs`):** Giám sát AI Fraud Sentinel chặn gian lận tự mua, click flooding; kiểm tra `AuditLog` để giám sát xem `SYSTEM_MANAGER` có duyệt chi đúng quy trình không.
+   * **👑 Quyền hạn Kế thừa Tối cao (Master Fallback):** Kế thừa 100% quyền hạn của `SYSTEM_MANAGER` để can thiệp xử lý khẩn cấp khi cần.
 
 ---
 
@@ -595,19 +614,20 @@ Bảng dưới đây quy định toàn diện và chi tiết tất cả các tha
 | 5 | `M-05` | Giám sát Gian lận Lưu lượng (AI Fraud Sentinel)| Nút **"Chặn IP / Vô hiệu hóa liên kết"** | `AiFraudSentinelPage.tsx` | `POST /api/v1/fraud/mitigate` | Xem cảnh báo Click Flooding, phân tích điểm rủi ro AI, chặn gian lận |
 | 6 | `M-06` | Kiểm duyệt Đánh giá Khách hàng (Reviews) | Nút **"Ẩn đánh giá vi phạm"** | `CustomerReviewModerationPage.tsx`| `PATCH /api/v1/reviews/:id/moderate` | Lọc ngôn từ kích động, spam hoặc đánh giá sai sự thật |
 | 7 | `M-07` | Tra cứu Nhật ký Kiểm toán Hoạt động (Audit)| Menu **Nhật ký kiểm toán** | `AuditLogsPage.tsx` | `GET /api/v1/audit-logs` | Truy xuất toàn bộ lịch sử thao tác của các vai trò trong hệ thống |
+| 8 | `M-08` | Phê duyệt Lệnh Rút Thu Nhập Đối Tác (Payout) | Nút **"Duyệt giải ngân Napas 24/7"** tại Quản lý Chi trả | `AdminFinancePayoutsPage.tsx` | `POST /api/v1/payouts/:id/approve` | Kiểm tra thời hạn 7 ngày Escrow, tự động khấu trừ 10% Thuế TNCN tại nguồn, xuất ủy nhiệm chi Napas 24/7 |
 
 ---
 
-### 7.5. Role 5: `SYSTEM_ADMIN` (Quản Trị Viên Tối Cao / Super Admin)
+### 7.5. Role 5: `SYSTEM_ADMIN` (Quản Trị Viên Tối Cao / Super Admin & CEO)
 | STT | Mã Thao Tác | Tên Chức Năng Nghiệp Vụ | Vị Trí UI / Nút Bấm Thao Tác | Modal / Trang Hiển Thị | API Endpoint & Method | Hành Động Hệ Thống Phía Sau |
 | :---: | :---: | :--- | :--- | :--- | :--- | :--- |
-| 1 | `A-01` | **Tạo tài khoản Quản lý Cửa Hàng (Shop Manager)**| Nút **"+ Thêm Quản lý Cửa Hàng"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Tạo tài khoản nhân sự nội bộ, gán vào Store trực thuộc cụ thể |
-| 2 | `A-02` | **Tạo tài khoản Chuyên viên Vận Hành** | Nút **"+ Thêm Chuyên viên Vận Hành"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Cấp quyền `SYSTEM_MANAGER` cho nhân sự phòng vận hành sàn |
-| 3 | `A-03` | Khóa / Mở khóa tài khoản toàn hệ thống | Nút toggle trạng thái **"Hoạt động / Khóa"** | `AdminPersonnelPage.tsx` | `PATCH /api/v1/users/:id/toggle-status` | Vô hiệu hóa quyền truy cập khi nhân sự nghỉ việc hoặc KOC vi phạm |
-| 4 | `A-04` | Phê duyệt Lệnh Chi Trả Thù Lao KOC (Payout) | Nút **"Duyệt chi trả ngân hàng"** (Kèm mã OTP) | `AdminFinancePayoutsPage.tsx` | `POST /api/v1/payouts/:id/approve` | Kích hoạt chuyển khoản ngân hàng, ghi nhận trừ quỹ Escrow, xuất hóa đơn thuế |
-| 5 | `A-05` | Báo cáo Tài Chính & Hiệu Suất Cấp Cao | Menu **Báo cáo Doanh số & GMV** | `AdminAnalyticsHubPage.tsx` | `GET /api/v1/analytics/executive-summary` | Báo cáo Doanh thu toàn sàn, Lợi nhuận gộp, Tổng thù lao đã chi trả, ROI |
-| 6 | `A-06` | Cấu hình Thông số Sàn & Hoa hồng Gốc | Menu **Cấu hình Hệ thống** | `AdminSettingsPage.tsx` | `PATCH /api/v1/system-configs` | Điều chỉnh tỷ lệ Base Rate mặc định (10%), ngưỡng rút tối thiểu |
-| 7 | `A-07` | Can thiệp Trọng tài Cấp cao Nhất | Nút **"Phân xử tối cao"** tại các vụ việc treo | `DisputeResolutionPage.tsx` | `POST /api/v1/disputes/:id/override` | Đưa ra phán quyết cuối cùng khi phát sinh tranh chấp vượt quyền hạn |
+| 1 | `A-01` | **Khởi tạo Cửa Hàng / Nhãn Hàng Trực Thuộc** | Nút **"+ Tạo Gian Hàng Mới"** | `AdminStoresModal.tsx` | `POST /api/v1/stores` | Tạo Cửa Hàng mới, chọn 1 ngành hàng độc quyền và gán kho xuất hàng GHN |
+| 2 | `A-02` | **Bổ nhiệm Quản lý Cửa Hàng (Shop Manager)**| Nút **"+ Thêm Quản lý Cửa Hàng"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Bổ nhiệm nhân sự nội bộ, phân bổ Store trực thuộc cụ thể (`storeId`) |
+| 3 | `A-03` | **Bổ nhiệm Chuyên viên Vận Hành (Kế toán)** | Nút **"+ Thêm Chuyên viên Vận Hành"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Cấp quyền `SYSTEM_MANAGER` cho nhân sự phòng vận hành và kế toán chi trả |
+| 4 | `A-04` | Khóa / Mở khóa tài khoản toàn hệ thống | Nút toggle trạng thái **"Hoạt động / Khóa"** | `AdminPersonnelPage.tsx` | `PATCH /api/v1/users/:id/toggle-status` | Vô hiệu hóa quyền truy cập khi nhân sự nghỉ việc hoặc KOC vi phạm quy chế |
+| 5 | `A-05` | Phê duyệt Ngoại Lệ Ngân Sách (Deal VIP > 16%) | Nút **"Phê duyệt Ngân sách Ngoại lệ"** | Khung Chat Socket.IO / Modal | `PATCH /api/v1/exclusive-deals/:id/approve-exception` | Thẩm định và phê duyệt mức thù lao vượt trần ($> 16\%$) cho Siêu KOC triệu followers |
+| 6 | `A-06` | Executive Financial & Performance Dashboard | Menu **Executive Dashboard** | `AdminAnalyticsHubPage.tsx` | `GET /api/v1/analytics/executive-summary` | Giám sát GMV toàn sàn, Tỷ lệ chi phí tiếp thị (Affiliate Expense Ratio), Dòng tiền Escrow và Báo cáo Quyết toán Thuế TNCN |
+| 7 | `A-07` | Giám sát An Ninh AI Fraud & Kiểm Toán Bất Biến| Menu **AI Fraud Sentinel & Audit Logs** | `AiFraudSentinelPage.tsx` / `AuditLogsPage.tsx` | `GET /api/v1/fraud` & `GET /api/v1/audit-logs` | Giám sát tính liêm chính khi duyệt chi tiền của System Manager; kế thừa 100% quyền hạn giải quyết khủng hoảng |
 
 ---
 
