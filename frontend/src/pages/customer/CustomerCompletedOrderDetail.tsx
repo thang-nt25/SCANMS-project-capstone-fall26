@@ -73,6 +73,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   const method = successfulPayment?.paymentMethod || order.rawPayload?.paymentMethod || payments[0]?.paymentMethod;
   const paid = Boolean(successfulPayment) || order.rawPayload?.paymentStatus === 'PAID';
   const savedReviews = Boolean(order.productReviews?.length);
+  const currentStepIndex = steps.findLastIndex(step => step.reached);
 
   return <article className="customer-purchase-detail">
     <header className="purchase-detail-top">
@@ -81,14 +82,14 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     </header>
 
     <ol className={`purchase-detail-progress${cancelled ? ' purchase-detail-progress-cancelled' : ''}`} aria-label="Tiến trình đơn hàng">
-      {steps.map(({ title, Icon, reached, time }, index) => <li key={title} className={reached ? 'is-reached' : ''} aria-current={(completed || cancelled) && index === steps.length - 1 ? 'step' : undefined}>
+      {steps.map(({ title, Icon, reached, time }, index) => <li key={title} className={reached ? 'is-reached' : ''} aria-current={index === currentStepIndex ? 'step' : undefined}>
         <span className="purchase-step-icon"><Icon size={25} aria-hidden="true" />{reached && !(cancelled && index === 1) && <Check className="purchase-step-check" size={12} />}</span>
         <strong>{title}</strong>{reached && dateLabel(time) ? <time dateTime={time!}>{dateLabel(time)}</time> : reached && !cancelled && <span className="purchase-step-time-missing">Chưa có thời gian xác nhận</span>}
       </li>)}
     </ol>
 
     <section className="purchase-detail-actions" aria-label="Thao tác đơn hàng">
-      <p>{cancelled ? 'Đơn hàng đã hủy. Bạn có thể mua lại hoặc liên hệ người bán.' : completed ? 'Cảm ơn bạn đã mua sắm tại SCANMS!' : pending ? awaitingPayment ? 'Đơn hàng đang chờ bạn thanh toán.' : 'Đơn hàng đang chờ Shop xác nhận và chuẩn bị hàng.' : 'Theo dõi thông tin và trạng thái đơn hàng của bạn.'}</p>
+      <p>{cancelled ? 'Đơn hàng đã hủy. Bạn có thể mua lại hoặc liên hệ người bán.' : completed ? 'Cảm ơn bạn đã mua sắm tại SCANMS!' : order.status === 'SHIPPING' ? 'Đơn hàng đang được vận chuyển. Bạn có thể theo dõi hành trình giao hàng bên dưới.' : pending ? awaitingPayment ? 'Đơn hàng đang chờ bạn thanh toán.' : 'Đơn hàng đang chờ Shop xác nhận và chuẩn bị hàng.' : 'Theo dõi thông tin và trạng thái đơn hàng của bạn.'}</p>
       <div>
         {awaitingPayment && <Link className="purchase-primary" to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`}>Thanh toán bằng QR</Link>}
         {actions.reorder && <button type="button" className="purchase-primary" onClick={() => onReorder(order)}><RotateCcw size={15} /> Mua lại</button>}

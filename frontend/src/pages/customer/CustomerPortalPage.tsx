@@ -1409,7 +1409,11 @@ export default function CustomerPortalPage() {
                                   to={`/customer/orders/${encodeURIComponent(order.id)}`}
                                   className="customer-order-return-link"
                                   aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết hủy đơn</Link> : !completedActions && <button
+                                >Xem chi tiết hủy đơn</Link> : isShipping ? <Link
+                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                  className="customer-order-return-link"
+                                  aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
+                                >Xem chi tiết</Link> : !completedActions && <button
                                   type="button"
                                   onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
