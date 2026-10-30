@@ -303,6 +303,50 @@ Mỗi sản phẩm bắt buộc phải có đầy đủ 6 khối:
 
 ---
 
+### 3.7. Ranh Giới Nghiệp Vụ Kho Vận & Dòng Vốn: Tại Sao Khâu Mua Hàng Xưởng (Procurement / PO / COGS) Nằm Hoàn Toàn Ngoài Quy Mô (Out of Scope)?
+
+> [!IMPORTANT]
+> **Ranh Giới Kiến Trúc Hệ Thống Chuẩn Mực: MarTech Affiliate Platform vs Hệ Thống ERP / SCM Doanh Nghiệp**  
+> Khi `SHOP_MANAGER` tạo sản phẩm và điền tồn kho khả dụng (`stockQuantity`), bản chất nghiệp vụ trên sàn là **Cấp Phát Hạn Mức Tồn Kho Mở Bán Cho Kênh Tiếp Thị (Catalog Listing & Stock Allocation)**, hoàn toàn **KHÔNG PHẢI là Nghiệp vụ Mua hàng xưởng (Procurement / Purchasing)**.
+
+1. **Bản chất thực tế của Doanh nghiệp sở hữu:**
+   * Doanh nghiệp sở hữu SCANMS (hoặc các nhãn hàng nội bộ như Sora Skin, Aura, Lumière) đã có sẵn xưởng sản xuất OEM, văn phòng và mạng lưới kho bãi ngoài đời.
+   * Chi phí sản xuất, hợp đồng mua bán với nhà xưởng (Purchase Orders - PO), thanh toán công nợ nhà máy (Accounts Payable - AP) và giá vốn hàng tồn kho (COGS) đã được hạch toán đầy đủ trong phần mềm kế toán quản trị nội bộ chuyên dụng (như SAP, Oracle NetSuite, MISA).
+2. **Tại sao nghiệp vụ Mua Hàng Xưởng bắt buộc phải OUT OF SCOPE?**
+   * Nếu đưa khâu "Mua hàng từ nhà cung cấp" vào SCANMS, đề tài sẽ bị **Vỡ Quy Mô (Scope Creep)**: Nhóm sẽ phải xây thêm phân hệ Nhà cung ứng (Vendors), Đơn đặt hàng PO, Kế toán công nợ xưởng (AP) và Quản lý giá vốn FIFO. Điều này làm mất hoàn toàn trọng tâm nghiên cứu về Tiếp thị liên kết, Thuật toán so khớp KOC và Phòng chống gian lận Attribution.
+   * **Chuẩn mực quốc tế:** Các nền tảng hàng đầu (TikTok Shop Seller Center, Shopee, Amazon Seller Central, Impact.com) đều vận hành theo đúng chuẩn này: Người bán chỉ khai báo lượng tồn kho sẵn sàng mở bán (`stockQuantity`), sàn không can thiệp vào sổ sách nhập hàng xưởng của họ.
+3. **Nguồn gốc Dòng Tiền & Hàng Hóa thực tế trên SCANMS:**
+   * Tiền trên hệ thống là **tiền thật $100\%$ do Người mua hàng thanh toán** qua PayOS/VietQR hoặc trả COD cho bưu tá GHN.
+   * Khi đơn hàng giao thành công và hết hạn bảo chứng Escrow (7 ngày), hệ thống tự động bóc tách:
+     * Trả Thù lao cho KOC ($10\% - 16\%$) vào Ví rút tiền.
+     * Trích Phí dịch vụ nền tảng ($3\%$).
+     * Toàn bộ phần Doanh thu thuần còn lại ($\sim 81\% - 87\%$) thuộc về Doanh nghiệp/Nhãn hàng để bù đắp giá vốn hàng bán và ghi nhận lợi nhuận ròng.
+
+---
+
+### 3.8. Quản Trị Giá Bán & Bảo Vệ Biên Lợi Nhuận: Giá Sàn (Floor Price / MAP) & Quy Trình Đề Xuất Chiến Dịch Giảm Giá (Promotion Approval Workflow)
+
+> [!WARNING]
+> **Rủi Ro Doanh Nghiệp: Ngăn Chặn Tình Trạng Bán Phá Giá Hoặc Bán Dưới Giá Vốn!**  
+> Trong mô hình công ty mẹ sở hữu đa nhãn hàng, `SHOP_MANAGER` là nhân sự được giao phụ trách kinh doanh ngành hàng. Nếu để Shop Manager có quyền tự ý sửa giá sản phẩm từ $400.000₫$ xuống $200.000₫$ tùy tiện khi tạo hoặc sửa hàng, doanh nghiệp sẽ gánh chịu rủi ro bán lỗ, không đủ bù chi phí vận hành và thù lao KOC, đồng thời phá hủy định vị thương hiệu (Brand Dilution).
+
+1. **Loại Bỏ Ô "Tự Gõ Giá Giảm Lúc Tạo Sản Phẩm":**
+   * Khi tạo sản phẩm mới trên form 6 khối, Shop Manager chỉ được phép khai báo duy nhất:
+     * **Giá niêm yết chính thức (List Price / MSRP - `price`):** Mức giá bán lẻ tiêu chuẩn của nhãn hàng.
+     * **Giá gạch tham chiếu (`originalPrice`):** Mức giá thị trường trước khuyến mãi.
+   * Tuyệt đối không cho phép nhân viên tự gõ đè giá bán thấp lúc tạo hàng.
+2. **Thiết Lập "Giá Sàn Bảo Vệ Biên Lợi Nhuận" (Floor Price / Minimum Advertised Price - MAP):**
+   * Khi sản phẩm được duyệt lên hệ thống, `SYSTEM_ADMIN` / `SYSTEM_MANAGER` cấu hình một ngưỡng **Giá sàn tối thiểu (`floorPrice`)** cho từng SKU:
+     $$\text{Floor Price} = \text{Giá vốn sản xuất (COGS)} + \text{Chi phí vận hành tối thiểu} + \text{Trần thù lao KOC tối đa (16\%) } + \text{Biên lãi ròng an toàn}$$
+   * **Quy tắc bất biến:** Mọi chương trình khuyến mãi hay giảm giá trong tương lai dù được phê duyệt cũng **tuyệt đối không được phép giảm dưới mức `floorPrice` này**.
+3. **Quy Trình Đề Xuất Chiến Dịch Giảm Giá Có Phê Duyệt (Promotion Campaign Request Workflow):**
+   * Khi Shop Manager muốn chạy chương trình Flash Sale, xả kho hoặc kích cầu mùa lễ hội:
+     * Shop Manager phải tạo một **"Yêu Cầu Chiến Dịch Khuyến Mãi" (Promotion Campaign Request)**.
+     * Các tham số khai báo: Mức giá giảm đề xuất (hệ thống tự động kiểm tra $\ge \text{floorPrice}$), Thời gian bắt đầu (Start Time), Thời gian kết thúc (End Time), Ngân sách chiến dịch và Lý do xúc tiến thương mại.
+     * **Cơ chế Maker-Checker trung ương:** `SYSTEM_MANAGER` hoặc `SYSTEM_ADMIN` thẩm định tác động tài chính. Khi bấm **"Phê duyệt (Approve)"**, hệ thống thiết lập lịch tự động kích hoạt giá ưu đãi đúng giờ mở màn và tự động hoàn giá niêm yết ban đầu khi kết thúc thời gian chiến dịch.
+
+---
+
 ## PHẦN 4: PHÂN TÍCH CHUYÊN SÂU NÚT THẮT 2: DÒNG TIỀN, KẾ TOÁN DOANH NGHIỆP & CƠ CHẾ CHI TRẢ (PAYOUT)
 
 ### 4.1. Bản Chất Dòng Tiền Khép Kín Của Doanh Nghiệp (Corporate Cashflow Governance)
@@ -379,15 +423,23 @@ Trong một doanh nghiệp bán lẻ D2C sở hữu mạng lưới tiếp thị,
 ## PHẦN 5: CÁC NGHIỆP VỤ CHUYỂN ĐỔI LIÊN HOÀN (ĐỔI TRẢ, MẪU THỬ, DEAL VIP, CHỐNG GIAN LẬN, LIVESTREAM)
 
 ### 5.1. Quy Trình Xử Lý Đổi Trả / Hoàn Tiền (CSKH Nội Bộ & Đóng Băng Hoa Hồng)
-Khi khách hàng nhận sản phẩm bị lỗi hoặc không đúng mô tả:
-1. Khách gửi yêu cầu đổi trả kèm hình ảnh/video unboxing trong vòng 7 ngày kể từ khi nhận hàng.
-2. `SYSTEM_MANAGER` (Tổ CSKH & Vận hành) kiểm tra bằng chứng và phê duyệt yêu cầu đổi trả (`status = APPROVED`).
-3. Shipper GHN đến nhà khách thu hồi kiện hàng và chuyển hoàn về đúng **Kho xuất hàng của Store phụ trách**.
-4. Tiền mua hàng được hoàn lại vào Ví Khách Hàng (`Customer Wallet`) hoặc tài khoản ngân hàng của khách.
-5. **Tác động nghiệp vụ liên hoàn tới KOC:**
-   * Hệ thống tự động quét đơn hàng bị hoàn tiền, tìm bản ghi hoa hồng tương ứng trong `Wallet.pendingBalance` của KOC giới thiệu.
-   * Kích hoạt giao dịch hoàn nguyên: **HỦY / ĐÓNG BĂNG HOA HỒNG ($0\text{₫}$)** của đơn hàng đó.
-   * Gửi thông báo lý do vào chuông thông báo của KOC: *"Đơn hàng #SCN-xxxxx bị khách hàng đổi trả do lỗi sản xuất. Hoa hồng tạm tính tương ứng đã được hoàn nguyên theo chính sách bảo hành."*
+Khi khách hàng nhận sản phẩm bị lỗi, hỏng hóc hoặc không đúng mô tả:
+1. **Khách hàng gửi yêu cầu:** Nộp hình ảnh/video unboxing và ảnh hộp carton ngoài trong vòng 7–14 ngày kể từ khi nhận hàng.
+2. **Cơ chế phân xử 2 cấp (Two-Tier Dispute Escalation):**
+   * *Cấp 1 (Tại Brand):* `SHOP_MANAGER` kiểm tra hồ sơ. Nếu Shop đồng ý, tạo đơn thu hồi hoặc bù hàng.
+   * *Cấp 2 (Trọng tài Trụ sở Sàn):* Nếu Shop từ chối nhưng khách bấm **"Khiếu nại lên Tổng Công Ty"**, `SYSTEM_MANAGER` (Pháp chế trung tâm) sẽ thẩm định bằng chứng 3 điểm (ảnh đóng gói kho, biên bản giao GHN, video unboxing). Nếu Shop sai, `SYSTEM_MANAGER` có quyền ghi đè phán quyết (Force Refund/Replacement) và phạt trừ chi phí vào P&L của Store đó.
+3. **Phân nhánh 2 kịch bản xử lý thực tế & Tác động đến Hoa hồng KOC:**
+   * **Kịch bản A — Đổi Hàng Mới 1-đổi-1 (Do bể vỡ vận chuyển GHN hoặc lỗi sản xuất):**
+     * Shop xuất kho gửi **1 sản phẩm mới nguyên vẹn bù cho khách** (GHN bồi thường chi phí hư hại cho Shop theo kỳ đối soát).
+     * 🎯 **BẢO LƯU 100% HOA HỒNG CHO KOC:** Vì khách hàng cuối cùng vẫn giữ sản phẩm và doanh nghiệp vẫn bảo toàn được doanh số của đơn hàng!
+   * **Kịch bản B — Trả Hàng & Hoàn Tiền 100% (Khách không ưng ý, hủy đơn):**
+     * Shipper GHN thu hồi kiện hàng về kho Store phụ trách. Tiền hoàn trả lại vào Ví Khách Hàng.
+     * 🎯 **KÍCH HOẠT CLAWBACK ENGINE:** Động cơ tài chính tự động quét và **HỦY / THU HỒI $100\%$ HOA HỒNG VỀ $0\text{₫}$** trong số dư tạm giữ `pendingBalance` của KOC, ngăn chặn hoàn toàn việc thất thoát chi phí tiếp thị của công ty.
+4. **Chế tài đối với Shop bị trả hàng quá nhiều lần (Return Rate > 5%):**
+   * Mọi chi phí vận chuyển 2 chiều và hao hụt bị trừ thẳng vào Báo cáo P&L của Shop đó.
+   * Tỷ lệ hoàn đơn vượt quá $5\%$ kích hoạt Cảnh báo đỏ gửi lên Ban Giám Đốc (`SYSTEM_ADMIN`).
+   * Mã sản phẩm (SKU) có tỷ lệ trả $\ge 15\%$ trong tháng sẽ bị tự động đóng băng (`QUALITY_REVIEW`) để kiểm tra lại nguồn hàng.
+   * Chỉ số hoàn đơn được hiển thị công khai trên sàn, khiến KOC né tránh không nhận tiếp thị cho nhãn hàng chất lượng kém.
 
 ---
 
@@ -602,6 +654,37 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 
 ---
 
+### 8.3. Quy Chuẩn Giới Hạn Thù Lao Đối Tác Tiếp Thị (Governance on Creator Remuneration Limits)
+
+Để ngăn ngừa trường hợp Shop Manager tùy tiện cấp thù lao vượt khung cho KOC (ví dụ: cấp $30\% - 50\%$ thù lao làm thủng ngân sách công ty), hệ thống thiết lập **Ma Trận Giới Hạn 3 Tầng**:
+1. **Trần Thù Lao Cứng Toàn Sàn (Global Remuneration Ceiling):** Cố định tối đa **$25\%$** cho mọi loại hình tiếp thị, không có bất kỳ thỏa thuận nào được vượt qua con số này.
+2. **Khung Đàm Phán Tự Trị Của Shop Manager (Autonomous Negotiation Band):**
+   * Shop Manager chỉ được quyền tự động chốt Deal VIP với KOC trong biên độ cho phép: từ mức cơ sở **$10\%$** đến tối đa **$16\%$** (tương đương với mức thưởng thỏa thuận thêm tối đa $+1\%$ đến $+3\%$).
+3. **Cơ Chế Leo Thang Phê Duyệt (Maker-Checker Exception Escalation):**
+   * Trong trường hợp đặc biệt muốn mời Siêu KOC (hàng triệu followers) với mức thù lao lớn hơn $16\%$ (từ $17\%$ đến $25\%$), nút "Chốt hợp đồng Deal VIP" trong khung Chat Socket.IO sẽ tự động chuyển thành **"Đề Xuất Ban Giám Đốc Thẩm Duyệt" (`PENDING_ADMIN_APPROVAL`)**.
+   * Chỉ khi `SYSTEM_ADMIN` kiểm tra hợp đồng bảo đảm KPI doanh số và bấm phê duyệt cấp thêm ngân sách truyền thông thì thỏa thuận thù lao trên $16\%$ mới có hiệu lực.
+
+---
+
+### 8.4. Tinh Giản Toàn Diện Hệ Thống Mã Ưu Đãi: Xóa Bỏ Voucher Rác TMĐT & Tôn Vinh Coupon Độc Quyền Định Danh KOC (KOL-Exclusive Attribution Coupon)
+
+> [!IMPORTANT]
+> **Định Nghĩa Lại Bản Sắc: Mã Ưu Đãi Trên Hệ Thống Tiếp Thị Là Vũ Khí Bắt Dấu Vết Đơn Hàng (Attribution Instrument), Không Phải Là Công Cụ Xả Hàng Đại Trà Của Chợ Bán Lẻ!**
+
+1. **Loại Bỏ Hoàn Toàn Các Loại Voucher Rác Bán Lẻ:**
+   * Sàn xóa bỏ toàn bộ các mã giảm giá kiểu chợ TMĐT thông thường: voucher freeship toàn sàn, voucher hoàn xu tích lũy, voucher chớp nhoáng của sàn...
+   * **Lý do kỹ thuật & kinh doanh:**
+     * Các loại voucher rác làm biến chất hệ thống thành "chợ bán lẻ Shopee clone".
+     * Gây xung đột và lỗi tính toán khi người dùng cố tình cộng dồn nhiều tầng giảm giá (Coupon Stacking) làm âm tiền đơn hàng.
+2. **Duy Nhất Duy Trì "Coupon Độc Quyền Định Danh KOC" (`KOL-Exclusive Attribution Coupon`):**
+   * Hệ thống chỉ duy trì duy nhất loại Coupon gắn chặt với mã định danh của Đối tác Tiếp thị (`collaboratorId`) và Cửa hàng (`storeId`).
+   * **Cấu trúc mã chuẩn hóa:** `[TÊN_KOC][MỨC_GIẢM]` (Ví dụ: `THAONHI16`, `LANHUONG10`, `QUANGTRAN12`).
+   * **Vai trò kép hoàn hảo:**
+     * **Vai trò 1 (Giá trị Khách hàng):** Cung cấp mức giảm giá độc quyền $5\% - 10\%$ dành riêng cho cộng đồng người theo dõi (Followers) của KOC, tạo động lực mạnh mẽ để khách hàng nhập mã khi thanh toán.
+     * **Vai trò 2 (Vũ Khí Bắt Dấu Vết Số 1 - Primary Attribution Engine):** Là công cụ định danh bán hàng bất bại. Dù khách hàng tắt Cookie, đổi từ điện thoại sang máy tính, hoặc lướt web ẩn danh $\rightarrow$ Chỉ cần nhập mã `THAONHI16` tại giỏ hàng, hệ thống lập tức trích xuất mã và ghi nhận chính xác $100\%$ doanh số đơn hàng cho KOC Thảo Nhi, bảo đảm quyền lợi thù lao không thể bị đánh cắp!
+
+---
+
 ## PHẦN 9: LỘ TRÌNH 5 GIAI ĐOẠN TRIỂN KHAI (5-PHASE ROADMAP) & TIÊU CHÍ NGHIỆM THU (DOD)
 
 > ⚠️ **LƯU Ý:** Toàn bộ kế hoạch dưới đây được lập ra để chuẩn bị sẵn sàng. Quá trình viết code chỉ được tiến hành sau khi Leader Nguyễn Thành Thắng và Nhóm thảo luận và chốt phương án cuối cùng.
@@ -631,12 +714,12 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 - **Tác vụ 4.3:** Thể hiện rõ nét khoản khấu trừ $10\%$ Thuế thu nhập cá nhân (TNCN) trên giao diện đối soát tài chính của KOC và Admin.
 
 ### GIAI ĐOẠN 5: Kiểm Thử E2E Toàn Diện 5 Main Flows & Hoàn Thiện Hồ Sơ Bảo Vệ
-- **Tác vụ 5.1:** Thực hiện kiểm thử đầu-cuối (End-to-End) thông suốt 5 Main Flows:
-  1. *Flow 1:* Khách đăng ký KOC -> Admin duyệt eKYC -> Nhận Hạng Đồng 10%.
-  2. *Flow 2:* KOC duyệt Media Hub -> AI gợi ý sản phẩm phù hợp -> Sinh Smart Link & QR.
-  3. *Flow 3:* KOC mượn hàng mẫu 14 ngày -> Shop duyệt xuất kho GHN -> KOC nộp video review.
-  4. *Flow 4:* Khách mua qua Smart Link -> Bắt dấu vết -> Động cơ tính thù lao áp dụng Best-Benefit -> Đơn thành công chuyển hoa hồng vào Ví Escrow.
-  5. *Flow 5:* KOC yêu cầu rút tiền Napas -> Admin duyệt chi trả -> Tiền về tài khoản ngân hàng.
+- **Tác vụ 5.1:** Thực hiện kiểm thử đầu-cuối (End-to-End) thông suốt 5 Main Flows cân bằng chuẩn mực:
+  1. *Flow 1 (Onboarding & eKYC & FR-07):* Admin bổ nhiệm Shop Manager nội bộ + Khách đăng ký KOC, nộp eKYC (CCCD, STK ngân hàng) & liên kết kênh MXH (FR-07) -> Admin duyệt Maker-Checker -> Cấp Hạng ĐỒNG khởi điểm 10%.
+  2. *Flow 2 (Khóa Ngành Hàng & Hợp Tác 2 Chiều):* Shop tạo sản phẩm khóa cứng Category -> Duyệt pháp chế Maker-Checker -> Shop dùng AI Matchmaker quét ma trận 4 trục tìm Top KOC, đồng thời KOC chủ động tìm Shop trên Marketplace gửi đề xuất hợp tác -> KOC khai thác Media Hub.
+  3. *Flow 3 (Deal VIP Socket.IO & Mẫu Thử SLA 14 Ngày):* Shop gửi Thẻ mời Deal VIP 16% qua Chat Socket.IO -> KOC ký deal realtime -> KOC đăng ký mượn mẫu thử 0đ -> Shop duyệt xuất kho GHN -> Đồng hồ đếm ngược SLA 14 ngày & KOC nộp video review nghiệm thu.
+  4. *Flow 4 (Attribution, Chống Tự Mua, GHN & Xử Lý Đổi Trả / Bù Hàng / Clawback):* KOC sinh Smart Link/QR & Coupon THAONHI16 -> Khách mua hàng -> AI chặn tự mua (Self-referral) -> Động cơ tính thù lao áp dụng Best-Benefit ghi nhận PENDING 72k -> Shop xuất kho GHN phát hàng DELIVERED -> Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên 100% hoa hồng vs Trả hàng hoàn tiền kích hoạt Clawback Engine thu hồi hoa hồng về 0₫.
+  5. *Flow 5 (Bảo Chứng Escrow, Thưởng Mốc FR-09, Thuế TNCN & Quyết Toán Payout):* Hết hạn Escrow giải tỏa tiền PENDING sang AVAILABLE -> Cuối tháng chốt thưởng mốc doanh số tháng FR-09 (> 50tr thưởng 2tr) & Thăng Hạng Bạc (Silver 11%) -> KOC tạo lệnh rút tiền Payout -> Khóa dòng CSDL SELECT ... FOR UPDATE -> Khấu trừ Thuế TNCN 10% tại nguồn -> Kế toán duyệt giải ngân Napas 24/7 ghi Sổ cái FinancialLedger.
 - **Tác vụ 5.2:** Đồng bộ hóa toàn bộ sơ đồ kiến trúc trong thư mục `docs/diagrams` và chuẩn bị slide bảo vệ cho 4 thành viên nhóm.
 
 ---
