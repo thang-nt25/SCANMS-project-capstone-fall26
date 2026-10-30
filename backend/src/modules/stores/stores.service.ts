@@ -175,8 +175,16 @@ export class StoresService {
    * Lấy thông tin cấu hình cửa hàng của Chủ Shop (Store Owner)
    */
   async getMyStore(ownerId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { id: true, fullName: true, storeId: true },
+    });
+    const storeWhere = user?.storeId
+      ? { id: user.storeId, isDeleted: false }
+      : { ownerId, isDeleted: false };
+
     let store = await this.prisma.store.findFirst({
-      where: { ownerId, isDeleted: false },
+      where: storeWhere,
       include: {
         _count: {
           select: {
@@ -235,8 +243,16 @@ export class StoresService {
    * Cập nhật cấu hình cửa hàng (Store Settings)
    */
   async updateMyStore(ownerId: string, dto: UpdateStoreDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { id: true, storeId: true },
+    });
+    const storeWhere = user?.storeId
+      ? { id: user.storeId, isDeleted: false }
+      : { ownerId, isDeleted: false };
+
     const store = await this.prisma.store.findFirst({
-      where: { ownerId, isDeleted: false },
+      where: storeWhere,
     });
 
     if (!store) {
@@ -299,6 +315,9 @@ export class StoresService {
       where: { id: store.id },
       data: {
         ...(dto.name && { name: dto.name.trim() }),
+        ...(dto.categoryName !== undefined && {
+          categoryName: dto.categoryName?.trim() || null,
+        }),
         ...(dto.description !== undefined && {
           description: dto.description?.trim(),
         }),

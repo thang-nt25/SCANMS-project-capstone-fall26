@@ -47,8 +47,8 @@ export function precedenceCommissionRate(
 }
 
 export function additiveCommissionRate(tier: number, deal: number, campaign: number, live: number): number {
-  const shopNegotiated = Math.max(deal, campaign);
-  return Math.min(MAX_COMMISSION_RATE, BASE_COMMISSION_RATE + tier + shopNegotiated + live);
+  // Additive model: deal, campaign, tier and live add together according to platform rules
+  return Math.min(MAX_COMMISSION_RATE, BASE_COMMISSION_RATE + tier + deal + campaign + live);
 }
 
 export function splitCommissionFunding(tier: number, deal: number, campaign: number, live: number): {
@@ -56,8 +56,8 @@ export function splitCommissionFunding(tier: number, deal: number, campaign: num
   shopRate: number;
   platformRate: number;
 } {
-  const shopNegotiated = Math.max(deal, campaign);
-  const rawShopRate = BASE_COMMISSION_RATE + shopNegotiated + live;
+  // Additive model: deal, campaign, tier and live add together according to platform rules
+  const rawShopRate = BASE_COMMISSION_RATE + deal + campaign + live;
   const rawPlatformRate = tier;
   const totalRate = Math.min(MAX_COMMISSION_RATE, rawShopRate + rawPlatformRate);
   const shopRate = Math.min(rawShopRate, totalRate);

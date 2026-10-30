@@ -92,6 +92,19 @@ export class ProductsService {
     }
   }
 
+  private async canUserManageStore(
+    userId: string,
+    storeId: string,
+    storeOwnerId?: string,
+  ): Promise<boolean> {
+    if (storeOwnerId && storeOwnerId === userId) return true;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, storeId: true },
+    });
+    return user?.storeId === storeId;
+  }
+
   private buildProductEvidenceRows(
     input: {
       originProofLinks?: string[];
@@ -344,6 +357,17 @@ export class ProductsService {
       isDeleted: false,
     };
 
+    let shopManagerStoreClause: any = null;
+    if (viewer?.role === UserRole.SHOP_MANAGER) {
+      const viewerUser = await this.prisma.user.findUnique({
+        where: { id: viewer.id },
+        select: { id: true, storeId: true },
+      });
+      shopManagerStoreClause = viewerUser?.storeId
+        ? { OR: [{ ownerId: viewer.id }, { id: viewerUser.storeId }] }
+        : { ownerId: viewer.id };
+    }
+
     if (query.storeId) {
       where.storeId = query.storeId;
       if (viewer?.role !== UserRole.SHOP_MANAGER) {
@@ -352,9 +376,7 @@ export class ProductsService {
       where.store = {
         isDeleted: false,
         isActive: true,
-        ...(viewer?.role === UserRole.SHOP_MANAGER
-          ? { ownerId: viewer.id }
-          : {}),
+        ...(shopManagerStoreClause || {}),
         ...(viewer?.role === UserRole.COLLABORATOR
           ? { isVerified: true, onboardingStatus: 'VERIFIED' }
           : {}),
@@ -363,7 +385,7 @@ export class ProductsService {
         where.moderationStatus = ProductModerationStatus.APPROVED;
       }
     } else if (viewer?.role === UserRole.SHOP_MANAGER) {
-      where.store = { ownerId: viewer.id, isDeleted: false };
+      where.store = { ...(shopManagerStoreClause || { ownerId: viewer.id }), isDeleted: false };
     } else if (viewer?.role === UserRole.COLLABORATOR) {
       where.isActive = true;
       where.moderationStatus = ProductModerationStatus.APPROVED;
@@ -830,7 +852,8 @@ export class ProductsService {
   private async ownedReview(userId: string, reviewId: string) {
     const review = await this.prisma.productReview.findUnique({ where: { id: reviewId }, include: { product: { include: { store: true } } } });
     if (!review) throw new NotFoundException('Không tìm thấy đánh giá');
-    if (review.product.store.ownerId !== userId) throw new ForbiddenException('Bạn không quản lý gian hàng này');
+    const canManage = await this.canUserManageStore(userId, review.product.store.id, review.product.store.ownerId);
+    if (!canManage) throw new ForbiddenException('Bạn không quản lý gian hàng này');
     return review;
   }
 
@@ -1110,8 +1133,20 @@ export class ProductsService {
         throw new NotFoundException('Gian hàng chỉ định không tồn tại.');
       }
     } else {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, storeId: true },
+      });
+      const targetStoreId = dto.storeId || user?.storeId || undefined;
       store = await this.prisma.store.findFirst({
-        where: { id: dto.storeId, ownerId: userId, isDeleted: false },
+        where: {
+          ...(targetStoreId ? { id: targetStoreId } : {}),
+          OR: [
+            { ownerId: userId },
+            ...(user?.storeId ? [{ id: user.storeId }] : []),
+          ],
+          isDeleted: false,
+        },
       });
     }
 
@@ -1119,6 +1154,20 @@ export class ProductsService {
       throw new ForbiddenException(
         'Bạn chưa thiết lập cửa hàng. Vui lòng cập nhật thông tin cửa hàng trước.',
       );
+    }
+
+    // Strict Single-Vertical & Brand Whitelisting Rule:
+    // If store has an assigned categoryName, merchant managers must adhere to it.
+    if (userRole === UserRole.SHOP_MANAGER && store.categoryName) {
+      if (
+        dto.categoryName &&
+        dto.categoryName.trim().toLowerCase() !== store.categoryName.trim().toLowerCase()
+      ) {
+        throw new BadRequestException(
+          `Gian hàng "${store.name}" thuộc ngành hàng chuyên biệt "${store.categoryName}". Không được đăng sản phẩm sai ngành hàng đã cấp phép.`,
+        );
+      }
+      dto.categoryName = store.categoryName;
     }
 
     this.assertProductSubmissionComplete(dto);
@@ -1306,10 +1355,32 @@ export class ProductsService {
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
 
-    if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException(
-        'Bạn không có quyền chỉnh sửa sản phẩm của cửa hàng khác',
+    if (!isSystemAdminOrManager) {
+      const canManage = await this.canUserManageStore(
+        userId,
+        product.storeId,
+        product.store.ownerId,
       );
+      if (!canManage) {
+        throw new ForbiddenException(
+          'Bạn không có quyền chỉnh sửa sản phẩm của cửa hàng khác',
+        );
+      }
+    }
+
+    // Strict Single-Vertical & Brand Whitelisting Rule:
+    // If store has an assigned categoryName, merchant managers must adhere to it.
+    if (userRole === UserRole.SHOP_MANAGER && product.store.categoryName) {
+      if (
+        dto.categoryName &&
+        dto.categoryName.trim().toLowerCase() !==
+          product.store.categoryName.trim().toLowerCase()
+      ) {
+        throw new BadRequestException(
+          `Gian hàng "${product.store.name}" thuộc ngành hàng chuyên biệt "${product.store.categoryName}". Không thể thay đổi sang ngành hàng khác.`,
+        );
+      }
+      dto.categoryName = product.store.categoryName;
     }
 
     if (
@@ -1571,16 +1642,23 @@ export class ProductsService {
   ) {
     const product = await this.prisma.product.findFirst({
       where: { id: productId, isDeleted: false },
-      select: { id: true, store: { select: { ownerId: true } } },
+      select: { id: true, storeId: true, store: { select: { id: true, ownerId: true } } },
     });
     if (!product) throw new NotFoundException('Sản phẩm không tồn tại');
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
-    if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException(
-        'Bạn không có quyền chỉnh SKU của cửa hàng khác',
+    if (!isSystemAdminOrManager) {
+      const canManage = await this.canUserManageStore(
+        userId,
+        product.storeId,
+        product.store.ownerId,
       );
+      if (!canManage) {
+        throw new ForbiddenException(
+          'Bạn không có quyền chỉnh SKU của cửa hàng khác',
+        );
+      }
     }
 
     const variant = await this.prisma.productVariant.findFirst({
@@ -1663,10 +1741,17 @@ export class ProductsService {
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
-    if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException(
-        'Bạn không có quyền sửa phân loại của sản phẩm này',
+    if (!isSystemAdminOrManager) {
+      const canManage = await this.canUserManageStore(
+        userId,
+        product.storeId,
+        product.store.ownerId,
       );
+      if (!canManage) {
+        throw new ForbiddenException(
+          'Bạn không có quyền sửa phân loại của sản phẩm này',
+        );
+      }
     }
     if (
       userRole === UserRole.SHOP_MANAGER &&
@@ -1886,10 +1971,17 @@ export class ProductsService {
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
 
-    if (!isSystemAdminOrManager && product.store.ownerId !== userId) {
-      throw new ForbiddenException(
-        'Bạn không có quyền xóa sản phẩm của cửa hàng khác',
+    if (!isSystemAdminOrManager) {
+      const canManage = await this.canUserManageStore(
+        userId,
+        product.storeId,
+        product.store.ownerId,
       );
+      if (!canManage) {
+        throw new ForbiddenException(
+          'Bạn không có quyền xóa sản phẩm của cửa hàng khác',
+        );
+      }
     }
 
     await this.prisma.product.update({
@@ -1931,8 +2023,18 @@ export class ProductsService {
     };
 
     if (!isSystemAdminOrManager) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, storeId: true },
+      });
       const store = await this.prisma.store.findFirst({
-        where: { ownerId: userId, isDeleted: false },
+        where: {
+          OR: [
+            { ownerId: userId },
+            ...(user?.storeId ? [{ id: user.storeId }] : []),
+          ],
+          isDeleted: false,
+        },
       });
       if (!store) {
         throw new ForbiddenException('Không tìm thấy cửa hàng của bạn');

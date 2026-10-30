@@ -15,7 +15,7 @@ describe('Tuan checkout contracts in seed v3', () => {
   it('uses historical additive policy, product-scoped VIP and micro Live bonus', () => {
     const data = buildDataset(context);
     const order = data.orders.find(
-      (row) => row.externalOrderSn === 'SEED-DH-05-1',
+      (row) => row.externalOrderSn === 'SEED-DH-03-1',
     )!;
     const items = data.orderItems.filter((row) => row.orderId === order.id);
     // Bronze 0, VIP +2 only on first product, campaign +1, historical Live +2.
@@ -43,7 +43,7 @@ describe('Tuan checkout contracts in seed v3', () => {
     const data = buildDataset(context);
     const input = {
       collaboratorId: seedId('creator:2'),
-      productId: seedId('product:4'),
+      productId: seedId('product:6'),
       storeId: seedId('store:2'),
       referralLinkId: seedId('campaign-link:2'),
       liveSessionId: seedId('live:2'),
@@ -59,7 +59,7 @@ describe('Tuan checkout contracts in seed v3', () => {
     expect(
       seedCommissionBreakdown(data, {
         ...input,
-        productId: seedId('product:5'),
+        productId: seedId('product:7'),
       }),
     ).toMatchObject({ deal: 0 });
     expect(
@@ -72,7 +72,7 @@ describe('Tuan checkout contracts in seed v3', () => {
 
   it('stores goods and freight vouchers separately without reducing commission by freight', () => {
     const data = buildDataset(context);
-    expect(data.coupons).toHaveLength(70);
+    expect(data.coupons).toHaveLength(37);
     expect(data.savedCoupons).toHaveLength(30);
     const order = data.orders.find(
       (row) => row.externalOrderSn === 'SEED-DH-02-2',

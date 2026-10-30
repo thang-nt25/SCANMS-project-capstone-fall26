@@ -21,6 +21,14 @@ export function buildIdentities(data: SeedDataset, context: SeedContext): void {
     passwordHash: context.passwordHash,
     createdAt,
   });
+  data.users.push({
+    id: seedId('system-manager:0'),
+    email: 'manager@seed.scanms.test',
+    role: 'SYSTEM_MANAGER',
+    fullName: 'Chuyên viên Vận hành SCANMS',
+    passwordHash: context.passwordHash,
+    createdAt,
+  });
   TIERS.forEach((tier, index) =>
     data.tiers.push({
       id: seedId(`tier:${index}`),
@@ -61,6 +69,19 @@ export function buildIdentities(data: SeedDataset, context: SeedContext): void {
       createdAt,
     });
     addAddress(userId, `Kho ${shop.name}`, phone, index);
+  });
+
+  // Seed co-manager for Sora Skin demonstrating multi-staff assignment via storeId
+  const coManagerId = seedId('shop-staff:sora:0');
+  data.users.push({
+    id: coManagerId,
+    email: 'sora.staff@seed.scanms.test',
+    role: 'SHOP_MANAGER',
+    fullName: 'Trần Phó Quản Lý (Sora Skin)',
+    phoneNumber: '0901234599',
+    storeId: seedId('store:0'),
+    passwordHash: context.passwordHash,
+    createdAt,
   });
 
   CREATOR_NAMES.forEach((name, index) => {

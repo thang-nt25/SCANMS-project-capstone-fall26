@@ -4,6 +4,7 @@ export interface StoreSettings {
   id: string;
   name: string;
   slug: string;
+  categoryName?: string | null;
   description?: string;
   logoUrl?: string;
   websiteUrl?: string;
