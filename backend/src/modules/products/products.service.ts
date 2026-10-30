@@ -1431,7 +1431,7 @@ export class ProductsService {
 
     // Validate inventory before any other update (including the sample quota guard).
     const activeVariants = !db && dto.stockQuantity !== undefined && this.prisma?.productVariant
-      ? await variantClient.findMany({
+      ? await this.prisma.productVariant.findMany({
           where: { productId: id, isActive: true },
           select: { stockQuantity: true },
         })
