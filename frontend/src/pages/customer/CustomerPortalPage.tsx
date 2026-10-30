@@ -393,7 +393,7 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (currentTab !== 'orders') return;
     const refresh = () => { if (!document.hidden) refreshOrdersRef.current(); };
-    const timer = window.setInterval(refresh, 10000);
+    const timer = window.setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {
@@ -428,7 +428,9 @@ export default function CustomerPortalPage() {
 
   useEffect(() => {
     const id = selectedOrderDetails?.id;
+    const status = selectedOrderDetails?.status;
     if (!id) return;
+    if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'RETURNED' || status === 'REFUNDED') return;
     let active = true;
     const refresh = async () => {
       if (document.hidden) return;
@@ -437,9 +439,9 @@ export default function CustomerPortalPage() {
         if (active) setSelectedOrderDetails(current => current?.id === id ? order : current);
       } catch { /* Keep the open order visible during a temporary connection failure. */ }
     };
-    const timer = window.setInterval(() => void refresh(), 10000);
+    const timer = window.setInterval(() => void refresh(), 25000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [selectedOrderDetails?.id]);
+  }, [selectedOrderDetails?.id, selectedOrderDetails?.status]);
 
   useEffect(() => {
     if (currentTab === 'profile') {
@@ -459,6 +461,7 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (!currentUser?.id) return;
     const interval = window.setInterval(() => {
+      if (document.hidden) return;
       void refreshUnreadCounts();
       if (currentTab === 'notifications' && notificationsPage === 1) {
         void fetchNotifications(activeNotifCategory, 1, false, true);
@@ -1402,12 +1405,16 @@ export default function CustomerPortalPage() {
                                   <Link to={`/customer/returns/${order.returnRequest.id}`} className="customer-order-return-link">Xem yêu cầu đổi trả</Link>
                                   <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ Shop</button>
                                   {mayEscalateReturn && <Link to={`/customer/returns/${order.returnRequest.id}?dispute=1`} className="customer-order-return-link customer-order-return-review">Yêu cầu SCANMS xem xét</Link>}
-                                </> : !completedActions && <button
+                                </> : isCancelled ? <Link
+                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                  className="customer-order-return-link"
+                                  aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
+                                >Xem chi tiết hủy đơn</Link> : !completedActions && <button
                                   type="button"
-                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isCancelled ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
+                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                 >
-                                  {isCancelled ? 'Xem chi tiết hủy đơn' : isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
+                                  {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
                                 </button>}
 
                                 {(isCancelled || completedActions) && <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ người bán</button>}

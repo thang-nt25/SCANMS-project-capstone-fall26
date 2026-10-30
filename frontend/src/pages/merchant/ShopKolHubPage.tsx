@@ -12,11 +12,12 @@ import {
   Package,
   BarChart3,
   UserCheck,
-  Sparkles,
   Search,
   ExternalLink,
   Award,
   Truck,
+  Handshake,
+  Sparkles,
   CheckCircle2,
   Clock,
   Video,
@@ -44,6 +45,7 @@ import { vi } from 'date-fns/locale';
 import { PartnerPerformance } from '../../components/affiliate/PartnerPerformance';
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
+import ShopActiveDealsTab from '../../components/affiliate/ShopActiveDealsTab';
 
 function formatConvTime(dateStr?: string | null) {
   if (!dateStr) return '';
@@ -274,6 +276,9 @@ export default function ShopKolHubPage() {
   const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'ai-matching';
   const [kols, setKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
+  const [viewMode, setViewMode] = useState<'CRM' | 'LEADERBOARD' | 'ALL_DEALS'>(
+    tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
+  );
   const [activeTab, setActiveTab] = useState<'messages' | 'samples' | 'performance' | 'profile'>(
     (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as 'messages' | 'samples' | 'performance' | 'profile'
   );
@@ -687,6 +692,10 @@ if (sequence !== sampleLoadSequence.current) return;
 return true;
     });
   }, [kols, searchQuery, filterTag, samplesMap]);
+
+  const sortedLeaderboardKols = useMemo(() => {
+    return [...kols].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
+  }, [kols]);
 
   // Selected KOL Samples
   const currentKolSamples = useMemo(() => {
@@ -1228,7 +1237,7 @@ return true;
           <Plus className="h-4 w-4" /> Tìm nhà sáng tạo
         </button>
         <button type="button" onClick={() => setAiMatchingMode(true)} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-white px-4 py-2.5 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]">
-          <Sparkles className="h-4 w-4" /> AI Tìm Kiếm KOL Mới
+          <Search className="h-4 w-4" /> Đề xuất KOL bằng AI
         </button>
         {discoveryModal}
         {inviteModal}
@@ -1239,10 +1248,206 @@ return true;
   return (
     <div className="w-full flex flex-col pb-4" id="shop-kol-hub-workspace">
       {workspaceError && <div role="alert" className="mb-3 rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#DC2626]">{workspaceError} <button type="button" onClick={() => void loadBackendData()} className="underline">Thử lại</button></div>}
+      {/* Top Sub-Navigation Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 shrink-0">
+        <div className="inline-flex p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('CRM');
+              setAiMatchingMode(false);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'CRM' && !isAiMatchingMode
+                ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <MessageSquare size={13} className={viewMode === 'CRM' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Tin nhắn &amp; Hợp tác</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('LEADERBOARD');
+              setAiMatchingMode(false);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'LEADERBOARD' && !isAiMatchingMode
+                ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <Award size={13} className={viewMode === 'LEADERBOARD' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Xếp hạng KOL</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('ALL_DEALS');
+              setAiMatchingMode(false);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'ALL_DEALS' && !isAiMatchingMode
+                ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <Handshake size={13} className={viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Thỏa thuận độc quyền</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDiscoveryModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer"
+          >
+            <Plus size={13} />
+            <span>Thêm đối tác</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiMatchingMode(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-white text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
+          >
+            <Search size={13} />
+            <span>Gợi ý KOL</span>
+          </button>
+        </div>
+      </div>
+
+
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
         <div className="kol-ai-workspace">
           <KolRecommendationPage onReturn={() => setAiMatchingMode(false)} />
+        </div>
+      ) : viewMode === 'LEADERBOARD' ? (
+        /* BẢNG XẾP HẠNG KOL */
+        <div className="rounded-2xl border border-[#EAE4D7] bg-white overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-[#EAE4D7] bg-[#FAF8F5] flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center">
+                <Award size={15} />
+              </div>
+              <h2 className="text-sm font-bold text-[#1A1612]">Bảng xếp hạng nhà sáng tạo đối tác</h2>
+            </div>
+            <span className="text-xs text-[#7D715E]">{kols.length} đối tác</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-semibold text-[#7D715E]">
+                  <th className="py-3 px-4 w-12 text-center">Hạng</th>
+                  <th className="py-3 px-4">Nhà sáng tạo</th>
+                  <th className="py-3 px-4 text-center">Cấp bậc</th>
+                  <th className="py-3 px-4 text-right">Doanh số tạo ra</th>
+                  <th className="py-3 px-4 text-center">Đơn hàng</th>
+                  <th className="py-3 px-4 text-center">Video hoàn tất</th>
+                  <th className="py-3 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EAE4D7]">
+                {sortedLeaderboardKols.map((kol, idx) => {
+                  const rank = idx + 1;
+                  return (
+                    <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
+                      <td className="py-3 px-4 text-center font-bold">
+                        {rank === 1 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#FAF0DD] text-[#9E7332] border border-[#E8D4B0] text-xs">
+                            1
+                          </span>
+                        ) : rank === 2 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F1F3F5] text-[#5C6470] border border-[#DCE0E5] text-xs">
+                            2
+                          </span>
+                        ) : rank === 3 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#FDF2E9] text-[#A05E23] border border-[#F0D5C0] text-xs">
+                            3
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#7D715E]">{rank}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-[#1A1612]">
+                        <div className="flex items-center gap-2.5">
+                          <KolAvatar
+                            src={kol.avatarUrl}
+                            name={kol.fullName}
+                            id={kol.id}
+                            className="h-8 w-8 rounded-full border border-[#EAE4D7] shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-[#1A1612] truncate">{kol.fullName}</span>
+                              {kol.kycStatus === 'VERIFIED' && (
+                                <span className="text-[10px] text-[#059669]" title="Đã xác minh KYC">✓</span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-[#7D715E] block font-normal truncate">
+                              {kol.handle || kol.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                          kol.tier === 'DIAMOND'
+                            ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                            : kol.tier === 'GOLD'
+                            ? 'bg-[#FAF0DD] text-[#9E7332] border-[#E8D4B0]'
+                            : kol.tier === 'SILVER'
+                            ? 'bg-[#F1F3F5] text-[#5C6470] border-[#DCE0E5]'
+                            : 'bg-[#F3EFE6] text-[#7D715E] border-[#EAE4D7]'
+                        }`}>
+                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : 'Đồng'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-[#1A1612] tabular-nums">
+                        {kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫
+                      </td>
+                      <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
+                        {kol.stats.totalOrders}
+                      </td>
+                      <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
+                        {kol.stats.completedVideosCount}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSelectKol(kol.id);
+                            setViewMode('CRM');
+                            handleTabChange('messages');
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
+                        >
+                          <MessageSquare size={13} />
+                          <span>Nhắn tin</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : viewMode === 'ALL_DEALS' ? (
+        /* THỎA THUẬN ĐỘC QUYỀN TOÀN SHOP */
+        <div className="rounded-2xl border border-[#EAE4D7] bg-white overflow-hidden shadow-xs p-4 sm:p-6">
+          <ShopActiveDealsTab
+            onSelectKolForChat={(kolId) => {
+              handleSelectKol(kolId);
+              setViewMode('CRM');
+              handleTabChange('messages');
+            }}
+          />
         </div>
       ) : (
         /* KHÔNG GIAN 1-1 (CREATOR CRM VIEW) */
@@ -1470,7 +1675,7 @@ return true;
                       className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] font-bold text-[#8A642C] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition shadow-2xs cursor-pointer"
                       title="Tìm kiếm KOL phù hợp bằng AI Matching"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-[#C59B58]" />
+                      <Search className="w-3.5 h-3.5 text-[#C59B58]" />
                       <span>Tìm với AI</span>
                     </button>
                     <button

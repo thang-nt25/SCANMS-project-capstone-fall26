@@ -81,8 +81,8 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     </header>
 
     <ol className={`purchase-detail-progress${cancelled ? ' purchase-detail-progress-cancelled' : ''}`} aria-label="Tiến trình đơn hàng">
-      {steps.map(({ title, Icon, reached, time }, index) => <li key={title} className={reached ? 'is-reached' : ''} aria-current={completed && index === 4 ? 'step' : undefined}>
-        <span className="purchase-step-icon"><Icon size={25} aria-hidden="true" />{reached && <Check className="purchase-step-check" size={12} />}</span>
+      {steps.map(({ title, Icon, reached, time }, index) => <li key={title} className={reached ? 'is-reached' : ''} aria-current={(completed || cancelled) && index === steps.length - 1 ? 'step' : undefined}>
+        <span className="purchase-step-icon"><Icon size={25} aria-hidden="true" />{reached && !(cancelled && index === 1) && <Check className="purchase-step-check" size={12} />}</span>
         <strong>{title}</strong>{reached && dateLabel(time) ? <time dateTime={time!}>{dateLabel(time)}</time> : reached && !cancelled && <span className="purchase-step-time-missing">Chưa có thời gian xác nhận</span>}
       </li>)}
     </ol>

@@ -1079,7 +1079,8 @@ export class ChatService {
     });
   }
 
-  // ---- Xóa cuộc trò chuyện và lịch sử chat ----
+  // A conversation is shared by both participants. Until per-user archive state
+  // exists, these legacy endpoints must never remove the shared records.
   async deleteConversation(conversationId: string, userId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -1101,16 +1102,7 @@ export class ChatService {
       );
     }
 
-    // Xóa tin nhắn và proposal liên quan trước khi xóa hội thoại
-    await this.prisma.chatMessage.deleteMany({
-      where: { conversationId },
-    });
-
-    await this.prisma.conversation.delete({
-      where: { id: conversationId },
-    });
-
-    return { success: true, message: 'Đã xóa cuộc trò chuyện thành công.' };
+    throw new ForbiddenException('Không thể xóa cuộc trò chuyện chung.');
   }
 
   // ---- Xóa sạch lịch sử tin nhắn trong cuộc trò chuyện ----
@@ -1133,15 +1125,6 @@ export class ChatService {
       );
     }
 
-    await this.prisma.chatMessage.deleteMany({
-      where: { conversationId },
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { lastMessageAt: new Date() },
-    });
-
-    return { success: true, message: 'Đã xóa toàn bộ lịch sử tin nhắn.' };
+    throw new ForbiddenException('Không thể xóa lịch sử tin nhắn chung.');
   }
 }

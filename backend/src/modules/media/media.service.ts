@@ -9,7 +9,7 @@ import { CreateMediaDto } from './dto/create-media.dto';
 import { QueryMediaDto } from './dto/query-media.dto';
 import { ReviewMediaDto, ReviewActionStatus } from './dto/review-media.dto';
 import { UserRole } from '@prisma/client';
-import { CacheService } from '../../core/cache/cache.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 
 @Injectable()
 export class MediaService {
@@ -41,7 +41,7 @@ export class MediaService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
   ) {}
 
   /**
@@ -51,6 +51,10 @@ export class MediaService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+
+    const cacheKey = `media:list:${viewer.role}:${viewer.id}:${query.storeId || ''}:${query.productId || ''}:${query.assetType || ''}:${page}:${limit}`;
+    const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
+    if (cached) return cached;
 
     const where: any = {
       isDeleted: false,
@@ -108,7 +112,7 @@ export class MediaService {
       }),
     ]);
 
-    return {
+    const result = {
       items,
       pagination: {
         total,
@@ -117,6 +121,9 @@ export class MediaService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    await this.cacheService?.set?.(cacheKey, result, 60);
+    return result;
   }
 
   /**
@@ -192,8 +199,9 @@ export class MediaService {
     });
 
     if (dto.productId) {
-      await this.cacheService.delPrefix(`landing:v2:${dto.productId}:`);
+      await this.cacheService?.delPrefix?.(`landing:v2:${dto.productId}:`);
     }
+    await this.cacheService?.delPrefix?.('media:list:');
 
     return {
       message: 'Tải lên tài nguyên truyền thông thành công!',
@@ -244,8 +252,9 @@ export class MediaService {
     });
 
     if (asset.productId) {
-      await this.cacheService.delPrefix(`landing:v2:${asset.productId}:`);
+      await this.cacheService?.delPrefix?.(`landing:v2:${asset.productId}:`);
     }
+    await this.cacheService?.delPrefix?.('media:list:');
 
     return { message: 'Đã xóa tài nguyên tiếp thị thành công' };
   }
@@ -345,6 +354,8 @@ export class MediaService {
         store: { select: { id: true, name: true } },
       },
     });
+
+    await this.cacheService?.delPrefix?.('media:list:');
 
     return {
       message:
@@ -539,8 +550,9 @@ export class MediaService {
 
     // 4. Giải phóng cache landing page cho sản phẩm liên quan
     if (asset.productId) {
-      await this.cacheService.delPrefix(`landing:v2:${asset.productId}:`);
+      await this.cacheService?.delPrefix?.(`landing:v2:${asset.productId}:`);
     }
+    await this.cacheService?.delPrefix?.('media:list:');
 
     return {
       message: `Đã cập nhật trạng thái kiểm duyệt media thành [${dto.status}]`,

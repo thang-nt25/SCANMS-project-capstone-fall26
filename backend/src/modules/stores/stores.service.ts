@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Prisma } from '@prisma/client';
 
@@ -61,9 +62,16 @@ export function resolveStoreDescription(store: {
 
 @Injectable()
 export class StoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   async getPublicStoreById(storeIdentifier: string) {
+    const cacheKey = `stores:public:id:${storeIdentifier}`;
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeIdentifier);
     const store = await this.prisma.store.findFirst({
       where: {
@@ -125,7 +133,7 @@ export class StoresService {
       ? Math.round((reviewsAggregate._avg.rating ?? 4.9) * 10) / 10
       : 4.9;
 
-    return {
+    const result = {
       ...store,
       description: resolveStoreDescription(store),
       productCount: store._count.products,
@@ -134,6 +142,9 @@ export class StoresService {
       reviewCount,
       categories: categories.map((item) => item.categoryName).filter(Boolean),
     };
+
+    await this.cache?.set?.(cacheKey, result, 60);
+    return result;
   }
 
   async getFollowStatus(storeId: string, userId: string) {
@@ -324,6 +335,17 @@ export class StoresService {
       },
     });
 
+    await this.cache?.del?.('stores:marketplace');
+    await this.cache?.del?.('stores:sponsored_placements');
+    await this.cache?.del?.(`stores:public:id:${store.id}`);
+    if (store.slug) {
+      await this.cache?.del?.(`stores:public:slug:${store.slug}`);
+      await this.cache?.del?.(`stores:public:id:${store.slug}`);
+    }
+    if (updated.slug && updated.slug !== store.slug) {
+      await this.cache?.del?.(`stores:public:slug:${updated.slug}`);
+    }
+
     return {
       message: 'Cập nhật cấu hình cửa hàng thành công!',
       store: updated,
@@ -334,6 +356,10 @@ export class StoresService {
    * Xem thông tin public của Store theo Slug
    */
   async getStoreBySlug(slug: string) {
+    const cacheKey = `stores:public:slug:${slug}`;
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const store = await this.prisma.store.findFirst({
       where: {
         slug,
@@ -491,7 +517,7 @@ export class StoresService {
       ? Math.round((reviewsAggregate._avg.rating ?? 5) * 10) / 10
       : null;
 
-    return {
+    const result = {
       ...publicStore,
       description: resolveStoreDescription(store),
       totalProducts,
@@ -504,12 +530,19 @@ export class StoresService {
       chatResponseRate,
       joinDuration,
     };
+
+    await this.cache?.set?.(cacheKey, result, 60);
+    return result;
   }
 
   /**
    * Lấy toàn bộ gian hàng đang hoạt động trên sàn để KOL khám phá và kết nối
    */
   async getSponsoredPlacements() {
+    const cacheKey = 'stores:sponsored_placements';
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const now = new Date();
     const booked = await this.prisma.sponsoredPlacement.findMany({
       where: { status: 'APPROVED', fundingType: 'PAID', amount: { gt: 0 },
@@ -534,13 +567,19 @@ export class StoresService {
       },
       select: { id: true, name: true, logoUrl: true, description: true, isVerified: true },
     });
-    return placements.flatMap((placement) => {
+    const result = placements.flatMap((placement) => {
       const store = stores.find((candidate) => candidate.id === placement.storeId);
       return store ? [{ store, headline: placement.headline.trim(), endsAt: placement.endsAt }] : [];
     });
+    await this.cache?.set?.(cacheKey, result, 60);
+    return result;
   }
 
   async getMarketplaceStores() {
+    const cacheKey = 'stores:marketplace';
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const now = new Date();
     const stores = await this.prisma.store.findMany({
       where: {
@@ -573,7 +612,7 @@ export class StoresService {
     }) : [];
     const reviewByProduct = new Map(reviews.map((review) => [review.productId, review]));
 
-    return stores.map(({ products, campaigns, ...store }) => {
+    const result = stores.map(({ products, campaigns, ...store }) => {
       let reviewCount = 0;
       let ratingSum = 0;
       for (const product of products) {
@@ -601,6 +640,38 @@ export class StoresService {
           id: campaigns[0].id, name: campaigns[0].name, endsAt: campaigns[0].endDate,
         } : null,
       };
+    });
+
+    await this.cache?.set?.(cacheKey, result, 60);
+    return result;
+  }
+
+  async getAllStoresAdmin() {
+    return this.prisma.store.findMany({
+      where: { isDeleted: false },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        ownerId: true,
+        isVerified: true,
+        isActive: true,
+        defaultCommissionRate: true,
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            products: { where: { isDeleted: false } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
     });
   }
 }

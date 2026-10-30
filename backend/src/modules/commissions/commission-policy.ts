@@ -30,6 +30,22 @@ export function liveBonusRate(session: {
   return rate === 2 || rate === 3 ? rate : 0;
 }
 
+/**
+ * Best-Benefit Precedence Rule (Chuẩn mới SCANMS Enterprise):
+ * Rate = min(25%, max(Deal VIP, Campaign, TierRate, Base 10%) + Live Bonus)
+ */
+export function precedenceCommissionRate(
+  tierBonus: number = 0,
+  dealRate: number = 0,
+  campaignRate: number = 0,
+  liveBonus: number = 0,
+  baseRate: number = BASE_COMMISSION_RATE,
+): number {
+  const effectiveTierRate = baseRate + tierBonus;
+  const bestRate = Math.max(dealRate, campaignRate, effectiveTierRate, baseRate);
+  return Math.min(MAX_COMMISSION_RATE, bestRate + liveBonus);
+}
+
 export function additiveCommissionRate(tier: number, deal: number, campaign: number, live: number): number {
   const shopNegotiated = Math.max(deal, campaign);
   return Math.min(MAX_COMMISSION_RATE, BASE_COMMISSION_RATE + tier + shopNegotiated + live);

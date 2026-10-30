@@ -69,6 +69,7 @@ export interface PartnerStore {
   location?: string;
   totalProducts?: number;
   unreadCount?: number;
+  messageCount?: number;
   pendingSamplesCount?: number;
   lastMessageText?: string;
   lastMessageAt?: string;
@@ -230,6 +231,7 @@ export default function ShopCollaborationPage() {
   const [generatedQr, setGeneratedQr] = useState<string>('');
 
   // Modal 2: Xin Hàng Mẫu 4 Bước (Giải pháp 2)
+  const [, setExclusiveDeals] = useState<any[]>([]);
   const [requestSampleModalProduct, setRequestSampleModalProduct] = useState<any | null>(null);
   const [sampleSocialChannelId, setSampleSocialChannelId] = useState<string>('');
   const [sampleContentType, setSampleContentType] = useState<string>('Video Review 60s (Routine buổi sáng)');
@@ -485,13 +487,22 @@ export default function ShopCollaborationPage() {
     const sequence = ++storeLoadSequence.current;
     setRequestedShopMissing(false);
     try {
-      const [convRes, marketRes]: [any, any] = await Promise.all([
+      const [convRes, marketRes, dealsRes]: [any, any, any] = await Promise.all([
         api.get('/chat/conversations').catch(() => []),
         api.get('/stores/marketplace').catch(() => ({ data: [] })),
+        referralLinksService.getMyExclusiveDeals().catch(() => []),
       ]);
 
       const convList = Array.isArray(convRes) ? convRes : convRes?.data || [];
       const marketStores = Array.isArray(marketRes?.data) ? marketRes.data : Array.isArray(marketRes) ? marketRes : [];
+      const dealsList: any[] = Array.isArray(dealsRes) ? dealsRes : dealsRes?.data || [];
+      setExclusiveDeals(dealsList);
+
+      const dealStoreIds = new Set<string>();
+      dealsList.forEach((d) => {
+        const sid = d.storeId || d.store?.id;
+        if (sid) dealStoreIds.add(sid);
+      });
 
       const mappedStores: PartnerStore[] = [];
 
@@ -500,9 +511,13 @@ export default function ShopCollaborationPage() {
         const storeId = st.id || conv.storeId;
         if (storeId && !mappedStores.some((store) => store.id === storeId)) {
           const lastMsg = conv.chatMessages?.[0];
+          const hasDeal = dealStoreIds.has(storeId);
+
+          // Keep every existing conversation, including contacts with no messages yet.
           mappedStores.push({
             id: storeId,
             conversationId: conv.id,
+            messageCount: typeof conv.messageCount === 'number' ? conv.messageCount : undefined,
             name: st.name || 'Gian hàng đối tác',
             slug: st.slug || '',
             logoUrl: getShopLogoUrl(st.logoUrl),
@@ -514,7 +529,7 @@ export default function ShopCollaborationPage() {
             rating: 4.9,
             location: 'Toàn quốc',
             unreadCount: (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead) ? 1 : 0,
-            lastMessageText: getChatMessagePreview(lastMsg?.messageText, lastMsg?.mediaName),
+            lastMessageText: getChatMessagePreview(lastMsg?.messageText, lastMsg?.mediaName) || (hasDeal ? '🤝 Đã gửi đề xuất deal độc quyền' : ''),
             lastMessageAt: lastMsg?.createdAt || conv.lastMessageAt || conv.createdAt,
           });
         }
@@ -668,12 +683,7 @@ export default function ShopCollaborationPage() {
       if (!active || refreshingMessages) return;
       refreshingMessages = true;
       try {
-        const response: any = await api.get('/chat/conversations', { headers: { 'x-skip-cache': 'true' } });
-        const rows = response?.data ?? response;
-        if (!active || !Array.isArray(rows)) return;
-        const total = rows.filter((item: any) => (item.storeId || item.store?.id) === storeId)
-          .reduce((sum: number, item: any) => sum + Number(item.messageCount || 0), 0);
-        setTabCounts(previous => previous.storeId === storeId ? { ...previous, messages: total } : previous);
+
       } finally {
         refreshingMessages = false;
       }

@@ -619,4 +619,20 @@ describe('ChatService (FR-25)', () => {
       expect(prisma.store.findMany).toHaveBeenCalled();
     });
   });
+
+  describe('shared history protection', () => {
+    it.each([
+      ['deleteConversation', mockCollaboratorId],
+      ['clearConversationMessages', mockOwnerId],
+    ] as const)('%s refuses a participant without deleting shared rows', async (action, userId) => {
+      prisma.chatMessage.deleteMany = jest.fn();
+      prisma.conversation.delete = jest.fn();
+
+      await expect(service[action](mockConversationId, userId)).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.chatMessage.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.conversation.delete).not.toHaveBeenCalled();
+      expect(prisma.conversation.update).not.toHaveBeenCalled();
+    });
+  });
 });

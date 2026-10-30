@@ -811,7 +811,7 @@ export default function ProductDetailPage() {
     const productIdOrSku = data.product.sku || data.product.id;
 
     const fetchStock = async () => {
-      if (fetching) return;
+      if (document.hidden || fetching) return;
       fetching = true;
       try {
         const res = await api.get(`/public/products/${encodeURIComponent(productIdOrSku)}/stock`, { headers: { 'x-skip-cache': 'true' } });

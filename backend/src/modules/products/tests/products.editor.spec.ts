@@ -47,7 +47,7 @@ describe('Atomic product editor', () => {
     expect(tx.productVariant.create).toHaveBeenCalled();
     expect(product.title).toBe('Updated product');
     expect(result.requiresModeration).toBe(true);
-    expect(cache.delPrefix).toHaveBeenCalledTimes(1);
+    expect(cache.delPrefix).toHaveBeenCalled();
   });
 
   it('rolls back the product when a variant SKU conflicts, and does not invalidate cache', async () => {

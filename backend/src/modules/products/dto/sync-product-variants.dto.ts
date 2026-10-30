@@ -15,7 +15,8 @@ import {
 
 export class ProductVariantInputDto {
   @IsOptional()
-  @IsUUID('4')
+  // Seeded SKU records use deterministic UUID v5; database UUID keys are not limited to v4.
+  @IsUUID('all')
   id?: string;
 
   @IsString()

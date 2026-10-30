@@ -181,8 +181,8 @@ describe('Monthly bonus deduction carry-forward', () => {
     const f = fixture([-10000.01, -20000.02], { '2025-08': '15000.02' });
     const result = await f.settle('2025-08');
     expect(result.settlement.bonusAmount).toBe('0');
-    expect(result.settlement.ruleSnapshot.totalAdjustment).toBe('-15000.02');
-    expect(result.settlement.ruleSnapshot.carriedForwardAdjustment).toBe(
+    expect((result.settlement.ruleSnapshot as any)?.totalAdjustment).toBe('-15000.02');
+    expect((result.settlement.ruleSnapshot as any)?.carriedForwardAdjustment).toBe(
       '-15000.01',
     );
     expect(f.sum()).toBe('-30000.03');
@@ -192,8 +192,8 @@ describe('Monthly bonus deduction carry-forward', () => {
     const f = fixture([-30000, 5000], { '2025-08': '10000' });
     const result = await f.settle('2025-08');
     expect(result.settlement.bonusAmount).toBe('0');
-    expect(result.settlement.ruleSnapshot.totalAdjustment).toBe('-10000');
-    expect(result.settlement.ruleSnapshot.carriedForwardAdjustment).toBe(
+    expect((result.settlement.ruleSnapshot as any)?.totalAdjustment).toBe('-10000');
+    expect((result.settlement.ruleSnapshot as any)?.carriedForwardAdjustment).toBe(
       '-15000',
     );
     expect(f.sum()).toBe('-25000');

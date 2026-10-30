@@ -50,6 +50,7 @@ export function LiveSessionDealCard({
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const response: any = await api.get(`/live-sessions/products/${productId}/active`);
         const result = response?.data || response;

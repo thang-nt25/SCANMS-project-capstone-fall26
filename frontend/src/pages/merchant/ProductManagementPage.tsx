@@ -1384,14 +1384,17 @@ export default function ProductManagementPage() {
           originalPrice: formOriginalPrice !== '' ? Number(formOriginalPrice) : null,
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
-          stockQuantity: Number(effectiveStock),
+          // syncProductVariants updates the parent total from the saved SKU quantities.
+          // Sending the new total first would conflict with the old SKU quantities.
+          ...(formVariants.length === 0 ? { stockQuantity: effectiveStock } : {}),
           sampleEnabled: formSampleEnabled,
           sampleQuota: Number(formSampleQuota),
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
           variants: formVariants,
         });
-        showToast(productUpdate?.requiresModeration
+        const variantUpdate = await productService.syncProductVariants(editingProduct.id, formVariants);
+        showToast(productUpdate?.requiresModeration || variantUpdate?.requiresModeration
           ? 'Đã lưu thay đổi. Sản phẩm tạm ẩn và chờ Ban Quản Trị kiểm duyệt lại.'
           : 'Cập nhật sản phẩm & hoa hồng thành công!');
       } else {
@@ -1524,8 +1527,10 @@ export default function ProductManagementPage() {
   return (
     <div className="product-management @container/product-management space-y-4 text-left w-full min-w-0 text-[#1A1612]">
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border border-[#EEDFC6] rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+        <div role={toastMsg === saveError ? 'alert' : 'status'} className={`fixed top-5 right-5 z-[100] p-3.5 bg-white text-[#1A1612] border rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${toastMsg === saveError ? 'border-[#FECACA]' : 'border-[#EEDFC6]'}`}>
+          {toastMsg === saveError
+            ? <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0" />
+            : <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />}
           <span>{toastMsg}</span>
         </div>
       )}

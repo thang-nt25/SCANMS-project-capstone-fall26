@@ -229,8 +229,8 @@ export const customerService = {
   },
 
   // 2. Orders
-  async getOrders(params?: { status?: string; search?: string }): Promise<{ total: number; orders: CustomerOrder[] }> {
-    const res: any = await api.get('/customer/orders', { params, headers: { 'x-skip-cache': 'true' } });
+  async getOrders(params?: { status?: string; search?: string }, fresh = false): Promise<{ total: number; orders: CustomerOrder[] }> {
+    const res: any = await api.get('/customer/orders', { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     const payload = res?.data?.data || res?.data || res;
     return {
       total: payload?.total || (payload?.orders?.length ?? 0),
@@ -238,8 +238,8 @@ export const customerService = {
     };
   },
 
-  async getOrderDetails(orderId: string): Promise<CustomerOrder> {
-    const res: any = await api.get(`/customer/orders/${orderId}`, { headers: { 'x-skip-cache': 'true' } });
+  async getOrderDetails(orderId: string, fresh = false): Promise<CustomerOrder> {
+    const res: any = await api.get(`/customer/orders/${orderId}`, { headers: fresh ? { 'x-skip-cache': 'true' } : undefined });
     return res?.data?.data || res?.data || res;
   },
 
@@ -329,10 +329,10 @@ export const customerService = {
   },
 
   // 4. Wishlist
-  async getWishlist(signal?: AbortSignal): Promise<CustomerWishlistItem[]> {
+  async getWishlist(signal?: AbortSignal, fresh = false): Promise<CustomerWishlistItem[]> {
     const token = localStorage.getItem('token');
     const res: any = await api.get('/customer/wishlist', { signal,
-      headers: { 'x-skip-cache': 'true', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { ...(fresh ? { 'x-skip-cache': 'true' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     const payload = res?.data?.data || res?.data || res;
     return Array.isArray(payload) ? payload : [];

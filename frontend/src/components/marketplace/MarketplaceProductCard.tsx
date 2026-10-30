@@ -80,7 +80,14 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
       <div className="flex flex-1 flex-col p-3 pb-0 sm:p-4 sm:pb-0">
         <Link to={product.storeId ? `/shops/${product.storeId}` : '/search'} className="relative z-20 mb-2 inline-flex w-fit max-w-full min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F]"><Store size={13} className="shrink-0" /><span className="truncate">{product.brand}</span></Link>
         <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm">{product.name}</h3>
-        <p className="mb-2 mt-2 text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</p>
+        <div className="mb-2 mt-1.5 flex items-center justify-between gap-1 flex-wrap">
+          <span className="text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
+          {typeof product.commissionRate === 'number' && product.commissionRate > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
+              Hoa hồng KOC: {product.commissionRate}%
+            </span>
+          )}
+        </div>
       </div>
       </div>
       <div className="marketplace-product-card__purchase flex flex-col p-3 pt-0 sm:p-4 sm:pt-0">

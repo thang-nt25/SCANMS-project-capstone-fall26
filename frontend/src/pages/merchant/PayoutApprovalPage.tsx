@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import "./PayoutApprovalPage.css";
 import { useParams } from "react-router-dom";
-import { Download, ReceiptText, ShieldCheck, Landmark, ChevronRight, Plus, BarChart3, Clock, Hourglass, CheckCircle, FileText, AlertTriangle, X, Search } from "lucide-react";
+import { Download, RefreshCw, ReceiptText, ShieldCheck, Landmark, ChevronRight, Plus, BarChart3, Clock, Hourglass, CheckCircle, FileText, AlertTriangle, X, Search } from "lucide-react";
 import {
   payoutService,
   getPayoutErrorMessage,
@@ -21,6 +21,8 @@ import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Select } from "../../components/ui/Select";
 import { type VietQrBank, findBankByQuery } from "@/config/banks.config";
 import { toast } from "../../utils/toast";
+import { fixturePayoutView, payoutPagination } from '@/utils/merchant-payout-view';
+import { ledgerAmountPresentation } from '@/utils/ledger-amount';
 import {
   maskBankAccount,
   MAX_PAYOUT_BILL_BYTES,
@@ -34,7 +36,7 @@ const STATUS_LABELS: Record<PayoutStatus, string> = {
   REJECTED: "Đã từ chối",
 };
 const money = (amount: string) =>
-  `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(amount))} ₫`;
+  ledgerAmountPresentation(amount).text.replace(/^\+/, '');
 const buttonClass =
   "rounded-xl border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -270,6 +272,11 @@ export default function PayoutApprovalPage() {
   const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'TAX' | 'KYC'>('ALL');
   const [selected, setSelected] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setPage(1); setSelected([]); setDebouncedSearch(searchQuery.trim()); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
   const [viewingBill, setViewingBill] = useState<MerchantPayout | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -441,13 +448,16 @@ export default function PayoutApprovalPage() {
     if (!storeId) return;
     const sequence = ++loadSequence.current;
     setLoading(true);
+    setHistory(null);
+    setSelected([]);
     try {
       const [requests, batchHistory] = await Promise.all([
-        payoutService.list(storeId, page, status),
+        payoutService.list(storeId, page, status, { search: debouncedSearch, filter: activeKpiFilter }),
         payoutService.batches(storeId),
       ]);
       if (sequence !== loadSequence.current) return;
       setHistory(requests);
+      if (requests.page && requests.page !== page) setPage(requests.page);
       setBatches(batchHistory.batches);
       setSelected([]);
       setError("");
@@ -457,7 +467,7 @@ export default function PayoutApprovalPage() {
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
-  }, [storeId, page, status]);
+  }, [storeId, page, status, debouncedSearch, activeKpiFilter]);
   useEffect(() => {
     const sequenceRef = loadSequence;
     void load();
@@ -593,72 +603,41 @@ export default function PayoutApprovalPage() {
     });
   }
 
-  // An empty/failed API response is not consent to display fabricated financial activity.
-  const baseRequests = useMemo(() =>
-    history && history.requests.length > 0 ? history.requests : fixtureMode ? localRequests : [],
-  [history, fixtureMode, localRequests]);
-
-  // Thống kê KPIs chi trả (Chuẩn Figma 13 - tính toán chính xác trên dữ liệu hiện tại)
-  const pendingRequests = baseRequests.filter((r) => r.status === "PENDING");
-  const approvedRequests = baseRequests.filter((r) => r.status === "APPROVED");
-  const pendingAmountSum = pendingRequests.reduce(
-    (acc, r) => acc + Number(r.netAmount || r.amount || 0),
-    0
-  );
-  const approvedAmountSum = approvedRequests.reduce(
-    (acc, r) => acc + Number(r.netAmount || r.amount || 0),
-    0
-  );
-  const totalTaxSum = baseRequests.reduce(
-    (acc, r) => acc + Number(r.taxAmount || 0),
-    0
-  );
-  const taxRequests = baseRequests.filter((r) => Number(r.taxAmount || 0) > 0);
-  const pendingKycCount = baseRequests.filter(
-    (r) => r.kycStatus && r.kycStatus !== "VERIFIED"
-  ).length;
-
-  const displayPendingCount = pendingRequests.length;
-  const displayPendingAmount = pendingAmountSum;
-  const displayApprovedCount = approvedRequests.length;
-  const displayApprovedAmount = approvedAmountSum;
-  const displayTaxCount = taxRequests.length;
-  const displayTaxAmount = totalTaxSum;
-  const displayKycPendingCount = pendingKycCount;
-
-  // Bộ lọc dữ liệu bảng tương tác: kết hợp Dropdown Trạng thái + Thẻ KPI đang bấm + Tìm kiếm
-  const displayedRequests = useMemo(() => {
-    return baseRequests.filter((request) => {
-      if (status && request.status !== status) return false;
-      if (activeKpiFilter === "PENDING") return request.status === "PENDING";
-      if (activeKpiFilter === "APPROVED") return request.status === "APPROVED";
-      if (activeKpiFilter === "TAX") return Number(request.taxAmount) > 0;
-      if (activeKpiFilter === "KYC") return request.kycStatus !== "VERIFIED";
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchName = request.collaboratorName?.toLowerCase().includes(q);
-        const matchId = request.id?.toLowerCase().includes(q);
-        const matchBank = request.bankName?.toLowerCase().includes(q);
-        const matchAcc = request.bankAccountNumber?.includes(q);
-        const matchAccName = request.bankAccountName?.toLowerCase().includes(q);
-        return Boolean(matchName || matchId || matchBank || matchAcc || matchAccName);
-      }
-      return true;
-    });
-  }, [baseRequests, status, activeKpiFilter, searchQuery]);
+  // Only an explicitly enabled DEV workspace may use local financial fixtures.
+  const usingFixtures = fixtureMode && !history;
+  const baseRequests = useMemo(() => usingFixtures ? localRequests : history?.requests || [], [usingFixtures, localRequests, history]);
+  const fixtureView = useMemo(() => usingFixtures ? fixturePayoutView(localRequests, {
+    page, limit: 10, status, filter: activeKpiFilter, search: debouncedSearch,
+  }) : null, [usingFixtures, localRequests, page, status, activeKpiFilter, debouncedSearch]);
+  const summary = usingFixtures ? fixtureView?.summary : history?.summary;
+  const displayedRequests = loading || searchQuery.trim() !== debouncedSearch ? [] : usingFixtures ? fixtureView?.requests || [] : history?.requests || [];
+  const total = usingFixtures ? fixtureView?.total || 0 : history?.total || 0;
+  const pageLimit = history?.limit || 10;
+  const effectivePage = usingFixtures ? fixtureView?.page || page : history?.page || page;
+  const pagination = payoutPagination(total, pageLimit, effectivePage);
+  const displayPendingCount = summary?.pending.count ?? '—';
+  const displayPendingAmount = summary?.pending.netAmount;
+  const displayApprovedCount = summary?.approvedToday.count ?? '—';
+  const displayApprovedAmount = summary?.approvedToday.netAmount;
+  const displayTaxCount = summary?.withheldTax.count ?? 0;
+  const displayTaxAmount = summary?.withheldTax.amount;
+  const displayKycPendingCount = summary?.kycPendingCount ?? '—';
 
   const eligible = displayedRequests.filter(
     (request) => request.status === "PENDING" && !request.batchId
   );
-  const exportTargetIds = selected.length > 0
-    ? eligible.filter((request) => selected.includes(request.id)).map((request) => request.id)
-    : eligible.map((request) => request.id);
 
   const handleExportExcel = async () => {
-    const targetIds = exportTargetIds;
+    if (busy || loading || searchQuery.trim() !== debouncedSearch) return;
+    const targetIds =
+      selected.length > 0
+        ? selected
+        : eligible.length > 0
+        ? eligible.map((r) => r.id)
+        : displayedRequests.map((r) => r.id);
 
     if (targetIds.length === 0) {
-      toast.info("Chưa có yêu cầu chờ chi trả đủ điều kiện để xuất VietQR.");
+      toast.info("Không có lệnh payout nào để xuất file đối soát.");
       return;
     }
 
@@ -746,7 +725,7 @@ export default function PayoutApprovalPage() {
   };
 
   return (
-    <div className="merchant-payout-page mx-auto w-full min-w-0 max-w-[1480px] space-y-4 pb-8 text-ink">
+    <div className="merchant-payout-page mx-auto w-full min-w-0 max-w-[1480px] space-y-4 pb-8 pt-4 text-ink sm:pt-6">
       {fixtureMode && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
         Đang bật dữ liệu giao diện chi trả TEST. Những bản ghi này không chứng minh chuyển tiền thật.
       </p>}
@@ -1037,7 +1016,7 @@ export default function PayoutApprovalPage() {
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
                 <Clock className="h-3.5 w-3.5 text-[#B88E4F]" />
-                <span>Hôm nay</span>
+                <span>Toàn gian hàng · UTC+7</span>
               </span>
             </div>
 
@@ -1054,9 +1033,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "PENDING"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1100,9 +1079,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "APPROVED" ? "ALL" : "APPROVED"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "APPROVED"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1146,9 +1125,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "TAX" ? "ALL" : "TAX"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "TAX"
                     ? "border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/30"
@@ -1173,14 +1152,10 @@ export default function PayoutApprovalPage() {
                 </div>
                 <div>
                   <div className="text-base sm:text-lg font-extrabold leading-none text-[#1A1612] tracking-tight whitespace-nowrap">
-                    {displayTaxAmount >= 1000000
-                      ? `${(displayTaxAmount / 1000000).toLocaleString("vi-VN", {
-                          maximumFractionDigits: 2,
-                        })} tr ₫`
-                      : money(String(displayTaxAmount))}
+                    {money(displayTaxAmount ?? '')}
                   </div>
                   <span className="mt-1.5 block truncate text-[11px] sm:text-xs font-semibold text-[#7D715E] whitespace-nowrap">
-                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh · Từ 2 triệu` : "10% lệnh từ 2 triệu"}
+                    {displayTaxCount > 0 ? `${displayTaxCount} lệnh đã khấu trừ` : "10% mỗi lệnh rút mới"}
                   </span>
                 </div>
               </div>
@@ -1196,9 +1171,9 @@ export default function PayoutApprovalPage() {
                     event.currentTarget.click();
                   }
                 }}
-                onClick={() =>
-                  setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"))
-                }
+                onClick={() => { setPage(1); setSelected([]);
+                  setActiveKpiFilter((prev) => (prev === "KYC" ? "ALL" : "KYC"));
+                }}
                 className={`payout-metric flex min-h-[92px] cursor-pointer select-none flex-col justify-between rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
                   activeKpiFilter === "KYC"
                     ? "border-[#DC2626] bg-[#FEF2F2] shadow-xs ring-1 ring-[#DC2626]/20"
@@ -1244,16 +1219,17 @@ export default function PayoutApprovalPage() {
       <section className="payout-approval-table @container/payout-approval-table min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
         {/* Toolbar điều hướng & tìm kiếm */}
         <div className="payout-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white p-3.5 sm:p-4">
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5 sm:w-auto sm:flex-1">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Thanh tìm kiếm nhanh */}
-            <div className="relative w-full sm:max-w-[440px]">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7D715E]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm KOL, mã yêu cầu, số tài khoản..."
-                className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 pl-8.5 pr-7 text-xs text-[#1A1612] placeholder:text-[#A89E90] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
+                aria-label="Tìm yêu cầu chi trả"
+                placeholder="Tìm KOL, UUID đầy đủ, số tài khoản..."
+                className="h-9 w-48 sm:w-60 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 pl-8.5 pr-7 text-xs text-[#1A1612] placeholder:text-[#A89E90] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
               />
               {searchQuery && (
                 <button
@@ -1266,27 +1242,10 @@ export default function PayoutApprovalPage() {
               )}
             </div>
 
-
-
-            {/* Nút Xóa bộ lọc KPI khi đang có thẻ KPI active */}
-            {activeKpiFilter !== "ALL" && (
-              <button
-                type="button"
-                onClick={() => setActiveKpiFilter("ALL")}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:border-[#FECACA] hover:text-[#DC2626]"
-              >
-                <span>Đang lọc: {activeKpiFilter === 'PENDING' ? 'Chờ duyệt' : activeKpiFilter === 'APPROVED' ? 'Đã duyệt' : activeKpiFilter === 'TAX' ? 'Thuế 10%' : 'KYC'}</span>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="ml-auto flex flex-wrap items-center gap-2">
             {/* Dropdown Trạng thái */}
             <div className="flex items-center gap-1.5">
               <Select
                 aria-label="Lọc trạng thái payout"
-                portal
                 value={status}
                 onChange={(event) => {
                   setStatus(event.target.value as PayoutStatus | "");
@@ -1303,16 +1262,44 @@ export default function PayoutApprovalPage() {
                 ))}
               </Select>
             </div>
+
+            {/* Nút Xóa bộ lọc KPI khi đang có thẻ KPI active */}
+            {activeKpiFilter !== "ALL" && (
+              <button
+                type="button"
+                onClick={() => { setPage(1); setSelected([]); setActiveKpiFilter("ALL"); }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 text-xs font-semibold text-[#8A642C] transition hover:border-[#FECACA] hover:text-[#DC2626]"
+              >
+                <span>Đang lọc: {activeKpiFilter === 'PENDING' ? 'Chờ duyệt' : activeKpiFilter === 'APPROVED' ? 'Đã duyệt' : activeKpiFilter === 'TAX' ? 'Thuế 10%' : 'KYC'}</span>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={busy || loading || exportTargetIds.length === 0}
+              onClick={() => void load()}
+              disabled={loading || busy}
+              aria-label="Tải lại payout"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#5F5547] shadow-2xs transition hover:bg-[#FAF8F5] cursor-pointer"
+              title="Tải lại dữ liệu yêu cầu chi trả"
+            >
+              <RefreshCw size={13} className={loading || busy ? "animate-spin text-[#B88E4F]" : "text-[#7D715E]"} />
+            </button>
+
+            <button
+              type="button"
+              disabled={busy || loading}
               onClick={handleExportExcel}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#C59B58] to-[#B88E4F] px-3.5 text-xs font-semibold text-white shadow-xs transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
               title="Bấm để xuất file danh sách chuyển khoản VietQR / Napas247 tương thích Excel"
             >
               <Download size={14} />
               <span>
-                {`Xuất Excel VietQR (${exportTargetIds.length})`}
+                {selected.length > 0
+                  ? `Xuất Excel VietQR (${selected.length})`
+                  : `Xuất Excel VietQR (${eligible.length > 0 ? eligible.length : displayedRequests.length})`}
               </span>
             </button>
           </div>
@@ -1321,27 +1308,26 @@ export default function PayoutApprovalPage() {
         {loading && <p className="p-5 text-sm text-[#7D715E]">Đang tải dữ liệu payout…</p>}
 
         {/* Bảng danh sách chi trả hoa hồng */}
-          <div className="payout-table-region relative max-w-full" role="region" aria-label="Danh sách chi trả hoa hồng">
-            <label className="payout-select-all grid w-full cursor-pointer grid-cols-[3%_1fr_auto] items-center border-b border-[#EAE4D7] bg-white py-3 text-xs font-medium text-[#7D715E]">
-              <input type="checkbox" aria-label="Chọn tất cả payout chờ" checked={eligible.length > 0 && eligible.every((request) => selected.includes(request.id))} disabled={busy || loading || eligible.length === 0} onChange={(event) => setSelected(event.target.checked ? eligible.map((request) => request.id) : [])} className="m-0 block h-3.5 w-3.5 justify-self-center accent-[#C59B58]" />
-              <span className="pl-3 pr-2">Chọn tất cả yêu cầu chờ trên trang</span>
-              {selected.length > 0 && <span className="mr-4 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] text-[#B88E4F]">Đã chọn {selected.length}</span>}
+          <div className="relative isolate max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Danh sách chi trả hoa hồng" tabIndex={0}>
+            <label className="payout-select-all items-center gap-2 border-b border-[#EAE4D7] px-4 py-3 text-xs text-[#7D715E]">
+              <input type="checkbox" aria-label="Chọn tất cả payout chờ" checked={eligible.length > 0 && eligible.every((request) => selected.includes(request.id))} disabled={busy || loading || eligible.length === 0} onChange={(event) => setSelected(event.target.checked ? eligible.map((request) => request.id) : [])} className="accent-[#C59B58]" />
+              Chọn tất cả yêu cầu chờ trên trang
             </label>
             <table
               aria-label="Danh sách payout"
-              className="payout-table w-full table-fixed border-collapse text-left text-xs [&_td]:break-words [&_th]:break-words"
+              className="payout-table w-full min-w-[1200px] table-fixed text-left text-xs"
             >
             <colgroup>
-              <col className="w-[3%]" />
-              <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[11%]" />
-              <col className="w-[9%]" />
-              <col className="w-[12%]" />
-              <col className="w-[15%]" />
-              <col className="w-[12%]" />
+              <col className="w-[42px]" />
+              <col className="w-[22%]" />
+              <col />
+              <col className="w-[110px]" />
+              <col className="w-[90px]" />
+              <col className="w-[110px]" />
+              <col className="w-[205px]" />
+              <col className="w-[160px]" />
             </colgroup>
-            <thead className="border-b border-[#EEDFC6] bg-[#FBF5EB]/50 text-[10px] font-semibold uppercase tracking-wide text-[#7D715E]">
+            <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
               <tr>
                 <th className="px-2.5 py-3 text-center">
                   <input
@@ -1359,7 +1345,7 @@ export default function PayoutApprovalPage() {
                           : []
                       )
                     }
-                    className="mx-auto my-0 block h-3.5 w-3.5 accent-[#C59B58] rounded cursor-pointer"
+                    className="accent-[#C59B58] rounded cursor-pointer"
                   />
                 </th>
                 <th scope="col" className="px-3 py-3">KOL / Mã yêu cầu</th>
@@ -1368,7 +1354,7 @@ export default function PayoutApprovalPage() {
                 <th scope="col" className="px-2.5 py-3 text-right">Thuế</th>
                 <th scope="col" className="px-2.5 py-3 text-right">Thực nhận</th>
                 <th scope="col" className="px-2.5 py-3 text-center">Trạng thái</th>
-                <th scope="col" className="px-2 py-3 text-center">Thao tác</th>
+                <th scope="col" className="sticky right-0 z-20 bg-[#FAF8F5] px-2.5 py-3 text-center shadow-[-1px_0_0_#EAE4D7]">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -1392,7 +1378,7 @@ export default function PayoutApprovalPage() {
                             : current.filter((id) => id !== request.id)
                         )
                       }
-                      className="mx-auto my-0 block h-3.5 w-3.5 accent-[#C59B58] rounded cursor-pointer"
+                      className="accent-[#C59B58] rounded cursor-pointer"
                     />
                   </td>
                   <td data-label="KOL / Mã yêu cầu" className="px-3 py-2.5 align-middle">
@@ -1483,7 +1469,7 @@ export default function PayoutApprovalPage() {
                       </div>
                     )}
                   </td>
-                  <td data-label="Thao tác" className="bg-white px-2 py-2.5 align-middle">
+                  <td data-label="Thao tác" className="sticky right-0 z-10 bg-white px-2.5 py-2.5 align-middle shadow-[-1px_0_0_#EAE4D7]">
                     <div className="mx-auto flex w-full max-w-[130px] flex-col gap-1.5">
                       {(request.status === "PENDING" || request.status === "PROCESSING") && (
                         <button
@@ -1524,7 +1510,7 @@ export default function PayoutApprovalPage() {
           </table>
         </div>
 
-        {!loading && displayedRequests.length === 0 && (
+        {!loading && searchQuery.trim() === debouncedSearch && displayedRequests.length === 0 && (
           <div className="p-8 text-center text-[#7D715E]">
             <p className="font-semibold text-[#1A1612]">
               Không có yêu cầu chi trả nào phù hợp với bộ lọc hiện tại.
@@ -1534,6 +1520,8 @@ export default function PayoutApprovalPage() {
                 type="button"
                 onClick={() => {
                   setStatus("");
+                  setPage(1);
+                  setSelected([]);
                   setActiveKpiFilter("ALL");
                   setSearchQuery("");
                 }}
@@ -1546,24 +1534,23 @@ export default function PayoutApprovalPage() {
         )}
 
         {/* Thanh phân trang */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] px-4 py-3 text-xs">
-          <span className="inline-flex min-h-8 items-center gap-1 font-medium text-[#7D715E]">
-            Hiển thị <strong className="text-[#1A1612]">{displayedRequests.length}</strong> yêu cầu chi trả
+        <div className="flex items-center justify-between gap-3 border-t border-[#EAE4D7] p-3.5 sm:p-4 text-xs">
+          <span className="font-medium text-[#7D715E]">
+            Hiển thị <strong className="text-[#1A1612]">{displayedRequests.length}</strong> / {total} yêu cầu phù hợp · Trang {pagination.page}/{pagination.totalPages}
           </span>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="mr-2 inline-flex h-8 items-center whitespace-nowrap text-[#7D715E]" aria-live="polite">Trang {page}</span>
+          <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy || loading || page <= 1}
-              onClick={() => setPage((current) => current - 1)}
+              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canPrevious}
+              onClick={() => setPage(pagination.page - 1)}
               className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
             >
               Trước
             </button>
             <button
               type="button"
-              disabled={busy || loading || page * 10 >= displayedRequests.length}
-              onClick={() => setPage((current) => current + 1)}
+              disabled={busy || loading || searchQuery.trim() !== debouncedSearch || !pagination.canNext}
+              onClick={() => setPage(pagination.page + 1)}
               className="h-8 px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FAF8F5] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
             >
               Sau
@@ -1571,38 +1558,33 @@ export default function PayoutApprovalPage() {
           </div>
         </div>
       </section>
-      <section aria-label="Lịch sử lô VietQR" className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] px-4 py-3.5 sm:px-5">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><FileText className="h-4 w-4" /></span>
-            <h2 className="m-0 text-sm font-semibold text-[#1A1612]">Lịch sử lô VietQR gần nhất</h2>
-          </div>
-          <span className="rounded-full border border-[#EAE4D7] bg-white px-2.5 py-1 text-[11px] text-[#7D715E]">{loading ? 'Đang tải…' : `${batches.length} lô`}</span>
-        </header>
-        {loading ? <p role="status" className="m-0 p-6 text-center text-xs text-[#7D715E]">Đang tải lịch sử lô VietQR…</p> : error ? <p role="status" className="m-0 p-6 text-center text-xs text-[#7D715E]">Chưa tải được lịch sử lô. Vui lòng kiểm tra thông báo lỗi phía trên.</p> : batches.length === 0 ? (
-          <div className="flex items-center justify-center gap-3 px-5 py-7">
-            <FileText className="h-7 w-7 shrink-0 text-[#C59B58]/70" />
-            <div><p className="m-0 text-xs font-semibold text-[#1A1612]">Chưa có lô thanh toán</p><p className="m-0 mt-1 text-xs text-[#7D715E]">Lô sẽ xuất hiện sau khi xuất Excel VietQR thành công.</p></div>
-          </div>
+      <section className="rounded-2xl border border-line bg-white p-5">
+        <h2 className="text-lg font-bold">Lịch sử lô VietQR gần nhất</h2>
+        <p className="mt-2 text-xs text-muted">
+          Tải lại cùng file không tạo lô mới. File có thể chứa payout đã trả —
+          không chuyển khoản lại.
+        </p>
+        {batches.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">Chưa có lô thanh toán.</p>
         ) : (
-          <ul className="m-0 list-none divide-y divide-[#EAE4D7] px-4 sm:px-5">
+          <ul className="mt-4 space-y-3">
             {batches.map((batch) => (
               <li
                 key={batch.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3.5"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3 hover:border-brand/40 transition"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="m-0 break-all font-mono text-xs font-semibold text-[#1A1612]">
+                <div>
+                  <p className="font-mono text-xs font-bold text-[#1A1612]">
                     {batch.id}
                   </p>
                   <p className="mt-1 text-xs text-muted">
-                    {batch.payoutCount} yêu cầu chi trả ·{" "}
-                    {new Date(batch.createdAt).toLocaleString("vi-VN", { timeZone: 'Asia/Ho_Chi_Minh' })}
+                    {batch.payoutCount} payout ·{" "}
+                    {new Date(batch.createdAt).toLocaleString("vi-VN")}
                   </p>
                 </div>
                 <button
                   type="button"
-                  disabled={busy || loading}
+                  disabled={busy}
                   onClick={() =>
                     void runAction(async () => {
                       try {
@@ -1650,9 +1632,8 @@ export default function PayoutApprovalPage() {
                       }
                     })
                   }
-                  className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-medium text-[#1A1612] transition hover:border-[#C59B58] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${buttonClass} bg-surface-sand hover:bg-[#EAE4D7] transition cursor-pointer`}
                 >
-                  <Download className="h-3.5 w-3.5 text-[#B88E4F]" />
                   Tải lại Excel
                 </button>
               </li>

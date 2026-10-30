@@ -1910,12 +1910,9 @@ export default function ChatBoxPage({
       setMessages(cached);
       setIsLoadingMsgs(false);
       setTimeout(() => scrollToBottom(), 10);
-    } else if (conv.chatMessages && conv.chatMessages.length > 0) {
-      // Optimistic preview: Hiển thị ngay tin nhắn gần nhất từ conversation summary trong lúc tải full lịch sử
-      setMessages(conv.chatMessages as any);
-      setIsLoadingMsgs(true);
-      setTimeout(() => scrollToBottom(), 10);
     } else {
+      // Conversation summaries omit message IDs, attachments and sender details.
+      // Only render full messages from history or the per-conversation cache.
       setMessages([]);
       setIsLoadingMsgs(true);
     }
@@ -2450,14 +2447,14 @@ export default function ChatBoxPage({
 
             {/* Collapsed List: Avatars only */}
             <div className="flex-1 w-full overflow-y-auto py-2.5 px-2 space-y-2.5 no-scrollbar flex flex-col items-center">
-              {filteredConversations.map((conv) => {
+              {filteredConversations.map((conv, idx) => {
                 const lastMsg = conv.chatMessages?.[0];
                 const isActive = conv.id === activeConvId;
                 const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
                 const otherParty = getOtherParty(conv);
 
                 return (
-                  <div key={conv.id} className="relative group">
+                  <div key={`${conv.id}-${idx}`} className="relative group">
                     <button
                       type="button"
                       onClick={() => openConversation(conv)}
@@ -2592,7 +2589,7 @@ export default function ChatBoxPage({
                 </div>
               )}
 
-              {filteredConversations.map((conv) => {
+              {filteredConversations.map((conv, idx) => {
                 const lastMsg = conv.chatMessages?.[0];
                 const isActive = conv.id === activeConvId;
                 const unread = (conv._count?.chatMessages || 0) > 0 || (lastMsg && !lastMsg.isRead && lastMsg.senderId !== currentUser?.id);
@@ -2600,7 +2597,7 @@ export default function ChatBoxPage({
 
                 return (
                   <div
-                    key={conv.id}
+                    key={`${conv.id}-${idx}`}
                     id={`conv-item-${conv.id}`}
                     data-active={isActive}
                     className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-150 ${
@@ -2862,6 +2859,19 @@ export default function ChatBoxPage({
             )}
 
 
+            {visibleMessages.length > 0 && (
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2 text-xs text-[#7D715E]">
+                <span>Đã tải {visibleMessages.length} tin nhắn</span>
+                <button
+                  type="button"
+                  onClick={() => { if (messagesContainerRef.current) messagesContainerRef.current.scrollTop = 0; }}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]"
+                  title="Cuộn lên đầu lịch sử đã tải"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" /> Xem tin nhắn cũ
+                </button>
+              </div>
+            )}
             <div
               className={`chat-message-list min-h-0 flex-1 overflow-y-auto ${embedded ? 'space-y-3 p-3 sm:p-4' : 'space-y-5 p-4 sm:p-7 lg:p-8'}`}
               ref={messagesContainerRef}
@@ -2903,7 +2913,7 @@ export default function ChatBoxPage({
                   new Date(msg.createdAt).toDateString();
 
                 return (
-                  <div key={msg.id} className="space-y-2">
+                  <div key={msg.id ? `${msg.id}-${idx}` : `msg-${idx}`} className="space-y-2">
                     {showDate && (
                       <div className="chat-date-divider my-4 flex items-center justify-center">
                         <span className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] font-semibold text-[#7D715E] shadow-2xs">
@@ -2951,7 +2961,7 @@ export default function ChatBoxPage({
                         </div>}
                         {!isMine && !hasSenderHeader && (
                           <div className="pl-1 text-xs font-medium text-[#7D715E]">
-                            {msg.sender?.fullName}
+                            {msg.sender?.fullName || getOtherParty(activeConv)}
                           </div>
                         )}
 

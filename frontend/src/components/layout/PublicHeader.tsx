@@ -180,7 +180,8 @@ export function PublicHeader({
         {/* Left: Brand Logo */}
         <div className="public-commerce-header__brand flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <ScanMSLogo size="md" className="scanms-header-logo" showSubtitle={!cartPage} />
+            <span className="sm:hidden"><ScanMSLogo size="sm" showSubtitle={false} className="scanms-header-logo" /></span>
+            <span className="hidden sm:inline-flex"><ScanMSLogo size="md" className="scanms-header-logo" showSubtitle={!cartPage} /></span>
           </Link>
           {cartPage && <h1 className="public-commerce-header__cart-title">Giỏ hàng</h1>}
         </div>
@@ -205,8 +206,8 @@ export function PublicHeader({
               }
             }}
             className="public-commerce-header__tracking"
-            aria-label="Tra cứu đơn"
             title="Tra cứu lộ trình đơn hàng & vận chuyển"
+            aria-label="Tra cứu đơn hàng"
           >
             <Package size={20} aria-hidden="true" />
             <span className="hidden sm:inline">Tra cứu đơn</span>
@@ -242,10 +243,12 @@ export function PublicHeader({
             <div className="flex items-center gap-1.5">
               <Link
                 to={loginUrl}
-                className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                className="inline-flex items-center gap-2 whitespace-nowrap px-2 sm:px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                aria-label="Đăng nhập hoặc đăng ký"
+                title="Đăng nhập hoặc đăng ký"
               >
                 <User className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
-                Đăng nhập / Đăng ký
+                <span className="hidden sm:inline">Đăng nhập / Đăng ký</span>
               </Link>
             </div>
           )}

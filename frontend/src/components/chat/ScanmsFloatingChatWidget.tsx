@@ -18,7 +18,6 @@ import {
   Search,
   Copy,
   Check,
-  Trash2,
   GripVertical,
   MessageSquare,
 } from 'lucide-react';
@@ -264,6 +263,7 @@ export function ScanmsFloatingChatWidget() {
   } = useScanmsChat();
 
   const [inputText, setInputText] = useState('');
+
   const [replyTarget, setReplyTarget] = useChatReply(currentUser?.id, activeConversation?.id);
   const { messageReplies } = useChatCapabilities();
   const [originalMessage, setOriginalMessage] = useState<ChatReply | null>(null);
@@ -301,6 +301,7 @@ export function ScanmsFloatingChatWidget() {
     clearAllConversations();
     setIsClearAllConversationsModalOpen(false);
   };
+
 
   useEffect(() => {
     if (isOpen && (isAuthRoute || !isAuthenticated)) {
@@ -1008,16 +1009,6 @@ export function ScanmsFloatingChatWidget() {
               <span className="font-semibold text-xs sm:text-sm">({totalUnread > 0 ? totalUnread : filteredConversations.length})</span>
             </div>
             <div className="flex items-center gap-1 text-[#757575]">
-              {conversations.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsClearAllConversationsModalOpen(true)}
-                  className="p-1 text-[#7D715E] hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                  title="Xóa toàn bộ lịch sử trò chuyện"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
               <button
                 type="button"
                 onClick={toggleMinimize}
@@ -1125,17 +1116,6 @@ export function ScanmsFloatingChatWidget() {
                           <span className="text-[10px] text-[#999999] whitespace-nowrap group-hover:hidden">
                             {c.lastTime}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConversationToDelete(c);
-                            }}
-                            className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded hover:bg-rose-50 text-[#7D715E] hover:text-rose-600 transition cursor-pointer"
-                            title="Xóa cuộc trò chuyện này"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
@@ -1193,17 +1173,6 @@ export function ScanmsFloatingChatWidget() {
             </div>
 
           <div className="flex items-center gap-1.5 text-[#757575]">
-            {activeConversation && activeConversation.messages.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsClearMessagesModalOpen(true)}
-                className="flex items-center gap-1 px-1.5 py-1 text-xs text-[#7D715E] hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer select-none"
-                title="Xóa lịch sử tin nhắn trong cuộc trò chuyện này"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-medium hidden sm:inline">Xóa lịch sử</span>
-              </button>
-            )}
             <button
               type="button"
               onClick={toggleMinimize}
@@ -1672,7 +1641,6 @@ export function ScanmsFloatingChatWidget() {
           </div>
         </div>
       </div>
-
       {/* Modal xác nhận xóa 1 cuộc trò chuyện */}
       <ConfirmModal
         isOpen={Boolean(conversationToDelete)}
@@ -1710,6 +1678,7 @@ export function ScanmsFloatingChatWidget() {
         cancelText="Hủy"
         variant="danger"
       />
+
     </div>
     {originalMessage && <ChatOriginalMessage message={originalMessage} onClose={() => setOriginalMessage(null)} />}
   </>

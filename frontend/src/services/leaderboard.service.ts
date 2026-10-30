@@ -98,10 +98,10 @@ export interface LeaderboardQueryParams {
 }
 
 export const leaderboardService = {
-  getLeaderboard: async (params?: LeaderboardQueryParams): Promise<LeaderboardFullResponse> => {
+  getLeaderboard: async (params?: LeaderboardQueryParams, fresh = false): Promise<LeaderboardFullResponse> => {
     const res = await api.get<{ data?: LeaderboardFullResponse } | LeaderboardFullResponse>(
       '/leaderboard',
-      { params, headers: { 'x-skip-cache': '1' } },
+      { params, headers: fresh ? { 'x-skip-cache': 'true' } : undefined },
     );
     return (res.data as any)?.data || res.data;
   },

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import {
   LeaderboardQueryDto,
   LeaderboardMetricType,
@@ -19,7 +20,10 @@ import { UserRole, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class LeaderboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+  ) {}
 
   // ─── 1. XỬ LÝ KHOẢNG THỜI GIAN THEO BỘ LỌC ───────────────────────────
   private resolveLeaderboardPeriod(dto: LeaderboardQueryDto): {
@@ -64,6 +68,10 @@ export class LeaderboardService {
     currentUserRole: string,
     dto: LeaderboardQueryDto,
   ): Promise<LeaderboardFullResponseDto> {
+    const cacheKey = `leaderboard:ranking:${dto.metric || 'REVENUE'}:${dto.timeRange || 'THIS_MONTH'}:${dto.scope || 'ALL_PLATFORM'}:${dto.storeId || ''}:${dto.category || ''}:${dto.month || ''}:${dto.year || ''}:${dto.limit || 50}:${currentUserId || 'anon'}`;
+    const cached = await this.cacheService.get<LeaderboardFullResponseDto>(cacheKey);
+    if (cached) return cached;
+
     const { startDate, endDate, prevStartDate, prevEndDate, label, hasPreviousPeriod } =
       this.resolveLeaderboardPeriod(dto);
 
@@ -399,7 +407,7 @@ export class LeaderboardService {
       };
     }
 
-    return {
+    const fullResult: LeaderboardFullResponseDto = {
       metric,
       periodLabel: label,
       updatedAt: new Date().toISOString(),
@@ -408,6 +416,8 @@ export class LeaderboardService {
       myRankStatus,
       totalParticipants: allRankedItems.length,
     };
+    await this.cacheService.set(cacheKey, fullResult, 60); // 60s TTL
+    return fullResult;
   }
 
   // ─── 3. BỤC VINH DANH PODIUM TOP 3 ───────────────────────────────────

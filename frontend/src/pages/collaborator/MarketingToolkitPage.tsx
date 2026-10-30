@@ -12,9 +12,13 @@ export default function MarketingToolkitPage() {
   const navigate = useNavigate();
   const rawTab = searchParams.get('tab') || 'links';
   const activeTab = useMemo(() => (rawTab === 'media' ? 'samples' : rawTab), [rawTab]);
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
+    [activeTab]: true,
+  });
   const [isSubmitVideoOpen, setIsSubmitVideoOpen] = useState(false);
 
   const handleTabChange = (tabId: string) => {
+    setVisitedTabs((prev) => ({ ...prev, [tabId]: true }));
     setSearchParams({ tab: tabId }, { replace: true });
   };
 
@@ -141,15 +145,15 @@ export default function MarketingToolkitPage() {
       {/* Container giữ DOM: Chuyển tab 0ms mượt mà, không giật lag, không reload ngầm */}
       <div className="w-full min-w-0 min-h-[500px]">
         <div className={activeTab === 'links' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-links">
-          <ReferralLinksPage />
+          {visitedTabs['links'] && <ReferralLinksPage />}
         </div>
 
         <div className={activeTab === 'samples' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-samples">
-          <SampleRequestsPage embedded />
+          {visitedTabs['samples'] && <SampleRequestsPage embedded />}
         </div>
 
         <div className={activeTab === 'coupons' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-coupons">
-          <KolCouponsPage />
+          {visitedTabs['coupons'] && <KolCouponsPage />}
         </div>
       </div>
 
