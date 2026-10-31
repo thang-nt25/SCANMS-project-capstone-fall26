@@ -82,7 +82,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
           <span className="text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
           {product.commissionRate && product.commissionRate > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
-              Hoa hồng KOC: {product.commissionRate}%
+              Thù lao tiếp thị: {product.commissionRate}%
             </span>
           )}
         </div>
