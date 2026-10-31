@@ -14,7 +14,6 @@ import {
   X,
   Sparkles,
   FileText,
-  AlertTriangle,
   Copy,
   Check,
 } from 'lucide-react';
