@@ -122,8 +122,10 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
         const list = (Array.isArray(body) ? body : body?.items || []).filter((p: any) => p.moderationStatus === 'APPROVED' && p.isActive !== false && !p.isDeleted);
         if (Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          const chosen = urlProductId || previous;
-          setSelectedProductId(() => list.some((product: any) => product.id === chosen) ? chosen : (list[0]?.id || ''));
+          setSelectedProductId((prev) => {
+            const chosen = urlProductId || prev;
+            return list.some((product: any) => product.id === chosen) ? chosen : (list[0]?.id || '');
+          });
         } else {
           setSelectedProductId('');
         }
