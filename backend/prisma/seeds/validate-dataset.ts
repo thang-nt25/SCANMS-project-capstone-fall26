@@ -18,8 +18,8 @@ const equalMoney = (left: number, right: number): boolean =>
 
 export function validateDataset(data: SeedDataset): void {
   assertSeed(
-    data.stores.length === 15 && data.products.length === 30,
-    'expected 15 shops and 30 products',
+    data.stores.length === 4 && data.products.length === 12,
+    'expected 4 canonical shops and 12 products',
   );
   assertSeed(
     data.profiles.length === 20 &&
@@ -121,8 +121,8 @@ export function validateDataset(data: SeedDataset): void {
       'shop base commission must be 10%',
     );
     assertSeed(
-      data.products.filter((row) => row.storeId === store.id).length === 2,
-      'each shop needs two products',
+      data.products.filter((row) => row.storeId === store.id).length === 3,
+      'each shop needs three products',
     );
     const onboarding = jsonObject(store.onboardingData);
     const warehouse = jsonObject(store.returnWarehouse);
@@ -369,11 +369,13 @@ export function validateDataset(data: SeedDataset): void {
       'review predates completed purchase',
     );
     assertSeed(
-      review.rating === 5 &&
+      typeof review.rating === 'number' &&
+        review.rating >= 4 &&
+        review.rating <= 5 &&
         Boolean(review.comment?.trim()) &&
         Array.isArray(review.images) &&
         review.images.length > 0,
-      'review must include five stars, text and feedback image',
+      'review must include four to five stars, text and feedback image',
     );
   }
   for (const commission of data.commissions) {

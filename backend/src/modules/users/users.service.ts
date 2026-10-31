@@ -41,7 +41,7 @@ export class UsersService {
   }
 
   async findStaff() {
-    return this.prisma.user.findMany({
+    const rawStaff = await this.prisma.user.findMany({
       where: {
         isDeleted: false,
         role: {
@@ -60,6 +60,16 @@ export class UsersService {
         phoneNumber: true,
         isActive: true,
         createdAt: true,
+        storeId: true,
+        managedStore: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isVerified: true,
+            isActive: true,
+          },
+        },
         stores: {
           where: { isDeleted: false },
           select: {
@@ -72,6 +82,20 @@ export class UsersService {
         },
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return rawStaff.map((staff) => {
+      const assignedStore = staff.managedStore || staff.stores?.[0] || null;
+      return {
+        id: staff.id,
+        email: staff.email,
+        fullName: staff.fullName,
+        role: staff.role,
+        phoneNumber: staff.phoneNumber,
+        isActive: staff.isActive,
+        createdAt: staff.createdAt,
+        stores: assignedStore ? [assignedStore] : staff.stores,
+      };
     });
   }
 
@@ -144,15 +168,21 @@ export class UsersService {
         phoneNumber: dto.phoneNumber?.trim() || null,
         passwordHash,
         role: dto.role,
+        storeId: dto.role === UserRole.SHOP_MANAGER && dto.storeId ? dto.storeId : null,
         isActive: true,
       },
     });
 
     if (dto.role === UserRole.SHOP_MANAGER && dto.storeId) {
-      await this.prisma.store.update({
+      const store = await this.prisma.store.findUnique({
         where: { id: dto.storeId },
-        data: { ownerId: newUser.id },
       });
+      if (store && !store.ownerId) {
+        await this.prisma.store.update({
+          where: { id: dto.storeId },
+          data: { ownerId: newUser.id },
+        });
+      }
     }
 
     return this.findOneWithStore(newUser.id);
@@ -209,7 +239,7 @@ export class UsersService {
     return {
       ...safeUser,
       avatarUrl: user.avatarUrl || user.collaboratorProfile?.avatarUrl || null,
-      storeId: user.stores?.[0]?.id || null,
+      storeId: user.storeId || user.stores?.[0]?.id || null,
     };
   }
 }

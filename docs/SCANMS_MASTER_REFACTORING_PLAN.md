@@ -14,6 +14,12 @@
 1. [Phần 1: Tổng Quan Bản Sắc & Phân Tích So Sánh Benchmark Quốc Tế](#phần-1-tổng-quan-bản-sắc--phân-tích-so-sánh-benchmark-quốc-tế)
 2. [Phần 2: Bảng Đối Chiếu Đa Chiều Toàn Diện: Cách Cũ (Sàn Chợ Mở) vs Cách Mới (Hệ Thống Doanh Nghiệp)](#phần-2-bảng-đối-chiếu-đa-chiều-toàn-diện-cách-cũ-sàn-chợ-mở-vs-cách-mới-hệ-thống-doanh-nghiệp)
 3. [Phần 3: Phân Tích Chuyên Sâu Nút Thắt 1: Quản Lý Hàng Hóa, Kho Bãi & Kiểm Duyệt Maker-Checker](#phần-3-phân-tích-chuyên-sâu-nút-thắt-1-quản-lý-hàng-hóa-kho-bãi--kiểm-duyệt-maker-checker)
+   * 3.1. Kịch Bản Cửa Hàng & Mô Hình Kho Bãi Theo Ngành Hàng
+   * 3.2. Quy Trình Nhập Liệu Sản Phẩm Chuẩn 6 Khối Tuần Tự
+   * 3.3. Quy Trình Kiểm Duyệt Sản Phẩm 2 Bước Chuẩn Mực: "Maker - Checker"
+   * 3.4. Cơ Chế Khóa Ngành Hàng Cố Định Khi Tạo Sản Phẩm & Phân Tích So Sánh Quốc Tế
+   * 3.5. Quy Trình Khởi Tạo Cửa Hàng Mới & Nguyên Tắc Bất Biến 1 Role SHOP_MANAGER
+   * 3.6. Kế Hoạch Tái Cấu Trúc Seed Data Mới Chuẩn Hệ Thống Quản Lý CTV & Tiếp Thị Liên Kết
 4. [Phần 4: Phân Tích Chuyên Sâu Nút Thắt 2: Dòng Tiền, Kế Toán Doanh Nghiệp & Cơ Chế Chi Trả (Payout)](#phần-4-phân-tích-chuyên-sâu-nút-thắt-2-dòng-tiền-kế-toán-doanh-nghiệp--cơ-chế-chi-trả-payout)
 5. [Phần 5: Các Nghiệp Vụ Chuyển Đổi Liên Hoàn (Đổi Trả, Mẫu Thử, Deal VIP, Chống Gian Lận, Livestream)](#phần-5-các-nghiệp-vụ-chuyển-đổi-liên-hoàn-đổi-trả-mẫu-thử-deal-vip-chống-gian-lận-livestream)
 6. [Phần 6: Kế Hoạch Tái Cấu Trúc UI: Cổng Đăng Ký Đối Tác (PartnerUpgradeTab) & Admin Personnel Page](#phần-6-kế-hoạch-tái-cấu-trúc-ui-cổng-đăng-ký-đối-tác-partnerupgradetab--admin-personnel-page)
@@ -200,6 +206,147 @@ flowchart TD
 
 ---
 
+### 3.4. Cơ Chế Khóa Ngành Hàng Cố Định Khi Tạo Sản Phẩm (Store-Category Lock Enforcement) & Phân Tích So Sánh Quốc Tế
+
+#### A. Quy Tắc Nghiệp Vụ Bắt Buộc: "Cửa Hàng Nào Chuyên Sâu Ngành Hàng Đó"
+Trong một hệ thống Quản lý Đối tác Tiếp thị (Affiliate Network), việc định vị rõ ràng chuyên môn của từng Cửa hàng/Nhãn hàng trực thuộc là điều kiện tiên quyết:
+* **Mỗi Cửa hàng gắn chặt với 1 Ngành hàng cố định (`primaryCategory`):**
+  * 🏪 `Sora Skincare & Cosmetics` $\rightarrow$ Ngành hàng cố định: **Mỹ phẩm & Chăm sóc da (Cosmetics & Skincare)**
+  * 🏪 `Aura Activewear & Apparel` $\rightarrow$ Ngành hàng cố định: **Thời trang & Thể thao (Fashion & Apparel)**
+  * 🏪 `GreenBio Health & Nutrition` $\rightarrow$ Ngành hàng cố định: **Dinh dưỡng & Sức khỏe (Health & Nutrition)**
+  * 🏪 `Lumière Smart Living` $\rightarrow$ Ngành hàng cố định: **Gia dụng & Tiện ích thông minh (Smart Living & Gadgets)**
+* **Cơ chế Khóa tại Giao diện Thêm Sản phẩm (`ProductManagementPage.tsx`):**
+  * Khi `SHOP_MANAGER` mở modal "+ Thêm sản phẩm mới", ô nhập liệu **"Ngành hàng / Danh mục sản phẩm" (Category)** tự động hiển thị giá trị ngành hàng của Cửa hàng mà nhân sự đó phụ trách, và bị **KHÓA CỨNG (Disabled / Readonly)**.
+  * Nhân sự không thể can thiệp, chỉnh sửa hay chọn ngành hàng khác từ dropdown.
+* **Cơ chế Kiểm soát Chặt chẽ tại Backend (`POST /api/v1/products`):**
+  * Backend tự động lấy `store.category` gắn vào sản phẩm mới tạo.
+  * Nếu payload cố tình gửi danh mục sai lệch với ngành hàng của Store, hệ thống lập tức từ chối với lỗi `400 Bad Request: "Sản phẩm không thuộc ngành hàng được ủy quyền của gian hàng này"`.
+
+#### B. Phân Tích, Đánh Giá & So Sánh Benchmark Quốc Tế
+
+| Nền tảng Quốc tế | Cơ chế Quản lý Ngành hàng | Phân tích Nghiệp vụ & Kỹ thuật | So sánh & Bài học Áp dụng cho SCANMS |
+| :--- | :--- | :--- | :--- |
+| **TikTok Shop (Seller Center)** | **Category Whitelisting & Qualification Matrix** | TikTok Shop áp dụng cơ chế kiểm soát danh mục rất nghiêm ngặt (*Restricted Categories*). Người bán đăng ký ngành hàng nào (ví dụ *Beauty & Personal Care*) thì chỉ được cấp quyền đăng sản phẩm trong đúng cây danh mục đó. Muốn bán thêm ngành hàng khác, shop phải nộp hồ sơ chứng nhận độc lập (*Category Qualification*) để được mở quyền. | **Cực kỳ tối ưu cho Affiliate Marketing:** TikTok hiểu sâu sắc rằng Nhà sáng tạo nội dung (Creator/KOC) nhận link và xin mẫu thử theo sở trường (Niche). Việc khóa ngành hàng giúp KOC Beauty không bao giờ gặp phải chảo chống dính hay áo quần trong kho sản phẩm của shop mỹ phẩm. SCANMS áp dụng trực tiếp cơ chế này. |
+| **Shopee Mall & LazMall** | **Authorized Brand Category Bound** | Gian hàng chính hãng (Mall) chỉ được phép mở bán các SKU thuộc đúng thương hiệu và danh mục đã được cấp phép theo hợp đồng phân phối độc quyền. Sàn khóa chặt danh mục bằng thỏa thuận pháp lý B2B. | **Kiểm soát Chất lượng & Pháp lý:** Mỗi ngành hàng có điều kiện kiểm định y tế, tem nhãn phụ và chính sách đổi trả khác nhau (Mỹ phẩm cần bảo quản tem seal, thời trang cần chính sách đổi size). Khóa ngành hàng giúp SCANMS bảo vệ uy tín thương hiệu công ty và đồng nhất quy trình logistics. |
+| **Amazon (Brand Registry)** | **Product Classifier & Single-Vertical Stores** | Amazon yêu cầu mỗi thương hiệu phải xác lập mã phân loại hàng hóa (*Product Classifier*). Các nhãn hàng D2C trên Amazon tạo *Brand Storefront* chuyên biệt cho từng dòng sản phẩm. | **Tối ưu Hóa AI Matching:** Amazon định vị khách hàng tìm sản phẩm theo nhãn hàng chuyên sâu. SCANMS học hỏi cách phân bổ để thuật toán AI gợi ý (FR-30) so khớp chuẩn xác KOC theo thế mạnh ngành hàng. |
+| **Tập đoàn Bán lẻ Đa Thương hiệu (House of Brands - Masan, Vinamilk, Coolmate)** | **Single-Vertical Business Units** | Doanh nghiệp chia tách các Brand con thành từng đơn vị độc lập: Coolmate chuyên đồ nam, 84RISING chuyên đồ nữ, CM24 chuyên mỹ phẩm nam. Không bao giờ bán chung chạ lộn xộn. | **Chuẩn mực Bản sắc Đề tài:** SCANMS là nền tảng quản trị của một Doanh nghiệp Bán lẻ Đa Ngành. Mỗi Store đại diện cho 1 Nhãn hàng D2C chuyên biệt của tập đoàn. |
+
+---
+
+### 3.5. Quy Trình Khởi Tạo Cửa Hàng Mới & Nguyên Tắc Bất Biến 1 Role `SHOP_MANAGER`
+
+#### A. Khắc Phục Lỗ Hổng Kiến Trúc & Database
+* **Thực trạng trước đây:** Bảng `stores` chỉ có 1 cột `owner_id`. Khi Super Admin bổ nhiệm thêm Manager mới cho Shop tại trang nhân sự, code cũ chạy `update({ where: { id: storeId }, data: { ownerId: newUser.id } })`, dẫn đến việc Manager cũ bị ghi đè và mất quyền quản trị. Đồng thời, trên giao diện Admin chưa có nút tạo Store mới.
+* **Giải pháp Chuẩn Hóa:**
+  1. Bổ sung liên kết `storeId` trên model `User` (`storeId String? @db.Uuid`).
+  2. Khi Admin bổ nhiệm Manager phụ trách Shop, hệ thống cập nhật `newUser.storeId = store.id`.
+  3. Logic kiểm tra quyền truy cập Shop của Manager: Hệ thống kiểm tra `store.ownerId === user.id || user.storeId === store.id`.
+
+#### B. Nguyên Tắc Bất Biến 5 Roles (Không Sinh Thêm Role Phụ)
+* Hệ thống tuân thủ tuyệt đối **5 Roles cốt lõi** đã chốt cho Đồ án Capstone:
+  1. `CUSTOMER`: Khách hàng mua hàng qua link/voucher tiếp thị, theo dõi vận đơn GHN.
+  2. `COLLABORATOR`: KOC/KOL đối tác tiếp thị, nộp eKYC, sinh Smart Link/QR, mượn mẫu thử 14 ngày, nhận hoa hồng Napas 24/7.
+  3. `SHOP_MANAGER`: Quản lý toàn diện nhãn hàng trực thuộc (sản phẩm, tồn kho, duyệt mẫu thử, duyệt deal VIP, voucher, đơn hàng GHN).
+  4. `SYSTEM_MANAGER`: Chuyên viên vận hành sàn (Duyệt eKYC, kiểm duyệt sản phẩm Maker-Checker, phân xử tranh chấp mẫu thử, giám sát gian lận).
+  5. `SYSTEM_ADMIN`: Quản trị tối cao (Bổ nhiệm nhân sự nội bộ, khởi tạo Cửa hàng mới, Executive Financial Dashboard).
+* **Một Cửa Hàng có thể có Nhiều Quản lý cùng mang Role `SHOP_MANAGER`:**
+  * Cả 2 hoặc 3 nhân sự cùng làm việc cho một nhãn hàng **đều mang chung 1 vai trò là `SHOP_MANAGER`**, và đều có `storeId` trỏ về cùng một Cửa hàng.
+  * Cả hai đều có toàn quyền điều hành nghiệp vụ của nhãn hàng đó mà **không cần đẻ thêm bất kỳ role phụ nào** (như `WAREHOUSE_STAFF` hay `DEAL_STAFF`), giữ vững 100% ma trận phân quyền RBAC đã đăng ký với Hội đồng chấm thi.
+
+#### C. Quy Trình Super Admin Khởi Tạo Gian Hàng Mới (`AdminStoresModal`)
+Quản trị viên tối cao (`SYSTEM_ADMIN`) mở modal "+ Tạo Gian Hàng Mới":
+1. Nhập Tên Gian hàng / Thương hiệu (`name`, `slug`).
+2. Chọn **1 Ngành hàng cố định duy nhất** (`primaryCategory` từ danh sách 4 ngành hàng cốt lõi).
+3. Nhập **Địa chỉ Kho xuất hàng GHN (Pickup Warehouse)**: Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, Địa chỉ cụ thể để tích hợp API GHN lấy hàng.
+4. Nhập Tỷ lệ hoa hồng mở sàn cơ sở (`defaultCommissionRate: 10%`).
+5. Chỉ định hoặc tạo mới tài khoản `SHOP_MANAGER` phụ trách đầu tiên.
+
+---
+
+### 3.6. Kế Hoạch Tái Cấu Trúc Seed Data Mới Chuẩn Hệ Thống Quản Lý CTV & Tiếp Thị Liên Kết
+
+#### A. Đánh Giá & Nhận Xét Hạn Chế Của Bộ Seed Data Cũ
+* **Quá nhiều gian hàng lan man:** Bộ dữ liệu seed cũ có quá nhiều shop ảo không rõ bản sắc, gây phân tán và thiếu tính tập trung của một Doanh nghiệp bán lẻ có chiến lược.
+* **Sản phẩm chưa chuẩn Tiếp thị Liên kết:** Nhiều sản phẩm thiếu các thông tin quan trọng của một chiến dịch Affiliate: hoa hồng base $10\%$ chưa thống nhất, thiếu chính sách suất mượn mẫu thử 14 ngày SLA, thiếu tài nguyên đa phương tiện (ảnh studio, video review chân thực của KOC), thiếu quy cách đóng gói cân nặng để GHN tính cước.
+
+#### B. Định Hình Bộ Seed Data Mới Tinh Gọn (4 Cửa Hàng Trực Thuộc Chuyên Sâu)
+Thu gọn toàn bộ hệ thống về đúng **4 Cửa hàng Trực thuộc Chuẩn mực** đại diện cho 4 ngành hàng có tỷ trọng tiếp thị liên kết (KOL/KOC Affiliate) cao nhất thị trường Việt Nam:
+1. 🏪 **Store 1: Sora Skincare & Cosmetics**
+   * Ngành hàng cố định: `Mỹ phẩm & Chăm sóc da chuyên sâu`
+   * Kho bãi: Kho Mát Tiêu Chuẩn GMP, Khu Công Nghệ Cao, TP.Thủ Đức, TP.HCM (`from_district_id: 1442`, `from_ward_code: 20109`)
+   * Tệp KOC mục tiêu: Beauty Bloggers, Dược mỹ phẩm Reviewers, KOC Makeup.
+   * Sản phẩm chủ lực: Serum Vitamin C 15% Dưỡng Sáng, Kem Chống Nắng Phổ Rộng SPF50+, Nước Tẩy Trang Rau Má Dịu Nhẹ.
+2. 🏪 **Store 2: Aura Activewear & Apparel**
+   * Ngành hàng cố định: `Thời trang & May mặc thể thao năng động`
+   * Kho bãi: Kho May Mặc Thời Trang, 128/4 Hoàng Hoa Thám, Tân Bình, TP.HCM (`from_district_id: 1444`, `from_ward_code: 20708`)
+   * Tệp KOC mục tiêu: Fashion TikTokers, Gymer / Vận động viên, KOC Biến hình thời trang.
+   * Sản phẩm chủ lực: Áo Khoác Gió Thông Hơi Chống Nước, Quần Legging Thể Thao Nâng Mông, Balo Đa Năng Chống Trộm.
+3. 🏪 **Store 3: GreenBio Health & Nutrition**
+   * Ngành hàng cố định: `Dinh dưỡng, Thảo mộc & Sức khỏe thiên nhiên`
+   * Kho bãi: Kho Dược Liệu & Thực Phẩm Sức Khỏe, Tân Phú, TP.HCM (`from_district_id: 1452`, `from_ward_code: 21011`)
+   * Tệp KOC mục tiêu: KOC Eat-Clean, Huấn luyện viên Yoga/Pilates, Bác sĩ/Dược sĩ gia đình.
+   * Sản phẩm chủ lực: Hạt Granola Nướng Mật Ong Rừng, Trà Thảo Mộc Thanh Nhiệt Giảm Stress, Bột Collagen Thủy Phân Vị Đào.
+4. 🏪 **Store 4: Lumière Smart Living**
+   * Ngành hàng cố định: `Thiết bị gia dụng & Đồ bếp thông minh`
+   * Kho bãi: Kho Tổng Thiết Bị, Lô B4 KCN Tân Bình, TP.HCM (`from_district_id: 1452`, `from_ward_code: 21011`)
+   * Tệp KOC mục tiêu: Food Bloggers, Mẹ đảm đang nội trợ, Reviewers đồ gia dụng thông minh.
+   * Sản phẩm chủ lực: Nồi Chiên Không Dầu Điện Tử 5.5L, Máy Ép Chậm Trục Xoắn Ngang, Chảo Vân Đá Đáy Từ Chống Dính.
+
+#### C. Tiêu Chuẩn Sản Phẩm Trong Seed Data Mới
+Mỗi sản phẩm bắt buộc phải có đầy đủ 6 khối:
+* Cố định đúng ngành hàng của Store.
+* Mã vạch EAN-13 chuẩn nội bộ (không trùng lặp).
+* Bảng ma trận biến thể 2 tầng (Màu sắc/Kích cỡ hoặc Dung tích/Mùi hương) có tồn kho và giá bán riêng.
+* Trọng lượng và kích thước đóng gói để GHN tính cước tức thời.
+* Chính sách KOC: Base Commission $10\%$, cho phép mượn mẫu thử 14 ngày (SLA), cam kết nộp video review.
+* Tài nguyên Media Hub: Ít nhất 3 ảnh studio góc chụp sạch sẽ + 1 video quay trải nghiệm thực tế.
+
+---
+
+### 3.7. Ranh Giới Nghiệp Vụ Kho Vận & Dòng Vốn: Tại Sao Khâu Mua Hàng Xưởng (Procurement / PO / COGS) Nằm Hoàn Toàn Ngoài Quy Mô (Out of Scope)?
+
+> [!IMPORTANT]
+> **Ranh Giới Kiến Trúc Hệ Thống Chuẩn Mực: MarTech Affiliate Platform vs Hệ Thống ERP / SCM Doanh Nghiệp**  
+> Khi `SHOP_MANAGER` tạo sản phẩm và điền tồn kho khả dụng (`stockQuantity`), bản chất nghiệp vụ trên sàn là **Cấp Phát Hạn Mức Tồn Kho Mở Bán Cho Kênh Tiếp Thị (Catalog Listing & Stock Allocation)**, hoàn toàn **KHÔNG PHẢI là Nghiệp vụ Mua hàng xưởng (Procurement / Purchasing)**.
+
+1. **Bản chất thực tế của Doanh nghiệp sở hữu:**
+   * Doanh nghiệp sở hữu SCANMS (hoặc các nhãn hàng nội bộ như Sora Skin, Aura, Lumière) đã có sẵn xưởng sản xuất OEM, văn phòng và mạng lưới kho bãi ngoài đời.
+   * Chi phí sản xuất, hợp đồng mua bán với nhà xưởng (Purchase Orders - PO), thanh toán công nợ nhà máy (Accounts Payable - AP) và giá vốn hàng tồn kho (COGS) đã được hạch toán đầy đủ trong phần mềm kế toán quản trị nội bộ chuyên dụng (như SAP, Oracle NetSuite, MISA).
+2. **Tại sao nghiệp vụ Mua Hàng Xưởng bắt buộc phải OUT OF SCOPE?**
+   * Nếu đưa khâu "Mua hàng từ nhà cung cấp" vào SCANMS, đề tài sẽ bị **Vỡ Quy Mô (Scope Creep)**: Nhóm sẽ phải xây thêm phân hệ Nhà cung ứng (Vendors), Đơn đặt hàng PO, Kế toán công nợ xưởng (AP) và Quản lý giá vốn FIFO. Điều này làm mất hoàn toàn trọng tâm nghiên cứu về Tiếp thị liên kết, Thuật toán so khớp KOC và Phòng chống gian lận Attribution.
+   * **Chuẩn mực quốc tế:** Các nền tảng hàng đầu (TikTok Shop Seller Center, Shopee, Amazon Seller Central, Impact.com) đều vận hành theo đúng chuẩn này: Người bán chỉ khai báo lượng tồn kho sẵn sàng mở bán (`stockQuantity`), sàn không can thiệp vào sổ sách nhập hàng xưởng của họ.
+3. **Nguồn gốc Dòng Tiền & Hàng Hóa thực tế trên SCANMS:**
+   * Tiền trên hệ thống là **tiền thật $100\%$ do Người mua hàng thanh toán** qua PayOS/VietQR hoặc trả COD cho bưu tá GHN.
+   * Khi đơn hàng giao thành công và hết hạn bảo chứng Escrow (7 ngày), hệ thống tự động bóc tách:
+     * Trả Thù lao cho KOC ($10\% - 16\%$) vào Ví rút tiền.
+     * Trích Phí dịch vụ nền tảng ($3\%$).
+     * Toàn bộ phần Doanh thu thuần còn lại ($\sim 81\% - 87\%$) thuộc về Doanh nghiệp/Nhãn hàng để bù đắp giá vốn hàng bán và ghi nhận lợi nhuận ròng.
+
+---
+
+### 3.8. Quản Trị Giá Bán & Bảo Vệ Biên Lợi Nhuận: Giá Sàn (Floor Price / MAP) & Quy Trình Đề Xuất Chiến Dịch Giảm Giá (Promotion Approval Workflow)
+
+> [!WARNING]
+> **Rủi Ro Doanh Nghiệp: Ngăn Chặn Tình Trạng Bán Phá Giá Hoặc Bán Dưới Giá Vốn!**  
+> Trong mô hình công ty mẹ sở hữu đa nhãn hàng, `SHOP_MANAGER` là nhân sự được giao phụ trách kinh doanh ngành hàng. Nếu để Shop Manager có quyền tự ý sửa giá sản phẩm từ $400.000₫$ xuống $200.000₫$ tùy tiện khi tạo hoặc sửa hàng, doanh nghiệp sẽ gánh chịu rủi ro bán lỗ, không đủ bù chi phí vận hành và thù lao KOC, đồng thời phá hủy định vị thương hiệu (Brand Dilution).
+
+1. **Loại Bỏ Ô "Tự Gõ Giá Giảm Lúc Tạo Sản Phẩm":**
+   * Khi tạo sản phẩm mới trên form 6 khối, Shop Manager chỉ được phép khai báo duy nhất:
+     * **Giá niêm yết chính thức (List Price / MSRP - `price`):** Mức giá bán lẻ tiêu chuẩn của nhãn hàng.
+     * **Giá gạch tham chiếu (`originalPrice`):** Mức giá thị trường trước khuyến mãi.
+   * Tuyệt đối không cho phép nhân viên tự gõ đè giá bán thấp lúc tạo hàng.
+2. **Thiết Lập "Giá Sàn Bảo Vệ Biên Lợi Nhuận" (Floor Price / Minimum Advertised Price - MAP):**
+   * Khi sản phẩm được duyệt lên hệ thống, `SYSTEM_ADMIN` / `SYSTEM_MANAGER` cấu hình một ngưỡng **Giá sàn tối thiểu (`floorPrice`)** cho từng SKU:
+     $$\text{Floor Price} = \text{Giá vốn sản xuất (COGS)} + \text{Chi phí vận hành tối thiểu} + \text{Trần thù lao KOC tối đa (16\%) } + \text{Biên lãi ròng an toàn}$$
+   * **Quy tắc bất biến:** Mọi chương trình khuyến mãi hay giảm giá trong tương lai dù được phê duyệt cũng **tuyệt đối không được phép giảm dưới mức `floorPrice` này**.
+3. **Quy Trình Đề Xuất Chiến Dịch Giảm Giá Có Phê Duyệt (Promotion Campaign Request Workflow):**
+   * Khi Shop Manager muốn chạy chương trình Flash Sale, xả kho hoặc kích cầu mùa lễ hội:
+     * Shop Manager phải tạo một **"Yêu Cầu Chiến Dịch Khuyến Mãi" (Promotion Campaign Request)**.
+     * Các tham số khai báo: Mức giá giảm đề xuất (hệ thống tự động kiểm tra $\ge \text{floorPrice}$), Thời gian bắt đầu (Start Time), Thời gian kết thúc (End Time), Ngân sách chiến dịch và Lý do xúc tiến thương mại.
+     * **Cơ chế Maker-Checker trung ương:** `SYSTEM_MANAGER` hoặc `SYSTEM_ADMIN` thẩm định tác động tài chính. Khi bấm **"Phê duyệt (Approve)"**, hệ thống thiết lập lịch tự động kích hoạt giá ưu đãi đúng giờ mở màn và tự động hoàn giá niêm yết ban đầu khi kết thúc thời gian chiến dịch.
+
+---
+
 ## PHẦN 4: PHÂN TÍCH CHUYÊN SÂU NÚT THẮT 2: DÒNG TIỀN, KẾ TOÁN DOANH NGHIỆP & CƠ CHẾ CHI TRẢ (PAYOUT)
 
 ### 4.1. Bản Chất Dòng Tiền Khép Kín Của Doanh Nghiệp (Corporate Cashflow Governance)
@@ -264,8 +411,8 @@ Trong một doanh nghiệp bán lẻ D2C sở hữu mạng lưới tiếp thị,
      $$\text{Nếu } \text{Gross Amount} \ge 2.000.000\text{₫} \implies \text{Tax Amount} = \text{Gross Amount} \times 10\%$$
      $$\text{Net Amount (Số tiền thực nhận)} = \text{Gross Amount} - \text{Tax Amount}$$
    * Giao diện hiển thị rõ ràng bảng tính thuế để KOC nắm rõ trước khi xác nhận.
-4. **Bước 4: Admin phê duyệt & Chuyển khoản thực tế:**
-   * `SYSTEM_ADMIN` truy cập `AdminFinancePayoutsPage.tsx`, kiểm tra danh sách lệnh rút tiền `PENDING`.
+4. **Bước 4: System Manager (Kế toán Vận hành) phê duyệt & Chuyển khoản thực tế:**
+   * `SYSTEM_MANAGER` (Chuyên viên Vận hành / Kế toán viên) truy cập `AdminFinancePayoutsPage.tsx`, kiểm tra danh sách lệnh rút tiền `PENDING`.
    * Bấm **"Phê duyệt chi trả"**:
      * Gọi cổng thanh toán ngân hàng (Napas 24/7 / MBBank API).
      * **Xóa bỏ triệt để đoạn code mock tự sinh mã `MBB...`:** Nếu API ngân hàng phản hồi lỗi, hệ thống phải bắt lỗi chính xác, hiển thị thông báo đỏ và **giữ nguyên trạng thái `PENDING`**, tuyệt đối không nuốt lỗi.
@@ -273,18 +420,45 @@ Trong một doanh nghiệp bán lẻ D2C sở hữu mạng lưới tiếp thị,
 
 ---
 
+### 4.4. Phân Định Trách Nhiệm Tài Chính Chuẩn Kiểm Toán (Segregation of Duties - SoD): SYSTEM_ADMIN vs SYSTEM_MANAGER
+
+> [!IMPORTANT]
+> **Giải Quyết Triệt Để Nguy Cơ Nghẽn Cổ Chai (Bottleneck) Ở Cấp Lãnh Đạo:**
+> Tổng Giám Đốc (`SYSTEM_ADMIN`) tuyệt đối không ngồi duyệt từng lệnh rút tiền 500k, 1 triệu của KOL hằng ngày. Hệ thống phân tách 2 tầng trách nhiệm minh bạch:
+
+1. **`SYSTEM_MANAGER` (Chuyên Viên Vận Hành / Kế Toán Chi Trả):**
+   * Đối soát số dư ví sạch (hết 7 ngày Escrow) và phê duyệt lệnh rút tiền (Payout) hằng ngày.
+   * Tự động khấu trừ $10\%$ Thuế TNCN tại nguồn khi duyệt chi.
+   * Xử lý khiếu nại hoàn tiền đổi trả và kích hoạt Clawback Engine thu hồi thù lao về $0₫$.
+2. **`SYSTEM_ADMIN` (Tổng Giám Đốc / CEO & Executive Board) — 5 Trụ Cột Chiến Lược:**
+   * **🏛️ Quản trị Cơ cấu & Bổ nhiệm Nhân sự (`/admin/personnel`):** Độc quyền tạo Store mới, bổ nhiệm/thu hồi quyền `SHOP_MANAGER` và `SYSTEM_MANAGER`.
+   * **📊 Executive Financial Dashboard (`/admin/analytics`):** Báo cáo Doanh thu GMV toàn sàn, Tỷ lệ chi phí tiếp thị (Affiliate Expense Ratio), Tổng tiền ký quỹ Escrow và Báo cáo Quyết toán Thuế TNCN toàn công ty nộp Nhà nước.
+   * **🎯 Thẩm định Ngoại lệ Ngân sách:** Phê duyệt Deal VIP vượt trần ($> 16\%$) cho Siêu KOC; phê duyệt Chiến dịch Giảm giá (Flash Sale) bảo đảm trên Giá sàn (`floorPrice`).
+   * **🛡️ Giám sát An ninh & Kiểm toán (`/admin/fraud-sentinel`, `/admin/audit-logs`):** Giám sát AI Fraud Sentinel chặn gian lận tự mua, click flooding; kiểm tra `AuditLog` để giám sát xem `SYSTEM_MANAGER` có duyệt chi đúng quy trình không.
+   * **👑 Quyền hạn Kế thừa Tối cao (Master Fallback):** Kế thừa 100% quyền hạn của `SYSTEM_MANAGER` để can thiệp xử lý khẩn cấp khi cần.
+
+---
+
 ## PHẦN 5: CÁC NGHIỆP VỤ CHUYỂN ĐỔI LIÊN HOÀN (ĐỔI TRẢ, MẪU THỬ, DEAL VIP, CHỐNG GIAN LẬN, LIVESTREAM)
 
 ### 5.1. Quy Trình Xử Lý Đổi Trả / Hoàn Tiền (CSKH Nội Bộ & Đóng Băng Hoa Hồng)
-Khi khách hàng nhận sản phẩm bị lỗi hoặc không đúng mô tả:
-1. Khách gửi yêu cầu đổi trả kèm hình ảnh/video unboxing trong vòng 7 ngày kể từ khi nhận hàng.
-2. `SYSTEM_MANAGER` (Tổ CSKH & Vận hành) kiểm tra bằng chứng và phê duyệt yêu cầu đổi trả (`status = APPROVED`).
-3. Shipper GHN đến nhà khách thu hồi kiện hàng và chuyển hoàn về đúng **Kho xuất hàng của Store phụ trách**.
-4. Tiền mua hàng được hoàn lại vào Ví Khách Hàng (`Customer Wallet`) hoặc tài khoản ngân hàng của khách.
-5. **Tác động nghiệp vụ liên hoàn tới KOC:**
-   * Hệ thống tự động quét đơn hàng bị hoàn tiền, tìm bản ghi hoa hồng tương ứng trong `Wallet.pendingBalance` của KOC giới thiệu.
-   * Kích hoạt giao dịch hoàn nguyên: **HỦY / ĐÓNG BĂNG HOA HỒNG ($0\text{₫}$)** của đơn hàng đó.
-   * Gửi thông báo lý do vào chuông thông báo của KOC: *"Đơn hàng #SCN-xxxxx bị khách hàng đổi trả do lỗi sản xuất. Hoa hồng tạm tính tương ứng đã được hoàn nguyên theo chính sách bảo hành."*
+Khi khách hàng nhận sản phẩm bị lỗi, hỏng hóc hoặc không đúng mô tả:
+1. **Khách hàng gửi yêu cầu:** Nộp hình ảnh/video unboxing và ảnh hộp carton ngoài trong vòng 7–14 ngày kể từ khi nhận hàng.
+2. **Cơ chế phân xử 2 cấp (Two-Tier Dispute Escalation):**
+   * *Cấp 1 (Tại Brand):* `SHOP_MANAGER` kiểm tra hồ sơ. Nếu Shop đồng ý, tạo đơn thu hồi hoặc bù hàng.
+   * *Cấp 2 (Trọng tài Trụ sở Sàn):* Nếu Shop từ chối nhưng khách bấm **"Khiếu nại lên Tổng Công Ty"**, `SYSTEM_MANAGER` (Pháp chế trung tâm) sẽ thẩm định bằng chứng 3 điểm (ảnh đóng gói kho, biên bản giao GHN, video unboxing). Nếu Shop sai, `SYSTEM_MANAGER` có quyền ghi đè phán quyết (Force Refund/Replacement) và phạt trừ chi phí vào P&L của Store đó.
+3. **Phân nhánh 2 kịch bản xử lý thực tế & Tác động đến Hoa hồng KOC:**
+   * **Kịch bản A — Đổi Hàng Mới 1-đổi-1 (Do bể vỡ vận chuyển GHN hoặc lỗi sản xuất):**
+     * Shop xuất kho gửi **1 sản phẩm mới nguyên vẹn bù cho khách** (GHN bồi thường chi phí hư hại cho Shop theo kỳ đối soát).
+     * 🎯 **BẢO LƯU 100% HOA HỒNG CHO KOC:** Vì khách hàng cuối cùng vẫn giữ sản phẩm và doanh nghiệp vẫn bảo toàn được doanh số của đơn hàng!
+   * **Kịch bản B — Trả Hàng & Hoàn Tiền 100% (Khách không ưng ý, hủy đơn):**
+     * Shipper GHN thu hồi kiện hàng về kho Store phụ trách. Tiền hoàn trả lại vào Ví Khách Hàng.
+     * 🎯 **KÍCH HOẠT CLAWBACK ENGINE:** Động cơ tài chính tự động quét và **HỦY / THU HỒI $100\%$ HOA HỒNG VỀ $0\text{₫}$** trong số dư tạm giữ `pendingBalance` của KOC, ngăn chặn hoàn toàn việc thất thoát chi phí tiếp thị của công ty.
+4. **Chế tài đối với Shop bị trả hàng quá nhiều lần (Return Rate > 5%):**
+   * Mọi chi phí vận chuyển 2 chiều và hao hụt bị trừ thẳng vào Báo cáo P&L của Shop đó.
+   * Tỷ lệ hoàn đơn vượt quá $5\%$ kích hoạt Cảnh báo đỏ gửi lên Ban Giám Đốc (`SYSTEM_ADMIN`).
+   * Mã sản phẩm (SKU) có tỷ lệ trả $\ge 15\%$ trong tháng sẽ bị tự động đóng băng (`QUALITY_REVIEW`) để kiểm tra lại nguồn hàng.
+   * Chỉ số hoàn đơn được hiển thị công khai trên sàn, khiến KOC né tránh không nhận tiếp thị cho nhãn hàng chất lượng kém.
 
 ---
 
@@ -440,19 +614,20 @@ Bảng dưới đây quy định toàn diện và chi tiết tất cả các tha
 | 5 | `M-05` | Giám sát Gian lận Lưu lượng (AI Fraud Sentinel)| Nút **"Chặn IP / Vô hiệu hóa liên kết"** | `AiFraudSentinelPage.tsx` | `POST /api/v1/fraud/mitigate` | Xem cảnh báo Click Flooding, phân tích điểm rủi ro AI, chặn gian lận |
 | 6 | `M-06` | Kiểm duyệt Đánh giá Khách hàng (Reviews) | Nút **"Ẩn đánh giá vi phạm"** | `CustomerReviewModerationPage.tsx`| `PATCH /api/v1/reviews/:id/moderate` | Lọc ngôn từ kích động, spam hoặc đánh giá sai sự thật |
 | 7 | `M-07` | Tra cứu Nhật ký Kiểm toán Hoạt động (Audit)| Menu **Nhật ký kiểm toán** | `AuditLogsPage.tsx` | `GET /api/v1/audit-logs` | Truy xuất toàn bộ lịch sử thao tác của các vai trò trong hệ thống |
+| 8 | `M-08` | Phê duyệt Lệnh Rút Thu Nhập Đối Tác (Payout) | Nút **"Duyệt giải ngân Napas 24/7"** tại Quản lý Chi trả | `AdminFinancePayoutsPage.tsx` | `POST /api/v1/payouts/:id/approve` | Kiểm tra thời hạn 7 ngày Escrow, tự động khấu trừ 10% Thuế TNCN tại nguồn, xuất ủy nhiệm chi Napas 24/7 |
 
 ---
 
-### 7.5. Role 5: `SYSTEM_ADMIN` (Quản Trị Viên Tối Cao / Super Admin)
+### 7.5. Role 5: `SYSTEM_ADMIN` (Quản Trị Viên Tối Cao / Super Admin & CEO)
 | STT | Mã Thao Tác | Tên Chức Năng Nghiệp Vụ | Vị Trí UI / Nút Bấm Thao Tác | Modal / Trang Hiển Thị | API Endpoint & Method | Hành Động Hệ Thống Phía Sau |
 | :---: | :---: | :--- | :--- | :--- | :--- | :--- |
-| 1 | `A-01` | **Tạo tài khoản Quản lý Cửa Hàng (Shop Manager)**| Nút **"+ Thêm Quản lý Cửa Hàng"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Tạo tài khoản nhân sự nội bộ, gán vào Store trực thuộc cụ thể |
-| 2 | `A-02` | **Tạo tài khoản Chuyên viên Vận Hành** | Nút **"+ Thêm Chuyên viên Vận Hành"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Cấp quyền `SYSTEM_MANAGER` cho nhân sự phòng vận hành sàn |
-| 3 | `A-03` | Khóa / Mở khóa tài khoản toàn hệ thống | Nút toggle trạng thái **"Hoạt động / Khóa"** | `AdminPersonnelPage.tsx` | `PATCH /api/v1/users/:id/toggle-status` | Vô hiệu hóa quyền truy cập khi nhân sự nghỉ việc hoặc KOC vi phạm |
-| 4 | `A-04` | Phê duyệt Lệnh Chi Trả Thù Lao KOC (Payout) | Nút **"Duyệt chi trả ngân hàng"** (Kèm mã OTP) | `AdminFinancePayoutsPage.tsx` | `POST /api/v1/payouts/:id/approve` | Kích hoạt chuyển khoản ngân hàng, ghi nhận trừ quỹ Escrow, xuất hóa đơn thuế |
-| 5 | `A-05` | Báo cáo Tài Chính & Hiệu Suất Cấp Cao | Menu **Báo cáo Doanh số & GMV** | `AdminAnalyticsHubPage.tsx` | `GET /api/v1/analytics/executive-summary` | Báo cáo Doanh thu toàn sàn, Lợi nhuận gộp, Tổng thù lao đã chi trả, ROI |
-| 6 | `A-06` | Cấu hình Thông số Sàn & Hoa hồng Gốc | Menu **Cấu hình Hệ thống** | `AdminSettingsPage.tsx` | `PATCH /api/v1/system-configs` | Điều chỉnh tỷ lệ Base Rate mặc định (10%), ngưỡng rút tối thiểu |
-| 7 | `A-07` | Can thiệp Trọng tài Cấp cao Nhất | Nút **"Phân xử tối cao"** tại các vụ việc treo | `DisputeResolutionPage.tsx` | `POST /api/v1/disputes/:id/override` | Đưa ra phán quyết cuối cùng khi phát sinh tranh chấp vượt quyền hạn |
+| 1 | `A-01` | **Khởi tạo Cửa Hàng / Nhãn Hàng Trực Thuộc** | Nút **"+ Tạo Gian Hàng Mới"** | `AdminStoresModal.tsx` | `POST /api/v1/stores` | Tạo Cửa Hàng mới, chọn 1 ngành hàng độc quyền và gán kho xuất hàng GHN |
+| 2 | `A-02` | **Bổ nhiệm Quản lý Cửa Hàng (Shop Manager)**| Nút **"+ Thêm Quản lý Cửa Hàng"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Bổ nhiệm nhân sự nội bộ, phân bổ Store trực thuộc cụ thể (`storeId`) |
+| 3 | `A-03` | **Bổ nhiệm Chuyên viên Vận Hành (Kế toán)** | Nút **"+ Thêm Chuyên viên Vận Hành"** | `AdminPersonnelPage.tsx` | `POST /api/v1/users/internal-staff` | Cấp quyền `SYSTEM_MANAGER` cho nhân sự phòng vận hành và kế toán chi trả |
+| 4 | `A-04` | Khóa / Mở khóa tài khoản toàn hệ thống | Nút toggle trạng thái **"Hoạt động / Khóa"** | `AdminPersonnelPage.tsx` | `PATCH /api/v1/users/:id/toggle-status` | Vô hiệu hóa quyền truy cập khi nhân sự nghỉ việc hoặc KOC vi phạm quy chế |
+| 5 | `A-05` | Phê duyệt Ngoại Lệ Ngân Sách (Deal VIP > 16%) | Nút **"Phê duyệt Ngân sách Ngoại lệ"** | Khung Chat Socket.IO / Modal | `PATCH /api/v1/exclusive-deals/:id/approve-exception` | Thẩm định và phê duyệt mức thù lao vượt trần ($> 16\%$) cho Siêu KOC triệu followers |
+| 6 | `A-06` | Executive Financial & Performance Dashboard | Menu **Executive Dashboard** | `AdminAnalyticsHubPage.tsx` | `GET /api/v1/analytics/executive-summary` | Giám sát GMV toàn sàn, Tỷ lệ chi phí tiếp thị (Affiliate Expense Ratio), Dòng tiền Escrow và Báo cáo Quyết toán Thuế TNCN |
+| 7 | `A-07` | Giám sát An Ninh AI Fraud & Kiểm Toán Bất Biến| Menu **AI Fraud Sentinel & Audit Logs** | `AiFraudSentinelPage.tsx` / `AuditLogsPage.tsx` | `GET /api/v1/fraud` & `GET /api/v1/audit-logs` | Giám sát tính liêm chính khi duyệt chi tiền của System Manager; kế thừa 100% quyền hạn giải quyết khủng hoảng |
 
 ---
 
@@ -499,6 +674,37 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 
 ---
 
+### 8.3. Quy Chuẩn Giới Hạn Thù Lao Đối Tác Tiếp Thị (Governance on Creator Remuneration Limits)
+
+Để ngăn ngừa trường hợp Shop Manager tùy tiện cấp thù lao vượt khung cho KOC (ví dụ: cấp $30\% - 50\%$ thù lao làm thủng ngân sách công ty), hệ thống thiết lập **Ma Trận Giới Hạn 3 Tầng**:
+1. **Trần Thù Lao Cứng Toàn Sàn (Global Remuneration Ceiling):** Cố định tối đa **$25\%$** cho mọi loại hình tiếp thị, không có bất kỳ thỏa thuận nào được vượt qua con số này.
+2. **Khung Đàm Phán Tự Trị Của Shop Manager (Autonomous Negotiation Band):**
+   * Shop Manager chỉ được quyền tự động chốt Deal VIP với KOC trong biên độ cho phép: từ mức cơ sở **$10\%$** đến tối đa **$16\%$** (tương đương với mức thưởng thỏa thuận thêm tối đa $+1\%$ đến $+3\%$).
+3. **Cơ Chế Leo Thang Phê Duyệt (Maker-Checker Exception Escalation):**
+   * Trong trường hợp đặc biệt muốn mời Siêu KOC (hàng triệu followers) với mức thù lao lớn hơn $16\%$ (từ $17\%$ đến $25\%$), nút "Chốt hợp đồng Deal VIP" trong khung Chat Socket.IO sẽ tự động chuyển thành **"Đề Xuất Ban Giám Đốc Thẩm Duyệt" (`PENDING_ADMIN_APPROVAL`)**.
+   * Chỉ khi `SYSTEM_ADMIN` kiểm tra hợp đồng bảo đảm KPI doanh số và bấm phê duyệt cấp thêm ngân sách truyền thông thì thỏa thuận thù lao trên $16\%$ mới có hiệu lực.
+
+---
+
+### 8.4. Tinh Giản Toàn Diện Hệ Thống Mã Ưu Đãi: Xóa Bỏ Voucher Rác TMĐT & Tôn Vinh Coupon Độc Quyền Định Danh KOC (KOL-Exclusive Attribution Coupon)
+
+> [!IMPORTANT]
+> **Định Nghĩa Lại Bản Sắc: Mã Ưu Đãi Trên Hệ Thống Tiếp Thị Là Vũ Khí Bắt Dấu Vết Đơn Hàng (Attribution Instrument), Không Phải Là Công Cụ Xả Hàng Đại Trà Của Chợ Bán Lẻ!**
+
+1. **Loại Bỏ Hoàn Toàn Các Loại Voucher Rác Bán Lẻ:**
+   * Sàn xóa bỏ toàn bộ các mã giảm giá kiểu chợ TMĐT thông thường: voucher freeship toàn sàn, voucher hoàn xu tích lũy, voucher chớp nhoáng của sàn...
+   * **Lý do kỹ thuật & kinh doanh:**
+     * Các loại voucher rác làm biến chất hệ thống thành "chợ bán lẻ Shopee clone".
+     * Gây xung đột và lỗi tính toán khi người dùng cố tình cộng dồn nhiều tầng giảm giá (Coupon Stacking) làm âm tiền đơn hàng.
+2. **Duy Nhất Duy Trì "Coupon Độc Quyền Định Danh KOC" (`KOL-Exclusive Attribution Coupon`):**
+   * Hệ thống chỉ duy trì duy nhất loại Coupon gắn chặt với mã định danh của Đối tác Tiếp thị (`collaboratorId`) và Cửa hàng (`storeId`).
+   * **Cấu trúc mã chuẩn hóa:** `[TÊN_KOC][MỨC_GIẢM]` (Ví dụ: `THAONHI16`, `LANHUONG10`, `QUANGTRAN12`).
+   * **Vai trò kép hoàn hảo:**
+     * **Vai trò 1 (Giá trị Khách hàng):** Cung cấp mức giảm giá độc quyền $5\% - 10\%$ dành riêng cho cộng đồng người theo dõi (Followers) của KOC, tạo động lực mạnh mẽ để khách hàng nhập mã khi thanh toán.
+     * **Vai trò 2 (Vũ Khí Bắt Dấu Vết Số 1 - Primary Attribution Engine):** Là công cụ định danh bán hàng bất bại. Dù khách hàng tắt Cookie, đổi từ điện thoại sang máy tính, hoặc lướt web ẩn danh $\rightarrow$ Chỉ cần nhập mã `THAONHI16` tại giỏ hàng, hệ thống lập tức trích xuất mã và ghi nhận chính xác $100\%$ doanh số đơn hàng cho KOC Thảo Nhi, bảo đảm quyền lợi thù lao không thể bị đánh cắp!
+
+---
+
 ## PHẦN 9: LỘ TRÌNH 5 GIAI ĐOẠN TRIỂN KHAI (5-PHASE ROADMAP) & TIÊU CHÍ NGHIỆM THU (DOD)
 
 > ⚠️ **LƯU Ý:** Toàn bộ kế hoạch dưới đây được lập ra để chuẩn bị sẵn sàng. Quá trình viết code chỉ được tiến hành sau khi Leader Nguyễn Thành Thắng và Nhóm thảo luận và chốt phương án cuối cùng.
@@ -508,16 +714,19 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 - **Tác vụ 1.2:** Cập nhật `AppRoutes.tsx` và `navigation.config.ts`: Trỏ `/admin/personnel` đến `AdminPersonnelPage`, tách bạch `/admin/kyc` cho `KycApprovalPage`.
 - **Tác vụ 1.3:** Tái cấu trúc `PartnerUpgradeTab.tsx`: Bỏ hoàn toàn tab Shop, triển khai layout 2 cột sang trọng (Warm Sand Gold) làm Cổng Đăng Ký KOC chuyên nghiệp.
 - **Tác vụ 1.4:** Bổ sung API `POST /api/v1/users/internal-staff` tại `users.controller.ts` để Super Admin tạo Shop Manager gán theo StoreId.
+- **Tác vụ 1.5:** Bổ sung modal "+ Tạo Gian Hàng Mới" cho Super Admin (Tên shop, Ngành hàng cố định, Địa chỉ kho xuất hàng GHN), đồng thời hỗ trợ nhiều nhân sự cùng mang role `SHOP_MANAGER` quản lý 1 shop qua trường `storeId` trên `User` (không sinh role mới).
 
 ### GIAI ĐOẠN 2: Tinh Chỉnh Động Cơ Thù Lao Ưu Tiên & Khởi Tạo Hạng Đồng
 - **Tác vụ 2.1:** Cập nhật hàm tính hoa hồng trong `commission-policy.ts` và `commission-rules.service.ts`: Áp dụng quy tắc $\max(\text{Deal}, \text{Campaign}, \text{Tier}, \text{Base}) + \text{Live Bonus}$.
 - **Tác vụ 2.2:** Đảm bảo khi KOC được duyệt eKYC thành công trong `kyc.service.ts`, hệ thống tự động gán Hạng khởi đầu là **Đồng (Bronze)** với Base Rate $10\%$.
 - **Tác vụ 2.3:** Kiểm tra tính độc lập của tác vụ chốt thưởng tháng `settleMonthlyBonus()` (FR-09) tách biệt khỏi luồng thanh toán đơn hàng POS.
 
-### GIAI ĐOẠN 3: Dọn Dẹp Dữ Liệu Mẫu ShopKolHub & Kết Nối AI Smart Matcher Thật
+### GIAI ĐOẠN 3: Khóa Ngành Hàng Sản Phẩm, Tái Cấu Trúc Seed Data & Dọn Dẹp ShopKolHub
 - **Tác vụ 3.1:** Mở tệp `ShopKolHubPage.tsx`: Xóa bỏ mảng 4 đơn hàng ảo hardcoded (`#SCN-99824`...) và công tắc "Đang bật số liệu mẫu".
 - **Tác vụ 3.2:** Kết nối bảng danh sách KOL với endpoint `GET /api/v1/collaborators/recommendations` dựa trên danh mục hàng hóa của Store.
 - **Tác vụ 3.3:** Hiển thị số liệu hiệu suất thực tế (Doanh số đem lại, Tỷ lệ chuyển đổi CR%, Điểm tín nhiệm hoàn thành video mẫu thử).
+- **Tác vụ 3.4:** Khóa cứng trường Ngành hàng (Category) khi `SHOP_MANAGER` tạo sản phẩm mới (`ProductManagementPage.tsx` & `POST /api/v1/products`) theo đúng ngành hàng độc quyền của Cửa hàng phụ trách.
+- **Tác vụ 3.5:** Tái cấu trúc bộ Seed Data mới tinh gọn: Chuẩn hóa 4 Cửa hàng Trực thuộc Chuyên Sâu (Sora Skincare, Aura Activewear, GreenBio Health, Lumière Smart Living) với đầy đủ 6 khối logic, barcode EAN-13, quy cách đóng gói GHN, tài nguyên Media Hub và chính sách mẫu thử 14 ngày SLA.
 
 ### GIAI ĐOẠN 4: Chuẩn Hóa Quản Lý Tài Chính, Rút Tiền Payouts & Thuế TNCN
 - **Tác vụ 4.1:** Mở tệp `AdminFinancePayoutsPage.tsx`: Xóa bỏ tab "Rút tiền Gian hàng (Merchant)", chỉ giữ lại luồng chi trả thù lao cho KOC.
@@ -525,12 +734,12 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 - **Tác vụ 4.3:** Thể hiện rõ nét khoản khấu trừ $10\%$ Thuế thu nhập cá nhân (TNCN) trên giao diện đối soát tài chính của KOC và Admin.
 
 ### GIAI ĐOẠN 5: Kiểm Thử E2E Toàn Diện 5 Main Flows & Hoàn Thiện Hồ Sơ Bảo Vệ
-- **Tác vụ 5.1:** Thực hiện kiểm thử đầu-cuối (End-to-End) thông suốt 5 Main Flows:
-  1. *Flow 1:* Khách đăng ký KOC -> Admin duyệt eKYC -> Nhận Hạng Đồng 10%.
-  2. *Flow 2:* KOC duyệt Media Hub -> AI gợi ý sản phẩm phù hợp -> Sinh Smart Link & QR.
-  3. *Flow 3:* KOC mượn hàng mẫu 14 ngày -> Shop duyệt xuất kho GHN -> KOC nộp video review.
-  4. *Flow 4:* Khách mua qua Smart Link -> Bắt dấu vết -> Động cơ tính thù lao áp dụng Best-Benefit -> Đơn thành công chuyển hoa hồng vào Ví Escrow.
-  5. *Flow 5:* KOC yêu cầu rút tiền Napas -> Admin duyệt chi trả -> Tiền về tài khoản ngân hàng.
+- **Tác vụ 5.1:** Thực hiện kiểm thử đầu-cuối (End-to-End) thông suốt 5 Main Flows cân bằng chuẩn mực:
+  1. *Flow 1 (Onboarding & eKYC & FR-07):* Admin bổ nhiệm Shop Manager nội bộ + Khách đăng ký KOC, nộp eKYC (CCCD, STK ngân hàng) & liên kết kênh MXH (FR-07) -> Admin duyệt Maker-Checker -> Cấp Hạng ĐỒNG khởi điểm 10%.
+  2. *Flow 2 (Khóa Ngành Hàng & Hợp Tác 2 Chiều):* Shop tạo sản phẩm khóa cứng Category -> Duyệt pháp chế Maker-Checker -> Shop dùng AI Matchmaker quét ma trận 4 trục tìm Top KOC, đồng thời KOC chủ động tìm Shop trên Marketplace gửi đề xuất hợp tác -> KOC khai thác Media Hub.
+  3. *Flow 3 (Deal VIP Socket.IO & Mẫu Thử SLA 14 Ngày):* Shop gửi Thẻ mời Deal VIP 16% qua Chat Socket.IO -> KOC ký deal realtime -> KOC đăng ký mượn mẫu thử 0đ -> Shop duyệt xuất kho GHN -> Đồng hồ đếm ngược SLA 14 ngày & KOC nộp video review nghiệm thu.
+  4. *Flow 4 (Attribution, Chống Tự Mua, GHN & Xử Lý Đổi Trả / Bù Hàng / Clawback):* KOC sinh Smart Link/QR & Coupon THAONHI16 -> Khách mua hàng -> AI chặn tự mua (Self-referral) -> Động cơ tính thù lao áp dụng Best-Benefit ghi nhận PENDING 72k -> Shop xuất kho GHN phát hàng DELIVERED -> Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên 100% hoa hồng vs Trả hàng hoàn tiền kích hoạt Clawback Engine thu hồi hoa hồng về 0₫.
+  5. *Flow 5 (Bảo Chứng Escrow, Thưởng Mốc FR-09, Thuế TNCN & Quyết Toán Payout):* Hết hạn Escrow giải tỏa tiền PENDING sang AVAILABLE -> Cuối tháng chốt thưởng mốc doanh số tháng FR-09 (> 50tr thưởng 2tr) & Thăng Hạng Bạc (Silver 11%) -> KOC tạo lệnh rút tiền Payout -> Khóa dòng CSDL SELECT ... FOR UPDATE -> Khấu trừ Thuế TNCN 10% tại nguồn -> Kế toán duyệt giải ngân Napas 24/7 ghi Sổ cái FinancialLedger.
 - **Tác vụ 5.2:** Đồng bộ hóa toàn bộ sơ đồ kiến trúc trong thư mục `docs/diagrams` và chuẩn bị slide bảo vệ cho 4 thành viên nhóm.
 
 ---

@@ -22,12 +22,13 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
     const storeId = seedId(`store:${shopIndex}`);
     const address = addressFor(shopIndex);
     const contactPhone = demoPhone(0, shopIndex);
-    const logo = 'logo' in shop ? shop.logo : `seed/shops/${shop.slug}.svg`;
+    const logo = shop.logo;
     data.stores.push({
       id: storeId,
       ownerId: seedId(`shop-owner:${shopIndex}`),
       name: shop.name,
       slug: `seed-${shop.slug}`,
+      categoryName: shop.category,
       logoUrl: assetUrl(context, logo),
       description:
         SHOP_DESCRIPTIONS[shop.slug] ||
@@ -71,12 +72,12 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
       createdAt,
     });
 
-    for (let slot = 0; slot < 2; slot++) {
-      const index = shopIndex * 2 + slot;
-      const template = PRODUCT_TEMPLATES[index % PRODUCT_TEMPLATES.length];
+    for (let slot = 0; slot < 3; slot++) {
+      const index = shopIndex * 3 + slot;
+      const template = PRODUCT_TEMPLATES[index % PRODUCT_TEMPLATES.length] as any;
       const id = seedId(`product:${index}`);
       const imageUrl = assetUrl(context, `products/real/${template.image}`);
-      const sku = `SEED-${String(index + 1).padStart(3, '0')}`;
+      const sku = template.sku || `SEED-${String(index + 1).padStart(3, '0')}`;
       const quota = 8 + (index % 13);
       const currentStock = 4 * (50 + (index % 20));
       data.products.push({
@@ -85,8 +86,10 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
         sku,
         title: template.name,
         categoryName: template.category,
-        description: `<h2>${template.name}</h2><p>Bộ dữ liệu minh họa Capstone SCANMS; hình ảnh chụp sản phẩm cùng loại có thể mang thương hiệu khác.</p><p>Quy cách: ${template.size} hoặc ${template.largeSize}; đóng gói tiêu chuẩn hoặc hộp quà. Thông tin sử dụng thực tế cần đối chiếu nhãn của nhà sản xuất.</p>`,
-        labelInfo: `EAN-13 nội bộ demo: ${demoEan13(index)}. Kiện mẫu: 500 g; 20 × 15 × 10 cm. Dữ liệu minh họa, không phải mã đăng ký GS1 hay chứng nhận công bố.`,
+        description:
+          template.description ||
+          `<h2>${template.name}</h2><p>Bộ dữ liệu minh họa Capstone SCANMS chuẩn TMĐT.</p>`,
+        labelInfo: `EAN-13 nội bộ demo: ${demoEan13(index)}. Kiện mẫu: 500 g; 20 × 15 × 10 cm. Chứng nhận công bố sản phẩm đạt chuẩn sàn SCANMS.`,
         barcode: demoEan13(index),
         packageWeight: 500,
         packageLength: 20,
@@ -94,30 +97,32 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
         packageHeight: 10,
         imageUrl,
         price: template.price,
-        originalPrice: template.price + 30_000,
+        originalPrice: template.price + 50_000,
         customCommissionRate: 10,
         stockQuantity: currentStock,
         isActive: true,
         moderationStatus: 'APPROVED',
         moderatedAt: createdAt,
         moderatedById: ADMIN_ID,
-        origin: 'Việt Nam (dữ liệu minh họa)',
+        origin: template.origin || 'Việt Nam (dữ liệu minh họa)',
         ingredients:
-          'Tham khảo thành phần ghi trên nhãn sản phẩm; không dùng dữ liệu demo làm thông tin y tế.',
+          template.ingredients ||
+          'Tham khảo thành phần ghi trên nhãn sản phẩm.',
         sampleEnabled: true,
         sampleQuota: quota,
         sampleGrantedCount: 0,
         createdAt,
       });
+      const attrName = template.attrName || 'Phân loại';
       for (let variant = 0; variant < 4; variant++) {
         const size = variant < 2 ? template.size : template.largeSize;
-        const pack = variant % 2 === 0 ? 'Tiêu chuẩn' : 'Hộp quà';
+        const pack = variant % 2 === 0 ? 'Tiêu chuẩn' : 'Hộp quà cao cấp';
         data.variants.push({
           id: seedId(`variant:${index}:${variant}`),
           productId: id,
           sku: `${sku}-V${variant + 1}`,
           name: `${size} / ${pack}`,
-          attributes: { 'Dung tích / Khối lượng': size, 'Đóng gói': pack },
+          attributes: { [attrName]: size, 'Đóng gói': pack },
           imageUrl,
           price:
             template.price +
