@@ -7,7 +7,8 @@ import {
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
-import { Prisma } from '@prisma/client';
+import { CreateStoreDto } from './dto/create-store.dto';
+import { Prisma, UserRole } from '@prisma/client';
 
 export const PROFESSIONAL_SHOP_DESCRIPTIONS: Record<string, string> = {
   'sora-skin':
@@ -676,11 +677,15 @@ export class StoresService {
         id: true,
         name: true,
         slug: true,
+        categoryName: true,
         logoUrl: true,
+        description: true,
+        returnWarehouse: true,
         ownerId: true,
         isVerified: true,
         isActive: true,
         defaultCommissionRate: true,
+        createdAt: true,
         owner: {
           select: {
             id: true,
@@ -694,7 +699,94 @@ export class StoresService {
           },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async createStoreByAdmin(adminId: string, dto: CreateStoreDto) {
+    const rawName = dto.name.trim();
+    let slug = dto.slug?.trim()
+      ? dto.slug
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+      : rawName
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') +
+        '-' +
+        Date.now().toString().slice(-4);
+
+    const existingSlug = await this.prisma.store.findUnique({
+      where: { slug },
+    });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    let ownerId = adminId;
+    if (dto.ownerId) {
+      const targetUser = await this.prisma.user.findUnique({
+        where: { id: dto.ownerId },
+      });
+      if (!targetUser || targetUser.isDeleted) {
+        throw new NotFoundException('Người dùng được chỉ định quản lý không tồn tại');
+      }
+      ownerId = targetUser.id;
+    }
+
+    const warehouseData = {
+      warehouseName: dto.warehouseName?.trim() || `Kho ${rawName}`,
+      contactName: dto.contactName?.trim() || 'Bộ phận kho vận',
+      contactPhone: dto.contactPhone?.trim() || '0901234567',
+      address: dto.warehouseAddress?.trim() || 'TP. Hồ Chí Minh',
+      ghnDistrictId: dto.ghnDistrictId || 1442,
+      ghnWardCode: dto.ghnWardCode?.trim() || '20109',
+    };
+
+    const newStore = await this.prisma.store.create({
+      data: {
+        name: rawName,
+        slug,
+        categoryName: dto.categoryName.trim(),
+        description: dto.description?.trim() || null,
+        logoUrl: dto.logoUrl?.trim() || null,
+        defaultCommissionRate: dto.defaultCommissionRate || 10.0,
+        ownerId,
+        isActive: true,
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
+        returnWarehouse: warehouseData,
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            products: { where: { isDeleted: false } },
+          },
+        },
+      },
+    });
+
+    if (dto.ownerId) {
+      await this.prisma.user.update({
+        where: { id: dto.ownerId },
+        data: {
+          role: UserRole.SHOP_MANAGER,
+          storeId: newStore.id,
+        },
+      });
+    }
+
+    return newStore;
   }
 }

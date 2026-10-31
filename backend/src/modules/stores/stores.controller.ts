@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StoresService } from './stores.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { CreateStoreDto } from './dto/create-store.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -23,6 +24,18 @@ import { StorePresenceService } from './store-presence.service';
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService, private readonly presence: StorePresenceService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin khởi tạo Cửa hàng / Nhãn hàng mới và cấu hình kho bãi GHN' })
+  async createStore(
+    @CurrentUser('id') adminId: string,
+    @Body() dto: CreateStoreDto,
+  ) {
+    return this.storesService.createStoreByAdmin(adminId, dto);
+  }
 
   @Post('my-store/presence')
   @UseGuards(JwtAuthGuard)

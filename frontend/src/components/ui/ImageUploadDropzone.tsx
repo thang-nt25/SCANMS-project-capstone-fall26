@@ -89,14 +89,16 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
   if (variant === 'document') {
     return (
-      <div className={`upgrade-document ${className}`}>
-        <div className="upgrade-document-label">
-          <span>
+      <div className={`space-y-1.5 text-left ${className}`}>
+        <div className="flex items-center justify-between text-xs">
+          <label className="font-semibold text-[#1A1612]">
             {label}
-            {required && <span className="upgrade-required"> *</span>}
-          </span>
+            {required && <span className="text-[#B88E4F]"> *</span>}
+          </label>
           {value && (
-            <span className="upgrade-document-status">Đã đính kèm</span>
+            <span className="text-[10px] font-semibold text-[#059669] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+              Đã đính kèm
+            </span>
           )}
         </div>
         <input
@@ -107,47 +109,53 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           className="hidden"
           aria-label={label}
         />
-        <div className={`upgrade-document-body ${value ? 'has-image' : ''}`}>
-          {value ? (
-            <button
-              type="button"
-              className="upgrade-document-preview"
-              onClick={() =>
-                window.open(value, '_blank', 'noopener,noreferrer')
-              }
-              aria-label={`Xem ${label}`}
-            >
-              <img src={value} alt={label} />
-            </button>
-          ) : (
-            <span className="upgrade-document-icon">
-              {uploading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                renderIcon()
-              )}
-            </span>
-          )}
-          <div className="upgrade-document-copy">
-            <strong>
-              {uploading
-                ? 'Đang tải ảnh…'
-                : value
-                  ? 'Đã tải ảnh'
-                  : 'Tải ảnh lên'}
-            </strong>
-            <span>
-              {value
-                ? 'Bấm ảnh để xem rõ'
-                : 'PNG, JPG, WEBP · ≤ 5 MB'}
-            </span>
+        <div
+          className={`flex items-center justify-between gap-3 p-3 rounded-xl border bg-white transition ${
+            value ? 'border-[#C59B58]/60 bg-[#FAF8F5]' : 'border-[#EAE4D7] hover:border-[#C59B58]'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {value ? (
+              <button
+                type="button"
+                className="w-10 h-10 rounded-lg overflow-hidden border border-[#EAE4D7] shrink-0 cursor-pointer hover:opacity-80 transition"
+                onClick={() =>
+                  window.open(value, '_blank', 'noopener,noreferrer')
+                }
+                aria-label={`Xem ${label}`}
+              >
+                <img src={value} alt={label} className="w-full h-full object-cover" />
+              </button>
+            ) : (
+              <span className="w-10 h-10 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                {uploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  renderIcon()
+                )}
+              </span>
+            )}
+            <div className="flex flex-col min-w-0 text-left">
+              <strong className="text-xs font-semibold text-[#1A1612] truncate">
+                {uploading
+                  ? 'Đang tải ảnh…'
+                  : value
+                    ? 'Đã tải ảnh'
+                    : 'Tải ảnh lên'}
+              </strong>
+              <span className="text-[11px] text-[#7D715E] truncate">
+                {value
+                  ? 'Bấm ảnh để xem chi tiết'
+                  : 'PNG, JPG, WEBP · ≤ 5 MB'}
+              </span>
+            </div>
           </div>
-          <div className="upgrade-document-actions">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
-              className="upgrade-document-choose"
+              className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-xs font-semibold text-[#1A1612] transition cursor-pointer"
             >
               {value ? 'Đổi ảnh' : 'Chọn ảnh'}
             </button>
@@ -157,14 +165,14 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
                 disabled={uploading}
                 onClick={() => onChange('')}
                 aria-label={`Xóa ${label}`}
-                className="upgrade-document-remove"
+                className="p-1.5 rounded-lg text-[#DC2626] hover:bg-rose-50 transition cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             )}
           </div>
         </div>
-        {helperText && <p className="upgrade-document-hint">{helperText}</p>}
+        {helperText && <p className="text-[11px] text-[#7D715E] leading-relaxed m-0">{helperText}</p>}
       </div>
     );
   }
