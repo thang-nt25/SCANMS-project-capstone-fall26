@@ -6,17 +6,21 @@ import type {
   SetStateAction,
 } from 'react';
 import {
-  ChevronDown,
   Info,
   Send,
   ShieldCheck,
-  Megaphone,
-  Store,
 } from 'lucide-react';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { ImageUploadDropzone } from '../../components/ui/ImageUploadDropzone';
 import { BankSelectTrigger } from '../../components/bank/BankSelectTrigger';
-import type { ApplyKolData, ApplyShopData } from '../../services/kyc.service';
+import type { ApplyKolData } from '../../services/kyc.service';
+
+const PRIMARY_CATEGORIES = [
+  'Mỹ phẩm & Chăm sóc da chuyên sâu',
+  'Thời trang & May mặc thể thao năng động',
+  'Dinh dưỡng, Thảo mộc & Sức khỏe thiên nhiên',
+  'Thiết bị gia dụng & Đồ bếp thông minh',
+];
 
 function Field({
   label,
@@ -92,11 +96,11 @@ function Section({
   return (
     <section className="min-w-0">
       <div className="flex items-center gap-[10px] mb-[16px]">
-        <span className="flex items-center justify-center shrink-0 w-[24px] h-[24px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[700] font-mono">
+        <span className="flex items-center justify-center shrink-0 w-[26px] h-[26px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[700] font-mono">
           {number}
         </span>
         <div>
-          <h4 className="m-0 text-[13px] leading-[1.4] font-[700] text-[#1A1612] uppercase tracking-wide">{title}</h4>
+          <h4 className="m-0 text-[14px] leading-[1.5] font-[650] text-[#1A1612]">{title}</h4>
           {description && <p className="m-[2px_0_0] text-[11px] text-[#7D715E] leading-[1.5]">{description}</p>}
         </div>
       </div>
@@ -105,40 +109,12 @@ function Section({
   );
 }
 
-function FormHeader({ shop = false }: { shop?: boolean }) {
-  return (
-    <header className="flex items-center justify-between gap-[16px] p-[18px_22px] border-b border-[#EAE4D7] bg-[#FAF8F5]/60 max-[640px]:p-[16px]">
-      <div className="flex items-center gap-[12px] min-w-0">
-        <span className="w-[36px] h-[36px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-          {shop ? <Store size={18} /> : <Megaphone size={18} />}
-        </span>
-        <div>
-          <h3 className="m-0 text-[15px] font-[700] tracking-[-0.2px] text-[#1A1612]">
-            {shop ? 'Hồ sơ pháp lý gian hàng (Merchant)' : 'Hồ sơ định danh Cộng tác viên (KOL/KOC)'}
-          </h3>
-          <p className="m-[2px_0_0] text-[12px] text-[#7D715E]">
-            {shop
-              ? 'Xác thực tư cách pháp nhân kinh doanh và tài khoản đối soát doanh thu.'
-              : 'Xác thực số liệu kênh truyền thông, CCCD gắn chip và tài khoản thụ hưởng.'}
-          </p>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function FormFooter({
-  submitting,
-  shop = false,
-}: {
-  submitting: boolean;
-  shop?: boolean;
-}) {
+function FormFooter({ submitting }: { submitting: boolean }) {
   return (
     <footer className="border-t border-[#EAE4D7] p-[16px_22px] flex items-center justify-between gap-[20px] bg-[#FAF8F5]/40 max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:p-[16px]">
       <p className="flex items-center gap-[8px] text-[11px] text-[#7D715E] leading-[1.5] m-0">
         <ShieldCheck size={16} className="text-[#B88E4F] shrink-0" />
-        <span>Dữ liệu eKYC được mã hóa và đối soát bảo mật theo quy chế sàn SCANMS.</span>
+        <span>Dữ liệu cá nhân được bảo mật theo quy định pháp luật.</span>
       </p>
       <button
         type="submit"
@@ -146,42 +122,9 @@ function FormFooter({
         className="inline-flex items-center justify-center gap-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[10px] px-[20px] py-[10px] text-[12px] font-[700] tracking-wide cursor-pointer transition-colors duration-150 disabled:opacity-55 max-[640px]:w-full"
       >
         <Send size={14} />
-        {submitting
-          ? 'Đang gửi hồ sơ…'
-          : shop
-            ? 'Nộp hồ sơ gian hàng'
-            : 'Nộp hồ sơ định danh'}
+        {submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ đối tác'}
       </button>
     </footer>
-  );
-}
-
-function ShopReviewGuide() {
-  return (
-    <details className="border border-[#EAE4D7] rounded-[11px] bg-white text-[12px] text-[#7D715E] leading-[1.6] [&[open]_.shop-guide-arrow]:rotate-180">
-      <summary className="flex items-center gap-[9px] p-[11px_14px] cursor-pointer list-none select-none [&::-webkit-details-marker]:none">
-        <ShieldCheck aria-hidden="true" size={16} className="text-[#B88E4F] shrink-0" />
-        <span className="font-[600] text-[#1A1612]">Tiêu chuẩn xét duyệt hồ sơ mở gian hàng</span>
-        <span className="ml-auto inline-flex items-center gap-[6px] text-[#8F682E] font-[600] text-[11px]">
-          <span>Chi tiết quy trình</span>
-          <ChevronDown aria-hidden="true" size={13} className="shop-guide-arrow transition-transform duration-200" />
-        </span>
-      </summary>
-      <div className="grid grid-cols-2 gap-[16px] p-[14px] border-t border-[#EAE4D7] bg-[#FAF8F5]/30 max-[640px]:grid-cols-1">
-        <div>
-          <strong className="block text-[#1A1612] text-[11px] font-[700] uppercase tracking-wide mb-[4px]">1. Thẩm định pháp lý</strong>
-          <p className="m-0 text-[11px] leading-[1.6] text-[#7D715E]">
-            Đối chiếu mã số thuế doanh nghiệp/hộ kinh doanh, CCCD đại diện hợp pháp và kho hàng thực tế.
-          </p>
-        </div>
-        <div>
-          <strong className="block text-[#1A1612] text-[11px] font-[700] uppercase tracking-wide mb-[4px]">2. Kiểm duyệt hàng hóa</strong>
-          <p className="m-0 text-[11px] leading-[1.6] text-[#7D715E]">
-            Thẩm định giấy phép công bố sản phẩm và hóa đơn chứng từ xuất xứ trước khi kích hoạt gian hàng.
-          </p>
-        </div>
-      </div>
-    </details>
   );
 }
 
@@ -202,7 +145,7 @@ function BankDetails({
     <>
       <div className="flex flex-col gap-[7px] min-w-0 col-span-full">
         <span className="text-[12px] font-[550] text-[#1A1612] leading-[1.5]">
-          Ngân hàng thụ hưởng <span className="text-[#B88E4F]">*</span>
+          Ngân hàng thụ hưởng Napas 24/7 <span className="text-[#B88E4F]">*</span>
         </span>
         <BankSelectTrigger
           value={form.bankName}
@@ -213,23 +156,27 @@ function BankDetails({
       </div>
       <TextField
         id={`${prefix}-account`}
-        label="Số tài khoản"
+        label="Số tài khoản ngân hàng"
         inputMode="numeric"
         autoComplete="off"
         required
         value={form.bankAccountNumber}
-        onChange={(event) => onChange('bankAccountNumber', event.target.value)}
-        placeholder="Nhập số tài khoản"
+        onChange={(event) =>
+          onChange('bankAccountNumber', event.target.value.replace(/\D/g, ''))
+        }
+        placeholder="Nhập số tài khoản ngân hàng"
       />
       <TextField
         id={`${prefix}-account-name`}
-        label="Tên chủ tài khoản"
+        label="Tên chủ tài khoản (Viết hoa không dấu)"
+        autoComplete="off"
         required
         value={form.bankAccountName}
         onChange={(event) =>
           onChange('bankAccountName', event.target.value.toUpperCase())
         }
-        placeholder="Nhập tên chủ tài khoản"
+        placeholder="NGUYEN VAN A"
+        hint="Bắt buộc phải trùng khớp 100% với họ và tên trên thẻ CCCD để quyết toán thuế TNCN."
       />
     </>
   );
@@ -252,6 +199,7 @@ export function KolUpgradeForm({
     key: K,
     value: ApplyKolData[K],
   ) => setForm((previous) => ({ ...previous, [key]: value }));
+
   return (
     <form
       id="partner-upgrade-form"
@@ -259,21 +207,22 @@ export function KolUpgradeForm({
       autoComplete="off"
       onSubmit={onSubmit}
     >
-      <FormHeader />
       <div className="p-[22px] grid gap-[22px] max-[640px]:p-[17px] max-[640px]:gap-[20px]">
         {rejectionReason && (
           <div className="flex items-start gap-[10px] border border-[#EEDFC6] rounded-[12px] p-[12px_14px] bg-[#FBF5EB] text-[12px] text-[#7D715E] leading-[1.7]">
             <Info size={17} className="text-[#B88E4F] shrink-0 mt-[2px]" />
             <div>
-              <strong className="block text-[#8F682E] font-[600]">Ghi chú xét duyệt</strong>
+              <strong className="block text-[#8F682E] font-[600]">Yêu cầu bổ sung từ Ban Quản Trị</strong>
               {rejectionReason}
             </div>
           </div>
         )}
+
+        {/* Khối 1: Kênh Truyền Thông & Sáng Tạo (FR-07) */}
         <Section
           number={1}
-          title="Kênh truyền thông & Lưu lượng"
-          description="Nền tảng phát triển nội dung và số liệu người theo dõi thực tế."
+          title="Kênh truyền thông"
+          description="Nền tảng phát triển nội dung và số lượng người theo dõi."
         >
           <div className="grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
             <Field label="Nền tảng chính" id="kol-platform" required>
@@ -285,8 +234,8 @@ export function KolUpgradeForm({
                 }
                 options={[
                   { value: 'TIKTOK', label: 'TikTok' },
-                  { value: 'FACEBOOK', label: 'Facebook' },
                   { value: 'YOUTUBE', label: 'YouTube' },
+                  { value: 'FACEBOOK', label: 'Facebook' },
                   { value: 'INSTAGRAM', label: 'Instagram' },
                   { value: 'LEMON8', label: 'Lemon8' },
                   { value: 'OTHER', label: 'Nền tảng khác' },
@@ -297,15 +246,15 @@ export function KolUpgradeForm({
             </Field>
             <TextField
               id="kol-channel-name"
-              label="Tên kênh"
+              label="Tên kênh (@Handle)"
               required
               value={form.channelName}
               onChange={(event) => patch('channelName', event.target.value)}
-              placeholder="Nhập tên kênh"
+              placeholder="Ví dụ: @thaonhi.beauty"
             />
             <TextField
               id="kol-followers"
-              label="Số người theo dõi"
+              label="Số người theo dõi (Followers)"
               type="number"
               min={0}
               required
@@ -318,24 +267,24 @@ export function KolUpgradeForm({
                     : Number(event.target.value),
                 )
               }
-              placeholder="Nhập số người theo dõi"
+              placeholder="Ví dụ: 50000"
             />
             <TextField
               id="kol-channel-url"
-              label="Liên kết kênh"
+              label="Đường dẫn liên kết kênh (URL)"
               type="url"
               full
               required
               value={form.channelUrl}
               onChange={(event) => patch('channelUrl', event.target.value)}
-              placeholder="Nhập liên kết kênh"
+              placeholder="https://tiktok.com/@thaonhi.beauty"
             />
           </div>
           <div className="mt-[14px]">
             <ImageUploadDropzone
               variant="document"
-              label="Ảnh trang quản trị kênh"
-              helperText="Ảnh trang quản trị (TikTok Studio, Meta Business Suite…); hiển thị tên kênh và quyền quản trị."
+              label="Ảnh chụp màn hình trang quản trị kênh (Proof)"
+              helperText="Ảnh chụp giao diện TikTok Studio / Meta Business Suite chứng minh quyền sở hữu và số liệu người theo dõi."
               value={form.channelProofUrl}
               onChange={(value) => patch('channelProofUrl', value)}
               iconType="camera"
@@ -343,22 +292,24 @@ export function KolUpgradeForm({
             />
           </div>
         </Section>
+
+        {/* Khối 2: Định Danh Công Dân & Khối 3: Ngân Hàng Napas */}
         <div className="grid grid-cols-2 gap-[20px] pt-[22px] border-t border-[#EAE4D7] max-[1100px]:grid-cols-1">
           <Section
             number={2}
-            title="Định danh công dân (CCCD)"
-            description="Ảnh chụp 2 mặt CCCD gắn chip rõ nét phục vụ đối chiếu eKYC."
+            title="Thông tin định danh"
+            description="Số CCCD và ảnh chụp hai mặt để đối soát thông tin."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <TextField
                 id="kol-id"
-                label="Số CCCD / CMND"
+                label="Số CCCD gắn chip"
                 inputMode="numeric"
                 maxLength={12}
                 required
                 value={form.idCardNumber}
                 onChange={(event) => patch('idCardNumber', event.target.value)}
-                placeholder="Nhập 9–12 chữ số"
+                placeholder="12 chữ số trên CCCD"
               />
               <TextField
                 id="kol-tax"
@@ -370,6 +321,7 @@ export function KolUpgradeForm({
               />
               <ImageUploadDropzone
                 variant="document"
+                className="col-span-full"
                 label="CCCD mặt trước"
                 value={form.frontCardUrl}
                 onChange={(value) => patch('frontCardUrl', value)}
@@ -379,6 +331,7 @@ export function KolUpgradeForm({
               />
               <ImageUploadDropzone
                 variant="document"
+                className="col-span-full"
                 label="CCCD mặt sau"
                 value={form.backCardUrl}
                 onChange={(value) => patch('backCardUrl', value)}
@@ -388,21 +341,42 @@ export function KolUpgradeForm({
               />
             </div>
           </Section>
+
           <Section
             number={3}
-            title="Tài khoản thanh toán Napas 24/7"
-            description="Tài khoản ngân hàng thụ hưởng hoa hồng tiếp thị định kỳ."
+            title="Tài khoản nhận hoa hồng"
+            description="Tài khoản ngân hàng để nhận chi trả hoa hồng hàng tháng."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
               <BankDetails prefix="kol" form={form} onChange={patch} />
-              <Field label="Giới thiệu & ngành hàng thế mạnh" id="kol-bio" full>
+
+              <div className="col-span-full">
+                <Field label="Ngành hàng thế mạnh đề xuất hợp tác" id="kol-category">
+                  <select
+                    className="w-full min-w-0 h-[44px] p-[10px_13px] border border-[#EAE4D7] rounded-[11px] bg-white text-[13px] text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#C59B58]"
+                    onChange={(e) => {
+                      const currentBio = form.bio || '';
+                      patch('bio', `[Thế mạnh: ${e.target.value}] ${currentBio.replace(/\[Thế mạnh: .*?\]\s*/, '')}`);
+                    }}
+                  >
+                    <option value="">-- Chọn ngành hàng thế mạnh --</option>
+                    {PRIMARY_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Giới thiệu phong cách sáng tạo & Tệp người theo dõi" id="kol-bio" full>
                 <textarea
                   id="kol-bio"
                   rows={2}
                   className="w-full min-w-0 p-[10px_13px] border border-[#EAE4D7] rounded-[11px] bg-white text-[13px] text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#A39783] placeholder:font-[400] focus:border-[#C59B58] focus:shadow-[0_0_0_3px_#FBF5EB] resize-y min-h-[78px] max-[640px]:text-[16px]"
                   value={form.bio || ''}
                   onChange={(event) => patch('bio', event.target.value)}
-                  placeholder="Nội dung bạn sáng tạo và ngành hàng phù hợp…"
+                  placeholder="Mô tả ngắn gọn về tệp khán giả của bạn và lý do nhãn hàng nên tài trợ hàng mẫu..."
                 />
               </Field>
             </div>
@@ -413,200 +387,3 @@ export function KolUpgradeForm({
     </form>
   );
 }
-
-export function ShopUpgradeForm({
-  form,
-  setForm,
-  onSubmit,
-  submitting,
-  reviewNote,
-}: {
-  form: ApplyShopData;
-  setForm: Dispatch<SetStateAction<ApplyShopData>>;
-  onSubmit: FormEventHandler<HTMLFormElement>;
-  submitting: boolean;
-  reviewNote?: string | null;
-}) {
-  const patch = <K extends keyof ApplyShopData>(
-    key: K,
-    value: ApplyShopData[K],
-  ) => setForm((previous) => ({ ...previous, [key]: value }));
-  return (
-    <form
-      id="partner-upgrade-form"
-      className="min-w-0 border border-[#EAE4D7] rounded-[18px] bg-white overflow-visible"
-      autoComplete="off"
-      onSubmit={onSubmit}
-    >
-      <FormHeader shop />
-      <div className="p-[22px] grid gap-[22px] max-[640px]:p-[17px] max-[640px]:gap-[20px]">
-        <ShopReviewGuide />
-        {reviewNote && (
-          <div className="flex items-start gap-[10px] border border-[#EEDFC6] rounded-[12px] p-[12px_14px] bg-[#FBF5EB] text-[12px] text-[#7D715E] leading-[1.7]">
-            <Info size={17} className="text-[#B88E4F] shrink-0 mt-[2px]" />
-            <div>
-              <strong className="block text-[#8F682E] font-[600]">Ghi chú từ Ban Quản Trị</strong>
-              {reviewNote}
-            </div>
-          </div>
-        )}
-        <Section
-          number={1}
-          title="Thông tin pháp lý & Liên hệ"
-          description="Tên gian hàng, loại hình đăng ký kinh doanh và kho hàng vận hành."
-        >
-          <div className="grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
-            <div className="col-span-2 max-[640px]:col-span-1">
-              <TextField
-                id="shop-name"
-                label="Tên gian hàng / thương hiệu"
-                required
-                value={form.shopName}
-                onChange={(event) => patch('shopName', event.target.value)}
-                placeholder="Nhập tên gian hàng"
-              />
-            </div>
-            <Field
-              id="shop-business-type"
-              label="Hình thức kinh doanh"
-              required
-            >
-              <CustomSelect
-                id="shop-business-type"
-                value={form.businessType}
-                onChange={(value) =>
-                  patch('businessType', value as ApplyShopData['businessType'])
-                }
-                options={[
-                  { value: 'ENTERPRISE', label: 'Doanh nghiệp / Công ty' },
-                  { value: 'HOUSEHOLD', label: 'Hộ kinh doanh' },
-                  { value: 'INDIVIDUAL', label: 'Cá nhân kinh doanh' },
-                ]}
-                placeholder="Chọn hình thức"
-                required
-              />
-            </Field>
-            <TextField
-              id="shop-tax"
-              label="Mã số thuế"
-              required
-              value={form.taxCode}
-              onChange={(event) => patch('taxCode', event.target.value)}
-              placeholder="Nhập mã số thuế"
-            />
-            <TextField
-              id="shop-phone"
-              label="Điện thoại liên hệ"
-              type="tel"
-              required
-              value={form.contactPhone}
-              onChange={(event) => patch('contactPhone', event.target.value)}
-              placeholder="Nhập số điện thoại"
-            />
-            <TextField
-              id="shop-email"
-              label="Email đối soát"
-              type="email"
-              required
-              value={form.contactEmail}
-              onChange={(event) => patch('contactEmail', event.target.value)}
-              placeholder="Nhập email đối soát"
-            />
-            <TextField
-              id="shop-warehouse"
-              label="Địa chỉ kho xuất hàng"
-              full
-              required
-              value={form.warehouseAddress}
-              onChange={(event) =>
-                patch('warehouseAddress', event.target.value)
-              }
-              placeholder="Số nhà, đường, phường/xã, tỉnh/thành phố"
-              hint="Địa chỉ thực tế để xử lý vận chuyển và đối soát."
-            />
-          </div>
-        </Section>
-        <div className="grid grid-cols-2 gap-[20px] pt-[22px] border-t border-[#EAE4D7] max-[1100px]:grid-cols-1">
-          <Section
-            number={2}
-            title="Giấy phép kinh doanh & Đại diện pháp luật"
-            description="Bản scan giấy chứng nhận ĐKKD và CCCD người đại diện pháp luật."
-          >
-            <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
-              <TextField
-                id="shop-owner-id"
-                label="CCCD người đại diện"
-                inputMode="numeric"
-                maxLength={12}
-                full
-                required
-                value={form.idCardNumber || ''}
-                onChange={(event) =>
-                  patch('idCardNumber', event.target.value.replace(/\D/g, ''))
-                }
-                placeholder="Nhập 9–12 chữ số"
-              />
-              <ImageUploadDropzone
-                variant="document"
-                label="CCCD mặt trước"
-                value={form.frontCardUrl || ''}
-                onChange={(value) => patch('frontCardUrl', value)}
-                iconType="idcard"
-                folder="scanms/kyc/shop_idcards"
-                required
-              />
-              <ImageUploadDropzone
-                variant="document"
-                label="CCCD mặt sau"
-                value={form.backCardUrl || ''}
-                onChange={(value) => patch('backCardUrl', value)}
-                iconType="idcard"
-                folder="scanms/kyc/shop_idcards"
-                required
-              />
-              <ImageUploadDropzone
-                variant="document"
-                label="Giấy đăng ký kinh doanh"
-                value={form.businessLicenseUrl || ''}
-                onChange={(value) => patch('businessLicenseUrl', value)}
-                iconType="file"
-                folder="scanms/kyc/licenses"
-                required
-              />
-              <ImageUploadDropzone
-                variant="document"
-                label="Ủy quyền thương hiệu"
-                helperText="Không bắt buộc. Có thể dùng hợp đồng phân phối."
-                value={form.brandAuthorizationUrl || ''}
-                onChange={(value) => patch('brandAuthorizationUrl', value)}
-                iconType="file"
-                folder="scanms/kyc/authorizations"
-              />
-            </div>
-          </Section>
-          <Section
-            number={3}
-            title="Tài khoản thanh toán doanh thu"
-            description="Tài khoản ngân hàng chính thức nhận quyết toán dòng tiền sau ký quỹ Escrow."
-          >
-            <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
-              <BankDetails prefix="shop" form={form} onChange={patch} />
-              <Field label="Giới thiệu gian hàng" id="shop-description" full>
-                <textarea
-                  id="shop-description"
-                  rows={3}
-                  className="w-full min-w-0 p-[10px_13px] border border-[#EAE4D7] rounded-[11px] bg-white text-[13px] text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#A39783] placeholder:font-[400] focus:border-[#C59B58] focus:shadow-[0_0_0_3px_#FBF5EB] resize-y min-h-[78px] max-[640px]:text-[16px]"
-                  value={form.description || ''}
-                  onChange={(event) => patch('description', event.target.value)}
-                  placeholder="Ngành hàng chính và giới thiệu ngắn về gian hàng…"
-                />
-              </Field>
-            </div>
-          </Section>
-        </div>
-      </div>
-      <FormFooter shop submitting={submitting} />
-    </form>
-  );
-}
-

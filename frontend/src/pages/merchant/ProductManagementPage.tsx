@@ -1847,10 +1847,10 @@ export default function ProductManagementPage() {
               </TableHead>
               <TableHead className="min-w-[240px]">Sản phẩm</TableHead>
               <TableHead className="whitespace-nowrap min-w-[120px]">Giá bán</TableHead>
-              <TableHead className="whitespace-nowrap min-w-[120px]">Hoa hồng nền</TableHead>
+              <TableHead className="whitespace-nowrap min-w-[120px]">Thù lao cơ sở</TableHead>
               <TableHead className="whitespace-nowrap min-w-[100px]">Tồn kho</TableHead>
               <TableHead className="whitespace-nowrap min-w-[130px]">Trạng thái</TableHead>
-              <TableHead className="whitespace-nowrap text-right min-w-[120px]">Thao tác</TableHead>
+              <TableHead className="whitespace-nowrap text-right min-w-[160px]">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1901,7 +1901,7 @@ export default function ProductManagementPage() {
                   <TableCell data-label="Giá bán" className="font-semibold text-[#1A1612] whitespace-nowrap tabular-nums">
                     {Number(price).toLocaleString('vi-VN')} ₫
                   </TableCell>
-                  <TableCell data-label="Hoa hồng">
+                  <TableCell data-label="Thù lao cơ sở">
                     <Badge variant="amber" className="font-extrabold text-xs">
                       {rate}%
                     </Badge>
@@ -2033,6 +2033,18 @@ export default function ProductManagementPage() {
                           </>
                         )}
 
+                        {moderationStatus === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/merchant/kol-hub?mode=ai-matching&productId=${p.id}`)}
+                            className="h-8 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
+                            title="Tìm KOC phù hợp cho sản phẩm này qua AI Radar Matchmaker"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                            <span className="hidden xl:inline">Tìm KOC bằng AI</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => openProductLanding(p)}
@@ -2160,7 +2172,7 @@ export default function ProductManagementPage() {
               { id: 'product-section-media', label: '2. Hình ảnh' },
               { id: 'product-section-variants', label: '3. Phân loại hàng' },
               { id: 'product-section-shipping', label: '4. Vận chuyển' },
-              { id: 'product-section-affiliate', label: '5. Hoa hồng & Mẫu' },
+              { id: 'product-section-affiliate', label: '5. Thù lao & Mẫu' },
               { id: 'product-section-legal', label: '6. Pháp lý' },
             ].map((sec) => (
               <button
@@ -2713,7 +2725,7 @@ export default function ProductManagementPage() {
                     <p className="font-bold text-[#1A1612] text-sm">Chưa có phân loại hàng</p>
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
                       <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-left">
-                        <label className="text-xs font-semibold text-[#7D715E]">Giá bán lẻ (₫):</label>
+                        <label className="text-xs font-semibold text-[#7D715E]">Giá niêm yết (₫):</label>
                         <input
                           type="number"
                           min={0}
@@ -2724,7 +2736,18 @@ export default function ProductManagementPage() {
                         />
                       </div>
                       <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-left">
-                        <label className="text-xs font-semibold text-[#7D715E]">Tồn kho cơ bản:</label>
+                        <label className="text-xs font-semibold text-[#7D715E]">Giá tham chiếu (₫):</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={formOriginalPrice}
+                          onChange={(e) => setFormOriginalPrice(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                          placeholder="VD: 300.000"
+                          className="w-28 text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] rounded-lg px-2 py-1 outline-none focus:border-[#B88E4F]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-left">
+                        <label className="text-xs font-semibold text-[#7D715E]">Tồn kho mở bán:</label>
                         <input
                           type="number"
                           min={0}
@@ -2749,6 +2772,12 @@ export default function ProductManagementPage() {
                         <PlusCircle size={14} /> + Thêm phân loại
                       </button>
                     </div>
+                    {Number(formPrice || 0) > 0 && (
+                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E]">
+                        <ShieldCheck size={13} className="text-[#B88E4F]" />
+                        <span>Giá sàn bảo vệ (MAP tối thiểu): <strong className="text-[#1A1612]">{Math.round(Number(formPrice) * 0.7).toLocaleString('vi-VN')} ₫</strong> — Không được giảm giá dưới ngưỡng an toàn này khi chạy chiến dịch.</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
@@ -3005,7 +3034,7 @@ export default function ProductManagementPage() {
 
             </div>
 
-            {/* ===================== KHỐI 5: CHÍNH SÁCH KOL & MẪU THỬ ===================== */}
+            {/* ===================== KHỐI 5: CHÍNH SÁCH THÙ LAO & MẪU THỬ ===================== */}
             <div id="product-section-affiliate" className="product-editor-section flex flex-col justify-between gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
               <div>
                 <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3 mb-3.5">
@@ -3013,17 +3042,17 @@ export default function ProductManagementPage() {
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                       <Percent className="h-4 w-4 text-[#B88E4F]" />
                     </span>
-                    5. Hoa hồng & Mẫu thử
+                    5. Thù lao tiếp thị & Mẫu trải nghiệm
                   </span>
                   <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1 text-xs font-bold text-[#8C6226]">
-                    10.0% Chuẩn sàn Open Offer
+                    10.0% Thù lao cơ sở (Hạng Đồng)
                   </span>
                 </div>
 
                 <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs flex items-center justify-between mb-3.5">
                   <div className="flex items-center gap-2">
                     <Coins className="h-4 w-4 text-[#B88E4F]" />
-                    <span className="text-[#1A1612] font-semibold">Ước tính hoa hồng mỗi đơn:</span>
+                    <span className="text-[#1A1612] font-semibold">Ước tính thù lao cơ sở mỗi đơn:</span>
                   </div>
                   <strong className="text-[#B88E4F] text-sm">
                     {variantPriceRange.min > 0
@@ -3042,7 +3071,7 @@ export default function ProductManagementPage() {
                     />
                     <div>
                       <span className="text-xs font-bold text-[#1A1612] block">
-                        Bật Tiếp thị Liên kết (Affiliate)
+                        Kích hoạt kênh Tiếp thị Liên kết (Affiliate Network)
                       </span>
                     </div>
                   </label>

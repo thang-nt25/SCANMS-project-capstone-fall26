@@ -590,7 +590,8 @@ export const ShopCouponsPage: React.FC = () => {
                 <Ticket className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-[#1A1612]">Mã giảm giá gian hàng</h2>
+                <h2 className="text-base font-bold text-[#1A1612]">Quản lý Coupon Độc Quyền KOC</h2>
+                <p className="text-[11px] text-[#7D715E] m-0">Cấp mã ưu đãi gắn định danh Creator để bắt dấu vết Attribution doanh số và bảo lưu thù lao</p>
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -615,7 +616,7 @@ export const ShopCouponsPage: React.FC = () => {
                 className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#C59B58] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#B88E4F] cursor-pointer shadow-xs"
               >
                 <Plus className="h-4 w-4" />
-                <span>Phát hành voucher mới</span>
+                <span>Cấp mã Coupon KOC mới</span>
               </button>
             </div>
           </div>
@@ -1483,7 +1484,7 @@ export const ShopCouponsPage: React.FC = () => {
                     <div className="text-[11px] text-[#7D715E] bg-[#FBF5EB] p-2.5 rounded-xl border border-[#EEDFC6] flex items-start gap-2">
                       <Info className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
                       <span>
-                        <strong>Quy chuẩn sàn:</strong> Mỗi đơn hàng cho phép kết hợp tối đa 1 voucher Shop + 1 voucher Sàn + 1 voucher Vận chuyển (không cộng dồn nhiều voucher tiền hàng của cùng 1 Shop).
+                        <strong>Cơ chế Attribution KOC:</strong> Mã Coupon độc quyền gắn với định danh KOC (ví dụ: THAONHI16). Khách hàng áp dụng mã tại Giỏ hàng sẽ được giảm giá ưu đãi, đồng thời hệ thống ghi nhận chính xác 100% doanh số cho KOC phụ trách dù khách đổi thiết bị.
                       </span>
                     </div>
                   </div>
