@@ -56,9 +56,9 @@ export const CUSTOMER_NAMES = [
 
 export const TIERS = [
   { name: 'Đồng', count: 5, bonus: 0, threshold: 0 },
-  { name: 'Bạc', count: 7, bonus: 1, threshold: 5_000_000 },
-  { name: 'Vàng', count: 5, bonus: 2, threshold: 20_000_000 },
-  { name: 'Kim Cương', count: 3, bonus: 3, threshold: 50_000_000 },
+  { name: 'Bạc', count: 7, bonus: 1, threshold: 20_000_000 },
+  { name: 'Vàng', count: 5, bonus: 2, threshold: 50_000_000 },
+  { name: 'Kim Cương', count: 3, bonus: 3, threshold: 100_000_000 },
 ] as const;
 
 export const CREATOR_AVATARS = [

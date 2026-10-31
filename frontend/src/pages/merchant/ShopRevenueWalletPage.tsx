@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Clock3, FileText, RefreshCw, Search, ShieldCheck, Wallet } from 'lucide-react';
 import api from '../../services/api';
+import { StoreFinanceReport } from '../../components/wallet/FinanceReports';
 import { storeService, type StoreSettings } from '../../services/store.service';
 import { payoutService, type MerchantPayout, type MerchantPayoutHistory } from '../../services/payout.service';
 
@@ -132,6 +133,7 @@ export default function ShopRevenueWalletPage() {
 
       {tab === 'overview' ? (
         <section role="tabpanel" className="space-y-5">
+          {store?.id && <StoreFinanceReport key={`${store.id}-${refreshing}`} storeId={store.id} />}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="m-0 text-lg font-black">Doanh số theo kỳ</h2>
             <div aria-label="Khoảng thời gian" className="flex gap-1 rounded-xl border border-[#EAE4D7] bg-white p-1">

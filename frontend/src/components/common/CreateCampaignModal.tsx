@@ -13,8 +13,8 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const bonusCommissionRate = Number(form.bonusCommissionRate);
-    if (!Number.isFinite(bonusCommissionRate) || bonusCommissionRate < 1 || bonusCommissionRate > 2) {
-      setError('Hoa hồng thưởng thêm chỉ được nhập từ 1% đến 2%.');
+    if (!Number.isFinite(bonusCommissionRate) || bonusCommissionRate < 1 || bonusCommissionRate > 6) {
+      setError('Hoa hồng chiến dịch thêm từ 1% đến 6%, tương ứng tổng mức 11%–16%.');
       return;
     }
     setLoading(true);
@@ -70,7 +70,7 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
                 id="campaign-rate"
                 type="number"
                 min={1}
-                max={2}
+                max={6}
                 step="0.01"
                 inputMode="decimal"
                 className="flex-1 min-w-0 bg-transparent px-3.5 py-2.5 text-xs text-[#1A1612] outline-none"
@@ -83,7 +83,7 @@ export function CreateCampaignModal({ onClose, onSuccess }: { onClose: () => voi
               </span>
             </div>
             <small className="text-[11px] text-[#7D715E] mt-1 block">
-              Nhập thủ công trong khoảng từ 1% đến 2%.
+              Thêm 1%–6% trên mức cơ sở 10%. Lấy mức cao nhất giữa chiến dịch, Deal và cấp bậc.
             </small>
           </div>
           <label className="block text-xs font-bold text-[#1A1612]">

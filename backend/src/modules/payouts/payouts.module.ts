@@ -14,6 +14,11 @@ import { PayoutBatchesService } from './payout-batches.service';
 import { MerchantPayoutsController } from './merchant-payouts.controller';
 import { PayoutApprovalController } from './payout-approval.controller';
 import { AdminPayoutsController } from './admin-payouts.controller';
+import { FinanceReportController } from './finance-report.controller';
+import { FinanceReportService } from './finance-report.service';
+import { PayoutTransferService } from './payout-transfer.service';
+import { PayoutEmailScheduler } from './payout-email.scheduler';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [ConfigModule],
@@ -26,6 +31,7 @@ class PayoutSettingsModule {}
   imports: [
     PrismaModule,
     WalletsModule,
+    AuthModule,
     CloudinaryModule,
     PayoutSettingsModule,
     MulterModule.registerAsync({
@@ -44,11 +50,14 @@ class PayoutSettingsModule {}
   controllers: [
     PayoutsController,
     MerchantPayoutsController,
-    PayoutApprovalController,
     AdminPayoutsController,
+    FinanceReportController,
   ],
   providers: [
     PayoutsService,
+    FinanceReportService,
+    PayoutTransferService,
+    PayoutEmailScheduler,
     PayoutTaxService,
     PayoutBillService,
     MerchantPayoutsService,

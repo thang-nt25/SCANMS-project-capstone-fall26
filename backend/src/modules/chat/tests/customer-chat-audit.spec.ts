@@ -54,7 +54,7 @@ describe('Shop customer messaging boundaries', () => {
     expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
   it('the product picker excludes hidden/unapproved products while preserving store ownership', async () => {
-    await ProductsService.prototype.findAll.call({ prisma, loadProductEvidence: jest.fn().mockResolvedValue(new Map()) } as any, { storeId, scope: 'chat-share' }, { id: ownerId, role: 'SHOP_MANAGER' });
+    await ProductsService.prototype.findAll.call({ prisma, getUserStoreId: jest.fn().mockResolvedValue(null), loadProductEvidence: jest.fn().mockResolvedValue(new Map()) } as any, { storeId, scope: 'chat-share' }, { id: ownerId, role: 'SHOP_MANAGER' });
     expect(prisma.product.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ storeId, isDeleted: false, isActive: true, moderationStatus: 'APPROVED', store: expect.objectContaining({ ownerId }) }) }));
   });
 });

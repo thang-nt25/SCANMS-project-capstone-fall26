@@ -86,9 +86,8 @@ export class StoreOwnerGuard implements CanActivate {
     }
 
     // 4. Phân quyền chặt chẽ (RBAC) theo mục 8 đặc tả:
-    const isPreview =
-      (typeof request.url === 'string' && request.url.includes('/preview')) ||
-      (typeof request.path === 'string' && request.path.includes('/preview'));
+    // Use the matched controller handler, never attacker-controlled query text.
+    const isPreview = context.getHandler().name === 'previewBonus';
 
     // Tính năng mô phỏng tính thưởng (preview) là hàm tính toán thuần túy (read-only), cho phép mọi người dùng đã xác thực
     if (isPreview) {
@@ -96,13 +95,10 @@ export class StoreOwnerGuard implements CanActivate {
     }
 
     // SYSTEM_ADMIN chỉ có quyền xem (Read-only: GET), tuyệt đối không được ghi/sửa/xóa chính sách của Shop
-    if (user.role === UserRole.SYSTEM_ADMIN) {
-      if (request.method === 'GET') {
-        return true;
-      }
-      throw new ForbiddenException(
-        'SYSTEM_ADMIN chỉ có quyền xem (Read-only), không được phép chỉnh sửa hoặc cấu hình mốc thưởng của cửa hàng',
-      );
+    if (user.role === UserRole.SYSTEM_ADMIN || user.role === UserRole.SYSTEM_MANAGER) {
+      const financialActions = ['settleAll', 'settleMonthlyBonus', 'approveSettlement', 'payoutSettlement', 'handleRefundAdjustment'];
+      if (request.method === 'GET' || financialActions.includes(context.getHandler().name)) return true;
+      throw new ForbiddenException('Nhân sự vận hành không được ghi đè chính sách mốc thưởng của nhãn hàng');
     }
 
     if (user.role !== UserRole.SHOP_MANAGER) {
@@ -112,10 +108,7 @@ export class StoreOwnerGuard implements CanActivate {
     }
 
     // SHOP_MANAGER chỉ được quản lý Shop mà mình sở hữu (hỗ trợ tài khoản demo DEV)
-    const isDemoShopManager =
-      user.id === '6e9eb89c-f544-4f87-b724-1fe7aace2edc' ||
-      user.id === 'df25d2c6-706a-4ff1-973e-17b222626764';
-    if (store.ownerId !== user.id && !isDemoShopManager) {
+    if (store.ownerId !== user.id && user.storeId !== store.id) {
       throw new ForbiddenException(
         'Bạn không có quyền quản lý cấu hình mốc thưởng của cửa hàng này',
       );

@@ -64,9 +64,18 @@ export class NotificationsService {
       }
       return {};
     };
+    const orderCodeOf = (item: Notification): string | undefined => {
+      const data = dataOf(item);
+      if (typeof data.externalOrderSn === 'string' && data.externalOrderSn.trim()) {
+        return data.externalOrderSn.trim();
+      }
+      // Older order notices stored the public code only in their text (data = null).
+      if (!ORDER_TYPE_PREFIXES.some(prefix => item.type.startsWith(prefix))) return undefined;
+      return `${item.title} ${item.message}`.match(/\bDH-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/i)?.[0].toUpperCase();
+    };
     const orderIds = [...new Set(items.map(item => dataOf(item).orderId)
       .filter((id): id is string => typeof id === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))];
-    const orderCodes = [...new Set(items.map(item => dataOf(item).externalOrderSn)
+    const orderCodes = [...new Set(items.map(orderCodeOf)
       .filter((code): code is string => typeof code === 'string' && code.trim().length > 0))];
     if (!orderIds.length && !orderCodes.length) return items;
 
@@ -109,8 +118,8 @@ export class NotificationsService {
         const data = dataOf(item);
         const orderId = typeof data.orderId === 'string' && images.has(data.orderId)
           ? data.orderId
-          : typeof data.externalOrderSn === 'string'
-            ? ordersByCode.get(data.externalOrderSn)
+          : orderCodeOf(item)
+            ? ordersByCode.get(orderCodeOf(item)!)
             : undefined;
         const product = orderId ? images.get(orderId) : null;
         return product?.productImageUrl ? { ...item, data: { ...data, ...product } } : item;

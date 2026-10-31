@@ -17,7 +17,14 @@ import {
   ReceiptApprovalDto,
 } from './dto/manage-payout.dto';
 import { PayoutBillService, StoredPayoutBill } from './payout-bill.service';
-import { merchantPayoutScopes, merchantPayoutWhere } from './merchant-payout-query';
+import {
+  merchantPayoutScopes,
+  merchantPayoutWhere,
+} from './merchant-payout-query';
+import { postFinance, postPayoutCompletion } from './finance-posting';
+import { assertPayoutFunding } from './payout-funding';
+import { assertPayoutBeneficiary } from './payout-beneficiary';
+import { managedStoreWhere } from '../../common/store-access';
 
 @Injectable()
 export class MerchantPayoutsService {
@@ -54,13 +61,7 @@ export class MerchantPayoutsService {
     const store = await db.store.findFirst({
       where: {
         id: storeId,
-        ownerId: userId,
-        isDeleted: false,
-        owner: {
-          isActive: true,
-          isDeleted: false,
-          role: UserRole.SHOP_MANAGER,
-        },
+        ...managedStoreWhere(userId),
       },
     });
     if (!store)
@@ -80,34 +81,82 @@ export class MerchantPayoutsService {
     const where = merchantPayoutWhere(storeId, query, now);
     const scopes = merchantPayoutScopes(storeId, now);
     const limit = query.limit ?? 10;
-    const result = await this.prisma.$transaction(async (tx) => {
-      const total = await tx.payoutRequest.count({ where });
-      // Filtering/approval may remove the last row on the last page.
-      const page = Math.min(query.page ?? 1, Math.max(1, Math.ceil(total / limit)));
-      const [requests, pending, approvedToday, tax, kycPendingCount] = await Promise.all([
-        tx.payoutRequest.findMany({
-          where,
-          include: { collaborator: { select: {
-            fullName: true, email: true, phoneNumber: true,
-            collaboratorProfile: { select: { avatarUrl: true, taxCode: true, kycStatus: true } },
-          } } },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          skip: (page - 1) * limit, take: limit,
-        }),
-        tx.payoutRequest.aggregate({ where: scopes.pending, _count: { _all: true }, _sum: { netAmount: true } }),
-        tx.payoutRequest.aggregate({ where: scopes.approvedToday, _count: { _all: true }, _sum: { netAmount: true } }),
-        tx.payoutRequest.aggregate({ where: scopes.tax, _count: { _all: true }, _sum: { taxAmount: true } }),
-        tx.payoutRequest.count({ where: scopes.kyc }),
-      ]);
-      return { requests, total, page, summary: {
-        scope: 'STORE' as const, timeZone: 'Asia/Ho_Chi_Minh',
-        dayStart: scopes.start.toISOString(), dayEndExclusive: scopes.end.toISOString(),
-        pending: { count: pending._count._all, netAmount: pending._sum.netAmount?.toFixed(2) ?? '0.00' },
-        approvedToday: { count: approvedToday._count._all, netAmount: approvedToday._sum.netAmount?.toFixed(2) ?? '0.00' },
-        withheldTax: { count: tax._count._all, amount: tax._sum.taxAmount?.toFixed(2) ?? '0.00' },
-        kycPendingCount,
-      } };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const total = await tx.payoutRequest.count({ where });
+        // Filtering/approval may remove the last row on the last page.
+        const page = Math.min(
+          query.page ?? 1,
+          Math.max(1, Math.ceil(total / limit)),
+        );
+        const [requests, pending, approvedToday, tax, kycPendingCount] =
+          await Promise.all([
+            tx.payoutRequest.findMany({
+              where,
+              include: {
+                collaborator: {
+                  select: {
+                    fullName: true,
+                    email: true,
+                    phoneNumber: true,
+                    collaboratorProfile: {
+                      select: {
+                        avatarUrl: true,
+                        taxCode: true,
+                        kycStatus: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+            tx.payoutRequest.aggregate({
+              where: scopes.pending,
+              _count: { _all: true },
+              _sum: { netAmount: true },
+            }),
+            tx.payoutRequest.aggregate({
+              where: scopes.approvedToday,
+              _count: { _all: true },
+              _sum: { netAmount: true },
+            }),
+            tx.payoutRequest.aggregate({
+              where: scopes.tax,
+              _count: { _all: true },
+              _sum: { taxAmount: true },
+            }),
+            tx.payoutRequest.count({ where: scopes.kyc }),
+          ]);
+        return {
+          requests,
+          total,
+          page,
+          summary: {
+            scope: 'STORE' as const,
+            timeZone: 'Asia/Ho_Chi_Minh',
+            dayStart: scopes.start.toISOString(),
+            dayEndExclusive: scopes.end.toISOString(),
+            pending: {
+              count: pending._count._all,
+              netAmount: pending._sum.netAmount?.toFixed(2) ?? '0.00',
+            },
+            approvedToday: {
+              count: approvedToday._count._all,
+              netAmount: approvedToday._sum.netAmount?.toFixed(2) ?? '0.00',
+            },
+            withheldTax: {
+              count: tax._count._all,
+              amount: tax._sum.taxAmount?.toFixed(2) ?? '0.00',
+            },
+            kycPendingCount,
+          },
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     const { requests, total, page, summary } = result;
     return {
       requests: requests.map((request) => ({
@@ -144,10 +193,7 @@ export class MerchantPayoutsService {
       typeof dto.bankRefCode === 'string'
         ? dto.bankRefCode.trim().toUpperCase()
         : null;
-    if (
-      bankRefCode !== null &&
-      !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/.test(bankRefCode)
-    )
+    if (!bankRefCode || !/^[A-Z0-9][A-Z0-9._/ -]{0,99}$/.test(bankRefCode))
       throw new BadRequestException('Mã giao dịch ngân hàng không hợp lệ');
     const initial = await this.findOwnedPayout(this.prisma, storeId, payoutId);
     this.assertApprovable(initial);
@@ -161,6 +207,16 @@ export class MerchantPayoutsService {
         const request = await this.lockPayout(tx, storeId, payoutId);
         this.assertApprovable(request);
         await this.assertFundedPayout(tx, request);
+        if (request.transferLeaseUntil && request.transferLeaseUntil > new Date())
+          throw new ConflictException('Đang đối soát giao dịch ngân hàng');
+        if (request.status === PayoutStatus.PENDING) await assertPayoutBeneficiary(tx, request);
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`bank-reference:${bankRefCode}`}, 0))`;
+        if (
+          await tx.payoutRequest.findFirst({
+            where: { bankRefCode, id: { not: payoutId } },
+          })
+        )
+          throw new ConflictException('Mã ngân hàng đã được ghi nhận');
         const approved = await tx.payoutRequest.update({
           where: { id: request.id },
           data: {
@@ -190,6 +246,13 @@ export class MerchantPayoutsService {
             },
           },
         });
+        await postPayoutCompletion(tx, request);
+        await tx.notification.create({ data: {
+          userId: request.collaboratorId, type: 'PAYOUT_COMPLETED',
+          title: 'Đã chi trả thu nhập đối tác',
+          message: `Đã chuyển ${request.netAmount.toFixed(2)} VND; thuế khấu trừ ${request.taxAmount.toFixed(2)} VND.`,
+          data: { payoutId, actionUrl: '/collaborator/wallet' },
+        } });
         // Gross was debited at request creation; approval NEVER debits again.
         return this.serializePayout(approved);
       });
@@ -248,6 +311,14 @@ export class MerchantPayoutsService {
           processedAt: new Date(),
         },
       });
+      await postFinance(
+        tx,
+        request.id,
+        'PAYOUT_REFUND',
+        'PAYOUT_RESERVED',
+        'PARTNER_EARNINGS_PAYABLE',
+        request.amount,
+      );
       await tx.auditLog.create({
         data: {
           userId,
@@ -293,30 +364,7 @@ export class MerchantPayoutsService {
     tx: Prisma.TransactionClient,
     request: PayoutRequest,
   ) {
-    if (
-      request.amount.lessThanOrEqualTo(0) ||
-      request.taxAmount.lessThan(0) ||
-      request.netAmount.lessThanOrEqualTo(0) ||
-      !request.netAmount.plus(request.taxAmount).equals(request.amount)
-    )
-      throw new BadRequestException(
-        'Payout thiếu snapshot thuế hợp lệ; cần đối soát',
-      );
-    const debit = await tx.financialLedger.findFirst({
-      where: {
-        referenceId: request.id,
-        referenceType: 'PAYOUT_REQUEST',
-        transactionType: 'PAYOUT_WITHDRAW',
-        balanceBucket: 'AVAILABLE',
-        ...(request.storeId ? { storeId: request.storeId } : {}),
-        wallet: { collaboratorId: request.collaboratorId },
-        amount: request.amount.negated(),
-      },
-    });
-    if (!debit)
-      throw new BadRequestException(
-        'Payout chưa có ledger trừ tiền hợp lệ; cần đối soát',
-      );
+    return assertPayoutFunding(tx, request);
   }
 
   serializePayout(request: PayoutRequest) {

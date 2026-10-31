@@ -55,6 +55,9 @@ describe('VietQR workbook', () => {
   it.each(['48b2b124-12d2-47f8-881f-c3107ee71084', 'f4632170-4b57-5472-a239-2e18d2b62383'])('exports a pending payout with UUID %s in an isolated transaction', async (id) => {
     const payout = { ...request, id, status: 'PENDING', batchId: null };
     const tx = {
+      user: { findUnique: jest.fn().mockResolvedValue({ role: 'COLLABORATOR', isActive: true, isDeleted: false,
+        collaboratorProfile: { kycStatus: 'VERIFIED', bankName: payout.bankName, bankAccountNumber: payout.bankAccountNumber, bankAccountName: payout.bankAccountName },
+      }) },
       $queryRaw: jest.fn().mockResolvedValue([]),
       payoutRequest: { findMany: jest.fn().mockResolvedValue([payout]), updateMany: jest.fn() },
       payoutBatch: { create: jest.fn() },

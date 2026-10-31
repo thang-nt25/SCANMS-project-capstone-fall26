@@ -36,7 +36,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createdCampaignId, setCreatedCampaignId] = useState('');
-  const [draft, setDraft] = useState(() => ({ name: '', rate: '5', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
+  const [draft, setDraft] = useState(() => ({ name: '', rate: '4', budget: '', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
   const sending = useRef(false);
   const creatingRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,11 +93,12 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
     setCreateError('');
     const start = new Date(draft.start), end = new Date(draft.end), rate = Number(draft.rate);
     if (!draft.name.trim()) { setCreateError('Vui lòng nhập tên chiến dịch.'); return; }
-    if (!draft.rate.trim() || !Number.isFinite(rate) || rate < 0 || rate > 100) { setCreateError('Hoa hồng thưởng thêm phải từ 0 đến 100%.'); return; }
+    if (!draft.rate.trim() || !Number.isFinite(rate) || rate < 1 || rate > 6) { setCreateError('Hoa hồng chiến dịch thêm từ 1% đến 6%, tương ứng tổng mức 11%–16%.'); return; }
+    if (!Number.isFinite(Number(draft.budget)) || Number(draft.budget) <= 0) { setCreateError('Cần nhập ngân sách hoa hồng lớn hơn 0.'); return; }
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end <= new Date()) { setCreateError('Ngày kết thúc phải sau ngày bắt đầu và thời điểm hiện tại.'); return; }
     creatingRef.current = true; setSaving(true);
     try {
-      const response: any = await api.post('/campaigns', { name: draft.name.trim(), bonusCommissionRate: rate, startDate: start.toISOString(), endDate: end.toISOString() });
+      const response: any = await api.post('/campaigns', { name: draft.name.trim(), bonusCommissionRate: rate, bonusBudgetTotal: Number(draft.budget), startDate: start.toISOString(), endDate: end.toISOString() });
       const campaign: Campaign = response?.data || response;
       if (!campaign?.id || !campaign.isActive || !(new Date(campaign.endDate).getTime() >= Date.now())) throw new Error('Máy chủ chưa xác nhận chiến dịch còn hiệu lực. Hãy tải lại trước khi thử tạo thêm.');
       setCampaigns(previous => [campaign, ...previous.filter(item => item.id !== campaign.id)]);
@@ -169,7 +170,9 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
               </div>
               <div>
                 <label htmlFor="vip-create-rate" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Hoa hồng thưởng thêm (%)</label>
-                <input id="vip-create-rate" type="number" min={0} max={100} step="0.01" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
+                <input id="vip-create-rate" type="number" min={1} max={6} step="0.01" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
+                <label htmlFor="vip-create-budget" className="block mt-3 text-xs font-semibold">Ngân sách hoa hồng (VNĐ)</label>
+                <input id="vip-create-budget" type="number" min={1} required value={draft.budget} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, budget: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-xs" />
                 <small className="block mt-1 text-[10px] leading-relaxed text-[#7D715E]">Được cộng thêm vào hoa hồng thông thường của sản phẩm.</small>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

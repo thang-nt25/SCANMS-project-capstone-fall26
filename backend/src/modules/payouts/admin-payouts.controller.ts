@@ -42,6 +42,9 @@ import { MerchantPayoutsService } from './merchant-payouts.service';
 import { PayoutBatchesService } from './payout-batches.service';
 import { PayoutBillService } from './payout-bill.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { postFinance, postPayoutCompletion } from './finance-posting';
+import { assertPayoutFunding } from './payout-funding';
+import { assertPayoutBeneficiary } from './payout-beneficiary';
 
 @ApiTags('Admin Payouts')
 @ApiBearerAuth()
@@ -60,9 +63,7 @@ export class AdminPayoutsController {
   @Get()
   @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Toàn bộ danh sách yêu cầu rút tiền trên toàn sàn' })
-  async list(
-    @Query() query: QueryMerchantPayoutsDto & { search?: string },
-  ) {
+  async list(@Query() query: QueryMerchantPayoutsDto & { search?: string }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
     const search = query.search?.trim();
@@ -72,8 +73,16 @@ export class AdminPayoutsController {
       ...(search
         ? {
             OR: [
-              { collaborator: { fullName: { contains: search, mode: 'insensitive' } } },
-              { collaborator: { email: { contains: search, mode: 'insensitive' } } },
+              {
+                collaborator: {
+                  fullName: { contains: search, mode: 'insensitive' },
+                },
+              },
+              {
+                collaborator: {
+                  email: { contains: search, mode: 'insensitive' },
+                },
+              },
               { bankAccountName: { contains: search, mode: 'insensitive' } },
               { bankAccountNumber: { contains: search, mode: 'insensitive' } },
               { bankRefCode: { contains: search, mode: 'insensitive' } },
@@ -147,22 +156,23 @@ export class AdminPayoutsController {
   @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Tổng quan chỉ số dòng tiền và chi trả toàn sàn' })
   async getStats() {
-    const [pendingAgg, approvedAgg, processingCount, totalRequests] = await Promise.all([
-      this.prisma.payoutRequest.aggregate({
-        where: { status: PayoutStatus.PENDING },
-        _count: { id: true },
-        _sum: { amount: true, netAmount: true, taxAmount: true },
-      }),
-      this.prisma.payoutRequest.aggregate({
-        where: { status: PayoutStatus.APPROVED },
-        _count: { id: true },
-        _sum: { amount: true, netAmount: true, taxAmount: true },
-      }),
-      this.prisma.payoutRequest.count({
-        where: { status: PayoutStatus.PROCESSING },
-      }),
-      this.prisma.payoutRequest.count(),
-    ]);
+    const [pendingAgg, approvedAgg, processingCount, totalRequests] =
+      await Promise.all([
+        this.prisma.payoutRequest.aggregate({
+          where: { status: PayoutStatus.PENDING },
+          _count: { id: true },
+          _sum: { amount: true, netAmount: true, taxAmount: true },
+        }),
+        this.prisma.payoutRequest.aggregate({
+          where: { status: PayoutStatus.APPROVED },
+          _count: { id: true },
+          _sum: { amount: true, netAmount: true, taxAmount: true },
+        }),
+        this.prisma.payoutRequest.count({
+          where: { status: PayoutStatus.PROCESSING },
+        }),
+        this.prisma.payoutRequest.count(),
+      ]);
 
     return {
       pending: {
@@ -183,7 +193,9 @@ export class AdminPayoutsController {
   }
 
   @Patch(':payoutId/approve')
-  @ApiOperation({ summary: 'Kế toán/Admin sàn duyệt chi trả và đính kèm ủy nhiệm chi' })
+  @ApiOperation({
+    summary: 'Kế toán/Admin sàn duyệt chi trả và đính kèm ủy nhiệm chi',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -208,6 +220,10 @@ export class AdminPayoutsController {
       typeof dto.bankRefCode === 'string' && dto.bankRefCode.trim().length > 0
         ? dto.bankRefCode.trim().toUpperCase()
         : null;
+    if (!bankRefCode)
+      throw new BadRequestException(
+        'Cần mã giao dịch ngân hàng thật để xác nhận giải ngân',
+      );
 
     const request = await this.prisma.payoutRequest.findUnique({
       where: { id: payoutId },
@@ -219,12 +235,15 @@ export class AdminPayoutsController {
       request.status !== PayoutStatus.PENDING &&
       request.status !== PayoutStatus.PROCESSING
     ) {
-      throw new BadRequestException('Chỉ có thể duyệt payout ở trạng thái PENDING hoặc PROCESSING');
+      throw new BadRequestException(
+        'Chỉ có thể duyệt payout ở trạng thái PENDING hoặc PROCESSING',
+      );
     }
 
     const uploaded = await this.bills.uploadBill(bill);
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM payout_requests WHERE id = ${payoutId}::uuid FOR UPDATE`;
         const locked = await tx.payoutRequest.findUnique({
           where: { id: payoutId },
         });
@@ -233,9 +252,23 @@ export class AdminPayoutsController {
           locked.status !== PayoutStatus.PENDING &&
           locked.status !== PayoutStatus.PROCESSING
         ) {
-          throw new BadRequestException('Chỉ có thể duyệt payout ở trạng thái PENDING hoặc PROCESSING');
+          throw new BadRequestException(
+            'Chỉ có thể duyệt payout ở trạng thái PENDING hoặc PROCESSING',
+          );
         }
 
+        await assertPayoutFunding(tx, locked);
+        if (locked.transferLeaseUntil && locked.transferLeaseUntil > new Date())
+          throw new BadRequestException('Đang đối soát ngân hàng, vui lòng chờ kết quả');
+        if (locked.status === PayoutStatus.PENDING) await assertPayoutBeneficiary(tx, locked);
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`bank-reference:${bankRefCode}`}, 0))`;
+        const duplicate = await tx.payoutRequest.findFirst({
+          where: { bankRefCode, id: { not: payoutId } },
+        });
+        if (duplicate)
+          throw new BadRequestException(
+            'Mã giao dịch ngân hàng đã được sử dụng',
+          );
         const approved = await tx.payoutRequest.update({
           where: { id: payoutId },
           data: {
@@ -265,6 +298,16 @@ export class AdminPayoutsController {
           },
         });
 
+        await tx.notification.create({
+          data: {
+            userId: locked.collaboratorId,
+            type: 'PAYOUT_COMPLETED',
+            title: 'Đã chi trả thu nhập đối tác',
+            message: `Đã xác nhận chuyển ${locked.netAmount.toFixed(2)} VND. Thuế khấu trừ ${locked.taxAmount.toFixed(2)} VND.`,
+            data: { payoutId, actionUrl: '/collaborator/wallet' },
+          },
+        });
+        await postPayoutCompletion(tx, locked);
         return this.payouts.serializePayout(approved);
       });
 
@@ -276,7 +319,9 @@ export class AdminPayoutsController {
   }
 
   @Patch(':payoutId/reject')
-  @ApiOperation({ summary: 'Kế toán/Admin sàn từ chối yêu cầu và hoàn tiền vào ví' })
+  @ApiOperation({
+    summary: 'Kế toán/Admin sàn từ chối yêu cầu và hoàn tiền vào ví',
+  })
   async reject(
     @Param('payoutId', new ParseUUIDPipe()) payoutId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -284,10 +329,13 @@ export class AdminPayoutsController {
   ) {
     const reason = typeof dto.reason === 'string' ? dto.reason.trim() : '';
     if (!reason || reason.length > 500) {
-      throw new BadRequestException('Cần cung cấp lý do từ chối (tối đa 500 ký tự)');
+      throw new BadRequestException(
+        'Cần cung cấp lý do từ chối (tối đa 500 ký tự)',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM payout_requests WHERE id = ${payoutId}::uuid FOR UPDATE`;
       const request = await tx.payoutRequest.findUnique({
         where: { id: payoutId },
       });
@@ -298,6 +346,7 @@ export class AdminPayoutsController {
         );
       }
 
+      await assertPayoutFunding(tx, request);
       await this.wallets.refundRejectedWithdrawal(
         tx,
         request.collaboratorId,
@@ -314,6 +363,14 @@ export class AdminPayoutsController {
           processedAt: new Date(),
         },
       });
+      await postFinance(
+        tx,
+        request.id,
+        'PAYOUT_REFUND',
+        'PAYOUT_RESERVED',
+        'PARTNER_EARNINGS_PAYABLE',
+        request.amount,
+      );
 
       await tx.auditLog.create({
         data: {

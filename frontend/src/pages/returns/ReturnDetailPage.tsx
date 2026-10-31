@@ -289,7 +289,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
 
   return <>
-    {mode === 'customer' && <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
+    {mode === 'customer' && <MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
     <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6${mode === 'customer' ? ' customer-return-layout' : ''}`}>
       {mode === 'customer' && <aside className="customer-return-sidebar"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
       <div className={`mx-auto max-w-5xl space-y-4${mode === 'customer' ? ' customer-return-content' : ''}`}>

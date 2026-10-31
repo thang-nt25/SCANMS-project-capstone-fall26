@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import type {
   Dispatch,
   FormEventHandler,
@@ -7,6 +8,7 @@ import type {
 } from 'react';
 import {
   ChevronDown,
+  CircleAlert,
   Info,
   Send,
   ShieldCheck,
@@ -37,7 +39,7 @@ function Field({
 }) {
   return (
     <div
-      className={`flex flex-col gap-[7px] min-w-0 ${full ? 'col-span-full' : ''} ${wide ? 'col-span-1 md:col-span-2' : ''}`}
+      className={`partner-field flex flex-col gap-[7px] min-w-0 ${full ? 'col-span-full' : ''} ${wide ? 'col-span-1 md:col-span-2' : ''}`}
     >
       <label htmlFor={id} className="text-[12px] font-[550] text-[#1A1612] leading-[1.5]">
         {label}
@@ -83,15 +85,17 @@ function Section({
   title,
   description,
   children,
+  showHeader = true,
 }: {
   number: number;
   title: string;
   description?: string;
   children: ReactNode;
+  showHeader?: boolean;
 }) {
   return (
-    <section className="min-w-0">
-      <div className="flex items-center gap-[10px] mb-[16px]">
+    <section className="partner-form-section min-w-0">
+      {showHeader && <div className="partner-section-heading flex items-center gap-[10px] mb-[16px]">
         <span className="flex items-center justify-center shrink-0 w-[24px] h-[24px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[700] font-mono">
           {number}
         </span>
@@ -99,7 +103,7 @@ function Section({
           <h4 className="m-0 text-[13px] leading-[1.4] font-[700] text-[#1A1612] uppercase tracking-wide">{title}</h4>
           {description && <p className="m-[2px_0_0] text-[11px] text-[#7D715E] leading-[1.5]">{description}</p>}
         </div>
-      </div>
+      </div>}
       {children}
     </section>
   );
@@ -107,20 +111,18 @@ function Section({
 
 function FormHeader({ shop = false }: { shop?: boolean }) {
   return (
-    <header className="flex items-center justify-between gap-[16px] p-[18px_22px] border-b border-[#EAE4D7] bg-[#FAF8F5]/60 max-[640px]:p-[16px]">
-      <div className="flex items-center gap-[12px] min-w-0">
-        <span className="w-[36px] h-[36px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0">
-          {shop ? <Store size={18} /> : <Megaphone size={18} />}
+    <header className="partner-form-header flex items-center justify-between gap-4 p-5 sm:p-6 border-b border-[#EAE4D7] bg-[#FAF8F5]/70 rounded-t-2xl">
+      <div className="flex items-center gap-3.5 min-w-0">
+        <span className="w-10 h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+          {shop ? <Store size={20} /> : <Megaphone size={20} />}
         </span>
         <div>
-          <h3 className="m-0 text-[15px] font-[700] tracking-[-0.2px] text-[#1A1612]">
-            {shop ? 'Hồ sơ pháp lý gian hàng (Merchant)' : 'Hồ sơ định danh Cộng tác viên (KOL/KOC)'}
+          <h3 className="m-0 text-base sm:text-lg font-bold text-[#1A1612]">
+            {shop ? 'Hồ sơ pháp lý gian hàng (Merchant)' : 'Hồ sơ định danh Đối tác Tiếp thị (KOL/KOC)'}
           </h3>
-          <p className="m-[2px_0_0] text-[12px] text-[#7D715E]">
-            {shop
-              ? 'Xác thực tư cách pháp nhân kinh doanh và tài khoản đối soát doanh thu.'
-              : 'Xác thực số liệu kênh truyền thông, CCCD gắn chip và tài khoản thụ hưởng.'}
-          </p>
+          {shop && <p className="m-0 mt-0.5 text-xs text-[#7D715E]">
+            Xác thực tư cách pháp nhân kinh doanh và tài khoản đối soát doanh thu.
+          </p>}
         </div>
       </div>
     </header>
@@ -130,28 +132,37 @@ function FormHeader({ shop = false }: { shop?: boolean }) {
 function FormFooter({
   submitting,
   shop = false,
+  statusBadge,
+  navigation,
 }: {
   submitting: boolean;
   shop?: boolean;
+  statusBadge?: ReactNode;
+  navigation?: ReactNode;
 }) {
   return (
-    <footer className="border-t border-[#EAE4D7] p-[16px_22px] flex items-center justify-between gap-[20px] bg-[#FAF8F5]/40 max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:p-[16px]">
-      <p className="flex items-center gap-[8px] text-[11px] text-[#7D715E] leading-[1.5] m-0">
+    <footer className="partner-form-footer border-t border-[#EAE4D7] p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FAF8F5]/60 rounded-b-2xl">
+      <p className="flex items-center gap-2 text-xs text-[#7D715E] leading-relaxed m-0">
         <ShieldCheck size={16} className="text-[#B88E4F] shrink-0" />
         <span>Dữ liệu eKYC được mã hóa và đối soát bảo mật theo quy chế sàn SCANMS.</span>
       </p>
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex items-center justify-center gap-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-[10px] px-[20px] py-[10px] text-[12px] font-[700] tracking-wide cursor-pointer transition-colors duration-150 disabled:opacity-55 max-[640px]:w-full"
-      >
-        <Send size={14} />
-        {submitting
-          ? 'Đang gửi hồ sơ…'
-          : shop
-            ? 'Nộp hồ sơ gian hàng'
-            : 'Nộp hồ sơ định danh'}
-      </button>
+      <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
+        {statusBadge}
+        {navigation || (
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex items-center justify-center gap-2 bg-[#C59B58] hover:bg-[#B88E4F] text-white border border-[#C59B58] rounded-xl px-5 py-2.5 text-xs font-bold tracking-wide cursor-pointer transition shadow-xs disabled:opacity-55 max-[640px]:w-full active:scale-[0.98]"
+        >
+          <Send size={14} />
+          {submitting
+            ? 'Đang gửi hồ sơ…'
+            : shop
+              ? 'Nộp hồ sơ gian hàng'
+              : 'Nộp hồ sơ định danh'}
+        </button>
+        )}
+      </div>
     </footer>
   );
 }
@@ -241,41 +252,86 @@ export function KolUpgradeForm({
   onSubmit,
   submitting,
   rejectionReason,
+  statusBadge,
 }: {
   form: ApplyKolData;
   setForm: Dispatch<SetStateAction<ApplyKolData>>;
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitting: boolean;
   rejectionReason?: string;
+  statusBadge?: ReactNode;
 }) {
+  const [activeStep, setActiveStep] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const steps = ['Kênh truyền thông', 'Định danh CCCD', 'Ngân hàng'];
+  const revealInvalidField = (input: HTMLInputElement | HTMLTextAreaElement) => {
+    const step = Number(input.closest<HTMLElement>('[data-partner-step]')?.dataset.partnerStep || 0);
+    setActiveStep(step);
+    requestAnimationFrame(() => {
+      input.reportValidity();
+      if (input.classList.contains('sr-only')) {
+        input.parentElement?.querySelector<HTMLButtonElement>('button')?.focus();
+      } else input.focus();
+    });
+  };
+  const nextStep = () => {
+    const invalid = formRef.current?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-partner-step="${activeStep}"] :invalid`);
+    if (invalid) { revealInvalidField(invalid); return; }
+    if (activeStep === 1 && (!form.frontCardUrl || !form.backCardUrl)) {
+      formRef.current?.querySelector<HTMLElement>('[data-partner-step="1"]')?.focus();
+      return;
+    }
+    setActiveStep(previous => Math.min(2, previous + 1));
+  };
   const patch = <K extends keyof ApplyKolData>(
     key: K,
     value: ApplyKolData[K],
   ) => setForm((previous) => ({ ...previous, [key]: value }));
   return (
     <form
+      ref={formRef}
       id="partner-upgrade-form"
-      className="min-w-0 border border-[#EAE4D7] rounded-[18px] bg-white overflow-visible"
+      className="partner-kol-form min-w-0 border border-[#EAE4D7] rounded-2xl bg-white shadow-xs overflow-visible"
       autoComplete="off"
-      onSubmit={onSubmit}
+      noValidate
+      onSubmit={event => {
+        event.preventDefault();
+        if (submitting) return;
+        if (activeStep < 2) { nextStep(); return; }
+        const invalid = formRef.current?.querySelector<HTMLInputElement | HTMLTextAreaElement>(':invalid');
+        if (invalid) { revealInvalidField(invalid); return; }
+        if (!form.frontCardUrl || !form.backCardUrl) { setActiveStep(1); return; }
+        onSubmit(event);
+      }}
     >
       <FormHeader />
-      <div className="p-[22px] grid gap-[22px] max-[640px]:p-[17px] max-[640px]:gap-[20px]">
+      <nav className="partner-step-navigation" aria-label="Các bước đăng ký đối tác">
+        {steps.map((label, index) => (
+          <button type="button" key={label} aria-current={activeStep === index ? 'step' : undefined}
+            aria-controls={`partner-step-${index}`} disabled={submitting}
+            onClick={() => setActiveStep(index)}>
+            <span aria-hidden="true">{index + 1}</span><span>{label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="partner-form-body p-5 sm:p-6 grid gap-6">
         {rejectionReason && (
-          <div className="flex items-start gap-[10px] border border-[#EEDFC6] rounded-[12px] p-[12px_14px] bg-[#FBF5EB] text-[12px] text-[#7D715E] leading-[1.7]">
-            <Info size={17} className="text-[#B88E4F] shrink-0 mt-[2px]" />
+          <div className="flex items-start gap-3 border border-[#FCA5A5] rounded-xl p-3.5 bg-[#FEF2F2] text-xs text-[#DC2626]">
+            <CircleAlert size={18} className="text-[#DC2626] shrink-0 mt-0.5" />
             <div>
-              <strong className="block text-[#8F682E] font-[600]">Ghi chú xét duyệt</strong>
-              {rejectionReason}
+              <strong className="block text-sm font-bold mb-0.5">Hồ sơ cần cập nhật lại</strong>
+              <p className="leading-relaxed">{rejectionReason}</p>
             </div>
           </div>
         )}
+        <div id="partner-step-0" data-partner-step="0" hidden={activeStep !== 0}>
         <Section
           number={1}
           title="Kênh truyền thông & Lưu lượng"
+          showHeader={false}
           description="Nền tảng phát triển nội dung và số liệu người theo dõi thực tế."
         >
-          <div className="grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
+          <div className="partner-channel-fields grid gap-[15px] grid-cols-3 max-[640px]:grid-cols-1">
             <Field label="Nền tảng chính" id="kol-platform" required>
               <CustomSelect
                 id="kol-platform"
@@ -318,13 +374,12 @@ export function KolUpgradeForm({
                     : Number(event.target.value),
                 )
               }
-              placeholder="Nhập số người theo dõi"
+              placeholder="Ví dụ: 10000"
             />
             <TextField
               id="kol-channel-url"
               label="Liên kết kênh"
               type="url"
-              full
               required
               value={form.channelUrl}
               onChange={(event) => patch('channelUrl', event.target.value)}
@@ -335,6 +390,7 @@ export function KolUpgradeForm({
             <ImageUploadDropzone
               variant="document"
               label="Ảnh trang quản trị kênh"
+              className="partner-document-upload"
               helperText="Ảnh trang quản trị (TikTok Studio, Meta Business Suite…); hiển thị tên kênh và quyền quản trị."
               value={form.channelProofUrl}
               onChange={(value) => patch('channelProofUrl', value)}
@@ -343,10 +399,13 @@ export function KolUpgradeForm({
             />
           </div>
         </Section>
-        <div className="grid grid-cols-2 gap-[20px] pt-[22px] border-t border-[#EAE4D7] max-[1100px]:grid-cols-1">
+        </div>
+        <div className="partner-identity-sections partner-step-panels" hidden={activeStep === 0}>
+          <div id="partner-step-1" data-partner-step="1" hidden={activeStep !== 1} tabIndex={-1}>
           <Section
             number={2}
             title="Định danh công dân (CCCD)"
+            showHeader={false}
             description="Ảnh chụp 2 mặt CCCD gắn chip rõ nét phục vụ đối chiếu eKYC."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
@@ -371,6 +430,7 @@ export function KolUpgradeForm({
               <ImageUploadDropzone
                 variant="document"
                 label="CCCD mặt trước"
+                className="partner-document-upload"
                 value={form.frontCardUrl}
                 onChange={(value) => patch('frontCardUrl', value)}
                 iconType="idcard"
@@ -380,6 +440,7 @@ export function KolUpgradeForm({
               <ImageUploadDropzone
                 variant="document"
                 label="CCCD mặt sau"
+                className="partner-document-upload"
                 value={form.backCardUrl}
                 onChange={(value) => patch('backCardUrl', value)}
                 iconType="idcard"
@@ -388,9 +449,13 @@ export function KolUpgradeForm({
               />
             </div>
           </Section>
+          {(!form.frontCardUrl || !form.backCardUrl) && <p className="partner-step-hint">Vui lòng đính kèm đủ ảnh CCCD mặt trước và mặt sau trước khi tiếp tục.</p>}
+          </div>
+          <div id="partner-step-2" data-partner-step="2" hidden={activeStep !== 2}>
           <Section
             number={3}
             title="Tài khoản thanh toán Napas 24/7"
+            showHeader={false}
             description="Tài khoản ngân hàng thụ hưởng hoa hồng tiếp thị định kỳ."
           >
             <div className="grid gap-[15px] grid-cols-2 max-[640px]:grid-cols-1">
@@ -407,9 +472,16 @@ export function KolUpgradeForm({
               </Field>
             </div>
           </Section>
+          </div>
         </div>
       </div>
-      <FormFooter submitting={submitting} />
+      <FormFooter submitting={submitting} statusBadge={statusBadge} navigation={
+        <div className="partner-step-actions">
+          {activeStep > 0 && <button type="button" disabled={submitting} onClick={() => setActiveStep(previous => previous - 1)}>Quay lại</button>}
+          {activeStep < 2 ? <button type="button" className="partner-step-primary" onClick={nextStep}>Tiếp tục</button>
+            : <button type="submit" className="partner-step-primary" disabled={submitting}><Send size={14} />{submitting ? 'Đang gửi hồ sơ…' : 'Nộp hồ sơ định danh'}</button>}
+        </div>
+      } />
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
+import { FinanceOperations } from '../../components/wallet/FinanceOperations';
 import { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw,
@@ -61,6 +63,9 @@ export default function AdminFinancePayoutsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
@@ -82,7 +87,7 @@ export default function AdminFinancePayoutsPage() {
       const res = await api.get('/admin/payouts/stats');
       setStats(res.data?.data || res.data);
     } catch {
-      // Fallback
+      setStats(null);
     }
   }, []);
 
@@ -96,8 +101,11 @@ export default function AdminFinancePayoutsPage() {
       const res = await api.get('/admin/payouts', { params });
       const data = res.data?.data || res.data;
       setPayouts(data.requests || []);
+      setTotal(data.total || 0);
+      setLoadError('');
     } catch {
-      // If endpoint not returned, fallback
+      setPayouts([]);
+      setLoadError('Không tải được danh sách chi trả. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -107,6 +115,22 @@ export default function AdminFinancePayoutsPage() {
     fetchStats();
     fetchPayouts();
   }, [fetchStats, fetchPayouts]);
+
+  useEffect(() => { api.get('/admin/payouts/gateway').then((res: any) => setGatewayEnabled(Boolean((res.data ?? res).configured))).catch(() => setGatewayEnabled(false)); }, []);
+
+  const handleBankTransfer = async () => {
+    if (!approvingItem || submittingApproval) return;
+    setSubmittingApproval(true);
+    try {
+      const action = approvingItem.status === 'PROCESSING' ? 'reconcile' : 'approve';
+      const response: any = await api.post(`/payouts/${approvingItem.id}/${action}`, {}, { timeout: 25000 });
+      const result = response.data ?? response;
+      if (result.status === 'APPROVED') toast.success('Ngân hàng xác nhận chuyển khoản thành công');
+      else toast.info('Ngân hàng đang xử lý. Tiền tiếp tục được giữ để đối soát.');
+      setApprovingItem(null); fetchStats(); fetchPayouts();
+    } catch (error: any) { toast.error(error.message || 'Cần đối soát trạng thái ngân hàng'); fetchPayouts(); }
+    finally { setSubmittingApproval(false); }
+  };
 
   const handleApproveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,7 +210,7 @@ export default function AdminFinancePayoutsPage() {
           <div>
             <h1 className="text-lg font-bold text-[#1A1612]">Quản trị Chi trả & Dòng tiền Vận hành</h1>
             <p className="text-xs text-[#7D715E] mt-0.5">
-              Phê duyệt giải ngân thù lao tiếp thị Napas 24/7 và giám sát tài khoản bảo chứng tạm giữ Escrow 14 ngày.
+              Đối soát thu nhập tiếp thị, giải ngân ngân hàng và theo dõi các khoản bảo chứng.
             </p>
           </div>
         </div>
@@ -311,7 +335,7 @@ export default function AdminFinancePayoutsPage() {
                 type="text"
                 placeholder="Tìm KOL, STK, mã lệnh..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full h-8.5 pl-8 pr-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs outline-none focus:border-[#B88E4F]"
               />
             </div>
@@ -439,113 +463,13 @@ export default function AdminFinancePayoutsPage() {
 
       {/* Tab 2: Bảo chứng Tạm giữ Escrow */}
       
-      {activeTab === 'escrow' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Tài khoản Ký quỹ Escrow (Ngân hàng)
-              </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-[#1A1612]">
-                {formatMoney('158400000')}
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Tổng tiền thanh toán đơn hàng đang trong SLA 14 ngày</div>
-            </div>
+      {activeTab === 'escrow' && <EscrowFinanceReport />}
+      {activeTab === 'kol' && <FinanceOperations />}
 
-            <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Doanh thu Phí Sàn Tích Lũy (3%)
-              </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-700">
-                {formatMoney('14250000')}
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Phí dịch vụ hạ tầng tiếp thị toàn sàn (3%)</div>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
-              <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Thuế TNCN Đã Tạm Giữ
-              </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-[#B88E4F]">
-                {formatMoney(stats?.approved.taxAmount || '0')}
-              </div>
-              <div className="text-[11px] text-[#7D715E] mt-1">Dự phòng quyết toán thuế TNCN đối tác quý hiện tại</div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
-            <div className="px-4 py-3 border-b border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between">
-              <h2 className="text-xs font-bold text-[#1A1612] uppercase tracking-wider">
-                Đơn hàng đang ký quỹ bảo vệ 14 ngày
-              </h2>
-              <span className="text-[11px] text-[#7D715E]">Tự động tất toán sau khi hết hạn đổi trả</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-white text-[#7D715E] border-b border-[#EAE4D7] font-bold">
-                  <tr>
-                    <th className="p-3.5">Mã Đơn</th>
-                    <th className="p-3.5">Gian Hàng</th>
-                    <th className="p-3.5 text-right">Tổng Tiền Đơn</th>
-                    <th className="p-3.5 text-right">Hoa Hồng KOL</th>
-                    <th className="p-3.5 text-right">Phí Sàn (3%)</th>
-                    <th className="p-3.5 text-right font-black text-[#1A1612]">Tiền Chuyển Shop</th>
-                    <th className="p-3.5 text-center">Hạn Tạm Giữ</th>
-                    <th className="p-3.5 text-center">Trạng Thái</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EAE4D7]">
-                  <tr className="hover:bg-[#FAF8F5]/60 transition">
-                    <td className="p-3.5 font-mono font-bold text-[#1A1612]">#SCN-99824</td>
-                    <td className="p-3.5 font-medium text-[#1A1612]">Sora Skin Official</td>
-                    <td className="p-3.5 text-right font-mono text-[#7D715E]">1.450.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-[#B88E4F]">-188.500 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-emerald-700">-43.500 ₫</td>
-                    <td className="p-3.5 text-right font-mono font-black text-[#1A1612]">1.218.000 ₫</td>
-                    <td className="p-3.5 text-center font-mono text-[11px] text-[#7D715E]">07/11/2026</td>
-                    <td className="p-3.5 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Tạm giữ 14 ngày
-                      </span>
-                    </td>
-                  </tr>
-
-                  <tr className="hover:bg-[#FAF8F5]/60 transition">
-                    <td className="p-3.5 font-mono font-bold text-[#1A1612]">#SCN-99821</td>
-                    <td className="p-3.5 font-medium text-[#1A1612]">Sora Skin Official</td>
-                    <td className="p-3.5 text-right font-mono text-[#7D715E]">580.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-[#B88E4F]">-58.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-emerald-700">-17.400 ₫</td>
-                    <td className="p-3.5 text-right font-mono font-black text-[#1A1612]">504.600 ₫</td>
-                    <td className="p-3.5 text-center font-mono text-[11px] text-[#7D715E]">08/11/2026</td>
-                    <td className="p-3.5 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Tạm giữ 14 ngày
-                      </span>
-                    </td>
-                  </tr>
-
-                  <tr className="hover:bg-[#FAF8F5]/60 transition">
-                    <td className="p-3.5 font-mono font-bold text-[#1A1612]">#SCN-99781</td>
-                    <td className="p-3.5 font-medium text-[#1A1612]">Aura Bio Cosmetics</td>
-                    <td className="p-3.5 text-right font-mono text-[#7D715E]">2.200.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-[#B88E4F]">-264.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono text-emerald-700">-66.000 ₫</td>
-                    <td className="p-3.5 text-right font-mono font-black text-[#1A1612]">1.870.000 ₫</td>
-                    <td className="p-3.5 text-center font-mono text-[11px] text-[#059669]">24/10/2026</td>
-                    <td className="p-3.5 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Đã quyết toán
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {activeTab === 'kol' && <div className="flex flex-wrap justify-between gap-3 items-center text-sm text-[#7D715E]">
+        {loadError && <p role="alert" className="text-[#DC2626]">{loadError}</p>}
+        <span>{total} yêu cầu</span><div className="flex gap-3 items-center"><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Trước</button><span>Trang {page}</span><button disabled={page * 12 >= total || loading} onClick={() => setPage(page + 1)}>Sau</button></div>
+      </div>}
       {/* Modal: Duyệt chi trả & Tải UNC */}
       {approvingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
@@ -562,6 +486,8 @@ export default function AdminFinancePayoutsPage() {
             </div>
 
             <form onSubmit={handleApproveSubmit} className="space-y-3">
+              {gatewayEnabled && <button type="button" onClick={() => void handleBankTransfer()} disabled={submittingApproval} className="w-full rounded-xl bg-[#C59B58] p-3 text-white disabled:opacity-50">{approvingItem.status === 'PROCESSING' ? 'Đối soát kết quả ngân hàng' : 'Duyệt chuyển khoản qua ngân hàng'}</button>}
+              <p className="text-xs text-[#7D715E]">Xác nhận bằng chứng từ bên dưới chỉ sau khi đã chuyển khoản thành công. Mã ngân hàng và ủy nhiệm chi là bắt buộc.</p>
               <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-[#7D715E]">Người thụ hưởng:</span>
@@ -597,6 +523,8 @@ export default function AdminFinancePayoutsPage() {
                 <input
                   type="text"
                   placeholder="VD: FT26298103984"
+                  required
+                  maxLength={100}
                   value={bankRefCode}
                   onChange={(e) => setBankRefCode(e.target.value)}
                   className="w-full h-9 px-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs outline-none focus:border-[#B88E4F] font-mono"

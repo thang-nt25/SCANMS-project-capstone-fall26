@@ -60,6 +60,7 @@ export class MerchantPayoutsController {
   }
 
   @Patch(':payoutId/approve')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
     summary: 'FR-24: Xác nhận đã chuyển khoản, bắt buộc bill và mã giao dịch',
   })
@@ -86,6 +87,7 @@ export class MerchantPayoutsController {
   }
 
   @Patch(':payoutId/reject')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   reject(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Param('payoutId', ParseUUIDPipe) payoutId: string,
@@ -96,6 +98,7 @@ export class MerchantPayoutsController {
   }
 
   @Get(':payoutId/bill')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @Header('Cache-Control', 'no-store')
   bill(
     @Param('storeId', ParseUUIDPipe) storeId: string,
@@ -106,6 +109,7 @@ export class MerchantPayoutsController {
   }
 
   @Get('batches')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @Header('Cache-Control', 'no-store')
   listBatches(
     @Param('storeId', ParseUUIDPipe) storeId: string,
@@ -116,6 +120,7 @@ export class MerchantPayoutsController {
   }
 
   @Post('export-vietqr')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
     summary: 'FR-24: Tạo lô, đánh dấu PROCESSING và tải Excel VietQR',
   })
@@ -132,6 +137,7 @@ export class MerchantPayoutsController {
   }
 
   @Get('batches/:batchId/download')
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   async downloadBatch(
     @Param('storeId', ParseUUIDPipe) storeId: string,
     @Param('batchId', ParseUUIDPipe) batchId: string,

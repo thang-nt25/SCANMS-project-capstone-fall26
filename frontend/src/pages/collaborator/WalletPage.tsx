@@ -1,3 +1,4 @@
+import { PartnerTaxStatements } from '../../components/wallet/FinanceReports';
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import './WalletPage.css';
 import './WalletStandalone.css';
@@ -339,7 +340,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
         : toMinorUnits(wallet.availableBalance) >= toMinorUnits(wallet.minimumWithdrawalAmount)),
   );
   const taxMinor =
-    wallet && grossMinor > 0n
+    wallet && grossMinor > 0n && grossMinor >= toMinorUnits(wallet.withdrawalTaxPolicy.threshold)
       ? (grossMinor * toMinorUnits(wallet.withdrawalTaxPolicy.rate) + 50n) /
         100n
       : 0n;
@@ -507,6 +508,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
         </div>
       )}
 
+      {wallet?.earningsReviewRequired && <p role="alert" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">Số dư từ dữ liệu cũ cần được kế toán đối soát nguồn tiền trước khi rút thu nhập. Tiền mua hàng được quản lý riêng trong ví khách hàng.</p>}
       <section className="kol-wallet-balances grid grid-cols-1 sm:grid-cols-2 gap-0 border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-xs" aria-label="Tổng quan số dư" aria-busy={loading}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5 p-3.5 sm:p-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]"><Wallet size={15} className="text-[#B88E4F]" /> Số dư khả dụng</div>
@@ -918,7 +920,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                   <div className="flex justify-between gap-3 text-xs text-[#7D715E]">
                     <span className="flex items-center gap-1">
                       <span>Thuế khấu trừ ({Number(wallet.withdrawalTaxPolicy.rate) * 100}%)</span>
-                      <span className="text-[10px] text-[#A89E90]">(mọi lệnh rút mới)</span>
+                      <span className="text-[10px] text-[#A89E90]">(từ {formatMoney(wallet.withdrawalTaxPolicy.threshold)})</span>
                     </span>
                     <span className="font-semibold font-mono text-[#DC2626]" data-testid="withdrawal-tax-preview">
                       -{previewMoney(taxMinor)}
@@ -1102,7 +1104,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                       {request.taxCalculated ? (
                         <div className="text-xs font-mono tabular-nums leading-tight text-[#DC2626]">
                           <span>-{formatMoney(request.taxAmount)}</span>
-                          <span className="text-[9.5px] text-[#7D715E] block font-sans">Khấu trừ 10%</span>
+                          <span className="text-[9.5px] text-[#7D715E] block font-sans">{Number(request.taxAmount) > 0 ? 'Đã khấu trừ' : 'Không khấu trừ'}</span>
                         </div>
                       ) : (
                         <span className="text-[11px] text-[#7D715E] italic">Chưa tính thuế</span>
@@ -1164,6 +1166,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           </div>
         )}
 
+        <PartnerTaxStatements />
         {/* Pagination bar */}
         <div className="wallet-table-footer flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5]/50 px-4 py-2 text-xs">
           <span className="text-[#7D715E] font-medium text-[11px]">

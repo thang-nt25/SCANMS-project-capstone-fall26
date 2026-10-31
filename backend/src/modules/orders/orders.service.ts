@@ -13,7 +13,8 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { exclusiveDealBonus } from './exclusive-deal-bonus';
-import { additiveCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import { isSelfReferral, referralRiskSignals } from '../commissions/self-referral';
+import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
@@ -1616,12 +1617,21 @@ export class OrdersService {
     }
 
     let extraTierRate = 0;
+    let selfReferralDetected = false;
+    let selfReferralRiskSignals: string[] = [];
     if (attributedCollaboratorId) {
       const collabProfile = await tx.collaboratorProfile.findUnique({
         where: { userId: attributedCollaboratorId },
-        include: { tier: true },
+        include: { tier: true, user: { select: { id: true, email: true, phoneNumber: true, customerAddresses: true } } },
       });
       extraTierRate = tierBonusByName(collabProfile?.tier?.name);
+      selfReferralDetected = isSelfReferral({ customerId: dto.customerId, customerPhone, customerEmail }, collabProfile?.user);
+      if (!selfReferralDetected && collabProfile) {
+        const buyerBank = dto.customerId ? await tx.collaboratorProfile.findUnique({ where: { userId: dto.customerId } }) : null;
+        selfReferralRiskSignals = referralRiskSignals(shippingAddress, collabProfile.user?.customerAddresses ?? [],
+          collabProfile.kycStatus === 'VERIFIED' ? collabProfile : null,
+          buyerBank?.kycStatus === 'VERIFIED' ? buyerBank : null);
+      }
     }
 
     const subtotalAmount = rawSubtotalAmount;
@@ -1703,7 +1713,8 @@ export class OrdersService {
         approvedExclusiveDeal, prod.id, attributedCollaboratorId, lockedStore.id,
       );
       const campaign = attributedReferralLink?.campaign;
-      const campaignBonus = campaignBonusRate(campaign, lockedStore.id);
+      const offeredCampaignBonus = campaignBonusRate(campaign, lockedStore.id);
+      const campaignBonus = Math.max(0, 10 + offeredCampaignBonus - Math.max(10 + tierBonus, 10 + dealBonus));
       campaignLineBonuses[lineIndex] = { campaignId: campaignBonus && campaign ? campaign.id : null, campaignBonusRate: campaignBonus };
       const liveSession = item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
         ? liveSources.find((session) => session.id === item.liveSessionId &&
@@ -1711,10 +1722,10 @@ export class OrdersService {
               (!product.variantId || product.variantId === item.variantId)))
         : null;
       const liveBonus = liveBonusRate(liveSession);
-      const finalCommissionRate = additiveCommissionRate(tierBonus, dealBonus, campaignBonus, liveBonus);
+      const finalCommissionRate = selfReferralDetected ? 0 : precedenceCommissionRate(tierBonus, dealBonus ? 10 + dealBonus : 0, offeredCampaignBonus ? 10 + offeredCampaignBonus : 0, liveBonus);
       const regularCommissionRate = finalCommissionRate - liveBonus;
       const netItemSubtotal = linePricing[lineIndex].netGoods;
-      if (campaignBonus && campaign) {
+      if (!selfReferralDetected && campaignBonus && campaign) {
         campaignBonusReservations.set(campaign.id,
           (campaignBonusReservations.get(campaign.id) || 0) + netItemSubtotal * campaignBonus / 100);
       }
@@ -1823,6 +1834,9 @@ export class OrdersService {
         finalAmount: new Prisma.Decimal(orderFinalAmount),
         rawPayload: {
           confirmationEmailStatus: customerEmail ? 'QUEUED' : 'NOT_REQUESTED',
+          selfReferralDetected,
+          selfReferralRiskSignals,
+          selfReferralReviewRequired: selfReferralRiskSignals.length > 0,
           liveSessionIds,
           campaignBonusReservations: Object.fromEntries(campaignBonusReservations),
           stackedVouchers: stackedVouchers.map(({ code, benefitType, discount, shopFunded, platformFunded }) => ({ code, benefitType, discount, shopFunded, platformFunded })),

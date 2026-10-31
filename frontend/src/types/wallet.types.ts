@@ -22,6 +22,8 @@ export interface WalletSummary {
   unallocatedPendingBalance: string;
   pendingBalance: string;
   availableBalance: string;
+  shoppingBalance?: string;
+  earningsReviewRequired?: boolean;
   minimumWithdrawalAmount: string;
   withdrawalTaxPolicy: { threshold: string; rate: string };
   kycStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
@@ -78,7 +80,7 @@ export interface LedgerEntry {
     | "PAYOUT_WITHDRAW"
     | "REVERSAL"
     | "PAYOUT_REJECT_REFUND";
-  balanceBucket: "AVAILABLE" | "PENDING";
+  balanceBucket: "AVAILABLE" | "PENDING" | "SHOPPING";
   amount: string;
   balanceBefore: string;
   balanceAfter: string;

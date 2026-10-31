@@ -15,6 +15,7 @@ import { CreateWithdrawalDto } from './dto/create-withdrawal.dto';
 import { QueryWithdrawalsDto } from './dto/query-withdrawals.dto';
 import { randomUUID } from 'crypto';
 import { PayoutTaxService } from './payout-tax.service';
+import { postFinance } from './finance-posting';
 
 // FR-24 owns processing and approval.
 const PAYOUT_SUMMARY_SELECT = {
@@ -52,10 +53,7 @@ export class PayoutsService {
     }
     const amount = new Prisma.Decimal(dto.amount);
     const storeId = dto.storeId?.trim() || null;
-    if (
-      storeId !== null &&
-      !isUUID(storeId, 'all')
-    ) {
+    if (storeId !== null && !isUUID(storeId, 'all')) {
       throw new BadRequestException('Mã shop không hợp lệ');
     }
     const taxCalculation = this.taxService.calculateTax(amount);
@@ -151,6 +149,26 @@ export class PayoutsService {
             // Bank transfers and approval remain outside FR-23.
           },
           select: PAYOUT_SUMMARY_SELECT,
+        });
+        await postFinance(
+          tx,
+          requestId,
+          'PAYOUT_RESERVE',
+          'PARTNER_EARNINGS_PAYABLE',
+          'PAYOUT_RESERVED',
+          amount,
+        );
+        await tx.auditLog.create({
+          data: {
+            userId: collaboratorId,
+            action: 'CREATE_PAYOUT_REQUEST',
+            details: {
+              payoutId: requestId,
+              grossAmount: amount.toFixed(2),
+              taxAmount: taxCalculation.taxAmount.toFixed(2),
+              netAmount: taxCalculation.netAmount.toFixed(2),
+            },
+          },
         });
 
         return {

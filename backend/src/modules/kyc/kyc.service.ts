@@ -102,10 +102,9 @@ export class KycService {
         },
       });
     } else {
-      const targetStatus =
-        profile.kycStatus === KycStatus.VERIFIED
-          ? KycStatus.VERIFIED
-          : KycStatus.UNVERIFIED;
+      // A submitted identity/bank dossier must be reviewed again. Verification
+      // of a previous dossier cannot authorize a replacement beneficiary.
+      const targetStatus = KycStatus.UNVERIFIED;
       profile = await this.prisma.collaboratorProfile.update({
         where: { userId },
         data: {

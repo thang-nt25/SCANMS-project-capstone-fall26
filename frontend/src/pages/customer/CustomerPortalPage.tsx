@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './CustomerOrderDetail.css';
 import './CustomerOrderLightTheme.css';
+import './CustomerProfileTabs.css';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { OrderProductLink } from '../../components/customer/OrderProductLink';
@@ -51,7 +52,6 @@ import {
 import { formatMoney } from '@/utils/marketplace.utils';
 import { toast } from '../../utils/toast';
 import { GuestCheckoutModal, type CheckoutProductItem, type CheckoutStoreInfo } from '../../components/checkout/GuestCheckoutModal';
-import { Topbar } from '../../components/layout/Topbar';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { CustomerWishlistTab } from './CustomerWishlistTab';
@@ -341,7 +341,7 @@ export default function CustomerPortalPage() {
     const user = authService.getCurrentUser();
     if (!user) {
       toast.error('Vui lòng đăng nhập để truy cập trang cá nhân khách hàng');
-      navigate('/login');
+      navigate(`/login?role=customer&redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
       return;
     }
     setCurrentUser(user);
@@ -352,6 +352,10 @@ export default function CustomerPortalPage() {
       setCurrentUser(u);
     };
     window.addEventListener('auth-user-updated', handleUserUpdated);
+    // Refresh server-side profile edits even when the same user stays logged in.
+    void authService.getMe().catch(() => {
+      // Keep the current profile on a transient failure; auth errors use the API handler.
+    });
     return () => window.removeEventListener('auth-user-updated', handleUserUpdated);
   }, [navigate]);
 
@@ -1085,26 +1089,24 @@ export default function CustomerPortalPage() {
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
-      {currentTab === 'orders' ? <MarketplaceHeader
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+      <MarketplaceHeader
+        showShortcuts={false}
         onOpenTracking={() => navigate('/tracking')}
         onOpenLive={() => navigate('/marketplace#live')}
-      /> : <Topbar
-        currentUser={currentUser}
-        onLogout={() => {
-          authService.logout();
-          navigate('/login');
-        }}
-      />}
+      />
 
-      <main className={`${currentTab === 'orders' ? 'max-w-[1248px] px-3 sm:px-4 lg:px-6' : 'max-w-[1520px] px-4 sm:px-6 lg:px-8'} w-full mx-auto pt-0 pb-0 flex-1 min-h-0 flex flex-col`}>
-        <div className="flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0">
+      <main
+        className="w-full max-w-[1248px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
+      >
+        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0">
           {/* ========================================================= */}
           {/* CỘT TRÁI: SIDEBAR DÙNG CHUNG 100% TOÀN SÀN SCANMS */}
           {/* ========================================================= */}
-          <div data-order-detail-sidebar={Boolean(detailOrderId)} className="relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
+          <div data-order-detail-sidebar={Boolean(detailOrderId)} className="relative w-full lg:w-[250px] lg:shrink-0 lg:sticky lg:top-[116px] lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
             <Sidebar
               currentUser={currentUser}
+              className="px-0"
               onLogout={() => {
                 authService.logout();
                 navigate('/login');
@@ -1115,7 +1117,7 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           {/* RIGHT MAIN PANEL - CONTENT ACCORDING TO ACTIVE TAB */}
           {/* ========================================================= */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 flex flex-col gap-4 text-left">
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
@@ -1126,7 +1128,7 @@ export default function CustomerPortalPage() {
               onCancel={order => setCancellingOrderId(order.id)}
             />}
             {currentTab === 'orders' && !detailOrderId && (
-              <section className="customer-orders @container/orders grid gap-3.5 w-full max-w-[1120px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
+              <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
                 <div className="customer-orders__filters">
                   <div className="customer-orders__tabs" role="group" aria-label="Lọc trạng thái đơn mua">
@@ -1514,7 +1516,7 @@ export default function CustomerPortalPage() {
             {currentTab === 'profile' && (
               <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
-                <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
+                <nav className="customer-profile-tabs" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
@@ -1583,14 +1585,6 @@ export default function CustomerPortalPage() {
                     <span>Bảo mật & Mật khẩu</span>
                   </button>
                 </nav>
-
-                {activeProfileSubTab === 'info' && currentUser?.role === 'CUSTOMER' && (
-                  <div className="flex justify-end">
-                    <Link to="/customer/upgrade" className="inline-flex min-h-9 items-center gap-2 rounded-md px-2 text-xs font-medium text-[#B88E4F] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#B88E4F]">
-                      Đăng ký đối tác SCANMS <span aria-hidden="true">→</span>
-                    </Link>
-                  </div>
-                )}
 
                 {/* SubTab 1: Thông tin cá nhân */}
                 {activeProfileSubTab === 'info' && (

@@ -18,11 +18,14 @@ describe('WalletsService', () => {
       collaboratorId,
       pendingBalance: new Prisma.Decimal(pending),
       availableBalance: new Prisma.Decimal(available),
+      shoppingBalance: new Prisma.Decimal(0),
       version: 1,
     };
     return {
       wallet,
       tx: {
+        financePosting: { create: jest.fn().mockResolvedValue({}) },
+        storeWallet: { findMany: jest.fn().mockResolvedValue([]) },
         financialLedger: {
           create: jest.fn().mockResolvedValue({ id: 'ledger-id' }),
         },

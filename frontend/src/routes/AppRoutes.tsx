@@ -42,7 +42,6 @@ const ShopCampaignsPage = lazyRetry(() => import('../pages/merchant/ShopCampaign
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
-const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutApprovalPage'));
 const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopRevenueWalletPage'));
 
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
@@ -198,7 +197,7 @@ function AppRoutes() {
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
-              <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
+              <Route path="merchant/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
               <Route path="merchant/campaigns-manage" element={<ShopCampaignsPage />} />
               <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
               <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
@@ -282,6 +281,7 @@ function AppRoutes() {
               <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
               <Route path="admin/payouts" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/finance" element={<AdminFinancePayoutsPage />} />
+              <Route path="admin/finance/payouts" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/personnel" element={<AdminPersonnelPage />} />
               <Route path="admin/internal-staff" element={<AdminPersonnelPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />

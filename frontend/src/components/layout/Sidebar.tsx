@@ -14,9 +14,10 @@ import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 export interface SidebarProps {
   currentUser: UserProfile | null;
   onLogout: () => void;
+  className?: string;
 }
 
-export function Sidebar({ currentUser, onLogout }: SidebarProps) {
+export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -301,7 +302,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   return (
     <aside
       data-workspace-role={role}
-      className="workspace-sidebar w-full lg:w-[250px] shrink-0 px-3.5 pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30"
+      className={`workspace-sidebar w-full lg:w-[250px] shrink-0 ${className ? className : 'px-3.5'} pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30`}
     >
       {/* Hidden file input for avatar upload */}
       <input
@@ -339,7 +340,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       />
 
       {/* User Identity Header (SCANMS UI Reference Style matching Customer) */}
-      <div className="flex items-center gap-3 px-2 py-1 pb-3 border-b border-[#EAE4D7]/70">
+      <div className={`flex items-center gap-3 ${className.includes('px-0') ? 'px-0' : 'px-2'} py-1 pb-3 border-b border-[#EAE4D7]/70`}>
         <div className="relative shrink-0 group">
           <button
             type="button"

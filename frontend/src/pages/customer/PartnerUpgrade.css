@@ -1,0 +1,168 @@
+.partner-upgrade {
+  width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: partner-upgrade;
+  color: #1A1612;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.partner-upgrade-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr); gap: 24px; align-items: stretch; padding: 0 0 24px; }
+.partner-upgrade-primary, .partner-upgrade-aside, .partner-upgrade-form-wrap { min-width: 0; }
+.partner-upgrade-primary, .partner-upgrade-form-wrap { display: flex; flex-direction: column; }
+.partner-upgrade-form-wrap { flex: 1; }
+.partner-upgrade .partner-kol-form, .partner-upgrade .partner-policy { padding: 16px 24px 24px; border: 1px solid #EAE4D7; border-radius: 14px; background: #FFFFFF; box-shadow: 0 2px 8px rgb(35 29 21 / 2%); }
+.partner-upgrade .partner-kol-form { display: flex; flex-direction: column; flex: 1; padding: 16px 24px 24px; }
+.partner-upgrade-aside { display: flex; border: 0; padding: 0; }
+.partner-upgrade :is(h3, h4, p) { overflow-wrap: anywhere; }
+.partner-upgrade :is(h3, h4) { margin: 0; font-family: inherit; line-height: 1.5; letter-spacing: normal; }
+.partner-upgrade p { line-height: 1.65; }
+.partner-upgrade .partner-form-header { min-height: var(--partner-header-height, 49px); box-sizing: border-box; align-items: center; padding: 0 0 8px; background: transparent; border: 0; border-bottom: 1px solid #EAE4D7; border-radius: 0; }
+.partner-upgrade .partner-form-header > div { align-items: center; gap: 12px; }
+.partner-upgrade .partner-form-header > div > div { min-width: 0; }
+.partner-upgrade .partner-form-header > div > span { width: 40px; height: 40px; border-radius: 10px; box-shadow: none; }
+.partner-upgrade .partner-form-header h3 { font-size: 16px; font-weight: 650; }
+.partner-upgrade .partner-form-header p { margin-top: 5px; font-size: 12px; }
+.partner-upgrade .partner-form-body { padding: 24px 0; gap: 24px; }
+.partner-upgrade .partner-form-section h4 { font-size: 12px; font-weight: 650; text-transform: none; }
+.partner-upgrade .partner-section-heading { align-items: flex-start; margin-bottom: 16px; }
+.partner-upgrade .partner-section-heading > div { min-width: 0; }
+.partner-upgrade .partner-kol-form { container-type: inline-size; }
+.partner-upgrade .partner-document-upload > div { gap: 8px; flex-wrap: wrap; }
+.partner-upgrade .partner-document-upload > div:last-of-type { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px 10px; padding: 12px; border-radius: 5px; }
+.partner-upgrade .partner-document-upload > div:last-of-type > div:last-child { grid-column: 2; justify-self: start; }
+.partner-upgrade .partner-document-upload p { white-space: normal; overflow-wrap: anywhere; margin: 0; }
+.partner-upgrade .partner-document-upload button { border-radius: 5px; }
+.partner-upgrade .partner-channel-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 24px; }
+.partner-upgrade .partner-identity-sections { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 24px; }
+.partner-upgrade .partner-identity-sections > section + section { border-top: 1px solid #EAE4D7; padding-top: 24px; }
+.partner-upgrade .partner-field { min-width: 0; gap: 6px; }
+.partner-upgrade .partner-field > label { font-size: 12px; line-height: 1.5; }
+.partner-upgrade .partner-field :is(input:not([type=file]):not(.sr-only), textarea, button[aria-haspopup=listbox]) { width: 100%; min-width: 0; min-height: 42px; border-radius: 5px; font-family: inherit; font-size: 13px; line-height: 1.5; box-shadow: none; }
+.partner-upgrade .partner-field input::placeholder, .partner-upgrade textarea::placeholder { font-size: 12px; }
+.partner-upgrade .partner-field button[aria-haspopup=listbox] { height: 44px; background: #FFFFFF; }
+.partner-upgrade .partner-form-footer { margin-top: auto; padding: 18px 0 0; flex-wrap: wrap; align-items: flex-start; gap: 14px; border-radius: 0; background: transparent; }
+.partner-upgrade .partner-form-footer > p { flex: 0 1 auto; width: 100%; align-items: flex-start; font-size: 11px; }
+.partner-upgrade .partner-form-footer > div { flex-wrap: wrap; width: 100%; justify-content: space-between; gap: 10px; }
+.partner-upgrade .partner-form-footer button { min-height: 40px; border-radius: 5px; }
+.partner-upgrade .partner-policy { display: flex; flex-direction: column; flex: 1; width: 100%; gap: 12px; padding: 16px 24px 24px; }
+.partner-upgrade .partner-policy > div:first-child { min-height: var(--partner-header-height, 49px); box-sizing: border-box; align-items: center; gap: 12px; padding-bottom: 8px; }
+.partner-upgrade .partner-policy > div:first-child > div:first-child { flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; box-shadow: none; }
+.partner-upgrade .partner-policy > div:first-child > div:last-child { min-width: 0; }
+.partner-upgrade .partner-policy h3 { font-size: 16px; line-height: 1.5; font-weight: 650; text-transform: none; }
+.partner-upgrade .partner-policy > div:first-child > div:first-child svg { width: 20px; height: 20px; }
+.partner-upgrade .partner-policy > div:first-child p { margin: 6px 0 0; font-size: 12px; }
+.partner-upgrade .partner-policy-rows { display: grid; gap: 0; }
+.partner-upgrade .partner-policy-highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 0; border-radius: 10px; background: #FBF5EB; }
+.partner-upgrade .partner-policy-highlights > div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 0 16px; }
+.partner-upgrade .partner-policy-highlights > div + div { border-left: 1px solid #EEDFC6; }
+.partner-upgrade .partner-policy-highlights span { font-size: 11px; line-height: 1.5; color: #7D715E; }
+.partner-upgrade .partner-policy-highlights strong { display: flex; align-items: baseline; gap: 4px; color: #8F682E; font-size: 30px; font-weight: 650; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.partner-upgrade .partner-policy-highlights small { font-size: 13px; font-weight: 500; }
+.partner-upgrade .partner-policy-timeline { display: grid; gap: 0; list-style: none; padding: 0; margin: 0; }
+.partner-upgrade .partner-policy-timeline li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; position: relative; min-width: 0; padding-bottom: 8px; }
+.partner-upgrade .partner-policy-timeline li > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 3px 10px; min-width: 0; }
+.partner-upgrade .partner-policy-timeline li:last-child { padding-bottom: 0; }
+.partner-upgrade .partner-policy-timeline li:not(:last-child)::before { content: ''; position: absolute; top: 26px; bottom: 0; left: 12px; width: 1px; background: #EEDFC6; }
+.partner-upgrade .partner-policy-timeline-number { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid #EEDFC6; border-radius: 50%; background: #FBF5EB; color: #8F682E; font-size: 11px; }
+.partner-upgrade .partner-policy-timeline strong { display: block; margin: 0; color: #1A1612; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.partner-upgrade .partner-policy-timeline p { margin: 0; color: #7D715E; font-size: 11px; line-height: 1.6; }
+.partner-upgrade .partner-policy-rows > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; padding: 11px 0; margin: 0; }
+.partner-upgrade .partner-policy-rows > div > span { min-width: 0; font-size: 12px; line-height: 1.65; overflow-wrap: normal; }
+.partner-upgrade .partner-policy-rows > div > span:last-child { justify-self: start; text-align: left; white-space: nowrap; }
+.partner-upgrade .partner-policy-rows > div > span:last-child:has(svg) { justify-content: flex-start; flex-wrap: nowrap; white-space: nowrap; }
+.partner-upgrade .partner-policy-process { padding-top: 18px; }
+.partner-upgrade .partner-policy-process > div:first-child { margin-bottom: 22px; color: #1A1612; font-size: 14px; font-weight: 650; line-height: 1.6; letter-spacing: normal; }
+.partner-upgrade .partner-policy-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; row-gap: 28px; width: 100%; }
+.partner-upgrade .partner-policy-steps > div { display: grid; grid-template-rows: auto 1fr; align-content: start; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.partner-upgrade .partner-policy-steps > div:nth-child(even) { text-align: left; }
+.partner-upgrade .partner-policy-steps > div > span:first-child { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 650; line-height: 1.6; }
+.partner-upgrade .partner-policy-steps > div > span:last-child { display: block; font-size: 12px; line-height: 1.7; }
+.partner-upgrade .partner-policy-steps span { overflow-wrap: anywhere; }
+.partner-upgrade .partner-policy-contact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 16px; margin-top: auto; padding-top: 16px; font-size: 11px; }
+.partner-upgrade .partner-policy-contact > span:last-child { justify-self: start; }
+.partner-upgrade .partner-policy-contact span { min-width: 0; overflow-wrap: anywhere; }
+.partner-upgrade .partner-policy-contact svg { flex-shrink: 0; }
+.partner-upgrade .partner-policy-process > div:first-child { font-size: 12px; letter-spacing: normal; text-transform: none; }
+
+/* Show one form section at a time while retaining all entered values. */
+.partner-upgrade .partner-kol-form [hidden] { display: none; }
+.partner-upgrade .partner-step-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.partner-upgrade .partner-step-navigation button { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 46px; padding: 10px 8px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; font: inherit; font-size: 12px; line-height: 1.5; text-align: left; cursor: pointer; }
+.partner-upgrade .partner-step-navigation button > span:first-child { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border: 1px solid #EAE4D7; border-radius: 50%; font-size: 11px; }
+.partner-upgrade .partner-step-navigation button[aria-current=step] { border-color: #EEDFC6; background: #FBF5EB; color: #1A1612; font-weight: 650; }
+.partner-upgrade .partner-step-navigation button[aria-current=step] > span:first-child { border-color: #C59B58; background: #FBF5EB; color: #8F682E; }
+.partner-upgrade .partner-step-navigation button:focus-visible, .partner-upgrade .partner-step-actions button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+.partner-upgrade .partner-form-body { padding: 24px 0; gap: 20px; }
+.partner-upgrade .partner-identity-sections.partner-step-panels { display: block; border: 0; padding: 0; }
+.partner-upgrade .partner-step-hint { margin: 12px 0 0; font-size: 11px; color: #7D715E; }
+.partner-upgrade .partner-step-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-left: auto; }
+.partner-upgrade .partner-step-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 9px 16px; border: 1px solid #EAE4D7; border-radius: 5px; background: #FFFFFF; color: #1A1612; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.partner-upgrade .partner-step-actions .partner-step-primary { background: #C59B58; border-color: #C59B58; color: #FFFFFF; }
+.partner-upgrade .partner-step-actions .partner-step-primary:hover { background: #B88E4F; }
+.partner-upgrade .partner-step-actions button:disabled, .partner-upgrade .partner-step-navigation button:disabled { opacity: .55; cursor: wait; }
+.partner-upgrade .partner-policy-rows > div { padding-block: 11px; align-items: center; }
+.partner-upgrade .partner-policy-process { padding-top: 18px; }
+.partner-upgrade .partner-policy-process > div:first-child { margin-bottom: 18px; font-size: 13px; }
+.partner-upgrade .partner-policy-steps { gap: 24px 16px; }
+
+/* Match the separate selectors on the registration form. */
+.partner-upgrade .partner-policy-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 4px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FAF8F5; }
+.partner-upgrade .partner-policy-tabs button { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 36px; padding: 7px 6px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #7D715E; font: inherit; font-size: 12px; line-height: 1.5; white-space: nowrap; cursor: pointer; }
+.partner-upgrade .partner-policy-tabs button > span { display: grid; place-items: center; flex-shrink: 0; width: 23px; height: 23px; border: 1px solid #EAE4D7; border-radius: 50%; font-size: 11px; }
+.partner-upgrade .partner-policy-tabs button:hover { border-color: #C59B58; }
+.partner-upgrade .partner-policy-tabs button[aria-selected=true] { background: #FFFFFF; border-color: #EEDFC6; color: #8F682E; font-weight: 650; box-shadow: 0 1px 3px rgb(35 29 21 / 5%); }
+.partner-upgrade .partner-policy-tabs button[aria-selected=true] > span { border-color: #C59B58; color: #8F682E; }
+.partner-upgrade .partner-policy-tabs button:focus-visible, .partner-upgrade .partner-policy-panel:focus-visible, .partner-upgrade .partner-policy-contact-options a:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+.partner-upgrade .partner-policy-panel { padding-top: 8px; }
+.partner-upgrade .partner-policy-panel[hidden] { display: none; }
+.partner-upgrade .partner-policy-highlights { gap: 12px; padding: 0; background: transparent; }
+.partner-upgrade .partner-policy-highlights > div { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 14px; border: 1px solid #EEDFC6; border-radius: 10px; background: #FBF5EB; }
+.partner-upgrade .partner-policy-highlights > div + div { border-left: 1px solid #EEDFC6; }
+.partner-upgrade .partner-policy-highlights strong { font-size: 28px; line-height: 1.2; }
+.partner-upgrade .partner-policy-highlights small { font-size: 12px; }
+.partner-upgrade .partner-policy-highlights span { font-size: 11px; line-height: 1.5; }
+.partner-upgrade .partner-policy-rows { margin-top: 12px; }
+.partner-upgrade .partner-policy-rows > div { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EAE4D7; }
+.partner-upgrade .partner-policy-rows > div:last-child { border-bottom: 0; }
+.partner-upgrade .partner-policy-rows > div > span:last-child { justify-self: end; text-align: right; }
+.partner-upgrade .partner-policy-process > div:first-child { margin-bottom: 20px; }
+.partner-upgrade .partner-policy-timeline { gap: 16px; }
+.partner-upgrade .partner-policy-timeline li { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 0; }
+.partner-upgrade .partner-policy-timeline li:not(:last-child)::before { top: 30px; bottom: -16px; left: 14px; }
+.partner-upgrade .partner-policy-timeline-number { width: 30px; height: 30px; font-size: 12px; }
+.partner-upgrade .partner-policy-timeline li > div { display: block; padding: 3px 0; }
+.partner-upgrade .partner-policy-timeline strong { font-size: 13px; }
+.partner-upgrade .partner-policy-timeline p { margin-top: 5px; font-size: 12px; }
+.partner-upgrade .partner-policy-contact-options { display: grid; gap: 14px; }
+.partner-upgrade .partner-policy-contact-options a { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #EAE4D7; border-radius: 10px; color: #1A1612; text-decoration: none; }
+.partner-upgrade .partner-policy-contact-options a:hover { border-color: #C59B58; background: #FBF5EB; }
+.partner-upgrade .partner-policy-contact-options svg { width: 20px; height: 20px; flex-shrink: 0; color: #B88E4F; }
+.partner-upgrade .partner-policy-contact-options span { min-width: 0; }
+.partner-upgrade .partner-policy-contact-options small { display: block; margin-bottom: 4px; color: #7D715E; font-size: 12px; }
+.partner-upgrade .partner-policy-contact-options strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+
+@container partner-upgrade (min-width: 800px) and (max-width: 1040px) {
+  .partner-upgrade .partner-policy { padding: 16px 24px 24px; }
+}
+
+@container (min-width: 480px) {
+  .partner-upgrade [data-partner-step="0"] .partner-document-upload > div:last-of-type { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .partner-upgrade [data-partner-step="0"] .partner-document-upload > div:last-of-type > div:last-child { grid-column: 3; }
+}
+
+@container partner-upgrade (max-width: 799px) {
+  .partner-upgrade-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .partner-upgrade-aside { border: 0; padding: 0; }
+  .partner-upgrade .partner-form-header, .partner-upgrade .partner-policy > div:first-child { min-height: auto; }
+}
+@container partner-upgrade (max-width: 479px) {
+  .partner-upgrade .partner-channel-fields, .partner-upgrade .partner-identity-sections section > .grid { grid-template-columns: minmax(0, 1fr); }
+  .partner-upgrade .partner-form-header { padding: 0 0 16px; }
+  .partner-upgrade .partner-form-body { padding: 20px 0; }
+  .partner-upgrade .partner-kol-form, .partner-upgrade .partner-policy { padding: 16px; }
+  .partner-upgrade .partner-form-footer { padding: 16px 0 0; }
+  .partner-upgrade .partner-form-header h3 { font-size: 15px; }
+  .partner-upgrade .partner-policy h3 { font-size: 15px; }
+  .partner-upgrade .partner-form-footer > div { justify-content: flex-start; }
+}

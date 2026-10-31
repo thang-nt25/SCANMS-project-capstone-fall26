@@ -27,7 +27,7 @@ describe('wallet account and ledger access', () => {
     expect(prisma.collaboratorProfile.upsert).toHaveBeenCalledWith({
       where: { userId: 'owner-a' },
       create: { userId: 'owner-a', idCardNumber: '', bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A' },
-      update: { bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A' },
+      update: { bankName: 'MBBank', bankAccountNumber: '123456789', bankAccountName: 'NGUYEN VAN A', kycStatus: 'UNVERIFIED' },
     });
   });
 
@@ -42,7 +42,7 @@ describe('wallet account and ledger access', () => {
     const { service, prisma } = setup();
     await service.disconnectBankAccount('owner-a');
     expect(prisma.collaboratorProfile.updateMany).toHaveBeenCalledWith({
-      where: { userId: 'owner-a' }, data: { bankName: '', bankAccountNumber: '', bankAccountName: '' },
+      where: { userId: 'owner-a' }, data: { bankName: '', bankAccountNumber: '', bankAccountName: '', kycStatus: 'UNVERIFIED' },
     });
   });
 

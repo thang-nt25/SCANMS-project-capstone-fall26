@@ -141,7 +141,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                     </div>
                   </div>
                 </div>
-                <div className="tier-heading-review" title="Dựa trên GMV tháng vừa kết thúc. Thông báo khi hạng thay đổi.">
+                <div className="tier-heading-review" title="Dựa trên doanh số sạch tích lũy đến hết kỳ tháng đã đóng. Thông báo khi hạng thay đổi.">
                   <CalendarDays size={16} aria-hidden="true" />
                   <div>
                     <span>Lần xét tiếp theo</span>
@@ -152,7 +152,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
 
               <div className="tier-summary-metrics grid grid-cols-3 gap-2 my-4">
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">GMV tháng trước</span>
+                  <span className="text-[11px] text-[#7D715E]">Doanh số sạch tích lũy</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">

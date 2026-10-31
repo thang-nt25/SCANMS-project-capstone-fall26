@@ -1,4 +1,11 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import {
   CommissionStatus,
@@ -10,17 +17,14 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CommissionCalculatorService } from './commission-calculator.service';
 import { tierBonusByName } from './commission-policy';
+import { isSelfReferral, requiresReferralReview } from './self-referral';
+import { managedStoreWhere } from '../../common/store-access';
 import {
   COMMISSION_ELIGIBLE_ORDER_STATUSES,
   COMMISSION_HOLD_DAYS,
   COMMISSION_PROCESSING_BATCH_SIZE,
   COMMISSION_REVERSAL_ORDER_STATUSES,
 } from './commission.constants';
-import {
-  calculateAdaptiveEscrowReleaseDate,
-  isVietnamHoliday,
-  type AdaptiveEscrowResult,
-} from './utils/vietnam-holidays.util';
 
 export interface CommissionReconciliationSummary {
   created: number;
@@ -66,36 +70,59 @@ export class CommissionsService {
       'reverse',
     );
 
-    const eligibleOrders = await this.prisma.order.findMany({
-      where: {
-        status: { in: COMMISSION_ELIGIBLE_ORDER_STATUSES },
-        attributedCollaboratorId: { not: null },
-        attributedCollaborator: {
-          is: {
-            role: UserRole.COLLABORATOR,
-            isActive: true,
-            isDeleted: false,
+    let cursor: string | undefined;
+    // Scan past rejected/self-referral orders without modifying receipt dates.
+    // A keyset cursor remains stable while successful rows leave the queue.
+    while (summary.created < COMMISSION_PROCESSING_BATCH_SIZE) {
+      const eligibleOrders = await this.prisma.order.findMany({
+        where: {
+          status: { in: COMMISSION_ELIGIBLE_ORDER_STATUSES },
+          attributedCollaboratorId: { not: null },
+          attributedCollaborator: {
+            is: {
+              role: UserRole.COLLABORATOR,
+              isActive: true,
+              isDeleted: false,
+            },
           },
+          commissions: { none: {} },
         },
-        commissions: { none: {} },
-      },
-      select: { id: true },
-      orderBy: { updatedAt: 'asc' },
-      take: COMMISSION_PROCESSING_BATCH_SIZE,
-    });
-    await this.processCandidates(
-      eligibleOrders,
-      (id) => this.createPendingCommission(id, now),
-      () => summary.created++,
-      summary,
-      'create',
-    );
+        select: { id: true },
+        orderBy: { id: 'asc' },
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        take: COMMISSION_PROCESSING_BATCH_SIZE,
+      });
+      await this.processCandidates(
+        eligibleOrders,
+        (id) => this.createPendingCommission(id, now),
+        () => summary.created++,
+        summary,
+        'create',
+      );
+      if (eligibleOrders.length < COMMISSION_PROCESSING_BATCH_SIZE) break;
+      const nextCursor = eligibleOrders[eligibleOrders.length - 1].id;
+      if (nextCursor === cursor) break;
+      cursor = nextCursor;
+    }
 
     const matureCommissions = await this.prisma.commission.findMany({
       where: {
         status: CommissionStatus.PENDING,
         availableAt: { lte: now },
-        order: { status: { in: COMMISSION_ELIGIBLE_ORDER_STATUSES } },
+        order: {
+          status: { in: COMMISSION_ELIGIBLE_ORDER_STATUSES },
+          OR: [
+            { returnRequest: { is: null } },
+            {
+              returnRequest: { is: { status: { in: ['CLOSED', 'EXPIRED'] } } },
+            },
+            {
+              returnRequest: {
+                is: { status: 'COMPLETED', resolution: 'EXCHANGE' },
+              },
+            },
+          ],
+        },
       },
       select: { id: true },
       orderBy: { availableAt: 'asc' },
@@ -124,11 +151,15 @@ export class CommissionsService {
               select: {
                 id: true,
                 role: true,
+                email: true,
+                phoneNumber: true,
                 isActive: true,
                 isDeleted: true,
                 collaboratorProfile: {
                   select: {
-                    tier: { select: { name: true, extraBonusPercentage: true } },
+                    tier: {
+                      select: { name: true, extraBonusPercentage: true },
+                    },
                   },
                 },
               },
@@ -147,6 +178,7 @@ export class CommissionsService {
         }
 
         const collaborator = order.attributedCollaborator;
+        if (isSelfReferral(order, collaborator)) return false;
         if (
           !collaborator ||
           collaborator.role !== UserRole.COLLABORATOR ||
@@ -157,8 +189,11 @@ export class CommissionsService {
         }
 
         const tier = collaborator.collaboratorProfile?.tier;
-        const tierBonusRate = new Prisma.Decimal(tier?.name
-          ? tierBonusByName(tier.name) : Math.min(3, Math.max(0, Number(tier?.extraBonusPercentage || 0))));
+        const tierBonusRate = new Prisma.Decimal(
+          tier?.name
+            ? tierBonusByName(tier.name)
+            : Math.min(3, Math.max(0, Number(tier?.extraBonusPercentage || 0))),
+        );
         const calculation = this.calculator.calculateOrderCommission(
           order.orderItems.map((item) => ({
             id: item.id,
@@ -171,9 +206,9 @@ export class CommissionsService {
           })),
           order.store.defaultCommissionRate,
           tierBonusRate,
-          new Prisma.Decimal(order.couponDiscountAmount ?? order.discountAmount ?? 0).plus(
-            order.refundedAmount ?? 0,
-          ),
+          new Prisma.Decimal(
+            order.couponDiscountAmount ?? order.discountAmount ?? 0,
+          ).plus(order.refundedAmount ?? 0),
         );
 
         for (const item of calculation.items) {
@@ -194,15 +229,13 @@ export class CommissionsService {
         }
 
         // Receipt/completion is stable; metadata edits must not restart escrow.
-        const receiptAt = order.completedAt ?? order.updatedAt;
+        const receiptAt =
+          order.deliveredAt ?? order.completedAt ?? order.updatedAt;
         const eligibleAt =
           receiptAt.getTime() <= now.getTime() ? receiptAt : now;
-        // Động cơ Bảo Chứng Escrow thích ứng Lễ/Tết Việt Nam (Nhiệm vụ 3 - Leader Thắng)
-        const escrowCalc = calculateAdaptiveEscrowReleaseDate(
-          eligibleAt,
-          COMMISSION_HOLD_DAYS,
+        const availableAt = new Date(
+          eligibleAt.getTime() + COMMISSION_HOLD_DAYS * 86400000,
         );
-        const availableAt = escrowCalc.availableAt;
         const hasPayableCommission =
           calculation.totalCommissionAmount.greaterThan(0);
         const commission = await tx.commission.create({
@@ -253,16 +286,43 @@ export class CommissionsService {
       await this.lockCommission(tx, commissionId);
       const commission = await tx.commission.findUnique({
         where: { id: commissionId },
-        include: { order: { select: { status: true, storeId: true } } },
+        include: {
+          order: {
+            select: {
+              status: true,
+              rawPayload: true,
+              storeId: true,
+              returnRequest: {
+                select: {
+                  status: true,
+                  resolution: true,
+                  dispute: { select: { status: true } },
+                },
+              },
+            },
+          },
+        },
       });
       if (
         !commission ||
         commission.status !== CommissionStatus.PENDING ||
         commission.availableAt.getTime() > now.getTime() ||
-        !COMMISSION_ELIGIBLE_ORDER_STATUSES.includes(commission.order.status)
+        !COMMISSION_ELIGIBLE_ORDER_STATUSES.includes(commission.order.status) ||
+        requiresReferralReview(commission.order)
       ) {
         return false;
       }
+
+      const claim = commission.order.returnRequest;
+      if (
+        claim &&
+        (!(
+          ['CLOSED', 'EXPIRED'].includes(claim.status) ||
+          (claim.status === 'COMPLETED' && claim.resolution === 'EXCHANGE')
+        ) ||
+          claim.dispute?.status === 'OPEN')
+      )
+        return false;
 
       if (commission.commissionAmount.greaterThan(0)) {
         await this.walletsService.releasePendingBalance(
@@ -346,25 +406,143 @@ export class CommissionsService {
   }
 
   /**
-   * Lấy thông tin chính sách Escrow thích ứng Lễ/Tết Việt Nam (Nhiệm vụ 3 - Leader Thắng)
+   * Master Plan 4.3: seven calendar days, with claims/review holding release.
    */
   getEscrowPolicyInfo(sampleDate?: string) {
     const targetDate = sampleDate ? new Date(sampleDate) : new Date();
-    const calculation = calculateAdaptiveEscrowReleaseDate(
-      targetDate,
-      COMMISSION_HOLD_DAYS,
-    );
+    if (!Number.isFinite(targetDate.getTime())) throw new BadRequestException('Ngày kiểm tra Escrow không hợp lệ');
+    const calculation = {
+      startDate: targetDate,
+      availableAt: new Date(
+        targetDate.getTime() + COMMISSION_HOLD_DAYS * 86400000,
+      ),
+      baseHoldDays: COMMISSION_HOLD_DAYS,
+      holidayDaysAdded: 0,
+      totalHoldDays: COMMISSION_HOLD_DAYS,
+      holidaysEncountered: [],
+      isCurrentlyHoliday: false,
+    };
     return {
       policy: {
         baseHoldDays: COMMISSION_HOLD_DAYS,
         description:
-          'Chính sách Quỹ Bảo Chứng Escrow 14 ngày tự thích ứng với kỳ nghỉ Lễ/Tết Việt Nam. Đóng băng thời gian giải ngân trong các ngày nghỉ lễ chính thức để bảo vệ quyền lợi người mua và gian hàng.',
-        currentStatus: calculation.isCurrentlyHoliday
-          ? `Hệ thống Escrow đang tạm ngưng đếm ngược do kỳ nghỉ: ${calculation.currentHolidayName}`
-          : 'Hệ thống Escrow đang vận hành đếm ngược bình thường',
+          'Hoa hồng được bảo chứng 7 ngày lịch kể từ khi giao thành công; không cộng ngày lễ. Đơn có đổi trả, tranh chấp hoặc cần thẩm định tiếp tục được tạm giữ.',
+        currentStatus:
+          'Giải tỏa khi đủ thời gian và không còn điều kiện tạm giữ',
       },
       calculation,
     };
+  }
+
+  async reviewReferral(
+    orderId: string,
+    reviewer: Pick<AuthenticatedUser, 'id' | 'role'>,
+    outcome: string,
+    reason: string,
+  ) {
+    if (
+      ![UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN].includes(
+        reviewer.role as any,
+      )
+    )
+      throw new ForbiddenException();
+    if (
+      !['CLEARED', 'SELF_REFERRAL'].includes(outcome) ||
+      typeof reason !== 'string' ||
+      reason.trim().length < 10 ||
+      reason.length > 1000
+    )
+      throw new BadRequestException(
+        'Cần kết luận và lý do thẩm định từ 10 đến 1000 ký tự.',
+      );
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockOrder(tx, orderId);
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { commissions: true },
+      });
+      if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+      if (!requiresReferralReview(order))
+        throw new ConflictException('Đơn không còn chờ thẩm định tự mua');
+      if (order.commissions.some((c) => c.status === CommissionStatus.APPROVED))
+        throw new ConflictException(
+          'Hoa hồng đã giải tỏa; cần xử lý ngoại lệ tài chính trước khi kết luận.',
+        );
+      if (outcome === 'SELF_REFERRAL') {
+        const raw = (order.rawPayload ?? {}) as Prisma.JsonObject;
+        const reservations = raw.campaignBonusReservations;
+        if (
+          reservations &&
+          typeof reservations === 'object' &&
+          !Array.isArray(reservations)
+        ) {
+          for (const [campaignId, value] of Object.entries(reservations)) {
+            const amount = Number(value);
+            if (
+              /^[0-9a-f-]{36}$/i.test(campaignId) &&
+              Number.isFinite(amount) &&
+              amount > 0
+            ) {
+              await tx.$executeRaw`UPDATE campaigns SET bonus_budget_used = GREATEST(0, bonus_budget_used - ${amount}) WHERE id = ${campaignId}::uuid`;
+            }
+          }
+        }
+        for (const commission of order.commissions) {
+          if (commission.status !== CommissionStatus.PENDING) continue;
+          if (commission.commissionAmount.gt(0))
+            await this.walletsService.reversePendingBalance(
+              tx,
+              commission.collaboratorId,
+              commission.commissionAmount,
+              { id: commission.id, type: 'COMMISSION' },
+              commission.storeWalletTracked ? order.storeId : undefined,
+            );
+          await tx.commission.update({
+            where: { id: commission.id },
+            data: {
+              status: CommissionStatus.REVERSED,
+              commissionAmount: new Prisma.Decimal(0),
+              reversedAt: new Date(),
+            },
+          });
+        }
+        await tx.orderItem.updateMany({
+          where: { orderId },
+          data: {
+            appliedCommissionRate: 0,
+            calculatedCommissionAmount: 0,
+            commissionSnapshotAt: new Date(),
+          },
+        });
+      }
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          rawPayload: {
+            ...((order.rawPayload as Prisma.JsonObject) ?? {}),
+            selfReferralReviewRequired: false,
+            selfReferralDetected: outcome === 'SELF_REFERRAL',
+            ...(outcome === 'SELF_REFERRAL'
+              ? { campaignBonusReservations: {} }
+              : {}),
+            selfReferralReview: {
+              outcome,
+              reason: reason.trim(),
+              reviewerId: reviewer.id,
+              reviewedAt: new Date().toISOString(),
+            },
+          },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: reviewer.id,
+          action: 'REVIEW_SELF_REFERRAL',
+          details: { orderId, outcome, reason: reason.trim() },
+        },
+      });
+      return { orderId, outcome };
+    });
   }
 
   /**
@@ -374,12 +552,13 @@ export class CommissionsService {
     orderId: string,
     viewer: Pick<AuthenticatedUser, 'id' | 'role'>,
   ) {
-    if (!viewer?.id) throw new ForbiddenException('Không có quyền xem hoa hồng');
+    if (!viewer?.id)
+      throw new ForbiddenException('Không có quyền xem hoa hồng');
     const where: Prisma.CommissionWhereInput = { orderId };
     if (viewer.role === UserRole.COLLABORATOR) {
       where.collaboratorId = viewer.id;
     } else if (viewer.role === UserRole.SHOP_MANAGER) {
-      where.order = { store: { ownerId: viewer.id, isDeleted: false } };
+      where.order = { store: managedStoreWhere(viewer.id) };
     } else if (
       viewer.role !== UserRole.SYSTEM_ADMIN &&
       viewer.role !== UserRole.SYSTEM_MANAGER
@@ -395,7 +574,15 @@ export class CommissionsService {
             status: true,
             completedAt: true,
             updatedAt: true,
+            rawPayload: true,
             externalOrderSn: true,
+            returnRequest: {
+              select: {
+                status: true,
+                resolution: true,
+                dispute: { select: { status: true } },
+              },
+            },
             store: { select: { id: true, name: true } },
           },
         },
@@ -416,9 +603,28 @@ export class CommissionsService {
     const remainingDays = Math.floor(remainingHours / 24);
     const remainingHoursInDay = remainingHours % 24;
 
-    const holidayCheck = isVietnamHoliday(now);
+    const claim = commission.order.returnRequest;
     const isFrozenDueToDispute =
-      commission.order.status === OrderStatus.RETURNED;
+      requiresReferralReview(commission.order) ||
+      [OrderStatus.RETURN_REQUESTED, OrderStatus.DISPUTED].includes(
+        commission.order.status as any,
+      ) ||
+      Boolean(
+        claim &&
+        (!(
+          ['CLOSED', 'EXPIRED'].includes(claim.status) ||
+          (claim.status === 'COMPLETED' && claim.resolution === 'EXCHANGE')
+        ) ||
+          claim.dispute?.status === 'OPEN'),
+      );
+    const isReversed = commission.status === CommissionStatus.REVERSED;
+    const isReleased = commission.status === CommissionStatus.APPROVED;
+    const canRelease =
+      !isFrozenDueToDispute &&
+      !isReversed &&
+      !isReleased &&
+      isMatured &&
+      COMMISSION_ELIGIBLE_ORDER_STATUSES.includes(commission.order.status);
 
     return {
       commissionId: commission.id,
@@ -431,15 +637,31 @@ export class CommissionsService {
       availableAt: commission.availableAt,
       isMatured,
       isFrozen: isFrozenDueToDispute,
-      isHolidayPaused: holidayCheck.isHoliday,
-      currentHolidayName: holidayCheck.holidayName,
+      canRelease,
+      releaseState: isReversed
+        ? 'REVERSED'
+        : isReleased
+          ? 'RELEASED'
+          : isFrozenDueToDispute
+            ? 'FROZEN'
+            : canRelease
+              ? 'READY'
+              : 'HOLDING',
+      isHolidayPaused: false,
+      currentHolidayName: undefined,
       remainingTime: {
         totalHours: remainingHours,
         days: remainingDays,
         hours: remainingHoursInDay,
-        formatted: isMatured
-          ? 'Đã đáo hạn (Sẵn sàng giải ngân)'
-          : `${remainingDays} ngày ${remainingHoursInDay} giờ`,
+        formatted: isReversed
+          ? 'Đã thu hồi hoa hồng'
+          : isReleased
+            ? 'Đã giải tỏa'
+            : isFrozenDueToDispute
+              ? 'Tạm giữ do đổi trả / khiếu nại'
+              : canRelease
+                ? 'Đã đáo hạn (Sẵn sàng giải ngân)'
+                : `${remainingDays} ngày ${remainingHoursInDay} giờ`,
       },
     };
   }

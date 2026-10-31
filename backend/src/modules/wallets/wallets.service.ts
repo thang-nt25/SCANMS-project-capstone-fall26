@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   Prisma,
@@ -9,6 +14,7 @@ import {
 } from '@prisma/client';
 import { FinancialLedgerService } from './financial-ledger.service';
 import { PrismaService } from '../../core/database/prisma.service';
+import { postFinance } from '../payouts/finance-posting';
 import type {
   LedgerReference,
   LedgerBalanceChange,
@@ -48,9 +54,63 @@ export class WalletsService {
     // lockWallet reads the balance only AFTER SELECT ... FOR UPDATE.
     // Competing withdrawals must wait and then see the committed balance.
     const wallet = await this.lockWallet(tx, collaboratorId);
+    if (wallet.earningsReviewRequired) {
+      throw new BadRequestException('Số dư cũ cần được kế toán đối soát nguồn tiền trước khi rút');
+    }
     if (wallet.availableBalance.lessThan(amount)) {
       throw new BadRequestException(
         'Số dư khả dụng không đủ để thực hiện rút tiền',
+      );
+    }
+
+    if (!storeId) {
+      const stores = await tx.storeWallet.findMany({
+        where: { walletId: wallet.id },
+        orderBy: { storeId: 'asc' },
+      });
+      const allocated = stores.reduce(
+        (sum, row) => sum.plus(row.availableBalance),
+        new Prisma.Decimal(0),
+      );
+      let remaining = amount;
+      let current = wallet;
+      const unallocated = Prisma.Decimal.max(
+        0,
+        wallet.availableBalance.minus(allocated),
+      );
+      const chunks = [
+        {
+          storeId: undefined as string | undefined,
+          availableBalance: unallocated,
+        },
+        ...stores,
+      ];
+      for (const chunk of chunks) {
+        const debit = Prisma.Decimal.min(
+          remaining,
+          Prisma.Decimal.max(0, chunk.availableBalance),
+        );
+        if (debit.isZero()) continue;
+        const result = await this.applyBalanceChanges(
+          tx,
+          current,
+          reference,
+          [
+            this.buildChange(
+              WalletBalanceBucket.AVAILABLE,
+              TransactionType.PAYOUT_WITHDRAW,
+              current.availableBalance,
+              debit.negated(),
+            ),
+          ],
+          chunk.storeId,
+        );
+        current = result.wallet;
+        remaining = remaining.minus(debit);
+        if (remaining.isZero()) return current;
+      }
+      throw new WalletBalanceInvariantError(
+        'Không phân bổ được nguồn tiền chi trả',
       );
     }
 
@@ -208,6 +268,8 @@ export class WalletsService {
     reference: LedgerReference,
     storeId?: string,
   ) {
+    if (reference.type === 'TOPUP_PAYOS' || reference.type === 'TOPUP_DEMO')
+      return this.creditShoppingBalance(tx, collaboratorId, amount, reference);
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
     const result = await this.applyBalanceChanges(
@@ -287,6 +349,8 @@ export class WalletsService {
     for (const change of changes) {
       if (change.bucket === WalletBalanceBucket.PENDING)
         data.pendingBalance = change.balanceAfter;
+      else if (change.bucket === WalletBalanceBucket.SHOPPING)
+        data.shoppingBalance = change.balanceAfter;
       else data.availableBalance = change.balanceAfter;
     }
     const updatedWallet = await tx.wallet.update({
@@ -301,15 +365,34 @@ export class WalletsService {
     }
     const entries: FinancialLedger[] = [];
     for (const [index, change] of changes.entries()) {
-      entries.push(
-        await this.ledgerService.appendEntry(
+      const entry = await this.ledgerService.appendEntry(
           tx,
           wallet.id,
           reference,
           change,
           storeBalances[index],
-        ),
-      );
+        );
+      entries.push(entry);
+      // Every earnings movement has a balanced accounting counterpart. The
+      // immutable ledger row supplies a unique key for partial refunds/deltas.
+      let debit: string | undefined;
+      let credit: string | undefined;
+      if (change.bucket === WalletBalanceBucket.SHOPPING) {
+        debit = change.amount.gt(0) ? (reference.type === 'ORDER_REFUND' ? 'CUSTOMER_REFUND_CLEARING' : 'CORPORATE_BANK') : 'CUSTOMER_FUNDS';
+        credit = change.amount.gt(0) ? 'CUSTOMER_FUNDS' : 'SALES_CLEARING';
+      } else if (change.transactionType === TransactionType.COMMISSION_PENDING) {
+        debit = 'AFFILIATE_MARKETING_EXPENSE'; credit = 'AFFILIATE_ESCROW';
+      } else if (change.transactionType === TransactionType.REVERSAL) {
+        debit = change.bucket === WalletBalanceBucket.PENDING ? 'AFFILIATE_ESCROW' : 'PARTNER_EARNINGS_PAYABLE';
+        credit = 'AFFILIATE_MARKETING_EXPENSE';
+      } else if (change.transactionType === TransactionType.COMMISSION_APPROVED && reference.type !== 'MONTHLY_BONUS') {
+        if (change.bucket === WalletBalanceBucket.PENDING) {
+          debit = 'AFFILIATE_ESCROW'; credit = 'PARTNER_EARNINGS_PAYABLE';
+        } else if (!changes.some(c => c.bucket === WalletBalanceBucket.PENDING)) {
+          debit = 'AFFILIATE_MARKETING_EXPENSE'; credit = 'PARTNER_EARNINGS_PAYABLE';
+        }
+      }
+      if (debit && credit) await postFinance(tx, entry.id, 'WALLET_MOVEMENT', debit, credit, change.amount.abs(), reference.type);
     }
     return { wallet: updatedWallet, entries };
   }
@@ -374,6 +457,46 @@ export class WalletsService {
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
+    if (!storeId) {
+      const debits = await tx.financialLedger.findMany({
+        where: {
+          walletId: wallet.id,
+          referenceId: reference.id,
+          referenceType: 'PAYOUT_REQUEST',
+          transactionType: TransactionType.PAYOUT_WITHDRAW,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (
+        !debits.length ||
+        !debits
+          .reduce((sum, row) => sum.plus(row.amount), new Prisma.Decimal(0))
+          .equals(amount.negated())
+      )
+        throw new WalletBalanceInvariantError(
+          'Không khớp nguồn tiền yêu cầu hoàn',
+        );
+      let current = wallet;
+      for (const debit of debits) {
+        current = (
+          await this.applyBalanceChanges(
+            tx,
+            current,
+            reference,
+            [
+              this.buildChange(
+                WalletBalanceBucket.AVAILABLE,
+                TransactionType.PAYOUT_REJECT_REFUND,
+                current.availableBalance,
+                debit.amount.negated(),
+              ),
+            ],
+            debit.storeId ?? undefined,
+          )
+        ).wallet;
+      }
+      return current;
+    }
     return (
       await this.applyBalanceChanges(
         tx,
@@ -403,7 +526,7 @@ export class WalletsService {
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, userId);
-    if (wallet.availableBalance.lessThan(amount)) {
+    if (wallet.shoppingBalance.lessThan(amount)) {
       throw new BadRequestException(
         'Số dư ví SCANMS không đủ để thanh toán đơn hàng.',
       );
@@ -416,9 +539,9 @@ export class WalletsService {
         { id: orderId, type: 'ORDER_PAYMENT' },
         [
           this.buildChange(
-            WalletBalanceBucket.AVAILABLE,
+            WalletBalanceBucket.SHOPPING,
             TransactionType.PAYOUT_WITHDRAW,
-            wallet.availableBalance,
+            wallet.shoppingBalance,
             amount.negated(),
           ),
         ],
@@ -444,9 +567,9 @@ export class WalletsService {
         { id: orderId, type: 'ORDER_REFUND' },
         [
           this.buildChange(
-            WalletBalanceBucket.AVAILABLE,
+            WalletBalanceBucket.SHOPPING,
             TransactionType.COMMISSION_APPROVED,
-            wallet.availableBalance,
+            wallet.shoppingBalance,
             amount,
           ),
         ],
@@ -454,10 +577,25 @@ export class WalletsService {
     ).wallet;
   }
 
+  async creditShoppingBalance(tx: Prisma.TransactionClient, userId: string, amount: Prisma.Decimal, reference: LedgerReference) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, userId);
+    const result = await this.applyBalanceChanges(tx, wallet, reference, [
+      this.buildChange(WalletBalanceBucket.SHOPPING, TransactionType.COMMISSION_APPROVED, wallet.shoppingBalance, amount),
+    ]);
+    return { wallet: result.wallet, ledger: result.entries[0] };
+  }
+
   /**
    * Nạp tiền giả lập Sandbox / Demo (Phục vụ kiểm thử & trải nghiệm thanh toán giỏ hàng)
    */
+  demoTopUpAvailability() {
+    return { available: process.env.ALLOW_DEMO_WALLET_TOPUP === 'true' && process.env.NODE_ENV !== 'production' };
+  }
+
   async topUpDemo(userId: string, amountNum: number) {
+    if (!this.demoTopUpAvailability().available)
+      throw new ForbiddenException('Nạp tiền thử nghiệm đã bị vô hiệu hóa');
     if (!this.prisma) {
       throw new Error('PrismaService is required for topUpDemo');
     }
@@ -475,7 +613,7 @@ export class WalletsService {
       return {
         success: true,
         message: `Nạp thành công ${amountNum.toLocaleString('vi-VN')} ₫ vào Ví SCANMS!`,
-        availableBalance: res.wallet.availableBalance.toFixed(2),
+        availableBalance: res.wallet.shoppingBalance.toFixed(2),
         walletId: res.wallet.id,
       };
     });

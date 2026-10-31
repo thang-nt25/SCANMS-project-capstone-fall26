@@ -112,6 +112,7 @@ html {
   background: var(--canvas);
   scroll-behavior: smooth;
   overflow-x: clip;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(180, 140, 75, 0.45) transparent;
 }

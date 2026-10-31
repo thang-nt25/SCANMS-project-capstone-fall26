@@ -55,7 +55,7 @@ describe('Refund bonus incremental recovery', () => {
       monthlyBonusResult: {
         findUnique: jest.fn(async ({ where }) =>
           where.storeId_collaboratorId_yearMonth.yearMonth === '2026-09'
-            ? { id: 'settlement-a', bonusAmount: decimal(100000) }
+            ? { id: 'settlement-a', bonusAmount: decimal(100000), status: 'PAID', ruleSnapshot: { rules: [], netBonus: '100000' } }
             : null,
         ),
       },
@@ -80,7 +80,7 @@ describe('Refund bonus incremental recovery', () => {
       order: { findFirst: jest.fn(async () => ({ ...order })) },
       $transaction: jest.fn(async (callback) => callback(tx)),
     };
-    const service = new CommissionRulesService(prisma as any, {} as any);
+    const service = new CommissionRulesService(prisma as any, { reverseAvailableBalance: jest.fn() } as any);
     jest.spyOn(service, 'calculateValidMonthlyRevenue').mockImplementation(
       async () =>
         ({

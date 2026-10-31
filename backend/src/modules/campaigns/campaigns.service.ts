@@ -32,8 +32,8 @@ export class CampaignsService {
   private assertBonusPolicy(campaign: { bonusCommissionRate: unknown; bonusBudgetTotal: unknown }) {
     const rate = Number(campaign.bonusCommissionRate);
     const budget = Number(campaign.bonusBudgetTotal);
-    if (!Number.isFinite(rate) || rate < 1 || rate > 2 || !Number.isFinite(budget) || budget <= 0) {
-      throw new BadRequestException('Chiến dịch cần thưởng từ 1% đến 2% và ngân sách trần lớn hơn 0. Hãy tạo lại chiến dịch cũ chưa đúng chính sách.');
+    if (!Number.isFinite(rate) || rate < 1 || rate > 6 || !Number.isFinite(budget) || budget <= 0) {
+      throw new BadRequestException('Chiến dịch cần thưởng từ 1% đến 6% (tổng mức 11%–16%) và ngân sách trần lớn hơn 0.');
     }
   }
 

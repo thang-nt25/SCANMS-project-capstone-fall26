@@ -58,13 +58,14 @@ export const CommissionRulesPage: React.FC = () => {
     } catch {}
     return '';
   });
-  const isReadOnlyAdmin = currentUserRole === 'SYSTEM_ADMIN';
+  const isReadOnlyAdmin = !['SHOP_MANAGER', 'SYSTEM_ADMIN'].includes(currentUserRole);
 
   // Rules state
   const [rules, setRules] = useState<CommissionRule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingRule, setEditingRule] = useState<CommissionRule | null>(null);
+  const [bonusType, setBonusType] = useState<'FIXED' | 'PERCENT'>('FIXED');
   const [deletingRule, setDeletingRule] = useState<CommissionRule | null>(null);
 
   const [ruleForm, setRuleForm] = useState({
@@ -257,7 +258,7 @@ export const CommissionRulesPage: React.FC = () => {
   // Actions
   const handleSaveRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ruleForm.name || !ruleForm.minMonthlyRevenue || !ruleForm.bonusPercentage) {
+    if (!ruleForm.name || !ruleForm.minMonthlyRevenue || (bonusType === 'PERCENT' && !ruleForm.bonusPercentage)) {
       toast.error('Nhập đủ tên bậc, doanh số tối thiểu và tỷ lệ thưởng.');
       return;
     }
@@ -267,8 +268,8 @@ export const CommissionRulesPage: React.FC = () => {
           name: ruleForm.name.trim(),
           description: ruleForm.description.trim() || undefined,
           minMonthlyRevenue: ruleForm.minMonthlyRevenue.trim(),
-          achievementBonus: ruleForm.achievementBonus.trim() || '0',
-          bonusPercentage: ruleForm.bonusPercentage.trim(),
+          achievementBonus: bonusType === 'FIXED' ? ruleForm.achievementBonus.trim() || '0' : '0',
+          bonusPercentage: bonusType === 'PERCENT' ? ruleForm.bonusPercentage.trim() : '0',
           isActive: ruleForm.isActive,
         });
         toast.success('Cập nhật bậc thưởng thành công.');
@@ -277,8 +278,8 @@ export const CommissionRulesPage: React.FC = () => {
           name: ruleForm.name.trim(),
           description: ruleForm.description.trim() || undefined,
           minMonthlyRevenue: ruleForm.minMonthlyRevenue.trim(),
-          achievementBonus: ruleForm.achievementBonus.trim() || '0',
-          bonusPercentage: ruleForm.bonusPercentage.trim(),
+          achievementBonus: bonusType === 'FIXED' ? ruleForm.achievementBonus.trim() || '0' : '0',
+          bonusPercentage: bonusType === 'PERCENT' ? ruleForm.bonusPercentage.trim() : '0',
           isActive: ruleForm.isActive,
         });
         toast.success('Tạo bậc thưởng thành công.');
@@ -336,7 +337,7 @@ export const CommissionRulesPage: React.FC = () => {
         storeId,
         selectedKolId,
         settleYearMonth,
-        isCurrentMonth
+        false
       );
       toast.success(res.message || 'Chốt thưởng thành công.');
       await Promise.all([
@@ -457,6 +458,7 @@ export const CommissionRulesPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setEditingRule(null);
+                setBonusType('FIXED');
                 setRuleForm({
                   name: '',
                   description: '',
@@ -528,8 +530,8 @@ export const CommissionRulesPage: React.FC = () => {
                       <p className="font-bold text-[#B88E4F] mt-0.5">{formatVND(rule.achievementBonus)}</p>
                     </div>
                     <div className="col-span-2 rounded-lg bg-[#FAF8F5] p-2 border border-[#EAE4D7]/60">
-                      <span className="text-[10px] text-[#7D715E]">Thưởng vượt mốc</span>
-                      <p className="font-extrabold text-[#B88E4F] text-xs mt-0.5">+{rule.bonusPercentage}% doanh số vượt</p>
+                      <span className="text-[10px] text-[#7D715E]">Cách tính thưởng tháng</span>
+                      <p className="font-extrabold text-[#B88E4F] text-xs mt-0.5">{Number(rule.achievementBonus) > 0 ? 'Thưởng cố định khi đạt mốc' : `${rule.bonusPercentage}% tổng doanh thu sạch`}</p>
                     </div>
                   </div>
                 </div>
@@ -548,6 +550,7 @@ export const CommissionRulesPage: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setEditingRule(rule);
+                        setBonusType(Number(rule.achievementBonus) > 0 ? 'FIXED' : 'PERCENT');
                         setRuleForm({
                           name: rule.name,
                           description: rule.description || '',
@@ -606,7 +609,7 @@ export const CommissionRulesPage: React.FC = () => {
             {!isReadOnlyAdmin && (
               <button
                 type="button"
-                disabled={batchSettleLoading || (teamProgress?.summary?.eligibleCount || 0) === 0}
+                disabled={isCurrentMonth || batchSettleLoading || (teamProgress?.summary?.eligibleCount || 0) === 0}
                 onClick={handleBatchSettle}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-3.5 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition disabled:opacity-40"
               >
@@ -892,13 +895,13 @@ export const CommissionRulesPage: React.FC = () => {
                       {kolProgress.settlement
                         ? `Đã chốt sổ trạng thái: ${kolProgress.settlement.status}`
                         : isCurrentMonth
-                        ? 'Chốt sớm sẽ ghi nhận thưởng dự kiến tháng hiện tại.'
+                        ? 'Kỳ đang tích lũy. Chỉ được quyết toán sau khi kết thúc tháng.'
                         : 'Chốt chính thức để lập phiếu chi trả vào ví đối tác.'}
                     </span>
 
                     <button
                       type="button"
-                      disabled={settleLoading || !selectedKolId || Boolean(kolProgress.settlement)}
+                      disabled={isCurrentMonth || settleLoading || !selectedKolId || Boolean(kolProgress.settlement)}
                       onClick={handleSettleSingle}
                       className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition disabled:opacity-50"
                     >
@@ -908,7 +911,7 @@ export const CommissionRulesPage: React.FC = () => {
                         : kolProgress.settlement
                         ? 'Đã chốt đối soát'
                         : isCurrentMonth
-                        ? 'Chốt sớm kỳ này (Dự kiến)'
+                        ? 'Chờ kết thúc kỳ tháng'
                         : 'Chốt đối soát đối tác này'}
                     </button>
                   </div>
@@ -1113,6 +1116,12 @@ export const CommissionRulesPage: React.FC = () => {
                 />
               </label>
 
+              <label className="grid gap-1 font-bold text-[#5F5547]">Cách thưởng khi đạt mốc
+                <select value={bonusType} onChange={event => setBonusType(event.target.value as 'FIXED' | 'PERCENT')} className="h-9 rounded-xl border border-[#EAE4D7] px-3">
+                  <option value="FIXED">Số tiền cố định</option><option value="PERCENT">Phần trăm tổng doanh thu sạch</option>
+                </select>
+                <span className="font-normal text-[#7D715E]">Lấy mốc cao nhất. Thay đổi chính sách áp dụng từ kỳ sau.</span>
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 <label className="grid gap-1 font-bold text-[#5F5547]">
                   <div className="flex items-center justify-between">
@@ -1127,6 +1136,7 @@ export const CommissionRulesPage: React.FC = () => {
                     type="number"
                     min="0"
                     value={ruleForm.achievementBonus}
+                    disabled={bonusType !== 'FIXED'}
                     onChange={(e) => setRuleForm({ ...ruleForm, achievementBonus: e.target.value })}
                     placeholder="2000000"
                     className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal font-mono outline-none focus:border-[#C59B58]"
@@ -1134,14 +1144,15 @@ export const CommissionRulesPage: React.FC = () => {
                 </label>
 
                 <label className="grid gap-1 font-bold text-[#5F5547]">
-                  Thưởng phần vượt (%) *
+                  Thưởng trên tổng doanh thu sạch (%)
                   <input
-                    required
+                    required={bonusType === 'PERCENT'}
                     type="number"
                     min="0"
                     max="100"
                     step="0.1"
                     value={ruleForm.bonusPercentage}
+                    disabled={bonusType !== 'PERCENT'}
                     onChange={(e) => setRuleForm({ ...ruleForm, bonusPercentage: e.target.value })}
                     placeholder="1.5%"
                     className="h-9 rounded-xl border border-[#EAE4D7] px-3 font-normal outline-none focus:border-[#C59B58]"

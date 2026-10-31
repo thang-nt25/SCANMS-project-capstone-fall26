@@ -21,6 +21,7 @@ import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 export interface PublicHeaderProps {
   cartPage?: boolean;
   navigation?: ReactNode;
+  layout?: 'marketplace' | 'cart' | 'standard';
   sticky?: boolean;
   cartCount?: number;
   onOpenCart?: () => void;
@@ -33,6 +34,7 @@ export interface PublicHeaderProps {
 export function PublicHeader({
   cartPage = false,
   navigation,
+  layout,
   sticky = true,
   cartCount,
   onOpenCart,
@@ -173,9 +175,11 @@ export function PublicHeader({
   const isShop = role === 'SHOP_MANAGER';
 
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
+  const isMarketplace = layout === 'marketplace' || Boolean(navigation);
+  const hasShortcuts = Boolean(navigation);
 
   return (
-    <header className={`scanms-site-header public-commerce-header ${cartPage ? 'public-commerce-header--cart' : ''} ${navigation ? 'public-commerce-header--marketplace' : ''} ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white border-b border-[#EAE4D7]`}>
+    <header className={`scanms-site-header public-commerce-header ${cartPage ? 'public-commerce-header--cart' : ''} ${isMarketplace ? 'public-commerce-header--marketplace' : ''} ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white border-b border-[#EAE4D7]`} data-shortcuts={hasShortcuts}>
       <div className="public-commerce-header__inner max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="public-commerce-header__brand flex items-center gap-2 shrink-0">

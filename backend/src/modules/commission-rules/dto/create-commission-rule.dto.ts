@@ -55,7 +55,7 @@ export class CreateCommissionRuleDto {
 
   @ApiProperty({
     description:
-      'Tỷ lệ phần trăm thưởng thêm trên phần vượt (từ 0 đến 100, tối đa 2 chữ số thập phân)',
+      'Tỷ lệ thưởng trên tổng doanh thu sạch khi đạt mốc (0–100%). Dùng khi thưởng cố định bằng 0; nếu có thưởng cố định thì chỉ trả khoản cố định.',
     example: '2.00',
   })
   @IsNotEmpty({ message: 'Tỷ lệ phần trăm thưởng không được để trống' })

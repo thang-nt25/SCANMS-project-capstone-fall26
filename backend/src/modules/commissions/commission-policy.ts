@@ -18,7 +18,7 @@ export function campaignBonusRate(campaign: {
   const rate = Number(campaign.bonusCommissionRate);
   const budget = Number(campaign.bonusBudgetTotal);
   const used = Number(campaign.bonusBudgetUsed || 0);
-  return Number.isFinite(rate) && rate >= 1 && rate <= 2 &&
+  return Number.isFinite(rate) && rate >= 1 && rate <= 6 &&
     Number.isFinite(budget) && budget > 0 && Number.isFinite(used) && used >= 0 && used < budget ? rate : 0;
 }
 

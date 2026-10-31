@@ -186,6 +186,7 @@ enum TransactionType {
 enum WalletBalanceBucket {
   AVAILABLE
   PENDING
+  SHOPPING
 }
 
 enum PayoutStatus {
@@ -1428,6 +1429,7 @@ model PlatformVoucherReimbursement {
 }
 
 model OrderRefund {
+  sourceKey String? @unique @map("source_key") @db.VarChar(100)
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderId    String   @map("order_id") @db.Uuid
   amount     Decimal  @db.Decimal(15, 2)
@@ -1554,6 +1556,8 @@ model Wallet {
   collaboratorId   String   @unique @map("collaborator_id") @db.Uuid
   availableBalance Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
   pendingBalance   Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
+  shoppingBalance  Decimal  @default(0.00) @map("shopping_balance") @db.Decimal(15, 2)
+  earningsReviewRequired Boolean @default(false) @map("earnings_review_required")
   version          Int      @default(1)
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1614,6 +1618,49 @@ model FinancialLedger {
   @@map("financial_ledgers")
 }
 
+// Balanced accounting legs; a row always debits and credits the same amount.
+model FinanceCostEntry {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+  subjectType String @map("subject_type") @db.VarChar(20)
+  subjectId String @map("subject_id") @db.Uuid
+  amount Decimal @db.Decimal(15,2)
+  evidence String @db.VarChar(500)
+  recordedById String @map("recorded_by_id") @db.Uuid
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  @@unique([subjectType, subjectId])
+  @@index([storeId])
+  @@map("finance_cost_entries")
+}
+
+model PayoutTaxCertificate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payoutId String @unique @map("payout_id") @db.Uuid
+  issuer String @db.VarChar(150)
+  certificateNumber String @map("certificate_number") @db.VarChar(100)
+  issuedAt DateTime @map("issued_at") @db.Timestamptz(6)
+  fileData Bytes @map("file_data")
+  sha256 String @db.VarChar(64)
+  uploadedById String @map("uploaded_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([issuer, certificateNumber])
+  @@map("payout_tax_certificates")
+}
+
+model FinancePosting {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventKey      String   @unique @map("event_key") @db.VarChar(150)
+  referenceId   String   @map("reference_id") @db.Uuid
+  referenceType String   @map("reference_type") @db.VarChar(30)
+  debitAccount  String   @map("debit_account") @db.VarChar(60)
+  creditAccount String   @map("credit_account") @db.VarChar(60)
+  amount        Decimal  @db.Decimal(15, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([referenceId])
+  @@map("finance_postings")
+}
+
 model PayoutRequest {
   id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   collaboratorId     String       @map("collaborator_id") @db.Uuid
@@ -1634,6 +1681,8 @@ model PayoutRequest {
   batchId            String?      @map("batch_id") @db.Uuid
   rejectedReason     String?      @map("rejected_reason")
   processedAt        DateTime?    @map("processed_at") @db.Timestamptz(6)
+  transferLeaseId    String?      @map("transfer_lease_id") @db.Uuid
+  transferLeaseUntil DateTime?    @map("transfer_lease_until") @db.Timestamptz(6)
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations

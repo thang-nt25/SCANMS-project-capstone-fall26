@@ -79,6 +79,8 @@ export class WalletSummaryService {
       }),
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
+      shoppingBalance: wallet?.shoppingBalance?.toFixed(2) ?? '0.00',
+      earningsReviewRequired: wallet?.earningsReviewRequired ?? false,
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
         storeId: balance.storeId,
         storeName: balance.store.name,
@@ -116,19 +118,9 @@ export class WalletSummaryService {
       },
       kycStatus: profile?.kycStatus ?? KycStatus.UNVERIFIED,
       canWithdraw:
+        !wallet?.earningsReviewRequired &&
         profile?.kycStatus === KycStatus.VERIFIED &&
         hasBankAccount &&
-        Boolean(
-          wallet?.storeWallets.some(
-            (balance) =>
-              !balance.store.isDeleted &&
-              balance.store.owner.isActive &&
-              !balance.store.owner.isDeleted &&
-              balance.availableBalance.greaterThanOrEqualTo(
-                this.policy.minimumAmount,
-              ),
-          ),
-        ) &&
         Boolean(
           wallet?.availableBalance.greaterThanOrEqualTo(
             this.policy.minimumAmount,
@@ -262,9 +254,10 @@ export class WalletSummaryService {
         bankName: dto.bankName.trim(),
         bankAccountNumber: dto.bankAccountNumber.trim(),
         bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+        kycStatus: KycStatus.UNVERIFIED,
       },
     });
-    return { success: true, message: 'Đã cập nhật thông tin tài khoản nhận tiền thành công.' };
+    return { success: true, message: 'Đã cập nhật tài khoản nhận tiền. Vui lòng nộp lại hồ sơ eKYC để xác minh trước khi rút thu nhập.' };
   }
 
   async disconnectBankAccount(collaboratorId: string) {
@@ -274,6 +267,7 @@ export class WalletSummaryService {
         bankName: '',
         bankAccountNumber: '',
         bankAccountName: '',
+        kycStatus: KycStatus.UNVERIFIED,
       },
     });
     return { success: true, message: 'Đã ngừng sử dụng tài khoản nhận tiền.' };

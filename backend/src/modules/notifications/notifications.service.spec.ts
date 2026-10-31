@@ -2,6 +2,7 @@ import { NotificationsService } from './notifications.service';
 
 describe('NotificationsService category filters', () => {
   const prisma: any = {
+    order: { findMany: jest.fn() },
     notification: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       count: jest.fn(),
@@ -17,6 +18,7 @@ describe('NotificationsService category filters', () => {
     prisma.notification.count.mockResolvedValue(1);
     prisma.notification.createMany.mockResolvedValue({ count: 0 });
     prisma.notification.findMany.mockResolvedValue([]);
+    prisma.order.findMany.mockResolvedValue([]);
     service = new NotificationsService(prisma);
   });
 
@@ -60,5 +62,44 @@ describe('NotificationsService category filters', () => {
       { type: { startsWith: 'LIVE_SESSION_' } },
     ]));
     expect(query.where.type).toBeUndefined();
+  });
+
+  it('restores product images for legacy order notices with null data using the public code in the title', async () => {
+    prisma.notification.findMany.mockResolvedValue([
+      { id: 'notice-1', type: 'ORDER_PLACED', title: 'Đặt hàng thành công đơn #DH-SCN-95882', message: 'Đang chờ xác nhận.', data: null },
+    ]);
+    prisma.order.findMany.mockResolvedValue([
+      { id: 'order-1', externalOrderSn: 'DH-SCN-95882', orderItems: [{ product: { title: 'Hydro Boost', imageUrl: '/products/hydro.jpg' }, variant: null }] },
+    ]);
+
+    const result = await service.getUserNotifications('customer-1');
+
+    expect(result.items[0].data).toEqual({ productImageUrl: '/products/hydro.jpg', productTitle: 'Hydro Boost' });
+    expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { AND: [
+        { OR: [{ externalOrderSn: { in: ['DH-SCN-95882'] } }] },
+        { OR: [{ customerId: 'customer-1' }, { attributedCollaboratorId: 'customer-1' }, { store: { is: { ownerId: 'customer-1' } } }] },
+      ] },
+    }));
+  });
+
+  it('resolves an old order code in the message and prefers the purchased variant image', async () => {
+    prisma.notification.findMany.mockResolvedValue([
+      { id: 'notice-2', type: 'ORDER_DELIVERED', title: 'Đã giao hàng', message: 'Đơn #DH-2026-ABCDEF12 đã giao.', data: null },
+    ]);
+    prisma.order.findMany.mockResolvedValue([
+      { id: 'order-2', externalOrderSn: 'DH-2026-ABCDEF12', orderItems: [{ product: { title: 'Áo', imageUrl: '/products/shirt.jpg' }, variant: { imageUrl: '/products/shirt-blue.jpg' } }] },
+    ]);
+
+    const result = await service.getUserNotifications('customer-1');
+    expect(result.items[0].data).toEqual({ productImageUrl: '/products/shirt-blue.jpg', productTitle: 'Áo' });
+  });
+
+  it('does not attach an image when the order is missing or outside the permitted scope', async () => {
+    const notice = { id: 'notice-3', type: 'ORDER_PLACED', title: 'Đơn #DH-SCN-00000', message: '', data: null };
+    prisma.notification.findMany.mockResolvedValue([notice]);
+    prisma.order.findMany.mockResolvedValue([]);
+    const result = await service.getUserNotifications('customer-1');
+    expect(result.items[0]).toEqual(notice);
   });
 });

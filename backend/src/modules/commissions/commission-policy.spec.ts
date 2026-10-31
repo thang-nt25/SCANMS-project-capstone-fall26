@@ -42,9 +42,10 @@ describe('Word additive commission contract', () => {
   it.each([null, 0, -1, NaN])('rejects missing or invalid budget %s', budget => {
     expect(campaignBonusRate({ ...campaign, bonusBudgetTotal: budget }, 'shop', now)).toBe(0);
   });
-  it('stops paying campaign bonus at budget exhaustion and rejects legacy 5%', () => {
+  it('stops paying campaign bonus at budget exhaustion and rejects rates beyond 16% total', () => {
     expect(campaignBonusRate({ ...campaign, bonusBudgetUsed: 100000 }, 'shop', now)).toBe(0);
-    expect(campaignBonusRate({ ...campaign, bonusCommissionRate: 5 }, 'shop', now)).toBe(0);
+    expect(campaignBonusRate({ ...campaign, bonusCommissionRate: 4 }, 'shop', now)).toBe(4);
+    expect(campaignBonusRate({ ...campaign, bonusCommissionRate: 7 }, 'shop', now)).toBe(0);
   });
   it.each(['SCHEDULED', 'PAUSED', 'ENDED', 'CANCELLED', 'PENDING_CREATOR'])('never pays a Live bonus in %s', status => {
     expect(liveBonusRate({ ...live, status }, now)).toBe(0);

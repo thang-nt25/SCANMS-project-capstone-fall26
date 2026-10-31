@@ -1,4 +1,14 @@
 # CẨM NANG TOÀN DIỆN CẢI TỔ ĐỀ TÀI SCANMS
+
+> **Chuẩn triển khai Main Flow 5 — cập nhật 31/10/2026:** các quy tắc sau được dùng thống nhất cho Flow 5 và thay thế ví dụ/sơ đồ cũ nếu khác nhau:
+> - Escrow **7 ngày lịch từ `deliveredAt`**, không cộng ngày lễ; tiếp tục giữ khi có đổi trả, tranh chấp hoặc thẩm định tự mua. Không rút ngắn thời hạn đã chốt cho bản ghi cũ.
+> - Hoa hồng đơn = `min(25%, max(Deal, Campaign, Tier, 10%) + Live)`, tính trên giá hàng sau giảm, không tính phí vận chuyển. Campaign cộng 1–6 điểm phần trăm trên Base (tổng 11–16%); Deal không được ghi đè một Campaign có mức cao hơn. Live hỗ trợ 2–3 điểm theo cấu hình phiên và AGENTS.md.
+> - FR-09 độc lập: lấy **mốc cao nhất đạt được**, thưởng cố định **hoặc** phần trăm trên **tổng doanh thu sạch** của KOC/Store/tháng; không cộng phần vượt mốc cho kỳ mới. Chính sách có hiệu lực tại đầu tháng Việt Nam được giữ suốt kỳ, sửa/xóa trong tháng áp dụng kỳ sau. Đây là quy ước triển khai bổ sung cho trường hợp sửa giữa kỳ chưa được tài liệu cũ quy định rõ. Kỳ đã quyết toán dùng snapshot cũ khi điều chỉnh hoàn tiền.
+> - Chốt sau khi tháng kết thúc; cron 00:10 mỗi ngày bù kỳ đã đóng. Thao tác thủ công gồm tính → duyệt → cộng ví. Doanh số tích lũy 52 triệu đủ **Vàng 12%** theo bảng cấp bậc.
+> - Ví dụ Serum 450.000đ giảm coupon 10%, Deal 16%: hoa hồng **64.800đ**; cộng thưởng cố định 2 triệu → gross **2.064.800đ**, thuế theo đặc tả **206.480đ**, net **1.858.320đ**.
+> - API thực tế: `POST /api/stores/:storeId/commission-rules/settle`, `PATCH .../settlements/:id/approve`, `POST .../settlements/:id/payout`; payout dùng `PENDING → PROCESSING → APPROVED`, từ chối dùng `REJECTED`. `PROCESSING` giữ nguyên khi kết quả ngân hàng chưa rõ để chống chi trùng.
+> - Bằng chứng nghiệm thu và phần dịch vụ bên ngoài: [kết quả sửa Flow 5](MAIN_FLOW_5_FIX_RESULTS_2026-10-31.md), [hướng dẫn đăng ký dịch vụ](FLOW5_EXTERNAL_SERVICES_SETUP.md). Unit/integration với ngân hàng giả lập không đồng nghĩa đã giải ngân thật.
+
 ## TỪ BẢN CHẤT DOANH NGHIỆP, CHIẾN LƯỢC CỬA HÀNG, CƠ CHẾ THÙ LAO MỚI ĐẾN 5 MAIN FLOWS CHUẨN MỰC BẢO VỆ HỘI ĐỒNG
 
 > [!IMPORTANT]
@@ -575,7 +585,7 @@ flowchart TD
          │                          │────────────────────────────────────────────────────>│
          │                          │                          │                          │ 3. Chống Tự Mua (AI)
          │                          │                          │                          │    Tính Best-Benefit
-         │                          │                          │                          │    Ghi PENDING 72.000₫
+         │                          │                          │                          │    Ghi PENDING 64.800₫
          │<───────────────────────────────────────────────────────────────────────────────│
          │                          │                          │ 4. Xuất kho giao GHN     │
          │                          │                          │─────────────────────────>│
@@ -615,7 +625,7 @@ flowchart TD
 * **Bước 4.5 (`Hệ thống` - Động cơ Thù Lao Ưu Tiên Best-Benefit):**
   * Động cơ tính thù lao tự động bóc tách đơn hàng và thực thi thuật toán so khớp ưu tiên:
     $$\text{Tỷ lệ áp dụng} = \max\Big(\text{Deal VIP } 16\%,\; \text{Chiến dịch } 12\%,\; \text{Tier Đồng } 10\%,\; \text{Base } 10\%\Big) = 16\%$$
-  * Tính tiền thù lao: $450.000₫ \times 16\% = 72.000₫$.
+  * Tính tiền thù lao sau coupon 10%: $450.000₫ \times 90\% \times 16\% = 64.800₫$ (không tính phí vận chuyển).
   * Bút toán hoa hồng được ghi nhận tức thì vào mục **"Hoa hồng chờ xử lý (`PENDING`)"** trong Ví của Thảo Nhi.
 * **Bước 4.6 (`SHOP_MANAGER` - Đóng gói & Giao Hàng GHN):**
   * Shop Manager mở trang Quản lý đơn hàng ([`/merchant/orders`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/OrdersManagementPage.tsx)).
@@ -627,10 +637,10 @@ flowchart TD
     * Khách mở kiện hàng phát hiện chai serum vỡ do bưu tá vận chuyển chèn ép móp hộp. Khách chụp ảnh hộp carton và quay video unboxing gửi khiếu nại đổi trả.
     * Trọng tài `SYSTEM_MANAGER` đối chiếu tem seal nguyên vẹn, phân loại mã lỗi: **`LOGISTICS_FAULT`** (Miễn trừ lỗi cho Shop).
     * Shop Manager bấm nút **"Xác nhận Bù Hàng Mới 1-đổi-1"**: Hệ thống xuất kho tạo đơn giao bù một chai mới cho khách.
-    * 🎯 **ĐIỂM NHẤN BẢO VỆ AFFILIATE:** **KOC ĐƯỢC BẢO LƯU 100% HOA HỒNG (72.000₫)** vì khách hàng cuối cùng vẫn nhận được sản phẩm và công ty giữ được doanh số! Shop lập phiếu khiếu nại bảo hiểm GHN để cấn trừ đền bù vào kỳ đối soát.
+    * 🎯 **ĐIỂM NHẤN BẢO VỆ AFFILIATE:** **KOC ĐƯỢC BẢO LƯU 100% HOA HỒNG (64.800₫)** vì khách hàng cuối cùng vẫn nhận được sản phẩm và công ty giữ được doanh số! Shop lập phiếu khiếu nại bảo hiểm GHN để cấn trừ đền bù vào kỳ đối soát.
   * **Kịch bản B (Khách đổi ý trả hàng - Hoàn Tiền & Kích hoạt Clawback Engine):**
     * Trong trường hợp khách không ưng ý và yêu cầu hoàn tiền $\rightarrow$ Shop thu hồi hàng về kho và duyệt hoàn tiền vào Ví khách.
-    * 🎯 **ĐIỂM NHẤN CLAWBACK:** Động cơ **Clawback Engine** lập tức can thiệp: **Xóa khoản $72.000₫$ chờ xử lý trong ví KOC về $0₫$**, đảm bảo công ty không bao giờ bị thất thoát tiền hoa hồng khi đơn hàng đã bị hủy.
+    * 🎯 **ĐIỂM NHẤN CLAWBACK:** Động cơ **Clawback Engine** lập tức can thiệp: **Xóa khoản $64.800₫$ chờ xử lý trong ví KOC về $0₫$**, đảm bảo công ty không bao giờ bị thất thoát tiền hoa hồng khi đơn hàng đã bị hủy.
 
 ---
 
@@ -661,7 +671,7 @@ flowchart TD
          │    + Thăng HẠNG BẠC      │                          │                          │
          │                          │                          │                          │
          │ 4. Tạo lệnh Rút Tiền     │                          │                          │
-         │    (2.072.000₫ về MBBank)│                          │                          │
+         │    (1.858.320₫ về MBBank)│                          │                          │
          │────────────────────────────────────────────────────>│                          │
          │                          │                          │ 5. Khóa dòng DB          │
          │                          │                          │    Khấu trừ 10% thuế TNCN│
@@ -674,29 +684,29 @@ flowchart TD
 
 ### 1. Kịch Bản Thao Tác Chi Tiết Từng Bước (Live Action Walkthrough)
 * **Bước 5.1 (Giải tỏa Bảo chứng Escrow Dòng tiền An toàn):**
-  * Sau thời hạn bảo chứng Escrow (7–14 ngày), đối với các đơn hàng giao thành công không có khiếu nại đổi trả, hệ thống tự động giải tỏa khoản hoa hồng $72.000₫$ từ trạng thái `PENDING` sang **Số dư Khả dụng (`AVAILABLE`)** trong ví của KOC.
+  * Sau thời hạn bảo chứng Escrow 7 ngày lịch từ giao thành công, đối với các đơn hàng không có khiếu nại đổi trả hoặc yêu cầu thẩm định, hệ thống tự động giải tỏa khoản hoa hồng $64.800₫$ từ trạng thái `PENDING` sang **Số dư Khả dụng (`AVAILABLE`)** trong ví của KOC.
 * **Bước 5.2 (`SHOP_MANAGER` - Chốt Thưởng Doanh Số Tháng FR-09 & Thăng Hạng Tier):**
-  * Đêm ngày cuối tháng, Shop Manager mở trang Cấu hình Thưởng ([`/merchant/commissions`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/ShopPromotionsHubPage.tsx)).
-  * Bấm nút **"Quyết toán Mốc Thưởng Tháng (FR-09)"** (`POST /api/v1/commission-rules/settle-monthly`).
+  * Sau khi tháng kết thúc theo giờ Việt Nam, Shop Manager mở trang Cấu hình Thưởng (`/merchant/commissions`). Cron lúc 00:10 hằng ngày cũng bù các kỳ đã đóng bị bỏ lỡ.
+  * Thực hiện **Tính thưởng → Duyệt → Cộng ví** qua `POST /api/stores/:storeId/commission-rules/settle`, `PATCH /api/stores/:storeId/commission-rules/settlements/:id/approve`, `POST /api/stores/:storeId/commission-rules/settlements/:id/payout`.
   * Động cơ tài chính quét tổng doanh số sạch của Thảo Nhi trong tháng đạt $52.000.000₫$ (vượt mốc chỉ tiêu 50 triệu):
     * Tự động khởi tạo giao dịch cộng thưởng nóng **$2.000.000₫$** vào ví KOC với mã bút toán `MONTHLY_BONUS_REWARD`.
-    * Đồng thời, hệ thống tự động **Nâng Hạng KOC từ ĐỒNG lên BẠC (Silver)**, mở khóa quyền hưởng Base Rate $11\%$ từ tháng tiếp theo.
+    * Sang tháng tiếp theo, hệ thống đánh giá doanh số tích lũy các tháng đã đóng, **nâng từ ĐỒNG lên VÀNG (Gold)** ở 52 triệu, hưởng mức cấp bậc $12\%$ theo bảng ngưỡng.
 * **Bước 5.3 (`COLLABORATOR` - Tạo lệnh rút thu nhập Payout):**
   * Thảo Nhi mở Ví Đối Tác ([`/collaborator/wallet`](file:///c:/HW/CAPSTONE/frontend/src/pages/collaborator/WalletPage.tsx)).
-  * Tổng thu nhập khả dụng hiện có: $72.000₫ + 2.000.000₫ = 2.072.000₫$.
-  * Bấm nút **"Rút thu nhập về tài khoản ngân hàng"**, nhập số tiền rút $2.072.000₫$ về STK MB Bank chính chủ đã eKYC.
+  * Tổng thu nhập khả dụng hiện có: $64.800₫ + 2.000.000₫ = 2.064.800₫$.
+  * Bấm nút **"Rút thu nhập về tài khoản ngân hàng"**, nhập số tiền rút $2.064.800₫$ về STK MB Bank chính chủ đã eKYC.
 * **Bước 5.4 (`Hệ thống` - Khóa dòng CSDL & Tự động khấu trừ 10% Thuế TNCN):**
   * Backend thực thi truy vấn an toàn **Khóa dòng CSDL (`SELECT ... FOR UPDATE`)** để loại trừ hoàn toàn nguy cơ click đúp làm âm số dư ví (Double-Spending).
   * Kiểm tra số tiền rút $\ge 2.000.000₫$ theo quy định của Luật Quản lý Thuế Việt Nam đối với thu nhập vãng lai của cá nhân tiếp thị:
-    $$\text{Tiền Thuế TNCN Khấu Trừ (10\%)} = 2.072.000₫ \times 10\% = 207.200₫$$
-    $$\text{Số Tiền Thực Nhận Giải Ngân} = 2.072.000₫ - 207.200₫ = 1.864.800₫$$
-  * Trạng thái lệnh rút ghi nhận: `PENDING_ADMIN_APPROVAL`.
+    $$\text{Tiền Thuế TNCN Khấu Trừ (10\%)} = 2.064.800₫ \times 10\% = 206.480₫$$
+    $$\text{Số Tiền Thực Nhận Giải Ngân} = 2.064.800₫ - 206.480₫ = 1.858.320₫$$
+  * Trạng thái lệnh rút ghi nhận: `PENDING` (chờ chuyên viên duyệt; tương đương ý nghĩa tên `PENDING_ADMIN_APPROVAL` trong sơ đồ cũ).
 * **Bước 5.5 (`SYSTEM_MANAGER` - Kế toán Vận hành Đối soát & Phê duyệt Giải ngân):**
   * Chuyên viên vận hành / Kế toán viên mở trang Quản trị Chi trả ([`/admin/finance/payouts`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminFinancePayoutsPage.tsx)).
   * Thấy yêu cầu rút tiền của Thảo Nhi hiển thị rõ ràng:
-    * *Số tiền yêu cầu:* $2.072.000₫$
-    * *Khấu trừ thuế TNCN (10%):* **$207.200₫$**
-    * *Số tiền thực chi:* **$1.864.800₫$**
+    * *Số tiền yêu cầu:* $2.064.800₫$
+    * *Khấu trừ thuế TNCN (10%):* **$206.480₫$**
+    * *Số tiền thực chi:* **$1.858.320₫$**
     * *Chỉ số an toàn gian lận:* **100% An toàn (Xanh)**
   * Kế toán bấm nút **"Duyệt giải ngân Napas 24/7"** (`POST /api/v1/payouts/:id/approve`).
   * Hệ thống chuyển lệnh sang trạng thái `APPROVED`, ghi bút toán kép vào Sổ cái kế toán `FinancialLedger` và nhật ký kiểm toán `AuditLog`. KOC nhận được thông báo ting ting tiền về tài khoản ngân hàng kèm email sao kê chi tiết.
@@ -704,7 +714,7 @@ flowchart TD
   * Tổng Giám Đốc mở trang Executive Financial Dashboard ([`/admin/analytics`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminAnalyticsHubPage.tsx)):
     * Thấy chỉ số **GMV toàn tập đoàn** tăng trưởng thực tế.
     * Thấy **Tỷ lệ chi phí thù lao KOC/Doanh thu** nằm trong ngưỡng an toàn ($11.4\% < 15\%$).
-    * Thấy **Tổng số tiền Thuế TNCN $207.200₫$** vừa được tự động gom vào Báo cáo Thuế Doanh nghiệp phục vụ quyết toán định kỳ với Cơ quan Thuế.
+    * Thấy **Tổng số tiền Thuế TNCN $206.480₫$** vừa được tự động gom vào Báo cáo Thuế Doanh nghiệp phục vụ quyết toán định kỳ với Cơ quan Thuế.
   * Giám đốc mở trang **Nhật Ký Kiểm Toán (`/admin/audit-logs`)** để kiểm tra tính tuân thủ quy trình của `SYSTEM_MANAGER`, đảm bảo toàn bộ dòng tiền vận hành minh bạch $100\%$.
 
 ---

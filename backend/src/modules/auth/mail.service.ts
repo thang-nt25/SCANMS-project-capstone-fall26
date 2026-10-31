@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { renderOrderConfirmationEmail, type OrderConfirmationEmailInput } from './order-confirmation-email';
+import {
+  renderOrderConfirmationEmail,
+  type OrderConfirmationEmailInput,
+} from './order-confirmation-email';
 
 @Injectable()
 export class MailService {
@@ -29,10 +32,41 @@ export class MailService {
     }
   }
 
-  async sendOrderConfirmation(input: OrderConfirmationEmailInput): Promise<boolean> {
-    const webUrl = process.env.PUBLIC_WEB_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+  async sendOrderConfirmation(
+    input: OrderConfirmationEmailInput,
+  ): Promise<boolean> {
+    const webUrl =
+      process.env.PUBLIC_WEB_URL ||
+      process.env.FRONTEND_URL ||
+      'http://localhost:5173';
     const message = renderOrderConfirmationEmail(input, webUrl);
-    return this.sendMail(input.email, message.subject, message.html, message.text, true);
+    return this.sendMail(
+      input.email,
+      message.subject,
+      message.html,
+      message.text,
+      true,
+    );
+  }
+
+  async sendPayoutStatement(
+    email: string,
+    statement: {
+      id: string;
+      gross: string;
+      tax: string;
+      net: string;
+      bankRef: string;
+    },
+  ) {
+    const text = `SCANMS - Bảng kê chi trả ${statement.id}\nThu nhập trước thuế: ${statement.gross} VND\nThuế khấu trừ: ${statement.tax} VND\nThực nhận: ${statement.net} VND\nMã ngân hàng: ${statement.bankRef}\nXem bảng kê tại Ví đối tác SCANMS.`;
+    return this.sendMail(
+      email,
+      '[SCANMS] Đã chi trả thu nhập đối tác',
+      `<div style="font-family:Arial;color:#1A1612"><h2 style="color:#B88E4F">SCANMS · Thu nhập đối tác</h2><pre style="white-space:pre-wrap">${this.escapeHtml(text)}</pre></div>`,
+      text,
+      true,
+    );
   }
   /**
    * Gửi mã OTP xác thực đăng ký tài khoản
@@ -279,7 +313,8 @@ export class MailService {
     textFallback: string,
     requireDelivery = false,
   ): Promise<boolean> {
-    const sender = process.env.GMAIL_USER || process.env.SMTP_USER || 'no-reply@scanms.vn';
+    const sender =
+      process.env.GMAIL_USER || process.env.SMTP_USER || 'no-reply@scanms.vn';
     if (this.transporter) {
       try {
         const result = await this.transporter.sendMail({
@@ -289,13 +324,27 @@ export class MailService {
           subject,
           text: textFallback,
           html,
-          ...(!requireDelivery ? {
-            priority: 'high' as const,
-            headers: { 'X-Priority': '1', 'X-MSMail-Priority': 'High', Importance: 'high' },
-          } : {}),
+          ...(!requireDelivery
+            ? {
+                priority: 'high' as const,
+                headers: {
+                  'X-Priority': '1',
+                  'X-MSMail-Priority': 'High',
+                  Importance: 'high',
+                },
+              }
+            : {}),
         });
-        if (requireDelivery && !(result.accepted || []).some((recipient: string | { address: string }) =>
-          (typeof recipient === 'string' ? recipient : recipient.address).toLowerCase() === to.trim().toLowerCase())) {
+        if (
+          requireDelivery &&
+          !(result.accepted || []).some(
+            (recipient: string | { address: string }) =>
+              (typeof recipient === 'string'
+                ? recipient
+                : recipient.address
+              ).toLowerCase() === to.trim().toLowerCase(),
+          )
+        ) {
           throw new Error('SMTP_RECIPIENT_NOT_ACCEPTED');
         }
         this.logger.log(
@@ -306,11 +355,13 @@ export class MailService {
         this.logger.error(
           `SMTP send failed | Code: ${err.code || 'DELIVERY_FAILED'} | Response: ${err.responseCode || 'unavailable'}`,
         );
-        if (requireDelivery) throw new Error('Không gửi được email xác nhận đơn hàng.');
+        if (requireDelivery)
+          throw new Error('Không gửi được email xác nhận đơn hàng.');
       }
     }
 
-    if (requireDelivery) throw new Error('Dịch vụ gửi email chưa được cấu hình.');
+    if (requireDelivery)
+      throw new Error('Dịch vụ gửi email chưa được cấu hình.');
 
     // Console Logging Mode (Dev / Demo)
     console.log('\n======================================================');

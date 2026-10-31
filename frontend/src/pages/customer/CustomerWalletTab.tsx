@@ -25,6 +25,15 @@ export const CustomerWalletTab: React.FC = () => {
   const [customAmount, setCustomAmount] = useState<string>('500000');
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [topUpTab, setTopUpTab] = useState<'SANDBOX' | 'PAYOS'>('PAYOS');
+  const [demoAvailable, setDemoAvailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void walletService.demoTopUpAvailability().then(result => {
+      if (active) setDemoAvailable(result.available === true);
+    }).catch(() => { if (active) setDemoAvailable(false); });
+    return () => { active = false; };
+  }, []);
 
   const fetchWalletData = async () => {
     try {
@@ -47,6 +56,7 @@ export const CustomerWalletTab: React.FC = () => {
   }, [page]);
 
   const handleTopUp = async (amount: number) => {
+    if (!demoAvailable || topUpLoading) return;
     if (!amount || amount < 10000) {
       toast.error('Số tiền nạp tối thiểu là 10.000 ₫');
       return;
@@ -57,6 +67,10 @@ export const CustomerWalletTab: React.FC = () => {
       toast.success(`Nạp thành công ${formatMoney(amount)} vào Ví SCANMS!`);
       await fetchWalletData();
     } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setDemoAvailable(false);
+        setTopUpTab('PAYOS');
+      }
       toast.error(err?.response?.data?.message || 'Không thể nạp tiền thử nghiệm');
     } finally {
       setTopUpLoading(false);
@@ -119,7 +133,7 @@ export const CustomerWalletTab: React.FC = () => {
               Số dư khả dụng
             </span>
             <strong className="text-[32px] leading-[1.2] tracking-[-0.8px] font-[650] tabular-nums break-words text-[#1A1612] @max-[599px]:text-[28px]">
-              {loading && !wallet ? '—' : formatMoney(Number(wallet?.availableBalance || 0))}
+              {loading && !wallet ? '—' : formatMoney(Number(wallet?.shoppingBalance || 0))}
             </strong>
           </div>
         </div>
@@ -149,7 +163,7 @@ export const CustomerWalletTab: React.FC = () => {
           </span>
         </header>
         <div className="grid gap-[12px] p-[16px] max-w-[860px] text-left @max-[599px]:p-[14px_12px]">
-          <div className="flex gap-[4px] w-fit max-w-full p-[3px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] @max-[599px]:w-full" role="group" aria-label="Phương thức nạp tiền">
+          {demoAvailable && <div className="flex gap-[4px] w-fit max-w-full p-[3px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] @max-[599px]:w-full" role="group" aria-label="Phương thức nạp tiền">
             <button
               type="button"
               aria-pressed={topUpTab === 'SANDBOX'}
@@ -166,8 +180,8 @@ export const CustomerWalletTab: React.FC = () => {
             >
               <QrCode size={14} />payOS ngân hàng
             </button>
-          </div>
-          {topUpTab === 'SANDBOX' ? (
+          </div>}
+          {demoAvailable && topUpTab === 'SANDBOX' ? (
             <div className="grid gap-[12px]">
               <p className="m-0 text-[11px] text-[#7D715E]">Nạp thử nghiệm · Số dư được cộng ngay sau khi nạp.</p>
               <div className="grid grid-cols-6 gap-[7px] @max-[599px]:grid-cols-3" role="group" aria-label="Chọn mức nạp nhanh">
