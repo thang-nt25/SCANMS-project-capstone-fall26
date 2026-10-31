@@ -1,9 +1,9 @@
-# 🏛️ BÁO CÁO PHÂN TÍCH TOÀN DIỆN, KẾ HOẠCH HÀNH ĐỘNG & BIÊN BẢN LIVE TEST FLOW 2
+# 🏛️ BÁO CÁO PHÂN TÍCH TOÀN DIỆN, RÀ SOÁT RỦI RO & ĐỀ ÁN HOÀN THIỆN FLOW 2
 ## HỆ THỐNG QUẢN LÝ ĐỘI NGŨ CỘNG TÁC VIÊN & TIẾP THỊ LIÊN KẾT NỘI BỘ (SCANMS)
 
 > **Tài liệu tham chiếu:** [`docs/SCANMS_MASTER_REFACTORING_PLAN.md`](file:///c:/HW/CAPSTONE/docs/SCANMS_MASTER_REFACTORING_PLAN.md) & [`docs/SCANMS_REALIGNMENT_BLUEPRINT.md`](file:///c:/HW/CAPSTONE/docs/SCANMS_REALIGNMENT_BLUEPRINT.md)  
-> **Trạng thái thực thi:** **ĐÃ HOÀN THÀNH TRIỂN KHAI 100% & LIVE TEST ĐỘC LẬP THÀNH CÔNG TRÊN TRÌNH DUYỆT THẬT (PRODUCTION READY)**  
-> **Người thực hiện:** Nhóm phát triển SCANMS (FA26SE032) · Phụ trách bảo vệ Flow 2: **Phan Xuân Thịnh** & **Nguyễn Thành Thắng (Leader)**
+> **Phụ trách bảo vệ Flow 2:** **Phan Xuân Thịnh** (Trình bày chính) & **Nguyễn Thành Thắng (Leader)**  
+> **Trạng thái tài liệu:** **ĐÃ LƯU TRỮ ĐẦY ĐỦ ĐỀ ÁN 10 KOLS & BIÊN BẢN RÀ SOÁT LỖI TIỀM ẨN FULL FLOW 2**
 
 ---
 
@@ -27,10 +27,10 @@ Sau khi rà soát toàn bộ nội dung của hai tài liệu kiến trúc, 7 y�
 
 ### 1.1. Bản chất Cửa hàng & Quyền quản trị nội bộ
 - **Bản chất:** SCANMS là hệ thống của một Doanh nghiệp bán lẻ đa nhãn hàng (House of Brands / D2C Multi-Storefront) sở hữu các nhãn hàng nội bộ:
-  - 🏪 **Sora Skincare & Cosmetics** (Kho Mát GMP Thủ Đức — Mỹ phẩm)
-  - 🏪 **Aura Activewear & Apparel** (Kho Tân Bình — Thời trang)
-  - 🏪 **GreenBio Health & Nutrition** (Kho Tân Phú — Thực phẩm sức khỏe)
-  - 🏪 **Lumière Smart Living** (Kho KCN Tân Bình — Gia dụng đồ bếp)
+  - 🏪 **Sora Skincare & Cosmetics** (Kho Mát GMP Thủ Đức — Mỹ phẩm & Chăm sóc da)
+  - 🏪 **Aura Activewear & Apparel** (Kho Tân Bình — Thời trang & May mặc thể thao)
+  - 🏪 **GreenBio Health & Nutrition** (Kho Tân Phú — Thực phẩm chức năng & Dinh dưỡng)
+  - 🏪 **Lumière Smart Living** (Kho KCN Tân Bình — Thiết bị điện tử & Đồ bếp thông minh)
 - **Ảnh hưởng đến Flow 2:** Vì Shop đã được cấu hình cố định 1 ngành hàng ngay từ Flow 1 bởi `SYSTEM_ADMIN`, nên khi `SHOP_MANAGER` tạo sản phẩm ở Bước 2.1 của Flow 2, hệ thống bắt buộc khóa cứng ô Danh mục (Category) theo ngành hàng độc quyền của Shop đó.
 
 ### 1.2. Tinh giản Voucher: Xóa sạch Voucher rác TMĐT, Duy trì Duy nhất Coupon Độc Quyền KOC
@@ -63,63 +63,54 @@ Sau khi rà soát toàn bộ nội dung của hai tài liệu kiến trúc, 7 y�
   - Mức trần toàn sàn cố định tối đa $25\%$.
   - Thưởng mốc doanh số tháng (FR-09) là khoản thưởng định kỳ độc lập (Kickback), quét vào 23:59:59 ngày cuối tháng, cộng thẳng một khoản tiền thưởng vào ví chứ không cộng % vào từng đơn hàng lẻ.
 
-### 1.5. Cơ chế Đổi trả hàng / Hoàn tiền
-- **Sai do GHN (Bể vỡ, móp hộp):** Khách gửi video unboxing $\rightarrow$ Shop xuất đơn Bù hàng mới 1-đổi-1 $\rightarrow$ **BẢO LƯU 100% THÙ LAO CHO KOC** vì doanh nghiệp bảo toàn được doanh số đơn hàng.
-- **Sai do Shop / Khách hủy đơn hoàn tiền:** Thu hồi hàng về kho $\rightarrow$ Kích hoạt Clawback Engine thu hồi/hủy $100\%$ thù lao KOC về $0₫$ trong Escrow tạm giữ, tránh thất thoát ngân sách.
-
-### 1.6. Livestream là Luồng phụ & Phân tách trách nhiệm duyệt tiền (SoD)
-- **Livestream:** Giữ nguyên code Socket.IO/WebRTC làm tính năng giá trị gia tăng (Bonus Feature), không can thiệp, không đưa vào kịch bản demo chính để tránh loãng thời lượng.
-- **Phân tách trách nhiệm (SoD):** `SYSTEM_MANAGER` (Kế toán vận hành) duyệt các lệnh chi trả Payout hằng ngày. Chỉ khi có Deal VIP vượt trần ($> 16\%$) hoặc Chiến dịch giảm giá dưới Floor Price mới leo thang lên Tổng Giám Đốc (`SYSTEM_ADMIN`) phê duyệt ngoại lệ ngân sách.
-
 ---
 
-## PHẦN 2: ĐÁNH GIÁ ĐỘ HOÀN THIỆN CÁC TRANG FLOW 2 TRONG CODEBASE
+## PHẦN 2: BÁO CÁO RÀ SOÁT RỦI RO & LỖI TIỀM ẨN TRONG FULL FLOW 2 (RISK & BUG AUDIT)
 
-Khảo sát mã nguồn thực tế tại các tệp liên quan đến Flow 2 cho thấy bức tranh hiện trạng sau khi tinh giản:
-
-| Tệp Mã Nguồn | Chức năng phụ trách | Hiện trạng kỹ thuật | Đánh giá sau cải tiến |
-| :--- | :--- | :--- | :--- |
-| [`ProductManagementPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/ProductManagementPage.tsx) | Shop tạo & quản lý SP 6 khối | Đã khóa cứng `disabled={Boolean(storeCategory)}`. Có Giá sàn MAP & Cột Thù lao 10%. | ✅ **Hoàn hảo:** Nút 1-click "🔍 Tìm KOC bằng AI" bay thẳng sang radar đối soát của sản phẩm đó. |
-| [`ProductModerationPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/ProductModerationPage.tsx) | System Manager duyệt Maker-Checker | Gọn gàng (270 dòng), có nút "Duyệt" (APPROVED) và "Từ chối" (REJECTED). | ✅ **Chuẩn mực:** Đáp ứng đúng luồng kiểm tra EAN-13, nhãn hàng và pháp lý công bố. |
-| [`KolRecommendationPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/KolRecommendationPage.tsx) | Động cơ AI Matchmaker 4 trục | Nhận param `?productId=...` tự động chọn sản phẩm, tính điểm 4 trục và sinh nhận xét AI. | ✅ **Trực quan:** Hiển thị Radar Breakdown, thẻ KOC có nút Mời hợp tác / Thương lượng Deal VIP. |
-| [`ProductDetailPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/public/ProductDetailPage.tsx) | Chi tiết sản phẩm công khai | Bổ sung nút vàng đối tác "🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng". | ✅ **Mạch lạc:** KOC đang duyệt hàng trên sàn có thể bắt tay hợp tác ngay với 1 cú click. |
-| [`ShopCouponsPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/ShopCouponsPage.tsx) | Quản lý mã ưu đãi của Shop | Chuyển đổi thành Trang Quản lý Coupon Độc Quyền KOC (`THAONHI16`). | ✅ **Đúng định vị B2B:** Xóa sạch toàn bộ voucher freeship/hoàn xu rác của sàn TMĐT. |
-| [`KolCouponsPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/collaborator/KolCouponsPage.tsx) | KOC quản lý mã coupon cá nhân | Hiển thị mã độc quyền định danh cá nhân và Thu nhập tiếp thị dự kiến. | ✅ **Minh bạch:** KOC copy mã kèm tỷ lệ chiết khấu rõ ràng để gắn vào bio MXH. |
-
----
-
-## PHẦN 3: GÓC NHÌN "END-USER KHÓ TÍNH" (UX/UI AUDIT & TỐI ƯU HÓA THAO TÁC)
-
-Đặt cương vị là một Giám đốc Nhãn hàng (`SHOP_MANAGER`) hoặc một Nhà sáng tạo nội dung (`COLLABORATOR`) lần đầu sử dụng nền tảng:
+Sau khi rà soát toàn bộ luồng tương tác 2 chiều và các file mã nguồn liên quan, nhóm ghi nhận **4 điểm nghẽn và nguy cơ lỗi thực tế**:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                   BẢNG CHẨN ĐOÁN TRẢI NGHIỆM NGƯỜI DÙNG (HEURISTIC UX AUDIT)                    │
+│                     MA TRẬN RÀ SOÁT 4 ĐIỂM NGHẼN TIỀM ẨN TRONG FULL FLOW 2                       │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ❌ NỖI ĐAU CŨ 1: "Tại sao tôi phải chạy qua 3 trang khác nhau để làm 1 việc?"                     │
-│    • Người dùng xem sản phẩm ở Menu Sản phẩm -> Muốn tìm KOL cho sản phẩm đó phải sang Menu KOC  │
-│      -> Vào tab AI Matching -> Lại phải tìm lại sản phẩm trong Dropdown!                          │
-│    👉 ĐÃ GIẢI QUYẾT: Bổ sung NÚT 1-CLICK ngay tại dòng sản phẩm: "🔍 Tìm KOC bằng AI"             │
-│                                                                                                  │
-│ ❌ NỖI ĐAU CŨ 2: "Quá nhiều chữ mô tả như đang dạy việc cho con nít!"                             │
-│    • Dưới ô "Tên sản phẩm" có dòng: "Nhập tên sản phẩm thật hay để thu hút khách hàng..."        │
-│    • Dưới ô "Mã SKU" có dòng: "SKU là mã phân loại duy nhất của sản phẩm..."                     │
-│    👉 ĐÃ GIẢI QUYẾT: Gỡ bỏ 100% các dòng chú thích thừa thãi. Label sắc sảo, ngắn gọn.           │
-│                                                                                                  │
-│ ❌ NỖI ĐAU CŨ 3: "KOC đang xem hàng trên sàn muốn hợp tác với Shop thì bấm vào đâu?"             │
-│    • KOC lướt Marketplace thấy sản phẩm hay -> Không thấy nút "Đề xuất hợp tác với Shop"         │
-│    👉 ĐÃ GIẢI QUYẾT: Tại trang chi tiết sản phẩm, thêm nút vàng nổi bật:                        │
-│      "🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng" -> Mở trực tiếp khung Chat Socket.IO với Shop.  │
-│                                                                                                  │
-│ ❌ NỖI ĐAU CŨ 4: "Voucher rác làm rối loạn tâm trí người dùng doanh nghiệp"                      │
-│    • Menu hiển thị: Voucher Shop, Voucher Sàn, Mã Freeship... giống hệt Shopee giá rẻ.          │
-│    👉 ĐÃ GIẢI QUYẾT: Xóa sạch các tab rác. Chỉ để 1 mục: "Coupon Độc Quyền Định Danh KOC".      │
+│ ⚠️ NGHẼN 1: Thiếu đa dạng KOL -> Bộ lọc loại bỏ hết KOC, chỉ còn 1 người, điểm 24/100           │
+│ ⚠️ NGHẼN 2: Lỗ hổng từ điển category-match.utils.ts không nhận diện biến thể tên kênh            │
+│ ⚠️ NGHẼN 3: KOC bấm "Đề xuất hợp tác" chưa mang theo context chi tiết sản phẩm vào ô chat        │
+│ ⚠️ NGHẼN 4: Form tạo Coupon KOC chưa ép viết hoa (UPPERCASE) tự động cho nhân viên Shop          │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 2.1. Điểm Nghẽn 1 (Nghiêm trọng nhất): Bộ máy AI chỉ quét ra 1 KOL và đạt điểm thấp 24/100
+- **Nguyên nhân kỹ thuật:**
+  1. Trong database chỉ có 4 tài khoản KOL demo cũ. Cả 4 tài khoản đều có 0 bản ghi trong `orders` và 0 bản ghi trong `click_traffic_logs`.
+  2. Bảng `collaborator_profiles` có lưu số liệu tĩnh (85 đơn, 12.5 triệu), nhưng thuật toán `ai-recommendation.service.ts` hoàn toàn không đọc số liệu tĩnh này mà truy vấn trực tiếp vào sổ cái đơn hàng thật. Vì số đơn thật bằng 0 $\rightarrow \mathbf{S_{\text{CR}}} = 0$ và $\mathbf{S_{\text{price}}} = 0$.
+  3. Bộ lọc `hasCategoryEvidence` loại bỏ 3 KOL còn lại vì tên kênh của họ (`@yennhi.skintips`, `@minhanh.lifestyle`, `@tuananh.review`) không khớp với từ khóa ngành `Mỹ phẩm`.
+  4. Chỉ duy nhất Vũ Thanh Huyền (`@huyen.beauty`) khớp từ `beauty` nên lọt qua, và nhận điểm cơ sở $24/100$.
+- **Hệ quả UX:** Người dùng Giám đốc Nhãn hàng khi bấm vào nút so sánh 3 KOLs thì khay so sánh không thể bung ra vì danh sách chỉ có 1 người!
+- **Giải pháp:** Cần triển khai Đề án Seeding 10 KOLs chuyên sâu (chi tiết tại Phần 4).
+
+### 2.2. Điểm Nghẽn 2: Lỗ hổng trong bộ từ điển `category-match.utils.ts`
+- **Nguyên nhân kỹ thuật:**
+  - Danh sách `CATEGORY_FAMILIES` hiện tại chứa: `['my pham', 'lam dep', 'cham soc da', 'skincare', 'beauty', 'cosmetics']`.
+  - Khi KOC đặt tên kênh là `@yennhi.skintips`, hàm chuẩn hóa tách chuỗi thành `yennhi skintips`. Vì từ `skintips` không trùng chính xác với `skincare`, thuật toán đánh giá là KOC này không thuộc ngành Mỹ phẩm.
+- **Giải pháp cần làm khi cập nhật:**
+  - Bổ sung các biến thể từ khóa: `skintips`, `review`, `lifestyle`, `activewear`, `smarthome`, `eatclean`, `healthy` vào `category-match.utils.ts`.
+
+### 2.3. Điểm Nghẽn 3: KOC bấm "🤝 Đề Xuất Hợp Tác" chưa đính kèm thẻ sản phẩm vào cuộc trò chuyện
+- **Hiện trạng:**
+  - Tại trang chi tiết sản phẩm [`ProductDetailPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/public/ProductDetailPage.tsx), nút chuyển hướng sang:
+    `/collaborator/collaboration?storeId=${data.store.id}&tab=messages`
+  - URL chỉ mang theo `storeId`, chưa đính kèm `productId`, `productTitle` và `commissionRate`.
+- **Hệ quả UX:** KOC mở chat với Shop nhưng trong ô nhập liệu chưa có tin nhắn mẫu (Ví dụ: *"Tôi muốn đề xuất hợp tác tiếp thị sản phẩm Serum Vitamin C 15%"*), KOC phải tự gõ thủ công.
+- **Giải pháp:** Truyền thêm query params `productId`, `productTitle`, `productImage` để chat tự động gắn thẻ Preview sản phẩm lên đầu khung chat.
+
+### 2.4. Điểm Nghẽn 4: Chuẩn hóa bắt buộc chữ hoa khi Shop cấp Coupon KOC
+- **Hiện trạng:** Tại [`ShopCouponsPage.tsx`](file:///c:/HW/CAPSTONE/frontend/src/pages/merchant/ShopCouponsPage.tsx), ô nhập mã coupon cho phép gõ chữ thường. Nếu nhân viên gõ `thaonhi16` thay vì `THAONHI16`, tuy backend có thể regex hoa thường nhưng trên UI nhìn sẽ thiếu chuyên nghiệp.
+- **Giải pháp:** Ép `onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}`.
+
 ---
 
-## PHẦN 4: KỊCH BẢN THỰC CHIẾN FLOW 2 CHUẨN DEMO HỘI ĐỒNG
+## PHẦN 3: BẢN ĐỒ THỰC CHIẾN FULL FLOW 2 (HỢP TÁC 2 CHIỀU)
 
 ```mermaid
 sequenceDiagram
@@ -138,7 +129,8 @@ sequenceDiagram
     Note over SM,AI: Bước 2.2: 1-Click AI Matchmaker 4 Trục Tìm Top KOC Phù Hợp
     SM->>SM: Tại danh sách SP, bấm "🔍 Tìm KOC bằng AI" (1-click)
     SM->>AI: Truy vấn Top KOC theo 4 trục (Category 35%, CR 25%, Followers 20%, Price 20%)
-    AI-->>SM: Trả về Radar Chart, điểm % Tương thích (94% Siêu Phù Hợp) & Lý giải AI
+    AI-->>SM: Trả về Radar Chart, điểm % Tương thích (95% Siêu Phù Hợp) & Lý giải AI
+    SM->>SM: Tích chọn so sánh 3 KOLs cùng ngành trên khay đối soát
     SM->>KOC: Bấm "Mời hợp tác chiến dịch" -> Bắn Thẻ mời VIP vào Chat Socket.IO
 
     Note over KOC,SM: Bước 2.3: Chiều KOC Chủ Động & Khai Thác Media Hub
@@ -149,150 +141,73 @@ sequenceDiagram
 
 ---
 
-## PHẦN 5: BẢNG KẾ HOẠCH HÀNH ĐỘNG FLOW 2 (MASTER ACTION PLAN - 100% HOÀN THÀNH)
+## PHẦN 4: ĐỀ ÁN CHI TIẾT SEEDING 10 KOLS ĐA DẠNG (LƯU ĐỂ THỰC HIỆN SAU)
 
-- [x] **Giai đoạn 1: Chuẩn Hóa Quản Lý Sản Phẩm & Giá Sàn MAP (`ProductManagementPage.tsx`)**
-  - [x] Dọn dẹp text mô tả rườm rà dưới các ô input.
-  - [x] Khóa cứng ô Danh mục (Category Lock) theo `storeCategory`.
-  - [x] Hiển thị Giá sàn bảo vệ (`floorPrice` / MAP) và cột Thù lao cơ sở 10%.
-  - [x] Nút 1-click **"🔍 Tìm KOC bằng AI"** chuyển thẳng sang radar đối soát của sản phẩm đó.
-- [x] **Giai đoạn 2: Tối Ưu Hóa Giao Diện Động Cơ AI Matchmaker (`KolRecommendationPage.tsx`)**
-  - [x] Tự động chọn sản phẩm từ tham số URL `?productId=...`.
-  - [x] Hiển thị Radar 4 trục (Ngành hàng 35%, CR% 25%, Followers 20%, Phù hợp giá 20%).
-  - [x] Hiển thị thẻ Top Pick với điểm % Tương thích và lời giải thích Explainable AI tự nhiên.
-  - [x] Nút hành động trực tiếp: "Mời hợp tác chiến dịch" & "Thương lượng Deal VIP".
-- [x] **Giai đoạn 3: Chiều KOC Chủ Động Hợp Tác (`ProductDetailPage.tsx`)**
-  - [x] Nút vàng đối tác nổi bật **"🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng"** cho KOC đang đăng nhập.
-  - [x] Tích hợp mở cuộc hội thoại đàm phán với Giám đốc Nhãn hàng.
-- [x] **Giai đoạn 4: Tinh Giản Voucher Thành "Coupon Độc Quyền KOC" (`ShopCouponsPage.tsx` & `KolCouponsPage.tsx`)**
-  - [x] Loại bỏ 100% voucher rác Shopee (Freeship toàn sàn, voucher hoàn xu).
-  - [x] Chuẩn hóa bảng mã ưu đãi định danh KOC (`THAONHI16`, `LANHUONG10`).
-  - [x] Hiển thị rõ mức giảm cho khách và Tỷ lệ thù lao KOC nhận được.
-- [x] **Giai đoạn 5: Đồng Bộ Thuật Ngữ Doanh Nghiệp Toàn Diện**
-  - [x] Thay thế "Hoa hồng sàn" $\rightarrow$ "Thù lao cơ sở 10%", "Thu nhập đối tác tiếp thị".
-  - [x] Áp dụng Quy tắc Mức ưu đãi tốt nhất (Best-Benefit Precedence Rule, không cộng dồn).
+Để hệ thống luôn có **ít nhất 3 - 4 KOLs cùng ngành với các mức điểm phân tầng rõ rệt (Top Pick 90-96%, Rất phù hợp 80-88%, Tiềm năng 60-75%)**, đề án thiết kế bộ hạt giống dữ liệu 10 KOLs bao gồm:
 
----
+### 4.1. Bảng Ma Trận Thông Số 10 KOLs Chuẩn Hóa
+| Mã KOL | Họ và Tên | Kênh MXH & Followers | Cấp Bậc | Ngành Hàng Sở Trường | Lịch Sử Đơn / Clicks | CR% Thực Tế | AOV Trung Bình | Dự Kiến MatchScore Khi Quét Sản Phẩm Cùng Ngành |
+| :---: | :--- | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
+| **KOL 01** | **Vũ Thanh Huyền** | Instagram (`@huyen.beauty`) · **120.000** | **Vàng** | Mỹ phẩm & Chăm sóc da | 42 đơn / 450 clicks | **9.3%** | 360.000₫ | **95/100 (Top Pick)** |
+| **KOL 02** | **Đặng Quỳnh Chi** | TikTok (`@quynhchi.skincare`) · **68.000** | **Bạc** | Mỹ phẩm & Chăm sóc da | 18 đơn / 240 clicks | **7.5%** | 310.000₫ | **84/100 (Rất Phù Hợp)** |
+| **KOL 03** | **Lê Hoàng Yến Nhi** | TikTok (`@yennhi.skintips`) · **28.000** | **Đồng** | Mỹ phẩm & Chăm sóc da | 5 đơn / 90 clicks | **5.5%** | 220.000₫ | **69/100 (Tiềm Năng)** |
+| **KOL 04** | **Bùi Minh Anh** | TikTok (`@minhanh.activewear`) · **290.000** | **Vàng** | Thời trang & Phụ kiện | 52 đơn / 560 clicks | **9.2%** | 490.000₫ | **94/100 (Top Pick Thời trang)** |
+| **KOL 05** | **Nguyễn Quốc Bảo** | Facebook (`@quocbao.fitness`) · **95.000** | **Bạc** | Thời trang & Phụ kiện | 20 đơn / 260 clicks | **7.6%** | 450.000₫ | **82/100 (Rất Phù Hợp)** |
+| **KOL 06** | **Trần Thu Thảo** | Instagram (`@thuthao.ootd`) · **35.000** | **Đồng** | Thời trang & Phụ kiện | 4 đơn / 80 clicks | **5.0%** | 380.000₫ | **67/100 (Tiềm Năng)** |
+| **KOL 07** | **Dược sĩ Hoàng Nam** | YouTube (`@hoangnam.health`) · **450.000** | **Kim Cương** | Thực phẩm sức khỏe | 75 đơn / 850 clicks | **8.8%** | 320.000₫ | **96/100 (Top Pick Dinh dưỡng)** |
+| **KOL 08** | **Nguyễn Mai Linh** | TikTok (`@mailinh.eatclean`) · **145.000** | **Vàng** | Thực phẩm sức khỏe | 26 đơn / 340 clicks | **7.6%** | 250.000₫ | **81/100 (Rất Phù Hợp)** |
+| **KOL 09** | **Dương Tuấn Anh** | YouTube (`@tuananh.techreview`) · **680.000** | **Kim Cương** | Thiết bị điện tử & Gia dụng | 82 đơn / 920 clicks | **8.9%** | 1.450.000₫ | **96/100 (Top Pick Đồ Công nghệ/Bếp)** |
+| **KOL 10** | **Phạm Hoàng Long** | YouTube (`@hoanglong.smarthome`) · **115.000** | **Bạc** | Thiết bị điện tử & Gia dụng | 28 đơn / 360 clicks | **7.7%** | 1.100.000₫ | **83/100 (Rất Phù Hợp)** |
 
-## PHẦN 6: BÁO CÁO LIVE TEST THỰC NGHIỆM CHI TIẾT (7 BƯỚC END-TO-END VERIFIED)
-
-> **Môi trường thử nghiệm:** Microsoft Edge (Headless/Real Puppeteer) · **Backend:** NestJS Port 3000 · **Frontend:** Vite React Port 5173  
-> **Cơ sở dữ liệu:** PostgreSQL Supabase Production-grade schema.
+### 4.2. Kế hoạch tạo dữ liệu giao dịch đi kèm (Transactions Seed):
+1. **Clicks Traffic (`click_traffic_logs`):** Mỗi KOL được tạo từ 80 đến 920 lượt clicks hợp lệ duy nhất (`isValid: true`, `isUnique: true`).
+2. **Sổ cái đơn hàng (`orders` & `order_items`):** Mỗi KOL được gán số đơn hàng thành công tương ứng với ngành hàng sở trường, có doanh thu thực tế, được gán `attributedCollaboratorId`.
+3. **Cập nhật Ví đối tác (`wallets`):** Tự động kết chuyển thù lao sạch sau 7 ngày Escrow vào ví của từng KOL tương ứng với cấp bậc.
 
 ---
 
-### 📸 Bước 1: Shop Manager Quản Lý Sản Phẩm & Nút 1-Click AI Matchmaker
-- **Vai trò:** Giám đốc Nhãn hàng Sora Skincare (`manager.sora@scanms.vn`).
-- **Thao tác:** Đăng nhập vào hệ thống $\rightarrow$ Truy cập menu **Sản phẩm** (`/merchant/products`).
-- **Chi tiết kiểm chứng:**
-  - Bảng danh sách sản phẩm hiển thị gọn gàng, typography chuẩn mực.
-  - Cột **"Thù lao cơ sở"** ghi nhận cố định **10%** chuẩn hệ thống.
-  - Mỗi dòng sản phẩm có nút hành động nhanh màu vàng: **"🔍 Tìm KOC bằng AI"**.
-- **Ảnh minh họa thực tế:**
+## PHẦN 5: BIÊN BẢN LIVE TEST THỰC NGHIỆM ĐÃ THỰC HIỆN TRÊN TRÌNH DUYỆT THẬT
 
-![Bước 1: Danh sách Sản phẩm & Nút 1-Click AI](images/flow2/step1_product_management.png)
+Dưới đây là 7 ảnh chụp thực tế từ kịch bản test tự động trên Microsoft Edge:
 
----
+### 1. Quản lý Sản Phẩm & Nút 1-Click AI
+- Đường dẫn: `/merchant/products`
+- Minh chứng cột "Thù lao cơ sở 10%" và nút vàng "🔍 Tìm KOC bằng AI".
+- ![Bước 1: Danh sách sản phẩm](images/flow2/step1_product_management.png)
 
-### 📸 Bước 2: Modal Tạo Sản Phẩm với Khóa Ngành Hàng (Category Lock) & Giá Sàn MAP
-- **Vai trò:** Giám đốc Nhãn hàng Sora Skincare.
-- **Thao tác:** Bấm nút **"Thêm sản phẩm mới"** tại góc phải trên cùng.
-- **Chi tiết kiểm chứng:**
-  - Ô **Ngành hàng (Category)** tự động điền `Mỹ phẩm & Chăm sóc da` và **BỊ KHÓA CỨNG (Disabled / Readonly)**, ngăn chặn nhân viên đăng sai ngành.
-  - Ô **Giá Sàn Bảo Vệ (MAP - Floor Price)** hiển thị ngưỡng an toàn tài chính tham chiếu, bảo vệ biên lợi nhuận công ty.
-  - Loại bỏ hoàn toàn các dòng chú thích rườm rà.
-- **Ảnh minh họa thực tế:**
+### 2. Modal Tạo Sản Phẩm với Khóa Ngành Hàng & Giá Sàn MAP
+- Ô Danh mục bị khóa cứng, ô Giá sàn tối thiểu tham chiếu hiển thị rõ.
+- ![Bước 2: Modal tạo sản phẩm](images/flow2/step2_modal_category_lock.png)
 
-![Bước 2: Modal Tạo Sản Phẩm với Category Lock & Giá Sàn MAP](images/flow2/step2_modal_category_lock.png)
+### 3. Động Cơ AI Matchmaker 4 Trục với Radar Chart
+- Đường dẫn: `/merchant/kol-recommendations?productId=...`
+- Tự động nhận diện sản phẩm, hiển thị Radar và lời giải thích AI.
+- ![Bước 3: AI Matchmaker Radar](images/flow2/step3_ai_matchmaker_radar.png)
 
----
+### 4. Quản Lý Coupon Độc Quyền KOC
+- Đường dẫn: `/merchant/promotions?tab=coupons`
+- Danh sách coupon định danh cá nhân `THAONHI16`, xóa sạch voucher rác TMĐT.
+- ![Bước 4: Shop Coupons](images/flow2/step4_shop_coupons_attribution.png)
 
-### 📸 Bước 3: Động Cơ AI Matchmaker 4 Trục với Biểu Đồ Radar & Lời Giải Thích AI
-- **Vai trò:** Giám đốc Nhãn hàng Sora Skincare.
-- **Thao tác:** Bấm nút **"🔍 Tìm KOC bằng AI"** tại dòng sản phẩm *"Serum Dưỡng Trắng Mờ Thâm Vitamin C 15%"*.
-- **Chi tiết kiểm chứng:**
-  - Hệ thống tự động chuyển sang URL `/merchant/kol-recommendations?productId=ddc59e43-5dc1-44f0-a482-a7ded7b5155e` mà không cần người dùng chọn lại sản phẩm.
-  - Thuật toán AI Radar quét 4 trục và xếp hạng KOC **Vũ Thanh Huyền** đạt **94% - Siêu Phù Hợp (Top Pick)**.
-  - Hiển thị đầy đủ **Điểm mạnh cốt lõi (Key Strengths)** và **Lời giải thích Explainable AI tự nhiên**.
-  - Có sẵn 2 nút hành động: **"Mời hợp tác chiến dịch"** và **"Thương lượng Deal VIP"**.
-- **Ảnh minh họa thực tế:**
+### 5. KOC Duyệt Chi Tiết Sản Phẩm & Nút "🤝 Đề Xuất Hợp Tác Tiếp Thị"
+- Đường dẫn: `/products/ddc59e43-5dc1-44f0-a482-a7ded7b5155e`
+- Nút đối tác nổi bật cho KOC đang đăng nhập.
+- ![Bước 5: Đề xuất hợp tác KOC](images/flow2/step5_koc_product_detail_proposal.png)
 
-![Bước 3: Động Cơ AI Matchmaker 4 Trục](images/flow2/step3_ai_matchmaker_radar.png)
+### 6. KOC Quản Lý Coupon Cá Nhân & Thu Nhập Tiếp Thị Dự Kiến
+- Đường dẫn: `/collaborator/coupons`
+- Hiển thị coupon định danh cá nhân và tỷ lệ thù lao rõ ràng.
+- ![Bước 6: Coupon cá nhân KOC](images/flow2/step6_koc_my_coupons.png)
 
----
-
-### 📸 Bước 4: Quản Lý Coupon Độc Quyền Định Danh KOC (`THAONHI16`)
-- **Vai trò:** Giám đốc Nhãn hàng Sora Skincare.
-- **Thao tác:** Điều hướng sang tab **Mã ưu đãi** (`/merchant/promotions?tab=coupons`).
-- **Chi tiết kiểm chứng:**
-  - Toàn bộ voucher freeship, voucher hoàn xu rác của sàn TMĐT đã bị xóa sổ.
-  - Chỉ duy trì danh sách **Coupon Độc Quyền Định Danh KOC** (cấu trúc `[TÊN_KOC][MỨC_GIẢM]` như `THAONHI16`, `LANHUONG10`).
-  - Thể hiện rõ: Tên KOC được cấp quyền, Mức giảm cho khách hàng ($10\%$) và Tỷ lệ thù lao tiếp thị tương ứng ($16\%$).
-- **Ảnh minh họa thực tế:**
-
-![Bước 4: Quản Lý Coupon Độc Quyền KOC](images/flow2/step4_shop_coupons_attribution.png)
+### 7. System Manager Kiểm Duyệt Sản Phẩm Maker-Checker
+- Đường dẫn: `/admin/product-moderation`
+- Thẩm định hồ sơ sản phẩm, mã vạch EAN-13 và Giá sàn MAP trước khi duyệt.
+- ![Bước 7: Kiểm duyệt sản phẩm](images/flow2/step7_system_product_moderation.png)
 
 ---
 
-### 📸 Bước 5: KOC Xem Chi Tiết Sản Phẩm & Nút Đề Xuất Hợp Tác Tiếp Thị
-- **Vai trò:** Nhà sáng tạo nội dung KOC Vũ Thanh Huyền (`kol.silver@scanms.vn`).
-- **Thao tác:** Lướt xem Marketplace $\rightarrow$ Bấm xem chi tiết *"Serum Dưỡng Trắng Mờ Thâm Vitamin C 15%"*.
-- **Chi tiết kiểm chứng:**
-  - Bên cạnh nút *"Thêm vào giỏ"* của khách mua hàng, KOC được cung cấp nút đối tác độc quyền: **"🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng"**.
-  - Bấm nút cho phép KOC gửi ngay đề xuất hợp tác trực tiếp đến Giám đốc Nhãn hàng mà không phải tìm kiếm thủ công.
-- **Ảnh minh họa thực tế:**
+## PHẦN 6: KẾT LUẬN & TRẠNG THÁI HIỆN TẠI
 
-![Bước 5: KOC Xem Chi Tiết Sản Phẩm & Nút Đề Xuất Hợp Tác](images/flow2/step5_koc_product_detail_proposal.png)
-
----
-
-### 📸 Bước 6: KOC Quản Lý Mã Ưu Đãi Cá Nhân & Thu Nhập Tiếp Thị Dự Kiến
-- **Vai trò:** Nhà sáng tạo nội dung KOC Vũ Thanh Huyền.
-- **Thao tác:** Truy cập menu cá nhân **Mã ưu đãi của bạn** (`/collaborator/coupons`).
-- **Chi tiết kiểm chứng:**
-  - Hiển thị danh sách Coupon định danh cá nhân đang hoạt động.
-  - Cột **"Thu nhập tiếp thị dự kiến"** thể hiện rõ thù lao đối tác nhận được trên mỗi đơn hàng thành công qua mã.
-  - Nút **"Sao chép mã"** 1-click để KOC dễ dàng dán vào bài viết review trên TikTok/Instagram.
-- **Ảnh minh họa thực tế:**
-
-![Bước 6: KOC Quản Lý Coupon Cá Nhân & Thu Nhập Tiếp Thị](images/flow2/step6_koc_my_coupons.png)
-
----
-
-### 📸 Bước 7: System Manager Kiểm Duyệt Sản Phẩm Mới (Maker-Checker)
-- **Vai trò:** Chuyên viên Vận hành Sàn Lê Thu Trang (`manager@scanms.vn`).
-- **Thao tác:** Đăng nhập System Manager $\rightarrow$ Vào trang **Kiểm duyệt sản phẩm** (`/admin/product-moderation`).
-- **Chi tiết kiểm chứng:**
-  - Danh sách sản phẩm chờ duyệt hiển thị rõ hình ảnh, SKU, nhãn hàng và ngày gửi.
-  - Chuyên viên có thể bấm **"Xem hồ sơ"** để đối soát giấy công bố y tế, mã vạch EAN-13 và Giá sàn MAP trước khi bấm **"Phê duyệt"** (APPROVED) đưa sản phẩm lên sàn.
-- **Ảnh minh họa thực tế:**
-
-![Bước 7: System Manager Kiểm Duyệt Sản Phẩm](images/flow2/step7_system_product_moderation.png)
-
----
-
-## PHẦN 7: ĐÁNH GIÁ TRẢI NGHIỆM DƯỚI GÓC NHÌN "END-USER MỚI LẦN ĐẦU SỬ DỤNG"
-
-Sau khi hóa thân vào cả 3 vai trò (Shop Manager, KOC, System Manager), nhóm ghi nhận kết quả đánh giá thực tế:
-
-### 1. Về Tính Thuận Tiện & Liền Mạch (Seamless 1-Click Affordance)
-- **Trước cải tiến:** Người dùng phải nhớ các menu phân mảnh (`/merchant/products` $\rightarrow$ `/merchant/kol-hub` $\rightarrow$ Chọn tab AI Matching $\rightarrow$ Tìm lại sản phẩm trong danh sách 50 món).
-- **Sau cải tiến:** **1 Cú Click Duy Nhất.** Tại dòng sản phẩm, bấm nút vàng *"🔍 Tìm KOC bằng AI"*, hệ thống lập tức mở màn hình Radar và phân tích đúng KOC cho sản phẩm đó. Người dùng lần đầu hoàn toàn không cần học cách sử dụng.
-
-### 2. Về Ngôn Ngữ & Độ Tinh Gọn Giao Diện (No Clutter / Enterprise B2B Tone)
-- Toàn bộ các câu chú thích kiểu "dạy việc con nít" đã được xóa sạch.
-- Các ô nhập liệu có nhãn ngắn gọn, súc tích, phân cấp thị giác rõ ràng với tông màu chủ đạo **Vàng Be (Warm Sand `#FAF8F5`, `#F3EFE6`, `#C59B58`)**.
-- Không còn bất kỳ sự nhầm lẫn nào giữa một sàn chợ TMĐT giá rẻ và một Nền tảng Tiếp thị Doanh nghiệp chuyên nghiệp.
-
-### 3. Về Khả Năng Thực Hiện Full Flow
-- **Từ Nhãn Hàng $\rightarrow$ KOC:** Shop tạo sản phẩm (khóa ngành) $\rightarrow$ Duyệt sản phẩm $\rightarrow$ Quét AI tìm KOC $\rightarrow$ Mời hợp tác chiến dịch.
-- **Từ KOC $\rightarrow$ Nhãn Hàng:** KOC xem sản phẩm $\rightarrow$ Bấm nút đề xuất hợp tác tiếp thị $\rightarrow$ Lấy Coupon độc quyền cá nhân đi quảng bá.
-- Toàn bộ chu trình vận hành khép kín $100\%$, không bị đứt gãy ở bất kỳ mắt xích nào.
-
----
-
-## PHẦN 8: KẾT LUẬN & SẴN SÀNG BẢO VỆ REVIEW 2 HỘI ĐỒNG
-
-- **Tiêu chuẩn mã nguồn:** `tsc -b` và `vite build` đạt **0 lỗi**, 133 test suites backend đều **PASS XANH**.
-- **Tính liêm chính dữ liệu:** Khóa ngành hàng 3 tầng kiểm soát, Quản trị giá sàn bảo vệ MAP, Xóa sạch voucher rác, Chuẩn hóa cơ chế thù lao đối tác Best-Benefit Precedence.
-- **Flow 2 đã hoàn thành trọn vẹn $100\%$**, sẵn sàng thực chiến trình chiếu và bảo vệ trước Hội đồng chấm thi tốt nghiệp!
+- Tài liệu này đã **lưu trữ toàn bộ phân tích nguyên nhân, rà soát 4 điểm nghẽn tiềm ẩn và đề án chi tiết 10 KOLs** vào kho lưu trữ dự án.
+- Mã nguồn và cơ sở dữ liệu hiện tại vẫn được giữ nguyên vẹn, tuân thủ nghiêm ngặt chỉ thị *"chỉ phân tích, rà soát, đánh giá, không làm"*.
+- Khi bạn sẵn sàng cho giai đoạn tiếp theo, chỉ cần yêu cầu *"bắt đầu làm đề án 10 KOLs"* thì toàn bộ kịch bản sẽ được kích hoạt đồng bộ!
