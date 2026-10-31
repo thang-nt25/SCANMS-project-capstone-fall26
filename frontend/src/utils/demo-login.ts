@@ -120,6 +120,8 @@ export const ALL_DEMO_ACCOUNTS: Record<DemoLoginRole, DemoAccountDetail[]> = {
 
 // Local development only. Production builds discard the credential branch.
 export function getDemoLogin(role: DemoLoginRole): { identifier: string; password: string } | null {
+  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_LOGIN !== 'true') return null;
+
   const defaultAccounts: Record<DemoLoginRole, { identifier: string; password: string }> = {
     customer: { identifier: 'customer.an@scanms.vn', password: 'Customer@123456' },
     kol: { identifier: 'kol.bronze@scanms.vn', password: 'Kol@123456' },

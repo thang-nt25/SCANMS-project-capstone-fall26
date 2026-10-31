@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { SeedContext } from './seed.types';
 
-export const DATASET_VERSION = 'scanms-capstone-2026-v3';
+export const DATASET_VERSION = 'scanms-capstone-2026-v4';
 // Keep identity stable between revisions. Do not create duplicate accounts or
 // bypass unique email/slug constraints by silently changing every fixture ID.
 const ID_NAMESPACE_VERSION = 'scanms-capstone-2026-v1';

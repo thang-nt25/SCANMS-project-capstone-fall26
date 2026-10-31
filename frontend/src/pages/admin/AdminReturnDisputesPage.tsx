@@ -7,11 +7,13 @@ import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { toast } from '../../utils/toast';
 
 type Ruling = 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP';
+type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
 
 export default function AdminReturnDisputesPage() {
   const client = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ruling, setRuling] = useState<Ruling>('APPROVE_REFUND');
+  const [liability, setLiability] = useState<Liability>('LOGISTICS_FAULT');
   const [notes, setNotes] = useState('');
   const disputes = useQuery({
     queryKey: ['return-disputes'],
@@ -24,7 +26,7 @@ export default function AdminReturnDisputesPage() {
     refetchInterval: 30_000,
   });
   const resolve = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { ruling: Ruling; notes: string } }) =>
+    mutationFn: ({ id, data }: { id: string; data: { ruling: Ruling; liability: Liability; notes: string } }) =>
       returnService.resolveDispute(id, data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['return-disputes'] });
@@ -43,7 +45,7 @@ export default function AdminReturnDisputesPage() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)) return;
-    resolve.mutate({ id: selected.id, data: { ruling, notes: notes.trim() } });
+    resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
 
   return <main className="min-h-screen bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
@@ -123,12 +125,20 @@ export default function AdminReturnDisputesPage() {
                 {canUpholdShop && <option value="UPHOLD_SHOP">Giữ quyết định của Shop</option>}
               </select>
             </label>
+            <label className="block text-sm">Bên chịu trách nhiệm
+              <select value={liability} onChange={(event) => setLiability(event.target.value as Liability)}
+                className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
+                <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+                <option value="SHOP_FAULT">Shop / hàng hóa</option>
+                <option value="CUSTOMER_REASON">Khách đổi ý</option>
+              </select>
+            </label>
             <label className="block text-sm">Căn cứ phân xử
               <textarea required minLength={20} maxLength={3000} rows={4} value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3" />
             </label>
-            <p className="text-xs text-[#7D715E]">Chấp thuận hoàn tiền chỉ tạo hồ sơ chờ xử lý; chưa chuyển tiền cho khách.</p>
+            <p className="text-xs text-[#7D715E]">Nếu ví khách sẵn sàng, hoàn tiền và thu hồi thu nhập được ghi cùng giao dịch; nếu chưa, hồ sơ ở trạng thái chờ đối soát.</p>
             {!canUpholdShop && <p className="text-xs text-[#7D715E]">Shop đang giữ hàng khách trả; không thể đóng hồ sơ nếu chưa có phương án trả hàng hoặc bồi hoàn.</p>}
             <button type="submit" disabled={resolve.isPending || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)}
               className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">

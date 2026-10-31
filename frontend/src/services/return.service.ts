@@ -83,7 +83,7 @@ export interface ReturnDetail {
     ruling?: string | null;
     resolutionNotes?: string | null;
   } | null;
-  events: Array<{ id: string; type: string; createdAt: string }>;
+  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string } | null }>;
 }
 
 export interface ReturnDisputeRecord {
@@ -130,7 +130,7 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/return-shipment`, data)),
   confirmReceipt: async (id: string) => unwrap<ReturnDetail>(await api.patch(`/returns/${id}/receipt`)),
   startInspection: async (id: string) => unwrap<ReturnDetail>(await api.patch(`/returns/${id}/inspection/start`)),
-  submitInspection: async (id: string, data: { resolution: 'REFUND' | 'EXCHANGE' | 'REJECT'; notes: string }) =>
+  submitInspection: async (id: string, data: { resolution: 'REFUND' | 'EXCHANGE' | 'REJECT'; liability: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string }) =>
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/inspection/result`, data)),
   submitExchangeShipment: async (id: string, data: { carrierName: string; trackingNumber: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
@@ -144,6 +144,6 @@ export const returnService = {
     headers: { 'x-skip-cache': 'true' },
   })),
   resolveDispute: async (id: string, data: {
-    ruling: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP'; notes: string;
+    ruling: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP'; liability?: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
   }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/${id}/resolve`, data)),
 };

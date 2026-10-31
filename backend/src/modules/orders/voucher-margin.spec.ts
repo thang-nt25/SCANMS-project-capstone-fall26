@@ -6,6 +6,7 @@ describe('Word section 6 checkout margin protection', () => {
     const coupons: Record<string, any> = {
       shop: { id: 'shop', codeNormalized: 'KOL50', storeId: 'store', status: 'ACTIVE', benefitType: 'GOODS',
         fundingSource: 'SHOP_FUNDED', scopeType: 'PRODUCTS', couponProducts: [{ productId: 'a' }], couponCategories: [],
+        collaborator: { role: 'COLLABORATOR' },
         discountType: 'FIXED_AMOUNT', discountValue: 50000, minimumOrderAmount: null, maximumDiscountAmount: null,
         usageLimitTotal: 20, usageCount: 0, usageLimitPerCustomer: 1, budgetTotal: 1000000, budgetUsed: 0, shopFundingRate: 100 },
       platform: { id: 'platform', codeNormalized: 'SAN20', displayCode: 'SAN20', storeId: 'store', status: 'ACTIVE', benefitType: 'GOODS',
@@ -19,6 +20,7 @@ describe('Word section 6 checkout margin protection', () => {
     const tx: any = {
       $queryRaw: jest.fn().mockResolvedValue([]), $executeRaw: jest.fn().mockResolvedValue(1),
       store: { findUnique: jest.fn().mockResolvedValue(store) },
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneNumber: '0911111111' }) },
       coupon: { findUnique: jest.fn(async ({ where }: any) => Object.values(coupons).find(c => where.id ? c.id === where.id : c.codeNormalized === where.codeNormalized)), update: jest.fn() },
       couponRedemption: { count: jest.fn().mockResolvedValue(0), create: jest.fn() },
       stackedVoucherRedemption: { count: jest.fn().mockResolvedValue(0), create: jest.fn() },

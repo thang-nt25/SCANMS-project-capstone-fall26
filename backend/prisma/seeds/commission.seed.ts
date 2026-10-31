@@ -1,10 +1,10 @@
 import {
-  additiveCommissionRate,
+  precedenceCommissionRate,
   campaignBonusRate,
   liveBonusRate,
   tierBonusByName,
 } from '../../src/modules/commissions/commission-policy';
-import { exclusiveDealBonus } from '../../src/modules/orders/exclusive-deal-bonus';
+import { exclusiveDealRate } from '../../src/modules/orders/exclusive-deal-bonus';
 import { amount } from './seed.helpers';
 import type { SeedDataset } from './seed.types';
 
@@ -61,7 +61,7 @@ export function seedCommissionBreakdown(
       ),
   );
   const tierBonus = tierBonusByName(tier?.name);
-  const dealBonus = exclusiveDealBonus(
+  const dealRate = exclusiveDealRate(
     deal
       ? {
           ...deal,
@@ -100,18 +100,20 @@ export function seedCommissionBreakdown(
         input.at,
       )
     : 0;
+  const campaignRate = campaignBonus ? 10 + campaignBonus : 0;
+  const campaignWins = campaignRate > Math.max(dealRate, 10 + tierBonus);
   return {
     base: 10,
     tier: tierBonus,
-    deal: dealBonus,
-    campaign: campaignBonus,
+    deal: dealRate,
+    campaign: campaignWins ? campaignBonus : 0,
     live: liveBonus,
-    rate: additiveCommissionRate(
+    rate: precedenceCommissionRate(
       tierBonus,
-      dealBonus,
-      campaignBonus,
+      dealRate,
+      campaignRate,
       liveBonus,
     ),
-    campaignId: campaignBonus ? campaign!.id! : null,
+    campaignId: campaignWins ? campaign!.id! : null,
   };
 }
