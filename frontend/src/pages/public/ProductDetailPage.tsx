@@ -31,6 +31,7 @@ import {
   MessageSquare,
   Package,
   Ticket,
+  Handshake,
 } from 'lucide-react';
 import api from '@/services/api';
 import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
@@ -364,6 +365,23 @@ export default function ProductDetailPage() {
         selectedVariantIsReal && selectedVariant ? selectedVariant.id : '',
     });
     navigate(`/collaborator/collaboration?${query.toString()}`);
+  };
+
+  const handleProposeCollaboration = () => {
+    if (!currentUser) {
+      toast.info('Vui lòng đăng nhập tài khoản KOC để gửi đề xuất hợp tác.');
+      navigate(`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`);
+      return;
+    }
+    if (!isKolUser) {
+      toast.info('Chức năng đề xuất hợp tác dành cho Nhà sáng tạo (KOC / Creator).');
+      return;
+    }
+    if (!data?.store?.id) {
+      toast.error('Không tìm thấy thông tin nhãn hàng.');
+      return;
+    }
+    navigate(`/collaborator/collaboration?storeId=${data.store.id}&tab=messages`);
   };
 
   const { slug } = useParams<{ slug: string }>();
@@ -1961,6 +1979,18 @@ export default function ProductDetailPage() {
                     </span>
                   </button>
                 )}
+                {isKolUser && (
+                  <button
+                    type="button"
+                    onClick={handleProposeCollaboration}
+                    className="col-span-2 h-11 px-4 rounded-xl border border-[#C59B58] bg-white hover:bg-[#FBF5EB] text-[#8C6226] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                    title="Đề xuất hợp tác tiếp thị / đàm phán thù lao trực tiếp với Brand Manager"
+                  >
+                    <Handshake className="w-4 h-4 text-[#B88E4F]" />
+                    <span>🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng</span>
+                  </button>
+                )}
+
                 {/* Button 1: Thêm Vào Giỏ Hàng (SCANMS UI Reference Outline Soft Style) */}
                 <button
                   type="button"

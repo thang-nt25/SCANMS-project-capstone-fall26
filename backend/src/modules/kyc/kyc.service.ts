@@ -621,7 +621,23 @@ export class KycService {
         });
       }
 
-      // 3. Thông báo cho người dùng
+      // 3. Kích hoạt xác minh các Kênh Mạng Xã Hội (FR-07)
+      const currentJson =
+        profile.socialLinksJson && typeof profile.socialLinksJson === 'object'
+          ? (profile.socialLinksJson as Record<string, any>)
+          : {};
+      await this.prisma.collaboratorProfile.update({
+        where: { id: profileId },
+        data: {
+          socialLinksJson: {
+            ...currentJson,
+            channelsVerified: true,
+            verifiedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // 4. Thông báo cho người dùng
       await this.prisma.notification.create({
         data: {
           userId: profile.userId,

@@ -30,11 +30,21 @@ export interface AdminStoreOption {
   id: string;
   name: string;
   slug: string;
+  categoryName?: string | null;
+  description?: string | null;
   logoUrl?: string | null;
   ownerId: string;
   isVerified: boolean;
   isActive: boolean;
   defaultCommissionRate: number;
+  returnWarehouse?: {
+    warehouseName?: string;
+    contactName?: string;
+    contactPhone?: string;
+    address?: string;
+    ghnDistrictId?: number;
+    ghnWardCode?: string;
+  } | null;
   owner?: {
     id: string;
     fullName: string;
@@ -43,6 +53,22 @@ export interface AdminStoreOption {
   _count?: {
     products: number;
   };
+}
+
+export interface CreateStorePayload {
+  name: string;
+  slug?: string;
+  categoryName: string;
+  description?: string;
+  logoUrl?: string;
+  defaultCommissionRate?: number;
+  warehouseName?: string;
+  contactName?: string;
+  contactPhone?: string;
+  warehouseAddress?: string;
+  ghnDistrictId?: number;
+  ghnWardCode?: string;
+  ownerId?: string;
 }
 
 export const personnelService = {
@@ -66,6 +92,11 @@ export const personnelService = {
 
   async getAdminStores(): Promise<AdminStoreOption[]> {
     const res = await api.get('/stores/all-admin');
+    return res.data;
+  },
+
+  async createStore(payload: CreateStorePayload): Promise<AdminStoreOption> {
+    const res = await api.post('/stores', payload);
     return res.data;
   },
 };

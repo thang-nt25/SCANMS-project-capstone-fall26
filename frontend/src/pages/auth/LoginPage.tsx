@@ -33,11 +33,11 @@ interface RoleOption {
 }
 
 const ROLES: RoleOption[] = [
-  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer01@seed.scanms.test', badge: 'Nguyễn Văn An (Có 2 đơn hàng)' },
-  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol01@seed.scanms.test', badge: 'Hà My Skincare (Kênh TikTok, Bạc)' },
-  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'shop01@seed.scanms.test', badge: 'Cỏ Mềm Official (Kho GHN, 2 SP)' },
-  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Ban Vận Hành & Tuân Thủ (Manager)' },
-  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@seed.scanms.test', badge: 'Quản Trị Viên Toàn Hệ Thống (Admin)' },
+  { id: 'customer', label: 'Khách mua', icon: ShoppingBag, email: 'customer.an@scanms.vn', badge: 'Trần An (Ví 2.5Tr)' },
+  { id: 'kol', label: 'KOL/KOC', icon: Sparkles, email: 'kol.bronze@scanms.vn', badge: 'Lê Hoàng Yến Nhi (TikTok 25K, Đồng)' },
+  { id: 'shop', label: 'Chủ Shop', icon: Store, email: 'manager.sora@scanms.vn', badge: 'Nguyễn Văn Minh (Sora Skin Tân Bình)' },
+  { id: 'manager', label: 'Vận hành', icon: ShieldCheck, email: 'manager@scanms.vn', badge: 'Lê Thu Trang (Vận Hành & Tuân Thủ)' },
+  { id: 'admin', label: 'Quản trị', icon: Crown, email: 'admin@scanms.vn', badge: 'Nguyễn Thành Thắng (Super Admin)' },
 ];
 
 export default function LoginPage() {
@@ -58,7 +58,12 @@ export default function LoginPage() {
     return registeredEmail ? 'customer' : getRememberedLoginRole();
   });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [identifier, setIdentifier] = useState(() => registeredEmail || getRememberedIdentifier(role) || getDemoLogin(role)?.identifier || '');
+  const [identifier, setIdentifier] = useState(() => {
+    if (registeredEmail) return registeredEmail;
+    const account = getDemoLogin(role);
+    const roleOpt = ROLES.find((r) => r.id === role);
+    return account?.identifier || roleOpt?.email || getRememberedIdentifier(role) || '';
+  });
   const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin(role)?.password || '');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
   const [rememberMe, setRememberMe] = useState(true);
@@ -80,8 +85,8 @@ export default function LoginPage() {
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
     const account = getDemoLogin(selectedRole);
-    const remembered = getRememberedIdentifier(selectedRole);
-    setIdentifier(remembered || account?.identifier || '');
+    const roleOpt = ROLES.find((r) => r.id === selectedRole);
+    setIdentifier(account?.identifier || roleOpt?.email || '');
     setPassword(account?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);

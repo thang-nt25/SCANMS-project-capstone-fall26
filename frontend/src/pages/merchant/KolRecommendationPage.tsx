@@ -10,7 +10,9 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronDown,
+  MessageSquare,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   aiRecommendationService,
@@ -62,7 +64,9 @@ function readMatchingPreferences(): { productId?: string; autoScan?: boolean } {
 
 export default function KolRecommendationPage({ onReturn }: { onReturn?: () => void } = {}) {
   const [products, setProducts] = useState<any[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>(() => readMatchingPreferences().productId || '');
+  const [searchParams] = useSearchParams();
+  const urlProductId = searchParams.get('productId');
+  const [selectedProductId, setSelectedProductId] = useState<string>(() => urlProductId || readMatchingPreferences().productId || '');
   const [targetProduct, setTargetProduct] = useState<TargetProductSummary | null>(null);
   const [kols, setKols] = useState<KolMatchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -118,7 +122,10 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
         const list = (Array.isArray(body) ? body : body?.items || []).filter((p: any) => p.moderationStatus === 'APPROVED' && p.isActive !== false && !p.isDeleted);
         if (Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          setSelectedProductId(previous => list.some((product: any) => product.id === previous) ? previous : '');
+          setSelectedProductId((prev) => {
+            const chosen = urlProductId || prev;
+            return list.some((product: any) => product.id === chosen) ? chosen : (list[0]?.id || '');
+          });
         } else {
           setSelectedProductId('');
         }
@@ -505,7 +512,8 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
                   </dl>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => { setInviteMessage(''); setInvitingKol(kol); }} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] transition"><Send className="h-3.5 w-3.5" />Mời hợp tác</button>
+                    <button type="button" onClick={() => { setInviteMessage(''); setInvitingKol(kol); }} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-semibold text-[#231D15] hover:bg-[#B88E4F] transition shadow-xs cursor-pointer"><Send className="h-3.5 w-3.5" />Mời hợp tác</button>
+                    <button type="button" onClick={() => { window.location.href = `/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages`; }} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-white hover:bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#8C6226] transition shadow-2xs cursor-pointer" title="Nhắn tin đàm phán hợp đồng Deal VIP trực tiếp"><MessageSquare className="h-3.5 w-3.5 text-[#B88E4F]" />Thương lượng Deal VIP</button>
                   </div>
                   <button type="button" className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer" aria-expanded={!!expandedEvidence[kol.collaboratorId]} aria-controls={`kol-evidence-${kol.collaboratorId}`} onClick={() => setExpandedEvidence(previous => ({ ...previous, [kol.collaboratorId]: !previous[kol.collaboratorId] }))}>
                     Chi tiết<ChevronDown size={13} className={`transition-transform ${expandedEvidence[kol.collaboratorId] ? 'rotate-180' : ''}`} />

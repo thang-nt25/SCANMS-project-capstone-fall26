@@ -497,7 +497,7 @@ export const KolCouponsPage: React.FC = () => {
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
-                Hoa hồng dự kiến
+                Thu nhập tiếp thị dự kiến
               </span>
               <Tag className="w-4 h-4 text-[#B88E4F]" />
             </div>
