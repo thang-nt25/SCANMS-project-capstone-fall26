@@ -1,3 +1,4 @@
+import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
@@ -30,6 +31,7 @@ import {
   Mail,
   X,
   Crown,
+  Sparkles,
   ArrowUpRight,
   PackageCheck,
   RefreshCw,
@@ -59,7 +61,7 @@ function formatConvTime(dateStr?: string | null) {
 }
 
 function getChatMessagePreview(messageText?: string, mediaName?: string): string {
-  if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện...';
+  if (!messageText) return mediaName ? `📎 ${mediaName}` : '';
   try {
     const parsed = JSON.parse(messageText);
     if (parsed.type === 'CAMPAIGN_INVITE') {
@@ -142,7 +144,13 @@ export interface PartnerKol {
 
 type PartnerTier = NonNullable<PartnerKol['tier']>;
 
-const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
+const normalizePartnerTier = (tier: unknown, revenue?: number): PartnerTier | undefined => {
+  if (revenue !== undefined && revenue > 0) {
+    if (revenue >= 100000000) return 'DIAMOND';
+    if (revenue >= 50000000) return 'GOLD';
+    if (revenue >= 20000000) return 'SILVER';
+    return 'BRONZE';
+  }
   const tierName =
     typeof tier === 'string'
       ? tier
@@ -158,7 +166,7 @@ const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
   if (normalized.includes('GOLD') || normalized.includes('VANG')) return 'GOLD';
   if (normalized.includes('SILVER') || normalized.includes('BAC')) return 'SILVER';
   if (normalized.includes('BRONZE') || normalized.includes('DONG')) return 'BRONZE';
-  return undefined;
+  return 'BRONZE';
 };
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
@@ -314,8 +322,9 @@ export default function ShopKolHubPage() {
   const tabParam = searchParams.get('tab') || 'messages';
   const modeParam = searchParams.get('mode'); // 'ai-matching' or null
 
-  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'ai-matching';
+  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching';
   const [kols, setKols] = useState<PartnerKol[]>([]);
+  const [allPlatformKols, setAllPlatformKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
   const [viewMode, setViewMode] = useState<'CRM' | 'LEADERBOARD' | 'ALL_DEALS'>(
     tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
@@ -370,6 +379,7 @@ export default function ShopKolHubPage() {
   const [directoryCreators, setDirectoryCreators] = useState<any[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
+  const [showVipCampaignModal, setShowVipCampaignModal] = useState(false);
 
   useEffect(() => {
     if (showInviteModal) {
@@ -400,6 +410,8 @@ export default function ShopKolHubPage() {
     }
     if (tabParam === 'deals') {
       setViewMode('ALL_DEALS');
+    } else if (tabParam === 'leaderboard') {
+      setViewMode('LEADERBOARD');
     } else if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
       setViewMode('CRM');
       setActiveTab(tabParam as any);
@@ -510,7 +522,7 @@ export default function ShopKolHubPage() {
               email: creator.email || '',
               phone: creator.phoneNumber || undefined,
               avatarUrl: profile.avatarUrl || creator.avatarUrl || undefined,
-              tier: normalizePartnerTier(profile.tier),
+              tier: normalizePartnerTier(profile.tier, Number(profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
               handle: channel?.channelName ? `@${channel.channelName}` : undefined,
               primaryChannel: channel ? {
                 platform: (channel.platformName?.toUpperCase() as any) || 'TIKTOK',
@@ -553,11 +565,11 @@ export default function ShopKolHubPage() {
             kycStatus: profile.kycStatus || undefined,
             commissionRate: undefined,
             stats: {
-              totalRevenue: 0,
-              totalOrders: 0,
+              totalRevenue: Number(m.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : (c.stats?.totalRevenue ?? 0))),
+              totalOrders: Number(m.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
               sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
               pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
-              completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+              completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[c.id]?.completed ?? 0),
             },
           });
         });
@@ -597,8 +609,8 @@ export default function ShopKolHubPage() {
               kycStatus: profile.kycStatus || undefined,
               commissionRate: undefined,
               stats: {
-                totalRevenue: 0,
-                totalOrders: 0,
+                totalRevenue: Number(c.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
+                totalOrders: Number(c.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
                 sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
                 pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
                 completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -648,8 +660,8 @@ export default function ShopKolHubPage() {
           kycStatus: profile.kycStatus || undefined,
           commissionRate: undefined,
           stats: {
-            totalRevenue: 0,
-            totalOrders: 0,
+            totalRevenue: Number(c.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
+            totalOrders: Number(c.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
             sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
             pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
             completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -663,30 +675,25 @@ export default function ShopKolHubPage() {
 
       // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
       const mergedMap = new Map<string, PartnerKol>();
-      convKols.forEach((k) => mergedMap.set(k.id, k));
-
-      requestKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
+      // Active Inbox: Only creators with real messages or active pending requests
+      convKols.forEach((k) => {
+        if ((k.lastMessageTimestamp ?? 0) > 0 || (k.lastMessage && k.lastMessage.trim().length > 0)) {
           mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-            phone: existing.phone || k.phone,
-          });
         }
       });
 
-      backendKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
-          mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-          });
+      requestKols.forEach((k) => {
+        if (k.stats.pendingSamplesCount > 0 || k.stats.sampleRequestsCount > 0) {
+          if (!mergedMap.has(k.id)) {
+            mergedMap.set(k.id, k);
+          } else {
+            const existing = mergedMap.get(k.id)!;
+            mergedMap.set(k.id, {
+              ...existing,
+              stats: { ...existing.stats, ...k.stats },
+              phone: existing.phone || k.phone,
+            });
+          }
         }
       });
 
@@ -703,6 +710,7 @@ export default function ShopKolHubPage() {
       });
 
       setKols(allKols);
+      if (dbKols.length > 0) setAllPlatformKols(dbKols);
 
       if (allKols.length > 0) {
         if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
@@ -807,8 +815,9 @@ return true;
   }, [kols, searchQuery, filterTag, samplesMap]);
 
   const sortedLeaderboardKols = useMemo(() => {
-    return [...kols].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
-  }, [kols]);
+    const source = allPlatformKols.length > 0 ? allPlatformKols : kols;
+    return [...source].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
+  }, [allPlatformKols, kols]);
 
   // Selected KOL Samples
   const currentKolSamples = useMemo(() => {
@@ -820,13 +829,16 @@ return true;
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
     const params = new URLSearchParams(searchParams);
-    const kolId = selectedKol?.id || selectedKolId;
-    if (kolId) params.set('kol', kolId);
-    else params.delete('kol');
-    params.set('tab', activeTab);
-    if (enabled) params.set('mode', 'ai-matching');
-    else params.delete('mode');
-    setSearchParams(params, { replace: !enabled });
+    if (enabled) {
+      params.set('tab', 'radar');
+      params.delete('mode');
+    } else {
+      if (params.get('tab') === 'radar') {
+        params.set('tab', 'messages');
+      }
+      params.delete('mode');
+    }
+    setSearchParams(params, { replace: true });
   };
 
   const handleSelectKol = (kolId: string) => {
@@ -1430,7 +1442,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('CRM');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'messages', kol: selectedKolId }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'CRM' && !isAiMatchingMode
@@ -1446,7 +1458,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('LEADERBOARD');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'leaderboard' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'LEADERBOARD' && !isAiMatchingMode
@@ -1462,7 +1474,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('ALL_DEALS');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'deals' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'ALL_DEALS' && !isAiMatchingMode
@@ -1472,6 +1484,21 @@ return true;
           >
             <Handshake size={13} className={viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
             <span>Thỏa thuận độc quyền</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchParams({ tab: 'radar' }, { replace: true });
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              isAiMatchingMode
+                ? 'bg-[#FBF5EB] text-[#8C6226] shadow-2xs border border-[#EEDFC6]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <Sparkles size={13} className={isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Gợi ý KOC (AI Radar)</span>
           </button>
         </div>
 
@@ -1486,11 +1513,11 @@ return true;
           </button>
           <button
             type="button"
-            onClick={() => setAiMatchingMode(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-white text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
+            onClick={() => setShowVipCampaignModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
           >
-            <Search size={13} />
-            <span>Gợi ý KOL</span>
+            <Crown size={13} className="text-[#B88E4F]" />
+            <span>Đề xuất Deal VIP</span>
           </button>
         </div>
       </div>
@@ -1527,8 +1554,10 @@ return true;
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]">
-                {sortedLeaderboardKols.map((kol, idx) => {
+                {sortedLeaderboardKols.map((rawKol, idx) => {
                   const rank = idx + 1;
+                  const effectiveTier = normalizePartnerTier(rawKol.tier, rawKol.stats.totalRevenue) || 'BRONZE';
+                  const kol = { ...rawKol, tier: effectiveTier };
                   return (
                     <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
                       <td className="py-3 px-4 text-center font-bold">
@@ -1592,18 +1621,32 @@ return true;
                         {kol.stats.completedVideosCount}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectKol(kol.id);
-                            setViewMode('CRM');
-                            handleTabChange('messages');
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
-                        >
-                          <MessageSquare size={13} />
-                          <span>Nhắn tin</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectKol(kol.id);
+                              setViewMode('CRM');
+                              handleTabChange('messages');
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          >
+                            <MessageSquare size={13} className="text-[#C59B58]" />
+                            <span>Nhắn tin</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedKolId(kol.id);
+                              setShowInviteModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Thiết lập thỏa thuận thù lao độc quyền"
+                          >
+                            <Crown size={13} />
+                            <span>Deal VIP</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2128,7 +2171,7 @@ return true;
 
                       <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
                         <Crown className="w-2.5 h-2.5 text-[#B88E4F]" />
-                        <span>Hoa hồng: 10% chuẩn sàn</span>
+                        <span>Thù lao: {selectedKol.commissionRate ? `${selectedKol.commissionRate}% (Deal VIP)` : selectedKol.tier === 'DIAMOND' ? '13% (Kim Cương)' : selectedKol.tier === 'GOLD' ? '12% (Vàng)' : selectedKol.tier === 'SILVER' ? '11% (Bạc)' : '10% (Đồng)'}</span>
                       </span>
                     </div>
 
@@ -2138,12 +2181,7 @@ return true;
                         type="button"
                         id="btn-header-vip-invite"
                         onClick={() => {
-                          setViewMode('CRM');
-                          handleTabChange('messages');
-                          setTimeout(() => {
-                            const btn = document.getElementById('btn-composer-vip-invite') || document.getElementById('btn-open-vip-invite');
-                            if (btn) btn.click();
-                          }, 50);
+                          setShowVipCampaignModal(true);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs"
                         title="Mời chiến dịch tiếp thị VIP cho KOL này"
@@ -3252,6 +3290,17 @@ setActiveTab('messages');
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}
+
+      {showVipCampaignModal && (
+        <SendVipCampaignModal
+          collaboratorName={selectedKol?.fullName}
+          onClose={() => setShowVipCampaignModal(false)}
+          onSuccess={() => {
+            setShowVipCampaignModal(false);
+            toast.success('Đã gửi Thư mời Chiến dịch VIP thành công!');
+          }}
+        />
+      )}
     </div>
   );
 }

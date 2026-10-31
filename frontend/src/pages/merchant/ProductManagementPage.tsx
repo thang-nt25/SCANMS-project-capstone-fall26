@@ -1,3 +1,4 @@
+import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDrawer';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -365,6 +366,7 @@ export default function ProductManagementPage() {
   const [moderatingAction, setModeratingAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
   const [moderationReason, setModerationReason] = useState('');
   const [moderationSubmitting, setModerationSubmitting] = useState(false);
+  const [aiDrawerProduct, setAiDrawerProduct] = useState<Product | null>(null);
 
   const pendingApprovalCount = useMemo(() => {
     return products.filter((p: any) => (p.moderationStatus || 'APPROVED') === 'DRAFT').length;
@@ -1721,7 +1723,7 @@ export default function ProductManagementPage() {
       })()}
 
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
-      <Card className="product-toolbar p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
+      <Card className="product-toolbar relative z-20 overflow-visible p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
         <div className="product-toolbar-layout grid grid-cols-[minmax(280px,1fr)_minmax(0,1.3fr)] @max-[900px]/product-management:grid-cols-1 items-stretch gap-3 @max-[900px]/product-management:gap-2.5">
           {/* Left: Compact search input & filter controls */}
           <div className="product-filter-controls grid grid-cols-[minmax(0,1fr)_160px] items-stretch min-w-0 gap-2">
@@ -2036,12 +2038,12 @@ export default function ProductManagementPage() {
                         {moderationStatus === 'APPROVED' && (
                           <button
                             type="button"
-                            onClick={() => navigate(`/merchant/kol-hub?mode=ai-matching&productId=${p.id}`)}
+                            onClick={() => setAiDrawerProduct(p)}
                             className="h-8 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
                             title="Tìm KOC phù hợp cho sản phẩm này qua AI Radar Matchmaker"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden xl:inline">Tìm KOC bằng AI</span>
+                            <span className="hidden sm:inline">Gợi ý KOC</span>
                           </button>
                         )}
 
@@ -3712,6 +3714,12 @@ export default function ProductManagementPage() {
 
 
       {showReviewModeration && <ReviewManagementDialog admin={isAdminOrManager} onClose={() => setShowReviewModeration(false)} />}
+
+      <ProductAiMatchDrawer
+        product={aiDrawerProduct}
+        isOpen={Boolean(aiDrawerProduct)}
+        onClose={() => setAiDrawerProduct(null)}
+      />
     </div>
   );
 }

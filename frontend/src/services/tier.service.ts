@@ -5,6 +5,7 @@ export interface TierPolicy {
   name: string;
   extraBonusPercentage: number;
   minRevenueThreshold: number;
+  maintenanceThreshold?: number;
 }
 
 export interface TierStatus {
@@ -18,6 +19,14 @@ export interface TierStatus {
   nextTier: TierPolicy | null;
   progressPercentage: number;
   revenueNeeded: number;
+  // Governance: Ngưỡng duy trì 60% & Ân hạn 30 ngày Soft Landing
+  maintenanceThreshold?: number;
+  maintenanceProgressPercentage?: number;
+  revenueNeededToMaintain?: number;
+  isMaintained?: boolean;
+  cycleStatus?: 'PROMOTED_OR_EXCEEDED' | 'MAINTAINED' | 'GRACE_PERIOD';
+  daysRemaining?: number;
+  stepDownTier?: { id: string; name: string; extraBonusPercentage: number } | null;
 }
 
 export const tierService = {

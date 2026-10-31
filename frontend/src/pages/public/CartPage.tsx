@@ -636,7 +636,7 @@ export default function CartPage() {
                 <div className="mt-5 pt-4 border-t border-[#EAE4D7] flex items-center gap-2.5 text-[11px] text-[#7D715E]">
                   <ShieldCheck size={18} className="text-[#B88E4F] shrink-0" />
                   <span>
-                    Bảo đảm thanh toán an toàn 100% qua Escrow sàn SCANMS & Đổi trả dễ dàng trong 7 ngày.
+                    Bảo đảm thanh toán an toàn 100% qua bảo chứng sàn SCANMS & Đổi trả dễ dàng trong 14 ngày.
                   </span>
                 </div>
               </div>

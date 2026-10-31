@@ -78,7 +78,7 @@ export interface LedgerEntry {
     | "PAYOUT_WITHDRAW"
     | "REVERSAL"
     | "PAYOUT_REJECT_REFUND";
-  balanceBucket: "AVAILABLE" | "PENDING";
+  balanceBucket: "AVAILABLE" | "PENDING" | "SHOPPING";
   amount: string;
   balanceBefore: string;
   balanceAfter: string;
