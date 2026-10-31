@@ -93,6 +93,16 @@ export class StoreCollaboratorsService {
                 avatarUrl: true,
                 totalFollowers: true,
                 kycStatus: true,
+                totalEarnedCommission: true,
+                totalOrdersReferred: true,
+                tier: {
+                  select: {
+                    id: true,
+                    name: true,
+                    minRevenueThreshold: true,
+                    extraBonusPercentage: true,
+                  },
+                },
               },
             },
             socialChannels: {
@@ -109,7 +119,63 @@ export class StoreCollaboratorsService {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return { store: { id: store.id, name: store.name }, members };
+    const collabIds = members.map((m) => m.collaboratorId);
+
+    const ordersAgg = await this.prisma.order.groupBy({
+      by: ['attributedCollaboratorId'],
+      where: {
+        storeId: store.id,
+        attributedCollaboratorId: { in: collabIds },
+        status: { in: ['DELIVERED', 'COMPLETED'] },
+      },
+      _sum: {
+        finalAmount: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const orderStatsMap = new Map<string, { totalRevenue: number; totalOrders: number }>();
+    for (const agg of ordersAgg) {
+      if (agg.attributedCollaboratorId) {
+        orderStatsMap.set(agg.attributedCollaboratorId, {
+          totalRevenue: Number(agg._sum.finalAmount || 0),
+          totalOrders: agg._count.id || 0,
+        });
+      }
+    }
+
+    const completedSamples = await this.prisma.sampleProductRequest.findMany({
+      where: {
+        product: { storeId: store.id },
+        collaboratorId: { in: collabIds },
+        status: 'COMPLETED',
+      },
+      select: { collaboratorId: true },
+    });
+    const completedSamplesMap = new Map<string, number>();
+    for (const s of completedSamples) {
+      completedSamplesMap.set(s.collaboratorId, (completedSamplesMap.get(s.collaboratorId) || 0) + 1);
+    }
+
+    const enrichedMembers = members.map((m) => {
+      const profile = m.collaborator?.collaboratorProfile;
+      const stats = orderStatsMap.get(m.collaboratorId);
+      const totalRevenue = stats?.totalRevenue ?? Number(profile?.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0);
+      const totalOrders = stats?.totalOrders ?? (profile?.totalOrdersReferred || 0);
+      const completedVideosCount = completedSamplesMap.get(m.collaboratorId) || 0;
+      return {
+        ...m,
+        stats: {
+          totalRevenue,
+          totalOrders,
+          completedVideosCount,
+        },
+      };
+    });
+
+    return { store: { id: store.id, name: store.name }, members: enrichedMembers };
   }
 
   async invite(ownerId: string, dto: InviteStoreCollaboratorDto) {

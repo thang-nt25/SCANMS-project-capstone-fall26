@@ -230,7 +230,9 @@ export class AiRecommendationService {
         else if (directMatchOrders >= 20) categoryScore = 92;
         else if (directMatchOrders >= 5) categoryScore = 85;
         else if (directMatchOrders > 0) categoryScore = 75;
-        else if (textMatchesCategory(profileText, targetCategory)) categoryScore = 35;
+        else if (textMatchesCategory(profileText, targetCategory)) {
+          categoryScore = stats.totalOrders === 0 ? 88 : 45;
+        }
         categoryMatchSource = directMatchOrders > 0 ? 'SALES' : 'PROFILE';
       } else if (stats.totalOrders > 0) {
         categoryScore = Math.min(
@@ -247,8 +249,11 @@ export class AiRecommendationService {
             )
           : 0;
 
+      const isColdStart = stats.totalOrders === 0;
       let conversionRateScore = 0;
-      if (conversionRate >= 8.0) conversionRateScore = 98;
+      if (isColdStart) {
+        conversionRateScore = 75;
+      } else if (conversionRate >= 8.0) conversionRateScore = 98;
       else if (conversionRate >= 6.0) conversionRateScore = 92;
       else if (conversionRate >= 4.0) conversionRateScore = 84;
       else if (conversionRate >= 2.0) conversionRateScore = 74;
@@ -314,6 +319,8 @@ export class AiRecommendationService {
         tierAndSocialScore = Math.min(100, tierAndSocialScore + 5);
       else if (totalFollowers >= 100000)
         tierAndSocialScore = Math.min(100, tierAndSocialScore + 3);
+      else if (isColdStart && totalFollowers >= 50000)
+        tierAndSocialScore = 75;
 
       // Tiêu chí 4: Điểm phù hợp phân khúc giá (Price Fit Score - 20%)
       let priceFitScore = 0;
@@ -325,6 +332,8 @@ export class AiRecommendationService {
           Math.min(targetPrice, avgOrderValue) /
           Math.max(targetPrice, avgOrderValue);
         priceFitScore = Math.round(60 + ratio * 38);
+      } else if (isColdStart) {
+        priceFitScore = 78;
       }
 
       // Lọc điều kiện PriceRangeFilter
@@ -373,7 +382,8 @@ export class AiRecommendationService {
       else if (finalMatchScore >= 78) matchLevel = 'Rất Phù Hợp';
       else if (finalMatchScore >= 65) matchLevel = 'Phù Hợp';
       else matchLevel = 'Tiềm Năng';
-      if (stats.totalOrders === 0) matchLevel = 'Chưa đủ dữ liệu bán hàng';
+      const isRisingStar = stats.totalOrders === 0;
+      if (isRisingStar) matchLevel = '✨ Tiềm Năng Mới (Rising Star)';
 
       // 6. Sinh lời giải thích AI tự nhiên (Explainable AI Reasoning)
       const aiReasoning = this.generateAiReasoning(
@@ -412,6 +422,7 @@ export class AiRecommendationService {
         matchScore: finalMatchScore,
         matchLevel,
         categoryMatchSource,
+        isRisingStar: stats.totalOrders === 0,
         matchedCategory: targetCategory,
         scoreBreakdown,
         aiReasoning,

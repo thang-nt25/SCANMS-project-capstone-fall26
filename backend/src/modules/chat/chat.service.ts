@@ -185,8 +185,8 @@ export class ChatService {
                 select: {
                   id: true,
                   name: true,
-                  bonusRate: true,
-                  minRevenue: true,
+                  extraBonusPercentage: true,
+                  minRevenueThreshold: true,
                 },
               },
             },

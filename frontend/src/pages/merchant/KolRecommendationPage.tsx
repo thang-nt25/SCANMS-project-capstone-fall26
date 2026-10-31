@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronDown,
   MessageSquare,
+  Info,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -21,7 +22,6 @@ import {
 } from '../../services/ai-recommendation.service';
 import api from '../../services/api';
 import { Select } from '../../components/ui/Select';
-import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
 import { KolComparisonPanel } from '@/components/ai/KolComparisonPanel';
 
 const CATEGORIES = [
@@ -99,6 +99,7 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   // VIP Invitation Modal State
   const [invitingKol, setInvitingKol] = useState<KolMatchResult | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string>('');
   const [isSendingInvite, setIsSendingInvite] = useState<boolean>(false);
 
@@ -252,8 +253,52 @@ export default function KolRecommendationPage({ onReturn }: { onReturn?: () => v
 
   return (
     <div className="kol-recommendation-page">
-      <WorkspaceHero eyebrow="SCANMS / AI Smart Matching" title="Tìm đúng KOL cho sản phẩm" description="Gợi ý mặc định 5 KOL dựa trên độ phù hợp ngành hàng, chuyển đổi, cấp bậc/kênh và khoảng giá. Mỗi đề xuất có bằng chứng để Shop chủ động đánh giá." />
-      {!loading && !scanError && <p className="my-3 text-xs text-[#7D715E]">Đã phân tích {totalScanned.toLocaleString('vi-VN')} hồ sơ · {kols.length} kết quả phù hợp bộ lọc · Điểm tối đa 100, không phải tỷ lệ chuyển đổi dự báo.</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-[#EAE4D7]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-bold text-[#1A1612]">Đối sánh KOC Tiếp Thị (AI Radar)</h1>
+            <p className="text-[11px] text-[#7D715E]">
+              Phân tích đa trục tìm kiếm đối tác sáng tạo nội dung phù hợp cho sản phẩm
+              {totalScanned > 0 ? ` (Đã quét ${totalScanned} hồ sơ KOC)` : ''}.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowInfoModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer"
+            title="Xem chi tiết cơ chế đối sánh AI"
+          >
+            <Info size={14} className="text-[#C59B58]" />
+            <span>Cơ chế đối sánh AI</span>
+          </button>
+        </div>
+      </div>
+
+      {showInfoModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-[#231D15]/40 backdrop-blur-xs p-4" onClick={() => setShowInfoModal(false)}>
+          <div className="w-full max-w-lg bg-white border border-[#EAE4D7] rounded-2xl p-5 shadow-xl text-left" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#B88E4F]" />
+                <h3 className="font-bold text-sm text-[#1A1612]">Cơ chế Đối sánh Đa trục (AI Radar)</h3>
+              </div>
+              <button type="button" onClick={() => setShowInfoModal(false)} className="text-[#7D715E] hover:text-[#1A1612] text-xs font-semibold px-2 py-1 rounded-md hover:bg-[#FAF8F5]">Đóng</button>
+            </div>
+            <div className="space-y-2.5 text-xs text-[#7D715E] leading-relaxed">
+              <p><strong className="text-[#1A1612]">1. Trùng khớp ngành hàng (35%):</strong> Đánh giá mức độ liên quan giữa danh mục sản phẩm của Shop với lịch sử bán hàng và chuyên môn nội dung của KOC.</p>
+              <p><strong className="text-[#1A1612]">2. Hiệu suất chuyển đổi CR% (25%):</strong> Dựa trên tỷ lệ chốt đơn thực tế từ lượt click hợp lệ.</p>
+              <p><strong className="text-[#1A1612]">3. Phân khúc giá sản phẩm (20%):</strong> So sánh giá bán với giá trị đơn trung bình (AOV) mà KOC thường chốt.</p>
+              <p><strong className="text-[#1A1612]">4. Cấp bậc & Tương tác mạng xã hội (20%):</strong> Điểm uy tín từ cấp bậc (Kim Cương, Vàng, Bạc, Đồng) và lượng người theo dõi thực tế.</p>
+              <p className="p-2 rounded-lg bg-[#FAF8F5] text-[11px] border border-[#EAE4D7]"><strong className="text-[#8C6226]">✨ Đối tác Tiềm năng Mới (Cold-Start):</strong> KOC mới tham gia mạng lưới được đánh giá dựa trên hồ sơ eKYC đã xác thực, thẻ chuyên môn và độ tương tác kênh.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {!loading && !scanError && <KolComparisonPanel key={`${selectedProductId}:${selectedCategory}:${selectedPriceRange}:${selectedMinTier}:${minConversionRate}:${limit}`} candidates={kols} />}
 
       {scanError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-[#DC2626]">{scanError}<button type="button" onClick={() => void fetchRecommendations()} className="font-medium text-[#B88E4F] underline">Thử quét lại</button></div>}
