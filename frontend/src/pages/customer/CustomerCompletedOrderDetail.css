@@ -1,4 +1,18 @@
 .customer-purchase-detail { min-width: 0; width: 100%; border: 1px solid #EAE4D7; border-radius: 5px; background: #FFFFFF; color: #1A1612; }
+.purchase-cancelled-banner { padding: 24px 22px; background: #FBF5EB; border-bottom: 12px solid #FAF8F5; }
+.purchase-cancelled-banner h1 { margin: 0; color: #B88E4F; font-size: 23px; font-weight: 500; line-height: 1.5; }
+.purchase-cancelled-banner p { margin: 4px 0 0; font-size: 14px; color: #7D715E; line-height: 1.6; }
+.purchase-cancelled-detail .purchase-detail-products { border-top: 0; }
+.purchase-cancelled-detail .purchase-detail-product { grid-template-columns: 86px minmax(0, 1fr) auto; }
+.purchase-cancelled-detail .purchase-product-image { width: 86px; height: 86px; }
+.purchase-cancelled-detail .purchase-detail-payment dd { overflow-wrap: anywhere; }
+.purchase-cancelled-reason { padding: 20px 22px; border-top: 12px solid #FAF8F5; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.purchase-cancelled-reason strong { font-weight: 500; }
+@media (max-width: 600px) {
+  .purchase-cancelled-banner, .purchase-cancelled-reason { padding: 18px 14px; }
+  .purchase-cancelled-detail .purchase-detail-product { grid-template-columns: 64px minmax(0, 1fr); }
+  .purchase-cancelled-detail .purchase-product-image { width: 64px; height: 64px; }
+}
 .customer-purchase-detail :is(button, a):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
 .purchase-detail-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid #EAE4D7; font-size: 14px; line-height: 1.5; }
 .purchase-detail-top :is(a, strong, span) { font-size: inherit; }

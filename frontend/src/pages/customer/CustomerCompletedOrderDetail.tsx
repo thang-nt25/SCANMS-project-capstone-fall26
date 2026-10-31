@@ -75,6 +75,41 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   const savedReviews = Boolean(order.productReviews?.length);
   const currentStepIndex = steps.findLastIndex(step => step.reached);
 
+  if (cancelled) {
+    const cancelledAt = order.rawPayload?.cancelledAt || order.rawPayload?.canceledAt;
+    const cancelledBy = ({ CUSTOMER: 'Người mua', SHOP_MANAGER: 'Gian hàng', SYSTEM_MANAGER: 'SCANMS', SYSTEM_ADMIN: 'SCANMS', SYSTEM: 'Hệ thống' } as Record<string, string>)[order.rawPayload?.cancelledBy];
+    return <article className="customer-purchase-detail purchase-cancelled-detail">
+      <header className="purchase-detail-top">
+        <Link to="/customer/orders" state={{ returnedOrderCode: order.externalOrderSn, clearOrderSearch: true }}><ArrowLeft size={16} /> Trở lại</Link>
+        <span>{dateLabel(cancelledAt) ? <>Hủy lúc: <time dateTime={cancelledAt}>{dateLabel(cancelledAt)}</time></> : <>Mã đơn hàng: {order.externalOrderSn}</>}</span>
+      </header>
+      <section className="purchase-cancelled-banner" aria-label="Trạng thái hủy đơn">
+        <h1>Đã hủy đơn hàng</h1>
+        <p>{dateLabel(cancelledAt) ? <>Vào {dateLabel(cancelledAt)}.</> : 'Đơn hàng không tiếp tục được xử lý.'}</p>
+      </section>
+      <section className="purchase-detail-products" aria-label="Sản phẩm trong đơn đã hủy">
+        <header><strong><Store size={17} />{order.store?.name || 'Gian hàng đối tác'}</strong><Link to={`/shop/${order.store?.slug || order.storeId}`}>Xem Shop</Link></header>
+        {order.orderItems.map(item => <div key={item.id} className="purchase-detail-product">
+          <OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title} className="purchase-product-image"><img src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)} alt={item.product?.title || 'Sản phẩm trong đơn'} onError={handleProductImageError} /></OrderProductLink>
+          <div><h3><OrderProductLink productId={item.productId || item.product?.id} title={item.product?.title}>{item.product?.title || 'Sản phẩm trong đơn'}</OrderProductLink></h3>{item.variant?.name && <p>Phân loại hàng: {item.variant.name}</p>}<span>x{item.quantity}</span></div>
+          <strong className="purchase-product-price">{formatMoney(Number(item.unitPrice) * item.quantity)}</strong>
+        </div>)}
+      </section>
+      <section className="purchase-detail-payment" aria-label="Thông tin hủy đơn">
+        <dl>
+          <div><dt>Yêu cầu bởi</dt><dd>{cancelledBy || 'Chưa có thông tin'}</dd></div>
+          <div><dt>Phương thức thanh toán</dt><dd>{paymentLabels[method] || 'Chưa có thông tin'}</dd></div>
+          <div><dt>Mã đơn hàng</dt><dd>{order.externalOrderSn}</dd></div>
+        </dl>
+      </section>
+      <section className="purchase-cancelled-reason"><strong>Lý do hủy:</strong> {order.overrideReason || 'Chưa có lý do hủy được ghi nhận.'}</section>
+      <footer className="purchase-detail-actions" aria-label="Thao tác đơn đã hủy"><div>
+        <button type="button" className="purchase-primary" onClick={() => onReorder(order)}><RotateCcw size={15} /> Mua lại</button>
+        <button type="button" onClick={() => onChat(order)}><MessageCircle size={15} /> Liên hệ người bán</button>
+      </div></footer>
+    </article>;
+  }
+
   return <article className="customer-purchase-detail">
     <header className="purchase-detail-top">
       <Link to="/customer/orders" state={{ returnedOrderCode: order.externalOrderSn, clearOrderSearch: true }}><ArrowLeft size={16} /> Trở lại</Link>

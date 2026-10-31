@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { authService } from '../../services/auth.service';
@@ -7,13 +7,44 @@ import { useReturnAction, useReturnDetail } from '../../hooks/useReturnDetail';
 import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { PickupBookingForm } from '../../components/returns/PickupBookingForm';
 import { DisputeModal } from '../../components/returns/DisputeModal';
-import { PublicHeader } from '../../components/layout/PublicHeader';
-import { carrierStatusLabel } from '@/utils/return-status.utils';
+import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeader';
+import { Sidebar } from '../../components/layout/Sidebar';
+import { carrierStatusLabel, returnReasonLabel, returnStatusLabel } from '@/utils/return-status.utils';
+import { customerService, type CustomerOrderItem } from '../../services/customer.service';
 import { canRequestReturnReview } from '../../utils/return-actions';
+import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
+import './ReturnDetailPage.css';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
+
+function ReturnProducts({ request, customer }: { request: ReturnDetail; customer: boolean }) {
+  const [originalItems, setOriginalItems] = useState<CustomerOrderItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const missingItems = !request.items.length;
+  useEffect(() => {
+    setOriginalItems([]);
+    if (!customer || !missingItems) return;
+    let active = true;
+    setLoading(true);
+    customerService.getOrderDetails(request.order.id)
+      .then(order => { if (active) setOriginalItems(order.orderItems); })
+      .catch(() => { /* Keep the order link available when original items cannot be loaded. */ })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [customer, missingItems, request.order.id]);
+  const products = missingItems ? originalItems.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.product }))
+    : request.items.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.orderItem.product }));
+  return <div className="return-evidence-products">
+    {missingItems && <p className="text-xs text-[#7D715E]">{loading ? 'Đang tải sản phẩm…' : products.length ? 'Sản phẩm trong đơn gốc' : 'Hồ sơ chưa có thông tin sản phẩm liên kết.'}</p>}
+    {products.map(item => <div key={item.id} className="return-evidence-product">
+      <img src={getSafeProductImageUrl(item.product?.imageUrl)} onError={handleProductImageError} alt={item.product?.title || 'Sản phẩm'} />
+      <div><strong>{item.product?.title || 'Sản phẩm trong đơn'}</strong><span>Số lượng: {item.quantity}</span></div>
+      <strong>{money(Number(item.unitPrice) * item.quantity)}</strong>
+    </div>)}
+  </div>;
+}
 
 function ErrorText({ error }: { error: unknown }) {
   if (!error) return null;
@@ -258,13 +289,15 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
     <button onClick={() => navigate('/login')} className={`${primary} mt-3`}>Đăng nhập</button></div>;
 
   return <>
-    {mode === 'customer' && <PublicHeader />}
-    <main className="min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6">
-      <div className="mx-auto max-w-5xl space-y-4">
+    {mode === 'customer' && <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
+    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6${mode === 'customer' ? ' customer-return-layout' : ''}`}>
+      {mode === 'customer' && <aside className="customer-return-sidebar"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
+      <div className={`mx-auto max-w-5xl space-y-4${mode === 'customer' ? ' customer-return-content' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link to={back} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
+          <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
           </Link>
+          {mode === 'customer' && detail.data && <div className="customer-return-order-status"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>}
           <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
             <RefreshCw className="h-4 w-4" /> Tải lại
           </button>
@@ -274,12 +307,17 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
           {detail.error instanceof Error ? detail.error.message : 'Không thể tải hồ sơ.'}
         </div>}
         {detail.data && <>
-          <header className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
+          {mode !== 'customer' && <header className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#B88E4F]">SCANMS · Đổi trả / Hoàn tiền</p>
             <h1 className="mt-1 text-xl font-black">Đơn #{detail.data.order.externalOrderSn}</h1>
             <p className="mt-1 text-sm text-[#7D715E]">Gian hàng: {detail.data.order.storeName}</p>
-          </header>
+          </header>}
           <ReturnTimeline request={detail.data} />
+          {mode === 'customer' && <section className="customer-return-address">
+            <h2>Địa chỉ nhận hàng</h2>
+            <div><address><strong>{detail.data.order.customerName || 'Chưa có tên người nhận'}</strong><span>{detail.data.order.customerPhone || 'Chưa có số điện thoại'}</span><p>{detail.data.order.shippingAddress || 'Chưa có địa chỉ nhận hàng'}</p></address>
+              <div><strong>{detail.data.order.storeName}</strong><Link to={`/customer/orders/${encodeURIComponent(detail.data.order.id)}`}>Xem đơn hàng gốc</Link></div></div>
+          </section>}
           {detail.data.shopResponse && <section className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm">
             <h2 className="font-semibold">Phản hồi của Shop</h2>
             {(() => {
@@ -291,21 +329,16 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
               Đây là phản hồi của Shop, chưa phải kết quả phân xử của SCANMS. Nếu không đồng ý, bạn có thể yêu cầu SCANMS xem xét hồ sơ và bằng chứng.
             </p>}
           </section>}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
+          <section className="return-evidence-section rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {detail.data.items.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-xl border border-[#EAE4D7] p-2">
-                {item.orderItem.product.imageUrl && <img src={item.orderItem.product.imageUrl} alt="" className="h-14 w-14 rounded-lg object-cover" />}
-                <span className="text-sm">{item.orderItem.product.title} × {item.quantity}</span>
-              </div>)}
-            </div>
-            <p className="mt-3 text-sm">Lý do: {detail.data.reason}</p>
-            {detail.data.details && <p className="mt-1 whitespace-pre-wrap text-sm text-[#7D715E]">{detail.data.details}</p>}
-            <div className="mt-3 flex flex-wrap gap-3">
+            <ReturnProducts request={detail.data} customer={mode === 'customer'} />
+            <div className="return-evidence-reason"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
+            {detail.data.details && <p className="whitespace-pre-wrap text-[#7D715E]">{detail.data.details}</p>}</div>
+            <div className="return-evidence-media">
               {detail.data.imageUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"
-                className="text-sm font-medium text-[#B88E4F] underline">Ảnh bằng chứng {index + 1}</a>)}
-              {detail.data.unboxingVideoUrl && <a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer"
-                className="text-sm font-medium text-[#B88E4F] underline">Video mở hộp</a>}
+                className="return-evidence-photo"><img src={getSafeProductImageUrl(url)} onError={handleProductImageError} alt={`Ảnh bằng chứng ${index + 1}`} loading="lazy" /><span>Ảnh bằng chứng {index + 1}</span></a>)}
+              {detail.data.unboxingVideoUrl && <div className="return-evidence-video"><video src={detail.data.unboxingVideoUrl} controls preload="metadata" aria-label="Video mở hộp" /><a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer">Mở video trong tab mới</a></div>}
+              {!detail.data.imageUrls.length && !detail.data.unboxingVideoUrl && <p className="text-sm text-[#7D715E]">Chưa có bằng chứng đính kèm.</p>}
             </div>
           </section>
           {mode === 'shop' ? <ShopActions request={detail.data} /> : mode === 'customer' ? <CustomerActions request={detail.data} /> :

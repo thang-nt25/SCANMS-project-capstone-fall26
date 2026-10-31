@@ -1,0 +1,46 @@
+.customer-return-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 20px; max-width: 1248px; margin: 0 auto; }
+.customer-return-sidebar { min-width: 0; }
+.customer-return-content { min-width: 0; width: 100%; max-width: none; border: 1px solid #EAE4D7; border-radius: 5px; background: #FFFFFF; overflow: hidden; }
+.customer-return-content > * { margin-top: 0; }
+.customer-return-content > :is(div, section) { border: 0; border-bottom: 1px solid #EAE4D7; border-radius: 0; padding: 22px; background: #FFFFFF; }
+.customer-return-content > :last-child { border-bottom: 0; }
+.customer-return-order-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; font-size: 14px; }
+.customer-return-order-status strong { font-weight: 500; }
+.customer-return-order-status > :last-child { border-left: 1px solid #EAE4D7; padding-left: 12px; color: #B88E4F; font-weight: 600; }
+.customer-return-content button { border: 1px solid #EEDFC6; background: #FFFFFF; color: #795A2D; border-radius: 5px; }
+.customer-return-content button:hover { background: #FBF5EB; }
+.customer-return-content :is(a, button):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+.customer-return-address h2 { margin: 0 0 18px; font-size: 18px; font-weight: 500; }
+.customer-return-address > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+.customer-return-address address { display: flex; flex-direction: column; gap: 9px; font-size: 13px; font-style: normal; line-height: 1.7; overflow-wrap: anywhere; }
+.customer-return-address address strong { font-weight: 500; color: #1A1612; }
+.customer-return-address address :is(span, p) { margin: 0; color: #7D715E; }
+.customer-return-address > div > div { display: flex; flex-direction: column; gap: 12px; border-left: 1px solid #EAE4D7; padding-left: 22px; font-size: 13px; }
+.customer-return-address a { align-self: flex-start; padding: 7px 12px; border: 1px solid #EAE4D7; border-radius: 4px; color: #795A2D; text-decoration: none; }
+.return-evidence-products { display: grid; gap: 10px; margin-top: 16px; }
+.return-evidence-product { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px solid #EAE4D7; border-radius: 6px; }
+.return-evidence-product > img { width: 64px; height: 64px; flex-shrink: 0; object-fit: contain; }
+.return-evidence-product > div { flex: 1; min-width: 0; font-size: 14px; }
+.return-evidence-product strong { font-weight: 500; }
+.return-evidence-product > strong { font-size: 14px; white-space: nowrap; }
+.return-evidence-product span { display: block; margin-top: 5px; font-size: 12px; color: #7D715E; }
+.return-evidence-reason { margin: 18px 0; font-size: 14px; line-height: 1.7; }
+.return-evidence-reason p + p { margin-top: 5px; }
+.return-evidence-media { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
+.return-evidence-photo { display: grid; gap: 8px; width: 132px; color: #795A2D; font-size: 12px; text-decoration: none; }
+.return-evidence-photo img { width: 132px; height: 110px; object-fit: contain; border: 1px solid #EAE4D7; border-radius: 6px; background: #FAF8F5; }
+.return-evidence-video { width: min(100%, 280px); display: grid; gap: 8px; font-size: 12px; }
+.return-evidence-video video { display: block; width: 100%; height: 158px; border: 1px solid #EAE4D7; border-radius: 6px; background: #FAF8F5; }
+.return-evidence-video a { color: #795A2D; }
+.return-processing-history li { padding: 10px 0; border-bottom: 1px solid #EAE4D7; }
+.return-processing-history li:last-child { border-bottom: 0; }
+@media (max-width: 1023px) {
+  .customer-return-layout { grid-template-columns: minmax(0, 1fr); }
+  .customer-return-sidebar { display: none; }
+}
+@media (max-width: 600px) {
+  .customer-return-content > :is(div, section) { padding: 16px; }
+  .customer-return-order-status { justify-content: flex-start; font-size: 12px; }
+  .customer-return-address > div { grid-template-columns: minmax(0, 1fr); }
+  .customer-return-address > div > div { border-left: 0; border-top: 1px solid #EAE4D7; padding: 16px 0 0; }
+}

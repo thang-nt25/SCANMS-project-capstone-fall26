@@ -24,6 +24,14 @@ const labels: Record<ReturnStatus, string> = {
 
 export const returnStatusLabel = (status: ReturnStatus) => labels[status] ?? status;
 
+const reasonLabels: Record<string, string> = {
+  WRONG_ITEM: 'Shop giao sai sản phẩm',
+  DAMAGED: 'Sản phẩm bị hư hỏng',
+  EXPIRED: 'Sản phẩm hết hạn sử dụng',
+  OTHER: 'Lý do khác',
+};
+export const returnReasonLabel = (reason: string) => reasonLabels[reason] ?? 'Lý do khác';
+
 const carrierLabels: Record<string, string> = {
   ready_to_pick: 'Đã tạo vận đơn, chờ shipper lấy hàng',
   picking: 'Shipper đang đến lấy hàng',
