@@ -11,8 +11,14 @@ export function getRememberedLoginRole(): LoginRole {
 }
 
 export function getRememberedIdentifier(role: LoginRole): string {
-  try { return localStorage.getItem(identifierKey(role)) || ''; }
-  catch { return ''; }
+  try {
+    const val = localStorage.getItem(identifierKey(role)) || '';
+    if (val.toLowerCase().endsWith('@seed.scanms.test') || val.includes('01@seed')) {
+      localStorage.removeItem(identifierKey(role));
+      return '';
+    }
+    return val;
+  } catch { return ''; }
 }
 
 // Passwords are managed by the browser password manager, never by web storage.
