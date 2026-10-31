@@ -473,6 +473,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         scopeType: CouponScope.STORE_WIDE,
         startsAt: null,
         expiresAt: null,
+        collaborator: { id: 'collab-uuid-1', role: UserRole.COLLABORATOR, fullName: 'KOL Test' },
         store: { id: storeId, name: 'Sora Skin Official', isDeleted: false },
         couponProducts: [],
         couponCategories: [],
@@ -517,6 +518,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         scopeType: CouponScope.STORE_WIDE,
         startsAt: null,
         expiresAt: null,
+        collaborator: { id: 'collab-uuid-1', role: UserRole.COLLABORATOR, fullName: 'KOL Test' },
         store: { id: storeId, name: 'Sora Skin Official', isDeleted: false },
         couponProducts: [],
         couponCategories: [],
@@ -632,7 +634,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should reject coupon when per-customer usage limit is exceeded', async () => {
+    it('allows a returning customer to reuse a creator attribution coupon', async () => {
       mockPrisma.coupon.findUnique.mockResolvedValue({
         id: 'coupon-uuid-cust',
         codeNormalized: 'CUSTLIMIT',
@@ -643,20 +645,37 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         discountType: DiscountType.PERCENTAGE,
         discountValue: new Prisma.Decimal(10),
         usageLimitPerCustomer: 1,
+        usageLimitTotal: 100,
+        usageCount: 1,
+        budgetTotal: null,
+        budgetUsed: new Prisma.Decimal(0),
+        minimumOrderAmount: null,
+        maximumDiscountAmount: null,
+        scopeType: CouponScope.STORE_WIDE,
+        startsAt: null,
+        expiresAt: null,
+        collaborator: { id: 'collab-uuid-1', role: UserRole.COLLABORATOR, fullName: 'KOL Test' },
         store: { id: storeId, name: 'Sora Skin Official', isDeleted: false },
         couponProducts: [],
         couponCategories: [],
       });
 
-      mockPrisma.couponRedemption.count.mockResolvedValue(1);
+      mockPrisma.product.findMany.mockResolvedValue([{
+        id: prod1Id,
+        storeId,
+        price: new Prisma.Decimal(300000),
+        isActive: true,
+        isDeleted: false,
+      }]);
 
       await expect(
         service.validateCoupon({
           code: 'CUSTLIMIT',
           customerPhone: '0987654321',
           items: [{ productId: prod1Id, quantity: 1 }],
-        }),
-      ).rejects.toThrow(BadRequestException);
+        }, undefined, undefined, 'customer-uuid'),
+      ).resolves.toMatchObject({ valid: true, discountAmount: 30000 });
+      expect(mockPrisma.couponRedemption.count).not.toHaveBeenCalled();
     });
 
     it('should reject coupon when not stackable with product discount', async () => {

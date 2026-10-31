@@ -30,7 +30,7 @@ export class CreateExclusiveDealDto {
 
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @IsIn([11, 12, 13], { message: 'Chỉ chọn thưởng Deal +1%, +2% hoặc +3% trên nền 10%.' })
+  @IsIn([11, 12, 13, 14, 15, 16], { message: 'Tỷ lệ deal từ 11% đến 16%.' })
   proposedCommissionRate: number;
 
   @IsBoolean()

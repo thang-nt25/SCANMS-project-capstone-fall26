@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
-import { additiveCommissionRate, campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import { precedenceCommissionRate, campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { ConfigService } from '@nestjs/config';
 import {
   ReferralLinkStatus,
@@ -2480,11 +2480,14 @@ export class ReferralLinksService {
 
     // A renewed deal applies to new orders through every VIP link; existing
     // orders retain their immutable OrderItem commission snapshots.
-    const dealBonus = effectiveDeal?.status === 'APPROVED' && effectiveDeal.approvedCommissionRate != null
-      ? Math.min(3, Math.max(0, Number(effectiveDeal.approvedCommissionRate) - 10)) : 0;
+    const approvedDealRate = effectiveDeal?.status === 'APPROVED' && effectiveDeal.approvedCommissionRate != null
+      ? Number(effectiveDeal.approvedCommissionRate) : 0;
+    const dealRate = Number.isFinite(approvedDealRate) && approvedDealRate >= 10 && approvedDealRate <= 25
+      ? approvedDealRate : 0;
     const campaignBonus = campaignBonusRate(link.campaign, params.storeId);
     const tierBonus = tierBonusByName(link.collaborator?.collaboratorProfile?.tier?.name);
-    const commissionRate = additiveCommissionRate(tierBonus, dealBonus, campaignBonus, 0);
+    const campaignRate = campaignBonus ? 10 + campaignBonus : 0;
+    const commissionRate = precedenceCommissionRate(tierBonus, dealRate, campaignRate);
 
     const price = Number(link.product.price);
     const calculatedCommissionAmount = (price * commissionRate) / 100;
@@ -2495,8 +2498,8 @@ export class ReferralLinksService {
       referralLinkId: link.id,
       appliedCommissionRate: commissionRate,
       calculatedCommissionAmount,
-      campaignId: campaignBonus ? link.campaign?.id : undefined,
-      campaignBonus,
+      campaignId: campaignRate > Math.max(dealRate, 10 + tierBonus) ? link.campaign?.id : undefined,
+      campaignBonus: campaignRate > Math.max(dealRate, 10 + tierBonus) ? campaignBonus : 0,
     };
   }
 

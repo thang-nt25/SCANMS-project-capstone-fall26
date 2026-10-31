@@ -475,7 +475,7 @@ export class AffiliateDealsService {
     if (
       !Number.isFinite(proposedRate) ||
       proposedRate <= 0 ||
-      proposedRate > publicRate + 3
+      proposedRate > 16
     ) {
       throw new BadRequestException(
         'M\u1ee9c hoa h\u1ed3ng \u0111\u1ec1 xu\u1ea5t ph\u1ea3i l\u1edbn h\u01a1n 0% v\u00e0 kh\u00f4ng v\u01b0\u1ee3t qu\u00e1 100%.',
@@ -529,11 +529,11 @@ export class AffiliateDealsService {
     const minimumExistingRate = Math.max(publicRate, currentRate ?? 0);
     if (
       proposedRate < publicRate + 1 ||
-      proposedRate > publicRate + 3 ||
+      proposedRate > 16 ||
       !Number.isInteger(proposedRate)
     ) {
       throw new BadRequestException(
-        'Deal chỉ được chọn nấc cộng thêm +1%, +2% hoặc +3% so với nền 10%.',
+        'Deal chỉ được chọn tỷ lệ từ 11% đến 16%.',
       );
     }
     if (proposedRate <= minimumExistingRate) {
@@ -679,9 +679,9 @@ export class AffiliateDealsService {
     }
 
     const currentPublicRate = 10;
-    if (![11, 12, 13].includes(Number(proposal.proposedCommissionRate))) {
+    if (![11, 12, 13, 14, 15, 16].includes(Number(proposal.proposedCommissionRate))) {
       throw new BadRequestException(
-        'Deal VIP chỉ được cộng 1%, 2% hoặc 3% trên hoa hồng gốc 10%.',
+        'Deal VIP chỉ được chọn tỷ lệ từ 11% đến 16%.',
       );
     }
     const currentDeal = await this.prisma.exclusiveDealProposal.findFirst({

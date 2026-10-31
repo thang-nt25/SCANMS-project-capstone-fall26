@@ -920,8 +920,8 @@ export default function ShopCollaborationPage() {
       toast.error(`Mức hoa hồng đề xuất (${rate}%) phải cao hơn mức sàn cao nhất trong gói (${maxBaseRate}%).`);
       return;
     }
-    if (![11, 12, 13].includes(rate)) {
-      toast.error('Chỉ chọn thưởng Deal +1%, +2% hoặc +3% trên nền 10%.');
+    if (![11, 12, 13, 14, 15, 16].includes(rate)) {
+      toast.error('Chọn tỷ lệ deal từ 11% đến 16%.');
       return;
     }
 
@@ -2864,7 +2864,7 @@ setActiveTab('samples');
                   <div className="p-3.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
-                        <span>Chọn mức thưởng Deal cộng thêm</span>
+                        <span>Chọn tỷ lệ thù lao Deal</span>
                         <span className="text-[#DC2626]">*</span>
                       </label>
                       <span className="text-[11px] font-semibold text-[#8D6936]">
@@ -2874,18 +2874,19 @@ setActiveTab('samples');
 
                     <div className="flex items-center gap-3">
                       <div className="relative flex-1">
-                        <p className="m-0 text-sm font-bold text-[#1A1612]">10% nền + {dealProposedRate - 10}% Deal = {dealProposedRate}%</p>
+                        <p className="m-0 text-sm font-bold text-[#1A1612]">Tỷ lệ Deal: {dealProposedRate}%</p>
                       </div>
 
                       {/* Quick Boost chips */}
                       <div className="flex items-center gap-1.5">
-                        {[1, 2, 3].map((delta) => {
-                          const targetRate = maxBaseRate + delta;
+                        {[11, 12, 13, 14, 15, 16].map((targetRate) => {
+                          const delta = targetRate - 10;
                           const isSelected = dealProposedRate === targetRate;
                           return (
                             <button
                               key={delta}
                               type="button"
+                              disabled={targetRate <= maxBaseRate}
                               onClick={() => setDealProposedRate(targetRate)}
                               className={`px-2.5 py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
                                 isSelected
@@ -3042,7 +3043,7 @@ setActiveTab('samples');
                   </button>
                   <button
                     type="submit"
-                    disabled={submittingDeal || !dealTermsAccepted || ![11, 12, 13].includes(dealProposedRate)}
+                    disabled={submittingDeal || !dealTermsAccepted || ![11, 12, 13, 14, 15, 16].includes(dealProposedRate)}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                   >
                     {submittingDeal ? (
