@@ -168,9 +168,33 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
                 <input id="vip-create-name" autoFocus required maxLength={200} placeholder="VD: Hợp tác KOL tháng 10" value={draft.name} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
               </div>
               <div>
-                <label htmlFor="vip-create-rate" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Hoa hồng thưởng thêm (%)</label>
-                <input id="vip-create-rate" type="number" min={0} max={100} step="0.01" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
-                <small className="block mt-1 text-[10px] leading-relaxed text-[#7D715E]">Được cộng thêm vào hoa hồng thông thường của sản phẩm.</small>
+                <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">Phạm vi thỏa thuận thù lao</label>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <label className="flex items-center gap-2 p-2.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:border-[#C59B58]">
+                    <input type="radio" name="dealScope" defaultChecked className="text-[#C59B58] focus:ring-[#C59B58]" />
+                    <span className="text-xs font-medium text-[#1A1612]">Toàn bộ Gian hàng</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:border-[#C59B58]">
+                    <input type="radio" name="dealScope" className="text-[#C59B58] focus:ring-[#C59B58]" />
+                    <span className="text-xs font-medium text-[#1A1612]">Sản phẩm cụ thể</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="vip-create-rate" className="text-xs font-semibold text-[#1A1612]">Mức thù lao thỏa thuận (%)</label>
+                  <span className="text-[10px] text-[#7D715E]">Tối đa 25% trần sàn</span>
+                </div>
+                <input id="vip-create-rate" type="number" min={10} max={25} step="0.5" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
+                {Number(draft.rate) > 16 ? (
+                  <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+                    ⚠️ <strong>Vượt khung tự trị 16% (Ngân sách Siêu KOL):</strong> Thỏa thuận cần Ban Giám Đốc (SYSTEM_ADMIN) phê duyệt Maker-Checker trước khi áp dụng cho đơn hàng.
+                  </div>
+                ) : (
+                  <div className="mt-2 p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] text-[11px] leading-relaxed">
+                    ✓ <strong>Trong khung tự trị của Shop (10% - 16%):</strong> Hợp đồng có hiệu lực ngay khi KOC đồng ý nhận lời mời.
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

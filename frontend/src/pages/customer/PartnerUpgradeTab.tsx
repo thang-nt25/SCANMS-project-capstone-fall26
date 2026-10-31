@@ -5,7 +5,6 @@ import {
   Clock3,
   CheckCircle2,
   CircleAlert,
-  RefreshCw,
 } from 'lucide-react';
 import {
   kycService,
@@ -17,7 +16,7 @@ import { toast } from '../../utils/toast';
 import { KolUpgradeForm } from './PartnerUpgradeForms';
 
 const createEmptyKolForm = (): ApplyKolData => ({
-  platform: '' as ApplyKolData['platform'],
+  platform: 'TIKTOK',
   channelName: '',
   channelUrl: '',
   followerCount: '' as unknown as number,
@@ -30,9 +29,20 @@ const createEmptyKolForm = (): ApplyKolData => ({
   bio: '',
   frontCardUrl: '',
   backCardUrl: '',
+  channels: [
+    {
+      platform: 'TIKTOK',
+      channelName: '',
+      channelUrl: '',
+      followerCount: '' as unknown as number,
+      channelProofUrl: '',
+      isPrimary: true,
+    },
+  ],
+  specialtyCategories: [],
 });
 
-function ApplicationBadge({ status }: { status?: string | null }) {
+export function ApplicationBadge({ status }: { status?: string | null }) {
   const verified = status === 'VERIFIED';
   const rejected = status === 'REJECTED';
   const empty = !status || status === 'DRAFT';
@@ -50,15 +60,14 @@ function ApplicationBadge({ status }: { status?: string | null }) {
             : 'Chưa đăng ký';
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
-        empty
+      className={`inline-flex items-center gap-1.5 border rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${empty
           ? 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]'
           : rejected
             ? 'bg-white border-[#F5D8D4] text-[#DC2626]'
             : verified
               ? 'bg-[#FBF5EB] border-[#EEDFC6] text-[#059669]'
               : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#8F682E]'
-      }`}
+        }`}
     >
       <Icon size={13} />
       {label}
@@ -91,12 +100,19 @@ export const PartnerUpgradeTab: React.FC = () => {
 
   const handleKolSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!kolForm.platform) {
+    const primaryChannel = kolForm.channels?.[0];
+    const platform = primaryChannel?.platform || kolForm.platform;
+    const channelUrl = primaryChannel?.channelUrl || kolForm.channelUrl;
+    const channelName = primaryChannel?.channelName || kolForm.channelName;
+    const followerCount = primaryChannel?.followerCount !== undefined ? primaryChannel.followerCount : kolForm.followerCount;
+    const channelProofUrl = primaryChannel?.channelProofUrl || kolForm.channelProofUrl;
+
+    if (!platform) {
       toast.error('Vui lòng chọn nền tảng mạng xã hội chính');
       return;
     }
-    if (!kolForm.channelUrl?.trim()) {
-      toast.error('Vui lòng nhập liên kết kênh');
+    if (!channelUrl?.trim()) {
+      toast.error('Vui lòng nhập liên kết kênh mạng xã hội');
       return;
     }
     if (!kolForm.idCardNumber?.trim() || kolForm.idCardNumber.length < 9) {
@@ -107,23 +123,53 @@ export const PartnerUpgradeTab: React.FC = () => {
       toast.error('Vui lòng tải lên ảnh CCCD mặt trước và mặt sau');
       return;
     }
-    if (!kolForm.bankName?.trim()) {
-      toast.error('Vui lòng chọn ngân hàng thụ hưởng');
-      return;
-    }
-    if (!kolForm.bankAccountNumber?.trim() || !kolForm.bankAccountName?.trim()) {
-      toast.error('Vui lòng nhập thông tin tài khoản ngân hàng thụ hưởng');
-      return;
+
+    // Tài khoản ngân hàng là tùy chọn lúc đăng ký (có thể bổ sung khi rút tiền)
+    const hasAnyBank = Boolean(
+      kolForm.bankName?.trim() ||
+      kolForm.bankAccountNumber?.trim() ||
+      kolForm.bankAccountName?.trim()
+    );
+    if (hasAnyBank) {
+      if (!kolForm.bankName?.trim()) {
+        toast.error('Vui lòng chọn tên ngân hàng thụ hưởng');
+        return;
+      }
+      if (!kolForm.bankAccountNumber?.trim() || !kolForm.bankAccountName?.trim()) {
+        toast.error('Vui lòng nhập đầy đủ số tài khoản và tên chủ tài khoản ngân hàng');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
-      await kycService.applyKolUpgrade(kolForm);
-      toast.success('Đã gửi hồ sơ đăng ký đối tác tiếp thị');
-      loadStatus();
-      authService.getMe();
+      const payload: ApplyKolData = {
+        ...kolForm,
+        platform,
+        channelUrl,
+        channelName,
+        followerCount: Number(followerCount) || 0,
+        channelProofUrl,
+        channels: (kolForm.channels && kolForm.channels.length > 0)
+          ? kolForm.channels
+          : [
+              {
+                platform: (platform as any) || 'TIKTOK',
+                channelName: channelName || '',
+                channelUrl: channelUrl || '',
+                followerCount: Number(followerCount) || 0,
+                channelProofUrl: channelProofUrl || undefined,
+                isPrimary: true,
+              },
+            ],
+        specialtyCategories: kolForm.specialtyCategories?.length ? kolForm.specialtyCategories : undefined,
+      };
+
+      const res = await kycService.applyKolUpgrade(payload);
+      toast.success(res.message || 'Đã nộp hồ sơ đăng ký thành công! Vui lòng chờ xét duyệt.');
+      await loadStatus();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể gửi hồ sơ');
+      toast.error(err.response?.data?.message || err.message || 'Không thể gửi hồ sơ');
     } finally {
       setSubmitting(false);
     }
@@ -131,9 +177,11 @@ export const PartnerUpgradeTab: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="border border-[#EAE4D7] rounded-2xl bg-white p-10 text-center text-[#7D715E]">
-        <RefreshCw className="h-5 w-5 animate-spin text-[#C59B58] mx-auto mb-2" />
-        <p className="text-xs">Đang tải hồ sơ...</p>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="flex items-center gap-2 text-xs text-[#7D715E]">
+          <span className="w-4 h-4 border-2 border-[#C59B58] border-t-transparent rounded-full animate-spin" />
+          <span>Đang tải thông tin hồ sơ đối tác…</span>
+        </div>
       </div>
     );
   }
@@ -144,23 +192,22 @@ export const PartnerUpgradeTab: React.FC = () => {
   const isRejected = kolApp?.status === 'REJECTED';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-12 text-[#1A1612]">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 lg:p-6 border border-[#EAE4D7] rounded-2xl bg-white shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-[#1A1612]">
-            Đăng ký Đối tác Tiếp thị
-          </h1>
-          <p className="mt-1 text-xs text-[#7D715E]">
-            Định danh cá nhân (eKYC) để nhận thù lao tiếp thị và liên kết phân phối sản phẩm chính hãng.
-          </p>
-        </div>
-        <div className="shrink-0">
-          <ApplicationBadge status={kolApp?.status} />
-        </div>
-      </header>
+    <div className="w-full space-y-5 pb-12 text-[#1A1612]">
+      {/* Header chỉ hiển thị khi đã được kích hoạt hoặc đang chờ duyệt */}
+      {(isVerified || isPending) && (
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] m-0">
+              Đăng ký Đối tác Tiếp thị
+            </h1>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <ApplicationBadge status={kolApp?.status} />
+          </div>
+        </header>
+      )}
 
-      {/* Main Content Area */}
+      {/* Trạng thái tài khoản đã duyệt */}
       {isVerified ? (
         <div className="p-6 border border-[#EEDFC6] rounded-2xl bg-[#FBF5EB] space-y-4">
           <div className="flex items-center gap-3">
@@ -168,11 +215,11 @@ export const PartnerUpgradeTab: React.FC = () => {
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1A1612]">
+              <h3 className="text-base font-bold text-[#1A1612] m-0">
                 Tài khoản đã kích hoạt (Hạng khởi điểm: Đồng)
               </h3>
-              <p className="text-xs text-[#7D715E] mt-0.5">
-                Hưởng hoa hồng cơ sở 10% chuẩn hệ thống và toàn quyền sử dụng bộ công cụ tiếp thị.
+              <p className="text-xs text-[#7D715E] mt-1 m-0">
+                Hưởng thù lao cơ sở 10% chuẩn hệ thống và toàn quyền sử dụng bộ công cụ tiếp thị liên kết.
               </p>
             </div>
           </div>
@@ -185,38 +232,28 @@ export const PartnerUpgradeTab: React.FC = () => {
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {isPending && (
-            <div className="p-4 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] flex items-center gap-3 text-xs text-[#7D715E]">
-              <Clock3 className="w-4 h-4 text-[#C59B58] shrink-0" />
-              <div>
-                <strong className="block text-[#1A1612] font-semibold">Hồ sơ đang chờ thẩm định (SLA 24h)</strong>
-                Bộ phận vận hành đang đối soát thông tin. Bạn có thể cập nhật thông tin nếu có thay đổi.
-              </div>
-            </div>
-          )}
-          {isRejected && (
-            <div className="p-4 border border-[#F5D8D4] rounded-xl bg-white flex items-start gap-2.5 text-xs text-[#DC2626]">
-              <CircleAlert className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <strong className="block font-semibold mb-0.5">Hồ sơ cần cập nhật lại</strong>
-                {kolApp?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra lại ảnh CCCD và thông tin kênh.'}
-              </div>
-            </div>
-          )}
-          <KolUpgradeForm
-            form={kolForm}
-            setForm={setKolForm}
-            onSubmit={handleKolSubmit}
-            submitting={submitting}
-            rejectionReason={
-              kolApp?.status === 'REJECTED'
-                ? kolApp.socialLinksJson?.rejectionReason
-                : undefined
-            }
-          />
+      ) : isPending ? (
+        <div className="p-6 border border-[#EAE4D7] rounded-2xl bg-white space-y-3">
+          <div className="flex items-center gap-2.5 text-[#D97706]">
+            <Clock3 className="w-5 h-5" />
+            <h3 className="text-sm font-bold text-[#1A1612] m-0">
+              Hồ sơ đang trong quá trình xét duyệt
+            </h3>
+          </div>
+          <p className="text-xs text-[#7D715E] m-0 leading-relaxed">
+            Hồ sơ định danh của bạn đã được gửi lên Ban Quản Trị sàn SCANMS. Thời gian xét duyệt tiêu chuẩn trong vòng 24 giờ làm việc.
+          </p>
         </div>
+      ) : (
+        /* Form nộp hồ sơ 2 cột đối xứng với header bar thống nhất */
+        <KolUpgradeForm
+          form={kolForm}
+          setForm={setKolForm}
+          onSubmit={handleKolSubmit}
+          submitting={submitting}
+          rejectionReason={isRejected ? kolApp?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra lại thông tin' : undefined}
+          status={kolApp?.status}
+        />
       )}
     </div>
   );

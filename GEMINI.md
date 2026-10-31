@@ -80,7 +80,7 @@
 | **1. Nguyễn Thành Thắng** *(Leader)* | **Main Flow 1** *(Onboarding Nhân Sự, eKYC Đối Tác & Kênh MXH FR-07)* + **Nửa sau Main Flow 5** *(Executive Dashboard, Phân tách SoD, Thuế TNCN 10% & Sổ cái)* | RBAC 5 Roles, Cấp tài khoản nội bộ vs Đăng ký ngoài, Thẩm định eKYC & Kênh MXH, Phân tách trách nhiệm (SoD), Khóa dòng `SELECT ... FOR UPDATE` chống race-condition rút tiền, Thuật toán tính Thuế TNCN 10% & Sổ cái tài chính bất biến. |
 | **2. Phan Xuân Thịnh** | **Main Flow 2** *(Khóa Ngành Hàng, Hợp Tác 2 Chiều & AI Matchmaker)* + **Nửa đầu Main Flow 3** *(Chat Realtime & Thỏa thuận VIP)* | Thuật toán AI Radar 4 Trục trong `ai-recommendation.service.ts`, Thị trường hợp tác 2 chiều (Shop mời KOC & KOC xin hợp tác), Kiến trúc WebSocket Socket.IO đàm phán gửi Thẻ mời chiến dịch VIP realtime. |
 | **3. Nguyễn Đình Tuấn** | **Nửa sau Main Flow 3** *(Tài Trợ Hàng Mẫu SLA 14 Ngày)* + **Nửa đầu Main Flow 4** *(Attribution, Link/QR, Coupon Định Danh & Chống Tự Mua)* | Quản trị hàng mẫu và đồng hồ SLA 14 ngày `deal-kpi.policy.ts`, Bộ sinh Smart Link / Dynamic QR, Coupon Attribution `THAONHI16`, Động cơ AI Fraud Sentinel phát hiện gian lận tự mua (Self-referral). |
-| **4. Nguyễn Phú Quý** | **Nửa sau Main Flow 4** *(Giao Nhận GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Clawback)* + **Nửa đầu Main Flow 5** *(Bảo Chứng Escrow & Thưởng Mốc Doanh Số FR-09)* | Tích hợp vận đơn GHN, Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên hoa hồng vs Hoàn tiền kích hoạt Clawback Engine, Cơ chế Tạm giữ Bảo chứng Escrow 7-14 ngày, Thuật toán quyết toán thưởng mốc tháng FR-09 & thăng hạng KOC. |
+| **4. Nguyễn Phú Quý** | **Nửa sau Main Flow 4** *(Giao Nhận GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Thu Hồi Thù Lao)* + **Nửa đầu Main Flow 5** *(Bảo Chứng Đối Soát 14 Ngày & Thưởng Mốc Doanh Số FR-09)* | Tích hợp vận đơn GHN, Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên hoa hồng vs Hoàn tiền kích hoạt cơ chế thu hồi thù lao, Cơ chế Tạm giữ Bảo chứng Đối soát 14 ngày, Thuật toán quyết toán thưởng mốc tháng FR-09 & thăng hạng KOC. |
 
 ---
 
@@ -100,7 +100,7 @@ Hệ thống chuẩn hóa duy nhất **5 User Roles** (khớp 1:1 với `enum Us
    - Khai thác Kho tài nguyên số (`Media Hub` - FR-08) tải ảnh/video HD về làm nội dung quảng bá.
    - Sinh Smart Link, Dynamic QR và sở hữu Coupon độc quyền định danh cá nhân (ví dụ: `THAONHI16`).
    - Mượn sản phẩm mẫu trải nghiệm với cam kết trả bài review trong thời hạn 14 ngày SLA.
-   - Nhận thù lao đơn hàng thành công sau 7 ngày bảo chứng Escrow và rút tiền Napas 24/7 (khấu trừ 10% thuế TNCN tại nguồn).
+   - Nhận thù lao đơn hàng thành công sau 14 ngày bảo chứng đối soát và rút tiền Napas 24/7 (khấu trừ 10% thuế TNCN tại nguồn).
 
 3. **`SHOP_MANAGER` (Giám đốc Nhãn hàng / Brand Manager Nội bộ):**
    - **Là nhân sự nội bộ công ty:** Do `SYSTEM_ADMIN` trực tiếp bổ nhiệm tại `/admin/personnel` và gán `storeId`. **Tuyệt đối không có form tự đăng ký Shop ngoài**.
@@ -240,5 +240,5 @@ Hệ thống được thiết kế hoàn thiện xoay quanh kịch bản Demo 5 
   *(Chat Socket.IO realtime gửi Thẻ mời chiến dịch VIP $\le 16\%$ $\rightarrow$ Ký hợp đồng KPI $\rightarrow$ Shop duyệt xuất kho mẫu 0đ GHN $\rightarrow$ KOC nhận mẫu, đồng hồ SLA 14 ngày đếm ngược $\rightarrow$ KOC nộp link video nghiệm thu).*
 - 🔹 **MAIN FLOW 4: Công Cụ Tiếp Thị (Link/QR/Coupon), Mua Hàng Ghép Đơn GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Clawback**
   *(KOC sinh Dynamic QR / Smart Link / Coupon `THAONHI16` $\rightarrow$ Khách đặt hàng PayOS/VietQR $\rightarrow$ Shipper GHN giao hàng $\rightarrow$ Phân định đổi trả: GHN vỡ móp bù hàng 1-1 bảo lưu thù lao KOC vs Hoàn hàng kích hoạt Clawback thu hồi thù lao về 0₫).*
-- 🔹 **MAIN FLOW 5: Tạm Giữ Bảo Chứng Escrow, Quyết Toán Payout SoD (-10% Thuế TNCN), Thưởng Tháng FR-09 & Báo Cáo Cấp Cao**
-  *(Escrow 7 ngày bảo vệ tài chính $\rightarrow$ KOC tạo lệnh rút tiền $\rightarrow$ System Manager đối soát và bấm duyệt Payout (-10% thuế TNCN tại nguồn) $\rightarrow$ Động cơ quét thưởng tháng FR-09 $\rightarrow$ System Admin theo dõi Executive Financial Dashboard).*
+- 🔹 **MAIN FLOW 5: Tạm Giữ Bảo Chứng Đối Soát 14 Ngày, Quyết Toán Chi Trả (-10% Thuế TNCN), Thưởng Tháng FR-09 & Báo Cáo Cấp Cao**
+  *(Bảo chứng đối soát 14 ngày bảo vệ tài chính $\rightarrow$ KOC tạo lệnh rút tiền $\rightarrow$ System Manager đối soát và bấm duyệt chi trả (-10% thuế TNCN tại nguồn) $\rightarrow$ Động cơ quét thưởng tháng FR-09 $\rightarrow$ System Admin theo dõi Báo cáo Doanh thu Cấp cao).*
