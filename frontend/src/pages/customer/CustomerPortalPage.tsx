@@ -1676,7 +1676,7 @@ export default function CustomerPortalPage() {
                         {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : profileData?.user.avatarUrl || currentUser?.avatarUrl ? (
                           <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" />
                         ) : <User size={32} aria-hidden="true" />}
-                        <span className="absolute -bottom-px -right-px grid place-items-center w-[28px] h-[28px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Camera size={12} /></span>
+                        
                       </button>
                       <div className="flex flex-col items-center gap-[8px] @max-[719px]:col-start-2 @max-[719px]:row-start-2 @max-[719px]:flex-row @max-[719px]:flex-wrap @max-[719px]:justify-start @max-[719px]:gap-[6px_10px]">
                         <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] @max-[719px]:min-h-[32px] px-[12px] @max-[719px]:px-[10px] py-[7px] @max-[719px]:py-[6px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] @max-[719px]:text-[11px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait"><Camera size={13} className="text-[#B88E4F]" aria-hidden="true" />{uploadingAvatar ? 'Đang tải…' : 'Chọn ảnh'}</button>
