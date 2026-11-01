@@ -28,7 +28,11 @@ export function buildShippingPackage(lines: ShippingLine[]): ShippingPackage {
       );
     if (!Number.isInteger(quantity) || quantity < 1)
       throw new BadRequestException('Số lượng kiện hàng không hợp lệ.');
-    validateProductPackage(product);
+    // GHN quotes use mass and dimensions; a legacy catalogue barcode must not
+    // block checkout. Barcode validity is still enforced when Shop creates or
+    // edits the product through the product package DTO/service.
+    const { barcode: _legacyBarcode, ...packageFields } = product;
+    validateProductPackage(packageFields);
     if (PACKAGE_FIELDS.some((key) => product[key] == null)) {
       throw new BadRequestException(
         `Shop cần cập nhật khối lượng và kích thước đóng gói của "${product.title || 'sản phẩm'}" trước khi tính cước.`,

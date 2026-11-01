@@ -121,7 +121,6 @@ export const ALL_DEMO_ACCOUNTS: Record<DemoLoginRole, DemoAccountDetail[]> = {
 // Local development only. Production builds discard the credential branch.
 export function getDemoLogin(role: DemoLoginRole): { identifier: string; password: string } | null {
   if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_LOGIN !== 'true') return null;
-
   // Vite replaces explicit env properties; never mix a configured identifier
   // with a fallback password belonging to a different account.
   const accounts = {

@@ -104,7 +104,8 @@ export class CouponsService {
   async previewStackedVoucher(dto: PreviewStackedVoucherDto) {
     const voucher = await this.prisma.coupon.findUnique({ where: { codeNormalized: dto.code.trim().toUpperCase() } });
     const now = new Date();
-    if (!voucher || voucher.storeId !== dto.storeId || voucher.benefitType !== dto.benefitType ||
+    const isGlobalPlatformShipping = voucher?.benefitType === 'SHIPPING' && voucher.fundingSource === CouponFundingSource.PLATFORM_FUNDED;
+    if (!voucher || (!isGlobalPlatformShipping && voucher.storeId !== dto.storeId) || voucher.benefitType !== dto.benefitType ||
         voucher.scopeType !== CouponScope.STORE_WIDE || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
         (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
         (dto.benefitType === 'GOODS' && voucher.fundingSource !== CouponFundingSource.PLATFORM_FUNDED) ||
@@ -112,6 +113,18 @@ export class CouponsService {
       throw new BadRequestException('Voucher không áp dụng được cho đơn này.');
     }
     if (voucher.minimumOrderAmount && dto.goodsSubtotal < Number(voucher.minimumOrderAmount)) throw new BadRequestException('Chưa đạt giá trị đơn tối thiểu.');
+    if (voucher.codeNormalized === 'SCANMSFREESHIP') {
+      const phone = dto.customerPhone?.trim();
+      if (!phone) throw new BadRequestException('Mã freeship dành cho khách hàng mới; vui lòng nhập số điện thoại để kiểm tra.');
+      const priorPurchase = await this.prisma.order.count({
+        where: {
+          customerPhone: phone,
+          status: { not: 'CANCELLED' },
+          NOT: { stackedVoucherRedemptions: { some: { couponId: voucher.id } } },
+        },
+      });
+      if (priorPurchase > 0) throw new BadRequestException('Mã freeship chỉ dành cho khách hàng mới.');
+    }
     const base = dto.benefitType === 'SHIPPING' ? dto.shippingFee : Math.max(0, dto.goodsSubtotal - dto.shopDiscount);
     if (base <= 0) throw new BadRequestException('Không có giá trị áp dụng voucher.');
     const raw = voucher.discountType === DiscountType.PERCENTAGE ? Math.round(base * Number(voucher.discountValue) / 100) : Number(voucher.discountValue);
@@ -196,13 +209,9 @@ export class CouponsService {
     const now = new Date();
     const coupons = await this.prisma.coupon.findMany({
       where: {
-        ...(ids
-          ? { id: { in: ids } }
-          : {
-              fundingSource: 'PLATFORM_FUNDED',
-              collaborator: { role: { not: UserRole.COLLABORATOR } },
-              liveSessionId: null,
-            }),
+        ...(ids ? { id: { in: ids } } : {}),
+        fundingSource: CouponFundingSource.SHOP_FUNDED,
+        collaborator: { role: UserRole.COLLABORATOR },
         status: CouponStatus.ACTIVE,
         deletedAt: null,
         store: { isActive: true, isDeleted: false },
@@ -261,7 +270,8 @@ export class CouponsService {
     const coupons = await this.prisma.coupon.findMany({
       where: {
         storeId, status: CouponStatus.ACTIVE, deletedAt: null,
-        benefitType: 'GOODS', fundingSource: { not: CouponFundingSource.PLATFORM_FUNDED },
+        benefitType: 'GOODS', fundingSource: CouponFundingSource.SHOP_FUNDED,
+        collaborator: { role: UserRole.COLLABORATOR },
         AND: [
           { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
           { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
@@ -279,21 +289,12 @@ export class CouponsService {
         liveSession: { include: { products: { select: { productId: true, variantId: true } } } },
       }, orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }], take: 100,
     });
-    const account = userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { phoneNumber: true } }) : null;
-    const phone = account?.phoneNumber?.trim();
-    const used = userId && coupons.length ? await this.prisma.couponRedemption.groupBy({
-      by: ['couponId'], where: {
-        couponId: { in: coupons.map(coupon => coupon.id) }, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.RESERVED] },
-        OR: [{ customerId: userId }, ...(phone ? [{ customerPhone: phone }] : [])],
-      }, _count: { _all: true },
-    }) : [];
-    const counts = new Map(used.map(row => [row.couponId, row._count._all]));
     const results = await Promise.all(coupons.map(async coupon => {
       try {
         const evaluated = await this.evaluateCoupon({
-          code: coupon.displayCode, storeId, customerPhone: phone,
+          code: coupon.displayCode, storeId,
           items: [{ productId: product.id, variantId: variant?.id, quantity: query.quantity }],
-        }, undefined, userId, { coupon, products: [product], variants: variant ? [variant] : [], redemptions: counts.get(coupon.id) || 0 });
+        }, undefined, userId, { coupon, products: [product], variants: variant ? [variant] : [] });
         if (evaluated.discountAmount <= 0) return null;
         return {
           id: coupon.id, displayCode: coupon.displayCode, code: coupon.displayCode,
@@ -346,14 +347,21 @@ export class CouponsService {
     }
     const coupons = await this.prisma.coupon.findMany({
       where: {
-        storeId,
         status: CouponStatus.ACTIVE,
         deletedAt: null,
-        fundingSource: CouponFundingSource.SHOP_FUNDED,
-        collaborator: {
-          role: { not: UserRole.COLLABORATOR },
-        },
         liveSessionId: null,
+        OR: [
+          {
+            storeId,
+            fundingSource: CouponFundingSource.SHOP_FUNDED,
+            collaborator: { role: UserRole.COLLABORATOR },
+          },
+          {
+            fundingSource: CouponFundingSource.PLATFORM_FUNDED,
+            benefitType: 'SHIPPING',
+            scopeType: CouponScope.STORE_WIDE,
+          },
+        ],
         store: {
           isDeleted: false,
           isActive: true,
@@ -2025,7 +2033,7 @@ export class CouponsService {
     dto: ValidateCouponDto,
     rateLimitKey?: string,
     userId?: string,
-    preview?: { coupon: any; products: any[]; variants: any[]; redemptions: number },
+    preview?: { coupon: any; products: any[]; variants: any[] },
   ) {
 
     const codeNormalized = dto.code.trim().toUpperCase();
@@ -2065,7 +2073,8 @@ export class CouponsService {
     if (
       !coupon ||
       coupon.status === CouponStatus.DELETED ||
-      coupon.status === CouponStatus.BLOCKED
+      coupon.status === CouponStatus.BLOCKED ||
+      coupon.collaborator?.role !== UserRole.COLLABORATOR
     ) {
       await this.recordValidationFailure(rateLimitKey);
       throw new BadRequestException({
@@ -2154,35 +2163,8 @@ export class CouponsService {
       }
     }
 
-    // 5. Check Customer Limit (Section 27)
-    const customerPhone = dto.customerPhone?.trim();
-    if (userId || customerPhone) {
-      const customerRedemptionsCount = preview?.redemptions ?? await this.prisma.couponRedemption.count(
-        {
-          where: {
-            couponId: coupon.id,
-            status: {
-              in: [
-                CouponRedemptionStatus.USED,
-                CouponRedemptionStatus.RESERVED,
-              ],
-            },
-            OR: [
-              ...(userId ? [{ customerId: userId }] : []),
-              ...(customerPhone ? [{ customerPhone }] : []),
-            ],
-          },
-        },
-      );
-
-      if (customerRedemptionsCount >= coupon.usageLimitPerCustomer) {
-        await this.recordValidationFailure(rateLimitKey);
-        throw new BadRequestException({
-          errorCode: 'CUSTOMER_LIMIT_REACHED',
-          message: `Bạn đã sử dụng hết số lần cho phép của mã giảm giá này (Tối đa ${coupon.usageLimitPerCustomer} lần/khách).`,
-        });
-      }
-    }
+    // Creator coupons are durable attribution identifiers. A returning buyer may
+    // reuse the same creator code; total usage and budget still protect the Shop.
 
     // 6. Fetch products from DB to get real price and storeId (Section 20 & 25)
     const productIds = dto.items.map((i) => i.productId);

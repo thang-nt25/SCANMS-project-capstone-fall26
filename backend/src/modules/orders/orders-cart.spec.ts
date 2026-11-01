@@ -301,7 +301,6 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
       customerName: 'Nguyễn Văn A', customerPhone: '0901234567', customerEmail: email,
       shippingAddress: '123 Nguyễn Trãi, Thanh Xuân, Hà Nội', paymentMethod: PaymentMethod.WALLET,
       idempotencyKey: `auto-email-${email}`, policyAccepted: true, items: products.map(product => ({ productId: product.id, quantity: 1 })),
-      platformCouponCode: 'ONLY-SHOP-B', platformCouponsByStore: { [products[1].storeId]: 'ONLY-SHOP-B' },
       shippingCouponCode: 'SHIP-SHOP-B', shippingCouponsByStore: { [products[1].storeId]: 'SHIP-SHOP-B' },
     });
     expect(committed).toBe(true);
@@ -313,7 +312,7 @@ describe('OrdersService - Cart Validation & Multi-store Checkout', () => {
     const childCalls = (service as any).executeStoreOrderInTransaction.mock.calls;
     expect(childCalls[0][1].dto.platformCouponCode).toBeUndefined();
     expect(childCalls[0][1].dto.shippingCouponCode).toBeUndefined();
-    expect(childCalls[1][1].dto.platformCouponCode).toBe('ONLY-SHOP-B');
+    expect(childCalls[1][1].dto.platformCouponCode).toBeUndefined();
     expect(childCalls[1][1].dto.shippingCouponCode).toBe('SHIP-SHOP-B');
   });
 
