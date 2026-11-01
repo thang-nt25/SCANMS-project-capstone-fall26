@@ -17,6 +17,7 @@ import { exclusiveDealBonus } from './exclusive-deal-bonus';
 import { selfReferralReason } from './self-referral';
 import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
@@ -1168,9 +1169,12 @@ export class OrdersService {
         );
       }
 
+      // Creator codes are attribution identifiers and remain usable when a
+      // product has a direct discount, matching CouponsService.evaluateCoupon.
       if (
         !lockedCoupon.stackableWithProductDiscount &&
-        anyProductHasDirectDiscount
+        anyProductHasDirectDiscount &&
+        lockedCoupon.collaborator?.role !== UserRole.COLLABORATOR
       ) {
         throw new ConflictException(
           'Mã giảm giá này không được áp dụng đồng thời với sản phẩm đang giảm giá trực tiếp',
@@ -1697,13 +1701,13 @@ export class OrdersService {
       const liveBonus = liveBonusRate(liveSession);
       const finalCommissionRate = selfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, liveBonus);
       const regularCommissionRate = selfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, 0);
-      const netItemSubtotal = linePricing[lineIndex].netGoods;
+      const remunerationBase = unitPrice * quantity;
       if (fundedCampaignBonus && campaign) {
         campaignBonusReservations.set(campaign.id,
-          (campaignBonusReservations.get(campaign.id) || 0) + netItemSubtotal * fundedCampaignBonus / 100);
+          (campaignBonusReservations.get(campaign.id) || 0) + remunerationBase * fundedCampaignBonus / 100);
       }
       const calculatedCommission =
-        netItemSubtotal * (finalCommissionRate / 100);
+        remunerationBase * (finalCommissionRate / 100);
 
       finalOrderItemsToSave.push({
         productId: prod.id,
@@ -1714,7 +1718,7 @@ export class OrdersService {
         calculatedCommissionAmount: calculatedCommission,
         regularCommissionRate: liveBonus ? regularCommissionRate : null,
         regularCommissionAmount: liveBonus
-          ? netItemSubtotal * (regularCommissionRate / 100)
+          ? remunerationBase * (regularCommissionRate / 100)
           : null,
       });
     }
@@ -3800,7 +3804,7 @@ export class OrdersService {
       userRole !== UserRole.SYSTEM_MANAGER
     ) {
       const ownedStore = await this.prisma.store.findFirst({
-        where: { id: targetStoreId, ownerId: userId, isDeleted: false },
+        where: { id: targetStoreId, ...managedStoreWhere(userId) },
         select: { id: true },
       });
       if (!ownedStore)
@@ -3814,7 +3818,7 @@ export class OrdersService {
         // Admin xem toàn bộ hoặc storeId truyền vào
       } else {
         const userStore = await this.prisma.store.findFirst({
-          where: { ownerId: userId, isDeleted: false },
+          where: managedStoreWhere(userId),
         });
         if (!userStore) {
           return {
@@ -3948,10 +3952,22 @@ export class OrdersService {
             (raw.ghnOrderCode ? 'Giao Hàng Nhanh (GHN)' : null),
           store: order.store,
           attributedCollaborator: order.attributedCollaborator,
+          attributionFlag: order.overrideReason?.startsWith('SELF_REFERRAL_')
+            ? order.overrideReason : null,
           couponCode:
             order.couponCodeSnapshot || order.coupon?.displayCode || null,
-          totalCommission: order.commissions.length > 0
-            ? order.commissions.reduce(
+          incomeStatus: order.overrideReason?.startsWith('SELF_REFERRAL_')
+            ? 'SELF_REFERRAL_BLOCKED'
+            : Number(order.refundedAmount) > 0 ||
+                (order.commissions.length > 0 && order.commissions.every((c) => c.status === CommissionStatus.REVERSED))
+              ? 'REVERSED'
+              : order.commissions.some((c) => c.status === CommissionStatus.PENDING)
+                ? 'PENDING'
+                : order.commissions.length > 0 ? 'AVAILABLE' : 'NOT_POSTED',
+          totalCommission: order.overrideReason?.startsWith('SELF_REFERRAL_') || Number(order.refundedAmount) > 0
+            ? 0
+            : order.commissions.length > 0
+            ? order.commissions.filter((c) => c.status !== CommissionStatus.REVERSED).reduce(
                 (sum, c) => sum + Number(c.commissionAmount || 0),
                 0,
               )
@@ -4008,12 +4024,13 @@ export class OrdersService {
     });
     if (!order?.returnRequest)
       throw new NotFoundException('Không tìm thấy yêu cầu đổi trả');
-    if (
-      userRole !== UserRole.SYSTEM_ADMIN &&
-      userRole !== UserRole.SYSTEM_MANAGER &&
-      order.store.ownerId !== userId
-    ) {
-      throw new ForbiddenException('Bạn không quản lý gian hàng của đơn này');
+    if (userRole !== UserRole.SYSTEM_ADMIN && userRole !== UserRole.SYSTEM_MANAGER &&
+        order.store.ownerId !== userId) {
+      const managed = await this.prisma.store.findFirst({
+        where: { id: order.storeId, ...managedStoreWhere(userId) },
+        select: { id: true },
+      });
+      if (!managed) throw new ForbiddenException('Bạn không quản lý gian hàng của đơn này');
     }
     if (order.status !== OrderStatus.RETURN_REQUESTED) {
       throw new ConflictException(
@@ -4116,12 +4133,13 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng cần cập nhật');
     }
 
-    if (
-      userRole !== UserRole.SYSTEM_ADMIN &&
-      userRole !== UserRole.SYSTEM_MANAGER &&
-      order.store.ownerId !== userId
-    ) {
-      throw new ForbiddenException(
+    if (userRole !== UserRole.SYSTEM_ADMIN && userRole !== UserRole.SYSTEM_MANAGER &&
+        order.store.ownerId !== userId) {
+      const managed = await this.prisma.store.findFirst({
+        where: { id: order.storeId, ...managedStoreWhere(userId) },
+        select: { id: true },
+      });
+      if (!managed) throw new ForbiddenException(
         'Bạn không có quyền cập nhật đơn hàng của gian hàng này',
       );
     }

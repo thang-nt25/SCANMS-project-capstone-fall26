@@ -53,6 +53,11 @@ export const inspectionSchema = z
   })
   .strict();
 
+export const liabilityAssessmentSchema = z.object({
+  liability: z.enum(['LOGISTICS_FAULT', 'SHOP_FAULT', 'CUSTOMER_REASON']),
+  notes: text(10, 2000),
+}).strict();
+
 export const disputeSchema = z
   .object({
     reason: z.enum([
@@ -83,6 +88,7 @@ export const shopQueueSchema = z
 
 export type InstructionsInput = z.infer<typeof instructionsSchema>;
 export type ShipmentInput = z.infer<typeof shipmentSchema>;
+export type LiabilityAssessmentInput = z.infer<typeof liabilityAssessmentSchema>;
 export type WarehouseInput = z.infer<typeof warehouseSchema>;
 export type BookPickupInput = z.infer<typeof bookPickupSchema>;
 export type InspectionInput = z.infer<typeof inspectionSchema>;

@@ -59,6 +59,12 @@ export interface ReturnDetail {
   inspectionEscalatedAt?: string | null;
   inspectionNotes?: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
+  partnerIncome?: {
+    amount: number;
+    reversedAmount?: number;
+    status: 'NOT_POSTED' | 'PENDING' | 'AVAILABLE' | 'REVERSED';
+    availableAt?: string | null;
+  };
   order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null };
   items: Array<{
     id: string;
@@ -83,7 +89,7 @@ export interface ReturnDetail {
     ruling?: string | null;
     resolutionNotes?: string | null;
   } | null;
-  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string } | null }>;
+  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string; source?: string; originalTrackingNumber?: string; replacementTrackingNumber?: string; status?: string } | null }>;
 }
 
 export interface ReturnDisputeRecord {
@@ -140,6 +146,14 @@ export const returnService = {
   getAdminDisputes: async () => unwrap<ReturnDisputeRecord[]>(await api.get('/admin/return-disputes', {
     headers: { 'x-skip-cache': 'true' },
   })),
+  getActiveReturns: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/active-returns', {
+    headers: { 'x-skip-cache': 'true' },
+  })),
+  assessLiability: async (id: string, data: {
+    liability: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
+  }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/active-returns/${id}/liability`, data)),
+  retryPendingRefund: async (id: string) => unwrap<ReturnDetail>(
+    await api.post(`/admin/return-disputes/active-returns/${id}/refund/retry`)),
   getAdminStalled: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/overdue-inspections', {
     headers: { 'x-skip-cache': 'true' },
   })),

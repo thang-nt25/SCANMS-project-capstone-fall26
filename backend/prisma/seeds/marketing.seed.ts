@@ -111,7 +111,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     }
     const product = data.products[storeIndex * 3];
     const proposalId = seedId(`deal:${creatorIndex}`);
-    // The first Sora deal is the Flow 4 example: 16% on the discounted goods value.
+    // The first Sora deal is the Flow 4 example: 16% on the original goods value.
     data.deals.push({
       id: proposalId,
       storeId,

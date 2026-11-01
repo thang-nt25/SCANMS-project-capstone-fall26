@@ -4,7 +4,7 @@ import {
   liveBonusRate,
   tierBonusByName,
 } from '../../src/modules/commissions/commission-policy';
-import { exclusiveDealRate } from '../../src/modules/orders/exclusive-deal-bonus';
+import { exclusiveDealBonus } from '../../src/modules/orders/exclusive-deal-bonus';
 import { amount } from './seed.helpers';
 import type { SeedDataset } from './seed.types';
 
@@ -61,7 +61,7 @@ export function seedCommissionBreakdown(
       ),
   );
   const tierBonus = tierBonusByName(tier?.name);
-  const dealRate = exclusiveDealRate(
+  const dealBonus = exclusiveDealBonus(
     deal
       ? {
           ...deal,
@@ -72,6 +72,7 @@ export function seedCommissionBreakdown(
     input.collaboratorId,
     input.storeId,
   );
+  const dealRate = dealBonus ? 10 + dealBonus : 0;
   const campaignBonus =
     participating && campaign
       ? campaignBonusRate(
