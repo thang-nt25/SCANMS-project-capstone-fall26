@@ -273,7 +273,18 @@ function AdminActions({ request }: { request: ReturnDetail }) {
   const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('LOGISTICS_FAULT');
   const [notes, setNotes] = useState('');
   const assessment = useReturnAction(request.id, returnService.assessLiability);
+  const current = (assessment.data as ReturnDetail | undefined)?.id === request.id
+    ? (assessment.data as ReturnDetail) : request;
+  const savedAssessment = [...current.events].reverse().find((event) =>
+    event.type === 'LIABILITY_ASSESSED' && event.data?.source === 'SYSTEM_MANAGER_REVIEW');
   const mayAssess = ['REQUESTED', 'SHOP_APPROVED', 'PICKUP_BOOKED', 'RETURN_SHIPPED', 'RETURN_RECEIVED', 'INSPECTING'].includes(request.status);
+  if (savedAssessment) return <section role="status" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    <h2 className="font-bold">Đã lưu kết luận trách nhiệm</h2>
+    <p className="mt-2">Bên chịu trách nhiệm: <strong>{liabilityLabels[savedAssessment.data?.liability || ''] || 'Chưa xác định'}</strong></p>
+    {savedAssessment.data?.notes && <p className="mt-1 text-[#7D715E]">Căn cứ: {savedAssessment.data.notes}</p>}
+    <p className="mt-2 text-[#7D715E]">Hồ sơ vẫn ở bước xử lý hiện tại. Khách cần gửi hàng trả về Shop; sau khi nhận và kiểm tra, Shop chọn đổi sản phẩm hoặc hoàn tiền theo kết luận này.</p>
+    <Link to="/admin/return-disputes" className="mt-3 inline-block font-semibold text-[#8A6736] underline">Quay lại danh sách đổi trả</Link>
+  </section>;
   if (!mayAssess) return <p className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
     Hồ sơ đã qua bước xác định trách nhiệm. Xem kết quả kiểm tra và thu nhập đối tác ở trên.
   </p>;

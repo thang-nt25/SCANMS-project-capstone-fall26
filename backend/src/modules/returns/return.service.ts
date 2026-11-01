@@ -303,6 +303,13 @@ export class ReturnService {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       throw new ForbiddenException('Chỉ vận hành hệ thống được xác định trách nhiệm');
     const detail = await this.scopedDetail(userId, role, id);
+    const latestAssessment = [...detail.events].reverse().find((event) => {
+      const data = event.data as Record<string, unknown> | null;
+      return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
+    });
+    const latestData = latestAssessment?.data as Record<string, unknown> | null;
+    if (latestData?.liability === input.liability && latestData?.notes === input.notes)
+      return this.getOne(userId, role, id);
     const assessable: ReturnRequestStatus[] = [
       ReturnRequestStatus.REQUESTED,
       ReturnRequestStatus.SHOP_APPROVED,

@@ -80,6 +80,15 @@ describe('Flow 4 replacement and liability', () => {
     }));
   });
 
+  it('does not append another event when the same liability conclusion is saved again', async () => {
+    const { detail, tx, service } = setup(ReturnRequestStatus.SHOP_APPROVED);
+    const input = { liability: 'SHOP_FAULT' as const, notes: 'Shop gửi hàng bị vỡ.' };
+    detail.events.push({ type: 'LIABILITY_ASSESSED', data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' } });
+    await service.assessLiability(systemManagerId, UserRole.SYSTEM_MANAGER, requestId, input);
+    expect(tx.returnEvent.create).not.toHaveBeenCalled();
+    expect(tx.returnRequest.updateMany).not.toHaveBeenCalled();
+  });
+
   it('opens a GHN reimbursement case only for a confirmed carrier fault', async () => {
     const { detail, tx, service } = setup();
     detail.order.rawPayload = { ghnOrderCode: 'GHN-ORIGINAL-1' };
