@@ -27,6 +27,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @ApiTags('Shipping & GHN Logistics')
 @Controller('shipping/ghn')
@@ -66,12 +67,12 @@ export class ShippingController {
     const userId = req.user?.id || req.user?.sub;
     let storeId: string | undefined;
     if (req.user?.role === UserRole.SHOP_MANAGER) {
-      const store = await this.prisma.store.findFirst({
-        where: { ownerId: userId, deletedAt: null },
-        select: { id: true },
+      const order = await this.prisma.order.findFirst({
+        where: { id: orderId, store: managedStoreWhere(userId) },
+        select: { storeId: true },
       });
-      if (!store) throw new ForbiddenException('Tài khoản không quản lý gian hàng.');
-      storeId = store.id;
+      if (!order) throw new ForbiddenException('Tài khoản không quản lý gian hàng của đơn này.');
+      storeId = order.storeId;
     }
     return this.ghnService.createShippingOrder(orderId, dto, storeId);
   }

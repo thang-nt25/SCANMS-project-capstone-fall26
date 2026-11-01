@@ -48,7 +48,7 @@ describe('Word section 6 checkout margin protection', () => {
     await run();
     const data = tx.order.create.mock.calls[0][0].data;
     expect(data.orderItems.create).toEqual(expect.arrayContaining([
-      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 26000 }),
+      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 32500 }),
       expect.objectContaining({ productId: 'b', appliedCommissionRate: 10, calculatedCommissionAmount: 25000 }),
     ]));
     expect(Number(data.finalAmount)).toBe(475000);

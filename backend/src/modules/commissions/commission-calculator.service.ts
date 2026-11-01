@@ -28,15 +28,8 @@ export class CommissionCalculatorService {
     orderItems: CommissionItemInput[],
     _defaultCommissionRate: Prisma.Decimal,
     tierBonusRate: Prisma.Decimal,
-    discountAmount = new Prisma.Decimal(0),
+    _discountAmount = new Prisma.Decimal(0),
   ): CalculatedOrderCommission {
-    const gross = orderItems.reduce(
-      (sum, item) => sum.plus(item.unitPrice.times(item.quantity)),
-      new Prisma.Decimal(0),
-    );
-    const netRatio = gross.isZero()
-      ? new Prisma.Decimal(0)
-      : Prisma.Decimal.max(0, gross.minus(discountAmount)).div(gross);
     const items = orderItems.map((item) => {
       // Existing non-zero snapshots are authoritative; zero placeholders from imports are not.
       if (
@@ -59,7 +52,6 @@ export class CommissionCalculatorService {
       const appliedCommissionRate = Prisma.Decimal.min(25, baseRate.plus(tierBonus));
       const itemSubtotal = item.unitPrice.times(item.quantity);
       const calculatedCommissionAmount = itemSubtotal
-        .times(netRatio)
         .times(appliedCommissionRate)
         .dividedBy(100)
         .toDecimalPlaces(2);

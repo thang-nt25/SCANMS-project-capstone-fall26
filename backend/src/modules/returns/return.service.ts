@@ -20,6 +20,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
 import { PickupGateway } from './pickup.gateway';
@@ -29,6 +30,7 @@ import type {
   DisputeInput,
   InspectionInput,
   InstructionsInput,
+  LiabilityAssessmentInput,
   ResolveDisputeInput,
   ShipmentInput,
   WarehouseInput,
@@ -43,6 +45,7 @@ const detailInclude = {
       customerName: true,
       customerPhone: true,
       shippingAddress: true,
+      rawPayload: true,
       finalAmount: true,
       refundedAmount: true,
       customerId: true,
@@ -52,6 +55,9 @@ const detailInclude = {
       paymentTransactions: {
         select: { paymentMethod: true, status: true },
         orderBy: { createdAt: 'desc' as const },
+      },
+      commissions: {
+        select: { commissionAmount: true, status: true, availableAt: true },
       },
     },
   },
@@ -110,7 +116,7 @@ export class ReturnService {
   ): Prisma.ReturnRequestWhereInput {
     if (role === UserRole.CUSTOMER) return { customerId: userId };
     if (role === UserRole.SHOP_MANAGER)
-      return { order: { store: { ownerId: userId } } };
+      return { order: { store: managedStoreWhere(userId) } };
     if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER)
       return {};
     throw new ForbiddenException('Vai trò không được truy cập hồ sơ đổi trả');
@@ -130,10 +136,7 @@ export class ReturnService {
   }
 
   private requireShop(userId: string, role: UserRole, detail: Detail) {
-    if (
-      role !== UserRole.SHOP_MANAGER ||
-      detail.order.store.ownerId !== userId
-    ) {
+    if (role !== UserRole.SHOP_MANAGER) {
       throw new ForbiddenException('Bạn không quản lý Shop của đơn hàng này');
     }
   }
@@ -186,8 +189,15 @@ export class ReturnService {
     });
   }
 
-  private present(item: Detail) {
+  private present(item: Detail, showPartnerIncome = false) {
     const { order, shipments, ...rest } = item;
+    const commissions = order.commissions ?? [];
+    const postedIncome = commissions.reduce(
+      (sum, commission) => sum + Number(commission.commissionAmount), 0,
+    );
+    const snapshotIncome = (item.items ?? []).reduce(
+      (sum, line) => sum + Number(line.orderItem.calculatedCommissionAmount), 0,
+    );
     return {
       ...rest,
       order: {
@@ -198,6 +208,20 @@ export class ReturnService {
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
       },
+      ...(showPartnerIncome ? { partnerIncome: {
+        amount: Number(order.refundedAmount) > 0 ||
+          (commissions.length > 0 && commissions.every((commission) => commission.status === CommissionStatus.REVERSED))
+          ? 0 : commissions.length ? postedIncome : snapshotIncome,
+        reversedAmount: Number(order.refundedAmount) > 0 ? postedIncome || snapshotIncome :
+          commissions.length > 0 && commissions.every((commission) => commission.status === CommissionStatus.REVERSED) ? postedIncome : 0,
+        status: Number(order.refundedAmount) > 0 ? 'REVERSED' : commissions.length
+          ? commissions.every((commission) => commission.status === CommissionStatus.REVERSED)
+            ? 'REVERSED'
+            : commissions.some((commission) => commission.status === CommissionStatus.PENDING)
+              ? 'PENDING' : 'AVAILABLE'
+          : 'NOT_POSTED',
+        availableAt: commissions.find((commission) => commission.status === CommissionStatus.PENDING)?.availableAt ?? null,
+      } } : {}),
       returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
         .success
         ? order.store.returnWarehouse
@@ -219,7 +243,7 @@ export class ReturnService {
   }
 
   async getOne(userId: string, role: UserRole, id: string) {
-    return this.present(await this.scopedDetail(userId, role, id));
+    return this.present(await this.scopedDetail(userId, role, id), role !== UserRole.CUSTOMER);
   }
 
   async listShop(userId: string, role: UserRole, status?: string, page = 1) {
@@ -234,7 +258,7 @@ export class ReturnService {
       throw new BadRequestException('Trạng thái không hợp lệ');
     }
     const where: Prisma.ReturnRequestWhereInput = {
-      order: { store: { ownerId: userId } },
+      order: { store: managedStoreWhere(userId) },
       ...(status ? { status: status as ReturnRequestStatus } : {}),
     };
     const [total, records] = await this.prisma.$transaction([
@@ -250,8 +274,60 @@ export class ReturnService {
     return {
       total,
       page,
-      items: records.map((record) => this.present(record)),
+      items: records.map((record) => this.present(record, true)),
     };
+  }
+
+  async listForOversight(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xem hồ sơ đổi trả');
+    const records = await this.prisma.returnRequest.findMany({
+      where: { status: { in: [
+        ReturnRequestStatus.REQUESTED,
+        ReturnRequestStatus.SHOP_APPROVED,
+        ReturnRequestStatus.PICKUP_BOOKED,
+        ReturnRequestStatus.RETURN_SHIPPED,
+        ReturnRequestStatus.RETURN_RECEIVED,
+        ReturnRequestStatus.INSPECTING,
+        ReturnRequestStatus.EXCHANGE_PENDING,
+        ReturnRequestStatus.REFUND_PENDING,
+      ] } },
+      include: detailInclude,
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+    return records.map((record) => this.present(record, true));
+  }
+
+  async assessLiability(userId: string, role: UserRole, id: string, input: LiabilityAssessmentInput) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xác định trách nhiệm');
+    const detail = await this.scopedDetail(userId, role, id);
+    const assessable: ReturnRequestStatus[] = [
+      ReturnRequestStatus.REQUESTED,
+      ReturnRequestStatus.SHOP_APPROVED,
+      ReturnRequestStatus.PICKUP_BOOKED,
+      ReturnRequestStatus.RETURN_SHIPPED,
+      ReturnRequestStatus.RETURN_RECEIVED,
+      ReturnRequestStatus.INSPECTING,
+    ];
+    if (!assessable.includes(detail.status))
+      throw new ConflictException('Hồ sơ đã qua bước xác định trách nhiệm');
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.returnRequest.updateMany({
+        where: { id, status: { in: assessable } },
+        data: { updatedAt: new Date() },
+      });
+      if (changed.count !== 1)
+        throw new ConflictException('Hồ sơ vừa được xử lý; hãy tải lại');
+      await tx.returnEvent.create({ data: {
+        returnRequestId: id,
+        actorId: userId,
+        type: 'LIABILITY_ASSESSED',
+        data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' },
+      } });
+    });
+    return this.getOne(userId, role, id);
   }
 
   async saveWarehouse(
@@ -264,7 +340,7 @@ export class ReturnService {
     this.requireShop(userId, role, detail);
     await this.prisma.$transaction(async (tx) => {
       const changed = await tx.store.updateMany({
-        where: { id: detail.order.store.id, ownerId: userId },
+        where: { id: detail.order.store.id, ...managedStoreWhere(userId) },
         data: { returnWarehouse: input },
       });
       if (changed.count !== 1)
@@ -941,6 +1017,15 @@ export class ReturnService {
   ) {
     const detail = await this.scopedDetail(userId, role, id);
     this.requireShop(userId, role, detail);
+    const managerAssessment = [...detail.events].reverse().find((event) => {
+      const data = event.data as Record<string, unknown> | null;
+      return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
+    });
+    const reviewedLiability = (managerAssessment?.data as Record<string, unknown> | null)?.liability;
+    if (reviewedLiability && reviewedLiability !== input.liability)
+      throw new ConflictException('Trách nhiệm phải khớp kết luận của System Manager');
+    if (input.liability === 'LOGISTICS_FAULT' && reviewedLiability !== 'LOGISTICS_FAULT')
+      throw new ConflictException('Lỗi vận chuyển cần System Manager xác minh trước khi Shop xử lý');
     const target =
       input.resolution === 'REFUND'
         ? ReturnRequestStatus.REFUND_PENDING
@@ -1053,6 +1138,32 @@ export class ReturnService {
         ReturnRequestStatus.EXCHANGE_SHIPPED,
         userId,
       );
+      for (const line of detail.items) {
+        const quantity = line.quantity;
+        if (line.orderItem.variantId) {
+          const variant = await tx.productVariant.updateMany({
+            where: {
+              id: line.orderItem.variantId,
+              productId: line.orderItem.productId,
+              stockQuantity: { gte: quantity },
+            },
+            data: { stockQuantity: { decrement: quantity } },
+          });
+          if (variant.count !== 1) {
+            throw new ConflictException('Biến thể không đủ tồn kho để giao hàng đổi');
+          }
+        }
+        const product = await tx.product.updateMany({
+          where: {
+            id: line.orderItem.productId,
+            stockQuantity: { gte: quantity },
+          },
+          data: { stockQuantity: { decrement: quantity } },
+        });
+        if (product.count !== 1) {
+          throw new ConflictException('Sản phẩm không đủ tồn kho để giao hàng đổi');
+        }
+      }
       await tx.returnShipment.create({
         data: {
           returnRequestId: id,
@@ -1061,6 +1172,36 @@ export class ReturnService {
           trackingNumber: input.trackingNumber,
         },
       });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'EXCHANGE_INCOME_PRESERVED',
+          data: { orderId: detail.orderId, replacementItems: detail.items.map((line) => ({
+            productId: line.orderItem.productId,
+            variantId: line.orderItem.variantId,
+            quantity: line.quantity,
+          })) },
+        },
+      });
+      const logisticsAssessment = [...detail.events].reverse().find((event) => {
+        const data = event.data as Record<string, unknown> | null;
+        return event.type === 'LIABILITY_ASSESSED' &&
+          data?.source === 'SYSTEM_MANAGER_REVIEW' && data.liability === 'LOGISTICS_FAULT';
+      });
+      if (logisticsAssessment) {
+        const raw = detail.order.rawPayload as Record<string, unknown> | null;
+        await tx.returnEvent.create({ data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'GHN_COMPENSATION_CLAIM_OPENED',
+          data: {
+            originalTrackingNumber: raw?.ghnOrderCode || raw?.trackingNumber || null,
+            replacementTrackingNumber: input.trackingNumber,
+            status: 'PENDING_RECONCILIATION',
+          },
+        } });
+      }
       await this.notify(
         tx,
         detail,
@@ -1214,7 +1355,7 @@ export class ReturnService {
     });
     return rows.map((row) => ({
       ...row,
-      returnRequest: this.present(row.returnRequest),
+      returnRequest: this.present(row.returnRequest, true),
     }));
   }
 
@@ -1239,7 +1380,7 @@ export class ReturnService {
       orderBy: { receivedAt: 'asc' },
       take: 100,
     });
-    return rows.map((row) => this.present(row));
+    return rows.map((row) => this.present(row, true));
   }
 
   async resolveDispute(

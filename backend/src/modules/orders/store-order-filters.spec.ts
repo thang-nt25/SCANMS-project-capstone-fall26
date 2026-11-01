@@ -30,7 +30,13 @@ describe('merchant order filters preserve shop, customer and return scope', () =
     const { service, prisma } = makeService();
     await service.getMyStoreOrders('owner', UserRole.SHOP_MANAGER, { storeId, customerId });
     expect(prisma.order.count).toHaveBeenCalledWith({ where: { storeId, customerId } });
-    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ ownerId: 'owner', id: storeId }) }));
+    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      id: storeId,
+      OR: expect.arrayContaining([
+        { owner: { is: expect.objectContaining({ id: 'owner' }) } },
+        { staffMembers: { some: expect.objectContaining({ id: 'owner' }) } },
+      ]),
+    }) }));
   });
   it('still refuses another merchant store even when a customer ID is supplied', async () => {
     const { service, prisma } = makeService();

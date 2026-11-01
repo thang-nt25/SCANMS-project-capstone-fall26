@@ -2321,14 +2321,20 @@ export default function OrdersManagementPage({
                   <span className="font-medium text-[#7D715E]">Tự nhiên</span>
                 )}
               </div>
+              {selectedOrderDetails.attributionFlag && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs font-semibold text-[#DC2626]">
+                Phát hiện KOC tự mua qua link/mã của mình. Thu nhập tiếp thị của đơn này là 0 ₫.
+              </p>}
               {selectedOrderDetails.totalCommission > 0 && (
                 <div className="flex justify-between text-[11px] text-[#7D715E]">
-                  <span>Trích hoa hồng KOL:</span>
+                  <span>Thu nhập KOC {selectedOrderDetails.incomeStatus === 'PENDING' ? '(đang bảo chứng)' : selectedOrderDetails.incomeStatus === 'NOT_POSTED' ? '(dự kiến)' : '(khả dụng)'}:</span>
                   <span className="font-bold text-[#B88E4F]">
                     -{selectedOrderDetails.totalCommission.toLocaleString("vi-VN")} ₫
                   </span>
                 </div>
               )}
+              {selectedOrderDetails.incomeStatus === 'REVERSED' && <p className="text-xs font-semibold text-[#7D715E]">
+                Thu nhập KOC đã được thu hồi sau hoàn tiền: 0 ₫.
+              </p>}
             </section>
             </div>
             <div className="px-5 py-3 border-t border-[#EAE4D7] flex justify-end shrink-0">
