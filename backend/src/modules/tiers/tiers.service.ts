@@ -337,6 +337,32 @@ export class TiersService implements OnApplicationBootstrap {
       Math.ceil((evalTime - nowTime) / (24 * 60 * 60 * 1000)),
     );
 
+    let recommendedProducts: any[] = [];
+    if (typeof this.prisma?.product?.findMany === 'function') {
+      try {
+        recommendedProducts = await this.prisma.product.findMany({
+          where: {
+            isActive: true,
+            isAffiliateEnabled: true,
+            moderationStatus: 'APPROVED',
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            imageUrl: true,
+            customCommissionRate: true,
+            store: { select: { id: true, name: true, logoUrl: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 4,
+        });
+      } catch {
+        recommendedProducts = [];
+      }
+    }
+
     return {
       currentTier: {
         id: currentTier.id,
@@ -384,6 +410,7 @@ export class TiersService implements OnApplicationBootstrap {
               extraBonusPercentage: this.tierBonus(stepDownTier),
             }
           : null,
+      recommendedProducts,
     };
   }
 

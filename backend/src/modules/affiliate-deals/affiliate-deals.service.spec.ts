@@ -25,6 +25,7 @@ describe('AffiliateDealsService', () => {
       couponProduct: { create: jest.fn() },
       referralLink: { update: jest.fn() },
       exclusiveDealProposal: {
+        findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
@@ -461,6 +462,85 @@ describe('AffiliateDealsService', () => {
     expect(update).not.toHaveProperty('sampleRequestsBlockReason');
   });
 
+  it('allows shop manager to proactively propose an exclusive deal offer to a KOL', async () => {
+    prisma.product.findFirst.mockResolvedValue({
+      id: productId,
+      storeId,
+      title: 'Serum Phục Hồi',
+      imageUrl: 'http://img.test/serum.png',
+      price: 350000,
+      customCommissionRate: 15,
+      isActive: true,
+      isAffiliateEnabled: true,
+      deletedAt: null,
+      store: {
+        id: storeId,
+        name: 'Sora Skin',
+        ownerId: shopOwnerId,
+        isActive: true,
+        deletedAt: null,
+        defaultCommissionRate: 10,
+      },
+    });
+    prisma.store.findUnique.mockResolvedValue({
+      id: storeId,
+      ownerId: shopOwnerId,
+      name: 'Sora Skin',
+      deletedAt: null,
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      id: collaboratorId,
+      role: 'COLLABORATOR',
+      isActive: true,
+      deletedAt: null,
+      collaboratorProfile: { kycStatus: 'VERIFIED' },
+    });
+    const createdProposal = {
+      id: proposalId,
+      collaboratorId,
+      storeId,
+      productId,
+      conversationId,
+      proposedCommissionRate: 14,
+      salesCommitment: 'Shop mời độc quyền 14%',
+      status: 'PENDING',
+      product: { id: productId, title: 'Serum Phục Hồi', imageUrl: 'http://img.test/serum.png', price: 350000 },
+      store: { id: storeId, name: 'Sora Skin' },
+    };
+    tx.exclusiveDealProposal.create.mockResolvedValue(createdProposal);
+    tx.chatMessage.create.mockResolvedValue({
+      id: 'message-shop-offer',
+      messageText: 'shop offer deal card',
+    });
+
+    const result = await service.createShopOffer(shopOwnerId, 'SHOP_MANAGER' as any, {
+      collaboratorId,
+      productId,
+      proposedCommissionRate: 14,
+      targetOrders: 50,
+      commitmentDays: 14,
+      salesCommitment: 'Shop mời độc quyền 14%',
+    });
+
+    expect(result.status).toBe('PENDING');
+    expect(result.proposedCommissionRate).toBe(14);
+    expect(tx.exclusiveDealProposal.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          collaboratorId,
+          storeId,
+          productId,
+          proposedCommissionRate: expect.anything(),
+        }),
+      }),
+    );
+    expect(chatGateway.broadcastNewMessage).toHaveBeenCalledWith(
+      conversationId,
+      expect.objectContaining({ id: 'message-shop-offer' }),
+      collaboratorId,
+    );
+  });
+
   describe('store staff access', () => {
     beforeEach(() => {
       prisma.store.findUnique.mockResolvedValue({
@@ -557,5 +637,6 @@ describe('AffiliateDealsService', () => {
         prisma.exclusiveDealProposal.findMany.mock.calls[1][0].where.storeId,
       ).toEqual({ in: [] });
     });
+
   });
 });

@@ -57,6 +57,7 @@ const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPa
 
 // Consolidated Hub Pages (Tối ưu trải nghiệm gộp Menu)
 const ShopCollaborationPage = lazy(() => import('../pages/collaborator/ShopCollaborationPage'));
+const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingToolkitPage'));
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
@@ -263,7 +264,7 @@ function AppRoutes() {
               <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
-              <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
+              <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />

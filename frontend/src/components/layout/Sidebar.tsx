@@ -185,8 +185,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       return (
         currentPath.startsWith('/collaborator/collaboration') ||
         currentPath.startsWith('/collaborator/messages') ||
-        currentPath.startsWith('/collaborator/campaigns') ||
-        currentPath === '/chat'
+                currentPath === '/chat'
       );
     }
 
@@ -270,7 +269,6 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     if (path === '/customer/profile') {
       return (
         currentPath.startsWith('/customer/profile') ||
-        currentPath.startsWith('/customer/identity') ||
         currentPath.startsWith('/customer/addresses') ||
         currentPath.startsWith('/customer/security')
       );
@@ -388,14 +386,20 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       </div>
 
       {/* SCANMS UI Reference Minimalist Navigation List */}
-      <nav className="flex flex-col gap-1 text-xs sm:text-[13px] flex-1 overflow-y-auto no-scrollbar pt-1" aria-label="Menu chức năng">
-        {navConfig.items.map((item) => {
+      <nav className="flex flex-col gap-0.5 text-xs sm:text-[13px] flex-1 overflow-y-auto no-scrollbar pt-1" aria-label="Menu chức năng">
+        {navConfig.items.map((item, index) => {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
           const badge = getItemBadge(item.path, item.badge);
+          const isNewSection = item.section && (index === 0 || navConfig.items[index - 1]?.section !== item.section);
 
           return (
             <div key={item.path} className="flex flex-col">
+              {isNewSection && (
+                <div className={`px-3 text-[10px] font-bold uppercase tracking-wider text-[#8C6226] select-none ${index === 0 ? 'pt-1 pb-1' : 'pt-2.5 pb-1 border-t border-[#EAE4D7]/50 mt-1'}`}>
+                  {item.section}
+                </div>
+              )}
               <Link
                 to={item.path}
                 onMouseEnter={() => handleRouteHover(item.path)}
@@ -403,7 +407,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
                 onFocus={() => handleRouteHover(item.path)}
                 onBlur={cancelRouteHover}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer min-h-[40px] ${
+                className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer min-h-[38px] ${
                   active
                     ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6] shadow-2xs'
                     : 'text-[#4A3F33] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'

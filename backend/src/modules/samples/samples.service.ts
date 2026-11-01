@@ -233,6 +233,19 @@ export class SamplesService {
       );
     }
 
+    const completedExisting = await this.prisma.sampleProductRequest.findFirst({
+      where: {
+        collaboratorId,
+        productId: dto.productId,
+        status: SampleRequestStatus.COMPLETED,
+      },
+    });
+    if (completedExisting) {
+      throw new ConflictException(
+        'Bạn đã từng nhận sản phẩm mẫu này và hoàn tất đánh giá. Mỗi Creator chỉ được tài trợ 1 suất mẫu cho mỗi dòng sản phẩm.',
+      );
+    }
+
     const request = await this.prisma.$transaction(async (tx) => {
       return tx.sampleProductRequest.create({
         data: {

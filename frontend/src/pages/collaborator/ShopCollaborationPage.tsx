@@ -1614,8 +1614,9 @@ setActiveTab('samples');
                             };
                             const displayedSample = activeSample || productSamples[0];
                             const isExclusive = prod.policyType === 'EXCLUSIVE';
+                            const hasCompletedSample = Boolean(productSamples.some((s) => s.status === 'COMPLETED'));
                             const canRequestThisProduct = Boolean(
-                              sampleHistoryReady && !activeSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
+                              sampleHistoryReady && !activeSample && !hasCompletedSample && canRequestSample && prod.sampleEnabled === true && Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0),
                             );
                             const isSelectedForBundle = selectedProductIds.includes(prod.id);
                             const activeDeal = exclusiveDeals.find(
@@ -1668,6 +1669,17 @@ setActiveTab('samples');
                                       ) : (
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#F3EFE6] text-[#74664F] whitespace-nowrap">
                                           Mở tự do
+                                        </span>
+                                      )}
+                                      {prod.sampleEnabled && (
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                                          Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0)
+                                            ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+                                            : 'border-rose-200 bg-rose-50 text-rose-600'
+                                        } whitespace-nowrap`}>
+                                          {Number(prod.sampleQuota || 0) > Number(prod.sampleGrantedCount || 0)
+                                            ? `Mẫu còn ${Number(prod.sampleQuota || 0) - Number(prod.sampleGrantedCount || 0)}`
+                                            : 'Hết mẫu'}
                                         </span>
                                       )}
                                     </div>
@@ -1742,7 +1754,7 @@ setActiveTab('samples');
                   title={!sampleHistoryReady ? 'Cần tải lịch sử mẫu trước khi đăng ký' : activeSample ? 'Bạn đã có yêu cầu đang xử lý. Xem tab Hàng mẫu.' : !canRequestSample ? (sampleEligibility?.blockReason || 'Hoàn tất KYC và liên kết kênh mạng xã hội để mở khóa') : !canRequestThisProduct ? 'Shop chưa bật cấp mẫu hoặc đã hết hạn mức' : 'Xin mẫu dùng thử'}
                                   >
                                     <Truck className="w-3.5 h-3.5 text-[#B88E4F]" />
-                                    <span>{!sampleHistoryReady ? (samplesLoadError ? 'Chưa tải lịch sử' : 'Đang kiểm tra mẫu…') : activeSample ? 'Đã xin mẫu' : !canRequestSample ? 'Khóa điều kiện' : canRequestThisProduct ? (displayedSample ? 'Xin mẫu lại' : 'Xin mẫu thử') : 'Chưa cấp mẫu'}</span>
+                                    <span>{!sampleHistoryReady ? (samplesLoadError ? 'Chưa tải lịch sử' : 'Đang kiểm tra mẫu…') : activeSample ? 'Đã xin mẫu' : hasCompletedSample ? 'Đã nhận mẫu' : !canRequestSample ? 'Khóa điều kiện' : canRequestThisProduct ? `Xin mẫu (${Number(prod.sampleQuota || 0) - Number(prod.sampleGrantedCount || 0)})` : (prod.sampleEnabled && Number(prod.sampleQuota || 0) <= Number(prod.sampleGrantedCount || 0)) ? 'Hết suất mẫu' : 'Chưa cấp mẫu'}</span>
                                   </button>
 
                                   <button

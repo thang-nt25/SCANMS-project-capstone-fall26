@@ -16,7 +16,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
-  Crown,
+  Handshake,
+  Megaphone,
+  Tag,
   ShoppingBag,
   FileText,
   Ticket,
@@ -36,6 +38,7 @@ import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
+import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
 import { CampaignCardBubble } from '../../components/chat/CampaignCardBubble';
@@ -1449,6 +1452,7 @@ export default function ChatBoxPage({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showVipModal, setShowVipModal] = useState(false);
+  const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
   const [showExclusiveOffer, setShowExclusiveOffer] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [showProposeCouponModal, setShowProposeCouponModal] = useState(false);
@@ -2179,17 +2183,32 @@ export default function ChatBoxPage({
     (currentUser?.role === 'COLLABORATOR' && Boolean(conv.store?.id)) ||
     (currentUser?.role === 'SHOP_MANAGER' && Boolean(conv.collaborator?.id));
 
-  const vipInviteAction = (
-    <button
-      id="btn-open-vip-invite"
-      type="button"
-      className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-      onClick={openVipInvite}
-      title="Gửi thỏa thuận VIP theo sản phẩm cho KOC này"
-    >
-      <Crown className="w-3.5 h-3.5 text-[#B88E4F]" />
-      <span>Đề nghị VIP</span>
-    </button>
+  const collaboratorChatActions = (
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <button
+        id="btn-chat-exclusive-deal"
+        type="button"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-3 py-2 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs"
+        onClick={() => setShowExclusiveDealModal(true)}
+        title="Ký kết thỏa thuận hợp tác phân phối độc quyền 1-1 với nhà sáng tạo"
+      >
+        <Handshake className="w-3.5 h-3.5 text-[#C59B58]" />
+        <span className="hidden sm:inline">Đề xuất Thỏa thuận Độc quyền</span>
+        <span className="sm:hidden">Thỏa thuận</span>
+      </button>
+
+      <button
+        id="btn-open-campaign-invite"
+        type="button"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
+        onClick={openVipInvite}
+        title="Mời đối tác tham gia chiến dịch kích cầu sự kiện"
+      >
+        <Megaphone className="w-3.5 h-3.5 text-[#B88E4F]" />
+        <span className="hidden sm:inline">Mời vào Chiến dịch</span>
+      </button>
+    </div>
+
   );
 
   return (
@@ -2541,10 +2560,8 @@ export default function ChatBoxPage({
 
               {isShop && (
                 isCollaboratorChat ? (
-                  <div className="flex flex-wrap justify-end gap-2">
-                    {vipInviteAction}
-                    <button type="button" onClick={() => setShowVipModal(true)} className="rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-semibold text-[#7D715E] hover:bg-[#F3EFE6]">Mời chiến dịch</button>
-                  </div>
+                  collaboratorChatActions
+
                 ) : isCustomerChat ? (
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     {/* Tặng Voucher */}
@@ -2621,10 +2638,10 @@ export default function ChatBoxPage({
                     id="btn-collab-propose-coupon"
                     onClick={() => setShowProposeCouponModal(true)}
                     className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
-                    title="Đề xuất mã giảm giá riêng với Shop"
+                    title="Đề xuất mã ưu đãi định danh KOC với Shop"
                   >
-                    <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    <span className="hidden sm:inline">Đề xuất mã riêng</span>
+                    <Tag className="w-3.5 h-3.5 text-[#B88E4F]" />
+                    <span className="hidden sm:inline">Mã ưu đãi định danh</span>
                   </button>
                 </div>
               )}
@@ -2937,21 +2954,22 @@ export default function ChatBoxPage({
                     <>
                       <button
                         type="button"
-                        id="btn-composer-vip-invite"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                        title="Đề nghị thỏa thuận VIP theo sản phẩm"
-                        onClick={openVipInvite}
+                        id="btn-composer-exclusive-deal"
+                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 active:scale-[0.96]"
+                        title="Đề xuất Thỏa thuận Độc quyền 1-1 với đối tác"
+                        onClick={() => setShowExclusiveDealModal(true)}
+
                       >
-                        <Crown className="w-5 h-5" />
+                        <Handshake className="w-5 h-5 stroke-[1.75]" />
                       </button>
                       <button
                         type="button"
-                        id="btn-composer-voucher"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                        title="Cấp / Tặng mã giảm giá riêng cho KOL"
-                        onClick={() => setShowCouponModal(true)}
+                        id="btn-composer-campaign-invite"
+                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 active:scale-[0.96]"
+                        title="Mời đối tác vào Chiến dịch Kích cầu Sự kiện"
+                        onClick={openVipInvite}
                       >
-                        <Ticket className="w-5 h-5" />
+                        <Megaphone className="w-5 h-5 stroke-[1.75]" />
                       </button>
                     </>
                   ) : isCustomerChat ? (
@@ -2981,10 +2999,10 @@ export default function ChatBoxPage({
                     type="button"
                     id="btn-composer-propose-coupon"
                     className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
-                    title="Đề xuất mã giảm giá riêng với Shop"
+                    title="Đề xuất mã ưu đãi định danh KOC với Shop"
                     onClick={() => setShowProposeCouponModal(true)}
                   >
-                    <Ticket className="w-5 h-5" />
+                    <Tag className="w-5 h-5" />
                   </button>
                 ) : null}
                 <textarea
@@ -3059,7 +3077,7 @@ export default function ChatBoxPage({
           storeId={activeConv.storeId || activeConv.store?.id}
           productId={pinnedProduct?.id}
           onClose={() => setShowExclusiveOffer(false)}
-          onSuccess={async conversationId => {
+          onSuccess={async (conversationId: any) => {
             setShowExclusiveOffer(false);
             showSuccessToast('Đã gửi đề nghị VIP, chờ KOC xác nhận.');
             // Recover the committed card even if Socket.IO is temporarily offline.
@@ -3086,7 +3104,24 @@ export default function ChatBoxPage({
               });
               setTimeout(() => scrollToBottom(true), 100);
             }
-            showSuccessToast('Đã gửi lời mời chiến dịch tới đối tác.');
+            showSuccessToast('Đã gửi Thẻ Mời chiến dịch kích cầu tới đối tác thành công!');
+          }}
+        />
+      )}
+
+      {showExclusiveDealModal && activeConv && (
+        <CreateExclusiveDealModal
+          collaboratorId={activeConv.collaboratorId || targetCollaboratorId || ''}
+          collaboratorName={activeConv.collaborator?.fullName || targetCollaboratorName || 'Đối tác'}
+          storeId={activeConv.storeId || activeConv.store?.id || currentUser?.stores?.[0]?.id || ''}
+          onClose={() => setShowExclusiveDealModal(false)}
+          onSuccess={() => {
+            setShowExclusiveDealModal(false);
+            showSuccessToast('Đã gửi đề xuất Thỏa thuận Độc quyền tới đối tác thành công!');
+            if (activeConvId) {
+              void openConversation(activeConv);
+            }
+
           }}
         />
       )}
