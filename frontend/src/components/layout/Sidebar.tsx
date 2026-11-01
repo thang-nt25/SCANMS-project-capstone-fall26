@@ -270,7 +270,6 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     if (path === '/customer/profile') {
       return (
         currentPath.startsWith('/customer/profile') ||
-        currentPath.startsWith('/customer/identity') ||
         currentPath.startsWith('/customer/addresses') ||
         currentPath.startsWith('/customer/security')
       );

@@ -50,7 +50,6 @@ import { Sidebar } from '../../components/layout/Sidebar';
 import { PartnerUpgradeTab } from './PartnerUpgradeTab';
 import { CustomerWishlistTab } from './CustomerWishlistTab';
 import { CustomerAddressCard } from './CustomerAddressCard';
-import { CustomerIdentityForm } from './CustomerIdentityForm';
 import { CustomerSecurityMethod } from './CustomerSecurityMethod';
 import { CustomerOrderSummary } from './CustomerOrderSummary';
 import { CustomerOrderTotals } from './CustomerOrderTotals';
@@ -80,9 +79,9 @@ import {
   type AddressLocationResult,
 } from '../../components/customer/AddressLocationPicker';
 
-type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'identity' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
+type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
 type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
-export type ProfileSubTab = 'info' | 'addresses' | 'identity' | 'security';
+export type ProfileSubTab = 'info' | 'addresses' | 'security';
 
 const normalizeAdministrativeName = (value: string) => value
   .normalize('NFD')
@@ -115,7 +114,6 @@ export default function CustomerPortalPage() {
   const isProfilePath =
     location.pathname.includes('/customer/profile') ||
     location.pathname.includes('/customer/addresses') ||
-    location.pathname.includes('/customer/identity') ||
     location.pathname.includes('/customer/security');
 
   const pathTab = location.pathname.includes('/customer/wallet')
@@ -136,7 +134,7 @@ export default function CustomerPortalPage() {
 
   const rawQueryTab = searchParams.get('tab');
   const normalizedQueryTab: CustomerTab | null =
-    rawQueryTab === 'addresses' || rawQueryTab === 'identity' || rawQueryTab === 'security'
+    rawQueryTab === 'addresses' || rawQueryTab === 'security'
       ? 'profile'
       : (rawQueryTab as CustomerTab | null);
 
@@ -146,8 +144,6 @@ export default function CustomerPortalPage() {
   const activeProfileSubTab: ProfileSubTab =
     location.pathname.includes('/customer/addresses') || querySubTab === 'addresses' || rawQueryTab === 'addresses'
       ? 'addresses'
-      : location.pathname.includes('/customer/identity') || querySubTab === 'identity' || rawQueryTab === 'identity'
-      ? 'identity'
       : location.pathname.includes('/customer/security') || querySubTab === 'security' || rawQueryTab === 'security'
       ? 'security'
       : 'info';
@@ -264,15 +260,7 @@ export default function CustomerPortalPage() {
   const [verifyingSecurityOtp, setVerifyingSecurityOtp] = useState(false);
   const [settingNewPassword, setSettingNewPassword] = useState(false);
 
-  // Identity CCCD State (SCANMS Standard)
-  const [cccdFullName, setCccdFullName] = useState('');
-  const [cccdIdNumber, setCccdIdNumber] = useState('');
-  const [cccdAddress, setCccdAddress] = useState('');
-  const [cccdVerified, setCccdVerified] = useState(false);
-  const [, setCccdVerifiedAt] = useState<string | null>(null);
-  const [loadingIdentity, setLoadingIdentity] = useState(false);
-  const [submittingIdentity, setSubmittingIdentity] = useState(false);
-
+  
   useEffect(() => {
     let timer: any;
     if (otpCountdown > 0) {
@@ -364,7 +352,6 @@ export default function CustomerPortalPage() {
     if (currentTab === 'profile') {
       fetchProfile();
       fetchAddresses();
-      fetchIdentity();
     }
   }, [currentTab, orderStatusFilter]);
 
@@ -413,8 +400,7 @@ export default function CustomerPortalPage() {
   useEffect(() => {
     if (currentTab === 'profile') {
       if (activeProfileSubTab === 'addresses') fetchAddresses();
-      if (activeProfileSubTab === 'identity') fetchIdentity();
-    }
+      }
   }, [currentTab, activeProfileSubTab]);
 
   // Handle Notifications load & tab changes
@@ -622,7 +608,7 @@ export default function CustomerPortalPage() {
       } else if (type.startsWith('WALLET_') || type.startsWith('COMMISSION_') || type.startsWith('PAYOUT_')) {
         navigate('/customer/orders');
       } else if (type.startsWith('KYC_') || type.startsWith('IDENTITY_')) {
-        navigate('/customer/identity');
+        navigate('/customer/upgrade');
       } else if (type.startsWith('LIVE_') || type.includes('LIVE')) {
         const sId = (notif.data as any)?.sessionId;
         if (sId) {
@@ -674,59 +660,7 @@ export default function CustomerPortalPage() {
     }
   };
 
-  const fetchIdentity = async () => {
-    setLoadingIdentity(true);
-    try {
-      const data = await customerService.getIdentity();
-      if (data) {
-        setCccdFullName(data.fullName || currentUser?.fullName || '');
-        setCccdIdNumber(data.idCardNumber || '');
-        setCccdAddress(data.address || '');
-        setCccdVerified(Boolean(data.isVerified));
-        setCccdVerifiedAt(data.verifiedAt || null);
-      }
-    } catch (err: any) {
-      console.error('Fetch identity error:', err);
-    } finally {
-      setLoadingIdentity(false);
-    }
-  };
-
-  const handleSubmitIdentity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cccdFullName.trim()) {
-      toast.error('Vui lòng nhập họ và tên đầy đủ trên CCCD');
-      return;
-    }
-    const cleanId = cccdIdNumber.trim().replace(/\s+/g, '');
-    if (!/^\d{9,12}$/.test(cleanId)) {
-      toast.error('Số CCCD phải gồm 9 hoặc 12 chữ số hợp lệ');
-      return;
-    }
-    if (!cccdAddress.trim() || cccdAddress.trim().length < 5) {
-      toast.error('Vui lòng nhập địa chỉ nơi thường trú đầy đủ trên CCCD');
-      return;
-    }
-
-    setSubmittingIdentity(true);
-    try {
-      const res = await customerService.verifyIdentity({
-        fullName: cccdFullName.trim(),
-        idCardNumber: cleanId,
-        address: cccdAddress.trim(),
-      });
-      toast.success(res.message || 'Xác nhận thông tin CCCD thành công');
-      setCccdVerified(true);
-      setCccdVerifiedAt(new Date().toISOString());
-      fetchProfile();
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Không thể lưu thông tin CCCD';
-      toast.error(msg);
-    } finally {
-      setSubmittingIdentity(false);
-    }
-  };
-
+  
   const fetchOrders = async (searchOverride?: string, silent = false) => {
     const search = (searchOverride ?? orderSearch).trim();
     const sequence = ++ordersRequestSequence.current;
@@ -1512,7 +1446,7 @@ export default function CustomerPortalPage() {
             {currentTab === 'profile' && (
               <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
-                <nav className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
+                <nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
@@ -1546,26 +1480,6 @@ export default function CustomerPortalPage() {
                         {addresses.length}
                       </span>
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectProfileSubTab('identity')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
-                      activeProfileSubTab === 'identity'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
-                        : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
-                    }`}
-                  >
-                    <ShieldCheck size={15} className={activeProfileSubTab === 'identity' ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
-                    <span>Xác minh CCCD</span>
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                      cccdVerified
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-[#FBF5EB] text-[#8A642C] border border-[#EEDFC6]'
-                    }`}>
-                      {cccdVerified ? 'Đã xác thực' : 'Chưa xác thực'}
-                    </span>
                   </button>
 
                   <button
@@ -1728,41 +1642,7 @@ export default function CustomerPortalPage() {
                   </div>
                 )}
 
-                {/* SubTab 3: Định danh CCCD */}
-                {activeProfileSubTab === 'identity' && (
-                  <div className="flex flex-col gap-[14px] min-w-0">
-                    {cccdVerified && (
-                      <div className="flex items-center">
-                        <span className="inline-flex items-center gap-[4px] px-[6px] py-[2px] border border-[#EEDFC6] rounded-[5px] bg-[#FBF5EB] text-[#7D715E] text-[11px] leading-[1.5] whitespace-nowrap">
-                          <CheckCircle2 size={12} className="text-[#059669] shrink-0" aria-hidden="true" />
-                          Đã xác thực
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="customer-identity-card">
-                      {loadingIdentity ? (
-                        <div className="flex flex-col items-center justify-center gap-[10px] min-h-[140px] text-[#7D715E] text-[12px]" aria-live="polite">
-                          <Loader2 className="animate-spin text-[#B88E4F]" size={24} aria-hidden="true" />
-                          <span>Đang tải thông tin cá nhân…</span>
-                        </div>
-                      ) : (
-                        <CustomerIdentityForm
-                          fullName={cccdFullName}
-                          idNumber={cccdIdNumber}
-                          address={cccdAddress}
-                          submitting={submittingIdentity}
-                          onNameChange={setCccdFullName}
-                          onIdNumberChange={setCccdIdNumber}
-                          onAddressChange={setCccdAddress}
-                          onSubmit={handleSubmitIdentity}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* SubTab 4: Bảo mật & Mật khẩu */}
+                {/* SubTab 3: Bảo mật & Mật khẩu */}
                 {activeProfileSubTab === 'security' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
                     {securityMode === 'VERIFY_METHOD' && (
