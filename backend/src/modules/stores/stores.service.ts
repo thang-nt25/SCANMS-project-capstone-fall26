@@ -670,9 +670,9 @@ export class StoresService {
     return result;
   }
 
-  async getAllStoresAdmin() {
+  async getAllStoresAdmin(includeDeleted = false) {
     return this.prisma.store.findMany({
-      where: { isDeleted: false },
+      where: includeDeleted ? {} : { isDeleted: false },
       select: {
         id: true,
         name: true,
@@ -684,6 +684,8 @@ export class StoresService {
         ownerId: true,
         isVerified: true,
         isActive: true,
+        isDeleted: true,
+        deletedAt: true,
         defaultCommissionRate: true,
         createdAt: true,
         owner: {
@@ -743,7 +745,14 @@ export class StoresService {
       contactName: dto.contactName?.trim() || 'Bộ phận kho vận',
       contactPhone: dto.contactPhone?.trim() || '0901234567',
       address: dto.warehouseAddress?.trim() || 'TP. Hồ Chí Minh',
-      ghnDistrictId: dto.ghnDistrictId || 1442,
+      provinceCode: (dto as any).provinceCode ? String((dto as any).provinceCode) : '',
+      provinceName: (dto as any).provinceName?.trim() || '',
+      districtCode: (dto as any).districtCode ? String((dto as any).districtCode) : '',
+      districtName: (dto as any).districtName?.trim() || '',
+      wardCode: (dto as any).wardCode ? String((dto as any).wardCode) : '',
+      wardName: (dto as any).wardName?.trim() || '',
+      detailAddress: (dto as any).detailAddress?.trim() || '',
+      ghnDistrictId: dto.ghnDistrictId ? Number(dto.ghnDistrictId) : 1442,
       ghnWardCode: dto.ghnWardCode?.trim() || '20109',
     };
 
@@ -812,7 +821,7 @@ export class StoresService {
 
   async updateStoreByAdmin(storeId: string, dto: any) {
     const store = await this.prisma.store.findUnique({
-      where: { id: storeId, isDeleted: false },
+      where: { id: storeId },
     });
     if (!store) {
       throw new NotFoundException('Không tìm thấy cửa hàng');
@@ -824,6 +833,13 @@ export class StoresService {
       contactName: dto.contactName?.trim() || currentWarehouse.contactName || 'Bộ phận kho vận',
       contactPhone: dto.contactPhone?.trim() || currentWarehouse.contactPhone || '0901234567',
       address: dto.warehouseAddress?.trim() || currentWarehouse.address || 'TP. Hồ Chí Minh',
+      provinceCode: dto.provinceCode !== undefined ? String(dto.provinceCode) : (currentWarehouse.provinceCode || ''),
+      provinceName: dto.provinceName?.trim() || currentWarehouse.provinceName || '',
+      districtCode: dto.districtCode !== undefined ? String(dto.districtCode) : (currentWarehouse.districtCode || ''),
+      districtName: dto.districtName?.trim() || currentWarehouse.districtName || '',
+      wardCode: dto.wardCode !== undefined ? String(dto.wardCode) : (currentWarehouse.wardCode || ''),
+      wardName: dto.wardName?.trim() || currentWarehouse.wardName || '',
+      detailAddress: dto.detailAddress?.trim() || currentWarehouse.detailAddress || '',
       ghnDistrictId: dto.ghnDistrictId !== undefined ? Number(dto.ghnDistrictId) : (currentWarehouse.ghnDistrictId || 1442),
       ghnWardCode: dto.ghnWardCode ? String(dto.ghnWardCode).trim() : (currentWarehouse.ghnWardCode || '20109'),
     };
@@ -866,5 +882,25 @@ export class StoresService {
       data: { isDeleted: true, deletedAt: new Date(), isActive: false },
     });
     return { success: true, message: 'Đã lưu trữ cửa hàng thành công' };
+  }
+  async restoreStoreByAdmin(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const restored = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isDeleted: false, deletedAt: null, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        isDeleted: true,
+        deletedAt: true,
+      },
+    });
+    return restored;
   }
 }

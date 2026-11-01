@@ -7,6 +7,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
@@ -112,8 +113,8 @@ export class StoresController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy toàn bộ cửa hàng trực thuộc để quản trị và phân quyền' })
-  async getAllStoresAdmin() {
-    return this.storesService.getAllStoresAdmin();
+  async getAllStoresAdmin(@Query('includeDeleted') includeDeleted?: string) {
+    return this.storesService.getAllStoresAdmin(includeDeleted === 'true');
   }
 
   @Get('marketplace')
@@ -170,5 +171,15 @@ export class StoresController {
     @Param('id', ParseUUIDPipe) storeId: string,
   ) {
     return this.storesService.deleteStoreByAdmin(storeId);
+  }
+  @Patch('admin/:id/restore')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin khôi phục gian hàng đã lưu trữ / xóa mềm' })
+  async restoreStoreByAdmin(
+    @Param('id', ParseUUIDPipe) storeId: string,
+  ) {
+    return this.storesService.restoreStoreByAdmin(storeId);
   }
 }
