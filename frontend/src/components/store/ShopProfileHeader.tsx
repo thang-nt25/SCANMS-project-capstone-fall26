@@ -20,22 +20,27 @@ function ShopFact({
   label,
   children,
   hint,
+  truncate = false,
 }: {
   icon: LucideIcon;
   label: string;
   children: ReactNode;
   hint?: string;
+  truncate?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 text-sm" title={hint}>
+    <div
+      className="flex min-w-0 items-start gap-2.5 text-sm leading-6"
+      title={hint}
+    >
       <Icon
         size={18}
         aria-hidden="true"
         className="mt-0.5 shrink-0 text-[#B88E4F]"
       />
-      <div className="min-w-0">
-        <dt className="text-xs text-[#7D715E]">{label}</dt>
-        <dd className="mt-1 break-words font-medium leading-5 text-[#1A1612]">
+      <div className={truncate ? 'min-w-0 sm:truncate' : 'min-w-0'}>
+        <dt className="inline text-[#1A1612]">{label}: </dt>
+        <dd className="m-0 inline break-words font-medium text-[#B88E4F]">
           {children}
         </dd>
       </div>
@@ -74,8 +79,8 @@ export function ShopProfileHeader({
       aria-label="Thông tin gian hàng"
       className="rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-6"
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,0.95fr)_minmax(0,1.65fr)] lg:items-center">
-        <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.7fr)] lg:items-center lg:gap-8">
+        <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
           <div className="flex items-center gap-4">
             <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#B88E4F]">
               {shop.logoUrl && !logoFailed ? (
@@ -103,13 +108,13 @@ export function ShopProfileHeader({
               <StoreActivityStatus storeId={shop.id} className="mt-1.5" />
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onFollow}
               disabled={savingFollow}
               aria-pressed={following}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[#C59B58] bg-white px-2 py-2 text-xs font-semibold text-[#B88E4F] transition hover:bg-[#F3EFE6] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#C59B58] bg-white px-2 py-1.5 text-xs font-semibold text-[#B88E4F] transition hover:bg-[#F3EFE6] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
             >
               <Heart
                 size={16}
@@ -125,14 +130,14 @@ export function ShopProfileHeader({
             <button
               type="button"
               onClick={onChat}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-2 py-2 text-xs font-semibold text-[#231D15] transition hover:bg-[#B88E4F] sm:gap-2 sm:px-3 sm:text-sm"
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#C59B58] bg-white px-2 py-1.5 text-xs font-semibold text-[#B88E4F] transition hover:bg-[#F3EFE6] sm:gap-2 sm:px-3 sm:text-sm"
             >
               <MessageSquare size={16} aria-hidden="true" />
               Chat ngay
             </button>
           </div>
         </div>
-        <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-6">
+        <dl className="grid min-w-0 grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-6 lg:gap-x-8">
           <ShopFact icon={Package} label="Sản phẩm">
             {Number(shop.productCount).toLocaleString('vi-VN')}
           </ShopFact>
@@ -170,10 +175,6 @@ export function ShopProfileHeader({
                 <span className="text-[#B88E4F]">
                   {performance.responseRate.toLocaleString('vi-VN')}%
                 </span>
-                <span className="block text-xs font-normal text-[#7D715E]">
-                  Trong {performance.responseWindowHours} giờ ·{' '}
-                  {performance.periodDays} ngày gần nhất
-                </span>
               </>
             )}
           </ShopFact>
@@ -188,10 +189,16 @@ export function ShopProfileHeader({
             icon={MapPin}
             label="Khu vực"
             hint={shop.location || undefined}
+            truncate
           >
             {shop.location || 'Chưa cập nhật'}
           </ShopFact>
-          <ShopFact icon={Building2} label="Tên doanh nghiệp">
+          <ShopFact
+            icon={Building2}
+            label="Tên doanh nghiệp"
+            hint={shop.companyName || undefined}
+            truncate
+          >
             {shop.companyName || 'Chưa cập nhật'}
           </ShopFact>
         </dl>
