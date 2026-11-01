@@ -166,11 +166,6 @@ export default function StoreReferralLinksPage() {
   return (
     <div className="promotions-links mx-auto flex w-full min-w-0 max-w-[1520px] flex-col gap-4 pb-8 pt-3 font-sans text-[#1A1612] sm:pt-4">
       {/* Header Giám sát */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-        <div>
-          <h2 className="text-base font-bold text-[#1A1612] m-0">Hiệu suất link tiếp thị đối tác</h2>
-        </div>
-      </div>
 
       {/* Search & Filter Bar */}
       <div className="referral-filters rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-[0_3px_12px_rgba(35,29,21,0.035)] sm:p-4">
@@ -245,7 +240,7 @@ export default function StoreReferralLinksPage() {
 
       {/* Main Table Card */}
       <div className="referral-table-panel min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
-        <div className="referral-table-heading"><div><h2>Liên kết tiếp thị</h2><p>Theo dõi liên kết, kênh quảng bá và hiệu quả giới thiệu sản phẩm.</p></div><span>{loading ? 'Đang tải…' : `${links.length} liên kết`}</span></div>
+        <div className="referral-table-heading"><div><h2>Liên kết tiếp thị</h2></div><span>{loading ? 'Đang tải…' : `${links.length} liên kết`}</span></div>
         {loading ? (
           <div className="p-16 text-center text-[#7D715E] flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F]" />

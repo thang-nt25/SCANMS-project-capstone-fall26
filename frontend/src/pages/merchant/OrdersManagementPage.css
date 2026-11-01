@@ -87,3 +87,72 @@
 .merchant-orders-view-tabs, .merchant-orders-toolbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
 .merchant-orders-toolbar :is(button, a) { width: 100%; min-width: 0; min-height: 40px; padding: 9px 12px; border-radius: 10px; font-size: 12px; line-height: 20px; white-space: normal; text-align: center; }
 .merchant-orders-toolbar :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+.merchant-orders-page .merchant-orders-toolbar { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+.merchant-orders-page .merchant-orders-toolbar:has(.merchant-orders-toolbar-actions) > .merchant-orders-view-tabs,
+.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-toolbar-actions { display: contents; }
+.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-view-tabs { grid-column: 1 / -1; }
+.merchant-orders-page .merchant-orders-toolbar :is(button,a) { min-height: 46px; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; }
+@media(max-width:760px) {
+  .merchant-orders-page .merchant-orders-toolbar { display: flex; overflow-x: auto; }
+  .merchant-orders-page .merchant-orders-toolbar :is(button,a) { flex: 1 0 150px; }
+}
+
+/* Keep the list readable without squeezing names or fulfillment actions. */
+.merchant-orders-page .merchant-orders-table-heading { min-height: 56px; padding: 12px 18px; }
+.merchant-orders-page .merchant-orders-data { min-width: 1180px; }
+.merchant-orders-page .merchant-orders-data th { padding: 12px 14px; font-size: 12px; line-height: 18px; text-align: left; background: #FFFDFA; }
+.merchant-orders-page .merchant-orders-data td { padding: 14px; vertical-align: middle; line-height: 1.6; font-size: 12px; }
+.merchant-orders-page .merchant-orders-data :is(th:first-child,td:first-child) { text-align: center; }
+.merchant-orders-page .merchant-orders-data :is(th:nth-child(5),td:nth-child(5)) { text-align: right; }
+.merchant-orders-page .merchant-orders-data :is(th:nth-child(6),td:nth-child(6)) { text-align: center; }
+.merchant-orders-page .merchant-orders-data th:nth-child(7) { text-align: right; }
+.merchant-orders-page .merchant-order-code { max-width: 100%; padding: 0; border: 0; background: transparent; box-shadow: none; font-family: inherit; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; white-space: normal; }
+.merchant-orders-page .merchant-orders-data td[data-label="Mã đơn & Ngày tạo"] > div { gap: 5px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Mã đơn & Ngày tạo"] > div > span:last-child:not(:first-child) { font-weight: 500; }
+.merchant-orders-page .merchant-orders-data td[data-label="Khách hàng"] { text-align: left; }
+.merchant-orders-page .merchant-orders-data td[data-label="Khách hàng"] strong { font-size: 12px; font-weight: 600; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] > div { max-width: none; gap: 6px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] .relative { width: 44px; height: 44px; border-radius: 8px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] button { padding-left: 54px; font-size: 12px; line-height: 18px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] strong { font-size: 14px; letter-spacing: -.2px; white-space: nowrap; }
+.merchant-orders-page .merchant-orders-data .merchant-order-status { display: inline-flex; align-items: center; white-space: nowrap; padding: 5px 9px; border-radius: 7px; font-size: 11px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] > div { display: flex; justify-content: flex-end; align-items: center; flex-wrap: nowrap; gap: 6px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button { min-height: 34px; flex-shrink: 0; white-space: nowrap; line-height: 18px; border-radius: 8px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button svg { flex-shrink: 0; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button[title="Nhập mã vận đơn & giao hàng"] { --action-bg: #FBF5EB; --action-border: #EEDFC6; --action-ink: #79592C; background: #FBF5EB; background-image: none; border: 1px solid #EEDFC6; color: #79592C; padding: 7px 10px; }
+@media(max-width:639px) {
+  .merchant-orders-page .merchant-orders-data { min-width: 0; }
+  .merchant-orders-page .merchant-orders-data td { padding: 0; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] { padding-top: 12px; }
+}
+.merchant-orders-page .merchant-orders-data { min-width: 850px; }
+.merchant-orders-page .merchant-orders-data th:nth-child(3) { text-align: right; }
+.merchant-orders-page .merchant-orders-data th:nth-child(4) { text-align: center; }
+.merchant-orders-page .merchant-orders-data th:nth-child(5) { text-align: right; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] { text-align: left; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] { text-align: right; }
+.merchant-orders-page .merchant-orders-data td[data-label="Trạng thái"] { text-align: center; }
+@media(max-width:639px) { .merchant-orders-page .merchant-orders-data { min-width: 0; } }
+
+@media(min-width:640px) {
+  .merchant-orders-page .merchant-orders-data th { height: 46px; padding: 12px 20px; }
+  .merchant-orders-page .merchant-orders-data td { height: 88px; padding: 15px 20px; }
+  .merchant-orders-page .merchant-orders-data :is(th:first-child,td:first-child) { padding-inline: 10px; }
+  .merchant-orders-page .merchant-orders-data :is(th:last-child,td:last-child) { text-align: center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Trạng thái"] > div { align-items: center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] > div { justify-content: center; gap: 8px; }
+}
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] .relative { width: 48px; height: 48px; border: 1px solid #EAE4D7; border-radius: 9px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] button { padding-left: 60px; font-size: 13px; line-height: 20px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] > div { gap: 5px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] > div { gap: 6px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] strong { font-size: 14px; font-weight: 650; }
+.merchant-orders-page .merchant-orders-data .merchant-order-status { min-width: 106px; justify-content: center; min-height: 32px; padding: 5px 10px; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button { height: 34px; min-width: 34px; box-shadow: none; }
+.merchant-orders-page .merchant-orders-data tbody tr:nth-child(even) { background: #FFFEFC; }
+.merchant-orders-page .merchant-orders-data tbody tr:hover { background: #FBF5EB; }
+@media(min-width:640px) {
+  .merchant-orders-page .merchant-orders-data th:nth-child(3),
+  .merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] { text-align: center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] > div { align-items: center; }
+}

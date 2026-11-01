@@ -1089,7 +1089,7 @@ export default function CustomerPortalPage() {
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+    <div className="customer-portal-layout min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
       <MarketplaceHeader
         showShortcuts={false}
         onOpenTracking={() => navigate('/tracking')}
@@ -1097,7 +1097,7 @@ export default function CustomerPortalPage() {
       />
 
       <main
-        className="w-full max-w-[1248px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
+        className="w-full max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
       >
         <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0">
           {/* ========================================================= */}
@@ -1278,7 +1278,7 @@ export default function CustomerPortalPage() {
                         ? order.returnRequest?.status === 'SHOP_REJECTED' ? 'Shop từ chối yêu cầu đổi trả'
                           : order.returnRequest ? returnStatusLabel(order.returnRequest.status) : 'Đang xử lý trả hàng'
                         : isCancelled ? 'Đã hủy đơn' : isCompleted ? 'Hoàn thành' : isDelivered ? 'Đã giao hàng'
-                        : isShipping ? 'Đang vận chuyển' : awaitingPayment ? 'Chờ thanh toán' : isPending ? 'Chờ Shop xác nhận' : 'Đang xử lý';
+                        : isShipping ? 'Đang vận chuyển' : awaitingPayment ? 'Chờ thanh toán' : isPending ? (order.rawPayload?.shopConfirmedAt ? 'Shop đã xác nhận · Chuẩn bị hàng' : 'Chờ Shop xác nhận') : 'Đang xử lý';
                       const StatusIcon = hasReturnRequest ? RotateCcw : isCancelled ? XCircle : isCompleted || isDelivered ? CheckCircle2 : isShipping ? Truck : Clock;
 
                       return (

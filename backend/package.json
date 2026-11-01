@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:local": "node scripts/run-local-server.cjs",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "seed": "prisma db seed",
     "seed:plan": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts --plan",

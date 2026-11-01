@@ -45,6 +45,7 @@ import { WalletsService } from '../wallets/wallets.service';
 import { postFinance, postPayoutCompletion } from './finance-posting';
 import { assertPayoutFunding } from './payout-funding';
 import { assertPayoutBeneficiary } from './payout-beneficiary';
+import { evaluatePayoutRisk } from './payout-risk';
 
 @ApiTags('Admin Payouts')
 @ApiBearerAuth()
@@ -102,8 +103,12 @@ export class AdminPayoutsController {
               fullName: true,
               email: true,
               phoneNumber: true,
+              role: true,
+              isActive: true,
+              isDeleted: true,
+              wallet: { include: { storeWallets: true } },
               collaboratorProfile: {
-                select: { avatarUrl: true, taxCode: true, kycStatus: true },
+                select: { avatarUrl: true, taxCode: true, kycStatus: true, bankName: true, bankAccountNumber: true, bankAccountName: true },
               },
             },
           },
@@ -129,6 +134,11 @@ export class AdminPayoutsController {
       this.prisma.payoutRequest.count({ where }),
     ]);
 
+    const funding = await this.prisma.financialLedger.groupBy({
+      by: ['referenceId', 'walletId', 'storeId'],
+      where: { referenceType: 'PAYOUT_REQUEST', referenceId: { in: requests.map(request => request.id) }, transactionType: 'PAYOUT_WITHDRAW', balanceBucket: 'AVAILABLE' },
+      _sum: { amount: true },
+    });
     return {
       requests: requests.map((request) => ({
         ...this.payouts.serializePayout(request),
@@ -144,6 +154,10 @@ export class AdminPayoutsController {
           request.collaborator.collaboratorProfile?.kycStatus ?? 'UNVERIFIED',
         storeName: request.store?.name ?? 'Sàn SCANMS (Toàn hệ thống)',
         approvedByName: request.approvedBy?.fullName ?? null,
+        risk: evaluatePayoutRisk({
+          ...request,
+          fundedAmount: funding.filter(entry => entry.referenceId === request.id && entry.walletId === request.collaborator.wallet?.id && (!request.storeId || entry.storeId === request.storeId)).reduce((sum, entry) => sum.plus(entry._sum.amount ?? 0), new Prisma.Decimal(0)),
+        }),
       })),
       total,
       page,

@@ -32,6 +32,7 @@ type CostReport = {
   samplesMissingCost: string[];
 };
 export function FinanceOperations() {
+  const [section, setSection] = useState<'tax' | 'cost' | 'certificate'>('tax');
   const [month, setMonth] = useState(
     new Date()
       .toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" })
@@ -133,25 +134,33 @@ export function FinanceOperations() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
-    <section className="space-y-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612]">
-      <h2 className="text-lg font-semibold">
-        Đối soát thuế và chi phí thực tế
-      </h2>
+    <section className="finance-operations space-y-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612]">
+      <div className="finance-operation-tabs" role="tablist" aria-label="Nghiệp vụ đối soát">
+        {([{ id: 'tax', label: 'Báo cáo thuế' }, { id: 'cost', label: 'Chi phí thực tế' }, { id: 'certificate', label: 'Chứng từ thuế' }] as const).map((tab, index) => (
+          <button key={tab.id} type="button" role="tab" aria-selected={section === tab.id} onClick={() => setSection(tab.id)}>
+            <span className="finance-tab-number">{index + 1}</span>{tab.label}
+          </button>
+        ))}
+      </div>
       {message && (
         <p role="status" className="text-sm text-[#7D715E]">
           {message}
         </p>
       )}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3" hidden={section === 'cost'}>
         <label className="grid gap-1 text-sm">
           Kỳ chi trả
-          <input
-            aria-label="Kỳ chi trả"
-            className={input}
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-          />
+          <span className="finance-vietnamese-period">
+            <select aria-label="Tháng chi trả" className={input} value={month.slice(5, 7)} onChange={(e) => setMonth(`${month.slice(0, 4)}-${e.target.value}`)}>
+              {Array.from({ length: 12 }, (_, index) => {
+                const value = String(index + 1).padStart(2, '0');
+                return <option key={value} value={value}>Tháng {index + 1}</option>;
+              })}
+            </select>
+            <select aria-label="Năm chi trả" className={input} value={month.slice(0, 4)} onChange={(e) => setMonth(`${e.target.value}-${month.slice(5, 7)}`)}>
+              {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </span>
         </label>
         <button
           className={button}
@@ -192,7 +201,7 @@ export function FinanceOperations() {
           Đối chiếu sổ cái
         </button>
       </div>
-      {ledger && (
+      {section === 'tax' && ledger && (
         <div className="overflow-x-auto text-sm">
           <p className="mb-2 font-semibold">
             {ledger.balanced
@@ -242,26 +251,32 @@ export function FinanceOperations() {
           </table>
         </div>
       )}
-      {report && (
-        <div className="space-y-2 text-sm">
-          <p>
-            Trước thuế: {Number(report.gross).toLocaleString("vi-VN")} ₫ · Khấu
-            trừ: {Number(report.tax).toLocaleString("vi-VN")} ₫ · Thực nhận:{" "}
-            {Number(report.net).toLocaleString("vi-VN")} ₫
-          </p>
+      {section === 'tax' && report && (
+        <div className="finance-tax-result text-sm">
+          <dl className="finance-tax-totals">
+            {[
+              { label: 'Trước thuế', value: report.gross },
+              { label: 'Khấu trừ', value: report.tax },
+              { label: 'Thực nhận', value: report.net },
+            ].map((item, index) => <div key={item.label}>
+              <dt><span aria-hidden="true">{index + 1}</span>{item.label}</dt>
+              <dd>{Number(item.value).toLocaleString('vi-VN')} ₫</dd>
+            </div>)}
+          </dl>
           {report.missingTaxCodes.length > 0 && (
             <p className="text-[#DC2626]">
               Có {report.missingTaxCodes.length} khoản chi thiếu mã số thuế. Kế
               toán cần bổ sung hồ sơ.
             </p>
           )}
-          <p>
+          <p className="finance-tax-caption">
             {report.items.length} khoản chi đã xác nhận trong kỳ. Báo cáo này hỗ
             trợ đối soát nội bộ.
           </p>
         </div>
       )}
       <form
+        hidden={section !== 'cost'}
         className="grid gap-3 border-t border-[#EAE4D7] pt-5 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -346,11 +361,12 @@ export function FinanceOperations() {
             placeholder="Số chứng từ hoặc tham chiếu hồ sơ"
           />
         </label>
-        <button className={button} disabled={busy || !subject}>
+        <button className={`${button} finance-save-cost`} disabled={busy || !subject}>
           Ghi nhận chi phí
         </button>
       </form>
       <form
+        hidden={section !== 'certificate'}
         className="grid gap-3 border-t border-[#EAE4D7] pt-5 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();

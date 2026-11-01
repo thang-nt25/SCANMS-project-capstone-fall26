@@ -95,6 +95,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
   const [selectedMonth, setSelectedMonth] = useState<string>(currentVnMonth);
   const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
+  const [storesError, setStoresError] = useState<string | null>(null);
   const [storeInvitations, setStoreInvitations] = useState<any[]>([]);
   const [invitationLoading, setInvitationLoading] = useState<string | null>(null);
 
@@ -126,6 +127,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
     let isMounted = true;
     async function loadStores() {
       setStoresLoading(true);
+      setStoresError(null);
       try {
         const res = await commissionRulesService.getCollaboratorStores(false);
         if (isMounted) {
@@ -141,6 +143,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
         if (isMounted) {
           setStores([]);
           setSelectedStoreId('');
+          setStoresError('Không thể tải danh sách gian hàng. Vui lòng thử lại.');
         }
       } finally {
         if (isMounted) {
@@ -550,16 +553,21 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
             <Loader2 className="animate-spin text-[#B88E4F]" size={18} aria-hidden="true" />
             Đang tải {activeTab === 'progress' ? 'tiến độ thưởng' : 'lịch sử nhận thưởng'}…
           </section>
+        ) : storesError ? (
+          <section className="p-6 border border-[#EAE4D7] rounded-2xl bg-white text-center" role="alert">
+            <p className="text-sm text-[#7D715E]">{storesError}</p>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm text-[#B88E4F]">Thử lại</button>
+          </section>
         ) : !storesLoading && stores.length === 0 ? (
           <div className="bonus-empty-state">
             <div className="grid place-items-center w-12 h-12 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] mx-auto mb-3">
               <Store size={22} />
             </div>
             <h3 className="text-base font-bold text-[#1A1612] mb-1.5">
-              Chưa có gian hàng thưởng doanh số
+              Chưa có gian hàng liên kết
             </h3>
             <p className="text-xs text-[#7D715E] max-w-lg mx-auto leading-relaxed">
-              Tham gia gian hàng có chính sách thưởng để theo dõi doanh số, mốc thưởng và khoản thưởng dự kiến tại đây.
+              Liên kết hợp tác với gian hàng để theo dõi doanh số, mốc thưởng và lịch sử nhận thưởng tại đây.
             </p>
           </div>
         ) : errorMessage && !data ? (

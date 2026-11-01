@@ -218,6 +218,7 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
   };
 
   const [dealView, setDealView] = useState<'current' | 'history'>('current');
+  const [contentPanel, setContentPanel] = useState<'links' | 'deals'>('links');
   const isHistoricalDeal = (deal: typeof dealProposals[number]) => deal.status === 'REJECTED' || Boolean(deal.closedAt) || (deal.status === 'APPROVED' && !deal.isCurrentDeal);
   const visibleDeals = dealProposals.filter(deal => dealView === 'history' ? isHistoricalDeal(deal) : !isHistoricalDeal(deal));
   const dealStats = useMemo(() => {
@@ -1097,7 +1098,7 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
     <div className={modalOnly ? 'contents' : 'space-y-4'}>
       {!modalOnly && <>
       {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5" aria-label="Thống kê liên kết tiếp thị">
+      <div className="referral-summary-cards grid grid-cols-1 sm:grid-cols-3 gap-2.5" aria-label="Thống kê liên kết tiếp thị">
         {[
           { label: 'Liên kết tiếp thị', value: totalLinks, icon: Layers, suffix: 'liên kết', badge: 'Tổng theo bộ lọc' },
           { label: 'Lượt nhấp (Clicks)', value: totalClicks, icon: MousePointerClick, suffix: 'lượt', badge: 'Lượt mở link' },
@@ -1105,32 +1106,37 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
         ].map(({ label, value, icon: Icon, suffix, badge }) => (
           <div
             key={label}
-            className="group relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs hover:border-[#C59B58]/60 hover:shadow-sm transition-all text-left"
+            className="referral-summary-card"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">{label}</span>
-              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Icon className="w-4 h-4 text-[#B88E4F]" />
-              </div>
+            <div className="referral-summary-heading">
+              <span><Icon size={14} aria-hidden="true" />{label}</span>
+              <small>{badge}</small>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black tracking-tight text-[#1A1612] tabular-nums">
+            <div className="referral-summary-value">
+              <strong>
                 {value.toLocaleString('vi-VN')}
-              </span>
+              </strong>
               {suffix && (
-                <span className="text-xs font-semibold text-[#7D715E]">{suffix}</span>
+                <span>{suffix}</span>
               )}
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-[#EAE4D7]/60 flex items-center justify-between text-[11px]">
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#FAF8F5] text-[#8D6936] font-medium border border-[#EAE4D7]">
-                {badge}
-              </span>
             </div>
           </div>
         ))}
       </div>
 
+      <div className="referral-content-tabs" role="group" aria-label="Nội dung tiếp thị và hợp tác">
+        {([
+          { id: 'links', label: 'Danh sách liên kết', icon: Link2 },
+          { id: 'deals', label: 'Deal độc quyền', icon: Sparkles },
+        ] as const).map((item, index) => (
+          <button key={item.id} type="button" aria-pressed={contentPanel === item.id} onClick={() => { setContentPanel(item.id); if (item.id === 'deals') setIsExclusiveDealsCollapsed(false); }}>
+            <span aria-hidden="true">{index + 1}</span>{item.label}
+          </button>
+        ))}
+      </div>
+
       <section
+        hidden={contentPanel !== 'deals'}
         className="kol-exclusive-deals w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:px-5 sm:py-4 shadow-xs"
         aria-labelledby="exclusive-deals-heading"
       >
@@ -1419,7 +1425,7 @@ export default function ReferralLinksPage({ modalOnly = false, onCreateClose }: 
         )}
       </section>
 
-      <section className="space-y-3" aria-label="Danh sách liên kết tiếp thị">
+      <section hidden={contentPanel !== 'links'} className="referral-link-content space-y-3" aria-label="Danh sách liên kết tiếp thị">
       <form onSubmit={handleSearchSubmit} className="kol-links-filter p-3 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
         <div className="relative w-full md:w-[430px] min-w-0 max-w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import './CommissionRulesPage.css';
 import {
   Plus,
   Edit2,
@@ -39,6 +40,9 @@ type KolMember = {
   } | null;
   validRevenue: string;
   validOrdersCount: number;
+  unassignedCompletedOrders?: string[];
+  unassignedRecordedValue?: string;
+  unassignedOrderDetails?: Array<{ code: string; purchasedAt: string; recordedValue: string }>;
   currentMilestone: any | null;
   nextMilestone: any | null;
   estimatedTotalBonus: string;
@@ -89,6 +93,7 @@ export const CommissionRulesPage: React.FC = () => {
 
   // Drill-down Single KOL Inspector State
   const [selectedKolId, setSelectedKolId] = useState<string>('');
+  const [detailPanel, setDetailPanel] = useState<'progress' | 'simulator' | 'history'>('progress');
   const [kolProgress, setKolProgress] = useState<any | null>(null);
   const [kolProgressLoading, setKolProgressLoading] = useState<boolean>(false);
   const [settleLoading, setSettleLoading] = useState<boolean>(false);
@@ -415,27 +420,18 @@ export const CommissionRulesPage: React.FC = () => {
   );
 
   return (
-    <div className="commission-workspace mx-auto w-full max-w-[1560px] space-y-5 pb-12 pt-2 text-[#1A1612]">
+    <div className="commission-workspace mx-auto w-full max-w-[1560px] pb-12 pt-2 text-[#1A1612]">
       {/* TOP HEADER */}
       <div className="commission-heading flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
-            <TrendingUp className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-[#1A1612] tracking-tight">
-              Thưởng doanh số & Đối soát KPI
-            </h2>
-          </div>
-        </div>
-
         <div className="flex items-center gap-2">
           {/* Month & Year Selectors */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
+          <div className="commission-period-picker">
             <Select
+              aria-label="Tháng đối soát"
+              portal
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-8 border-none bg-transparent text-xs font-bold focus:ring-0"
+              className="w-full"
             >
               {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
                 <option key={m} value={m}>
@@ -443,13 +439,13 @@ export const CommissionRulesPage: React.FC = () => {
                 </option>
               ))}
             </Select>
-            <input
-              type="number"
-              min="2020"
-              max="2030"
+            <Select
+              aria-label="Năm đối soát"
+              portal
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="h-8 w-16 border-none bg-transparent px-1 text-xs font-bold outline-none"
+              className="w-full"
+              options={Array.from({ length: Math.max(2030, Number(currentVnYear) + 5) - 2020 + 1 }, (_, i) => ({ value: String(2020 + i), label: String(2020 + i) }))}
             />
           </div>
 
@@ -478,70 +474,51 @@ export const CommissionRulesPage: React.FC = () => {
       </div>
 
       {/* BLOCK 1: COMMISSION RULES GRID */}
-      <section className="commission-tiers space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-[#B88E4F]" />
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#7D715E]">
-              Bậc thưởng tháng ({rules.length} bậc)
-            </h3>
-          </div>
-        </div>
+
+      <section className="commission-tiers" aria-label="Các bậc thưởng doanh số">
 
         {loading ? (
-          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center text-xs text-[#7D715E]">
+          <div className="commission-tiers-empty rounded-2xl border border-[#EAE4D7] bg-white p-6 text-center text-xs text-[#7D715E]">
             Đang tải chính sách thưởng…
           </div>
         ) : rules.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#EAE4D7] bg-white p-6 text-center">
+          <div className="commission-tiers-empty rounded-2xl border border-dashed border-[#EAE4D7] bg-white p-6 text-center">
             <Award className="mx-auto mb-2 h-6 w-6 text-[#C59B58]/60" />
             <p className="text-xs font-bold text-[#1A1612]">Chưa thiết lập bậc thưởng</p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="commission-rules-list">
             {rules.map((rule) => (
-              <div
+              <article
                 key={rule.id}
-                className={`flex flex-col justify-between rounded-2xl border p-4 transition shadow-2xs ${
-                  rule.isActive ? 'border-[#EAE4D7] bg-white hover:border-[#C59B58]/80' : 'border-[#EAE4D7] bg-[#FAF8F5] opacity-75'
-                }`}
+                className={`commission-rule${rule.isActive ? '' : ' commission-rule--inactive'}`}
               >
-                <div>
-                  <div className="flex items-center justify-between gap-2 border-b border-[#F0EAE0] pb-2">
-                    <span className="font-bold text-sm text-[#1A1612] truncate">{rule.name}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
-                        rule.isActive
-                          ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]'
-                          : 'border-[#EAE4D7] bg-[#F3EFE6] text-[#7D715E]'
-                      }`}
-                    >
-                      {rule.isActive ? 'Đang áp dụng' : 'Tạm dừng'}
-                    </span>
-                  </div>
+                <div className="commission-rule-heading">
+                  <h4 className="commission-rule-name" title={rule.name}>{rule.name}</h4>
+                  <span className="commission-rule-status">
+                    {rule.isActive ? 'Đang áp dụng' : 'Tạm dừng'}
+                  </span>
+                </div>
 
-                  <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-[#7D715E]">Doanh số từ</span>
-                      <p className="font-bold text-[#1A1612] mt-0.5">{formatVND(rule.minMonthlyRevenue)}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[#7D715E]">Thưởng cố định</span>
-                      <p className="font-bold text-[#B88E4F] mt-0.5">{formatVND(rule.achievementBonus)}</p>
-                    </div>
-                    <div className="col-span-2 rounded-lg bg-[#FAF8F5] p-2 border border-[#EAE4D7]/60">
-                      <span className="text-[10px] text-[#7D715E]">Cách tính thưởng tháng</span>
-                      <p className="font-extrabold text-[#B88E4F] text-xs mt-0.5">{Number(rule.achievementBonus) > 0 ? 'Thưởng cố định khi đạt mốc' : `${rule.bonusPercentage}% tổng doanh thu sạch`}</p>
-                    </div>
-                  </div>
+                <div className="commission-rule-metric">
+                  <span>Doanh số từ</span>
+                  <p>{formatVND(rule.minMonthlyRevenue)}</p>
+                </div>
+                <div className="commission-rule-metric commission-rule-reward">
+                  <span>{Number(rule.achievementBonus) > 0 ? 'Thưởng cố định' : 'Tỷ lệ thưởng'}</span>
+                  <p>{Number(rule.achievementBonus) > 0 ? formatVND(rule.achievementBonus) : `${rule.bonusPercentage}%`}</p>
+                </div>
+                <div className="commission-rule-metric commission-rule-method">
+                  <span>Cách tính thưởng tháng</span>
+                  <p>{Number(rule.achievementBonus) > 0 ? 'Thưởng cố định khi đạt mốc' : `${rule.bonusPercentage}% tổng doanh thu sạch`}</p>
                 </div>
 
                 {!isReadOnlyAdmin && (
-                  <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-[#F0EAE0] pt-2">
+                  <div className="commission-rule-actions">
                     <button
                       type="button"
                       onClick={() => handleToggleRuleStatus(rule)}
-                      className="rounded-lg p-1 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]"
+                      aria-label={rule.isActive ? 'Tạm dừng' : 'Kích hoạt'}
                       title={rule.isActive ? 'Tạm dừng' : 'Kích hoạt'}
                     >
                       {rule.isActive ? <ToggleRight className="h-4 w-4 text-[#B88E4F]" /> : <ToggleLeft className="h-4 w-4" />}
@@ -561,7 +538,7 @@ export const CommissionRulesPage: React.FC = () => {
                         });
                         setIsModalOpen(true);
                       }}
-                      className="rounded-lg p-1 text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612]"
+                      aria-label="Sửa bậc thưởng"
                       title="Sửa"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
@@ -569,21 +546,22 @@ export const CommissionRulesPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDeletingRule(rule)}
-                      className="rounded-lg p-1 text-[#7D715E] hover:bg-rose-50 hover:text-rose-600"
+                      className="commission-rule-delete"
+                      aria-label="Xóa bậc thưởng"
                       title="Xóa"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
           </div>
         )}
       </section>
 
       {/* BLOCK 2: KOL TEAM PERFORMANCE & SETTLEMENT TABLE */}
-      <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+      <section className="commission-team rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#F0EAE0] pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
@@ -619,14 +597,6 @@ export const CommissionRulesPage: React.FC = () => {
                   : `Chốt đối soát toàn bộ (${teamProgress?.summary?.eligibleCount || 0})`}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => loadTeamProgress(storeId, settleYearMonth)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#EAE4D7] text-[#7D715E] hover:bg-[#FAF8F5]"
-              title="Làm mới"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
 
@@ -643,11 +613,12 @@ export const CommissionRulesPage: React.FC = () => {
 
           <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
             <span className="text-[10px] text-[#7D715E] flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-[#B88E4F]" /> Doanh số hợp lệ
+              <TrendingUp className="h-3 w-3 text-[#B88E4F]" /> Doanh số đã xác định kỳ
             </span>
             <p className="mt-1 font-black text-sm text-[#1A1612]">
               {formatVND(teamProgress?.summary?.totalRevenue || 0)}
             </p>
+            {!!teamProgress?.summary?.unassignedCompletedOrdersCount && <span className="text-[10px] text-[#8C6226]">Chưa gồm {teamProgress.summary.unassignedCompletedOrdersCount} đơn thiếu ngày hoàn tất</span>}
           </div>
 
           <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
@@ -670,6 +641,25 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
 
         {/* Team Performance Matrix Table */}
+        {teamProgress?.summary?.unassignedCompletedOrdersCount > 0 && (
+          <details className="commission-data-review rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#655B4B]">
+            <summary className="cursor-pointer font-semibold text-[#1A1612]">
+              {teamProgress.summary.unassignedCompletedOrdersCount} đơn cũ cần đối soát ngày hoàn tất
+            </summary>
+            <p className="mt-2">Các đơn này chưa được phân vào tháng nào vì thiếu ngày hoàn tất. Doanh số hiển thị chỉ gồm đơn có đủ dữ liệu kỳ.</p>
+            <ul className="mt-2 space-y-2">
+              {(teamProgress.members || []).filter((member: any) => member.unassignedCompletedOrders?.length).map((member: any) => (
+                <li key={member.collaboratorId}>
+                  <details>
+                    <summary className="cursor-pointer"><strong>{member.fullName}</strong><span>{member.unassignedCompletedOrders.length} đơn · Xem mã đơn</span></summary>
+                    <p className="mt-2">Giá trị đơn đang lưu: {formatVND(member.unassignedRecordedValue || 0)} · Chưa phân kỳ, không phải doanh số đủ điều kiện thưởng.</p>
+                    <ul>{member.unassignedOrderDetails?.length ? member.unassignedOrderDetails.map((order: { code: string; purchasedAt: string; recordedValue: string }) => <li key={order.code} className="flex flex-wrap justify-between gap-2"><span>{order.code}</span><span>Đặt: {new Date(order.purchasedAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {formatVND(order.recordedValue)}</span></li>) : member.unassignedCompletedOrders.map((code: string) => <li key={code}>{code}</li>)}</ul>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {teamLoading ? (
           <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-8 text-center text-xs text-[#7D715E]">
             Đang quét dữ liệu doanh số đội ngũ đối tác tháng {selectedMonth}/{selectedYear}…
@@ -684,8 +674,8 @@ export const CommissionRulesPage: React.FC = () => {
               <thead className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
                 <tr>
                   <th className="p-3">KOL Đối tác</th>
-                  <th className="p-3 text-center">Đơn hoàn tất</th>
-                  <th className="p-3">Doanh số hợp lệ</th>
+                  <th className="p-3 text-center">Đơn hoàn tất trong kỳ</th>
+                  <th className="p-3">Doanh số đã xác định kỳ</th>
                   <th className="p-3">Bậc chạm mốc</th>
                   <th className="p-3">Thưởng ước tính</th>
                   <th className="p-3">Trạng thái</th>
@@ -698,7 +688,7 @@ export const CommissionRulesPage: React.FC = () => {
                   return (
                     <tr
                       key={m.collaboratorId}
-                      onClick={() => setSelectedKolId(m.collaboratorId)}
+                      onClick={() => { setSelectedKolId(m.collaboratorId); }}
                       className={`cursor-pointer transition ${
                         isSelected
                           ? 'bg-[#FBF5EB] font-medium'
@@ -731,20 +721,22 @@ export const CommissionRulesPage: React.FC = () => {
 
                       <td className="p-3 text-center font-bold text-[#1A1612]">
                         {m.validOrdersCount || 0}
+                        {!!m.unassignedCompletedOrders?.length && <span className="mt-1 block text-[10px] font-normal text-[#8C6226]">+ {m.unassignedCompletedOrders.length} đơn chưa phân kỳ</span>}
                       </td>
 
                       <td className="p-3 font-bold text-[#1A1612]">
                         {formatVND(m.validRevenue)}
+                        {(m.unassignedCompletedOrders?.length ?? 0) > 0 && <span className="mt-1 block text-[10px] font-normal text-[#8C6226]">Chưa phân kỳ: {formatVND(m.unassignedRecordedValue || 0)} giá trị đơn đang lưu</span>}
                       </td>
 
                       <td className="p-3">
                         <span className="font-bold text-[#B88E4F]">
-                          {m.currentMilestone?.name || 'Chưa đạt'}
+                          {m.unassignedCompletedOrders?.length ? 'Chưa xác định' : m.currentMilestone?.name || (m.nextMilestone ? 'Chưa đạt' : 'Chưa có mốc áp dụng')}
                         </span>
                       </td>
 
                       <td className="p-3 font-black text-sm text-[#B88E4F]">
-                        {formatVND(m.estimatedTotalBonus)}
+                        {m.unassignedCompletedOrders?.length ? 'Chưa xác định' : formatVND(m.estimatedTotalBonus)}
                       </td>
 
                       <td className="p-3">
@@ -775,6 +767,7 @@ export const CommissionRulesPage: React.FC = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedKolId(m.collaboratorId);
+
                           }}
                           className={`rounded-lg p-1.5 transition ${
                             isSelected
@@ -796,10 +789,21 @@ export const CommissionRulesPage: React.FC = () => {
       </section>
 
       {/* BLOCK 3: DRILL-DOWN INSPECTOR & SIMULATOR */}
-      <section className="grid gap-4 lg:grid-cols-12">
+      <nav className="commission-view-tabs" aria-label="Chi tiết thưởng và đối soát">
+        {([
+          ['progress', 'Chi tiết tiến độ'],
+          ['simulator', 'Mô phỏng tính thưởng'],
+          ['history', 'Lịch sử đối soát'],
+        ] as const).map(([key, label], index) => (
+          <button type="button" key={key} aria-pressed={detailPanel === key} onClick={() => setDetailPanel(key)}>
+            <span>{index + 1}</span>{label}
+          </button>
+        ))}
+      </nav>
+      <section hidden={detailPanel === 'history'} className="commission-tools commission-tools-tabbed grid gap-4 lg:grid-cols-12">
         {/* Left: Selected KOL Detailed Calculation (8 cols) */}
-        <div className="space-y-3 lg:col-span-8">
-          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+        <div hidden={detailPanel !== 'progress'} className="space-y-3 lg:col-span-8">
+          <div className="commission-settlement rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
@@ -854,36 +858,47 @@ export const CommissionRulesPage: React.FC = () => {
                 {/* 4 Metric Boxes */}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
                   <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5">
-                    <span className="text-[10px] text-[#7D715E]">Doanh số hợp lệ</span>
+                    <span className="text-[10px] text-[#7D715E]">Doanh số đã xác định kỳ</span>
                     <p className="mt-0.5 font-black text-sm text-[#1A1612]">
                       {formatVND(kolProgress.validRevenue)}
                     </p>
                     <span className="text-[10px] text-[#7D715E]">
-                      {kolProgress.validOrdersCount || 0} đơn hoàn tất
+                      {kolProgress.validOrdersCount || 0} đơn đủ dữ liệu trong kỳ
                     </span>
+                    {!!kolProgress.unassignedCompletedOrders?.length && <div className="mt-2 border-t border-[#EAE4D7] pt-2 text-[11px] text-[#7D715E]">{kolProgress.unassignedCompletedOrders.length} đơn COMPLETED chưa phân kỳ (toàn bộ lịch sử)<strong className="mt-1 block text-[#1A1612]">{formatVND(kolProgress.unassignedRecordedValue || 0)}</strong>Giá trị đơn đang lưu, chưa tính thưởng.</div>}
                   </div>
 
                   <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5">
                     <span className="text-[10px] text-[#7D715E]">Bậc KPI đạt</span>
                     <p className="mt-0.5 font-bold text-sm text-[#B88E4F] truncate">
-                      {kolProgress.currentMilestone?.name || 'Chưa đạt mốc'}
+                      {kolProgress.unassignedCompletedOrders?.length ? 'Chưa thể xác định' : kolProgress.currentMilestone?.name || (kolProgress.nextMilestone ? 'Chưa đạt mốc' : 'Chưa có mốc áp dụng')}
                     </p>
                     <span className="text-[10px] text-[#7D715E]">
-                      Cố định: {formatVND(kolProgress.achievementBonus)}
+                      {kolProgress.unassignedCompletedOrders?.length
+                        ? 'Chờ đối soát dữ liệu'
+                        : !kolProgress.currentMilestone && !kolProgress.nextMilestone
+                        ? 'Chưa có chính sách thưởng cho kỳ này'
+                        : kolProgress.currentMilestone
+                        ? `Cố định: ${formatVND(kolProgress.achievementBonus)}`
+                        : 'Doanh số chưa đạt ngưỡng thưởng'}
                     </span>
                   </div>
 
                   <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 sm:col-span-2">
                     <span className="text-[10px] text-[#7D715E]">Tổng thưởng đối soát</span>
                     <p className="mt-0.5 font-black text-base text-[#B88E4F]">
-                      {formatVND(kolProgress.estimatedTotalBonus)}
+                      {kolProgress.unassignedCompletedOrders?.length
+                        ? 'Chưa thể quyết toán'
+                        : !kolProgress.currentMilestone && !kolProgress.nextMilestone && !kolProgress.settlement && Number(kolProgress.estimatedTotalBonus || 0) === 0
+                        ? 'Chưa áp dụng'
+                        : formatVND(kolProgress.estimatedTotalBonus)}
                     </p>
                     {kolProgress.nextMilestone ? (
                       <span className="text-[10px] text-[#7D715E]">
                         Thiếu {formatVND(kolProgress.nextMilestone.missingRevenue)} để lên bậc {kolProgress.nextMilestone.name}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-emerald-700 font-bold">✓ Đã đạt bậc cao nhất</span>
+                      <span className="text-[10px] text-[#7D715E]">{kolProgress.unassignedCompletedOrders?.length ? 'Cần đối soát ngày hoàn tất' : kolProgress.currentMilestone ? 'Đã đạt mốc cao nhất' : 'Không có chính sách thưởng áp dụng cho kỳ này'}</span>
                     )}
                   </div>
                 </div>
@@ -892,7 +907,9 @@ export const CommissionRulesPage: React.FC = () => {
                 {!isReadOnlyAdmin && (
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EEDFC6]/60 pt-3">
                     <span className="text-[11px] text-[#7D715E]">
-                      {kolProgress.settlement
+                      {kolProgress.unassignedCompletedOrders?.length
+                        ? 'Tạm dừng xử lý thưởng: cần xác định ngày hoàn tất các đơn cũ.'
+                        : kolProgress.settlement
                         ? `Đã chốt sổ trạng thái: ${kolProgress.settlement.status}`
                         : isCurrentMonth
                         ? 'Kỳ đang tích lũy. Chỉ được quyết toán sau khi kết thúc tháng.'
@@ -901,13 +918,15 @@ export const CommissionRulesPage: React.FC = () => {
 
                     <button
                       type="button"
-                      disabled={isCurrentMonth || settleLoading || !selectedKolId || Boolean(kolProgress.settlement)}
+                      disabled={isCurrentMonth || settleLoading || !selectedKolId || Boolean(kolProgress.settlement) || Boolean(kolProgress.unassignedCompletedOrders?.length)}
                       onClick={handleSettleSingle}
                       className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#B88E4F] transition disabled:opacity-50"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       {settleLoading
                         ? 'Đang chốt…'
+                        : kolProgress.unassignedCompletedOrders?.length
+                        ? 'Chờ đối soát ngày hoàn tất'
                         : kolProgress.settlement
                         ? 'Đã chốt đối soát'
                         : isCurrentMonth
@@ -926,8 +945,8 @@ export const CommissionRulesPage: React.FC = () => {
         </div>
 
         {/* Right: Quick Simulator (4 cols) */}
-        <div className="space-y-3 lg:col-span-4">
-          <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-3">
+        <div hidden={detailPanel !== 'simulator'} className="space-y-3 lg:col-span-4">
+          <div className="commission-simulator rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-3">
             <div className="flex items-center gap-2 border-b border-[#F0EAE0] pb-2.5">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
                 <Calculator className="h-4 w-4" />
@@ -974,7 +993,7 @@ export const CommissionRulesPage: React.FC = () => {
       </section>
 
       {/* BLOCK 4: SETTLEMENT HISTORY TABLE */}
-      <section className="commission-history space-y-3">
+      <section hidden={detailPanel !== 'history'} className="commission-history space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-[#B88E4F]" />
@@ -982,13 +1001,6 @@ export const CommissionRulesPage: React.FC = () => {
               Lịch sử đối soát tháng {selectedMonth}/{selectedYear} ({historyList.length})
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={() => loadHistory(storeId, settleYearMonth)}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:underline"
-          >
-            <RefreshCw className="h-3 w-3" /> Tải lại
-          </button>
         </div>
 
         {historyLoading ? (
@@ -1042,6 +1054,7 @@ export const CommissionRulesPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleApprove(item.id)}
+                            disabled={Boolean(teamProgress?.members?.find((member: KolMember) => member.collaboratorId === item.collaboratorId)?.unassignedCompletedOrders?.length)}
                             className="rounded-lg bg-[#C59B58] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#B88E4F]"
                           >
                             Duyệt
@@ -1051,6 +1064,7 @@ export const CommissionRulesPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handlePayout(item.id)}
+                            disabled={Boolean(teamProgress?.members?.find((member: KolMember) => member.collaboratorId === item.collaboratorId)?.unassignedCompletedOrders?.length)}
                             className="rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100"
                           >
                             Chi trả vào ví

@@ -1,9 +1,20 @@
 .creator-tier-page { gap: 14px; }
-.creator-tier-page > nav { padding: 7px; gap: 8px; border-radius: 13px; }
-.creator-tier-page > nav > a { min-height: 40px; padding: 9px 10px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; font-size: 12px; line-height: 20px; font-weight: 500; }
+.creator-tier-page > nav { padding: 12px; gap: 10px; border-radius: 13px; }
+.creator-tier-page > nav > a { min-height: 46px; padding: 9px 10px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; color: #7D715E; font-size: 12px; line-height: 20px; font-weight: 500; }
+.tier-nav-step { display: grid; place-items: center; width: 25px; height: 25px; flex-shrink: 0; border: 1px solid #eae4d7; border-radius: 50%; font-size: 11px; font-weight: 400; }
+.creator-tier-page > nav > a[aria-current=page] .tier-nav-step { border-color: #c59b58; color: #9a7135; }
+.tier-assessment-details { order: 3; margin: 0 0 14px; border: 1px solid #eae4d7; border-radius: 9px; padding: 10px 12px; background: #fff; }
+.tier-assessment-details summary { cursor: pointer; font-size: 11px; font-weight: 500; color: #7d715e; }
+.tier-assessment-details > section { margin: 10px 0 0; padding: 0; border: 0; background: #fff; }
+.tier-assessment-compact dl { margin: 0; }
+.tier-assessment-compact dl > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f3efe6; }
+.tier-assessment-compact dt { font-size: 11px; line-height: 18px; color: #7d715e; }
+.tier-assessment-compact dt small { display: block; font-size: 10px; color: #9a7135; }
+.tier-assessment-compact dd { margin: 0; text-align: right; font-size: 11px; line-height: 18px; font-weight: 600; font-variant-numeric: tabular-nums; color: #1a1612; }
+.tier-assessment-compact > p { margin: 8px 0 0; font-size: 10px; line-height: 17px; color: #7d715e; }
 .creator-tier-page > nav > a[aria-current=page] { border-color: #EEDFC6; background: #FBF5EB; color: #79592C; font-weight: 600; }
 .creator-tier-page > nav > a:hover { border-color: #EEDFC6; background: #FBF5EB; }
-.creator-tier-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.creator-tier-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .creator-tier-layout > section { min-width: 0; padding: 18px 20px; border: 1px solid #EAE4D7; border-radius: 14px; background: #FFFFFF; box-shadow: 0 2px 12px rgb(35 29 21 / 2%); }
 .creator-tier-layout > .tier-current-card { padding: 20px; }
 .tier-current-card > div:first-child { order: 0; padding: 0 0 2px; }
@@ -50,7 +61,7 @@
 .creator-tier-page :is(#tier-policy-title, #tier-featured-title) { font-size: 14px; line-height: 21px; font-weight: 600; letter-spacing: -.2px; }
 .tier-policy-card > header p, .tier-featured-card > header p { margin-top: 3px; font-size: 11px; line-height: 18px; }
 .tier-policy-card > header > span { flex-shrink: 0; font-size: 10px; }
-.tier-policy-card > div[aria-label] { flex: 1; align-content: stretch; gap: 10px; }
+.tier-policy-card > div[aria-label] { flex: none; align-content: start; gap: 10px; }
 .tier-policy-item { padding: 15px; border-radius: 11px; }
 .tier-policy-item[data-current-tier=true] { border-color: #C59B58; background: #FBF5EB; }
 .tier-policy-item h3 { font-size: 12px; line-height: 20px; font-weight: 600; }

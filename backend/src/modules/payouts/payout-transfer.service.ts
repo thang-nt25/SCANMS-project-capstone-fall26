@@ -21,11 +21,21 @@ export class PayoutTransferService {
   ) {}
 
   availability() {
+    const base = this.config.get<string>('PAYOUT_GATEWAY_URL');
+    const token = this.config.get<string>('PAYOUT_GATEWAY_TOKEN');
+    let validUrl = false;
+    try {
+      const url = new URL(base ?? '');
+      validUrl = url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+    } catch {}
+    const configured = Boolean(validUrl && token?.trim());
     return {
-      configured: Boolean(
-        this.config.get('PAYOUT_GATEWAY_URL') &&
-        this.config.get('PAYOUT_GATEWAY_TOKEN'),
-      ),
+      configured,
+      connectionVerified: false,
+      reason: !base || !token?.trim() ? 'MISSING_CONFIGURATION' : !validUrl ? 'INVALID_HTTPS_URL' : null,
+      message: configured
+        ? 'Đã có cấu hình gateway; cần nghiệm thu với nhà cung cấp trước khi coi là giải ngân ngân hàng thật.'
+        : 'Chưa kết nối cổng chi trả ngân hàng. Tải UNC chỉ ghi nhận chuyển khoản đã thực hiện, không tự gửi tiền.',
     };
   }
 
@@ -62,6 +72,7 @@ export class PayoutTransferService {
       throw new ServiceUnavailableException(
         'Chưa cấu hình cổng chi trả ngân hàng. Có thể đối soát chuyển khoản thực tế bằng chứng từ.',
       );
+    if (!this.availability().configured) throw new ServiceUnavailableException('Cấu hình cổng chi trả HTTPS không hợp lệ');
     if (new URL(base).protocol !== 'https:')
       throw new ServiceUnavailableException('Cổng chi trả phải sử dụng HTTPS');
     const leaseId = randomUUID();

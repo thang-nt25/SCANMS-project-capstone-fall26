@@ -1386,7 +1386,7 @@ setActiveTab('samples');
           ) : (
             <>
               {/* Shop Context Header Bar */}
-              <div className="collaboration-context-bar sticky! top-[0]! z-[20]! shrink-0! bg-[#fff]! [&_.collaboration-shop-heading]:[transition:padding_.16s_ease]! [&[data-compact=true]]:[box-shadow:0_4px_12px_#7D715E0D]! [&[data-compact=true]_.collaboration-shop-heading]:flex-row! [&[data-compact=true]_.collaboration-shop-heading]:items-center! [&[data-compact=true]_.collaboration-shop-heading]:p-[7px_14px]! [&[data-compact=true]_.collaboration-shop-heading]:gap-[10px]! [&[data-compact=true]_.collaboration-context-avatar]:w-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:h-[28px]! [&[data-compact=true]_.collaboration-context-avatar]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-name]:text-[length:13px]! [&[data-compact=true]_.collaboration-context-meta]:hidden! [&[data-compact=true]_.collaboration-verified-label]:hidden! [&[data-compact=true]_.collaboration-context-cooperation>div]:pt-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:pb-[4px]! [&[data-compact=true]_.collaboration-context-cooperation>div]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs]:p-[6px_12px]! [&[data-compact=true]_.collaboration-context-tabs]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button]:min-h-[32px]! [&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:rounded-[8px]! [&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:11px]! [&[data-compact=true]_.collaboration-context-tabs>button]:gap-[6px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:min-w-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:h-[19px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:p-[0_4px]! [&[data-compact=true]_.collaboration-context-tabs>button>span:last-child]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:grid-cols-[repeat(4,minmax(0,1fr))]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:p-[6px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:gap-[4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:p-[5px_4px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button]:text-[length:10px]! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-context-tabs>button>svg]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:overflow-hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:text-ellipsis! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-tab-label]:whitespace-nowrap! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link>span]:hidden! [@media(max-width:640px)]:[&[data-compact=true]_.collaboration-store-link]:p-[7px]! motion-reduce:[&&]:[&_.collaboration-shop-heading]:[transition:none]! " data-compact={compactContext}>
+              <div className="collaboration-context-bar sticky top-0 z-20 shrink-0 bg-white" data-compact={compactContext}>
               <div className="collaboration-shop-heading shrink-0 px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
@@ -1467,9 +1467,8 @@ setActiveTab('samples');
               { id: 'products', label: 'Sản phẩm', icon: Package },
               { id: 'samples', label: 'Hàng mẫu', icon: Truck },
               { id: 'media', label: 'Kho nội dung', icon: Sparkles },
-            ].map((tab) => {
+            ].map((tab, index) => {
               const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
               const count = tabCounts.storeId === selectedStore.id
                   ? tabCounts[tab.id as 'messages' | 'products' | 'samples' | 'media'] : null;
               return (
@@ -1490,7 +1489,7 @@ setActiveTab('samples');
                       : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#EEDFC6]'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span className="collaboration-step-number" aria-hidden="true">{index + 1}</span>
                   <span className="collaboration-tab-label">{tab.label}</span>
                   <span className="inline-flex min-w-[24px] h-6 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
                     aria-label={count === null ? 'Chưa có số liệu' : `${count} ${tab.id === 'messages' ? 'tin nhắn trong cuộc trò chuyện' : tab.id === 'products' ? 'sản phẩm' : tab.id === 'samples' ? 'yêu cầu mẫu' : 'nội dung'}`}

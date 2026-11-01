@@ -101,6 +101,7 @@ export interface StoreOrderItem {
 }
 
 export interface StoreOrderRecord {
+  shopConfirmedAt?: string | null;
   isManualOrder?: boolean;
   deliveryLocation?: { latitude: number; longitude: number } | null;
   note?: string | null;
@@ -151,6 +152,9 @@ export interface StoreOrdersResponse {
 }
 
 export const orderService = {
+  async confirmOrder(id: string) {
+    return api.post(`/orders/${id}/confirm`);
+  },
   async getMyStoreOrders(params?: {
     customerId?: string;
     searchField?: 'ALL' | 'ORDER_SN' | 'CUSTOMER_NAME' | 'PHONE' | 'TRACKING' | 'PRODUCT';

@@ -45,13 +45,14 @@ export class PayoutEmailScheduler {
           if (!payout || !payout.bankRefCode) return;
           const attempt = new Date().toISOString();
           try {
-            await this.mail.sendPayoutStatement(payout.collaborator.email, {
+            const accepted = await this.mail.sendPayoutStatement(payout.collaborator.email, {
               id: payout.id,
               gross: payout.amount.toFixed(2),
               tax: payout.taxAmount.toFixed(2),
               net: payout.netAmount.toFixed(2),
               bankRef: payout.bankRefCode,
             });
+            if (accepted !== true) throw new Error('Payout statement was not accepted by the mail provider');
             await tx.notification.update({
               where: { id },
               data: {

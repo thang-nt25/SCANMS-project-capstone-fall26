@@ -204,6 +204,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       </section>
 
+      <div className="social-navigation-card">
       <div className="social-toolbar">
         <div className="relative min-w-0">
           <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -217,23 +218,6 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
           />
         </div>
 
-        <div className="social-platform-control">
-          <Select
-            id="social-platform-filter"
-            aria-label="Lọc nền tảng"
-            value={filterPlatform}
-            onChange={(e) => setFilterPlatform(e.target.value)}
-            className="w-full sm:w-44 h-9 text-xs font-medium"
-          >
-            <option value="ALL">Tất cả nền tảng</option>
-            <option value="TIKTOK">TikTok</option>
-            <option value="FACEBOOK">Facebook</option>
-            <option value="YOUTUBE">YouTube</option>
-            <option value="INSTAGRAM">Instagram</option>
-            <option value="THREADS">Threads</option>
-            <option value="ZALO">Zalo</option>
-          </Select>
-        </div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -247,6 +231,17 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
             Thêm kênh mới
           </Button>
         </div>
+      </div>
+
+      <div className="social-platform-tabs" role="group" aria-label="Lọc kênh theo nền tảng" style={{ gridTemplateColumns: `repeat(${new Set(channels.map(channel => channel.platformName)).size + 1}, minmax(140px, 1fr))` }}>
+        {['ALL', ...new Set(channels.map(channel => channel.platformName))].map((platform, index) => (
+          <button key={platform} type="button" aria-pressed={filterPlatform === platform} onClick={() => setFilterPlatform(platform)}>
+            <span aria-hidden="true">{index + 1}</span>
+            {platform === 'ALL' ? 'Tất cả kênh' : ({ TIKTOK: 'TikTok', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', THREADS: 'Threads', ZALO: 'Zalo' } as Record<string, string>)[platform] || platform}
+            <small>{platform === 'ALL' ? channels.length : channels.filter(channel => channel.platformName === platform).length}</small>
+          </button>
+        ))}
+      </div>
       </div>
 
       <section className="social-channel-list" aria-label="Danh sách kênh mạng xã hội">

@@ -24,6 +24,7 @@ describe('Monthly bonus deduction carry-forward', () => {
     const settlements = new Map<string, any>();
     const locks: string[] = [];
     const tx = {
+      order: { count: jest.fn().mockResolvedValue(0) },
       $queryRaw: jest.fn(async (_sql, key) => {
         locks.push(key);
         return [{ locked: 1 }];

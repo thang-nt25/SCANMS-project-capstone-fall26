@@ -1598,6 +1598,7 @@ export default function ChatBoxPage({
     }
 
     const setupContext = async (list: Conversation[]) => {
+      if (!isMounted) return;
       if (requestedConversationId) {
         const selected = list.find((conversation) => conversation.id === requestedConversationId);
         if (selected) { openConversationRef.current(selected); return; }
@@ -1698,8 +1699,8 @@ export default function ChatBoxPage({
     if (immediateList && immediateList.length > 0) {
       const filtered = immediateList.filter((conversation) => {
         if (onlyCustomerChats && !conversation.customerId) return false;
-        const hasMessages = (conversation.chatMessages && conversation.chatMessages.length > 0) || ((conversation as any).messageCount && (conversation as any).messageCount > 0);
-        return hasMessages;
+        // Empty conversations still need their composer when a partner is selected.
+        return true;
       });
       if (filtered.length > 0) {
         setupContext(filtered);
@@ -1721,7 +1722,7 @@ export default function ChatBoxPage({
         });
         setConversations(list);
         chatSessionCache.conversations = list;
-        if (!immediateList || immediateList.length === 0) {
+        if (!activeConvIdRef.current) {
           setupContext(list);
         }
       })

@@ -62,10 +62,16 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
     mkdirSync('../artifacts/flow5', { recursive: true });
     const admin = await open();
     await admin.waitForFunction(() => document.body.innerText.includes('Đối tác kiểm thử'));
+    await clickText(admin, 'Thuế & Đối soát');
     await clickText(admin, 'Xem báo cáo thuế');
     await admin.waitForFunction(() => document.body.innerText.includes('0 khoản chi đã xác nhận trong kỳ'));
     await clickText(admin, 'Đối chiếu sổ cái');
     await admin.waitForFunction(() => document.body.innerText.includes('Sổ cái khớp số dư ví'));
+    await clickText(admin, 'Chi phí thực tế');
+    assert.ok(await admin.$eval('form', form => !form.hidden));
+    await clickText(admin, 'Chứng từ thuế');
+    assert.ok(await admin.$eval('input[type="file"]', input => !input.closest('form').hidden));
+    await clickText(admin, 'Yêu cầu chi trả');
     await clickText(admin, 'Duyệt & Tải UNC');
     assert.ok(await admin.$('input[required][maxlength="100"]'));
     assert.ok((await admin.$eval('body', element => element.innerText)).includes('Duyệt chuyển khoản qua ngân hàng'));

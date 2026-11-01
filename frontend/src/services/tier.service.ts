@@ -11,7 +11,9 @@ export interface TierStatus {
   currentTier: TierPolicy;
   currentRevenue: number;
   totalOrders: number;
-  revenueBasis: 'PREVIOUS_MONTH_VIETNAM';
+  revenueBasis: 'CUMULATIVE_CLOSED_MONTHS_VIETNAM';
+  assessmentIncomplete?: boolean;
+  unassignedCompletedOrdersCount?: number;
   assessmentPeriod?: { startsAt: string; endsAt: string };
   nextEvaluationAt?: string;
   qualifiedTier: TierPolicy;

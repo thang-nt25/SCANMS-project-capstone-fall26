@@ -615,16 +615,7 @@ export const ShopCouponsPage: React.FC = () => {
       <div className="max-w-[1520px] mx-auto space-y-4 pt-1 pb-8">
         <section aria-label="Phát hành voucher gian hàng" className="coupon-issuer rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                <Ticket className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-[#1A1612]">Quản lý Coupon Độc Quyền KOC</h2>
-                <p className="text-[11px] text-[#7D715E] m-0">Cấp mã ưu đãi gắn định danh Creator để bắt dấu vết Attribution doanh số và bảo lưu thù lao</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="coupon-issuer-actions flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               {storesList.length > 1 ? (
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="shrink-0 text-xs text-[#7D715E]">Gian hàng</span>
@@ -765,6 +756,7 @@ export const ShopCouponsPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveTab('ACTIVE')}
+              aria-pressed={activeTab === 'ACTIVE'}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'ACTIVE'
                   ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
@@ -777,6 +769,7 @@ export const ShopCouponsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('PENDING')}
+              aria-pressed={activeTab === 'PENDING'}
               className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'PENDING'
                   ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
@@ -794,6 +787,7 @@ export const ShopCouponsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('HISTORY')}
+              aria-pressed={activeTab === 'HISTORY'}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === 'HISTORY'
                   ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6]'
@@ -811,6 +805,7 @@ export const ShopCouponsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSourceFilter('ALL')}
+                aria-pressed={sourceFilter === 'ALL'}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                   sourceFilter === 'ALL'
                     ? 'bg-white text-[#8C6B32] font-bold shadow-2xs'
@@ -822,6 +817,7 @@ export const ShopCouponsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSourceFilter('SHOP_ONLY')}
+                aria-pressed={sourceFilter === 'SHOP_ONLY'}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                   sourceFilter === 'SHOP_ONLY'
                     ? 'bg-white text-[#8C6B32] font-bold shadow-2xs'
@@ -833,6 +829,7 @@ export const ShopCouponsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSourceFilter('KOL_ONLY')}
+                aria-pressed={sourceFilter === 'KOL_ONLY'}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                   sourceFilter === 'KOL_ONLY'
                     ? 'bg-white text-[#8C6B32] font-bold shadow-2xs'

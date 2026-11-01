@@ -225,3 +225,32 @@
   .collaboration-samples .sample-receipt-details .sample-delivery-steps { gap: 3px; padding: 10px 3px; }
   .collaboration-samples .sample-delivery-steps li strong { font-size: 9px; line-height: 14px; }
 }
+.collaboration-context-bar .collaboration-shop-heading { padding: 12px 16px; gap: 10px; background: #fff; }
+.collaboration-context-bar .collaboration-context-name { font-size: 14px; font-weight: 600; }
+.collaboration-context-bar .collaboration-context-meta { font-size: 11px; gap: 8px; }
+.collaboration-context-bar .collaboration-context-tabs {
+  padding: 12px 16px;
+  gap: 10px;
+  background: #fff;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.collaboration-context-bar .collaboration-context-tabs > button {
+  min-height: 46px;
+  padding: 9px 10px;
+  border: 1px solid #eae4d7;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  color: #7d715e;
+  box-shadow: none;
+}
+.collaboration-context-bar .collaboration-context-tabs > button[aria-selected=true] { border-color: #eedfc6; background: #fbf5eb; color: #1a1612; font-weight: 600; }
+.collaboration-step-number { display: grid; place-items: center; width: 25px; height: 25px; flex-shrink: 0; border: 1px solid #eae4d7; border-radius: 50%; font-size: 11px; font-weight: 400; }
+.collaboration-context-tabs > button[aria-selected=true] .collaboration-step-number { border-color: #c59b58; color: #9a7135; }
+.collaboration-context-bar .collaboration-context-tabs > button > span:last-child { min-width: 19px; height: 19px; padding: 0 4px; border: 0; border-radius: 5px; background: #faf8f5; font-size: 10px; font-weight: 500; }
+.collaboration-context-bar[data-compact=true] .collaboration-context-meta { display: none; }
+@media (max-width: 767px) {
+  .collaboration-context-bar .collaboration-context-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; gap: 8px; }
+  .collaboration-context-bar .collaboration-context-tabs > button { min-height: 42px; font-size: 11px; }
+}

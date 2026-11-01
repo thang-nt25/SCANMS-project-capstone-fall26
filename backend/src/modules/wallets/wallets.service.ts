@@ -15,6 +15,7 @@ import {
 import { FinancialLedgerService } from './financial-ledger.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import { postFinance } from '../payouts/finance-posting';
+import { walletBalanceConsistency } from './wallet-balance-consistency';
 import type {
   LedgerReference,
   LedgerBalanceChange,
@@ -57,6 +58,13 @@ export class WalletsService {
     if (wallet.earningsReviewRequired) {
       throw new BadRequestException('Số dư cũ cần được kế toán đối soát nguồn tiền trước khi rút');
     }
+    const stores = await tx.storeWallet.findMany({
+      where: { walletId: wallet.id },
+      orderBy: { storeId: 'asc' },
+    });
+    if (walletBalanceConsistency(wallet, stores).requiresReview) {
+      throw new BadRequestException('Số dư tổng và phân bổ gian hàng chưa khớp. Cần đối soát trước khi rút tiền.');
+    }
     if (wallet.availableBalance.lessThan(amount)) {
       throw new BadRequestException(
         'Số dư khả dụng không đủ để thực hiện rút tiền',
@@ -64,10 +72,6 @@ export class WalletsService {
     }
 
     if (!storeId) {
-      const stores = await tx.storeWallet.findMany({
-        where: { walletId: wallet.id },
-        orderBy: { storeId: 'asc' },
-      });
       const allocated = stores.reduce(
         (sum, row) => sum.plus(row.availableBalance),
         new Prisma.Decimal(0),

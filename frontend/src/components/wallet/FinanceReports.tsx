@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
+import { returnStatusLabel } from '../../utils/return-status.utils';
+import type { ReturnStatus } from '../../services/return.service';
 
 function unwrap<T>(response: unknown): T {
   const body = response as { data?: { data?: T } | T };
@@ -13,6 +15,7 @@ const button =
   "rounded-lg border border-[#EAE4D7] px-3 py-2 text-sm hover:bg-[#FBF5EB] disabled:opacity-50";
 
 interface StorePnl {
+  unrecognizedCommissions?: string;
   netRevenue: string;
   commissions: string;
   monthlyBonuses: string;
@@ -57,6 +60,7 @@ export function StoreFinanceReport({ storeId }: { storeId: string }) {
             {Object.entries({
               "Doanh thu hàng hóa sau hoàn trả": data.netRevenue,
               "Thu nhập KOC phát sinh": data.commissions,
+              "Hoa hồng đơn chưa hoàn tất (ngoài tỷ lệ)": data.unrecognizedCommissions,
               "Thưởng tháng đã cộng ví": data.monthlyBonuses,
               "Vận chuyển mẫu thử": data.sampleShipping,
               "Chi phí tiếp thị đã ghi nhận": data.knownMarketingExpense,
@@ -87,6 +91,7 @@ export function StoreFinanceReport({ storeId }: { storeId: string }) {
 }
 
 interface Executive {
+  unrecognizedCommissions?: string;
   asOf: string;
   gmv: string;
   netRevenue: string;
@@ -158,9 +163,10 @@ export function ExecutiveFinanceReport() {
         <>
           <dl className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 my-6">
             {Object.entries({
-              "GMV đơn đã giao": data.gmv,
+              "GMV đơn đã hoàn tất": data.gmv,
               "Doanh thu sau hoàn trả": data.netRevenue,
               "Chi phí thu nhập tiếp thị": data.affiliateExpense,
+              "Hoa hồng đơn chưa hoàn tất (ngoài tỷ lệ)": data.unrecognizedCommissions,
               "Thu nhập đang bảo chứng": data.escrowPending,
               "Thu nhập khả dụng": data.availableEarnings,
               "Thực chuyển ngân hàng": data.netPaid,
@@ -169,7 +175,7 @@ export function ExecutiveFinanceReport() {
               <div key={label}>
                 <dt className="text-sm text-[#7D715E]">{label}</dt>
                 <dd className="mt-1 text-xl font-semibold tabular-nums">
-                  {money(value)}
+                  {value == null ? 'Chưa có dữ liệu' : money(value)}
                 </dd>
               </div>
             ))}
@@ -185,7 +191,7 @@ export function ExecutiveFinanceReport() {
             </div>
           </dl>
           <p className="text-xs text-[#7D715E]">
-            {data.ordersCount} đơn đã giao · Escrow cơ sở {data.holdDays} ngày ·
+            {data.ordersCount} đơn hoàn tất · Tỷ lệ chỉ đối chiếu doanh thu và hoa hồng của đơn hoàn tất, cộng thưởng tháng đã chi. Hoa hồng đơn chưa hoàn tất được theo dõi riêng. Escrow cơ sở {data.holdDays} ngày ·
             Cập nhật {new Date(data.asOf).toLocaleString("vi-VN")}. Số dư ngân
             hàng thực tế cần đối soát với ngân hàng.
           </p>
@@ -209,9 +215,13 @@ interface Escrow {
       id: string;
       externalOrderSn: string;
       status: string;
+      finalAmount?: string;
+      deliveredAt?: string | null;
+      orderItems?: { quantity: number; unitPrice: string; appliedCommissionRate: string | null; product: { title: string; imageUrl?: string | null }; variant?: { name: string } | null }[];
       store: { name: string };
       returnRequest: { status: string } | null;
       referralReviewRequired?: boolean;
+      testFixture?: boolean;
       referralRiskSignals?: string[];
     };
   }>;
@@ -248,7 +258,7 @@ export function EscrowFinanceReport() {
     };
   }, [page, refresh]);
   return (
-    <section className={panel} aria-busy={loading}>
+    <section className={`${panel} finance-escrow`} aria-busy={loading}>
       <h2 className="text-lg font-semibold">Thu nhập đang bảo chứng</h2>
       {error && (
         <p role="alert" className="text-[#DC2626]">
@@ -259,16 +269,17 @@ export function EscrowFinanceReport() {
       {data && (
         <>
           <p className="my-3 text-[#7D715E]">
-            {money(data.pendingAmount)} · {data.total} khoản chờ giải tỏa · Thời
-            hạn {data.holdDays} ngày lịch; đơn có khiếu nại hoặc cần thẩm định tiếp tục được tạm giữ.
+            <strong className="font-semibold text-[#1A1612]">{money(data.pendingAmount)}</strong> · {data.total} khoản đang tạm giữ
+            {data.total > 0 && <> · Bảo chứng {data.holdDays} ngày lịch từ giao thành công; khoản có khiếu nại hoặc cần thẩm định tiếp tục được giữ.</>}
           </p>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" hidden={!data.items.length}>
             <table className="w-full text-sm text-left">
               <thead className="bg-[#F3EFE6]">
                 <tr>
                   {[
                     "Đơn hàng",
-                    "Nhãn hàng",
+                    "Sản phẩm / Gian hàng",
+                    "Đơn giá",
                     "Thu nhập tạm giữ",
                     "Dự kiến giải tỏa",
                     "Đổi trả",
@@ -283,17 +294,23 @@ export function EscrowFinanceReport() {
                 {data.items.map((item) => (
                   <tr className="border-b border-[#EAE4D7]" key={item.id}>
                     <td className="p-3">
-                      {item.order.externalOrderSn || item.order.id.slice(0, 8)}
+                      <strong className="block font-semibold">{item.order.externalOrderSn || item.order.id.slice(0, 8)}</strong>
+                      {item.order.testFixture && <small className="text-[#8F682E]">Đơn kiểm thử Escrow</small>}
                     </td>
-                    <td className="p-3">{item.order.store.name}</td>
+                    <td className="p-3">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-product">
+                      {line.product.imageUrl && <img src={line.product.imageUrl} alt="" />}
+                      <div><strong>{line.product.title}</strong><small>{line.variant?.name || 'Không có biến thể'} · SL: {line.quantity}</small></div>
+                    </div>)}<small className="escrow-store-name">{item.order.store.name}</small></td>
+                    <td className="p-3">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price">{money(line.unitPrice)}</div>)}</td>
                     <td className="p-3 tabular-nums">
-                      {money(item.commissionAmount)}
+                      <strong>{money(item.commissionAmount)}</strong>
+                      {item.order.orderItems?.length === 1 && <small className="block text-[#7D715E]">{Number(item.order.orderItems[0].appliedCommissionRate)}% hoa hồng</small>}
                     </td>
                     <td className="p-3">
                       {new Date(item.availableAt).toLocaleString("vi-VN")}
                     </td>
                     <td className="p-3">
-                      {item.order.returnRequest?.status ?? "Không có yêu cầu"}
+                      {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : 'Không có yêu cầu đổi trả'}
                       {item.order.referralReviewRequired && <ReferralReview orderId={item.order.id} signals={item.order.referralRiskSignals ?? []} onReviewed={() => setRefresh(value => value + 1)} />}
                     </td>
                   </tr>
@@ -302,11 +319,12 @@ export function EscrowFinanceReport() {
             </table>
           </div>
           {!data.items.length && (
-            <p className="py-6 text-[#7D715E]">
-              Không có khoản thu nhập đang tạm giữ.
-            </p>
+            <div className="finance-escrow-empty" role="status">
+              <strong>Không có khoản thu nhập đang tạm giữ.</strong>
+              <p>{data.total === 0 ? `Chưa có hoa hồng PENDING để theo dõi giải tỏa. Hoa hồng của đơn giao thành công sẽ được giữ ${data.holdDays} ngày lịch trước khi chuyển sang khả dụng, nếu không có khiếu nại hoặc yêu cầu thẩm định.` : 'Trang này không còn bản ghi. Chọn Trước để xem trang trước.'}</p>
+            </div>
           )}
-          <div className="flex items-center justify-end gap-3 mt-4">
+          <div className="finance-pagination flex items-center justify-end gap-3 mt-4" hidden={!data.total}>
             <button
               className={button}
               disabled={page === 1 || loading}
@@ -477,11 +495,11 @@ export function PartnerTaxStatements() {
         <p role="status">Đang tải…</p>
       ) : (
         <>
-          <p className="text-sm text-[#7D715E] my-2">
+          {items.length > 0 && <p className="text-sm text-[#7D715E] my-2">
             Các khoản đã giải ngân được đối soát theo số thuế đã lưu tại thời
             điểm yêu cầu.
-          </p>
-          <div className="overflow-x-auto">
+          </p>}
+          {items.length > 0 && <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
                 <tr>
@@ -532,6 +550,7 @@ export function PartnerTaxStatements() {
               </tbody>
             </table>
           </div>
+          }
           {!items.length && (
             <p className="py-4 text-[#7D715E]">
               Chưa có khoản chi trả hoàn tất.

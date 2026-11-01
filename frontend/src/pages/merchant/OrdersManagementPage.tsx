@@ -23,7 +23,6 @@ import {
   ChevronRight,
   AlertCircle,
   Clock,
-  Phone,
   Users,
   Printer,
   ChevronDown,
@@ -62,7 +61,6 @@ import {
 } from "../../components/orders/ShippingLabel";
 import { shippingService, type GhnTrackingDetail } from "../../services/shipping.service";
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
-import { ShippingSimulationControls } from '../../components/shipping/ShippingSimulationControls';
 import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
@@ -257,13 +255,16 @@ export default function OrdersManagementPage({
     }
   };
 
-  const handleBulkPrepareOrders = () => {
+  const handleBulkPrepareOrders = async () => {
     const pendingOrders = displayedOrders.filter((o) => selectedOrderIds.includes(o.id) && o.status === 'PENDING');
     if (pendingOrders.length === 0) {
-      toast.info('Không có đơn hàng nào ở trạng thái "Chờ lấy hàng" trong danh sách đã chọn.');
+      toast.info('Không có đơn hàng nào ở trạng thái "Chờ xác nhận" trong danh sách đã chọn.');
       return;
     }
-    toast.success(`Đã chuẩn bị và phát hành vận đơn GHN cho ${pendingOrders.length} đơn hàng!`);
+    const results = await Promise.allSettled(pendingOrders.map((order) => orderService.confirmOrder(order.id)));
+    const confirmed = results.filter((result) => result.status === 'fulfilled').length;
+    if (confirmed) toast.success(`Đã xác nhận ${confirmed} đơn. Hãy tạo vận đơn cho từng đơn sau khi chuẩn bị hàng.`);
+    if (confirmed < results.length) toast.error(`${results.length - confirmed} đơn không thể xác nhận. Vui lòng kiểm tra lại.`);
     setSelectedOrderIds([]);
     setOrdersRefreshCount((c) => c + 1);
   };
@@ -488,10 +489,13 @@ export default function OrdersManagementPage({
 
   const [creatingGhnEnvironment, setCreatingGhnEnvironment] = useState<"LIVE" | "TEST" | null>(null);
   const [trackingGhnDetail, setTrackingGhnDetail] = useState<GhnTrackingDetail | null>(null);
-  const [trackingGhnOrderId, setTrackingGhnOrderId] = useState<string | null>(null);
   const [loadingTracking, setLoadingTracking] = useState(false);
 
   const handleOpenShippingModal = (order: StoreOrderRecord) => {
+    if (order.status === 'PENDING' && !order.shopConfirmedAt) {
+      toast.info('Vui lòng xác nhận đơn trước khi tạo vận đơn.');
+      return;
+    }
     setShippingModalOrder(order);
     setShippingCarrier("GHN");
     setShippingTrackingNumber(
@@ -555,7 +559,6 @@ export default function OrdersManagementPage({
     setLoadingTracking(true);
     try {
       const detail = await shippingService.trackOrder(code);
-      setTrackingGhnOrderId(order.id);
       setTrackingGhnDetail(detail);
     } catch (err: any) {
       alert(err?.response?.data?.message || "Không thể tải hành trình vận chuyển");
@@ -1110,14 +1113,6 @@ export default function OrdersManagementPage({
                   <Plus className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   <span>Tạo đơn thủ công</span>
                 </button>
-<button
-                  type="button"
-                  onClick={() => setOrdersRefreshCount((c) => c + 1)}
-                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] cursor-pointer"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 text-[#B88E4F] ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin" : ""}`} />
-                  <span>Làm mới</span>
-                </button>
                 <Link to="/merchant/kol-hub" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition hover:border-[#C59B58] hover:bg-[#F3EFE6]">
                   <Users className="h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
                   <span>Quản lý hợp tác</span>
@@ -1171,7 +1166,7 @@ export default function OrdersManagementPage({
               {[
                 { id: "ALL", label: "Tất cả" },
                 { id: "UNPAID", label: "Chờ thanh toán" },
-                { id: "PENDING", label: "Chờ lấy hàng" },
+                { id: "PENDING", label: "Chờ xử lý" },
                 { id: "SHIPPING", label: "Đang giao" },
                 { id: "DELIVERED", label: "Đã giao" },
                 { id: "RETURNS", label: "Trả hàng / Hoàn tiền" },
@@ -1324,12 +1319,10 @@ export default function OrdersManagementPage({
                 <table className="merchant-orders-data min-w-[960px] w-full table-fixed border-collapse text-left text-xs">
                   <colgroup>
                     <col style={{ width: '4%' }} />
-                    <col style={{ width: '18%' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '27%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '36%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '20%' }} />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-[#EAE4D7] bg-[#FFFCF7] text-xs font-bold uppercase tracking-wide text-[#7D715E] select-none">
@@ -1342,8 +1335,6 @@ export default function OrdersManagementPage({
                           className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
                         />
                       </th>
-                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Mã đơn &amp; Ngày tạo</th>
-                      <th className="px-3 py-3.5 font-bold whitespace-nowrap">Khách hàng</th>
                       <th className="px-3 py-3.5 font-bold">Sản phẩm</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Tổng tiền</th>
                       <th className="px-3 py-3.5 font-bold whitespace-nowrap">Trạng thái</th>
@@ -1357,7 +1348,7 @@ export default function OrdersManagementPage({
                         { label: string; bg: string; text: string; border: string; dot: string }
                       > = {
                         PENDING: {
-                          label: "Chờ lấy hàng",
+                          label: order.shopConfirmedAt ? "Chuẩn bị hàng" : "Chờ xác nhận",
                           bg: "bg-amber-50",
                           text: "text-amber-800",
                           border: "border-amber-200/90",
@@ -1436,49 +1427,6 @@ export default function OrdersManagementPage({
                           </td>
 
                           {/* Mã đơn */}
-                          <td data-label="Mã đơn & Ngày tạo" className="py-3 px-3 align-middle">
-                            <div className="flex flex-col items-start gap-1">
-                              <span className="font-mono font-bold text-xs text-[#1A1612] bg-[#FAF8F5] px-2 py-0.5 rounded-lg border border-[#EAE4D7] shadow-2xs group-hover:border-[#C59B58]/40 transition-colors whitespace-nowrap inline-block tracking-tight">
-                                #{order.externalOrderSn}
-                              </span>
-                              <span className="flex items-center gap-1 text-[11px] text-[#7D715E] whitespace-nowrap">
-                                <Clock className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                                <span>
-                                  {new Date(order.createdAt).toLocaleDateString("vi-VN", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                  })}
-                                </span>
-                              </span>
-                              {order.attributedCollaborator && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8A642C] whitespace-nowrap">
-                                  <Users className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                  <span className="max-w-[110px] truncate" title={order.attributedCollaborator.fullName}>
-                                    {order.attributedCollaborator.fullName}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {/* Khách hàng (Tinh gọn, không phơi bày địa chỉ) */}
-                          <td data-label="Khách hàng" className="py-3 px-3 align-middle">
-                            <div className="flex max-w-[170px] flex-col gap-0.5">
-                              <strong className="text-[#1A1612] font-bold text-xs truncate block" title={order.customerName || "Khách lẻ"}>
-                                {order.customerName || "Khách lẻ"}
-                              </strong>
-                              {order.customerPhone && (
-                                <span className="flex items-center gap-1 text-[11px] text-[#7D715E] font-mono">
-                                  <Phone className="w-2.5 h-2.5 text-[#B88E4F] shrink-0" />
-                                  <span>{order.customerPhone}</span>
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Sản phẩm (Tinh gọn, không lặp lại SKU và đơn giá lẻ) */}
                           <td data-label="Sản phẩm" className="py-3 px-3 align-middle">
                             <div className="flex min-w-0 max-w-[280px] flex-col gap-1.5">
                               {order.items.slice(0, 1).map((item, idx) => {
@@ -1568,7 +1516,23 @@ export default function OrdersManagementPage({
                             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_28px_28px] items-center gap-2">
                               {/* 1. Nút Thao tác chính theo chu kỳ đơn hàng */}
                               <div className="flex min-w-0 justify-end [&>button]:max-w-full [&>button>svg]:shrink-0">
-                              {order.status === "PENDING" && (
+                              {order.status === "PENDING" && !order.shopConfirmedAt && (
+                                <button type="button" disabled={ordersLoading}
+                                  onClick={async () => {
+                                    setOrdersLoading(true);
+                                    try {
+                                      await orderService.confirmOrder(order.id);
+                                      toast.success('Đã xác nhận đơn. Có thể chuẩn bị hàng và tạo vận đơn.');
+                                      setOrdersRefreshCount((c) => c + 1);
+                                    } catch (error: any) {
+                                      toast.error(error.response?.data?.message || 'Không thể xác nhận đơn');
+                                    } finally { setOrdersLoading(false); }
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C] text-[11px] font-bold cursor-pointer disabled:opacity-50">
+                                  Xác nhận đơn
+                                </button>
+                              )}
+                              {order.status === "PENDING" && order.shopConfirmedAt && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenShippingModal(order)}
@@ -2970,13 +2934,6 @@ export default function OrdersManagementPage({
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             <GhnTrackingTimeline key={String(trackingGhnDetail.isSimulation) + trackingGhnDetail.orderCode} orderCode={trackingGhnDetail.orderCode} environment={trackingGhnDetail.environment} />
-            {trackingGhnOrderId && <ShippingSimulationControls key={trackingGhnOrderId}
-              orderId={trackingGhnOrderId} tracking={trackingGhnDetail} onStarted={setTrackingGhnDetail}
-              onCompleted={() => {
-                setTrackingGhnDetail(null);
-                setReload(value => value + 1);
-                toast.success('Đã đồng bộ giao thử', { description: 'Khách có thể tải lại Đơn mua để kiểm thử nhận hàng/đổi trả.' });
-              }} />}
             </div>
 
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#EAE4D7] bg-[#FAF8F5] px-5 py-3">

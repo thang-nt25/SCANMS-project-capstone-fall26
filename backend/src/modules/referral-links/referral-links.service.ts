@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
+import { findShortCode } from './utils/find-short-code';
 import { precedenceCommissionRate, campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -1493,7 +1494,7 @@ export class ReferralLinksService {
     let link = await this.cacheService.get<any>(cacheKey);
 
     if (!link) {
-      link = await this.prisma.referralLink.findUnique({
+      link = await findShortCode(this.prisma.referralLink, {
         where: { shortCode: normalizedCode },
         include: {
           product: {
@@ -2414,7 +2415,7 @@ export class ReferralLinksService {
     campaignBonus?: number;
     reason?: string;
   }> {
-    const link = await this.prisma.referralLink.findUnique({
+    const link = await findShortCode(this.prisma.referralLink, {
       where: { shortCode: params.shortCode.toLowerCase() },
       include: {
         product: true,

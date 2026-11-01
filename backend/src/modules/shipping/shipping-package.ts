@@ -28,7 +28,15 @@ export function buildShippingPackage(lines: ShippingLine[]): ShippingPackage {
       );
     if (!Number.isInteger(quantity) || quantity < 1)
       throw new BadRequestException('Số lượng kiện hàng không hợp lệ.');
-    validateProductPackage(product);
+    // Carrier pricing needs physical dimensions, not catalog barcode validation.
+    // Keep EAN checks on product creation/update; legacy barcode defects must not
+    // block quoting an otherwise valid parcel.
+    validateProductPackage({
+      packageWeight: product.packageWeight,
+      packageLength: product.packageLength,
+      packageWidth: product.packageWidth,
+      packageHeight: product.packageHeight,
+    });
     if (PACKAGE_FIELDS.some((key) => product[key] == null)) {
       throw new BadRequestException(
         `Shop cần cập nhật khối lượng và kích thước đóng gói của "${product.title || 'sản phẩm'}" trước khi tính cước.`,

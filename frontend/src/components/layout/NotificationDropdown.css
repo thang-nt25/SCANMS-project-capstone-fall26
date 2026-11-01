@@ -1,0 +1,87 @@
+/* The panel is portalled to body, so these styles do not depend on its header. */
+.scanms-notifications .scanms-notifications-header {
+  padding: 14px 16px 12px;
+  gap: 8px;
+  background: #fff;
+}
+.scanms-notifications-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #fbf5eb;
+  color: #b88e4f;
+}
+.scanms-notifications .scanms-notifications-header h3 { font-size: 16px; font-weight: 650; }
+.scanms-notifications .scanms-notifications-header button { border-radius: 8px; }
+.scanms-notifications .scanms-notifications-header button:disabled { opacity: .5; cursor: wait; }
+.scanms-notifications .scanms-notifications-tabs {
+  margin: 0 16px 12px;
+  padding: 4px;
+  gap: 3px;
+  background: #faf8f5;
+  border: 1px solid #f0eae0;
+  border-radius: 11px;
+}
+.scanms-notifications .scanms-notifications-tabs > button {
+  min-height: 33px;
+  padding: 6px 2px;
+  font-size: 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+.scanms-notifications .scanms-notifications-tabs > button[aria-pressed="true"] {
+  background: #fff;
+  border-color: #eedfc6;
+  color: #8a642c;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(35 29 21 / 4%);
+}
+.scanms-notifications .scanms-notifications-list {
+  padding: 0 8px 8px;
+  background: #fff;
+  scrollbar-gutter: stable;
+}
+.scanms-notifications .scanms-notification-item {
+  margin: 0 0 5px;
+  padding: 13px 10px 10px;
+  border: 1px solid #f1ece3;
+  border-radius: 12px;
+}
+.scanms-notifications .scanms-notification-item:last-child { margin-bottom: 0; border-bottom: 1px solid #f1ece3; }
+.scanms-notifications .scanms-notification-item[data-read="false"]:not(:hover) { background: #fffcf7; }
+.scanms-notifications .scanms-notification-item:hover { background: #fbf5eb; border-color: #eedfc6; }
+.scanms-notifications .scanms-notification-open { gap: 11px; }
+.scanms-notifications .scanms-notification-icon,
+.scanms-notifications .scanms-notification-product-image {
+  width: 38px;
+  height: 38px;
+  margin-top: 0;
+  border-radius: 10px;
+  background: #fff;
+  border-color: #eedfc6;
+}
+.scanms-notifications .scanms-notification-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.scanms-notifications .scanms-notification-message { margin-top: 4px; font-size: 11px; line-height: 1.65; }
+.scanms-notifications .scanms-notification-meta { margin: 7px 0 0 49px; min-height: 22px; }
+.scanms-notifications .scanms-notification-expand { padding: 3px 6px; border-radius: 6px; }
+.scanms-notifications .scanms-notifications-footer {
+  min-height: 42px;
+  border-color: #f0eae0;
+  background: #faf8f5;
+}
+.scanms-notifications .scanms-notifications-footer > button { background: #faf8f5; }
+@media (max-width: 359px) {
+  .scanms-notifications .scanms-notifications-header { padding: 10px; }
+  .scanms-notifications-heading-icon { display: none; }
+  .scanms-notifications .scanms-notifications-tabs { margin-inline: 10px; }
+  .scanms-notifications .scanms-notifications-tabs > button { font-size: 10px; }
+}

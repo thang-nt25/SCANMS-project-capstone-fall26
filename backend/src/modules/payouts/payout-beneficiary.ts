@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { walletBalanceConsistency } from '../wallets/wallet-balance-consistency';
 
 /** Check again at approval; a beneficiary may have changed since reservation. */
 export async function assertPayoutBeneficiary(
@@ -13,7 +14,7 @@ export async function assertPayoutBeneficiary(
 ) {
   const user = await tx.user.findUnique({
     where: { id: payout.collaboratorId },
-    include: { collaboratorProfile: true, wallet: true },
+    include: { collaboratorProfile: true, wallet: { include: { storeWallets: true } } },
   });
   const profile = user?.collaboratorProfile;
   const normalize = (value: string | null | undefined) =>
@@ -37,7 +38,8 @@ export async function assertPayoutBeneficiary(
   }
   if (
     user.wallet?.availableBalance.lt(0) ||
-    user.wallet?.earningsReviewRequired
+    user.wallet?.earningsReviewRequired ||
+    (user.wallet && walletBalanceConsistency(user.wallet, user.wallet.storeWallets ?? []).requiresReview)
   ) {
     throw new BadRequestException(
       'Thu nhập đang có khoản thu hồi; cần đối soát trước khi giải ngân',

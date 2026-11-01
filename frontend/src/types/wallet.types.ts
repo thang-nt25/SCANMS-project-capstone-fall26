@@ -24,6 +24,13 @@ export interface WalletSummary {
   availableBalance: string;
   shoppingBalance?: string;
   earningsReviewRequired?: boolean;
+  balanceConsistency?: {
+    requiresReview: boolean;
+    allocatedAvailableBalance: string;
+    allocatedPendingBalance: string;
+    unallocatedAvailableBalance: string;
+    unallocatedPendingBalance: string;
+  };
   minimumWithdrawalAmount: string;
   withdrawalTaxPolicy: { threshold: string; rate: string };
   kycStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";

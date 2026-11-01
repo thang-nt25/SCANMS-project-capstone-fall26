@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
@@ -10,6 +10,21 @@ export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const pageColumnRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const column = pageColumnRef.current;
+    if (!column) return;
+    const syncHeaderInset = () => {
+      document.documentElement.style.setProperty('--workspace-scrollbar-width', `${Math.max(0, column.offsetWidth - column.clientWidth)}px`);
+    };
+    syncHeaderInset();
+    const observer = new ResizeObserver(syncHeaderInset);
+    observer.observe(column);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--workspace-scrollbar-width');
+    };
+  }, [location.pathname, location.search]);
   useEffect(() => {
     applyTheme('light');
   }, []);
@@ -84,7 +99,7 @@ export default function MainLayout() {
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className={`workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
+          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
             <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={

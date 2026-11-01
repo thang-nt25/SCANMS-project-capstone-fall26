@@ -27,6 +27,7 @@ import { toast } from '../../utils/toast';
 import { headerNotificationSnapshot } from '../../utils/header-notification-source';
 import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import './NotificationDropdown.css';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +44,7 @@ export const NotificationDropdown: React.FC = () => {
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const notificationListRef = useRef<HTMLDivElement>(null);
-  const [panelPosition, setPanelPosition] = useState({ top: 72, right: 12, maxHeight: 480 });
+  const [panelPosition, setPanelPosition] = useState({ top: 72, right: 12, maxHeight: 480, width: 420 });
   const listRequest = useRef(0);
   const accountScope = useRef(`${authService.getCurrentUser()?.id || ''}:${localStorage.getItem('token') || ''}`);
 
@@ -60,9 +61,10 @@ export const NotificationDropdown: React.FC = () => {
       const fitViewport = Math.max(above, below) < 180;
       const maxHeight = Math.min(480, Math.max(0, fitViewport ? viewportBottom - viewportTop - 20 : openAbove ? above : below));
       const top = fitViewport ? viewportTop + 10 : openAbove ? (bounds?.top || 64) - 8 - maxHeight : Math.min((bounds?.bottom || 64) + 8, viewportBottom - 10);
-      const width = Math.min(380, window.innerWidth - 20);
-      const right = Math.min(Math.max(10, window.innerWidth - (bounds?.right || window.innerWidth - 10)), Math.max(10, window.innerWidth - width - 10));
-      setPanelPosition(previous => previous.top === top && previous.right === right && previous.maxHeight === maxHeight ? previous : { top, right, maxHeight });
+      const viewportWidth = document.documentElement.clientWidth;
+      const width = Math.min(420, viewportWidth - 20);
+      const right = Math.min(Math.max(10, viewportWidth - (bounds?.right || viewportWidth - 10)), Math.max(10, viewportWidth - width - 10));
+      setPanelPosition(previous => previous.top === top && previous.right === right && previous.maxHeight === maxHeight && previous.width === width ? previous : { top, right, maxHeight, width });
     };
     position();
     const dismiss = (event: KeyboardEvent) => {
@@ -442,11 +444,12 @@ export const NotificationDropdown: React.FC = () => {
           role="region"
           aria-label="Trung tâm thông báo"
           tabIndex={-1}
-          className="scanms-notifications fixed z-[100] flex flex-col w-[380px] max-w-[calc(100vw_-_20px)] min-h-0 overflow-hidden border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-[color:#1A1612]! shadow-[0_10px_32px_rgb(35_29_21_/_12%)] text-left outline-none [&_:is(button,[tabindex='0']):focus-visible]:outline-[2px] [&_:is(button,[tabindex='0']):focus-visible]:outline-solid [&_:is(button,[tabindex='0']):focus-visible]:outline-[#B88E4F] [&_:is(button,[tabindex='0']):focus-visible]:outline-offset-[-2px]"
-          style={{ top: panelPosition.top, right: panelPosition.right, maxHeight: panelPosition.maxHeight }}
+          className="scanms-notifications fixed z-[100] flex flex-col w-[420px] max-w-[calc(100vw_-_20px)] min-h-0 overflow-hidden border border-[#EAE4D7] rounded-[18px] bg-[color:#FFFFFF] text-[color:#1A1612]! shadow-[0_12px_40px_rgb(35_29_21_/_10%)] text-left outline-none [&_:is(button,[tabindex='0']):focus-visible]:outline-[2px] [&_:is(button,[tabindex='0']):focus-visible]:outline-solid [&_:is(button,[tabindex='0']):focus-visible]:outline-[#B88E4F] [&_:is(button,[tabindex='0']):focus-visible]:outline-offset-[-2px]"
+          style={{ top: panelPosition.top, left: Math.max(10, document.documentElement.clientWidth - panelPosition.right - panelPosition.width), maxHeight: panelPosition.maxHeight, width: panelPosition.width }}
         >
           <header className="scanms-notifications-header flex items-center justify-between flex-wrap shrink-0 gap-[4px_6px] p-[8px_12px] bg-[color:#FFFFFF] [&_button]:min-h-[32px] [&_button]:cursor-pointer [@media_(max-width:359px)]:p-[6px_10px] [@media_(max-width:359px)]:[&_h3]:text-[13px] [@media_(max-width:359px)]:[&_>_div:first-child]:gap-[5px] [@media_(max-width:359px)]:[&_>_div:last-child]:gap-[1px]">
             <div className="flex items-center gap-[7px]">
+              <span className="scanms-notifications-heading-icon" aria-hidden="true"><Bell size={18} /></span>
               <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
               {unreadCount > 0 && (
                 <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] leading-[1.3]">

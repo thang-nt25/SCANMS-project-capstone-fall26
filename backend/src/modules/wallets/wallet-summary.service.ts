@@ -7,6 +7,7 @@ import {
   PAYOUT_TAX_THRESHOLD,
 } from '../payouts/payout-tax.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
+import { walletBalanceConsistency } from './wallet-balance-consistency';
 
 @Injectable()
 export class WalletSummaryService {
@@ -63,7 +64,11 @@ export class WalletSummaryService {
       profile.bankAccountName.trim(),
     );
 
+    const balanceConsistency = walletBalanceConsistency(wallet, wallet.storeWallets);
+    const earningsReviewRequired = Boolean(wallet.earningsReviewRequired || balanceConsistency.requiresReview);
+
     return {
+      balanceConsistency,
       cooperationStores: partnerships.map((partnership) => {
         const balance = wallet.storeWallets.find((item) => item.storeId === partnership.storeId);
         return {
@@ -80,7 +85,7 @@ export class WalletSummaryService {
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
       shoppingBalance: wallet?.shoppingBalance?.toFixed(2) ?? '0.00',
-      earningsReviewRequired: wallet?.earningsReviewRequired ?? false,
+      earningsReviewRequired,
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
         storeId: balance.storeId,
         storeName: balance.store.name,
@@ -118,7 +123,7 @@ export class WalletSummaryService {
       },
       kycStatus: profile?.kycStatus ?? KycStatus.UNVERIFIED,
       canWithdraw:
-        !wallet?.earningsReviewRequired &&
+        !earningsReviewRequired &&
         profile?.kycStatus === KycStatus.VERIFIED &&
         hasBankAccount &&
         Boolean(
@@ -155,7 +160,7 @@ export class WalletSummaryService {
     const commissionIds = referenceIds('COMMISSION', 'ORDER_REFUND');
     const payoutIds = referenceIds('PAYOUT_REQUEST');
     const bonusIds = referenceIds('MONTHLY_BONUS');
-    const orderIds = referenceIds('ORDER_PAYMENT', 'ORDER_REFUND');
+    const orderIds = referenceIds('ORDER_PAYMENT', 'ORDER_REFUND', 'RECONCILIATION_ORDER');
     const refundIds = referenceIds('ORDER_REFUND');
     const storeIds = [...new Set(entries.map(entry => entry.storeId).filter((id): id is string => Boolean(id)))];
     const orderSelect = { id: true, externalOrderSn: true, store: { select: { name: true } } } as const;
@@ -196,6 +201,7 @@ export class WalletSummaryService {
     });
     orders.forEach(order => {
       details.set(`ORDER_PAYMENT:${order.id}`, forOrder(order));
+      details.set(`RECONCILIATION_ORDER:${order.id}`, forOrder(order));
       details.set(`ORDER_REFUND:${order.id}`, forOrder(order));
     });
     commissions.forEach(commission => {

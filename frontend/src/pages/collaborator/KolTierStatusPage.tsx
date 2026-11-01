@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, CalendarDays } from 'lucide-react';
+import { Crown, Trophy, Award, ArrowUpRight, Gift, Check, CalendarDays } from 'lucide-react';
 import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
@@ -82,7 +82,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
-          <Award className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
+          <span className="tier-nav-step" aria-hidden="true">1</span>
           <span>Cấp bậc &amp; Quyền lợi</span>
         </Link>
         <Link
@@ -94,7 +94,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
-          <Trophy className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
+          <span className="tier-nav-step" aria-hidden="true">2</span>
           <span>Bảng vinh danh Top Creator</span>
         </Link>
         <Link
@@ -106,7 +106,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
           }`}
         >
-          <Target className="w-4 h-4 text-[#B88E4F] shrink-0" aria-hidden="true" />
+          <span className="tier-nav-step" aria-hidden="true">3</span>
           <span>Tiến độ thưởng doanh số</span>
         </Link>
       </nav>
@@ -134,7 +134,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                     <Crown className="w-6 h-6" aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-[#7D715E]">Cấp bậc hiện tại</p>
+                    <p className="text-[11px] font-medium text-[#7D715E]">{tierStatus.assessmentIncomplete ? 'Cấp bậc đang lưu · chờ đối soát' : 'Cấp bậc hiện tại'}</p>
                     <div className="tier-current-name-row">
                       <h2 id="tier-current-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] truncate">{currentTier.name}</h2>
                       <span className="tier-current-bonus">+{Number(currentTier.extraBonusPercentage)}% thưởng</span>
@@ -152,11 +152,11 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
 
               <div className="tier-summary-metrics grid grid-cols-3 gap-2 my-4">
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Doanh số sạch tích lũy</span>
+                  <span className="text-[11px] text-[#7D715E]">{tierStatus.assessmentIncomplete ? 'Doanh số đã xác định kỳ' : 'Doanh số sạch tích lũy'}</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Đơn thành công</span>
+                  <span className="text-[11px] text-[#7D715E]">{tierStatus.assessmentIncomplete ? 'Đơn đủ dữ liệu xét kỳ' : 'Đơn thành công'}</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{totalOrders.toLocaleString('vi-VN')} đơn</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
@@ -165,8 +165,12 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                 </div>
               </div>
 
-              <KolTierExplanation status={tierStatus} />
-              {nextTier ? (
+              <details className="tier-assessment-details"><summary>Căn cứ xét hạng và lịch đánh giá</summary><KolTierExplanation status={tierStatus} /></details>
+              {tierStatus.assessmentIncomplete ? (
+                <p role="status" className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs leading-relaxed text-[#7D715E]">
+                  Có {tierStatus.unassignedCompletedOrdersCount} đơn hoàn tất thiếu ngày hoàn tất. Doanh số trên chưa đầy đủ để xác nhận cấp bậc. Hệ thống giữ nguyên hạng đang lưu, không tự gán ngày hoặc hạ hạng; cần đối soát trước lần xét tiếp theo.
+                </p>
+              ) : nextTier ? (
                 <div className="pt-3 border-t border-[#EAE4D7]" id="tier-promotion-progress">
                   <div className="flex items-center justify-between gap-2.5 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -243,7 +247,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                         <h3 className="text-xs font-semibold text-[#1A1612]">{policy.name}</h3>
                         {isCurrent && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-white text-[#B88E4F] text-[9px] font-medium">
-                            <Check className="w-2.5 h-2.5" aria-hidden="true" /> Hiện tại
+                            <Check className="w-2.5 h-2.5" aria-hidden="true" /> {tierStatus?.assessmentIncomplete ? 'Đang lưu' : 'Hiện tại'}
                           </span>
                         )}
                       </div>

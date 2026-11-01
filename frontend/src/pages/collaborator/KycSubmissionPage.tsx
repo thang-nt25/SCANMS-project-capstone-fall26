@@ -18,7 +18,6 @@ import {
 import { kycService, type KycProfile } from '../../services/kyc.service';
 import { socialService, type SocialChannel } from '../../services/social.service';
 import { authService } from '../../services/auth.service';
-import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { ImageUploadDropzone } from '../../components/ui/ImageUploadDropzone';
 import { BankSelectTrigger } from '../../components/bank/BankSelectTrigger';
@@ -28,14 +27,17 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 interface KycSubmissionPageProps {
   loadedData?: { profile: KycProfile; channels: SocialChannel[] };
   isRefreshing?: boolean;
+  onProfileSaved?: (data: { profile: KycProfile; channels: SocialChannel[] }) => void;
 }
 
-const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmissionPageProps>(function KycSubmissionPage({ loadedData, isRefreshing = false }, ref) {
+const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmissionPageProps>(function KycSubmissionPage({ loadedData, isRefreshing = false, onProfileSaved }, ref) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [activeSection, setActiveSection] = useState<'channel' | 'identity' | 'bank'>('channel');
   const loadSequence = useRef(0);
   const revealSection = (section: string) => {
+    setActiveSection(section as typeof activeSection);
     const panel = formRef.current?.querySelector<HTMLElement>(`[data-profile-section="${section}"]`);
-    panel?.scrollIntoView({ block: 'nearest' });
+    requestAnimationFrame(() => panel?.scrollIntoView({ block: 'nearest' }));
   };
   const currentUser = authService.getCurrentUser();
   const [profile, setProfile] = useState<KycProfile | null>(null);
@@ -106,7 +108,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
     setFrontCardUrl(links?.frontCardUrl ?? '');
     setBackCardUrl(links?.backCardUrl ?? '');
     setChannelProofUrl(links?.channelProofUrl ?? '');
-    setPlatform((links?.platform || primary?.platformName || 'TIKTOK') as typeof platform);
+    setPlatform(String(links?.platform || primary?.platformName || 'TIKTOK').trim().toUpperCase() as typeof platform);
     setChannelName(links?.channelName || primary?.channelName || '');
     setChannelUrl(links?.channelUrl || primary?.channelUrl || '');
     setFollowerCount(links?.followerCount ?? primary?.followerCount ?? '');
@@ -124,6 +126,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
       if (sequence !== loadSequence.current) return;
       if (!p || !Array.isArray(channels)) throw new Error('Dữ liệu hồ sơ KYC không hợp lệ.');
       applyProfileData(p, channels);
+      onProfileSaved?.({ profile: p, channels });
     } catch (err: unknown) {
       if (sequence === loadSequence.current) {
         setLoadError(err instanceof Error ? err.message : 'Không thể tải hồ sơ KYC.');
@@ -270,8 +273,8 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         followerCount: followerCount ? Number(followerCount) : 0,
       });
 
-      toast.success('Lưu & Cập nhật hồ sơ định danh KYC thành công!');
       await loadProfile(true);
+      toast.success('Đã lưu hồ sơ KYC. Thông tin ngân hàng mới đang chờ thẩm định.');
       await authService.getMe();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err.message || 'Không thể lưu hồ sơ, vui lòng thử lại');
@@ -311,75 +314,45 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
       )}
       {/* 1. KHỐI TRẠNG THÁI XÁC MINH CỦA HỆ THỐNG */}
-      {!isVerified && (
-      <Card
-        className={`kyc-status-card p-4 sm:p-5 border transition rounded-2xl w-full ${
-          isRejected
-            ? 'bg-rose-50 border-rose-200'
-            : isPending
-            ? 'bg-amber-50/70 border-amber-200'
-            : 'bg-white border-[#EAE4D7]'
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                isRejected
-                  ? 'bg-rose-100 text-rose-700'
-                  : 'bg-amber-100 text-amber-700'
-              }`}
-            >
-              {isRejected ? (
-                <ShieldAlert className="w-5 h-5" />
-              ) : (
-                <Clock className="w-5 h-5" />
-              )}
-            </div>
-
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                <strong className="text-sm sm:text-base font-extrabold text-[#1A1612]">
-                  {isRejected
-                    ? 'Hồ sơ bị từ chối'
-                    : isPending
-                    ? 'Hồ sơ đang chờ duyệt'
-                    : 'Chưa gửi hồ sơ định danh'}
-                </strong>
-                <span
-                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                    isRejected
-                      ? 'bg-rose-100 text-rose-800'
-                      : isPending
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-stone-100 text-stone-700'
-                  }`}
-                >
-                  {isRejected ? 'Từ chối' : isPending ? 'Chờ duyệt' : 'Chưa nộp'}
-                </span>
-              </div>
-              <p className="text-xs text-[#7D715E] leading-relaxed m-0">
-                {isRejected
-                  ? 'Thông tin chưa hợp lệ. Vui lòng kiểm tra và gửi lại.'
-                  : isPending
-                  ? 'Hồ sơ đang được xem xét (kết quả trong 24h làm việc).'
-                  : 'Vui lòng cung cấp thông tin CCCD và kênh mạng xã hội bên dưới.'}
-              </p>
-            </div>
-          </div>
+      <div className="kyc-step-header">
+        <div className="kyc-review-inline" role="status">
+          <span className={`kyc-review-badge ${isRejected ? 'kyc-review-badge--rejected' : ''}`}>
+            {isVerified ? <Check size={13} /> : isRejected ? <ShieldAlert size={13} /> : <Clock size={13} />}
+            {isVerified ? 'Đã xác thực' : isRejected ? 'Cần bổ sung hồ sơ' : isPending ? 'Đang xét duyệt' : 'Chưa nộp hồ sơ'}
+          </span>
+          <span>{isVerified ? 'Hồ sơ đã được phê duyệt' : isRejected ? (profile?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra thông tin và gửi lại.') : isPending ? 'Dự kiến trong 24 giờ làm việc' : 'Hoàn thiện 3 phần bên dưới'}</span>
         </div>
-      </Card>
-      )}
+        <div className="kyc-step-tabs" role="group" aria-label="Các phần hồ sơ KYC">
+          {([
+            { id: 'channel', label: 'Kênh truyền thông' },
+            { id: 'identity', label: 'Định danh CCCD' },
+            { id: 'bank', label: 'Ngân hàng' },
+          ] as const).map((step, index) => (
+            <button type="button" key={step.id} aria-pressed={activeSection === step.id} onClick={() => setActiveSection(step.id)}>
+              <span aria-hidden="true">{index + 1}</span>{step.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 2. FORM ĐỊNH DANH */}
       <form
         ref={formRef}
         inert={loading || isRefreshing}
         onSubmit={handleSubmit}
+        onInvalidCapture={event => {
+          const field = event.target as HTMLInputElement;
+          const section = field.closest<HTMLElement>('[data-profile-section]')?.dataset.profileSection;
+          if (section) {
+            revealSection(section);
+            requestAnimationFrame(() => field.focus());
+          }
+        }}
         className="kyc-profile-form"
       >
+        <div className="kyc-content-card">
         {/* 1. BẰNG CHỨNG SỞ HỮU KÊNH TRUYỀN THÔNG (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="channel">
+        <section className="kyc-fixed-section" data-profile-section="channel" hidden={activeSection !== 'channel'}>
           <div className="kyc-fixed-section-heading">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><LinkIcon size={15} /></span>
             <div className="kyc-section-copy"><h2>Kênh sáng tạo</h2><p>{channelName || 'Thông tin kênh chính của bạn'}</p></div>
@@ -602,10 +575,10 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
 
         {/* 2. ĐỊNH DANH CÁ NHÂN & KÊ KHAI THUẾ TNCN (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="identity">
+        <section className="kyc-fixed-section" data-profile-section="identity" hidden={activeSection !== 'identity'}>
           <div className="kyc-fixed-section-heading">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><UserCheck size={15} /></span>
-            <div className="kyc-section-copy"><h2>Định danh & mã số thuế</h2><p>CCCD và ảnh hai mặt giấy tờ</p></div>
+            <div className="kyc-section-copy"><h2>Định danh & mã số thuế</h2></div>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={identityComplete}>{identityComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
           </div>
           <div className="kyc-section-body flex flex-col gap-3 p-3 sm:p-4">
@@ -662,7 +635,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
 
         {/* 3. TÀI KHOẢN NGÂN HÀNG NHẬN HOA HỒNG ĐỐI SOÁT (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="bank">
+        <section className="kyc-fixed-section" data-profile-section="bank" hidden={activeSection !== 'bank'}>
           <div className="kyc-fixed-section-heading">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><Building size={15} /></span>
             <div className="kyc-section-copy"><h2>Ngân hàng & hồ sơ giới thiệu</h2><p>{bankName || 'Tài khoản nhận hoa hồng và ngành hàng thế mạnh'}</p></div>
@@ -723,8 +696,10 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
         {/* NÚT LƯU & CẬP NHẬT HỒ SƠ KYC */}
         <div className="kyc-profile-actions">
+          {activeSection !== 'bank' && <button type="button" disabled={saving || loading || isRefreshing} onClick={() => setActiveSection(activeSection === 'channel' ? 'identity' : 'bank')}>Tiếp tục</button>}
           <button
             type="submit"
+            hidden={activeSection !== 'bank'}
             disabled={saving || loading || isRefreshing}
             className="inline-flex items-center justify-center gap-2 min-h-[36px] px-4 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors disabled:opacity-50 cursor-pointer"
           >
@@ -741,6 +716,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
                 : 'Gửi hồ sơ KYC'}
             </span>
           </button>
+        </div>
         </div>
       </form>
 

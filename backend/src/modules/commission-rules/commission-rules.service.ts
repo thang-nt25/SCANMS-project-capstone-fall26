@@ -1321,6 +1321,7 @@ export class CommissionRulesService {
     return await this.prisma.$transaction(async (tx) => {
       await this.lockBonusLedger(tx, storeId, collaboratorId);
       // 3. Kiểm tra Idempotency
+      await this.assertCompletionDatesResolved(tx, storeId, collaboratorId);
       const existingSettlement = await tx.monthlyBonusResult.findUnique({
         where: {
           storeId_collaboratorId_yearMonth: {
@@ -1589,6 +1590,15 @@ export class CommissionRulesService {
   }
 
   // Duyệt thưởng tháng (PENDING -> APPROVED)
+  private async assertCompletionDatesResolved(client: Prisma.TransactionClient, storeId: string, collaboratorId: string) {
+    const count = await client.order.count({
+      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
+    });
+    if (count > 0) {
+      throw new ConflictException('Chưa đủ dữ liệu kỳ: còn đơn hoàn tất thiếu ngày. Cần đối soát trước khi chốt, duyệt hoặc cộng thưởng.');
+    }
+  }
+
   async approveSettlement(
     storeId: string,
     settlementId: string,
@@ -1612,6 +1622,8 @@ export class CommissionRulesService {
           `Chỉ có thể duyệt kỳ thưởng đang ở trạng thái PENDING (Hiện tại: ${settlement.status})`,
         );
       }
+
+      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
 
       const updated = await tx.monthlyBonusResult.updateMany({
         where: { id: settlementId, storeId, status: CommissionStatus.PENDING },
@@ -1692,6 +1704,7 @@ export class CommissionRulesService {
       const now = new Date();
 
       // Cập nhật nguyên tử trạng thái sang PAID ngay trong transaction để loại bỏ hoàn toàn race condition
+      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
       const updateResult = await tx.monthlyBonusResult.updateMany({
         where: {
           id: settlementId,
@@ -2450,6 +2463,10 @@ export class CommissionRulesService {
       collaboratorId,
       targetYearMonth,
     );
+    const unassignedCompletedOrders = await this.prisma.order.findMany({
+      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
+      select: { externalOrderSn: true, status: true, completedAt: true, createdAt: true, finalAmount: true },
+    });
     const validRevenue = new Prisma.Decimal(revenueData.validRevenue);
 
     const { startOfMonth, endOfMonth } =
@@ -2547,6 +2564,15 @@ export class CommissionRulesService {
       yearMonth: targetYearMonth,
       validRevenue: validRevenue.toFixed(2),
       validOrdersCount: revenueData.validOrdersCount,
+      unassignedCompletedOrders: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .map((order) => order.externalOrderSn),
+      unassignedRecordedValue: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .reduce((total, order) => total.add(order.finalAmount || 0), new Prisma.Decimal(0)).toFixed(2),
+      unassignedOrderDetails: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .map((order) => ({ code: order.externalOrderSn, purchasedAt: order.createdAt, recordedValue: String(order.finalAmount || 0) })),
       currentMilestone: bonusCalc.highestReachedRule,
       achievementBonus: bonusCalc.achievementBonus,
       rangeBonuses: bonusCalc.rangeBonuses,
@@ -2646,13 +2672,19 @@ export class CommissionRulesService {
   async getCollaboratorStores(collaboratorId?: string, isDiscovery = false) {
     const whereClause: any = {
       isDeleted: false,
-      commissionRules: {
+    };
+
+    // Linked stores remain visible before their first rule is configured and
+    // after rules are retired, so collaborators can still view past rewards.
+    // Discovery only advertises stores with an active bonus policy.
+    if (isDiscovery) {
+      whereClause.commissionRules = {
         some: {
           isDeleted: false,
           isActive: true,
         },
-      },
-    };
+      };
+    }
 
     if (collaboratorId && !isDiscovery) {
       whereClause.OR = [
@@ -2770,6 +2802,19 @@ export class CommissionRulesService {
           },
         })
       : [];
+    // Legacy completed orders without a completion timestamp cannot be assigned
+    // to any month. Report them separately; never substitute createdAt/updatedAt.
+    const unassignedOrders = await this.prisma.order.findMany({
+      where: { storeId, status: 'COMPLETED', completedAt: null, attributedCollaboratorId: { not: null } },
+      select: { id: true, externalOrderSn: true, attributedCollaboratorId: true },
+    });
+    const unassignedByCollaborator = new Map<string, string[]>();
+    for (const order of unassignedOrders) {
+      if (!order.attributedCollaboratorId) continue;
+      const codes = unassignedByCollaborator.get(order.attributedCollaboratorId) || [];
+      codes.push(order.externalOrderSn || order.id);
+      unassignedByCollaborator.set(order.attributedCollaboratorId, codes);
+    }
     const members: any[] = [];
     const errors: Array<{ collaboratorId: string; message: string }> = [];
     let totalRevenue = new Prisma.Decimal(0);
@@ -2809,6 +2854,9 @@ export class CommissionRulesService {
           primaryChannel: c.socialChannels?.[0] || null,
           validRevenue: progress.validRevenue,
           validOrdersCount: progress.validOrdersCount,
+          unassignedCompletedOrders: unassignedByCollaborator.get(c.id) || [],
+          unassignedRecordedValue: progress.unassignedRecordedValue,
+          unassignedOrderDetails: progress.unassignedOrderDetails,
           currentMilestone: progress.currentMilestone,
           nextMilestone: progress.nextMilestone,
           estimatedTotalBonus: progress.estimatedTotalBonus,
@@ -2831,6 +2879,7 @@ export class CommissionRulesService {
       summary: {
         totalCollaborators: members.length,
         totalRevenue: totalRevenue.toFixed(2),
+        unassignedCompletedOrdersCount: unassignedOrders.length,
         totalEstimatedBonus: totalEstimatedBonus.toFixed(2),
         eligibleCount,
         settledCount,

@@ -10,6 +10,8 @@ import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 import { AccountMenu } from './AccountMenu';
 import { AccountConnectionStatus } from './AccountConnectionStatus';
 import { ProductSearchBox } from './ProductSearchBox';
+import { PublicHeader } from './PublicHeader';
+import './Topbar.css';
 
 export interface TopbarProps {
   currentUser: UserProfile | null;
@@ -20,6 +22,7 @@ export function Topbar({
   currentUser,
   onLogout,
 }: TopbarProps) {
+  const location = useLocation();
   const headerRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const header = headerRef.current;
@@ -29,8 +32,7 @@ export function Topbar({
     const observer = new ResizeObserver(updateHeight);
     observer.observe(header);
     return () => observer.disconnect();
-  }, []);
-  const location = useLocation();
+  }, [location.pathname]);
   const navigate = useNavigate();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -145,9 +147,17 @@ export function Topbar({
     }
   };
 
+  if (location.pathname.startsWith('/collaborator')) {
+    return (
+      <div ref={node => { headerRef.current = node; }} className="sticky top-0 z-40 shrink-0">
+        <PublicHeader layout="workspace" sticky={false} showShoppingActions={false} />
+      </div>
+    );
+  }
+
   return (
-    <header ref={headerRef} className="scanms-site-header sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
-      <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
+    <header ref={headerRef} className="scanms-site-header workspace-topbar sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+      <div className="workspace-topbar-inner max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">

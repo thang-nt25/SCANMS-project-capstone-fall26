@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../services/api';
-import { Ticket, Plus, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
+import { Ticket, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
 import type { Campaign } from '@/types/campaigns.types';
 import { CreateCampaignModal } from '../../components/common/CreateCampaignModal';
 
@@ -536,28 +536,9 @@ export default function ShopCampaignsPage({ embedded = false }: { embedded?: boo
       )}
 
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
-        <div>
-          <h1 className="text-lg font-bold text-[#1A1612]">Chiến dịch tiếp thị</h1>
-        </div>
-        <button
-          id="btn-new-campaign"
-          type="button"
-          className="px-4 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
-          onClick={() => setShowCreate(true)}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tạo Chiến Dịch Mới</span>
-        </button>
-      </div>
 
       {/* Campaigns Section */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-[#1A1612]">
-            Danh Sách Chiến Dịch ({campaigns.length})
-          </h2>
-        </div>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-3 p-12 text-[#7D715E]">

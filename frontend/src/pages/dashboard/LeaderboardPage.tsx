@@ -200,17 +200,11 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         { label: 'Doanh số Top 10', value: formatVND(allTop.reduce((sum, item) => sum + item.grossRevenue, 0)), detail: scopeLabel },
         { label: 'Đơn hàng Top 10', value: formatNumber(allTop.reduce((sum, item) => sum + item.totalOrders, 0)), detail: 'Theo kỳ và phạm vi đang chọn' },
       ]} /></div>}
-      <section className="leaderboard-controls p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-labelledby="lb-title">
-        <header className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Trophy aria-hidden="true" className="w-[18px] h-[18px]" /></span>
-            <div><h1 id="lb-title" className="m-0 text-base sm:text-lg font-semibold tracking-tight text-[#1A1612]">Bảng vinh danh Top Creator</h1><p className="m-0 mt-0.5 text-xs text-[#7D715E]">{data?.periodLabel || timeOptions.find(option => option.value === timeRange)?.label} · {scopeLabel}</p></div>
-          </div>
-        </header>
+      <section className="leaderboard-controls p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Bộ lọc bảng vinh danh">
         <div className="leaderboard-filter-row">
           <div className="min-w-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Khoảng thời gian xếp hạng">
-              {timeOptions.map(option => (
+              {timeOptions.map((option, index) => (
                 <button
                   key={option.value}
                   type="button"
@@ -222,7 +216,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                       : 'border border-transparent text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
                   }`}
                 >
-                  {option.label}
+                  <span className="leaderboard-filter-step" aria-hidden="true">{index + 1}</span>{option.label}
                 </button>
               ))}
             </div>

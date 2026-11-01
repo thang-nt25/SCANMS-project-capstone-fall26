@@ -43,8 +43,8 @@
 #kol-wallet-page.wallet-standalone .wallet-withdraw-inputs button[aria-pressed=true] { border-color: #EEDFC6; background: #FBF5EB; color: #79592C; }
 #kol-wallet-page.wallet-standalone .wallet-withdraw-fields > div:last-child:not(:first-child):not(.wallet-withdraw-inputs) { margin-top: 12px; border-radius: 9px; background: #FFFDFA; }
 #kol-wallet-page.wallet-standalone .wallet-withdraw-fields .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
-#kol-wallet-page.wallet-standalone .wallet-withdraw-actions > button { --action-bg: #C59B58; --action-hover: #B88E4F; --action-border: #C59B58; --action-border-hover: #B88E4F; height: 40px; border-color: #C59B58; border-radius: 9px; background: #C59B58; color: #1A1612; font-size: 12px; font-weight: 600; }
-#kol-wallet-page.wallet-standalone .wallet-withdraw-actions > button:not(:disabled):hover { background: #B88E4F; }
+#kol-wallet-page.wallet-standalone .wallet-withdraw-actions > button { --action-bg: #FBF5EB; --action-hover: #F3EFE6; --action-border: #EEDFC6; --action-border-hover: #C59B58; --action-ink: #1A1612; height: 40px; border-color: #EEDFC6; border-radius: 9px; background: #FBF5EB; color: #1A1612; font-size: 12px; font-weight: 600; box-shadow: none; }
+#kol-wallet-page.wallet-standalone .wallet-withdraw-actions > button:not(:disabled):hover { background: #F3EFE6; border-color: #C59B58; }
 #kol-wallet-page.wallet-standalone .wallet-withdraw-actions > button:disabled { --action-bg: #FAF8F5; --action-border: #EAE4D7; --action-ink: #7D715E; border-color: #EAE4D7; background: #FAF8F5; color: #7D715E; opacity: 1; }
 #kol-wallet-page.wallet-standalone .wallet-withdraw-actions > .kol-wallet-notice { margin-top: 12px; padding: 10px 12px !important; border: 1px solid #EAE4D7 !important; border-radius: 8px; background: #FFFDFA !important; color: #7D715E; font-size: 10px !important; line-height: 17px !important; }
 #kol-wallet-page.wallet-standalone .kol-wallet-notice > p:first-child { margin: 0 0 4px; color: #7D715E; font-weight: 500; }

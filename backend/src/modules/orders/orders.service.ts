@@ -3959,6 +3959,7 @@ export class OrdersService {
           paymentMethod: raw.paymentMethod || 'COD',
           paymentStatus: raw.paymentStatus || 'UNPAID',
           trackingNumber: raw.trackingNumber || raw.ghnOrderCode || null,
+          shopConfirmedAt: raw.shopConfirmedAt || null,
           ghnEnvironment: ['LIVE', 'TEST'].includes(raw.ghnEnvironment) ? raw.ghnEnvironment : null,
           carrierName:
             raw.carrierName ||
@@ -4122,6 +4123,33 @@ export class OrdersService {
   /**
    * Cập nhật trạng thái giao hàng & mã vận đơn bưu cục của Shop
    */
+  async confirmOrder(orderId: string, userId: string, userRole: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { store: true } });
+      if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+      if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(userRole as any)
+        && !(userRole === UserRole.SHOP_MANAGER && (order.store.ownerId === userId || user?.storeId === order.storeId))) {
+        throw new ForbiddenException('Bạn không có quyền xác nhận đơn hàng này');
+      }
+      if (order.status !== OrderStatus.PENDING) throw new BadRequestException('Chỉ xác nhận đơn đang chờ xử lý');
+      const raw = (order.rawPayload as Record<string, any>) || {};
+      if (raw.shopConfirmedAt) return { success: true, shopConfirmedAt: raw.shopConfirmedAt };
+      if (raw.paymentMethod && raw.paymentMethod !== 'COD' && raw.paymentStatus !== 'PAID') {
+        throw new BadRequestException('Đơn hàng chưa thanh toán thành công');
+      }
+      const shopConfirmedAt = new Date().toISOString();
+      await tx.order.update({ where: { id: orderId }, data: {
+        rawPayload: { ...raw, shopConfirmedAt, shopConfirmedBy: userId },
+      } });
+      await tx.auditLog.create({ data: {
+        userId, action: 'ORDER_CONFIRMED', details: { orderId, shopConfirmedAt },
+      } });
+      return { success: true, shopConfirmedAt };
+    });
+  }
+
   async updateOrderFulfillment(
     orderId: string,
     userId: string,
@@ -4165,6 +4193,9 @@ export class OrdersService {
     }
 
     const trackingNumber = dto.trackingNumber?.trim();
+    if (dto.status === OrderStatus.SHIPPING && !(order.rawPayload as Record<string, any> | null)?.shopConfirmedAt) {
+      throw new BadRequestException('Shop cần xác nhận đơn trước khi giao hàng');
+    }
     const carrierName = dto.carrierName?.trim();
     if (
       dto.status === OrderStatus.SHIPPING &&

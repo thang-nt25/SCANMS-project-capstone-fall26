@@ -397,6 +397,17 @@ export class OrdersController {
     );
   }
 
+  @Post(':id/confirm')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  async confirmOrder(
+    @CurrentUser() manager: OrderManagerIdentity,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ordersService.confirmOrder(id, manager.id, manager.role);
+  }
+
   @Patch(':id/fulfillment')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)

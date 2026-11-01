@@ -1,6 +1,81 @@
 .public-commerce-header .product-search-form { min-height: 44px; border-radius: 8px; border-color: #eae4d7; }
 .public-commerce-header .product-search-form:focus-within { border-color: #b88e4f; }
 .public-commerce-header .product-search-submit { border-radius: 5px; }
+.customer-portal-layout .public-commerce-header--marketplace .public-commerce-header__inner { max-width: 1360px; }
+/* Continue the header surface through the reserved document scrollbar gutter. */
+html:has(.public-commerce-header--workspace) {
+  background: linear-gradient(to bottom, #fff 0 var(--workspace-header-height, 80px), #faf8f5 var(--workspace-header-height, 80px));
+  background-attachment: fixed;
+}
+.public-commerce-header--workspace { width: 100%; border-radius: 0; }
+.public-commerce-header--workspace .public-commerce-header__inner {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 20px;
+  height: 80px;
+  max-width: 1520px;
+}
+.public-commerce-header--workspace .public-commerce-header__brand { grid-column: 1; grid-row: 1; display: flex; align-items: center; min-height: 44px; }
+.public-commerce-header--workspace .scanms-header-logo { min-width: 0; gap: 10px; align-items: center; }
+.public-commerce-header--workspace .scanms-header-logo > div:nth-child(2) { min-width: 0; justify-content: center; }
+.public-commerce-header--workspace .scanms-header-logo > div:nth-child(2) > div { line-height: 24px; }
+.public-commerce-header--workspace .scanms-logo-subtitle {
+  margin-top: 3px;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: .065em;
+}
+.public-commerce-header--workspace .public-commerce-header__inner > .product-search {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.public-commerce-header--workspace .product-search-form { height: 44px; min-height: 44px; background: #fff; border-color: #eae4d7; box-shadow: none; }
+.public-commerce-header--workspace .product-search-form:focus-within { border-color: #b88e4f; }
+.public-commerce-header--workspace .public-commerce-header__actions {
+  position: relative;
+  grid-column: 3;
+  grid-row: 1;
+  height: 44px;
+  align-items: center;
+  padding-right: 0;
+  gap: 12px;
+}
+.public-commerce-header--workspace .public-commerce-header__actions > div + div { border-left: 1px solid #eae4d7; padding-left: 12px; }
+.public-commerce-header--workspace .header-account-trigger { height: 44px; align-items: center; padding-block: 0; }
+.public-commerce-header--workspace .header-account-trigger > span:nth-child(2) > span { display: none; }
+.public-commerce-header--workspace .header-account-trigger strong { line-height: 20px; }
+.public-commerce-header--workspace .header-account-trigger { padding-right: 0; }
+.public-commerce-header--workspace .public-commerce-header__mobile-search { display: none; }
+@media (min-width: 768px) {
+  body:has(#kol-wallet-page.wallet-standalone) .public-commerce-header--workspace .public-commerce-header__actions { margin-right: 4px; }
+}
+@media (min-width: 1024px) {
+  /* Sidebar profile starts after 14px sidebar padding + 8px profile padding. */
+  .public-commerce-header--workspace .public-commerce-header__brand { padding-left: 22px; }
+  .public-commerce-header--workspace .scanms-header-logo > div:first-child { width: 44px !important; height: 44px !important; }
+  /* Match the content edge inside the workspace's own vertical scrollbar. */
+  .public-commerce-header--workspace .public-commerce-header__inner {
+    padding-right: calc(32px + var(--workspace-scrollbar-width, 0px));
+  }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .public-commerce-header--workspace .public-commerce-header__inner { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 16px; }
+  .public-commerce-header--workspace .header-account-trigger > span:nth-child(2) { display: none; }
+}
+@media (max-width: 767px) {
+  .public-commerce-header--workspace .public-commerce-header__inner { grid-template-columns: minmax(0, 1fr) auto; height: auto; min-height: 72px; gap: 8px; }
+  .public-commerce-header--workspace .public-commerce-header__inner > .product-search { display: none; }
+  .public-commerce-header--workspace .public-commerce-header__inner > .public-commerce-header__actions { grid-column: 2; width: auto; padding-right: 0; gap: 8px; }
+  .public-commerce-header--workspace .header-account-trigger > span:nth-child(2) { display: none; }
+  .public-commerce-header--workspace .public-commerce-header__mobile-search { display: block; padding-bottom: 12px; border-top: 0; background: #fff; }
+}
 .public-commerce-header__tracking, .public-commerce-header__cart { display: inline-flex; height: 40px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 9px; background: transparent; color: #1a1612; cursor: pointer; }
 .public-commerce-header__tracking { gap: 7px; padding: 0 7px; font-size: 12px; font-weight: 550; white-space: nowrap; }
 .public-commerce-header__tracking svg, .public-commerce-header__cart svg { color: #b88e4f; stroke-width: 1.7; }
@@ -102,6 +177,12 @@
 }
 
 /* Marketplace header without shortcuts (Customer Portal & account workspace) */
+.public-commerce-header--marketplace[data-shopping-actions="false"] .public-commerce-header__inner > .product-search { grid-column: 2 / 4; }
+.public-commerce-header--marketplace[data-shopping-actions="false"] .public-commerce-header__actions > div:first-child { display: flex; align-items: center; height: 32px; padding-inline: 10px; border-right: 1px solid #eae4d7; }
+.public-commerce-header--marketplace[data-shopping-actions="false"] .public-commerce-header__actions > div:nth-child(2) { width: auto; height: 32px; padding-left: 10px; padding-right: 0; border: 0; }
+@media (max-width: 639px) {
+  .public-commerce-header--marketplace[data-shopping-actions="false"] .public-commerce-header__actions { margin-right: 16px; }
+}
 .public-commerce-header--marketplace[data-shortcuts="false"] .public-commerce-header__inner {
   grid-template-rows: 34px 50px;
   row-gap: 6px;

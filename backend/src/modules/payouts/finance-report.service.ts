@@ -35,12 +35,13 @@ export class FinanceReportService {
       costs,
       sampleRequests,
       bonusClawbacks,
+      unrecognizedCommissions,
     ] = await Promise.all([
       this.prisma.order.findMany({
         where: { storeId, status: 'COMPLETED' },
       }),
       this.prisma.commission.aggregate({
-        where: { order: { storeId }, status: { not: 'REVERSED' } },
+        where: { order: { storeId, status: 'COMPLETED' }, status: { not: 'REVERSED' } },
         _sum: { commissionAmount: true },
       }),
       this.prisma.monthlyBonusResult.aggregate({
@@ -63,6 +64,10 @@ export class FinanceReportService {
           originalSettlement: { status: 'PAID' },
         },
         _sum: { adjustmentAmount: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { order: { storeId, status: { not: 'COMPLETED' } }, status: { not: 'REVERSED' } },
+        _sum: { commissionAmount: true },
       }),
     ]);
     const zero = new Prisma.Decimal(0);
@@ -108,6 +113,8 @@ export class FinanceReportService {
       storeId,
       storeName: store.name,
       scope: 'ALL_TIME',
+      recognitionBasis: 'COMPLETED_ORDERS',
+      unrecognizedCommissions: (unrecognizedCommissions._sum.commissionAmount ?? zero).toFixed(2),
       netRevenue: netRevenue.toFixed(2),
       commissions: commission.toFixed(2),
       monthlyBonuses: bonus.toFixed(2),
@@ -135,11 +142,11 @@ export class FinanceReportService {
   async executive() {
     return this.prisma.$transaction(
       async (tx) => {
-        const [orders, commissions, bonuses, wallets, payouts, bonusClawbacks] =
+        const [orders, commissions, bonuses, wallets, payouts, bonusClawbacks, unrecognizedCommissions] =
           await Promise.all([
             tx.order.findMany({ where: { status: 'COMPLETED' } }),
             tx.commission.aggregate({
-              where: { status: { not: 'REVERSED' } },
+              where: { status: { not: 'REVERSED' }, order: { status: 'COMPLETED' } },
               _sum: { commissionAmount: true },
             }),
             tx.monthlyBonusResult.aggregate({
@@ -162,6 +169,10 @@ export class FinanceReportService {
               },
               _sum: { adjustmentAmount: true },
             }),
+            tx.commission.aggregate({
+              where: { status: { not: 'REVERSED' }, order: { status: { not: 'COMPLETED' } } },
+              _sum: { commissionAmount: true },
+            }),
           ]);
         const gmv = orders.reduce(
           (sum, order) => sum.plus(order.subtotalAmount),
@@ -179,6 +190,8 @@ export class FinanceReportService {
         return {
           asOf: new Date().toISOString(),
           scope: 'ALL_TIME',
+          recognitionBasis: 'COMPLETED_ORDERS',
+          unrecognizedCommissions: (unrecognizedCommissions._sum.commissionAmount ?? new Prisma.Decimal(0)).toFixed(2),
           holdDays: COMMISSION_HOLD_DAYS,
           gmv: gmv.toFixed(2),
           netRevenue: revenue.toFixed(2),
@@ -389,6 +402,9 @@ export class FinanceReportService {
               id: true,
               externalOrderSn: true,
               status: true,
+                finalAmount: true,
+                deliveredAt: true,
+                orderItems: { select: { quantity: true, unitPrice: true, appliedCommissionRate: true, product: { select: { title: true, imageUrl: true } }, variant: { select: { name: true } } } },
               store: { select: { name: true } },
               returnRequest: { select: { status: true } },
               rawPayload: true,
@@ -411,6 +427,7 @@ export class FinanceReportService {
           order: {
             ...order,
             referralReviewRequired: risk?.selfReferralReviewRequired === true,
+              testFixture: risk?.testFixture === true,
             referralRiskSignals: Array.isArray(risk?.selfReferralRiskSignals)
               ? risk.selfReferralRiskSignals
               : [],

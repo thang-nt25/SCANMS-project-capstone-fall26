@@ -87,6 +87,7 @@ describe('CommissionRulesService', () => {
   const mockPrismaService = {
     store: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -98,6 +99,7 @@ describe('CommissionRulesService', () => {
       update: jest.fn(),
     },
     order: {
+      count: jest.fn().mockResolvedValue(0),
       findMany: jest.fn(),
       findFirst: jest.fn(),
     },
@@ -175,6 +177,33 @@ describe('CommissionRulesService', () => {
     mockPrismaService.bonusAdjustment.findMany.mockResolvedValue([]);
     mockPrismaService.bonusAdjustment.updateMany.mockResolvedValue({
       count: 0,
+    });
+  });
+
+  describe('Collaborator bonus store selection', () => {
+    it('keeps linked stores visible when no active bonus rules exist', async () => {
+      mockPrismaService.store.findMany.mockResolvedValueOnce([
+        { id: mockStoreId, name: 'Sora', logoUrl: null, _count: { commissionRules: 0 } },
+      ]);
+      const stores = await service.getCollaboratorStores(mockKolId, false);
+      expect(stores).toEqual([
+        { id: mockStoreId, name: 'Sora', logoUrl: null, activeRulesCount: 0 },
+      ]);
+      const where = mockPrismaService.store.findMany.mock.calls.at(-1)[0].where;
+      expect(where.isDeleted).toBe(false);
+      expect(where.commissionRules).toBeUndefined();
+      expect(where.OR).toContainEqual({
+        storeCollaborators: { some: { collaboratorId: mockKolId, status: 'APPROVED' } },
+      });
+      expect(where.OR).toContainEqual({ monthlyBonusResults: { some: { collaboratorId: mockKolId } } });
+    });
+
+    it('limits discovery to stores with active bonus rules', async () => {
+      mockPrismaService.store.findMany.mockResolvedValueOnce([]);
+      await service.getCollaboratorStores(mockKolId, true);
+      const where = mockPrismaService.store.findMany.mock.calls.at(-1)[0].where;
+      expect(where.commissionRules).toEqual({ some: { isDeleted: false, isActive: true } });
+      expect(where.OR).toBeUndefined();
     });
   });
 

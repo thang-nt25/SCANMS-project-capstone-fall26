@@ -79,3 +79,131 @@
   #shop-promotions-hub .coupon-filters > div:first-child > button { padding: 7px 5px; justify-content: center; font-size: 10px; gap: 4px; flex-wrap: wrap; }
   #shop-promotions-hub .coupon-filters > div:last-child > div:last-child { max-width: none; flex-basis: 100%; }
 }
+/* Softer coupon surfaces with stronger text and borders for comfortable reading. */
+#shop-promotions-hub .promotions-coupons .coupon-card {
+  background: #fffdfa;
+  border-color: #e3d9ca;
+  box-shadow: 0 2px 6px rgb(35 29 21 / 3%);
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-heading {
+  background: #faf7f1;
+  background-image: none;
+  border-color: #e3d9ca;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-body { background: #fffdfa; }
+#shop-promotions-hub .promotions-coupons .coupon-card-actions {
+  background: #faf7f1;
+  border-color: #e3d9ca;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters {
+  background: #faf8f5;
+  border-color: #e3d9ca;
+}
+#shop-promotions-hub .promotions-coupons :is(.coupon-card, .coupon-filters) [class*="text-[#7D715E]"] {
+  color: #655b4b;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-actions button {
+  border-color: #d1bea0;
+}
+
+/* Equal-width coupon actions and filter controls. */
+#shop-promotions-hub .coupon-issuer > div { display: block; }
+#shop-promotions-hub .coupon-issuer .coupon-issuer-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+#shop-promotions-hub .coupon-issuer .coupon-issuer-actions > * {
+  width: 100%; min-width: 0; height: 44px; justify-content: center; margin: 0;
+}
+#shop-promotions-hub .coupon-issuer .coupon-issuer-actions > div:first-child {
+  width: 100%; height: 44px; background: transparent; border-radius: 8px;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(190px, 1.6fr);
+  align-items: center;
+  gap: 8px;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters > div:first-child,
+#shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child,
+#shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:first-child {
+  display: contents;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters button {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; min-width: 0; min-height: 42px; height: 42px;
+  padding: 8px 6px; border-radius: 8px; font-size: 11px;
+  border: 1px solid #d8cbb7;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:last-child {
+  min-width: 0; max-width: none; width: 100%;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters input { height: 42px; }
+@media (max-width: 1200px) {
+  #shop-promotions-hub .promotions-coupons .coupon-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 540px) {
+  #shop-promotions-hub .coupon-issuer .coupon-issuer-actions { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* Compact coupon panels, matching the light outlined step controls. */
+#shop-promotions-hub .promotions-coupons .coupon-filters {
+  padding: 12px;
+  border-radius: 14px;
+  background: #fffdfa;
+  border-color: #eae4d7;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters button {
+  height: 44px;
+  min-height: 44px;
+  font-size: 12px;
+  border-radius: 10px;
+  border-color: #eae4d7;
+  background: #fffdfa;
+  color: #655b4b;
+  box-shadow: none;
+}
+#shop-promotions-hub .promotions-coupons .coupon-filters button[aria-pressed='true'] {
+  background: #fbf5eb;
+  border-color: #d9b980;
+  color: #795721;
+  font-weight: 600;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card {
+  min-height: 0;
+  height: auto;
+  aspect-ratio: auto;
+  border-radius: 14px;
+  border-color: #eae4d7;
+  background: #fffdfa;
+  justify-content: flex-start;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-heading {
+  padding: 14px 16px;
+  background: #fffdfa;
+  border-color: #eae4d7;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-heading > div:last-child {
+  padding-top: 8px;
+  margin-top: 8px;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-body {
+  padding: 12px 16px;
+  background: #fffdfa;
+  flex: 1 0 auto;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-body > * + * { margin-top: 9px; }
+#shop-promotions-hub .promotions-coupons .coupon-card-actions {
+  padding: 10px 12px;
+  background: #faf8f5;
+  border-color: #eae4d7;
+}
+#shop-promotions-hub .promotions-coupons .coupon-card-actions button { min-height: 36px; }
+#shop-promotions-hub .promotions-coupons .coupon-card-heading > div:first-child > span {
+  font-size: 10px;
+  background: #fbf5eb;
+  color: #795721;
+}

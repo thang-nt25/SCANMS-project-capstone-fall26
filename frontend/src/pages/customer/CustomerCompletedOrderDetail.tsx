@@ -61,7 +61,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
     { title: 'Đơn hàng đã hủy', Icon: CircleX, reached: true, time: order.rawPayload?.cancelledAt || order.rawPayload?.canceledAt },
   ] : [
     { title: 'Đơn hàng đã đặt', Icon: FileText, reached: true, time: order.createdAt },
-    { title: 'Shop xác nhận', Icon: ShieldCheck, reached: !['PENDING', 'CANCELLED'].includes(order.status), time: order.rawPayload?.shopConfirmedAt || order.rawPayload?.ghnShippedAt },
+    { title: 'Shop xác nhận', Icon: ShieldCheck, reached: Boolean(order.rawPayload?.shopConfirmedAt) || !['PENDING', 'CANCELLED'].includes(order.status), time: order.rawPayload?.shopConfirmedAt || order.rawPayload?.ghnShippedAt },
     { title: 'Bàn giao vận chuyển', Icon: Truck, reached: shipping, time: trackingEvents.find(event => ['picked', 'money_collect_picked'].includes(event.status) && dateLabel(event.time))?.time || order.rawPayload?.carrierPickedUpAt },
     { title: 'Đã nhận hàng', Icon: PackageCheck, reached: delivered, time: order.deliveredAt },
     { title: 'Đơn hàng hoàn thành', Icon: Star, reached: completed, time: order.completedAt },
@@ -113,7 +113,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   return <article className="customer-purchase-detail">
     <header className="purchase-detail-top">
       <Link to="/customer/orders" state={{ returnedOrderCode: order.externalOrderSn, clearOrderSearch: true }}><ArrowLeft size={16} /> Trở lại</Link>
-      <div><span>Mã đơn hàng: <strong>{order.externalOrderSn}</strong></span><span className="purchase-detail-status">{statusLabels[order.status] || 'Đang xử lý'}</span></div>
+      <div><span>Mã đơn hàng: <strong>{order.externalOrderSn}</strong></span><span className="purchase-detail-status">{pending && order.rawPayload?.shopConfirmedAt ? 'Shop đã xác nhận · Chuẩn bị hàng' : statusLabels[order.status] || 'Đang xử lý'}</span></div>
     </header>
 
     <ol className={`purchase-detail-progress${cancelled ? ' purchase-detail-progress-cancelled' : ''}`} aria-label="Tiến trình đơn hàng">

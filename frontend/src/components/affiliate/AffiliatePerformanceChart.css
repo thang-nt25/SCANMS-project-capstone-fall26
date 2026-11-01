@@ -1,0 +1,20 @@
+.affiliate-chart-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3efe6; }
+.affiliate-table-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 10px; border: 1px solid #eedfc6; border-radius: 8px; background: #fff; color: #8a642c; font-size: 11px; font-weight: 600; cursor: pointer; }
+.affiliate-table-toggle:hover { background: #fbf5eb; }
+.affiliate-table-toggle:focus-visible { outline: 2px solid #b88e4f; outline-offset: 2px; }
+.affiliate-chart-definition { margin: 10px 0 0; padding-left: 9px; border-left: 2px solid #eedfc6; font-size: 10px; line-height: 1.7; color: #7d715e; }
+.affiliate-data-panel { margin-top: 14px; overflow: hidden; border: 1px solid #eae4d7; border-radius: 12px; background: #fff; }
+.affiliate-data-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 12px 14px; border-bottom: 1px solid #eae4d7; }
+.affiliate-data-heading strong { font-size: 12px; font-weight: 600; color: #1a1612; }
+.affiliate-data-heading > span { font-size: 10px; color: #7d715e; }
+.affiliate-data-scroll { max-height: 380px; overflow: auto; scrollbar-width: thin; scrollbar-color: #d9c5a3 #fff; }
+.affiliate-data-panel table { width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0; text-align: right; font-size: 11px; line-height: 18px; font-variant-numeric: tabular-nums; }
+.affiliate-data-panel th, .affiliate-data-panel td { padding: 11px 14px; white-space: nowrap; border-bottom: 1px solid #f3efe6; }
+.affiliate-data-panel thead th { position: sticky; top: 0; z-index: 1; background: #fff; color: #7d715e; font-weight: 500; border-bottom-color: #eae4d7; }
+.affiliate-data-panel th:first-child { text-align: left; }
+.affiliate-data-panel tbody th { font-weight: 500; color: #7d715e; }
+.affiliate-data-panel thead small { display: block; font-size: 9px; font-weight: 400; }
+.affiliate-data-panel [data-selected=true] { color: #8a642c; font-weight: 600; }
+.affiliate-data-panel tbody tr:hover > * { background: #fffaf2; }
+.affiliate-data-panel tfoot th, .affiliate-data-panel tfoot td { background: #fbf5eb; border-bottom: 0; border-top: 1px solid #eedfc6; font-weight: 600; }
+@media (max-width: 639px) { .affiliate-data-heading { padding: 10px 12px; } .affiliate-data-panel th, .affiliate-data-panel td { padding: 10px 12px; } }

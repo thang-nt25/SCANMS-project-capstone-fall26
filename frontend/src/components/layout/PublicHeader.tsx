@@ -19,9 +19,10 @@ import { HeaderCartPreview } from '../cart/HeaderCartPreview';
 import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 
 export interface PublicHeaderProps {
+  showShoppingActions?: boolean;
   cartPage?: boolean;
   navigation?: ReactNode;
-  layout?: 'marketplace' | 'cart' | 'standard';
+  layout?: 'marketplace' | 'cart' | 'standard' | 'workspace';
   sticky?: boolean;
   cartCount?: number;
   onOpenCart?: () => void;
@@ -32,6 +33,7 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({
+  showShoppingActions = true,
   cartPage = false,
   navigation,
   layout,
@@ -179,7 +181,7 @@ export function PublicHeader({
   const hasShortcuts = Boolean(navigation);
 
   return (
-    <header className={`scanms-site-header public-commerce-header ${cartPage ? 'public-commerce-header--cart' : ''} ${isMarketplace ? 'public-commerce-header--marketplace' : ''} ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white border-b border-[#EAE4D7]`} data-shortcuts={hasShortcuts}>
+    <header className={`scanms-site-header public-commerce-header ${cartPage ? 'public-commerce-header--cart' : ''} ${isMarketplace ? 'public-commerce-header--marketplace' : ''} ${layout === 'workspace' ? 'public-commerce-header--workspace' : ''} ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white border-b border-[#EAE4D7]`} data-shortcuts={hasShortcuts} data-shopping-actions={showShoppingActions}>
       <div className="public-commerce-header__inner max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="public-commerce-header__brand flex items-center gap-2 shrink-0">
@@ -193,13 +195,13 @@ export function PublicHeader({
           onClear={handleClearSearch}
           className="hidden lg:block min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2" />
 
-        {!cartPage && <div className="public-commerce-header__cart-slot">
+        {showShoppingActions && !cartPage && <div className="public-commerce-header__cart-slot">
           <HeaderCartPreview count={effectiveCartCount} onOpenCart={handleCartClick} />
         </div>}
 
         <div className="public-commerce-header__actions flex items-center gap-2 sm:gap-3.5 shrink-0">
           {/* Quick Tracking Button */}
-          <button
+          {showShoppingActions && <button
             type="button"
             onClick={() => {
               if (onOpenTracking) {
@@ -214,7 +216,7 @@ export function PublicHeader({
           >
             <Package size={20} aria-hidden="true" />
             <span className="hidden sm:inline">Tra cứu đơn</span>
-          </button>
+          </button>}
 
           {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
           <NotificationDropdown />

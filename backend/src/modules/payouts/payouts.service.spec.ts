@@ -42,6 +42,9 @@ describe('PayoutsService FR-22', () => {
         }),
       },
       storeWallet: {
+        findMany: jest.fn(() => Promise.resolve([{
+          storeId: selectedStoreId, availableBalance, pendingBalance: new Prisma.Decimal(0),
+        }])),
         upsert: jest.fn().mockResolvedValue({}),
         findUniqueOrThrow: jest.fn(() =>
           Promise.resolve({
@@ -57,7 +60,7 @@ describe('PayoutsService FR-22', () => {
       wallet: {
         upsert: jest.fn().mockResolvedValue({}),
         findUniqueOrThrow: jest.fn(() =>
-          Promise.resolve({ id: 'wallet-id', availableBalance }),
+          Promise.resolve({ id: 'wallet-id', availableBalance, pendingBalance: new Prisma.Decimal(0) }),
         ),
         update: jest.fn(
           (input: { data: { availableBalance: Prisma.Decimal } }) => {

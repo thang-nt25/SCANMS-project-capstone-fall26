@@ -143,6 +143,17 @@ export class TiersService implements OnApplicationBootstrap {
     );
   }
 
+  private unassignedCompletedOrdersCount(userId: string) {
+    return this.prisma.order.count({
+      where: {
+        attributedCollaboratorId: userId,
+        status: 'COMPLETED',
+        completedAt: null,
+        OR: [{ customerId: null }, { customerId: { not: userId } }],
+      },
+    });
+  }
+
   private async synchronizeTier(
     profile: { id: string; userId: string; tier: CollaboratorTier | null },
     matchedTier: CollaboratorTier,
@@ -215,6 +226,8 @@ export class TiersService implements OnApplicationBootstrap {
     // Tính tổng doanh thu từ các đơn hàng thành công mà KOL này mang lại
     const period = this.previousMonthWindow();
     const sales = await this.previousMonthSales(userId, period);
+    const unassignedCompletedOrdersCount = await this.unassignedCompletedOrdersCount(userId);
+    const assessmentIncomplete = unassignedCompletedOrdersCount > 0;
     const vietnamMonth = new Date(period.lt.getTime() + 7 * 60 * 60 * 1000);
     const currentEvaluation = new Date(period.lt.getTime() + 15 * 60 * 1000);
     const nextEvaluationAt =
@@ -236,10 +249,10 @@ export class TiersService implements OnApplicationBootstrap {
     // Repair a missed monthly run or a seeded rank in storage as well as in the
     // response, so commission readers and the leaderboard use the same rank.
     const qualifiedTier = this.qualifiedTier(tiers, currentRevenue);
-    let currentTier = profile.tier;
+    let currentTier = profile.tier ?? tiers[0];
     if (
-      !currentTier ||
-      this.policyKey(currentTier) !== this.policyKey(qualifiedTier)
+      !assessmentIncomplete &&
+      (!profile.tier || this.policyKey(currentTier) !== this.policyKey(qualifiedTier))
     ) {
       const changed = await this.synchronizeTier(
         profile,
@@ -292,6 +305,8 @@ export class TiersService implements OnApplicationBootstrap {
       },
       currentRevenue,
       totalOrders,
+      assessmentIncomplete,
+      unassignedCompletedOrdersCount,
       revenueBasis: 'CUMULATIVE_CLOSED_MONTHS_VIETNAM',
       assessmentPeriod: {
         startsAt: period.gte.toISOString(),
@@ -338,10 +353,16 @@ export class TiersService implements OnApplicationBootstrap {
     });
 
     let updatedCount = 0;
+    const pendingReview: { userId: string; unassignedCompletedOrdersCount: number }[] = [];
     const details: any[] = [];
     const period = this.previousMonthWindow();
 
     for (const p of profiles) {
+      const unassignedCompletedOrdersCount = await this.unassignedCompletedOrdersCount(p.userId);
+      if (unassignedCompletedOrdersCount > 0) {
+        pendingReview.push({ userId: p.userId, unassignedCompletedOrdersCount });
+        continue;
+      }
       const totalRevenue = (await this.previousMonthSales(p.userId, period))
         .revenue;
 
@@ -369,6 +390,7 @@ export class TiersService implements OnApplicationBootstrap {
     return {
       message: `Đã hoàn tất quét và đánh giá cấp bậc cho ${profiles.length} cộng tác viên`,
       updatedCount,
+      pendingReview,
       details,
     };
   }

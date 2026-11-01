@@ -38,6 +38,11 @@ describe('Persisted product package and shipping snapshots', () => {
       ]),
     ).toEqual({ weight: 1600, length: 20, width: 30, height: 15 });
   });
+  it('quotes valid packaging independently of a legacy invalid catalog barcode', () => {
+    expect(buildShippingPackage([{ product: { ...product, barcode: 'legacy-invalid' }, quantity: 1 }]))
+      .toEqual({ weight: 700, length: 20, width: 15, height: 5 });
+    expect(() => validateProductPackage({ barcode: 'legacy-invalid' })).toThrow();
+  });
   it.each([0, -1, 1.5, NaN])('rejects invalid quantity %p', (quantity) => {
     expect(() => buildShippingPackage([{ product, quantity }])).toThrow();
   });
