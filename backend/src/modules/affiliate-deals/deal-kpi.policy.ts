@@ -44,6 +44,7 @@ export interface KpiDeal {
   commitmentEndsAt?: Date | null;
   settlementEndsAt?: Date | null;
   closedAt?: Date | null;
+  approvedCommissionRate?: number | Prisma.Decimal | null;
 }
 
 export function dealOrderWhere(deal: KpiDeal): Prisma.OrderWhereInput {
@@ -71,12 +72,18 @@ export function evaluateDealKpi(
   completedOrders: number,
   pendingOrders: number,
   now = new Date(),
+  validSales = 0,
 ) {
+  const effectiveSettlementEndsAt =
+    deal.settlementEndsAt ||
+    (deal.commitmentEndsAt
+      ? new Date(deal.commitmentEndsAt.getTime() + 14 * 86400000)
+      : null);
+
   const configured = !!(
     deal.targetOrders &&
     deal.commitmentStartedAt &&
-    deal.commitmentEndsAt &&
-    deal.settlementEndsAt
+    deal.commitmentEndsAt
   );
   const state = deal.closedAt
     ? 'CLOSED'
@@ -88,7 +95,7 @@ export function evaluateDealKpi(
           ? 'LEGACY'
           : now < deal.commitmentEndsAt!
             ? 'ACTIVE'
-            : now < deal.settlementEndsAt!
+            : effectiveSettlementEndsAt && now < effectiveSettlementEndsAt
               ? 'SETTLING'
               : completedOrders >= deal.targetOrders!
                 ? 'ACHIEVED'
@@ -104,8 +111,15 @@ export function evaluateDealKpi(
       : 0,
     startsAt: deal.commitmentStartedAt || null,
     endsAt: deal.commitmentEndsAt || null,
-    settlementEndsAt: deal.settlementEndsAt || null,
+    settlementEndsAt: effectiveSettlementEndsAt || null,
     serverTime: now,
     canTerminate: state === 'REVIEW_REQUIRED',
+    validSales,
+    baseRate: 10,
+    approvedRate: deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10,
+    rebateBonusRate: Math.max(0, (deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10) - 10),
+    baseCommissionEarned: Math.round(validSales * 0.1),
+    vipRebateEscrow: Math.round(validSales * (Math.max(0, (deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10) - 10) / 100)),
+    rebateStatus: state === 'ACHIEVED' ? 'UNLOCKED' : (state === 'ACTIVE' || state === 'SETTLING') ? 'ESCROW_LOCKED' : (state === 'REVIEW_REQUIRED' || state === 'CLOSED') ? 'FORFEITED' : 'PENDING',
   };
 }

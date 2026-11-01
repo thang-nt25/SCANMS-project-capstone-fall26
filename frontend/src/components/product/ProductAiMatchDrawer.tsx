@@ -4,7 +4,7 @@ import {
   X,
   Sparkles,
   MessageSquare,
-  Crown,
+  Handshake,
   ChevronRight,
   ShieldCheck,
 } from 'lucide-react';
@@ -359,12 +359,12 @@ export function ProductAiMatchDrawer({ product, isOpen, onClose }: Props) {
                         type="button"
                         onClick={() => {
                           onClose();
-                          navigate(`/merchant/kol-hub?kolId=${kol.id}&action=vip-deal&productId=${product.id}`);
+                          navigate(`/merchant/kol-hub?kolId=${kol.id}&action=exclusive-deal&productId=${product.id}`);
                         }}
                         className="h-8 px-2.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8C6226] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                       >
-                        <Crown className="w-3.5 h-3.5 text-[#B88E4F]" />
-                        <span>Đề xuất Deal VIP</span>
+                        <Handshake className="w-3.5 h-3.5 text-[#B88E4F] stroke-[1.75]" />
+                        <span>Đề xuất Thỏa thuận Độc quyền</span>
                       </button>
                     </div>
                   </div>

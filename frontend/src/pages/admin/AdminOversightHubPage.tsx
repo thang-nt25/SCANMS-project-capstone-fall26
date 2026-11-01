@@ -40,17 +40,17 @@ export default function AdminOversightHubPage() {
     { id: 'sponsorship', label: 'Gian hàng tài trợ', icon: Store },
     {
       id: 'links',
-      label: 'Quản trị Link Tiếp thị Sàn',
+      label: 'Liên kết tiếp thị (Smart Link / QR)',
       icon: Link2,
     },
     {
       id: 'coupons',
-      label: 'Quản trị Mã Giảm Giá Sàn',
+      label: 'Mã ưu đãi định danh KOC',
       icon: Tag,
     },
     {
       id: 'live-sessions',
-      label: 'Giám sát Livestream',
+      label: 'Phiên trực tiếp bán hàng',
       icon: Radio,
     },
   ];
@@ -59,9 +59,9 @@ export default function AdminOversightHubPage() {
     <div className="w-full min-w-0 flex flex-col gap-4 text-[#1A1612]" id="admin-oversight-hub">
       {/* 1. Page Header Chuẩn Hóa */}
       <PageHeader
-        title="Tiếp thị & Dòng tiền Sàn"
-        description="Giám sát mạng lưới link liên kết, mã giảm giá và các phiên livestream bán hàng toàn hệ thống"
-        icon={<Link2 className="w-5 h-5" />}
+        title="Quản trị Liên kết & Mã Ưu đãi"
+        description="Giám sát mạng lưới liên kết tiếp thị, mã giảm giá định danh và phiên trực tiếp bán hàng toàn hệ thống"
+        icon={<Link2 className="w-5 h-5 text-[#B88E4F]" />}
       />
 
       <HubTabs

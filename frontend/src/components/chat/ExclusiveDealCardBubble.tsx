@@ -16,7 +16,8 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   const approved = status === 'APPROVED';
   const rejected = status === 'REJECTED';
   const rate = card.approvedCommissionRate ?? card.proposedCommissionRate;
-  const canReview = !isDecision && status === 'PENDING' && isShop && !isMine;
+  const isShopOffer = card.offeredBy === 'SHOP';
+  const canReview = !isDecision && status === 'PENDING' && ((isShop && !isMine && !isShopOffer) || (!isShop && !isMine && isShopOffer));
 
   useEffect(() => {
     setLinkUrl(card.shortUrl || null);
@@ -64,7 +65,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
       if (result?.shortUrl) setLinkUrl(result.shortUrl);
       const code = result?.vipVoucherCode || result?.referralLink?.customCouponCode;
       if (code) setVoucherCode(code);
-      toast.success(approve ? 'Đã duyệt deal và tạo link VIP.' : 'Đã từ chối đề xuất deal.');
+      toast.success(approve ? 'Đã chấp thuận thỏa thuận độc quyền thành công!' : 'Đã từ chối đề xuất deal.');
     } catch (actionError: any) {
       setError(actionError?.response?.data?.message || 'Không thể xử lý đề xuất lúc này.');
     } finally {
@@ -78,7 +79,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
     try {
       await navigator.clipboard.writeText(value);
       setCopied(kind);
-      toast.success(kind === 'link' ? 'Đã sao chép link tiếp thị độc quyền!' : 'Đã sao chép mã voucher VIP!');
+      toast.success(kind === 'link' ? 'Đã sao chép link tiếp thị độc quyền!' : 'Đã sao chép mã ưu đãi độc quyền!');
     } catch {
       toast.error('Không sao chép được link. Vui lòng thử lại.');
     }
@@ -149,7 +150,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
                 </div>
               </div>
               <div>
-                <p className="m-0 mb-1 text-[10px] font-medium text-[#7D715E]">Mã voucher VIP đã cấp</p>
+                <p className="m-0 mb-1 text-[10px] font-medium text-[#7D715E]">Mã ưu đãi độc quyền đối tác</p>
                 <div className="flex items-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2">
                   <span className="min-w-0 flex-1 break-all font-mono text-xs font-semibold text-[#1A1612]">{voucherCode || (loadingIssued ? 'Đang tải mã đã cấp…' : 'Chưa có mã voucher được cấp')}</span>
                   <button type="button" disabled={!voucherCode} onClick={() => void copyIssued('voucher')} title="Sao chép mã voucher VIP" aria-label="Sao chép mã voucher VIP" className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-[#EEDFC6] bg-white text-[#B88E4F] hover:border-[#C59B58] disabled:opacity-40">{copied === 'voucher' ? <Check size={14} /> : <Copy size={14} />}</button>
@@ -161,10 +162,10 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
           {canReview && (
             <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2">
               <button type="button" disabled={loading} onClick={() => void decide(false)} className="min-h-[32px] px-2 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-[11px] font-medium hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-50">Từ chối</button>
-              <button type="button" disabled={loading} onClick={() => void decide(true)} className="min-h-[32px] px-2 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-[11px] font-semibold hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-50">{loading ? 'Đang xử lý…' : card.isRevision ? 'Duyệt đổi deal' : 'Duyệt & tạo link'}</button>
+              <button type="button" disabled={loading} onClick={() => void decide(true)} className="min-h-[32px] px-2 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-[11px] font-semibold hover:bg-[#F3EFE6] cursor-pointer disabled:opacity-50">{loading ? 'Đang xử lý…' : isShop ? (card.isRevision ? 'Duyệt đổi deal' : 'Duyệt & tạo link') : 'Chấp thuận thỏa thuận'}</button>
             </div>
           )}
-          {!isDecision && isMine && status === 'PENDING' && <p className="flex items-center gap-1.5 m-0 text-[10px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" />Đã gửi · Chờ gian hàng phản hồi</p>}
+          {!isDecision && isMine && status === 'PENDING' && <p className="flex items-center gap-1.5 m-0 text-[10px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" />{isShop ? 'Đã gửi đề xuất · Chờ đối tác phản hồi' : 'Đã gửi · Chờ gian hàng phản hồi'}</p>}
         </footer>
       )}
     </article>

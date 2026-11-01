@@ -162,6 +162,18 @@ export const referralLinksService = {
     return res?.data?.data || res?.data || res;
   },
 
+  async createShopDealOffer(payload: {
+    collaboratorId: string;
+    productId: string;
+    proposedCommissionRate: number;
+    salesCommitment: string;
+    targetOrders: number;
+    commitmentDays: number;
+  }): Promise<ExclusiveDealProposal> {
+    const res: any = await api.post('/affiliate-deals/shop-offers', payload);
+    return res?.data?.data || res?.data || res;
+  },
+
   async getShopExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
     const res: any = await api.get('/affiliate-deals/shop');
     const payload = res?.data ?? res;
@@ -322,6 +334,13 @@ export interface DealKpiProgress {
   settlementEndsAt: string | null;
   serverTime: string;
   canTerminate: boolean;
+  validSales?: number;
+  baseRate?: number;
+  approvedRate?: number;
+  rebateBonusRate?: number;
+  baseCommissionEarned?: number;
+  vipRebateEscrow?: number;
+  rebateStatus?: 'ESCROW_LOCKED' | 'UNLOCKED' | 'FORFEITED' | 'PENDING';
 }
 
 export default referralLinksService;

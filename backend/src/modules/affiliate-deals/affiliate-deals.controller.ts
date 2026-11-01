@@ -17,6 +17,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '@prisma/client';
 import { AffiliateDealsService } from './affiliate-deals.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
+import { CreateShopDealOfferDto } from './dto/create-shop-deal-offer.dto';
 import { RejectExclusiveDealDto } from './dto/reject-exclusive-deal.dto';
 import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
@@ -58,6 +59,19 @@ export class AffiliateDealsController {
     return this.service.createProposal(userId, dto);
   }
 
+  @Post('shop-offers')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({
+    summary: 'Shop chủ động đề xuất Deal độc quyền cho KOL',
+  })
+  createShopOffer(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: CreateShopDealOfferDto,
+  ) {
+    return this.service.createShopOffer(userId, role, dto);
+  }
+
   @Get('shop')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Shop xem các đề xuất deal độc quyền gửi đến mình' })
@@ -91,7 +105,7 @@ export class AffiliateDealsController {
   }
 
   @Patch(':id/approve')
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary: 'Shop chấp thuận deal và tự tạo link VIP riêng cho KOL',
   })
@@ -105,7 +119,7 @@ export class AffiliateDealsController {
   }
 
   @Patch(':id/reject')
-  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({ summary: 'Shop từ chối đề xuất deal và phản hồi qua Chat' })
   reject(
     @Param('id', ParseUUIDPipe) id: string,

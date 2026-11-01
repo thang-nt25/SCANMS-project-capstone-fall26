@@ -79,8 +79,9 @@ export class StoreCollaboratorsService {
 
   async getShopTeam(ownerId: string, storeId?: string) {
     const store = await this.getOwnedStore(ownerId, storeId);
-    const members = await this.prisma.storeCollaborator.findMany({
-      where: { storeId: store.id },
+    const [members, pendingMembers] = await Promise.all([
+      this.prisma.storeCollaborator.findMany({
+        where: { storeId: store.id, status: StoreCollaboratorStatus.APPROVED },
       include: {
         collaborator: {
           select: {
@@ -118,7 +119,39 @@ export class StoreCollaboratorsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-    });
+      }),
+      this.prisma.storeCollaborator.findMany({
+        where: { storeId: store.id, status: StoreCollaboratorStatus.PENDING },
+        include: {
+          collaborator: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phoneNumber: true,
+              collaboratorProfile: {
+                select: {
+                  avatarUrl: true,
+                  totalFollowers: true,
+                  kycStatus: true,
+                  tier: true,
+                },
+              },
+              socialChannels: {
+                where: { isPrimary: true },
+                take: 1,
+                select: {
+                  platformName: true,
+                  channelName: true,
+                  followerCount: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
     const collabIds = members.map((m) => m.collaboratorId);
 
     const ordersAgg = await this.prisma.order.groupBy({
@@ -175,7 +208,12 @@ export class StoreCollaboratorsService {
       };
     });
 
-    return { store: { id: store.id, name: store.name }, members: enrichedMembers };
+    return {
+      store: { id: store.id, name: store.name },
+      members: enrichedMembers,
+      pendingRequests: pendingMembers,
+      pendingCount: pendingMembers.length,
+    };
   }
 
   async invite(ownerId: string, dto: InviteStoreCollaboratorDto) {

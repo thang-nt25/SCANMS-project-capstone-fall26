@@ -69,6 +69,17 @@ export class DashboardService {
         startDate = monthStart(0); endDate = now; break;
       case AnalyticsQuickRange.LAST_MONTH:
         startDate = monthStart(-1); endDate = new Date(monthStart(0).getTime() - 1); break;
+      case AnalyticsQuickRange.THIS_QUARTER: {
+        const qMonth = Math.floor(local.getUTCMonth() / 3) * 3;
+        startDate = new Date(Date.UTC(local.getUTCFullYear(), qMonth, 1) - VIETNAM_OFFSET_MS);
+        endDate = now;
+        break;
+      }
+      case AnalyticsQuickRange.THIS_YEAR: {
+        startDate = new Date(Date.UTC(local.getUTCFullYear(), 0, 1) - VIETNAM_OFFSET_MS);
+        endDate = now;
+        break;
+      }
       default:
         if (dto.startDate && dto.endDate) {
           startDate = new Date(dto.startDate); endDate = new Date(dto.endDate);
@@ -300,6 +311,125 @@ export class DashboardService {
       `;
       estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
       pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
+    } else {
+      const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
+        SELECT COALESCE(SUM(oi.calculated_commission_amount), 0) AS "estimatedCommission",
+               COUNT(DISTINCT o.id) AS "pendingOrdersCount"
+        FROM "orders" o
+        JOIN "order_items" oi ON oi.order_id = o.id
+        LEFT JOIN "commissions" c ON c.order_id = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
+          AND c.id IS NULL
+      `;
+      estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
+      pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
+    }
+
+    let storesBreakdown: Array<{
+      id: string;
+      name: string;
+      logoUrl: string | null;
+      category: string | null;
+      managerName: string | null;
+      managerEmail: string | null;
+      revenue: number;
+      orders: number;
+      growth: string;
+      status: string;
+    }> = [];
+
+    let operationsSummary: {
+      activeStoresCount: number;
+      activeCollaboratorsCount: number;
+      pendingOrdersCount: number;
+      pendingPayoutsCount: number;
+      pendingDisputesCount: number;
+      unassignedStoresCount: number;
+    } | null = null;
+
+    if ((role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) && !storeId) {
+      const [
+        currStoreAgg,
+        prevStoreAgg,
+        storesList,
+        activeCollabsCount,
+        pendingPayoutsCount,
+        pendingDisputesCount,
+      ] = await Promise.all([
+        this.prisma.order.groupBy({
+          by: ['storeId'],
+          where: {
+            ...currentOrderWhere,
+            status: { in: ['DELIVERED', 'COMPLETED'] },
+          },
+          _sum: { finalAmount: true },
+          _count: { id: true },
+        }),
+        this.prisma.order.groupBy({
+          by: ['storeId'],
+          where: {
+            ...prevOrderWhere,
+            status: { in: ['DELIVERED', 'COMPLETED'] },
+          },
+          _sum: { finalAmount: true },
+          _count: { id: true },
+        }),
+        this.prisma.store.findMany({
+          where: { isDeleted: false },
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            categoryName: true,
+            ownerId: true,
+            owner: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        }),
+        this.prisma.user.count({
+          where: { role: UserRole.COLLABORATOR, isActive: true, isDeleted: false },
+        }),
+        this.prisma.payoutRequest.count({
+          where: { status: 'PENDING' },
+        }),
+        this.prisma.returnRequest.count({
+          where: {
+            status: { in: ['REQUESTED', 'SHOP_APPROVED', 'PICKUP_BOOKED', 'RETURN_SHIPPED', 'INSPECTING', 'REFUND_PENDING'] },
+          },
+        }),
+      ]);
+
+      const prevMap = new Map(prevStoreAgg.map((p) => [p.storeId, Number(p._sum.finalAmount ?? 0)]));
+      const currMap = new Map(currStoreAgg.map((c) => [c.storeId, { revenue: Number(c._sum.finalAmount ?? 0), orders: c._count.id }]));
+
+      storesBreakdown = storesList.map((st) => {
+        const curr = currMap.get(st.id) || { revenue: 0, orders: 0 };
+        const prevRev = prevMap.get(st.id) || 0;
+        const growthPct = this._calcGrowthPercent(curr.revenue, prevRev);
+        return {
+          id: st.id,
+          name: st.name,
+          logoUrl: st.logoUrl,
+          category: st.categoryName || null,
+          managerName: st.owner?.fullName ?? null,
+          managerEmail: st.owner?.email ?? null,
+          revenue: curr.revenue,
+          orders: curr.orders,
+          growth: growthPct >= 0 ? `+${growthPct.toFixed(1)}%` : `${growthPct.toFixed(1)}%`,
+          status: 'Hoạt động',
+        };
+      }).sort((a, b) => b.revenue - a.revenue);
+
+      const unassignedStoresCount = storesList.filter((s) => !s.ownerId).length;
+
+      operationsSummary = {
+        activeStoresCount: storesList.length,
+        activeCollaboratorsCount: activeCollabsCount,
+        pendingOrdersCount,
+        pendingPayoutsCount,
+        pendingDisputesCount,
+        unassignedStoresCount,
+      };
     }
 
     const overviewResult = {
@@ -338,7 +468,10 @@ export class DashboardService {
 
         averageOrderValue,
         activeReferralLinks: activeLinksCount,
+        activeCollaboratorsCount: operationsSummary?.activeCollaboratorsCount ?? 0,
       },
+      storesBreakdown,
+      operationsSummary,
     };
     await this.cacheService.set(cacheKey, overviewResult, 30);
     return overviewResult;

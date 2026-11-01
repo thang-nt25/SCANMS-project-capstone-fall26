@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Crown, X, Search, Send, Loader2, Users, Plus, Check } from 'lucide-react';
+import { Megaphone, X, Search, Send, Loader2, Users, Plus, Check } from 'lucide-react';
 import api from '../../services/api';
 import { Select } from '../ui/Select';
 import { DateTimePicker } from '../common/DateTimePicker';
@@ -9,8 +9,10 @@ import type { ChatMessage } from '@/types/chat.types';
 interface Props {
   conversationId?: string;
   collaboratorName?: string;
+  targetCollaboratorId?: string;
+  lockTarget?: boolean;
   onClose: () => void;
-  onSuccess: (message: ChatMessage) => void;
+  onSuccess: (message?: ChatMessage) => void;
 }
 interface Recipient {
   id: string; fullName: string; email: string; avatarUrl?: string;
@@ -19,7 +21,14 @@ interface Recipient {
 
 const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
-export function SendVipCampaignModal({ conversationId, collaboratorName, onClose, onSuccess }: Props) {
+export function SendVipCampaignModal({
+  conversationId,
+  collaboratorName,
+  targetCollaboratorId,
+  lockTarget,
+  onClose,
+  onSuccess,
+}: Props) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [recipientId, setRecipientId] = useState('');
@@ -44,6 +53,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
   const recipientSearchRef = useRef<HTMLInputElement>(null);
   const sendButtonRef = useRef<HTMLButtonElement>(null);
   const datePopoverRef = useRef<HTMLDivElement>(null);
+  const isTargetLocked = Boolean(conversationId || lockTarget || targetCollaboratorId);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +62,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
       try {
         const [campaignRes, recipientRes]: any[] = await Promise.all([
           api.get('/campaigns/shop', { headers: { 'x-skip-cache': '1' } }),
-          conversationId ? Promise.resolve([]) : api.get('/chat/search-collaborators'),
+          isTargetLocked ? Promise.resolve([]) : api.get('/chat/search-collaborators'),
         ]);
         if (cancelled) return;
         const list = campaignRes?.data || campaignRes;
@@ -84,8 +94,9 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
   const selectedRecipient = recipients.find(person => person.id === recipientId);
   const selectedCampaign = campaigns.find(campaign => campaign.id === campaignId);
   const visibleRecipients = recipients.filter(person => `${person.fullName} ${person.email}`.toLocaleLowerCase('vi-VN').includes(query.trim().toLocaleLowerCase('vi-VN')));
-  const recipientName = conversationId ? collaboratorName || 'KOL/CTV' : selectedRecipient?.fullName;
-  const canSend = !loading && !loadError && !busy && !creating && Boolean(selectedCampaign && (conversationId || selectedRecipient));
+  const recipientName = isTargetLocked ? (collaboratorName || 'KOC Đối tác') : selectedRecipient?.fullName;
+  const hasRecipient = isTargetLocked ? Boolean(collaboratorName || targetCollaboratorId || conversationId) : Boolean(selectedRecipient);
+  const canSend = !loading && !loadError && !busy && !creating && Boolean(selectedCampaign && hasRecipient);
 
   const createCampaign = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -111,12 +122,13 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
     sending.current = true; setSubmitting(true); setSendError('');
     try {
       const personalMessage = note.trim() || undefined;
+      const targetCollabId = targetCollaboratorId || recipientId;
       const response: any = conversationId
         ? await api.post(`/campaigns/chat/${conversationId}/invite`, { campaignId, personalMessage })
-        : await api.post(`/campaigns/${campaignId}/invite`, { collaboratorId: recipientId, personalMessage });
+        : await api.post(`/campaigns/${campaignId}/invite`, { collaboratorId: targetCollabId, personalMessage });
       const result = response?.data || response;
-      if (!result?.chatMessage?.id || !result.chatMessage.conversationId) throw new Error('Máy chủ chưa xác nhận lời mời. Vui lòng thử lại.');
-      onSuccess(result.chatMessage); onClose();
+      // Allow graceful success even if chat message id is not returned directly
+      if (onSuccess) onSuccess(result?.chatMessage); onClose();
     } catch (error: any) { setSendError(error.message || 'Không gửi được lời mời. Vui lòng thử lại.'); }
     finally { sending.current = false; setSubmitting(false); }
   };
@@ -143,10 +155,10 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
         }}
       >
         <header className="p-4 sm:p-5 flex items-center gap-2.5 sm:gap-3 border-b border-[#EAE4D7]">
-          <span className="grid place-items-center w-[42px] h-[42px] rounded-[13px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0"><Crown size={22} /></span>
+          <span className="grid place-items-center w-[42px] h-[42px] rounded-[13px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0"><Megaphone size={22} className="stroke-[1.75]" /></span>
           <div>
-            <h3 id="vip-campaign-title" className="text-lg sm:text-[19px] leading-snug font-semibold tracking-tight text-[#1A1612] m-0">Mời chiến dịch VIP</h3>
-            <p className="text-[11px] text-[#7D715E] m-0 mt-1 leading-relaxed">{creating ? 'Thiết lập chiến dịch để tiếp tục gửi lời mời.' : conversationId ? 'Chọn chiến dịch để mời KOL đang trò chuyện.' : 'Chọn KOL và chiến dịch để gửi lời mời.'}</p>
+            <h3 id="vip-campaign-title" className="text-lg sm:text-[19px] leading-snug font-semibold tracking-tight text-[#1A1612] m-0">Mời Tham Gia Chiến Dịch Kích Cầu</h3>
+            <p className="text-[11px] text-[#7D715E] m-0 mt-1 leading-relaxed">{creating ? 'Thiết lập chiến dịch để tiếp tục gửi lời mời.' : isTargetLocked ? `Mời đối tác ${collaboratorName || 'KOC'} tham gia chiến dịch kích cầu.` : 'Chọn KOL và chiến dịch để gửi lời mời.'}</p>
           </div>
           <button type="button" aria-label="Đóng" disabled={busy} onClick={onClose} className="ml-auto shrink-0 grid place-items-center w-7 h-7 border-0 rounded-lg bg-[#FAF8F5] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer transition-colors"><X size={18} /></button>
         </header>
@@ -162,7 +174,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
                 <span className="flex items-center gap-1.5 text-[#1A1612] font-semibold"><b className="grid place-items-center w-5 h-5 rounded-full bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] text-[11px]">1</b>Thiết lập chiến dịch</span>
                 <span className="flex items-center gap-1.5"><b className="grid place-items-center w-5 h-5 rounded-full bg-[#F3EFE6] text-[#7D715E] text-[11px]">2</b>Gửi lời mời</span>
               </div>
-              <p className="m-0 mb-4 text-xs leading-relaxed text-[#7D715E]">Lời mời VIP cần có chiến dịch để KOL xem thời gian hợp tác và hoa hồng. Lưu xong, bạn sẽ chuyển ngay sang bước gửi lời mời.</p>
+              <p className="m-0 mb-4 text-xs leading-relaxed text-[#7D715E]">Lời mời chiến dịch kích cầu cần có chương trình cụ thể để KOL xem thời gian hợp tác và thù lao thưởng thêm. Lưu xong, bạn sẽ chuyển ngay sang bước gửi lời mời.</p>
               <div>
                 <label htmlFor="vip-create-name" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Tên chiến dịch</label>
                 <input id="vip-create-name" autoFocus required maxLength={200} placeholder="VD: Hợp tác KOL tháng 10" value={draft.name} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
@@ -211,9 +223,9 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
             </form>
           ) : campaigns.length === 0 ? (
             <div className="min-h-[140px] flex flex-col justify-center items-center gap-3 text-center text-xs text-[#7D715E]">
-              <Crown size={26} className="text-[#B88E4F]" />
+              <Megaphone size={26} className="text-[#B88E4F] stroke-[1.75]" />
               <strong className="text-sm font-semibold text-[#1A1612]">{unavailableCount ? 'Chưa có chiến dịch còn hiệu lực' : 'Thiết lập chiến dịch để mời KOL'}</strong>
-              <p className="m-0 max-w-[310px] leading-relaxed text-[11px]">{unavailableCount ? 'Các chiến dịch hiện có đã kết thúc hoặc bị tắt. Thiết lập chiến dịch mới, sau đó gửi lời mời.' : 'Gian hàng chưa có chiến dịch VIP. Thiết lập thời gian và hoa hồng một lần, sau đó dùng chiến dịch này để mời các KOL.'}</p>
+              <p className="m-0 max-w-[310px] leading-relaxed text-[11px]">{unavailableCount ? 'Các chiến dịch hiện có đã kết thúc hoặc bị tắt. Thiết lập chiến dịch mới, sau đó gửi lời mời.' : 'Gian hàng chưa có chiến dịch kích cầu nào đang diễn ra. Thiết lập thời gian và hoa hồng một lần, sau đó dùng chiến dịch này để mời các KOL.'}</p>
               <button type="button" onClick={() => { setCreating(true); setCreateError(''); }} className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] rounded-lg font-medium cursor-pointer"><Plus size={15} />Thiết lập & tiếp tục mời</button>
             </div>
           ) : (
@@ -223,17 +235,24 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
                   <Check size={17} className="text-[#B88E4F] shrink-0 mt-0.5" />
                   <div>
                     <strong className="block text-xs font-semibold text-[#1A1612]">Chiến dịch đã sẵn sàng</strong>
-                    <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]">{conversationId ? `Bấm “Gửi lời mời VIP” để mời ${recipientName}.` : 'Chọn KOL bên dưới, rồi bấm “Gửi lời mời VIP”.'}</p>
+                    <p className="m-0 mt-1 text-[11px] leading-relaxed text-[#7D715E]">{conversationId ? `Bấm “Gửi lời mời chiến dịch” để mời ${recipientName}.` : 'Chọn KOL bên dưới, rồi bấm “Gửi lời mời chiến dịch”.'}</p>
                   </div>
                 </div>
               )}
               <div>
                 <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">Người nhận lời mời</label>
-                {conversationId ? (
-                  <div className="flex items-center gap-2 p-2.5 bg-[#FBF5EB] border border-[#EEDFC6] rounded-[10px] text-xs">
-                    <Users size={16} className="text-[#B88E4F] shrink-0" />
-                    <strong className="font-semibold text-[#1A1612]">{recipientName}</strong>
-                    <span className="ml-auto text-[9px] text-[#7D715E]">KOL / CTV</span>
+                {isTargetLocked ? (
+                  <div className="flex items-center gap-2.5 p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl text-xs">
+                    <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center text-[#B88E4F] font-bold">
+                      <Users size={16} />
+                    </div>
+                    <div>
+                      <strong className="block font-semibold text-[#1A1612]">{collaboratorName || recipientName || 'KOC Đối tác'}</strong>
+                      <span className="text-[11px] text-[#7D715E]">KOC Đối tác tiếp thị (Khóa cứng đích danh)</span>
+                    </div>
+                    <span className="ml-auto text-[10px] font-semibold text-[#8C6226] bg-white px-2.5 py-1 rounded-full border border-[#EEDFC6] shadow-2xs">
+                      1-1 Đích danh
+                    </span>
                   </div>
                 ) : (
                   <>
@@ -278,7 +297,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
                     <Plus size={13} />Tạo mới
                   </button>
                 </div>
-                <Select aria-label="Chiến dịch VIP" value={campaignId} disabled={submitting} onChange={event => { setCampaignId(event.target.value); setSendError(''); }} options={campaigns.map(campaign => ({ value: campaign.id, label: campaign.name }))} />
+                <Select aria-label="Chiến dịch kích cầu" value={campaignId} disabled={submitting} onChange={event => { setCampaignId(event.target.value); setSendError(''); }} options={campaigns.map(campaign => ({ value: campaign.id, label: campaign.name }))} />
                 {selectedCampaign && (
                   <div className="flex flex-wrap justify-between gap-1 mt-1.5 text-[10px] text-[#7D715E]">
                     <span>Thưởng thêm <strong className="text-[#B88E4F] font-semibold">+{selectedCampaign.bonusCommissionRate}%</strong> hoa hồng</span>
@@ -311,7 +330,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
           ) : campaigns.length > 0 && (
             <button ref={sendButtonRef} type="button" disabled={!canSend} onClick={() => void submit()} className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:bg-[#F3E8D5] cursor-pointer disabled:opacity-50">
               {submitting ? <Loader2 size={16} className="animate-spin text-[#B88E4F]" /> : <Send size={16} className="text-[#B88E4F]" />}
-              {submitting ? 'Đang gửi…' : 'Gửi lời mời VIP'}
+              {submitting ? 'Đang gửi…' : 'Gửi lời mời chiến dịch'}
             </button>
           )}
         </footer>
