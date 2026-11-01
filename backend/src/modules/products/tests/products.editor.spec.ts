@@ -19,8 +19,11 @@ describe('Atomic product editor', () => {
       store: { ownerId: 'owner', isVerified: true, onboardingStatus: 'VERIFIED' } };
     conflict = false;
     tx = {
+      $queryRaw: jest.fn(async () => []),
+      productPricePromotion: { count: jest.fn(async () => 0) },
       product: {
         findUnique: jest.fn(async () => structuredClone(product)),
+        findUniqueOrThrow: jest.fn(async () => structuredClone(product)),
         findFirst: jest.fn(async () => structuredClone(product)),
         update: jest.fn(async ({ data }) => Object.assign(product, data)),
       },

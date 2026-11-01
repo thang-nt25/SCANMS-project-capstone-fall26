@@ -10,7 +10,10 @@ describe('Store media library scope', () => {
   const count = jest.fn().mockResolvedValue(105);
   const findMany = jest.fn().mockResolvedValue([]);
   const service = new MediaService(
-    { mediaAsset: { count, findMany } } as unknown as PrismaService,
+    {
+      mediaAsset: { count, findMany },
+      store: { findMany: jest.fn().mockResolvedValue([{ id: 'shop-a' }]) },
+    } as unknown as PrismaService,
     {} as CacheService,
   );
   beforeEach(() => jest.clearAllMocks());
@@ -18,7 +21,7 @@ describe('Store media library scope', () => {
   it('uses the same approved, store-scoped access filter for totals and paginated assets', async () => {
     const result = await service.findAll({ storeId: 'shop-a', scope: 'library', page: 2, limit: 100 }, { id: 'kol', role: UserRole.COLLABORATOR });
     const where = count.mock.calls[0][0].where;
-    expect(where).toMatchObject({ storeId: 'shop-a', status: 'APPROVED', isDeleted: false,
+    expect(where).toMatchObject({ storeId: { in: ['shop-a'] }, status: 'APPROVED', isDeleted: false,
       store: { isActive: true, isDeleted: false, storeCollaborators: { some: { collaboratorId: 'kol', status: 'APPROVED' } } } });
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where, skip: 100, take: 100 }));
     expect(result.pagination).toEqual({ total: 105, page: 2, limit: 100, totalPages: 2 });
@@ -32,7 +35,7 @@ describe('Store media library scope', () => {
 
   it('counts only approved images and videos in the visual library without weakening an explicit type filter', async () => {
     await service.findAll({ scope: 'visual-library', storeId: 'shop-a', assetType: 'COPYWRITE_TEXT' }, { id: 'kol', role: UserRole.COLLABORATOR });
-    expect(count.mock.calls[0][0].where).toMatchObject({ status: 'APPROVED', storeId: 'shop-a', assetType: 'COPYWRITE_TEXT', AND: [{ assetType: { in: ['VIDEO', 'IMAGE'] } }] });
+    expect(count.mock.calls[0][0].where).toMatchObject({ status: 'APPROVED', storeId: { in: ['shop-a'] }, assetType: 'COPYWRITE_TEXT', AND: [{ assetType: { in: ['VIDEO', 'IMAGE'] } }] });
   });
 
   it('rejects unsupported scopes', async () => {

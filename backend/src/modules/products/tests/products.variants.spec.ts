@@ -305,7 +305,7 @@ describe('Product variant images', () => {
   });
 
   it('allows a single electronic product without barcode, ingredients or child SKUs', async () => {
-    prisma.store.findFirst.mockResolvedValue({ id: 'store-1', isVerified: true, onboardingStatus: 'VERIFIED' });
+    prisma.store.findFirst.mockResolvedValue({ id: 'store-1', isVerified: true, onboardingStatus: 'VERIFIED', categoryName: 'Thiết bị điện tử & Phụ kiện' });
     prisma.product.findFirst.mockResolvedValue(null);
     prisma.product.create.mockImplementation((args: any) => ({ id: productId, ...args.data }));
     const result = await service.create('shop-owner', UserRole.SHOP_MANAGER, {
