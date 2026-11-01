@@ -1169,9 +1169,12 @@ export class OrdersService {
         );
       }
 
+      // Creator codes are attribution identifiers and remain usable when a
+      // product has a direct discount, matching CouponsService.evaluateCoupon.
       if (
         !lockedCoupon.stackableWithProductDiscount &&
-        anyProductHasDirectDiscount
+        anyProductHasDirectDiscount &&
+        lockedCoupon.collaborator?.role !== UserRole.COLLABORATOR
       ) {
         throw new ConflictException(
           'Mã giảm giá này không được áp dụng đồng thời với sản phẩm đang giảm giá trực tiếp',
