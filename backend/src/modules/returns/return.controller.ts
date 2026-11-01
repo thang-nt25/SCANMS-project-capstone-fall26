@@ -240,6 +240,15 @@ export class ReturnDisputeAdminController {
     return this.returns.assessLiability(userId, role, id, body);
   }
 
+  @Post('active-returns/:id/refund/retry')
+  retryPendingRefund(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.retryPendingRefund(userId, role, id);
+  }
+
   @Get('overdue-inspections')
   listStalled(@CurrentUser('role') role: UserRole) {
     return this.returns.listStalledInspections(role);

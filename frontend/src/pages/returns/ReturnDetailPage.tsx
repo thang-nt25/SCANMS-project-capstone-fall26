@@ -308,6 +308,21 @@ function AdminActions({ request }: { request: ReturnDetail }) {
   </form>;
 }
 
+function AdminRefundRetry({ request }: { request: ReturnDetail }) {
+  const retry = useReturnAction(request.id, returnService.retryPendingRefund);
+  if (!['REFUND_PENDING', 'REFUND_FAILED'].includes(request.status) ||
+      !request.refund || !['PENDING', 'FAILED'].includes(request.refund.status)) return null;
+  return <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    <h2 className="font-bold">Hoàn tiền đang chờ xử lý</h2>
+    <p className="mt-2 text-[#7D715E]">Số tiền {money(request.refund.amount)} chưa vào ví khách. Thu nhập KOL chỉ bị thu hồi sau khi hoàn tiền thành công.</p>
+    <button type="button" disabled={retry.isPending}
+      onClick={() => void retry.mutateAsync(undefined).catch(() => undefined)} className={`${primary} mt-3`}>
+      {retry.isPending ? 'Đang xử lý…' : 'Thử hoàn tiền vào ví khách'}
+    </button>
+    <ErrorText error={retry.error} />
+  </section>;
+}
+
 export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -376,7 +391,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             </div>
           </section>
           {mode === 'shop' ? <ShopActions request={detail.data} /> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
-            <AdminActions request={detail.data} />}
+            <><AdminRefundRetry request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>
     </main>

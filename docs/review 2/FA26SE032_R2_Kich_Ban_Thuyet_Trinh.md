@@ -287,7 +287,7 @@ SLIDE 13: UAT VALIDATION – FLOW 4: KỲ VỌNG KHI THỰC HIỆN TEST CASES
 > 2. **TC_F4_02 — GHN và freeship:** Shop tạo vận đơn bằng dữ liệu đóng gói hợp lệ; phí và tracking được lưu. Mã `SCANMSFREESHIP` giảm phí ship tối đa 100.000₫, chỉ cho số điện thoại chưa có đơn mua và tối đa 3 lượt. Dữ liệu GHN dùng trong buổi demo phải được giới thiệu đúng là mock/sandbox.
 > 3. **TC_F4_03 — Trách nhiệm khi đổi trả:** Khách gửi chứng cứ; Shop phân loại `SHOP_FAULT`, `LOGISTICS_FAULT` hoặc `CUSTOMER_REASON`. Khi có bất đồng, System Manager xem hồ sơ tại `/admin/return-disputes` và phân xử.
 > 4. **TC_F4_04 — Đổi hàng:** Dùng đơn đã giao để tạo yêu cầu đổi hàng 1:1. Kỳ vọng có bước gửi hàng bù và commission không chuyển `REVERSED`.
-> 5. **TC_F4_05 — Hoàn tiền và clawback:** Dùng đơn khác để hoàn tiền. Chỉ khi refund đạt `SUCCEEDED`, `order.refundedAmount` tăng, commission chuyển `REVERSED` và có bút toán thu hồi; nếu refund `PENDING`, chưa có clawback thành công.
+> 5. **TC_F4_05 — Hoàn tiền và clawback:** Dùng đơn khác để hoàn tiền. Chỉ khi refund đạt `SUCCEEDED`, `order.refundedAmount` tăng, commission chuyển `REVERSED` và có bút toán thu hồi. Nếu refund `PENDING` do ví chưa ghi được tiền, System Manager mở hồ sơ và chọn **Thử hoàn tiền vào ví khách**; thao tác khóa khoản hoàn để tránh ghi hai lần. Khi thử lại còn lỗi, KOL vẫn giữ nguyên thu nhập và hồ sơ tiếp tục chờ xử lý.
 > 6. **TC_F4_06 — Tính nhất quán:** Đối chiếu hồ sơ trả hàng, Return Event, đơn hàng, trạng thái commission và sổ cái/ví KOL để chỉ ra từng thay đổi có dấu vết kiểm toán.
 >
 

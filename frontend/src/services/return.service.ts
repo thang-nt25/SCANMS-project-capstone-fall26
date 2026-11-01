@@ -152,6 +152,8 @@ export const returnService = {
   assessLiability: async (id: string, data: {
     liability: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
   }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/active-returns/${id}/liability`, data)),
+  retryPendingRefund: async (id: string) => unwrap<ReturnDetail>(
+    await api.post(`/admin/return-disputes/active-returns/${id}/refund/retry`)),
   getAdminStalled: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/overdue-inspections', {
     headers: { 'x-skip-cache': 'true' },
   })),

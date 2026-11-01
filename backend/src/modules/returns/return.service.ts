@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   Optional,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { WalletsService } from '../wallets/wallets.service';
@@ -15,6 +16,7 @@ import {
   OrderStatus,
   Prisma,
   ReturnRequestStatus,
+  ReturnRefundStatus,
   ReturnResolution,
   ReturnShipmentDirection,
   UserRole,
@@ -333,6 +335,50 @@ export class ReturnService {
         type: 'LIABILITY_ASSESSED',
         data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' },
       } });
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async retryPendingRefund(userId: string, role: UserRole, id: string) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xử lý lại khoản hoàn tiền');
+    if (!this.walletsService)
+      throw new ServiceUnavailableException('Dịch vụ ví chưa sẵn sàng để hoàn tiền');
+
+    await this.prisma.$transaction(async (tx) => {
+      // Serialize retries on the refund row before reading its status. A second
+      // request sees SUCCEEDED after the first commits and cannot credit twice.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM return_refunds WHERE return_request_id = ${id}::uuid FOR UPDATE
+      `;
+      if (locked.length !== 1) throw new NotFoundException('Chưa có khoản hoàn tiền để xử lý lại');
+      const current = await tx.returnRequest.findUnique({ where: { id }, include: detailInclude });
+      if (!current?.refund) throw new NotFoundException('Không tìm thấy hồ sơ hoàn tiền');
+      if (current.refund.status === ReturnRefundStatus.SUCCEEDED) return;
+      if (current.resolution !== ReturnResolution.REFUND ||
+          (current.status !== ReturnRequestStatus.REFUND_PENDING && current.status !== ReturnRequestStatus.REFUND_FAILED) ||
+          (current.refund.status !== ReturnRefundStatus.PENDING && current.refund.status !== ReturnRefundStatus.FAILED))
+        throw new ConflictException('Khoản hoàn tiền không ở trạng thái có thể xử lý lại');
+
+      const remaining = current.order.finalAmount.minus(current.order.refundedAmount);
+      if (remaining.lessThanOrEqualTo(0) || !remaining.equals(current.refund.amount))
+        throw new ConflictException('Số tiền hoàn không khớp số dư đơn hàng; cần đối soát thủ công');
+
+      await this.walletsService!.refundToWallet(tx, current.customerId, remaining, current.orderId);
+      await this.reverseIncomeAfterRefund(tx, current.orderId);
+      await tx.order.update({ where: { id: current.orderId }, data: { refundedAmount: { increment: remaining } } });
+      await tx.refund.update({ where: { returnRequestId: id }, data: {
+        status: ReturnRefundStatus.SUCCEEDED, method: 'WALLET', processedAt: new Date(), failureReason: null,
+      } });
+      await this.move(tx, id, current.status, ReturnRequestStatus.REFUND_PROCESSING, userId);
+      await this.move(tx, id, ReturnRequestStatus.REFUND_PROCESSING,
+        ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION, userId);
+      await tx.returnEvent.create({ data: {
+        returnRequestId: id, actorId: userId, type: 'REFUND_RETRY_SUCCEEDED',
+        data: { amount: remaining.toString(), method: 'WALLET' },
+      } });
+      await this.notify(tx, current, current.customerId, 'RETURN_REFUND_SUCCEEDED',
+        'Đã hoàn tiền vào ví SCANMS', `Đơn ${current.order.externalOrderSn}: khoản hoàn tiền đã được ghi vào ví.`);
     });
     return this.getOne(userId, role, id);
   }
