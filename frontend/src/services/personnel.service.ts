@@ -99,5 +99,26 @@ export const personnelService = {
     const res = await api.post('/stores', payload);
     return res.data;
   },
+
+  async toggleStoreStatus(
+    id: string,
+    isActive?: boolean,
+  ): Promise<{ id: string; name: string; isActive: boolean }> {
+    const res = await api.patch(`/stores/admin/${id}/toggle-status`, { isActive });
+    return res.data;
+  },
+
+  async updateStore(
+    id: string,
+    payload: Partial<CreateStorePayload>,
+  ): Promise<AdminStoreOption> {
+    const res = await api.put(`/stores/admin/${id}`, payload);
+    return res.data;
+  },
+
+  async deleteStore(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await api.delete(`/stores/admin/${id}`);
+    return res.data;
+  },
 };
 

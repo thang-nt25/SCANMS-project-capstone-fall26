@@ -789,4 +789,82 @@ export class StoresService {
 
     return newStore;
   }
+
+  async toggleStoreStatus(storeId: string, isActive?: boolean) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId, isDeleted: false },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const nextStatus = typeof isActive === 'boolean' ? isActive : !store.isActive;
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isActive: nextStatus },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+    });
+    return updated;
+  }
+
+  async updateStoreByAdmin(storeId: string, dto: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId, isDeleted: false },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const rawName = dto.name ? dto.name.trim() : store.name;
+    const currentWarehouse = (store.returnWarehouse as any) || {};
+    const updatedWarehouse = {
+      warehouseName: dto.warehouseName?.trim() || currentWarehouse.warehouseName || `Kho ${rawName}`,
+      contactName: dto.contactName?.trim() || currentWarehouse.contactName || 'Bộ phận kho vận',
+      contactPhone: dto.contactPhone?.trim() || currentWarehouse.contactPhone || '0901234567',
+      address: dto.warehouseAddress?.trim() || currentWarehouse.address || 'TP. Hồ Chí Minh',
+      ghnDistrictId: dto.ghnDistrictId !== undefined ? Number(dto.ghnDistrictId) : (currentWarehouse.ghnDistrictId || 1442),
+      ghnWardCode: dto.ghnWardCode ? String(dto.ghnWardCode).trim() : (currentWarehouse.ghnWardCode || '20109'),
+    };
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        name: rawName,
+        categoryName: dto.categoryName ? dto.categoryName.trim() : store.categoryName,
+        description: dto.description !== undefined ? dto.description.trim() : store.description,
+        logoUrl: dto.logoUrl !== undefined ? dto.logoUrl.trim() : store.logoUrl,
+        returnWarehouse: updatedWarehouse,
+        ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
+      },
+      include: {
+        owner: { select: { id: true, fullName: true, email: true } },
+        _count: { select: { products: { where: { isDeleted: false } } } },
+      },
+    });
+
+    if (dto.ownerId && dto.ownerId !== store.ownerId) {
+      await this.prisma.user.update({
+        where: { id: dto.ownerId },
+        data: { role: UserRole.SHOP_MANAGER, storeId: store.id },
+      });
+    }
+
+    return updated;
+  }
+
+  async deleteStoreByAdmin(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId, isDeleted: false },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isDeleted: true, deletedAt: new Date(), isActive: false },
+    });
+    return { success: true, message: 'Đã lưu trữ cửa hàng thành công' };
+  }
 }
