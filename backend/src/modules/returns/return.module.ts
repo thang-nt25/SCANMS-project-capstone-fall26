@@ -13,9 +13,10 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 import { WalletsModule } from '../wallets/wallets.module';
+import { CommissionRulesModule } from '../commission-rules/commission-rules.module';
 
 @Module({
-  imports: [PrismaModule, CloudinaryModule, WalletsModule],
+  imports: [PrismaModule, CloudinaryModule, WalletsModule, CommissionRulesModule],
   controllers: [
     ReturnController,
     ReturnDisputeAdminController,

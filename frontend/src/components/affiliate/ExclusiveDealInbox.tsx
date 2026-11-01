@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
+import './ExclusiveDealInbox.css';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, Check, Loader2, MessageSquare, ShieldAlert, Handshake, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, Loader2, MessageSquare, ShieldAlert, X } from 'lucide-react';
 import { referralLinksService } from '../../services/referral-links.service';
 import { Select } from '../ui/Select';
 import { DealKpiProgress } from './DealKpiProgress';
 
 export interface ExclusiveDealInboxProps {
   onChat?: (item: any) => void;
+  collaboratorId?: string;
 }
 
 const defaultVipTerms = { discountPercent: 5, minimumOrderAmount: 200000, maximumDiscountAmount: 50000, usageLimitTotal: 20, budgetTotal: 1000000, validDays: 30 };
 type VipTerms = typeof defaultVipTerms;
 
-export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
+export function ExclusiveDealInbox({ onChat, collaboratorId }: ExclusiveDealInboxProps = {}) {
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,13 +29,14 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await referralLinksService.getShopExclusiveDeals());
+      const deals = await referralLinksService.getShopExclusiveDeals();
+      setItems(collaboratorId ? deals.filter(item => item.collaborator?.id === collaboratorId) : deals);
     } catch (error: any) {
       setFeedback(error?.response?.data?.message || 'Không thể tải đề xuất deal.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [collaboratorId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -89,17 +92,9 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
       onChat(item);
       return;
     }
-    const chatInput = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-      'input[placeholder*="Nhập tin nhắn"], textarea[placeholder*="Nhập tin nhắn"], #embedded-chat-input'
-    );
-    if (chatInput) {
-      chatInput.focus();
-      chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      return;
-    }
     const kolId = item.collaboratorId || item.collaborator?.id || item.collaborator?.userId;
     if (kolId) {
-      navigate(`/merchant/kol-hub?tab=messages&kol=${kolId}`);
+      navigate(`/merchant/kol-hub?tab=messages&kol=${encodeURIComponent(kolId)}`);
     } else {
       navigate('/merchant/kol-hub?tab=messages');
     }
@@ -108,12 +103,8 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
   const pendingCount = items.filter((item) => item.status === 'PENDING').length;
 
   return (
-    <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs">
+    <section className="exclusive-deal-inbox rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-base font-bold text-[#1A1612]">
-          <Handshake className="h-5 w-5 text-[#B88E4F]" />
-          Thỏa thuận hoa hồng độc quyền
-        </h2>
         <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-xs font-bold text-[#B88E4F]">{pendingCount} đang chờ</span>
       </div>
 
@@ -128,7 +119,7 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
             const isTerminated = item.shopResponse?.startsWith('[ĐÃ ĐÓNG DEAL / CHẾ TÀI]') || item.referralLink?.status === 'BLOCKED';
             const terms = voucherTermsById[item.id] || defaultVipTerms;
             return (
-              <article key={item.id} className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5">
+              <article key={item.id} className="exclusive-deal-card rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-extrabold text-[#1A1612]">{item.product?.title || 'Sản phẩm'}</div>
@@ -152,13 +143,13 @@ export function ExclusiveDealInbox({ onChat }: ExclusiveDealInboxProps = {}) {
                           : 'Chờ duyệt'}
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <div className="exclusive-deal-facts mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-lg border border-[#EAE4D7] bg-white px-2 py-1 text-[#7D715E]">Hoa hồng sàn <strong className="ml-1 text-[#1A1612]">{item.publicCommissionRate ?? '—'}%</strong></span>
                   <span className="rounded-lg border border-[#EEDFC6] bg-white px-2 py-1 text-[#7D715E]">Hoa hồng độc quyền <strong className="ml-1 text-[#B88E4F]">{item.proposedCommissionRate}%</strong></span>
                   {item.status === 'PENDING' && item.currentCommissionRate != null && (
                     <span className="rounded-lg border border-[#EEDFC6] bg-white px-2 py-1 text-[#7D715E]">Đang áp dụng <strong className="ml-1 text-[#B88E4F]">{item.currentCommissionRate}%</strong></span>
                   )}
-                  <span className="max-w-full truncate text-[#7D715E] sm:max-w-[280px]" title={item.salesCommitment}>Cam kết: <strong className="text-[#1A1612]">{item.salesCommitment}</strong></span>
+                  <span className="exclusive-deal-commitment text-[#7D715E]" title={item.salesCommitment}>Cam kết: <strong className="text-[#1A1612]">{item.salesCommitment}</strong></span>
                   {item.status === 'PENDING' && <div className="grid w-full grid-cols-2 gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2 sm:grid-cols-3">
                     {([
                       ['discountPercent', 'Giảm (%)', 1], ['minimumOrderAmount', 'Đơn tối thiểu (₫)', 0],

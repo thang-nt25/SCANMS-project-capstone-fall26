@@ -1,3 +1,4 @@
+import { storeOrderSearch } from './store-order-search';
 import { lockPricingProducts, reservePromotionBudget, releasePromotionBudget } from '../pricing/pricing-policy';
 import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { exclusiveDealBonus } from './exclusive-deal-bonus';
+import { isSelfReferral, referralRiskSignals } from '../commissions/self-referral';
 import { selfReferralReason } from './self-referral';
 import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -56,6 +58,7 @@ import {
 import {
   RespondReturnRequestDto,
   ReturnDecision,
+  RETURN_REJECTION_REASONS,
 } from './dto/respond-return-request.dto';
 import {
   ExternalOrderPlatform,
@@ -1626,12 +1629,21 @@ export class OrdersService {
     if (selfReferral) overrideReason = `SELF_REFERRAL_${selfReferral}`;
 
     let extraTierRate = 0;
+    let selfReferralDetected = false;
+    let selfReferralRiskSignals: string[] = [];
     if (attributedCollaboratorId) {
       const collabProfile = await tx.collaboratorProfile.findUnique({
         where: { userId: attributedCollaboratorId },
-        include: { tier: true },
+        include: { tier: true, user: { select: { id: true, email: true, phoneNumber: true, customerAddresses: true } } },
       });
       extraTierRate = tierBonusByName(collabProfile?.tier?.name);
+      selfReferralDetected = isSelfReferral({ customerId: dto.customerId, customerPhone, customerEmail }, collabProfile?.user);
+      if (!selfReferralDetected && collabProfile) {
+        const buyerBank = dto.customerId ? await tx.collaboratorProfile.findUnique({ where: { userId: dto.customerId } }) : null;
+        selfReferralRiskSignals = referralRiskSignals(shippingAddress, collabProfile.user?.customerAddresses ?? [],
+          collabProfile.kycStatus === 'VERIFIED' ? collabProfile : null,
+          buyerBank?.kycStatus === 'VERIFIED' ? buyerBank : null);
+      }
     }
 
     const subtotalAmount = rawSubtotalAmount;
@@ -1695,8 +1707,9 @@ export class OrdersService {
               (!product.variantId || product.variantId === item.variantId)))
         : null;
       const liveBonus = liveBonusRate(liveSession);
-      const finalCommissionRate = selfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, liveBonus);
-      const regularCommissionRate = selfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, 0);
+      const isBlockedSelfReferral = Boolean(selfReferral || selfReferralDetected);
+      const finalCommissionRate = isBlockedSelfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, liveBonus);
+      const regularCommissionRate = isBlockedSelfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, 0);
       const netItemSubtotal = linePricing[lineIndex].netGoods;
       if (fundedCampaignBonus && campaign) {
         campaignBonusReservations.set(campaign.id,
@@ -1807,6 +1820,9 @@ export class OrdersService {
         finalAmount: new Prisma.Decimal(orderFinalAmount),
         rawPayload: {
           confirmationEmailStatus: customerEmail ? 'QUEUED' : 'NOT_REQUESTED',
+          selfReferralDetected,
+          selfReferralRiskSignals,
+          selfReferralReviewRequired: selfReferralRiskSignals.length > 0,
           liveSessionIds,
           campaignBonusReservations: Object.fromEntries(campaignBonusReservations),
           selfReferralReason: selfReferral,
@@ -3788,6 +3804,7 @@ export class OrdersService {
       customerId?: string;
       paymentStatus?: string;
       search?: string;
+      searchField?: string;
       page?: number | string;
       limit?: number | string;
       storeId?: string;
@@ -3853,24 +3870,8 @@ export class OrdersService {
       };
     }
     if (query.search?.trim()) {
-      const search = query.search.trim();
-      where.OR = [
-        { externalOrderSn: { contains: search, mode: 'insensitive' } },
-        { customerPhone: { contains: search } },
-        { customerName: { contains: search, mode: 'insensitive' } },
-        {
-          rawPayload: {
-            path: ['trackingNumber'],
-            string_contains: search,
-          },
-        },
-        {
-          rawPayload: {
-            path: ['ghnOrderCode'],
-            string_contains: search,
-          },
-        },
-      ];
+      const searchCond = storeOrderSearch(query.search.trim(), query.searchField);
+      where.OR = searchCond.OR;
     }
 
     const [total, orders] = await Promise.all([
@@ -3933,7 +3934,13 @@ export class OrdersService {
           status: order.status,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
-          customerEmail: order.customerEmail,
+          customerEmail: order.customerEmail || (typeof raw.customer?.email === 'string' ? raw.customer.email : null),
+          note: typeof raw.note === 'string' ? raw.note : null,
+          isManualOrder: Boolean(raw.requestFingerprint),
+          deliveryLocation: typeof raw.customer?.latitude === 'number' && typeof raw.customer?.longitude === 'number'
+            && Number.isFinite(raw.customer.latitude) && Number.isFinite(raw.customer.longitude)
+            && Math.abs(raw.customer.latitude) <= 90 && Math.abs(raw.customer.longitude) <= 180
+            ? { latitude: raw.customer.latitude, longitude: raw.customer.longitude } : null,
           shippingAddress: order.shippingAddress,
           subtotalAmount: Number(order.subtotalAmount),
           discountAmount: Number(order.discountAmount),
@@ -3942,6 +3949,7 @@ export class OrdersService {
           paymentMethod: raw.paymentMethod || 'COD',
           paymentStatus: raw.paymentStatus || 'UNPAID',
           trackingNumber: raw.trackingNumber || raw.ghnOrderCode || null,
+          shopConfirmedAt: raw.shopConfirmedAt || null,
           ghnEnvironment: ['LIVE', 'TEST'].includes(raw.ghnEnvironment) ? raw.ghnEnvironment : null,
           carrierName:
             raw.carrierName ||
@@ -3995,10 +4003,18 @@ export class OrdersService {
     ) {
       throw new BadRequestException('Quyết định xử lý không hợp lệ');
     }
-    const response = dto.response?.trim();
-    if (!response || response.length < 10) {
-      throw new BadRequestException('Phản hồi phải có ít nhất 10 ký tự');
+    const explanation = dto.response?.trim();
+    if (!explanation || explanation.length < 10 || explanation.length > 1000) {
+      throw new BadRequestException('Phản hồi phải có từ 10 đến 1000 ký tự');
     }
+    const rejectionLabel = dto.rejectionReason && Object.prototype.hasOwnProperty.call(RETURN_REJECTION_REASONS, dto.rejectionReason)
+      ? RETURN_REJECTION_REASONS[dto.rejectionReason] : null;
+    if (dto.decision === ReturnDecision.REJECT && !rejectionLabel) {
+      throw new BadRequestException('Vui lòng chọn lý do từ chối cụ thể');
+    }
+    const response = dto.decision === ReturnDecision.REJECT
+      ? `Lý do: ${rejectionLabel}\nGiải thích: ${explanation}` : explanation;
+    if (response.length > 1000) throw new BadRequestException('Phản hồi đầy đủ không được vượt quá 1000 ký tự');
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -4097,6 +4113,33 @@ export class OrdersService {
   /**
    * Cập nhật trạng thái giao hàng & mã vận đơn bưu cục của Shop
    */
+  async confirmOrder(orderId: string, userId: string, userRole: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { store: true } });
+      if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+      if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(userRole as any)
+        && !(userRole === UserRole.SHOP_MANAGER && (order.store.ownerId === userId || user?.storeId === order.storeId))) {
+        throw new ForbiddenException('Bạn không có quyền xác nhận đơn hàng này');
+      }
+      if (order.status !== OrderStatus.PENDING) throw new BadRequestException('Chỉ xác nhận đơn đang chờ xử lý');
+      const raw = (order.rawPayload as Record<string, any>) || {};
+      if (raw.shopConfirmedAt) return { success: true, shopConfirmedAt: raw.shopConfirmedAt };
+      if (raw.paymentMethod && raw.paymentMethod !== 'COD' && raw.paymentStatus !== 'PAID') {
+        throw new BadRequestException('Đơn hàng chưa thanh toán thành công');
+      }
+      const shopConfirmedAt = new Date().toISOString();
+      await tx.order.update({ where: { id: orderId }, data: {
+        rawPayload: { ...raw, shopConfirmedAt, shopConfirmedBy: userId },
+      } });
+      await tx.auditLog.create({ data: {
+        userId, action: 'ORDER_CONFIRMED', details: { orderId, shopConfirmedAt },
+      } });
+      return { success: true, shopConfirmedAt };
+    });
+  }
+
   async updateOrderFulfillment(
     orderId: string,
     userId: string,
@@ -4140,6 +4183,9 @@ export class OrdersService {
     }
 
     const trackingNumber = dto.trackingNumber?.trim();
+    if (dto.status === OrderStatus.SHIPPING && !(order.rawPayload as Record<string, any> | null)?.shopConfirmedAt) {
+      throw new BadRequestException('Shop cần xác nhận đơn trước khi giao hàng');
+    }
     const carrierName = dto.carrierName?.trim();
     if (
       dto.status === OrderStatus.SHIPPING &&
@@ -4164,6 +4210,7 @@ export class OrdersService {
       carrierName: carrierName || currentRaw.carrierName || 'GHTK Express',
       fulfillmentNote: dto.note?.trim() || currentRaw.fulfillmentNote,
       fulfillmentUpdatedAt: new Date().toISOString(),
+      ...(dto.status === OrderStatus.SHIPPING ? { shopConfirmedAt: currentRaw.shopConfirmedAt || new Date().toISOString() } : {}),
     };
 
     const updateData: Prisma.OrderUpdateInput = {

@@ -1,0 +1,87 @@
+@reference "../../index.css";
+.merchant-customer-chat { @apply [gap:18px]; @apply [color:#1A1612]; }
+.merchant-customer-chat #chat-page { @apply [height:calc(100dvh_-_130px)]; @apply [min-height:480px]; @apply [border-radius:16px]; @apply [box-shadow:0_4px_18px_rgb(35_29_21_/_4%)]; }
+.merchant-customer-chat #chat-page > aside { @apply [background:#FFFFFF]; }
+.merchant-customer-chat .chat-list-heading { @apply [min-height:70px]; @apply [padding:16px]; @apply [gap:10px]; @apply [border-bottom-color:#F0EBE2]; }
+.merchant-customer-chat .chat-list-heading h1 { @apply [font-size:14px]; @apply [font-weight:650]; }
+.merchant-customer-chat .chat-list-heading > div:first-child > div:first-child { @apply [width:28px]; @apply [height:28px]; @apply [border:0]; @apply [border-radius:8px]; box-shadow: none; }
+.merchant-customer-chat .chat-list-heading button { @apply [width:30px]; @apply [height:30px]; @apply [background:#FFFFFF]; @apply [border-radius:8px]; box-shadow: none; }
+.merchant-customer-chat .chat-list-search { @apply [padding:12px_14px]; @apply [background:#FFFFFF]; @apply [border-bottom:0]; }
+.merchant-customer-chat .chat-list-search input { @apply [height:38px]; @apply [border-radius:8px]; @apply [font-size:12px]; @apply [font-weight:400]; @apply [background:#FAF8F5]; @apply [border-color:#EAE4D7]; box-shadow: none; }
+.merchant-customer-chat aside > [role='list'] { @apply [padding:4px_10px_12px]; }
+.merchant-customer-chat [id^='conv-item-'] { @apply [min-height:72px]; @apply [padding:12px_10px]; @apply [gap:10px]; @apply [border-radius:10px]; box-shadow: none; }
+.merchant-customer-chat [id^='conv-item-'][data-active='true'] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; }
+.merchant-customer-chat [id^='conv-item-'] > div.absolute { @apply [width:3px]; @apply [top:14px]; @apply [bottom:14px]; }
+.merchant-customer-chat [id^='conv-item-'] > button > span { @apply [width:36px]; @apply [height:36px]; @apply [font-size:11px]; @apply [border-color:#EAE4D7]; @apply [background:#F3EFE6]; box-shadow: none; --tw-ring-shadow: 0 0 #0000; @apply [transform:none]; }
+.merchant-customer-chat [id^='conv-item-'] > div:last-child > div:first-child > span:first-child { @apply [font-size:12px]; @apply [font-weight:600]; @apply [color:#1A1612]; }
+.merchant-customer-chat [id^='conv-item-'] > div:last-child > div:first-child > span:last-child:not(:first-child) { @apply [font-size:9px]; @apply [font-weight:400]; }
+.merchant-customer-chat [id^='conv-item-'] > div:last-child > div:last-child > span:first-child { @apply [font-size:11px]; @apply [line-height:17px]; }
+.merchant-customer-chat #chat-page > main { @apply [background:#FAF8F5]; }
+.merchant-customer-chat .chat-conversation-header { @apply [min-height:70px]; @apply [padding:14px_20px]; @apply [gap:12px]; box-shadow: none; }
+.merchant-customer-chat .chat-conversation-header > div:first-child { @apply [margin-right:auto]; @apply [gap:10px]; }
+.merchant-customer-chat .chat-conversation-header > div:first-child > button > span { @apply [width:36px]; @apply [height:36px]; @apply [font-size:11px]; box-shadow: none; @apply [background:#F3EFE6]; @apply [border:1px_solid_#EAE4D7]; }
+.merchant-customer-chat .chat-person-name { @apply [font-size:14px]; @apply [font-weight:650]; @apply [line-height:20px]; }
+.merchant-customer-chat .chat-person-status { @apply [font-size:10px]; @apply [line-height:16px]; }
+.merchant-customer-chat .chat-person-status span > span { @apply [width:6px]; @apply [height:6px]; }
+.merchant-customer-chat .chat-conversation-header > div:nth-child(2) { @apply [gap:7px]; }
+.merchant-customer-chat .chat-conversation-header > div:nth-child(2) > button,
+.merchant-customer-chat #btn-cskh-tools-menu { @apply [min-height:32px]; @apply [font-size:11px]; @apply [font-weight:550]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; box-shadow: none; @apply [padding:7px_10px]; }
+.merchant-customer-chat .chat-conversation-header #btn-customer-send-voucher { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#8C6226]; }
+.merchant-customer-chat #btn-cskh-tools-menu { @apply [width:32px]; @apply [padding:7px]; }
+.merchant-customer-chat .chat-conversation-header > button { @apply [width:32px]; @apply [height:32px]; @apply grid; @apply place-items-center; @apply [border-radius:8px]; @apply [color:#7D715E]; @apply [padding:7px]; }
+.merchant-customer-chat .chat-conversation-header > button svg { @apply [width:18px]; @apply [height:18px]; }
+.merchant-customer-chat .chat-message-list { @apply [padding:18px_22px]; @apply [background:#FAF8F5]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#E2D5BF_transparent]; }
+.merchant-customer-chat .chat-message-list > div + div { @apply [margin-top:18px]; }
+.merchant-customer-chat .chat-date-divider { @apply [gap:12px]; @apply [margin:8px_0_18px]; }
+.merchant-customer-chat .chat-date-divider::before, .merchant-customer-chat .chat-date-divider::after { @apply [content:'']; @apply [width:52px]; @apply [height:1px]; @apply [background:#EAE4D7]; }
+.merchant-customer-chat .chat-date-divider > span { @apply [padding:3px_8px]; @apply [font-size:10px]; @apply [font-weight:400]; @apply [background:transparent]; @apply [border:0]; box-shadow: none; }
+.merchant-customer-chat .chat-message-content { @apply [max-width:min(80%,_580px)]; }
+.merchant-customer-chat .chat-deal-sender { @apply flex; @apply items-center; @apply [gap:6px]; @apply [margin-bottom:6px]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [color:#7D715E]; @apply [line-height:18px]; }
+.merchant-customer-chat .chat-deal-sender > span { @apply [font-size:11px]; }
+.merchant-customer-chat .chat-deal-sender > span:first-child { @apply [width:21px]; @apply [height:21px]; @apply [font-size:8px]; }
+.merchant-customer-chat .chat-message-content > div:first-child:not(.chat-message-bubble):not(.chat-deal-sender) { @apply [font-size:10px]; @apply [line-height:16px]; }
+.merchant-customer-chat .chat-message-bubble { @apply [padding:11px_14px]; @apply [border-radius:12px]; @apply [border-top-left-radius:4px]; @apply [font-size:13px]; @apply [line-height:21px]; @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; @apply [box-shadow:0_1px_3px_rgb(35_29_21_/_2%)]; }
+.merchant-customer-chat .chat-message-bubble.chat-message-own { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [border-radius:12px]; @apply [border-top-right-radius:4px]; }
+.merchant-customer-chat .chat-message-content > div:last-child { @apply [font-size:9px]; @apply [line-height:15px]; @apply [margin-top:5px]; @apply [color:#9A9082]; }
+.merchant-customer-chat .product-inquiry-card { @apply [width:310px]; @apply [max-width:100%]; @apply [border-radius:12px]; @apply [box-shadow:0_2px_8px_rgb(35_29_21_/_3%)]; }
+.merchant-customer-chat .product-inquiry-card > header { @apply [padding:11px_12px_0]; }
+.merchant-customer-chat .product-inquiry-card > header > span:first-child { @apply [width:22px]; @apply [height:22px]; @apply [border-radius:6px]; }
+.merchant-customer-chat .product-inquiry-card > div img, .merchant-customer-chat .product-inquiry-card > div > div > div:first-child:not(:last-child) { @apply [width:54px]; @apply [height:54px]; @apply [border-radius:8px]; }
+.merchant-customer-chat .product-inquiry-card h4 { @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:600]; }
+.merchant-customer-chat .product-inquiry-card blockquote { @apply [margin-top:12px]; @apply [padding:9px_10px]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [border:0]; @apply [border-radius:8px]; @apply [background:#FAF8F5]; }
+.merchant-customer-chat .product-inquiry-card > footer a { @apply [min-height:32px]; @apply [border-radius:7px]; @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; @apply [color:#8C6226]; }
+.merchant-customer-chat .product-inquiry-card > footer a:hover { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; }
+.merchant-customer-chat .chat-composer { @apply [padding:14px_18px_12px]; }
+.merchant-customer-chat .chat-composer > div { @apply [gap:6px]; @apply items-end; }
+.merchant-customer-chat .chat-composer textarea { @apply [min-width:0]; @apply [min-height:40px]; @apply [border-radius:9px]; @apply [border-color:#EAE4D7]; @apply [background:#FAF8F5]; @apply [font-size:12px]; @apply [padding:10px_12px]; }
+.merchant-customer-chat .chat-composer button { @apply [width:34px]; @apply [height:40px]; @apply [border-radius:9px]; }
+.merchant-customer-chat .chat-composer button svg { @apply [width:18px]; @apply [height:18px]; }
+.merchant-customer-chat .chat-composer #chat-send-btn { @apply [width:40px]; @apply [border:1px_solid_#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; box-shadow: none; }
+.merchant-customer-chat .chat-composer #chat-send-btn:disabled { @apply [border-color:transparent]; @apply [background:#F3EFE6]; @apply [color:#B8AE9D]; }
+.merchant-customer-chat .chat-composer > p { @apply [font-size:10px]; @apply [color:#9A9082]; @apply [margin-top:7px]; @apply [padding-left:0]; }
+.merchant-customer-chat button:focus-visible, .merchant-customer-chat a:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (min-width: 640px) { .merchant-customer-chat #chat-page > aside:not(.w-\[72px\]) { @apply [width:285px]; } }
+@media (min-width: 1024px) { .merchant-customer-chat #chat-page > aside:not(.w-\[72px\]) { @apply [width:305px]; } }
+@media (min-width: 1280px) { .merchant-customer-chat #chat-page > aside:not(.w-\[72px\]) { @apply [width:325px]; } }
+@media (max-width: 1000px) and (min-width: 640px) {
+  .merchant-customer-chat .chat-conversation-header { @apply flex-wrap; }
+  .merchant-customer-chat .chat-conversation-header > div:first-child { @apply [flex-basis:calc(100%_-_50px)]; }
+  .merchant-customer-chat .chat-conversation-header > div:nth-child(2) { @apply [order:3]; }
+}
+@media (max-width: 639px) {
+  .merchant-customer-chat { @apply [gap:14px]; }
+  .merchant-customer-chat #chat-page { @apply [height:75dvh]; @apply [min-height:490px]; @apply [border-radius:12px]; }
+  .merchant-customer-chat .chat-conversation-header { @apply [padding:12px]; @apply [gap:5px]; @apply flex-wrap; }
+  .merchant-customer-chat .chat-conversation-header > div:first-child { @apply [gap:6px]; @apply [flex:1_1_calc(100%_-_40px)]; }
+  .merchant-customer-chat .chat-conversation-header > div:nth-child(2) { @apply [order:3]; @apply [width:100%]; @apply [padding-top:4px]; }
+  .merchant-customer-chat .chat-conversation-header > div:nth-child(2) > button { @apply [flex:1]; @apply justify-center; }
+  .merchant-customer-chat .chat-conversation-header > div:nth-child(2) > button > span { @apply [display:inline]; }
+  .merchant-customer-chat .chat-message-list { @apply [padding:14px_12px]; }
+  .merchant-customer-chat .chat-message-content { @apply [max-width:92%]; }
+  .merchant-customer-chat .chat-message-bubble { @apply [font-size:12px]; @apply [line-height:20px]; }
+  .merchant-customer-chat .chat-composer { @apply [padding:10px]; }
+  .merchant-customer-chat .chat-composer > div { @apply flex-wrap; }
+  .merchant-customer-chat .chat-composer textarea { @apply [order:-2]; @apply [flex:1_1_calc(100%_-_48px)]; }
+  .merchant-customer-chat .chat-composer #chat-send-btn { @apply [order:-1]; }
+  .merchant-customer-chat .chat-composer > p { @apply hidden; }
+}

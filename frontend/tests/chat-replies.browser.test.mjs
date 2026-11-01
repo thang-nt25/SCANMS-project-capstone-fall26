@@ -1,0 +1,160 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer-core';
+
+const base = process.env.GHN_UI_TEST_URL;
+const executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const conversationId = 'd4e5f6a1-b2c3-4d4e-8f5a-6b7c8d9e0f1a';
+const otherConversationId = 'a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d';
+const originalId = 'f6a1b2c3-d4e5-4f6a-8b7c-8d9e0f1a2b3c';
+const imageId = 'e5f6a1b2-c3d4-4e5f-8a6b-7c8d9e0f1a2b';
+const storeId = 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d';
+const owner = { id: 'b2c3d4e5-f6a1-4b2c-8d3e-4f5a6b7c8d9e', role: 'SHOP_MANAGER', fullName: 'Chủ Shop kiểm thử' };
+const customer = { id: 'c3d4e5f6-a1b2-4c3d-8e4f-5a6b7c8d9e0f', role: 'CUSTOMER', fullName: 'Phan Thanh Hà' };
+
+test('quoted replies persist, reach both sides, preserve drafts and render in customer floating chat', { skip: !base || !existsSync(executablePath), timeout: 60000 }, async () => {
+  const origin = new URL(base).origin;
+  assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
+  const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox'] });
+  const errors = [], sent = [];
+  let failNext = false, hideOriginal = false, repliesEnabled = true;
+  const original = { id: originalId, conversationId, senderId: customer.id, sender: customer, messageText: JSON.stringify({ type: 'PRODUCT_INQUIRY', productId: originalId, productTitle: 'Mặt nạ rau má Cocoon 5 miếng', productSku: 'SEED-013', productPrice: 90000, message: 'Shop tư vấn giúp mình phân loại phù hợp nhé.' }), isRead: true, createdAt: '2026-10-24T06:00:00Z' };
+  const image = { id: imageId, conversationId, senderId: customer.id, sender: customer, messageText: '', mediaType: 'IMAGE', mediaUrl: 'https://files.example.test/photo.png', mediaName: 'Ảnh sản phẩm.png', isRead: true, createdAt: '2026-10-24T06:01:00Z' };
+  const messages = [original, image];
+  const snapshot = message => { const { replyTo, replyToId, isRead, ...rest } = message; return rest; };
+  const conv = (id = conversationId) => ({ id, storeId, store: { id: storeId, name: 'Shop kiểm thử', owner }, customerId: customer.id, customer, collaboratorId: null, chatMessages: [messages.at(-1)], _count: { chatMessages: 0 }, lastMessageAt: messages.at(-1).createdAt });
+  const openPage = async (user, floating = false) => {
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    page.setDefaultNavigationTimeout(10000);
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewport({ width: 1440, height: 950 });
+    await page.evaluateOnNewDocument(user => { localStorage.setItem('token', 'fixture-no-server-access'); localStorage.setItem('user', JSON.stringify(user)); }, user);
+    await page.exposeFunction('qaPersistMessage', payload => {
+      sent.push(payload);
+      if (failNext) { failNext = false; return { ok: false, error: 'Chưa gửi được phản hồi kiểm thử' }; }
+      const existing = messages.find(message => message.id === payload.messageId);
+      if (existing) return { ok: true, message: existing };
+      const parent = payload.replyToId ? messages.find(message => message.id === payload.replyToId && message.conversationId === payload.conversationId) : null;
+      if (payload.replyToId && !parent) return { ok: false, error: 'Tin nhắn gốc không còn tồn tại.' };
+      const message = { ...payload, id: payload.messageId, senderId: user.id, sender: user, replyTo: parent ? snapshot(parent) : null, createdAt: new Date().toISOString(), isRead: false };
+      messages.push(message);
+      return { ok: true, message };
+    });
+    await page.setRequestInterception(true);
+    page.on('request', request => void (async () => {
+      const url = new URL(request.url());
+      if (url.pathname === '/src/main.tsx') return request.respond({ status: 200, contentType: 'application/javascript', body: `import '/tests/fixtures/${floating ? 'chat-reply-floating' : 'chat-explorer-audit'}.tsx';` });
+      if (url.pathname === '/src/services/chat-socket.service.ts') return request.respond({ status: 200, contentType: 'application/javascript', body: `
+        const listeners=new Map();const s={connected:true,active:true,on(e,f){if(!listeners.has(e))listeners.set(e,new Set());listeners.get(e).add(f);return this},off(e,f){if(f)listeners.get(e)?.delete(f);else listeners.delete(e);return this},timeout(){return this},connect(){return this},emit(e,p,ack){
+          if(e==='send_message')window.qaPersistMessage(p).then(result=>{if(result.ok)for(const f of listeners.get('new_message')||[])f(result.message);ack?.(null,result)});return this;}};
+        export const getChatSocket=()=>s;export const isChatSocketAuthenticated=()=>true;export const disconnectChatSocket=()=>{};` });
+      if (url.pathname.startsWith('/api/') || url.port === '3000') {
+        const headers = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': request.headers()['access-control-request-headers'] || 'authorization,content-type', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS' };
+        const respond = data => request.respond({ status: 200, headers, contentType: 'application/json', body: JSON.stringify({ data }) });
+        if (request.method() === 'OPTIONS') return request.respond({ status: 204, headers });
+        if (url.pathname === '/api/chat/capabilities') return respond({ messageReplies: repliesEnabled });
+        if (url.pathname === '/api/chat/conversations') return respond(request.method() === 'POST' ? conv() : [conv(), conv(otherConversationId)]);
+        if (url.pathname.endsWith('/messages')) return respond(messages.filter(message => message.conversationId === conversationId && (!hideOriginal || message.id !== originalId)));
+        if (url.pathname.includes('/messages/')) return respond(messages.find(message => url.pathname.endsWith(message.id)));
+        if (url.pathname.endsWith('/attachments')) return respond({ url: 'https://res.cloudinary.com/qa/raw/upload/bao-gia.pdf', fileName: 'bao-gia.pdf', type: 'DOCUMENT' });
+        if (url.pathname === '/api/products') return respond({ items: [], pagination: { totalPages: 1 } });
+        if (url.pathname.startsWith('/api/public/products')) return respond({ items: [] });
+        return respond([]);
+      }
+      if (url.hostname === 'files.example.test') return request.respond({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aTWQAAAAASUVORK5CYII=', 'base64') });
+      if (url.origin !== origin && !['data:', 'blob:'].includes(url.protocol)) return request.abort();
+      return request.continue();
+    })().catch(error => errors.push(error.message)));
+    await page.goto(origin + (floating ? '/marketplace' : user.role === 'SHOP_MANAGER' ? '/merchant/customer-messages' : '/chat'));
+    return page;
+  };
+  try {
+    const shop = await openPage(owner);
+    await shop.waitForSelector('#chat-message-' + originalId);
+    await shop.click('#chat-message-' + originalId + ' .product-inquiry-card h4');
+    await shop.waitForSelector('.chat-composer .chat-reply-draft');
+    assert.match(await shop.$eval('.chat-composer .chat-reply-draft', el => el.textContent), /Phan Thanh Hà.*Mặt nạ rau má/);
+    assert.equal(await shop.$eval('#chat-message-input', el => el === document.activeElement), true);
+    await shop.click('[aria-label="Hủy trả lời"]');
+    assert.equal(await shop.$('.chat-composer .chat-reply-draft'), null);
+    await shop.click('#chat-message-' + imageId + ' .chat-reply-action');
+    assert.match(await shop.$eval('.chat-composer .chat-reply-draft', el => el.textContent), /Hình ảnh.*Ảnh sản phẩm/);
+    await shop.click('[aria-label="Hủy trả lời"]');
+    await shop.click('#chat-message-' + originalId + ' .chat-reply-action');
+    await shop.type('#chat-message-input', 'Chào bạn, Shop có các phân loại này nhé.');
+    await shop.click('#conv-item-' + otherConversationId);
+    assert.equal(await shop.$('.chat-composer .chat-reply-draft'), null, 'reply draft never crosses conversations');
+    await shop.click('#conv-item-' + conversationId);
+    await shop.waitForSelector('.chat-composer .chat-reply-draft');
+    failNext = true;
+    await shop.click('#chat-send-btn');
+    await shop.waitForFunction(() => !document.querySelector('#chat-send-btn').disabled);
+    assert.ok(await shop.$('.chat-composer .chat-reply-draft'), 'failed sending preserves quoted target');
+    assert.match(await shop.$eval('#chat-message-input', el => el.value), /Chào bạn/);
+    await shop.click('#chat-send-btn');
+    await shop.waitForSelector('.chat-composer .chat-reply-draft', { hidden: true });
+    const reply = messages.at(-1);
+    assert.equal(reply.replyToId, originalId);
+    assert.equal(reply.replyTo.sender.fullName, customer.fullName);
+    assert.equal(sent.at(-2).messageId, sent.at(-1).messageId, 'quoted retries preserve the same outgoing id');
+    assert.ok(await shop.$('#chat-message-' + reply.id + ' .chat-reply-quote'));
+    await shop.click('#chat-message-' + reply.id + ' .chat-reply-summary');
+    assert.ok(await shop.$('#chat-message-' + originalId + '.chat-message-highlight'));
+    await shop.reload();
+    await shop.waitForSelector('#chat-message-' + reply.id + ' .chat-reply-quote');
+    const artifacts = new URL('../../artifacts/chat-replies/', import.meta.url);
+    await mkdir(artifacts, { recursive: true });
+    await shop.screenshot({ path: fileURLToPath(new URL('shop.png', artifacts)) });
+    hideOriginal = true;
+    await shop.reload();
+    await shop.waitForSelector('#chat-message-' + reply.id + ' .chat-reply-summary');
+    await shop.click('#chat-message-' + reply.id + ' .chat-reply-summary');
+    await shop.waitForSelector('dialog[aria-labelledby="chat-original-title"]');
+    assert.match(await shop.$eval('dialog[aria-labelledby="chat-original-title"]', el => el.textContent), /Shop tư vấn giúp mình/);
+    await shop.keyboard.press('Escape');
+    hideOriginal = false;
+
+    const customerPage = await openPage(customer);
+    await customerPage.waitForSelector('#chat-message-' + reply.id + ' .chat-reply-quote');
+    assert.match(await customerPage.$eval('#chat-message-' + reply.id + ' .chat-reply-quote', el => el.textContent), /Bạn/);
+    await customerPage.click('#chat-message-' + reply.id + ' .chat-reply-action');
+    await customerPage.type('#chat-message-input', 'Mình lấy loại 5 miếng nhé.');
+    await customerPage.click('#chat-send-btn');
+    await customerPage.waitForSelector('.chat-composer .chat-reply-draft', { hidden: true });
+    assert.equal(messages.at(-1).replyToId, reply.id);
+    assert.equal(messages.at(-1).senderId, customer.id);
+    await customerPage.setViewport({ width: 390, height: 844 });
+    await customerPage.screenshot({ path: fileURLToPath(new URL('customer-mobile.png', artifacts)) });
+    assert.ok(await customerPage.$eval('#chat-page', el => el.scrollWidth <= el.clientWidth));
+
+    const floating = await openPage(customer, true);
+    await floating.click('#open-qa-chat');
+    await floating.waitForSelector('#floating-chat-message-' + reply.id);
+    assert.ok(await floating.$('#floating-chat-message-' + reply.id + ' .chat-reply-quote'), 'customer floating chat retains server quote metadata');
+    await floating.click('#floating-chat-message-' + reply.id + ' .chat-reply-action');
+    await floating.waitForSelector('.chat-reply-draft');
+    assert.match(await floating.$eval('.chat-reply-draft', el => el.textContent), /Chủ Shop kiểm thử/);
+    await floating.type('textarea', 'Mình trả lời từ khung chat nổi.');
+    await floating.focus('textarea');
+    await floating.keyboard.press('Enter');
+    await floating.waitForSelector('.chat-reply-draft', { hidden: true });
+    assert.equal(messages.at(-1).replyToId, reply.id);
+    assert.match(messages.at(-1).messageText, /chat nổi/);
+    await floating.screenshot({ path: fileURLToPath(new URL('floating.png', artifacts)) });
+    repliesEnabled = false;
+    await shop.reload();
+    await shop.waitForSelector('#chat-message-input');
+    await shop.waitForNetworkIdle({ idleTime: 150 });
+    assert.equal(await shop.$('.chat-reply-action'), null, 'pending migration does not expose a broken action');
+    await shop.type('#chat-message-input', 'Tin nhắn thường vẫn hoạt động.');
+    await shop.click('#chat-send-btn');
+    await shop.waitForFunction(() => document.querySelector('#chat-message-input').value === '');
+    assert.equal(messages.at(-1).replyToId, undefined);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});

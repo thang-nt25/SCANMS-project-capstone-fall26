@@ -18,6 +18,7 @@ import { MerchantPayoutsService } from './merchant-payouts.service';
 import { PayoutSettingsService } from './payout-settings.service';
 import { ExportPayoutBatchDto } from './dto/manage-payout.dto';
 import { QueryWithdrawalsDto } from './dto/query-withdrawals.dto';
+import { assertPayoutBeneficiary } from './payout-beneficiary';
 
 @Injectable()
 export class PayoutBatchesService {
@@ -38,11 +39,7 @@ export class PayoutBatchesService {
       dto.payoutIds.length < 1 ||
       dto.payoutIds.length > 200 ||
       new Set(dto.payoutIds).size !== dto.payoutIds.length ||
-      dto.payoutIds.some(
-        (id) =>
-          typeof id !== 'string' ||
-          !isUUID(id, 'all'),
-      )
+      dto.payoutIds.some((id) => typeof id !== 'string' || !isUUID(id, 'all'))
     )
       throw new BadRequestException(
         'Chọn 1–200 payout UUID hợp lệ, không trùng',
@@ -71,8 +68,10 @@ export class PayoutBatchesService {
           throw new ConflictException(
             'Chỉ xuất payout PENDING chưa thuộc lô thanh toán',
           );
-        for (const request of requests)
+        for (const request of requests) {
           await this.payouts.assertFundedPayout(tx, request);
+          await assertPayoutBeneficiary(tx, request);
+        }
         const batch = {
           id: randomUUID(),
           storeId,

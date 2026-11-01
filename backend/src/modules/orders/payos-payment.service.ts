@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Interval } from '@nestjs/schedule';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, UserRole } from '@prisma/client';
+import type { OrderManagerIdentity } from './manual-orders.service';
 import { PayOS, type Webhook } from '@payos/node';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -160,27 +161,45 @@ export class PayosPaymentService {
     }
   }
 
-  private async ownedOrder(publicCode: string, userId: string) {
+  private async ownedOrder(publicCode: string, userId: string, manager?: OrderManagerIdentity, prepare = false) {
+    if (manager && !new Set<UserRole>([UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER]).has(manager.role))
+      throw new ForbiddenException('Bạn không có quyền quản lý thanh toán đơn hàng.');
     const order = await this.prisma.order.findFirst({
       where: {
-        externalOrderSn: publicCode,
-        customerId: userId,
+        ...(manager ? { id: publicCode, ...(manager.role === UserRole.SHOP_MANAGER ? { store: { ownerId: manager.id } } : {}) } : { externalOrderSn: publicCode, customerId: userId }),
         sourcePlatform: 'INTERNAL',
       },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng của bạn');
-    const raw = (order.rawPayload || {}) as Record<string, any>;
+    let raw = (order.rawPayload || {}) as Record<string, any>;
+    if (manager && !raw.requestFingerprint) throw new BadRequestException('Chỉ hỗ trợ thu tiền cho đơn thủ công.');
+    if (manager && prepare && raw.paymentMethod === 'MANUAL') {
+      if (order.status === OrderStatus.CANCELLED || raw.paymentStatus === 'PAID')
+        throw new ConflictException('Đơn đã hủy hoặc đã thanh toán.');
+      const amount = Number(order.finalAmount);
+      if (!Number.isSafeInteger(amount) || amount <= 0) throw new BadRequestException('PayOS yêu cầu số tiền VND nguyên dương.');
+      raw = await this.prisma.$transaction(async tx => {
+        const rows = await tx.$queryRaw<Array<{ raw_payload: any; status: OrderStatus }>>`SELECT raw_payload, status FROM orders WHERE id = ${order.id}::uuid FOR UPDATE`;
+        const latest = rows[0]?.raw_payload || {};
+        if (!rows[0] || rows[0].status === OrderStatus.CANCELLED || latest.paymentStatus === 'PAID'
+          || !['MANUAL', 'PAYOS'].includes(latest.paymentMethod)) throw new ConflictException('Trạng thái đơn đã thay đổi. Vui lòng tải lại.');
+        const next = { ...latest, paymentMethod: 'PAYOS', paymentStatus: 'WAITING_PAYMENT' };
+        await tx.order.update({ where: { id: order.id }, data: { rawPayload: next } });
+        return next;
+      });
+    }
+    if (manager && !prepare && raw.paymentMethod === 'MANUAL') return { order, raw };
     if (raw.paymentMethod !== 'PAYOS') {
       throw new BadRequestException('Đơn hàng này không chọn thanh toán PayOS');
     }
     return { order, raw };
   }
 
-  async createLink(publicCode: string, userId: string) {
-    const key = `${userId}:${publicCode}`;
+  async createLink(publicCode: string, userId: string, manager?: OrderManagerIdentity) {
+    const key = `${manager ? 'merchant:' : ''}${userId}:${publicCode}`;
     const inFlight = this.creatingLinks.get(key);
     if (inFlight) return inFlight;
-    const request = this.createOwnedLink(publicCode, userId);
+    const request = this.createOwnedLink(publicCode, userId, false, manager);
     this.creatingLinks.set(key, request);
     try {
       return await request;
@@ -193,10 +212,11 @@ export class PayosPaymentService {
     publicCode: string,
     userId: string,
     recovering = false,
+    manager?: OrderManagerIdentity,
   ): Promise<PayosLinkResult> {
     this.assertReady();
     const payos = this.client();
-    const { order, raw } = await this.ownedOrder(publicCode, userId);
+    const { order, raw } = await this.ownedOrder(publicCode, userId, manager, true);
     if (order.status === OrderStatus.CANCELLED)
       throw new BadRequestException('Đơn hàng đã hủy');
     if (raw.paymentStatus === 'PAID')
@@ -241,7 +261,7 @@ export class PayosPaymentService {
       });
     }
     const base = this.storefrontBaseUrl();
-    const resultPath = `/payment/payos-return?order=${encodeURIComponent(publicCode)}`;
+    const resultPath = `/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn || publicCode)}${manager ? '&manual=1' : ''}`;
     const returnUrl = `${base}${resultPath}`;
     const cancelUrl = `${base}${resultPath}&cancelled=1`;
 
@@ -331,7 +351,7 @@ export class PayosPaymentService {
                   },
                 });
               });
-              return this.createOwnedLink(publicCode, userId, true);
+              return this.createOwnedLink(publicCode, userId, true, manager);
             }
           }
         }
@@ -393,8 +413,8 @@ export class PayosPaymentService {
     return { ...details, paymentStatus };
   }
 
-  async getStatus(publicCode: string, userId: string) {
-    const { order, raw } = await this.ownedOrder(publicCode, userId);
+  async getStatus(publicCode: string, userId: string, manager?: OrderManagerIdentity) {
+    const { order, raw } = await this.ownedOrder(publicCode, userId, manager);
     const result = await this.reconcileOrder(order, raw);
     return {
       publicOrderCode: order.externalOrderSn,

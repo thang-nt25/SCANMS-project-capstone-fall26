@@ -8,10 +8,10 @@ export function WalletCooperationStores({ stores = [] }: { stores?: WalletSummar
   const [query, setQuery] = useState('');
   const money = (value: string) => `${Number(value).toLocaleString('vi-VN')} đ`;
   const list = stores.filter(store => store.storeName.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi')));
-  return <section className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-    <button type="button" aria-expanded={open} aria-controls="wallet-cooperation-shops" onClick={() => setOpen(value => !value)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#FAF8F5]">
+  return <section className="wallet-cooperation-section overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
+    <button type="button" aria-expanded={open} aria-controls="wallet-cooperation-shops" onClick={() => setOpen(value => !value)} className="wallet-cooperation-heading flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#FAF8F5]">
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><Store size={18} /></span>
-      <span className="flex-1"><span className="text-sm font-bold text-[#1A1612]">Gian hàng đối tác <span className="ml-1 text-xs font-normal text-[#7D715E]">({stores.length})</span></span></span>
+      <h2 className="m-0 flex-1 text-sm font-bold text-[#1A1612]">Gian hàng đối tác <span className="ml-1 text-xs font-normal text-[#7D715E]">({stores.length})</span></h2>
       <ChevronDown size={17} className={`text-[#B88E4F] transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
     {open && <div id="wallet-cooperation-shops" className="border-t border-[#EAE4D7] p-4">
@@ -25,7 +25,6 @@ export function WalletCooperationStores({ stores = [] }: { stores?: WalletSummar
             <td className="px-3 py-3 text-right font-semibold tabular-nums text-[#1A1612]">{money(store.availableBalance)}</td><td className="px-3 py-3 text-right tabular-nums text-[#7D715E]">{money(store.pendingBalance)}</td>
           </tr>)}</tbody>
         </table>
-        {!list.length && <p className="p-5 text-center text-xs text-[#7D715E]">{query ? 'Không tìm thấy Shop phù hợp.' : 'Chưa có quan hệ hợp tác với Shop nào.'}</p>}
       </div>
     </div>}
   </section>;

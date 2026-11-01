@@ -1,14 +1,30 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { applyTheme } from '../../utils/theme.utils';
+import { SeedDataNotice } from '../common/SeedDataNotice';
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const pageColumnRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const column = pageColumnRef.current;
+    if (!column) return;
+    const syncHeaderInset = () => {
+      document.documentElement.style.setProperty('--workspace-scrollbar-width', `${Math.max(0, column.offsetWidth - column.clientWidth)}px`);
+    };
+    syncHeaderInset();
+    const observer = new ResizeObserver(syncHeaderInset);
+    observer.observe(column);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--workspace-scrollbar-width');
+    };
+  }, [location.pathname, location.search]);
   useEffect(() => {
     applyTheme('light');
   }, []);
@@ -54,6 +70,8 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isKycPage = location.pathname === '/collaborator/wallet' &&
+    new URLSearchParams(location.search).get('tab') === 'kyc';
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -65,7 +83,7 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+    <div className={`bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans ${isKycPage ? 'min-h-dvh workspace-document-scroll' : 'min-h-screen lg:h-screen lg:overflow-hidden'}`}>
       {/* 1. Topbar nằm full-width trên cùng (chuẩn vị trí Header như Customer) */}
       <Topbar
         currentUser={currentUser}
@@ -81,7 +99,8 @@ export default function MainLayout() {
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
+            <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={
                 <div className="w-full py-20 flex flex-col items-center justify-center text-[#7D715E] gap-3 animate-in fade-in duration-200">

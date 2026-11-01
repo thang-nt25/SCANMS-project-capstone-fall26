@@ -1,0 +1,100 @@
+@reference "../../index.css";
+.social-channels-page { @apply [color:#1A1612]; @apply [gap:16px]; @apply [background:transparent]; }
+.social-channels-page .social-overview { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [gap:12px]; @apply [border:0]; @apply [background:transparent]; }
+.social-overview > div { @apply items-start; @apply [gap:12px]; @apply [padding:18px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; }
+.social-overview > div > span { @apply [width:36px]; @apply [height:36px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:10px]; @apply [background:#FBF5EB]; }
+.social-overview > div > div { @apply [flex:1]; }
+.social-overview > div > div > span { @apply [font-size:12px]; @apply [line-height:18px]; }
+.social-overview strong { @apply [margin-top:6px]; @apply [font-size:27px]; @apply [line-height:34px]; @apply [font-weight:650]; @apply [letter-spacing:-.6px]; }
+.social-overview strong small { @apply [font-size:12px]; @apply [letter-spacing:0]; }
+.social-overview p { @apply [margin-top:4px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.social-overview > div:last-child strong { @apply [font-size:16px]; @apply [letter-spacing:-.2px]; }
+.social-navigation-card { @apply [padding:14px_16px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:13px]; @apply [background:#fff]; @apply [min-width:0]; }
+.social-channels-page .social-toolbar { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply items-center; @apply [gap:10px]; @apply [padding:0_0_12px]; @apply [border:0]; @apply [border-bottom:1px_solid_#eae4d7]; @apply [border-radius:0]; @apply [background:#FFFFFF]; }
+.social-platform-tabs { @apply grid; @apply [gap:10px]; @apply [overflow-x:auto]; @apply [margin-top:12px]; @apply [padding-bottom:2px]; }
+.social-platform-tabs button { @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [min-height:44px]; @apply [padding:9px_12px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:10px]; @apply [background:#fff]; @apply [font-size:12px]; @apply [color:#7d715e]; @apply whitespace-nowrap; @apply cursor-pointer; }
+.social-platform-tabs button > span { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:25px]; @apply [height:25px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-size:11px]; }
+.social-platform-tabs button small { @apply [font-size:10px]; font-variant-numeric: tabular-nums; }
+.social-platform-tabs button[aria-pressed=true] { @apply [background:#fbf5eb]; @apply [border-color:#eedfc6]; @apply [color:#1a1612]; @apply [font-weight:600]; }
+.social-platform-tabs button[aria-pressed=true] > span { @apply [border-color:#c59b58]; @apply [color:#9a7135]; }
+.social-toolbar > .social-platform-control { @apply [grid-column:2]; }
+.social-toolbar input { @apply [height:40px]; @apply [font-size:12px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.social-platform-control { @apply [min-width:0]; }
+.social-toolbar button[aria-haspopup=listbox] { @apply [width:100%]; @apply [min-height:40px]; @apply [height:40px]; @apply [border-radius:8px]; @apply [font-size:12px]; box-shadow: none; }
+.social-toolbar .social-add-button { @apply [height:40px]; @apply [padding:0_14px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#1A1612]; @apply [font-size:12px]; @apply whitespace-nowrap; box-shadow: none; }
+.social-toolbar .social-add-button:hover { @apply [background:#F3EFE6]; @apply [border-color:#C59B58]; }
+.social-channels-page .social-channel-list { @apply overflow-hidden; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; }
+.social-list-heading { @apply flex; @apply items-center; @apply [padding:15px_18px]; @apply [border-bottom:1px_solid_#EAE4D7]; }
+.social-list-heading h2 { @apply flex; @apply items-center; @apply [gap:9px]; @apply [margin:0]; @apply [font-size:14px]; @apply [line-height:20px]; @apply [font-weight:600]; }
+.social-list-heading h2 span { @apply grid; @apply place-items-center; @apply [min-width:23px]; @apply [height:23px]; @apply [padding:0_6px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:6px]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.social-channel-row { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_115px_115px_auto]; @apply items-center; @apply [gap:16px]; @apply [padding:14px_16px]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [background:#FFFFFF]; }
+.social-channel-row:last-child { @apply [border-bottom:0]; }
+.social-channel-row > div:first-child > span { @apply [width:40px]; @apply [height:40px]; @apply [border-color:#EEDFC6]; @apply [border-radius:10px]; @apply [background:#FBF5EB]; }
+.social-channel-row h3 { @apply [margin:0]; @apply [font-size:13px]; @apply [line-height:21px]; @apply [font-weight:600]; @apply [overflow-wrap:anywhere]; }
+.social-channel-row > div:first-child > div > div:last-child { @apply flex-wrap; @apply [row-gap:4px]; }
+.social-channel-row > div:first-child > div > div:last-child > span:last-child { @apply [font-size:11px]; }
+.social-channel-metric > span, .social-channel-verification > span { @apply [font-size:11px]; @apply [line-height:18px]; }
+.social-channel-metric strong { @apply [margin-top:3px]; @apply [font-size:16px]; @apply [line-height:23px]; @apply [font-weight:600]; }
+.social-channel-verification strong { @apply [margin-top:5px]; @apply [padding:3px_7px]; @apply [background:#FAF8F5]; @apply [font-size:10px]; @apply [font-weight:500]; }
+.social-channel-actions { @apply flex; @apply items-center; @apply [gap:7px]; }
+.social-channel-actions > :is(button, a) { @apply [height:34px]; @apply [min-height:34px]; @apply [border-radius:8px]; @apply [font-size:11px]; box-shadow: none; @apply whitespace-nowrap; }
+.social-channel-actions > button:last-child { @apply [width:34px]; }
+.social-channels-page input:focus { @apply [border-color:#C59B58]; @apply [background:#FFFFFF]; }
+.social-channels-page :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+.social-channels-page [role=dialog] { @apply [border-radius:14px]; }
+.social-channels-page [role=dialog] h3 { @apply [font-size:16px]; }
+.social-channels-page [role=dialog] button[type=submit] { --action-bg: #C59B58; --action-hover: #B88E4F; --action-border: #C59B58; --action-border-hover: #B88E4F; }
+.social-modal-backdrop { @apply flex; @apply items-center; @apply justify-center; @apply [padding:20px]; @apply [background:rgb(35_29_21_/_25%)]; @apply [backdrop-filter:blur(3px)]; }
+.social-channels-page .social-add-dialog { @apply [width:100%]; @apply [max-width:460px]; @apply [max-height:calc(100dvh_-_40px)]; @apply overflow-y-auto; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:18px]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; @apply [box-shadow:0_20px_70px_rgb(35_29_21_/_15%)]; }
+.social-dialog-heading { @apply flex; @apply items-center; @apply [gap:12px]; @apply [padding:22px_22px_18px]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [background:#FFFDFA]; }
+.social-dialog-heading > span { @apply [width:40px]; @apply [height:40px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:12px]; }
+.social-channels-page .social-dialog-heading h3 { @apply [margin:0]; @apply [font-size:17px]; @apply [line-height:25px]; @apply [font-weight:650]; @apply [letter-spacing:-.35px]; }
+.social-dialog-heading p { @apply [margin-top:3px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.social-dialog-heading > button { @apply [flex-shrink:0]; @apply [width:30px]; @apply [height:30px]; @apply [background:#FFFFFF]; }
+.social-add-form { @apply flex; @apply flex-col; @apply [gap:15px]; @apply [padding:20px_22px_22px]; }
+.social-add-form > div > label { @apply [margin-bottom:7px]; @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:500]; @apply [color:#7D715E]; }
+.social-add-form input:not([type=checkbox]), .social-add-form button[aria-haspopup=listbox] { @apply [width:100%]; @apply [height:42px]; @apply [min-height:42px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:9px]; @apply [background:#FFFFFF]; @apply [padding:10px_12px]; @apply [font-family:inherit]; @apply [font-size:12px]; @apply [line-height:20px]; @apply [font-weight:400]; box-shadow: none; }
+.social-add-form input::placeholder { @apply [color:#A0988B]; @apply [opacity:1]; }
+.social-add-form input:not([type=checkbox]):focus { @apply [border-color:#C59B58]; @apply [box-shadow:0_0_0_3px_rgb(197_155_88_/_10%)]; }
+.social-primary-option { @apply flex; @apply items-center; @apply [gap:9px]; @apply [min-height:43px]; @apply [padding:10px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:9px]; @apply [background:#FAF8F5]; @apply cursor-pointer; }
+.social-primary-option input { @apply [width:15px]; @apply [height:15px]; @apply [margin:0]; @apply [accent-color:#C59B58]; }
+.social-primary-option span { @apply [font-size:12px]; @apply [font-weight:500]; }
+.social-primary-option > svg { @apply [margin-left:auto]; @apply [color:#B88E4F]; }
+.social-primary-option:has(input:checked) { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; }
+.social-dialog-actions { @apply grid; @apply [grid-template-columns:1fr_1.4fr]; @apply [gap:10px]; @apply [padding-top:17px]; @apply [margin-top:2px]; @apply [border-top:1px_solid_#EAE4D7]; }
+.social-dialog-actions > button { @apply [min-height:40px]; @apply [height:40px]; @apply [border-radius:9px]; @apply [font-size:12px]; @apply [font-weight:600]; box-shadow: none; }
+@media (max-width: 479px) {
+  .social-modal-backdrop { @apply [padding:12px]; }
+  .social-channels-page .social-add-dialog { @apply [max-height:calc(100dvh_-_24px)]; @apply [border-radius:14px]; }
+  .social-dialog-heading { @apply [padding:17px_16px]; @apply [gap:9px]; }
+  .social-channels-page .social-dialog-heading h3 { @apply [font-size:15px]; @apply [line-height:22px]; }
+  .social-dialog-heading > span { @apply [width:34px]; @apply [height:34px]; @apply [border-radius:10px]; }
+  .social-dialog-heading p { @apply [font-size:10px]; @apply [line-height:16px]; }
+  .social-add-form { @apply [padding:16px]; @apply [gap:13px]; }
+}
+@media (max-width: 1279px) {
+  .social-channel-row { @apply [grid-template-columns:minmax(0,_1fr)_120px_120px]; @apply [gap:14px]; }
+  .social-channel-actions { @apply [grid-column:1_/_-1]; @apply justify-end; @apply [padding-top:12px]; @apply [border-top:1px_solid_#EAE4D7]; }
+}
+@media (max-width: 767px) {
+  .social-channels-page { @apply [gap:12px]; }
+  .social-channels-page .social-overview { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:10px]; }
+  .social-overview > div { @apply [gap:9px]; @apply [padding:13px]; }
+  .social-overview > div:last-child { @apply [grid-column:1_/_-1]; }
+  .social-overview strong { @apply [font-size:24px]; @apply [line-height:30px]; }
+  .social-channels-page .social-toolbar { @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply [gap:8px]; @apply [padding:10px]; }
+  .social-toolbar > div:first-child { @apply [grid-column:1_/_-1]; }
+  .social-toolbar > .social-platform-control { @apply [grid-column:1]; }
+  .social-channel-row { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [padding:14px]; @apply [gap:14px]; }
+  .social-channel-row > div:first-child { @apply [grid-column:1_/_-1]; }
+  .social-channel-actions { @apply justify-start; }
+  .social-channel-actions > button:last-child { @apply [margin-left:auto]; }
+}
+@media (max-width: 479px) {
+  .social-overview > div:not(:last-child) { @apply flex-col; @apply [gap:8px]; }
+  .social-overview > div > span { @apply [width:30px]; @apply [height:30px]; @apply [border-radius:8px]; }
+  .social-overview > div > div > span { @apply [font-size:11px]; }
+  .social-overview strong { @apply [font-size:23px]; }
+  .social-toolbar .social-add-button { @apply [padding-inline:10px]; @apply [font-size:11px]; }
+  .social-toolbar button[aria-haspopup=listbox] { @apply [padding-inline:10px]; @apply [font-size:11px]; }
+}

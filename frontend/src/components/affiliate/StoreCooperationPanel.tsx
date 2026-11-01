@@ -3,9 +3,9 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { CooperationRequestModal } from './CooperationRequestModal';
 
-type Cooperation = { id: string; storeId: string; status: string; requestedByKol?: boolean; createdAt: string; note?: string; collaborator?: { fullName: string; collaboratorProfile?: { totalFollowers?: number } } };
+type Cooperation = { id: string; storeId: string; collaboratorId?: string; status: string; requestedByKol?: boolean; createdAt: string; note?: string; collaborator?: { id?: string; fullName: string; collaboratorProfile?: { totalFollowers?: number } } };
 
-export function StoreCooperationPanel({ mode, storeId }: { mode: 'shop' | 'kol'; storeId?: string }) {
+export function StoreCooperationPanel({ mode, storeId, collaboratorId, onChanged }: { mode: 'shop' | 'kol'; storeId?: string; collaboratorId?: string; onChanged?: () => void }) {
   const [items, setItems] = useState<Cooperation[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -40,21 +40,18 @@ export function StoreCooperationPanel({ mode, storeId }: { mode: 'shop' | 'kol';
       await api.patch(`/store-collaborators/${id}/${mode === 'shop' ? accept ? 'shop-approve' : 'shop-reject' : accept ? 'accept' : 'reject'}`, {});
       toast.success(accept ? 'Đã xác nhận hợp tác. KOL có thể được chọn khi tạo phiên Live.' : 'Đã từ chối hợp tác.');
       await refresh();
+      onChanged?.();
     } catch (e: any) { toast.error(e.response?.data?.message || e.message || 'Không xử lý được yêu cầu'); }
     finally { actionLocked.current = false; setBusy(null); }
   };
   const buttonClass = 'rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer';
   if (mode === 'shop') {
-    const pending = items.filter(item => item.status === 'PENDING' && item.requestedByKol);
+    const pending = items.filter(item => item.status === 'PENDING' && item.requestedByKol && (!collaboratorId || (item.collaboratorId || item.collaborator?.id) === collaboratorId));
     if (!error && pending.length === 0) return null;
     return (
       <section className="shrink-0 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3" aria-label="Yêu cầu hợp tác từ KOL">
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <strong>Yêu cầu hợp tác từ KOL ({pending.length})</strong>
-          <button type="button" className={buttonClass} onClick={() => void refresh()}>Làm mới</button>
-        </div>
-        {error ? <p role="alert" className="mt-2 text-xs text-[#DC2626]">Chưa tải được yêu cầu. Bấm Làm mới để thử lại.</p> : !loaded ? <p className="mt-2 text-xs text-[#7D715E]">Đang tải…</p> : pending.length === 0 ? <p className="mt-1 text-xs text-[#7D715E]">Chưa có yêu cầu đang chờ Shop duyệt.</p> : (
-          <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
+        {error ? <div role="alert" className="flex items-center justify-between gap-3 text-xs text-[#DC2626]"><p>Chưa tải được yêu cầu.</p><button type="button" className={buttonClass} onClick={() => void refresh()}>Thử lại</button></div> : !loaded ? <p className="text-xs text-[#7D715E]">Đang tải…</p> : pending.length === 0 ? <p className="text-xs text-[#7D715E]">Chưa có yêu cầu đang chờ Shop duyệt.</p> : (
+          <div className="max-h-40 space-y-2 overflow-y-auto">
             {pending.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3">
               <div className="min-w-0"><p className="text-xs font-semibold">{item.collaborator?.fullName || 'KOL'}</p><p className="mt-0.5 text-[11px] text-[#7D715E]">Đã gửi yêu cầu · {new Date(item.createdAt).toLocaleString('vi-VN')}</p>{item.collaborator?.collaboratorProfile?.totalFollowers != null && <p className="text-[11px] text-[#7D715E]">{item.collaborator.collaboratorProfile.totalFollowers.toLocaleString('vi-VN')} người theo dõi trong hồ sơ</p>}{item.note && <p className="mt-1 whitespace-pre-wrap break-words text-xs text-[#1A1612]">{item.note}</p>}</div>
               <div className="flex gap-2"><button type="button" disabled={busy !== null} className={buttonClass} onClick={() => void act(item.id, false)}>Từ chối</button><button type="button" disabled={busy !== null} className={buttonClass} onClick={() => void act(item.id, true)}>{busy === item.id ? 'Đang xử lý…' : 'Duyệt hợp tác'}</button></div>

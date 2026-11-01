@@ -114,16 +114,20 @@ export const authService = {
 
   async getMe(): Promise<UserProfile> {
     const token = localStorage.getItem('token');
-    const res: any = await api.get('/auth/me');
+    const res: any = await api.get('/auth/me', { headers: { 'x-skip-cache': 'true' } });
     if (token !== localStorage.getItem('token')) throw new Error('Phiên đăng nhập đã thay đổi.');
     const user = res?.data || res;
     if (user && user.id) {
+      const previousProfile = localStorage.getItem('user');
       const previousUserId = this.getCurrentUser()?.id;
-      localStorage.setItem('user', JSON.stringify(user));
+      const nextProfile = JSON.stringify(user);
+      localStorage.setItem('user', nextProfile);
       if (user.stores?.[0]?.id) {
-        localStorage.setItem('current_store_id', user.stores[0].id);
+        const selectedStoreId = localStorage.getItem('current_store_id');
+        const keepSelection = previousUserId === user.id && user.stores.some((store: { id: string }) => store.id === selectedStoreId);
+        localStorage.setItem('current_store_id', keepSelection ? selectedStoreId! : user.stores[0].id);
       }
-      if (previousUserId !== user.id) window.dispatchEvent(new Event('auth-user-updated'));
+      if (previousProfile !== nextProfile) window.dispatchEvent(new Event('auth-user-updated'));
     }
     return user;
   },
@@ -185,7 +189,6 @@ export const authService = {
 
     const isKol =
       u.role === 'COLLABORATOR' ||
-      (Boolean(u.collaboratorProfile) && u.collaboratorProfile?.kycStatus === 'VERIFIED') ||
       u.role === 'SYSTEM_ADMIN' ||
       u.role === 'SYSTEM_MANAGER';
 

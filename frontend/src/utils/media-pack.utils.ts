@@ -32,9 +32,26 @@ function safeName(value: string) {
   return value.normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').replace(/\.{2,}/g, '-').trim().replace(/[. ]+$/g, '').slice(0, 80) || 'tai-nguyen';
 }
 
-function isStreamingPage(url: URL) {
+export function isStreamingPage(url: URL) {
   return ['youtube.com', 'youtu.be', 'facebook.com', 'fb.watch', 'instagram.com', 'tiktok.com', 'v.douyin.com', 'vimeo.com']
     .some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
+}
+
+export async function downloadMediaFile(asset: MediaAsset, baseUrl: string) {
+  const url = new URL(asset.urlOrContent, baseUrl);
+  if (!['http:', 'https:'].includes(url.protocol) || isStreamingPage(url)) {
+    throw new Error('Nguồn này chỉ hỗ trợ mở trực tuyến.');
+  }
+  const response = await fetch(url.href, { signal: AbortSignal.timeout(60000), credentials: url.origin === new URL(baseUrl).origin ? 'same-origin' : 'omit' });
+  const mime = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() || '';
+  if (!mime.startsWith(asset.assetType === 'VIDEO' ? 'video/' : 'image/')) {
+    await response.body?.cancel();
+    throw new Error('Nguồn không trả về tệp ảnh/video hợp lệ.');
+  }
+  const bytes = await readFile(response, MAX_PACK_BYTES);
+  const extension = MIME_EXTENSIONS[mime] || 'bin';
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: mime });
+  saveMediaPack(blob, `${safeName(asset.title)}.${extension}`);
 }
 
 async function readFile(response: Response, remainingBytes: number) {

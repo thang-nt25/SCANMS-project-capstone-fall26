@@ -1,0 +1,60 @@
+@reference "../../index.css";
+.creator-bonus-page > div { @apply [gap:14px]; }
+.bonus-invitation { @apply flex; @apply items-center; @apply [gap:12px]; @apply [padding:15px_18px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.bonus-invitation-icon { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:38px]; @apply [height:38px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:10px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.bonus-invitation-copy { @apply [flex:1]; @apply [min-width:0]; }
+.bonus-invitation-copy strong { @apply [font-size:13px]; @apply [line-height:21px]; @apply [font-weight:600]; @apply [overflow-wrap:anywhere]; }
+.bonus-invitation-copy > div { @apply [margin-top:3px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.bonus-invitation-actions { @apply flex; @apply items-center; @apply [gap:8px]; @apply [flex-shrink:0]; }
+.bonus-invitation-actions > button { @apply [min-height:34px]; @apply [padding:7px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.bonus-invitation-actions > button:last-child { --action-bg: #FBF5EB; --action-hover: #F3EFE6; --action-border: #EEDFC6; --action-border-hover: #C59B58; @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [font-weight:600]; }
+.bonus-invitation-actions > button:disabled { @apply [opacity:.55]; @apply [cursor:wait]; }
+.bonus-toolbar { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply items-center; @apply [gap:15px]; @apply [padding:18px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; }
+.bonus-toolbar > header { @apply [grid-column:1_/_-1]; @apply [padding-bottom:15px]; }
+.bonus-toolbar > header > div > span { @apply [width:34px]; @apply [height:34px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:9px]; }
+.bonus-toolbar > header h2 { @apply [font-size:17px]; @apply [line-height:25px]; @apply [font-weight:600]; @apply [letter-spacing:-.3px]; }
+.bonus-toolbar > header p { @apply [margin-top:3px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.bonus-toolbar > [role=group] { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [width:fit-content]; @apply [gap:7px]; @apply [padding:0]; @apply [border:0]; @apply [background:#FFFFFF]; }
+.bonus-toolbar > [role=group] > button { @apply [height:38px]; @apply [padding:8px_11px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:20px]; @apply [font-weight:500]; @apply whitespace-nowrap; box-shadow: none; }
+.bonus-toolbar > [role=group] > button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-weight:600]; }
+.bonus-period-filters { @apply grid; @apply [grid-template-columns:minmax(170px,_220px)_110px_100px]; @apply items-center; @apply [gap:8px]; @apply [min-width:0]; }
+.bonus-period-filters > div { @apply [width:100%]; @apply [min-width:0]; }
+.bonus-period-filters button[aria-haspopup=listbox] { @apply [width:100%]; @apply [height:38px]; @apply [min-height:38px]; @apply [padding:8px_10px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [font-size:12px]; @apply [font-weight:400]; box-shadow: none; }
+.bonus-period-filters button[aria-haspopup=listbox]:disabled { @apply [background:#FAF8F5]; }
+.bonus-empty-state { @apply flex; @apply flex-col; @apply items-center; @apply justify-center; @apply [gap:10px]; @apply [padding:38px_22px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; @apply text-center; }
+.bonus-empty-state > div { @apply [width:44px]; @apply [height:44px]; @apply [margin:0_0_2px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:12px]; @apply [background:#FBF5EB]; }
+.bonus-empty-state h3 { @apply [margin:0]; @apply [font-size:15px]; @apply [line-height:23px]; @apply [font-weight:600]; @apply [letter-spacing:-.2px]; }
+.bonus-empty-state p { @apply [max-width:440px]; @apply [margin:0]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:20px]; }
+.creator-bonus-page > div > section, .creator-bonus-page > div > details { @apply [border-radius:13px]; @apply [background:#FFFFFF]; box-shadow: none; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] { @apply [padding:0]; @apply [border:0]; @apply [background:transparent]; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] > div { @apply [gap:12px]; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article { @apply [min-width:0]; @apply [padding:16px]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article > strong { @apply [font-size:24px]; @apply [line-height:32px]; @apply [font-weight:650]; @apply whitespace-normal; @apply [overflow-wrap:anywhere]; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article:nth-child(2) > strong { @apply [font-size:16px]; @apply [line-height:24px]; }
+.creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article h2, .creator-bonus-page section[aria-label='Tổng quan thưởng doanh số'] article p { @apply [font-size:11px]; @apply [line-height:18px]; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] { @apply [padding:18px]; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] aside { @apply [background:#FFFFFF]; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] [role=progressbar] { @apply [height:7px]; @apply [background:#FAF8F5]; }
+.creator-bonus-page section[aria-labelledby=bonus-progress-title] [role=progressbar] > div { @apply [background:#E4C995]; }
+.creator-bonus-page table th { @apply [font-size:10px]; @apply [line-height:18px]; }
+.creator-bonus-page table td { @apply [font-size:11px]; @apply [line-height:19px]; }
+.creator-bonus-page :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (max-width: 1279px) {
+  .bonus-toolbar { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .bonus-period-filters { @apply [justify-self:end]; }
+}
+@media (max-width: 767px) {
+  .bonus-invitation { @apply flex-wrap; @apply [padding:14px]; @apply [gap:10px]; }
+  .bonus-invitation-copy { @apply [flex-basis:calc(100%_-_48px)]; }
+  .bonus-invitation-actions { @apply [margin-left:48px]; }
+  .bonus-toolbar { @apply [padding:15px]; @apply [gap:12px]; }
+  .bonus-toolbar > header { @apply [padding-bottom:12px]; }
+  .bonus-toolbar > header h2 { @apply [font-size:15px]; }
+  .bonus-toolbar > [role=group] { @apply [width:100%]; }
+  .bonus-period-filters { @apply [width:100%]; @apply [grid-template-columns:minmax(0,_1fr)_minmax(0,_1fr)]; @apply [gap:8px]; }
+  .bonus-period-filters > div:first-child { @apply [grid-column:1_/_-1]; }
+  .bonus-empty-state { @apply [padding:30px_18px]; }
+}
+@media (max-width: 379px) {
+  .bonus-toolbar > [role=group] > button { @apply [gap:4px]; @apply [padding-inline:6px]; @apply [font-size:10px]; }
+}

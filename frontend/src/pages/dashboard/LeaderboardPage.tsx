@@ -15,7 +15,6 @@ import {
   X,
   Check,
   ArrowUpRight,
-  ChevronDown,
 } from 'lucide-react';
 import { leaderboardService } from '../../services/leaderboard.service';
 import type {
@@ -29,9 +28,8 @@ import type {
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
-import { WorkspaceHero, WorkspaceMetrics, workspaceButton, workspaceInput } from '@/components/ui/FeatureWorkspace';
-import { downloadReport } from '@/utils/report-export';
-import { normalizeSearch } from '@/utils/marketplace.utils';
+import { WorkspaceMetrics, workspaceButton } from '@/components/ui/FeatureWorkspace';
+import './LeaderboardPage.css';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -71,7 +69,6 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   const [creatorProfile, setCreatorProfile] = useState<CreatorHallOfFameProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
   const [profileError, setProfileError] = useState('');
-  const [search, setSearch] = useState('');
   const profileRequest = useRef(0);
   const profileDialog = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -176,12 +173,8 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
   const podium = data?.podium;
   const rankings = data?.rankings || [];
-  const displayedRankings = rankings.filter(item => normalizeSearch(`${item.fullName} ${item.primaryChannelHandle || ''} ${item.tierName}`).includes(normalizeSearch(search)));
-  const allTop = [data?.podium.rank1, data?.podium.rank2, data?.podium.rank3, ...rankings].filter((item): item is LeaderboardItem => !!item);
-  const exportRankings = () => downloadReport(`SCANMS_Top10_${timeRange}_${metric}.csv`, [
-    ['Hạng', 'Creator', 'Cấp bậc', 'Click', 'Đơn hàng', 'CR (%)', 'Doanh số (VNĐ)', 'Hoa hồng (VNĐ)'],
-    ...allTop.map(item => [item.rank, item.fullName, item.tierName, item.totalClicks, item.totalOrders, item.conversionRate, item.grossRevenue, item.totalCommission]),
-  ]);
+  const allTop = [podium?.rank1, podium?.rank2, podium?.rank3, ...rankings]
+    .filter((item): item is LeaderboardItem => Boolean(item));
   const myRank = data?.myRankStatus;
 
   const timeOptions: { value: LeaderboardTimeRange; label: string }[] = [
@@ -200,29 +193,18 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
     : 'Gian hàng của bạn';
 
   return (
-    <div className={`flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] ${alignToContainer ? 'p-0 pb-1 gap-3' : 'p-4 sm:p-5'}`}>
-      <WorkspaceHero eyebrow="SCANMS / Creator hall of fame" title="Top 10 nhà sáng tạo" description="Vinh danh hiệu suất thực tế của các KOL trên sàn đa gian hàng. Cúp Vàng, Bạc, Đồng dành cho ba vị trí dẫn đầu; đổi tiêu chí để khám phá từng thế mạnh." actions={<button className={workspaceButton} disabled={loading || !!loadError || !allTop.length} onClick={exportRankings}>Xuất Top 10 CSV</button>} />
-      {!loading && !loadError && data && <WorkspaceMetrics items={[
+    <div className={`creator-leaderboard-page flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] ${alignToContainer ? 'p-0 pb-1 gap-3' : 'p-4 sm:p-5'}`}>
+      {!loading && !loadError && data && <div className="leaderboard-overview"><WorkspaceMetrics items={[
         { label: 'KOL đủ điều kiện', value: formatNumber(data.totalParticipants), detail: data.periodLabel },
         { label: 'Creator dẫn đầu', value: data.podium.rank1?.fullName || 'Chưa có', detail: formatMetricValue(data.podium.rank1) },
         { label: 'Doanh số Top 10', value: formatVND(allTop.reduce((sum, item) => sum + item.grossRevenue, 0)), detail: scopeLabel },
         { label: 'Đơn hàng Top 10', value: formatNumber(allTop.reduce((sum, item) => sum + item.totalOrders, 0)), detail: 'Theo kỳ và phạm vi đang chọn' },
-      ]} />}
-      <section className="p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-labelledby="lb-title">
-        <header className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Trophy aria-hidden="true" className="w-[18px] h-[18px]" /></span>
-            <div><h1 id="lb-title" className="m-0 text-base sm:text-lg font-semibold tracking-tight text-[#1A1612]">Bảng vinh danh Top Creator</h1><p className="m-0 mt-0.5 text-xs text-[#7D715E]">{data?.periodLabel || timeOptions.find(option => option.value === timeRange)?.label} · {scopeLabel}</p></div>
-          </div>
-          <button type="button" onClick={fetchLeaderboard} disabled={loading} className="inline-flex items-center justify-center gap-1.5 min-h-[34px] sm:min-h-[36px] px-2.5 sm:px-3 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB] disabled:opacity-60 disabled:cursor-wait transition-colors cursor-pointer" title="Làm mới bảng xếp hạng">
-            <RefreshCw aria-hidden="true" className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Đang cập nhật' : 'Làm mới'}</span>
-          </button>
-        </header>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-3 sm:gap-4 mt-3">
+      ]} /></div>}
+      <section className="leaderboard-controls p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Bộ lọc bảng vinh danh">
+        <div className="leaderboard-filter-row">
           <div className="min-w-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Khoảng thời gian xếp hạng">
-              {timeOptions.map(option => (
+              {timeOptions.map((option, index) => (
                 <button
                   key={option.value}
                   type="button"
@@ -234,7 +216,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                       : 'border border-transparent text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
                   }`}
                 >
-                  {option.label}
+                  <span className="leaderboard-filter-step" aria-hidden="true">{index + 1}</span>{option.label}
                 </button>
               ))}
             </div>
@@ -245,7 +227,6 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
               <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)} className="w-full sm:w-[150px] min-h-[38px] appearance-none pl-3 pr-8 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-[13px] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
                 {Object.entries(metricLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              <ChevronDown aria-hidden="true" className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B88E4F] pointer-events-none" />
             </div>
           </div>
         </div>
@@ -262,17 +243,13 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
           </div>
         )}
         {loading && <span className="sr-only" role="status" aria-live="polite">Đang cập nhật bảng xếp hạng…</span>}
-        <details className="mt-3 text-xs text-[#7D715E] leading-relaxed group">
-          <summary className="flex items-center gap-1 cursor-pointer font-medium hover:text-[#B88E4F] list-none select-none text-xs">Cách xếp hạng<ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F] group-open:rotate-180 transition-transform" /></summary>
-          <p className="mt-1">Chỉ xếp hạng khi tiêu chí đã chọn lớn hơn 0. Doanh số và đơn hàng ghi nhận theo ngày giao thành công, hoặc ngày hoàn tất nếu thiếu ngày giao (giờ Việt Nam). Cùng doanh số thì xét số đơn; các tiêu chí khác dùng doanh số làm tiêu chí phụ. Cùng cả hai tiêu chí sẽ đồng hạng.</p>
-        </details>
       </section>
 
       {loadError && <div role="alert" className="p-3 sm:px-4 border border-[#EEDFC6] rounded-xl bg-white text-xs sm:text-sm text-[#DC2626]">{loadError}</div>}
 
       {loading ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white" role="status">Đang tải bảng vinh danh…</div>
         : loadError ? null : !podiumEntries.length ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white space-y-2"><Trophy aria-hidden="true" className="w-7 h-7 mx-auto text-[#B88E4F]" /><h2 className="text-base font-semibold text-[#1A1612]">Chưa có Creator đủ điều kiện vinh danh</h2><p className="max-w-md mx-auto">Kỳ này chưa có kết quả theo tiêu chí {metricLabels[metric].toLowerCase()}. Chọn khoảng thời gian khác để xem thành tích.</p>{timeRange === 'this_month' && <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6]" onClick={() => setTimeRange('last_month')}>Xem tháng trước<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}</div>
-        : <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch" aria-label="Các nhà sáng tạo dẫn đầu">
+        : <div className="leaderboard-podium" aria-label="Các nhà sáng tạo dẫn đầu">
         {podiumEntries.map(({ slot, creator }) => {
           const rank = creator.rank;
           return <article key={creator.collaboratorId} data-podium-rank={slot} data-current={creator?.isCurrentUser || undefined}
@@ -295,37 +272,28 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                 </span>
               </span>
             </button>
-            <div className="flex flex-col gap-1.5 mt-auto pt-3.5 border-t border-[#EAE4D7]">
+            <div className="podium-score flex flex-col gap-1.5 mt-auto pt-3.5 border-t border-[#EAE4D7]">
               <span className="text-xs text-[#7D715E]">{metric === 'REVENUE' ? 'Doanh số GMV' : metricLabels[metric]}</span>
               <div className="flex items-baseline justify-between flex-wrap gap-1.5">
                 <strong className="text-xl sm:text-2xl font-bold tabular-nums text-[#1A1612]">{formatMetricValue(creator)}</strong>
-                {rank === 1 && <span className="text-[11px] text-[#7D715E]">{formatNumber(creator?.totalOrders)} đơn đã giao</span>}
               </div>
             </div>
-            <details className="mt-2.5 pt-2 border-t border-[#EAE4D7] text-xs text-[#7D715E] group">
-              <summary className="flex items-center justify-between gap-2 cursor-pointer list-none select-none hover:text-[#B88E4F]"><span>Chi tiết thành tích</span><ChevronDown aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F] group-open:rotate-180 transition-transform" /></summary>
-              <div className="flex flex-col gap-2 pt-2">
-                {creator.primaryChannelHandle && <span className="text-xs text-[#7D715E] truncate" title={creator.primaryChannelHandle}>{creator.primaryChannelHandle}</span>}
-                <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-[#7D715E]">
-                  <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.totalOrders)}</strong> đơn</span>
-                  {rank === 1 && <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.totalClicks)}</strong> clicks</span>}
-                  <span><strong className="text-[#1A1612] font-semibold">{formatNumber(creator?.conversionRate)}%</strong> CR</span>
-                </div>
+            <section className="podium-achievements" aria-label={`Thành tích của ${creator.fullName}`}>
+              <div className="podium-achievements-heading">
+                <h3>Thành tích</h3>
+                {creator.primaryChannelHandle && <span title={creator.primaryChannelHandle}>{creator.primaryChannelHandle}</span>}
               </div>
-            </details>
+              <dl className="podium-stat-grid">
+                <div><dt>Đơn hàng</dt><dd>{formatNumber(creator.totalOrders)}</dd></div>
+                <div><dt>Lượt click</dt><dd>{formatNumber(creator.totalClicks)}</dd></div>
+                <div><dt>Tỷ lệ chốt</dt><dd>{formatNumber(creator.conversionRate)}%</dd></div>
+              </dl>
+            </section>
           </article>;
         })}
       </div>}
 
-      {(loading || loadError || rankings.length > 0) && <section className="border border-[#EAE4D7] rounded-[15px] bg-white overflow-hidden" aria-labelledby="lb-ranking-title">
-        <header className="flex items-center justify-between flex-wrap gap-3 p-4 sm:p-4.5 border-b border-[#EAE4D7]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-8 sm:w-9 h-8 sm:h-9 grid place-items-center shrink-0 rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Award aria-hidden="true" className="w-[18px] h-[18px]" /></span>
-            <div><h2 id="lb-ranking-title" className="m-0 text-sm sm:text-base font-semibold tracking-tight text-[#1A1612]">Bảng xếp hạng Creator</h2><p className="m-0 mt-0.5 text-xs text-[#7D715E]">Vị trí 4–10; ba vị trí đầu được vinh danh trên bục nhận cúp.</p></div>
-          </div>
-          <span className="text-xs text-[#7D715E]">{metricLabels[metric]} · {scopeLabel}</span>
-        </header>
-        <div className="p-3"><input className={workspaceInput} aria-label="Tìm Creator trong vị trí 4 đến 10" placeholder="Tìm Creator, kênh, cấp bậc trong vị trí 4–10…" value={search} onChange={event => setSearch(event.target.value)} /></div>
+      {(loading || loadError || rankings.length > 0) && <section className="leaderboard-ranking-table border border-[#EAE4D7] rounded-[15px] bg-white overflow-hidden" aria-label="Bảng xếp hạng Creator">
         <div className="overflow-x-auto" role="region" aria-label="Danh sách Creator tiếp theo" tabIndex={0}>
           <table className="w-full min-w-[900px] border-collapse text-xs text-[#7D715E] text-left">
             <thead className="bg-[#FAF8F5]"><tr>
@@ -336,7 +304,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
               <th scope="col" className={`text-right px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap ${metric === 'COMMISSION' ? 'bg-[#FBF5EB] text-[#1A1612] font-semibold' : ''}`}>Hoa hồng đã duyệt</th><th scope="col" className="text-center px-3.5 py-3 border-t border-[#EAE4D7] font-medium text-[11px] whitespace-nowrap">Hồ sơ</th>
             </tr></thead>
             <tbody>
-              {loading || loadError || !displayedRankings.length ? <tr><td colSpan={9} className="py-8 px-4 text-center text-xs sm:text-sm text-[#7D715E]">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng làm mới.' : 'Không có Creator phù hợp.'}</td></tr> : displayedRankings.map(item => (
+              {loading || loadError || !rankings.length ? <tr><td colSpan={9} className="py-8 px-4 text-center text-xs sm:text-sm text-[#7D715E]">{loading ? 'Đang tải danh sách KOL…' : loadError ? 'Chưa tải được danh sách. Vui lòng tải lại trang.' : 'Chưa có Creator được xếp hạng.'}</td></tr> : rankings.map(item => (
                 <tr key={item.collaboratorId} className={`hover:bg-[#FDFBF7] transition-colors ${item.isCurrentUser ? 'bg-[#FDFAF4]' : ''}`}>
                   <td className="text-center px-3.5 py-3 border-t border-[#EAE4D7]">
                     <div className="inline-flex items-center justify-center gap-1.5"><strong className="text-xs sm:text-[13px] font-semibold text-[#1A1612]">#{item.rank < 10 ? `0${item.rank}` : item.rank}</strong>
@@ -365,7 +333,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
       </section>}
 
       {!loading && !loadError && myRank && (
-        <section className="flex items-center justify-between flex-wrap gap-4 p-4 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Vị trí của bạn trên bảng xếp hạng">
+        <section className="leaderboard-my-rank flex items-center justify-between flex-wrap gap-4 p-4 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Vị trí của bạn trên bảng xếp hạng">
           <div className="flex items-center gap-3 min-w-0">
             <span className="grid place-items-center w-10 h-10 shrink-0 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F] text-base font-bold">{myRank.myRank === null ? <Award aria-hidden="true" className="w-5 h-5" /> : `#${myRank.myRank}`}</span>
             <div>

@@ -1,3 +1,5 @@
+import './KolDashboardPage.css';
+import AffiliatePerformanceChart from '../../components/affiliate/AffiliatePerformanceChart';
 import { useState, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
@@ -10,15 +12,12 @@ import {
   Crown,
   TrendingUp,
   ArrowUpRight,
-  ShieldCheck,
   Clock,
   RefreshCw,
   PlusCircle,
   Copy,
   Check,
   Package,
-  Award,
-  Radio,
   Store,
   type LucideIcon,
 } from 'lucide-react';
@@ -115,7 +114,15 @@ export default function KolDashboardPage() {
       const res = await analyticsService.getTimeSeries({
         ...query,
         interval: 'daily',
-      }).catch(() => []);
+      }).catch(() => {
+        setErrors(prev => ({ ...prev, series: 'Chưa thể tải dữ liệu biểu đồ.' }));
+        return [];
+      });
+      if (Array.isArray(res) && res.length > 0) setErrors(prev => {
+        const next = { ...prev };
+        delete next.series;
+        return next;
+      });
       return Array.isArray(res) ? res : [];
     },
     staleTime: 1000 * 60 * 3,
@@ -227,13 +234,13 @@ export default function KolDashboardPage() {
     return Number.isFinite(value) ? Math.max(0, value) : 0;
   };
 
-  const maxValue = Math.max(...timeSeries.map(getMetricValue), 1);
-  const hasChartActivity = timeSeries.some((point) => getMetricValue(point) > 0);
-  const chartMetricLabel = { clicks: 'lượt nhấp', orders: 'đơn hàng', revenue: 'doanh số', commission: 'hoa hồng' }[metric];
-  const chartTicks = Array.from({ length: Math.min(7, timeSeries.length) }, (_, i) =>
-    Math.round(i * (timeSeries.length - 1) / Math.max(1, Math.min(7, timeSeries.length) - 1)),
-  );
-  const formatChartValue = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  const peakValue = Math.max(...timeSeries.map(getMetricValue), 0);
+  const chartTotal = timeSeries.reduce((sum, point) => sum + getMetricValue(point), 0);
+  const peakPoint = timeSeries.find(point => getMetricValue(point) === peakValue);
+  const chartIsMoney = metric === 'revenue' || metric === 'commission';
+  const chartValue = (value: number) => `${value.toLocaleString('vi-VN', { maximumFractionDigits: chartIsMoney ? 0 : 1 })}${chartIsMoney ? ' ₫' : ''}`;
+  const chartMetricLabel = { clicks: 'lượt nhấp', orders: 'đơn phát sinh', revenue: 'giá trị đơn đã giao', commission: 'hoa hồng đã duyệt' }[metric];
+
 
   return (
     <section className="flex flex-col gap-3.5 w-full min-w-0 text-[#1A1612] text-left pb-12" aria-label="Tổng quan hiệu quả KOL">
@@ -241,10 +248,10 @@ export default function KolDashboardPage() {
         <p className="m-0">{Object.values(errors).join(' ')} Dấu — nghĩa là chưa có dữ liệu xác nhận, không phải số dư bằng 0.</p>
         <button type="button" disabled={loading} onClick={() => void handleRefresh()} className="mt-2 font-semibold text-[#B88E4F] underline disabled:opacity-50">Thử tải lại</button>
       </div>}
-      <section className="grid w-full grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-4 shadow-xs" aria-label="Bộ lọc và thao tác tổng quan KOL">
-            <div className="w-full">
+      <section className="flex w-full flex-col gap-3 rounded-xl border border-[#EAE4D7] bg-white p-3 shadow-[0_1px_3px_rgb(35_29_21_/_4%)] sm:flex-row sm:items-center sm:justify-between" aria-label="Bộ lọc và thao tác tổng quan KOL">
+            <div className="w-full sm:w-[210px] sm:shrink-0">
               <Select
-                className="w-full min-h-[44px]"
+                className="w-full h-[42px] min-h-[42px] rounded-[10px] text-sm"
                 id="kol-dashboard-period"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
@@ -255,37 +262,24 @@ export default function KolDashboardPage() {
                 <option value="90">90 ngày gần nhất</option>
               </Select>
             </div>
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:flex sm:items-center">
             <button
               type="button"
-              className="order-last inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#FBF5EB] transition-colors disabled:opacity-60 cursor-pointer"
-              onClick={() => void handleRefresh()}
-              disabled={loading}
-            >
-              <RefreshCw size={14} className={`text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              <span>Làm mới</span>
-            </button>
-            <button
-              type="button"
-              className="inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition-colors cursor-pointer shadow-xs"
-              onClick={() => navigate('/collaborator/marketing?tab=links')}
-            >
-              <PlusCircle size={14} />
-              <span>Tạo link tiếp thị</span>
-            </button>
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              className="inline-flex w-full flex-col items-center justify-center gap-0.5 min-h-[44px] px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] text-xs font-semibold hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors cursor-pointer"
+              className="inline-flex h-[42px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-[#EAE4D7] bg-white px-4 text-xs font-semibold text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
               onClick={() => navigate('/collaborator/wallet')}
             >
               <span className="inline-flex items-center justify-center gap-1.5 leading-4">
                 Quản lý ví
                 <ArrowUpRight size={14} className="text-[#B88E4F]" aria-hidden="true" />
               </span>
-            <span className="inline-flex items-center justify-center gap-1 text-[10px] font-normal leading-3 text-[#7D715E]">
-              <ShieldCheck size={13} className={wallet?.kycStatus === 'VERIFIED' ? 'text-[#059669]' : 'text-[#B88E4F]'} aria-hidden="true" />
-              <span>{wallet?.kycStatus === 'VERIFIED' ? 'KYC đã xác thực' : 'Chưa xác thực KYC'}</span>
-            </span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-[42px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-[#C59B58] bg-[#C59B58] px-4 text-xs font-semibold text-white! transition-colors hover:border-[#B88E4F] hover:bg-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
+              onClick={() => navigate('/collaborator/marketing?tab=links')}
+            >
+              <PlusCircle size={15} aria-hidden="true" />
+              <span>Tạo link tiếp thị</span>
             </button>
           </div>
       </section>
@@ -306,9 +300,6 @@ export default function KolDashboardPage() {
             <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#1A1612] my-0.5">
               {availBal === null ? '—' : `${availBal.toLocaleString('vi-VN')} ₫`}
             </strong>
-            <span className="text-[10px] text-[#7D715E] leading-tight">
-              Có thể rút tiền về tài khoản ngân hàng liên kết bất kỳ lúc nào.
-            </span>
           </div>
 
           {/* 2. Chờ đối soát Escrow */}
@@ -325,9 +316,6 @@ export default function KolDashboardPage() {
             <strong className="text-2xl sm:text-3xl font-bold tracking-tight tabular-nums text-[#1A1612] my-0.5">
               {pendingBal === null ? '—' : `${pendingBal.toLocaleString('vi-VN')} ₫`}
             </strong>
-            <span className="text-[10px] text-[#7D715E] leading-tight">
-              Đơn đã giao thành công, đang đếm ngược thời gian khiếu nại đổi trả.
-            </span>
           </div>
 
           {/* 3. Hoa hồng tạm tính */}
@@ -344,9 +332,6 @@ export default function KolDashboardPage() {
             <strong className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums text-[#B88E4F] my-0.5">
               {(metrics?.estimatedCommission || 0).toLocaleString('vi-VN')} ₫
             </strong>
-            <span className="text-[10px] text-[#7D715E] leading-tight">
-              Ghi nhận ngay khi khách đặt mua qua link; chuyển vào ví chờ sau khi giao.
-            </span>
           </div>
         </section>
 
@@ -391,24 +376,34 @@ export default function KolDashboardPage() {
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-[#1A1612] m-0">Hiệu quả theo ngày</h2>
-                <p className="text-[11px] text-[#7D715E] mt-0.5 m-0">Theo dõi biến động trong {period} ngày gần nhất</p>
+                <h2 className="text-sm font-semibold text-[#1A1612] m-0">Hiệu quả tiếp thị của bạn</h2>
               </div>
             </div>
 
-            <div className="w-[160px] max-w-full">
-              <Select
-                value={metric}
-                onChange={(e) => setMetric(e.target.value as any)}
-                aria-label="Chọn chỉ số biểu đồ"
-              >
-                <option value="clicks">Lượt nhấp tiếp thị</option>
-                <option value="orders">Đơn hàng</option>
-                <option value="revenue">Doanh số (₫)</option>
-                <option value="commission">Hoa hồng (₫)</option>
-              </Select>
-            </div>
+            <span className="text-[11px] text-[#7D715E]">{period} ngày gần nhất</span>
           </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label="Chọn chỉ số biểu đồ">
+            {([
+              { id: 'clicks', label: 'Lượt nhấp', icon: MousePointerClick },
+              { id: 'orders', label: 'Đơn phát sinh', icon: ShoppingBag },
+              { id: 'revenue', label: 'Đơn đã giao (₫)', icon: BarChart3 },
+              { id: 'commission', label: 'Hoa hồng duyệt', icon: Wallet },
+            ] as const).map(({ id, label, icon: Icon }) => (
+              <button type="button" key={id} onClick={() => setMetric(id)} aria-pressed={metric === id}
+                className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-semibold cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${metric === id ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'}`}>
+                <Icon size={13} aria-hidden="true" />{label}
+              </button>
+            ))}
+          </div>
+
+          {!loading && !errors.series && timeSeries.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 border-b border-[#F3EFE6] pb-3 tabular-nums">
+              <div className="min-w-0"><span className="block text-[10px] text-[#7D715E]">Tổng {chartMetricLabel}</span><strong className="block mt-1 text-lg font-semibold text-[#1A1612] break-words">{chartValue(chartTotal)}</strong></div>
+              <div className="min-w-0"><span className="block text-[10px] text-[#7D715E]">Trung bình / ngày</span><strong className="block mt-1 text-sm font-semibold text-[#1A1612] break-words">{chartValue(chartTotal / timeSeries.length)}</strong></div>
+              <div className="min-w-0"><span className="block text-[10px] text-[#7D715E]">Cao nhất{peakValue > 0 && peakPoint ? ` · ${peakPoint.label}` : ''}</span><strong className="block mt-1 text-sm font-semibold text-[#B88E4F] break-words">{chartValue(peakValue)}</strong></div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-2 min-h-[220px] p-5 text-xs text-[#7D715E]" role="status">
@@ -423,73 +418,12 @@ export default function KolDashboardPage() {
               <span>Chưa có dữ liệu giao dịch trong chu kỳ được chọn.</span>
             </div>
           ) : (
-            <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-2 pt-2" role="group" aria-label={`Biểu đồ ${chartMetricLabel} theo ngày`}>
-              <div className="flex flex-col justify-between h-[168px] mt-6 text-[10px] text-[#7D715E] text-right tabular-nums" aria-hidden="true">
-                <span>{formatChartValue(maxValue)}</span>
-                <span>{formatChartValue(maxValue / 2)}</span>
-                <span>0</span>
-              </div>
-              <div className="relative h-[192px] min-w-0">
-                <div className="absolute inset-0 top-6 flex flex-col justify-between pointer-events-none" aria-hidden="true">
-                  <div className="w-full border-t border-dashed border-[#EAE4D7]" />
-                  <div className="w-full border-t border-dashed border-[#EAE4D7]" />
-                  <div className="w-full border-t border-[#EAE4D7]" />
-                </div>
-                {!hasChartActivity && (
-                  <div className="absolute inset-0 top-6 flex flex-col items-center justify-center gap-1.5 p-2 text-center text-xs text-[#7D715E] pointer-events-none">
-                    <span className="grid place-items-center w-9 h-9 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
-                      <BarChart3 size={18} aria-hidden="true" />
-                    </span>
-                    <strong className="text-xs font-semibold text-[#1A1612]">Chưa phát sinh {chartMetricLabel} trong kỳ này</strong>
-                    <span className="text-[10px]">Dữ liệu sẽ hiển thị khi có hoạt động tiếp thị.</span>
-                  </div>
-                )}
-                <div className="relative grid items-end h-[192px] gap-1" style={{ gridTemplateColumns: `repeat(${timeSeries.length}, minmax(0, 1fr))` }}>
-                  {timeSeries.map((d, idx) => {
-                    const val = getMetricValue(d);
-                    const formattedVal = `${val.toLocaleString('vi-VN')}${metric === 'revenue' || metric === 'commission' ? ' ₫' : ''}`;
-                    return (
-                      <div className="relative flex items-end justify-center h-[192px] min-w-0 group cursor-default focus:outline-none" key={d.date || idx} tabIndex={0} aria-label={`${d.label}: ${formattedVal}`}>
-                        <div
-                          className={`relative w-3/4 max-w-[36px] min-w-[2px] rounded-t transition-colors ${
-                            val === 0 ? 'w-1.5 min-w-0 border-b-2 border-[#EAE4D7] bg-transparent' : 'bg-[#C59B58] group-hover:bg-[#B88E4F]'
-                          }`}
-                          style={{ height: val ? `max(2px, calc(168px * ${val / maxValue}))` : 0 }}
-                        >
-                          {val > 0 && timeSeries.length <= 14 && (
-                            <span className="absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 text-[10px] text-[#7D715E] font-medium whitespace-nowrap" aria-hidden="true">
-                              {formatChartValue(val)}
-                            </span>
-                          )}
-                        </div>
-                        <span className="absolute z-10 bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 px-2 py-1 rounded-md border border-[#EEDFC6] bg-white text-[#1A1612] shadow-md text-xs whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-focus:opacity-100 transition-opacity" role="tooltip">
-                          {d.label}: {formattedVal}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="relative col-start-2 h-7 mt-2.5 text-[11px] text-[#7D715E]" aria-hidden="true">
-                {chartTicks.map((index) => (
-                  <span
-                    key={index}
-                    className="absolute -translate-x-1/2 whitespace-nowrap"
-                    style={{ left: `${(index + 0.5) / timeSeries.length * 100}%` }}
-                  >
-                    {timeSeries[index].label}
-                  </span>
-                ))}
-              </div>
-              {(metric === 'revenue' || metric === 'commission') && (
-                <span className="col-start-2 text-right text-[10px] text-[#7D715E]">Đơn vị: VND</span>
-              )}
-            </div>
+            <AffiliatePerformanceChart points={timeSeries} metric={metric} />
           )}
         </div>
 
         {/* Lịch sử hoa hồng từ Ledger */}
-        <div className="flex flex-col gap-3.5 min-w-0 p-4 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
+        <div className="flex flex-col gap-3.5 min-w-0 self-start w-full p-4 rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
           <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
             <div className="flex items-center gap-2">
               <span className="grid place-items-center w-7 h-7 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
@@ -507,7 +441,7 @@ export default function KolDashboardPage() {
             </button>
           </div>
 
-          <div className="grid divide-y divide-[#EAE4D7]">
+          <div className="kol-overview-ledger-list grid divide-y divide-[#EAE4D7]">
             {!ledger ? (
               <p className="py-6 text-center text-xs text-[#7D715E]">{loading ? 'Đang tải lịch sử hoa hồng…' : errors.ledger || 'Chưa tải được lịch sử hoa hồng.'}</p>
             ) : ledger.entries.length === 0 ? (
@@ -559,23 +493,25 @@ export default function KolDashboardPage() {
           </div>
 
           {/* Cấp bậc thực tế */}
-          <div className="grid gap-1 mt-auto p-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
+          <div className="grid gap-1 p-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
             <div className="flex items-center gap-1.5">
               <Crown className="w-4 h-4 text-[#B88E4F] shrink-0" />
               <strong className="text-xs font-semibold text-[#1A1612]">
                 {loading ? 'Đang tải cấp bậc…' : errors.tier ? 'Chưa tải được cấp bậc' : tierStatus?.currentTier
-                  ? `Hạng ${tierStatus.currentTier.name} (+${tierStatus.currentTier.extraBonusPercentage || 0}% Thưởng)`
+                  ? `${tierStatus.assessmentIncomplete ? 'Hạng đang lưu' : 'Hạng'} ${tierStatus.currentTier.name} (+${tierStatus.currentTier.extraBonusPercentage || 0}% Thưởng)`
                   : 'Cấp bậc khởi đầu (Hạng Đồng)'}
               </strong>
             </div>
             <p className="text-[11px] text-[#7D715E] leading-relaxed m-0">
-              {tierStatus?.nextTier ? (
+              {tierStatus?.assessmentIncomplete ? (
+                <>Chờ đối soát {tierStatus.unassignedCompletedOrdersCount} đơn thiếu ngày hoàn tất. Chưa đủ dữ liệu xác nhận cấp bậc; hệ thống không tự hạ hạng.</>
+              ) : tierStatus?.nextTier ? (
                 <>
                   Bạn cần thêm{' '}
                   <strong className="text-[#B88E4F]">
                     {Number(tierStatus.revenueNeeded || 0).toLocaleString('vi-VN')} ₫
                   </strong>{' '}
-                  GMV so với ngưỡng hạng {tierStatus.nextTier.name} (đối chiếu tháng trước).
+                  doanh số sạch để đạt ngưỡng hạng {tierStatus.nextTier.name} (tích lũy các kỳ đã đóng).
                 </>
               ) : (
                 'Tích cực chia sẻ link tiếp thị để gia tăng hoa hồng và mở khóa đặc quyền tài khoản!'
@@ -586,80 +522,28 @@ export default function KolDashboardPage() {
       </div>
 
       {/* KHỐI BÁO CÁO CHI TIẾT GỌN GÀNG DẠNG SUB-TABS (TRÁNH KÉO DÀI TRANG) */}
-      <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
+      <div className="kol-detail-report flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
         {/* Khay tab điều hướng */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-[#EAE4D7] bg-[#FAF8F5]/80">
-          <div className="inline-flex p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('orders')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'orders'
-                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
-              }`}
-            >
-              <ShoppingBag size={13} className={activeTab === 'orders' ? 'text-[#B88E4F]' : ''} />
-              <span>Đơn hàng</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
-                {referralOrders.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('products')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'products'
-                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
-              }`}
-            >
-              <Award size={13} className={activeTab === 'products' ? 'text-[#B88E4F]' : ''} />
-              <span>Sản phẩm</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
-                {topProducts.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('stores')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'stores'
-                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
-              }`}
-            >
-              <Store size={13} className={activeTab === 'stores' ? 'text-[#B88E4F]' : ''} />
-              <span>Gian hàng</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
-                {storeBreakdown.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('live')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'live'
-                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
-              }`}
-            >
-              <Radio size={13} className={activeTab === 'live' ? 'text-[#B88E4F]' : ''} />
-              <span>Livestream</span>
-              {liveSummary.sessions.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] font-mono">
-                  {liveSummary.sessions.length}
-                </span>
-              )}
-            </button>
+        <div className="px-3 py-3 border-b border-[#EAE4D7] bg-white">
+          <div className="kol-report-tabs" role="group" aria-label="Loại báo cáo tiếp thị">
+            {([
+              { id: 'orders', label: 'Đơn hàng', count: referralOrders.length },
+              { id: 'products', label: 'Sản phẩm', count: topProducts.length },
+              { id: 'stores', label: 'Gian hàng', count: storeBreakdown.length },
+              { id: 'live', label: 'Livestream', count: liveSummary.sessions.length },
+            ] as const).map((tab, index) => (
+              <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
+                <span className="kol-report-step" aria-hidden="true">{index + 1}</span>
+                <span>{tab.label}</span><small>{tab.count}</small>
+              </button>
+            ))}
           </div>
 
-          <span className="text-[11px] text-[#7D715E]">
-            {activeTab === 'orders' && `${referralOrders.length} đơn hàng tiếp thị gần nhất`}
+          {activeTab !== 'orders' && <span className="block mt-2 text-[11px] text-[#7D715E]">
             {activeTab === 'products' && `${topProducts.length} sản phẩm ghi nhận doanh số`}
             {activeTab === 'stores' && `${storeBreakdown.length} gian hàng đối tác`}
             {activeTab === 'live' && `${liveSummary.sessions.length} phiên Live có ghim giỏ hàng`}
-          </span>
+          </span>}
         </div>
 
         {/* Nội dung Tab 1: Đơn hàng tiếp thị */}

@@ -1,4 +1,5 @@
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
+import './ShopCollaborationPage.css';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -27,7 +28,6 @@ import {
   ShieldAlert,
   Copy,
   AlertTriangle,
-  Handshake,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -1100,7 +1100,7 @@ setActiveTab('samples');
       )}
 
       {/* Main Unified Workspace */}
-      <div className="flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
+      <div className="collaboration-split-layout flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
         {/* LEFT COLUMN: Danh Sách Gian Hàng Tinh Gọn (Có thể thu nhỏ chỉ hiện icon) */}
         <div
           data-collapsed={isSidebarCollapsed}
@@ -1364,7 +1364,7 @@ setActiveTab('samples');
             <>
               {/* Shop Context Header Bar - Cố định ổn định, không co rút giật layout */}
               <div className="shrink-0 bg-white border-b border-[#EAE4D7] z-20">
-                <div className="px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="collaboration-shop-heading px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
@@ -1395,11 +1395,17 @@ setActiveTab('samples');
                           <span>Đã xác minh</span>
                         </span>
                       </div>
+                      <div className="collaboration-cooperation-inline">
+                        <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
+                      </div>
                     </div>
                   </div>
 
                   {/* Nút Xem Trang Gian Hàng Trên Sàn */}
                   <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
+                      <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
+                    </button>
                     <a
                       href={selectedStore.slug
                         ? `/shop/${encodeURIComponent(selectedStore.slug)}`
@@ -1416,14 +1422,9 @@ setActiveTab('samples');
                   </div>
                 </div>
 
-                {/* Thanh trạng thái liên kết hợp tác */}
-                <div className="collaboration-context-cooperation">
-                  <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
-                </div>
-
                 {/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
                 <div
-                  className="px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
+                  className="collaboration-compact-tabs px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
                   role="tablist"
                   aria-label="Nội dung hợp tác với gian hàng"
                 >
@@ -1431,9 +1432,8 @@ setActiveTab('samples');
                     { id: 'messages', label: 'Tin nhắn', icon: MessageSquare },
                     { id: 'products', label: 'Sản phẩm', icon: Package },
                     { id: 'samples', label: 'Hàng mẫu', icon: Truck },
-                  ].map((tab) => {
+                  ].map((tab, index) => {
                     const isActive = activeTab === tab.id;
-                    const Icon = tab.icon;
                     const count = tabCounts.storeId === selectedStore.id
                         ? tabCounts[tab.id as 'messages' | 'products' | 'samples'] : null;
                     return (
@@ -1454,7 +1454,7 @@ setActiveTab('samples');
                             : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#EEDFC6]'
                         }`}
                       >
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                        <span className="collaboration-compact-step" aria-hidden="true">{index + 1}</span>
                         <span>{tab.label}</span>
                         <span
                           className="inline-flex min-w-[22px] h-5.5 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
@@ -1472,21 +1472,7 @@ setActiveTab('samples');
           <div data-collaboration-content className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
             {/* 1. CHAT TAB - Mounted persistently to retain conversation state, socket listeners, and scroll */}
             <div className={`h-full w-full overflow-hidden flex flex-col ${activeTab === 'messages' ? 'flex' : 'hidden'}`}>
-              {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP */}
-              <div className="bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
-                <div className="flex items-center gap-2 text-[#B88E4F]">
-                  <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                  <strong className="text-xs font-bold text-[#1A1612]">Đàm phán deal VIP</strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDealPickerStoreId(selectedStore.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
-                >
-                  <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
+              <div className="collaboration-chat-section flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ChatBoxPage
                   embedded
                   targetStoreId={selectedStore.id}

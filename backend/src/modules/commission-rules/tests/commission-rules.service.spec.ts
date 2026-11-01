@@ -87,6 +87,7 @@ describe('CommissionRulesService', () => {
   const mockPrismaService = {
     store: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -98,6 +99,7 @@ describe('CommissionRulesService', () => {
       update: jest.fn(),
     },
     order: {
+      count: jest.fn().mockResolvedValue(0),
       findMany: jest.fn(),
       findFirst: jest.fn(),
     },
@@ -132,7 +134,9 @@ describe('CommissionRulesService', () => {
     },
     auditLog: {
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
+    $executeRaw: jest.fn().mockResolvedValue(1),
     $executeRawUnsafe: jest.fn(),
     $queryRaw: jest.fn().mockResolvedValue([]),
     $transaction: jest.fn(async (cb) => {
@@ -173,6 +177,33 @@ describe('CommissionRulesService', () => {
     mockPrismaService.bonusAdjustment.findMany.mockResolvedValue([]);
     mockPrismaService.bonusAdjustment.updateMany.mockResolvedValue({
       count: 0,
+    });
+  });
+
+  describe('Collaborator bonus store selection', () => {
+    it('keeps linked stores visible when no active bonus rules exist', async () => {
+      mockPrismaService.store.findMany.mockResolvedValueOnce([
+        { id: mockStoreId, name: 'Sora', logoUrl: null, _count: { commissionRules: 0 } },
+      ]);
+      const stores = await service.getCollaboratorStores(mockKolId, false);
+      expect(stores).toEqual([
+        { id: mockStoreId, name: 'Sora', logoUrl: null, activeRulesCount: 0 },
+      ]);
+      const where = mockPrismaService.store.findMany.mock.calls.at(-1)[0].where;
+      expect(where.isDeleted).toBe(false);
+      expect(where.commissionRules).toBeUndefined();
+      expect(where.OR).toContainEqual({
+        storeCollaborators: { some: { collaboratorId: mockKolId, status: 'APPROVED' } },
+      });
+      expect(where.OR).toContainEqual({ monthlyBonusResults: { some: { collaboratorId: mockKolId } } });
+    });
+
+    it('limits discovery to stores with active bonus rules', async () => {
+      mockPrismaService.store.findMany.mockResolvedValueOnce([]);
+      await service.getCollaboratorStores(mockKolId, true);
+      const where = mockPrismaService.store.findMany.mock.calls.at(-1)[0].where;
+      expect(where.commissionRules).toEqual({ some: { isDeleted: false, isActive: true } });
+      expect(where.OR).toBeUndefined();
     });
   });
 
@@ -488,13 +519,13 @@ describe('CommissionRulesService', () => {
     });
   });
 
-  describe('5. Monthly Sales Bonus Simulation & Progressive Bracket Engine', () => {
+  describe('5. Legacy policy replay: progressive brackets', () => {
     beforeEach(() => {
       mockPrismaService.commissionRule.findMany.mockResolvedValue(mockRules);
     });
 
     it('Boundary 1: Revenue under 50M (49,999,999đ) -> 0đ bonus', async () => {
-      const result = await service.previewBonus(mockStoreId, '49999999');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('49999999'));
 
       expect(result.highestReachedRule).toBeNull();
       expect(result.achievementBonus).toBe('0.00');
@@ -504,7 +535,7 @@ describe('CommissionRulesService', () => {
     });
 
     it('Boundary 2: Revenue exactly 50M (50,000,000đ) -> KPI Bonus = 500,000đ, excess = 0đ, Total = 500,000đ', async () => {
-      const result = await service.previewBonus(mockStoreId, '50000000');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('50000000'));
 
       expect(result.highestReachedRule?.id).toBe('rule-50m');
       expect(result.achievementBonus).toBe('500000.00');
@@ -513,7 +544,7 @@ describe('CommissionRulesService', () => {
     });
 
     it('Boundary 3: Revenue 50,000,001đ (+1đ excess) -> KPI Bonus = 500,000đ + 1đ × 2% = 500,000.02đ', async () => {
-      const result = await service.previewBonus(mockStoreId, '50000001');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('50000001'));
 
       expect(result.highestReachedRule?.id).toBe('rule-50m');
       expect(result.achievementBonus).toBe('500000.00');
@@ -524,7 +555,7 @@ describe('CommissionRulesService', () => {
     });
 
     it('Boundary 4: Revenue 60M (60,000,000đ) -> KPI Bonus = 500,000đ + 10M × 2% (200,000đ) = 700,000đ', async () => {
-      const result = await service.previewBonus(mockStoreId, '60000000');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('60000000'));
 
       expect(result.highestReachedRule?.id).toBe('rule-50m');
       expect(result.achievementBonus).toBe('500000.00');
@@ -537,7 +568,7 @@ describe('CommissionRulesService', () => {
     });
 
     it('Boundary 5: Revenue 75M (75,000,000đ) -> KPI Bonus = 500,000đ + 25M × 2% (500,000đ) = 1,000,000đ', async () => {
-      const result = await service.previewBonus(mockStoreId, '75000000');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('75000000'));
 
       expect(result.highestReachedRule?.id).toBe('rule-50m');
       expect(result.achievementBonus).toBe('500000.00');
@@ -548,7 +579,7 @@ describe('CommissionRulesService', () => {
     });
 
     it('Multi-tier Bracket: Revenue 120M -> Highest milestone 100M (1.5M KPI) + Bracket [50M-100M] 50M × 2% (1M) + Bracket [100M-120M] 20M × 3% (600k) = 3,100,000đ', async () => {
-      const result = await service.previewBonus(mockStoreId, '120000000');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('120000000'));
 
       expect(result.highestReachedRule?.id).toBe('rule-100m');
       expect(result.highestReachedRule?.name).toBe('Thưởng 100 Triệu');
@@ -575,7 +606,7 @@ describe('CommissionRulesService', () => {
         rulesWithInactive,
       );
 
-      const result = await service.previewBonus(mockStoreId, '120000000');
+      const result = service.calculateProgressiveBonus(await mockPrismaService.commissionRule.findMany(), new Prisma.Decimal('120000000'));
 
       expect(result.highestReachedRule?.id).toBe('rule-50m');
       expect(result.achievementBonus).toBe('500000.00');

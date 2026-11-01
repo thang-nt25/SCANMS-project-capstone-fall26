@@ -10,6 +10,8 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +24,7 @@ import type { Request } from 'express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateProductEditorDto } from './dto/update-product-editor.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { QueryProductIdentityDto } from './dto/query-product-identity.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -34,11 +37,13 @@ import { ModerateProductDto } from './dto/moderate-product.dto';
 import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy.dto';
 import { SyncProductVariantsDto } from './dto/sync-product-variants.dto';
 import { ReviewReplyDto, ReviewReportDto, ResolveReviewReportDto } from './dto/review-actions.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ReviewEvidenceService } from './review-evidence.service';
 
 @ApiTags('Products Management')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService, private readonly reviewEvidenceService: ReviewEvidenceService) {}
 
   @Get('identity-check')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -143,6 +148,14 @@ export class ProductsController {
     return this.productsService.reportReview(userId, reviewId, dto);
   }
 
+  @Post('reviews/:reviewId/evidence')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024, files: 1 } }))
+  uploadReviewEvidence(@CurrentUser('id') userId: string, @Param('reviewId') reviewId: string, @UploadedFile() file: Express.Multer.File) {
+    return this.reviewEvidenceService.upload(userId, reviewId, file);
+  }
+
   @Post('reviews/:reviewId/resolve')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
@@ -202,6 +215,16 @@ export class ProductsController {
     @Body() dto: CreateProductDto,
   ) {
     return this.productsService.create(ownerId, role, dto);
+  }
+
+  @Put(':id/editor')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lưu sản phẩm và phân loại trong cùng một giao dịch' })
+  updateEditor(@CurrentUser('id') ownerId: string, @CurrentUser('role') role: UserRole,
+    @Param('id') id: string, @Body() dto: UpdateProductEditorDto) {
+    return this.productsService.updateEditor(ownerId, role, id, dto);
   }
 
   @Put(':id')

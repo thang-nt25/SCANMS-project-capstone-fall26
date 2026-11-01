@@ -57,6 +57,7 @@ export interface ReturnDetail {
   pickupSimulationEnabled?: boolean;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
+  inspectionCompletedAt?: string | null;
   inspectionNotes?: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
   order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null };

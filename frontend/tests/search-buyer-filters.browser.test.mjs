@@ -52,6 +52,21 @@ test('buyer discounts and availability combine; commission stays exclusive to KO
     await page.reload();
     await page.waitForSelector('main article');
     assert.deepEqual(await names(), ['sale-stock']);
+    await page.evaluate(() => {
+      history.pushState({}, '', '/search');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await page.waitForFunction(() => document.querySelectorAll('main article').length === 3);
+    await page.evaluate(() => {
+      history.pushState({}, '', '/search?discount=true&inStock=true');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await page.waitForFunction(() => document.querySelectorAll('main article').length === 1);
+    await page.goBack();
+    await page.waitForFunction(() => document.querySelectorAll('main article').length === 3);
+    await page.goForward();
+    await page.waitForFunction(() => document.querySelectorAll('main article').length === 1);
+    assert.deepEqual(await names(), ['sale-stock'], 'Back and Forward restore availability and discount filters');
     await page.evaluate(() => localStorage.setItem('user', JSON.stringify({ id: 'qa-customer', role: 'CUSTOMER', fullName: 'Customer' })));
     await page.goto(`${base}/search?commission=true`);
     await page.waitForSelector('main article');

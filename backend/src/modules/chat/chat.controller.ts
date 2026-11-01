@@ -137,6 +137,16 @@ export class ChatController {
     return this.chatService.exploreMessages(conversationId, userId, query);
   }
 
+  @Get('conversations/:conversationId/messages/:messageId')
+  @ApiOperation({ summary: 'Xem tin nhắn gốc được trích dẫn trong hội thoại' })
+  getMessage(
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.chatService.getMessage(conversationId, userId, messageId);
+  }
+
   @Get('unread-count')
   @ApiOperation({ summary: 'Đếm tổng số tin nhắn chưa đọc của user hiện tại' })
   getUnreadCount(@CurrentUser() user: any) {
@@ -144,6 +154,17 @@ export class ChatController {
   }
 
   // Shop tìm kiếm KOL/CTV để bắt đầu chat
+  @Get('capabilities')
+  getCapabilities() {
+    return this.chatService.getCapabilities();
+  }
+
+  @Get('search-customers')
+  @ApiOperation({ summary: 'Shop tìm khách đã mua hàng hoặc đã liên hệ gian hàng của mình' })
+  searchCustomers(@CurrentUser('id') userId: string, @Query('q') q?: string) {
+    return this.chatService.searchCustomers(userId, q);
+  }
+
   @Get('search-collaborators')
   @ApiOperation({ summary: 'Shop tìm KOL/CTV theo tên hoặc email' })
   @ApiQuery({ name: 'q', required: false, type: String })

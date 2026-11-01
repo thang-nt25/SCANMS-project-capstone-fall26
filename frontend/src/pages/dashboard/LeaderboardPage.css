@@ -1,0 +1,86 @@
+@reference "../../index.css";
+.creator-leaderboard-page { @apply [gap:14px]; @apply [color:#1A1612]; }
+.leaderboard-overview > div { @apply [gap:12px]; }
+.leaderboard-overview > div > div { @apply [min-width:0]; @apply [padding:16px_18px]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.leaderboard-overview > div > div > p:first-child { @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.leaderboard-overview > div > div > div { @apply [margin-top:8px]; @apply [font-size:25px]; @apply [line-height:33px]; @apply [font-weight:650]; @apply [letter-spacing:-.6px]; @apply [overflow-wrap:anywhere]; }
+.leaderboard-overview > div > div:nth-child(2) > div { @apply [font-size:20px]; @apply [letter-spacing:-.4px]; }
+.leaderboard-overview > div > div > p:last-child { @apply [margin-top:7px]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.creator-leaderboard-page .leaderboard-controls { @apply [padding:12px]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; }
+.leaderboard-controls > header > div > span { @apply [width:34px]; @apply [height:34px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:9px]; @apply [background:#FBF5EB]; }
+.leaderboard-controls #lb-title { @apply [font-size:17px]; @apply [line-height:25px]; @apply [font-weight:600]; @apply [letter-spacing:-.4px]; }
+.leaderboard-controls > header p { @apply [margin-top:3px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.leaderboard-filter-row { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply items-center; @apply [gap:18px]; @apply [margin-top:0]; }
+.leaderboard-filter-row [role=group] { @apply [gap:10px]; @apply [padding:0]; @apply [border:0]; @apply [border-radius:0]; @apply [background:#FFFFFF]; }
+.leaderboard-filter-row [role=group] > button { @apply [height:44px]; @apply [min-height:44px]; @apply [padding:8px_10px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; @apply [font-size:11px]; @apply [font-weight:500]; box-shadow: none; }
+.leaderboard-filter-step { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:24px]; @apply [height:24px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-size:10px]; @apply [font-weight:400]; }
+.leaderboard-filter-row button[aria-pressed=true] .leaderboard-filter-step { @apply [border-color:#c59b58]; @apply [color:#9a7135]; }
+.leaderboard-filter-row [role=group] > button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-weight:600]; }
+.leaderboard-filter-row label { @apply [font-size:11px]; }
+.leaderboard-filter-row select { @apply [width:150px]; @apply [height:38px]; @apply [min-height:38px]; @apply [font-size:12px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [background-image:none]; }
+.leaderboard-controls > details { @apply [margin-top:12px]; @apply [font-size:11px]; }
+.leaderboard-controls > details > summary { @apply [width:fit-content]; @apply [font-size:11px]; }
+.leaderboard-controls > details > p { @apply [max-width:1000px]; @apply [margin-top:9px]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; @apply [font-size:11px]; @apply [line-height:20px]; }
+.leaderboard-podium { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply items-stretch; @apply [gap:12px]; }
+.leaderboard-podium > article { @apply [min-width:0]; @apply [min-height:0]; @apply [padding:14px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; @apply [box-shadow:0_1px_4px_rgb(35_29_21_/_3%)]; }
+.leaderboard-podium > article[data-podium-rank='1'] { @apply [border-color:#EEDFC6]; @apply [background:linear-gradient(180deg,_#fffaf2_0,_#fff_100px)]; }
+.leaderboard-podium > article > button { @apply items-center; @apply [min-height:61px]; @apply [gap:11px]; }
+.leaderboard-podium > article > button > span:first-child { @apply [width:44px]; @apply [height:44px]; @apply [background:#FAF8F5]; }
+.leaderboard-podium > article > button > span:last-child > span:first-child { @apply [font-size:14px]; @apply [line-height:21px]; @apply [font-weight:600]; }
+.leaderboard-podium > article > button > span:last-child > span:nth-child(2) { @apply [font-size:11px]; @apply [line-height:17px]; }
+.leaderboard-podium > article > button > span:last-child > span:last-child > span { @apply [padding:3px_6px]; @apply [border-radius:5px]; @apply [font-size:10px]; @apply [line-height:14px]; }
+.leaderboard-podium .podium-score { @apply flex; @apply flex-row; @apply items-center; @apply justify-between; @apply flex-wrap; @apply [gap:8px]; @apply [margin-top:12px]; @apply [padding:12px]; @apply [border:1px_solid_#f0e8da]; @apply [border-radius:9px]; @apply [background:#fffdfa]; }
+.podium-score > span { @apply [font-size:11px]; @apply [line-height:18px]; }
+.podium-score strong { @apply [font-size:22px]; @apply [line-height:29px]; @apply [font-weight:650]; @apply [letter-spacing:-.5px]; @apply [overflow-wrap:anywhere]; }
+.podium-score > div > span { @apply [font-size:10px]; }
+.podium-achievements { @apply [margin-top:12px]; @apply [padding-top:0]; @apply [border-top:0]; }
+.podium-achievements-heading { @apply flex; @apply items-center; @apply justify-between; @apply [gap:8px]; @apply [min-width:0]; }
+.podium-achievements-heading h3 { @apply [margin:0]; @apply [flex-shrink:0]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.podium-achievements-heading > span { @apply [min-width:0]; @apply overflow-hidden; @apply [text-overflow:ellipsis]; @apply whitespace-nowrap; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:18px]; }
+.podium-stat-grid { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [gap:8px]; @apply [margin:8px_0_0]; }
+.podium-stat-grid > div { @apply [min-width:0]; @apply [padding:8px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:8px]; @apply [background:#fff]; }
+.podium-stat-grid > div:first-child { @apply [padding-left:8px]; }
+.podium-stat-grid > div:last-child { @apply [padding-right:8px]; @apply [border:1px_solid_#eae4d7]; }
+.podium-stat-grid dt { @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.podium-stat-grid dd { @apply [margin:4px_0_0]; @apply [color:#1A1612]; @apply [font-size:15px]; @apply [line-height:22px]; @apply [font-weight:600]; font-variant-numeric: tabular-nums; @apply [overflow-wrap:anywhere]; }
+.creator-leaderboard-page .leaderboard-ranking-table { @apply [border-radius:13px]; }
+.leaderboard-ranking-table thead { @apply [background:#fff]; }
+.leaderboard-ranking-table th { @apply [height:44px]; @apply [padding:11px_14px]; @apply [border-top:0]; @apply [border-bottom:1px_solid_#eae4d7]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [background:#fff]; }
+.leaderboard-ranking-table td { @apply [padding:11px_14px]; @apply [font-size:12px]; @apply [background:#fff]; font-variant-numeric: tabular-nums; }
+.leaderboard-ranking-table tbody tr:hover td { @apply [background:#fffaf2]; }
+.leaderboard-ranking-table th[class*="bg-[#FBF5EB]"],
+.leaderboard-ranking-table td[class*="bg-[#FBF5EB]"] { @apply [background:#fffcf7]; @apply [color:#8a642c]; }
+.leaderboard-ranking-table td:first-child strong { @apply inline-flex; @apply items-center; @apply justify-center; @apply [min-width:34px]; @apply [min-height:28px]; @apply [padding:3px_6px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:7px]; @apply [background:#fff]; }
+.leaderboard-ranking-table td button { @apply [min-height:32px]; @apply [padding-inline:11px]; @apply [border-color:#eedfc6]; @apply [border-radius:8px]; @apply [color:#8a642c]; }
+.leaderboard-ranking-table td strong { @apply [font-size:12px]; @apply [font-weight:600]; }
+.leaderboard-ranking-table td p { @apply [font-size:10px]; }
+.leaderboard-ranking-table td button { @apply [height:29px]; @apply [padding-inline:9px]; @apply [font-size:11px]; @apply [border-radius:6px]; }
+.creator-leaderboard-page .leaderboard-my-rank { @apply [gap:14px]; @apply [padding:16px_18px]; @apply [border-radius:13px]; }
+.leaderboard-my-rank > div:first-child > span { @apply [width:38px]; @apply [height:38px]; @apply [border-radius:9px]; @apply [font-size:17px]; @apply [background:#FFFFFF]; }
+.leaderboard-my-rank h2 { @apply [font-size:13px]; @apply [line-height:21px]; @apply [font-weight:600]; }
+.leaderboard-my-rank p { @apply [margin-top:3px]; @apply [font-size:11px]; @apply [line-height:19px]; }
+.leaderboard-my-rank > div:last-child > :is(span, div) { @apply [font-size:11px]; }
+.leaderboard-my-rank > div:last-child > a { @apply [min-height:34px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [font-size:11px]; }
+.creator-leaderboard-page :is(button, a, select):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (max-width: 1199px) {
+  .leaderboard-overview > div { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+  .leaderboard-filter-row { @apply [grid-template-columns:minmax(0,_1fr)]; @apply [gap:12px]; }
+  .leaderboard-filter-row > div:last-child { @apply justify-end; }
+  .leaderboard-podium > article { @apply [padding:15px]; }
+  .podium-score strong { @apply [font-size:22px]; }
+}
+@media (max-width: 767px) {
+  .creator-leaderboard-page { @apply [gap:12px]; }
+  .leaderboard-overview > div { @apply [gap:10px]; }
+  .leaderboard-overview > div > div { @apply [padding:13px]; }
+  .leaderboard-overview > div > div > div { @apply [font-size:21px]; @apply [line-height:29px]; }
+  .leaderboard-overview > div > div:nth-child(2) > div { @apply [font-size:17px]; }
+  .creator-leaderboard-page .leaderboard-controls { @apply [padding:15px]; }
+  .leaderboard-controls #lb-title { @apply [font-size:15px]; }
+  .leaderboard-podium { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .leaderboard-podium > article { @apply [min-height:0]; @apply [padding:16px]; }
+  .leaderboard-podium > article[data-podium-rank='1'] { @apply [order:-1]; }
+  .leaderboard-filter-row > div:last-child { @apply justify-between; }
+  .creator-leaderboard-page .leaderboard-my-rank { @apply [padding:15px]; }
+  .leaderboard-my-rank > div:last-child { @apply [flex:1_1_100%]; @apply justify-between; }
+}

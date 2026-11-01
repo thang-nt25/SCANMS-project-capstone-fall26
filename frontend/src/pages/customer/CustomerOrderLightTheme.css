@@ -1,0 +1,64 @@
+@reference "../../index.css";
+/* Light shipping controls in customer order pages and detail windows only. */
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__history > summary > span {
+  @apply [min-height:32px];
+  @apply [padding:6px_12px];
+  @apply [border:1px_solid_#EEDFC6];
+  @apply [border-radius:8px];
+  @apply [background:#FFFFFF];
+  @apply [color:#795A2D];
+  @apply [font-size:11px];
+  @apply [line-height:1.5];
+  @apply justify-center;
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__history > summary {
+  @apply [padding:10px_0];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__refresh {
+  @apply [min-height:30px];
+  @apply [padding:5px_9px];
+  @apply [gap:5px];
+  @apply [border-radius:7px];
+  @apply [font-size:10px];
+  @apply [font-weight:500];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey__refresh svg {
+  @apply [width:13px];
+  @apply [height:13px];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey :is(.ghn-journey__status, .ghn-journey__carrier-icon, .ghn-journey__avatar, .ghn-journey__countdown) {
+  @apply [background:#FFFFFF];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__status {
+  @apply [border:1px_solid_#EAE4D7];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__step:is(.is-confirmed, .is-current) > .ghn-journey__step-icon {
+  @apply [background:#FFFFFF];
+  @apply [color:#B88E4F];
+  @apply [border-color:#EEDFC6];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey .ghn-journey__step:not(:last-child)::before {
+  @apply [background:#EEDFC6];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey__history ol > li > span:first-child {
+  @apply [background:#FFFFFF];
+  @apply [border:1px_solid_#C59B58];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey :is(button, .ghn-journey__call) {
+  @apply [background:#FFFFFF];
+  @apply [border-color:#EAE4D7];
+}
+:is(.customer-purchase-detail, .customer-order-detail-dialog) .ghn-journey :is(button, .ghn-journey__call):hover {
+  @apply [background:#FAF8F5];
+  @apply [border-color:#EEDFC6];
+}
+.customer-order-detail-dialog .customer-order-detail-payment,
+.customer-order-detail-dialog .customer-order-detail-journey > ol,
+.customer-order-detail-dialog .customer-order-detail-footer > div > button {
+  @apply [background:#FFFFFF];
+}
+.customer-order-detail-dialog .customer-order-detail-journey > ol > li > span:last-of-type {
+  @apply [background:#FFFFFF];
+  @apply [color:#B88E4F];
+  @apply [border-color:#EEDFC6];
+}

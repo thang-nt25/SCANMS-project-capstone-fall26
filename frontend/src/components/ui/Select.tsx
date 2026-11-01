@@ -3,10 +3,12 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useMemo,
   type ReactNode,
   type CSSProperties,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -33,6 +35,7 @@ export interface SelectProps {
   searchable?: boolean;
   placement?: 'bottom' | 'top' | 'auto';
   align?: 'left' | 'right';
+  portal?: boolean;
 }
 
 function getLabelFromNode(node: ReactNode): string {
@@ -92,6 +95,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       searchable,
       placement = 'auto',
       align = 'left',
+      portal = false,
       children,
     },
     ref
@@ -115,10 +119,46 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
 
     const containerRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
+    const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+    const renderMenu = (menu: ReactNode) => portal
+      ? createPortal(menu, containerRef.current?.closest('dialog[open]') || document.body)
+      : menu;
 
     // Detect open direction (upwards or downwards)
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (!isOpen || !containerRef.current) return;
+      if (portal) {
+        const position = () => {
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const margin = 8;
+          const gap = 6;
+          const below = window.innerHeight - rect.bottom - gap - margin;
+          const above = rect.top - gap - margin;
+          const up = placement === 'top' || (placement === 'auto' && below < 240 && above > below);
+          setOpenDirection(up ? 'up' : 'down');
+          const width = Math.min(Math.max(rect.width, 200), window.innerWidth - margin * 2);
+          const left = Math.max(margin, Math.min(align === 'right' ? rect.right - width : rect.left, window.innerWidth - width - margin));
+          setMenuStyle({
+            position: 'fixed', width, left,
+            top: up ? undefined : rect.bottom + gap,
+            bottom: up ? window.innerHeight - rect.top + gap : undefined,
+            maxHeight: Math.max(0, Math.min(240, up ? above : below)),
+            colorScheme: 'light',
+          });
+        };
+        const handleScroll = (event: Event) => {
+          if (event.target instanceof Node && listRef.current?.contains(event.target)) return;
+          position();
+        };
+        position();
+        window.addEventListener('resize', position);
+        document.addEventListener('scroll', handleScroll, true);
+        return () => {
+          window.removeEventListener('resize', position);
+          document.removeEventListener('scroll', handleScroll, true);
+        };
+      }
       if (placement === 'top') {
         setOpenDirection('up');
         return;
@@ -139,7 +179,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       } catch {
         setOpenDirection('down');
       }
-    }, [isOpen, placement]);
+    }, [isOpen, placement, align, portal]);
 
     // Filter options based on search query
     const filteredOptions = useMemo(() => {
@@ -151,7 +191,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     useEffect(() => {
       if (isOpen) {
         setSearchQuery('');
-        if (searchable || options.length > 7) {
+        if (searchable ?? options.length > 7) {
           setTimeout(() => searchInputRef.current?.focus(), 50);
         }
       }
@@ -169,13 +209,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       if (!isOpen) return;
 
       const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        if (containerRef.current && !containerRef.current.contains(e.target as Node) && !listRef.current?.contains(e.target as Node)) {
           setIsOpen(false);
         }
       };
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
           setIsOpen(false);
         }
       };
@@ -267,19 +309,18 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
         </button>
 
         {/* Custom Dropdown List - Hoàn Toàn Không Dùng OS Popup, Tone Sáng 100% */}
-        {isOpen && (
+        {isOpen && renderMenu(
           <div
             ref={listRef}
             role="listbox"
             tabIndex={-1}
             className={cn(
-              'absolute z-50 min-w-[200px] w-full bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150',
-              align === 'right' ? 'right-0' : 'left-0',
-              openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+              'bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-60 flex flex-col overflow-hidden',
+              portal ? 'fixed z-[120]' : cn('absolute z-50 min-w-[200px] w-full animate-in fade-in zoom-in-95 duration-150', align === 'right' ? 'right-0' : 'left-0', openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5')
             )}
-            style={{ colorScheme: 'light' }}
+            style={portal ? menuStyle : { colorScheme: 'light' }}
           >
-            {(searchable || options.length > 7) && (
+            {(searchable ?? options.length > 7) && (
               <div className="p-2 border-b border-[#EAE4D7] bg-[#FAF8F5]/90 shrink-0">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-[#B88E4F] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -291,7 +332,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                     placeholder="Tìm nhanh..."
                     className="w-full pl-8 pr-6 py-1.5 text-xs bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Escape') { e.preventDefault(); setIsOpen(false); }
+                    }}
                   />
                   {searchQuery && (
                     <button
@@ -305,7 +349,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                 </div>
               </div>
             )}
-            <div className="overflow-y-auto overscroll-contain flex-1 max-h-52 [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
+            <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 max-h-52 [scrollbar-width:thin] [scrollbar-color:#EEDFC6_transparent]">
               {filteredOptions.length === 0 ? (
                 <div className="px-4 py-3 text-xs text-[#7D715E] text-center">
                   Không tìm thấy kết quả phù hợp

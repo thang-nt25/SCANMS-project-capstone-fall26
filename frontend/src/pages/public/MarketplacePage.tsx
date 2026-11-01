@@ -240,11 +240,11 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
 
-      <MarketplaceHeader onOpenTracking={() => trackingRef.current?.scrollIntoView({ behavior: 'smooth' })} onOpenLive={() => setIsLiveModalOpen(true)} />
+      <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => setIsLiveModalOpen(true)} />
 
       <MarketplaceHero stores={marketplaceStores} onOpenLive={() => setIsLiveModalOpen(true)} />
 
-      <CategoryQuickNav />
+      <CategoryQuickNav products={items} loading={loading} />
 
       <FeaturedStores stores={marketplaceStores} loading={storesLoading} failed={storesFailed} onRetry={() => void retryStores()} />
 
@@ -254,7 +254,7 @@ export default function MarketplacePage() {
 
       {/* Dense commerce catalog with SCANMS affiliate information */}
       <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-36 bg-[#F3EFE6] py-7 text-left lg:py-9">
-        <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+        <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
 
         {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
         <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
@@ -270,8 +270,8 @@ export default function MarketplacePage() {
 
         {/* Product Cards Grid (Full-Width Responsive 2-5 Columns) */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {[...Array(12)].map((_, i) => (
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {[...Array(15)].map((_, i) => (
               <div key={i} className="animate-pulse overflow-hidden rounded-xl border border-[#EAE4D7] bg-white">
                 <div className="aspect-square bg-[#F3EFE6]" />
                 <div className="p-3">
@@ -300,7 +300,7 @@ export default function MarketplacePage() {
             {productsFailed && <button type="button" onClick={() => void retryProducts()} className="ml-3 min-h-11 rounded-xl border border-[#C59B58] px-4 text-xs font-bold text-[#1A1612]">Thử tải lại</button>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 [&>article]:rounded-lg [&>article>div:last-child]:p-3">
             {items.map((product) => (
               <MarketplaceProductCard
                 key={product.id} product={product} wished={wishlistIds.has(product.id)}

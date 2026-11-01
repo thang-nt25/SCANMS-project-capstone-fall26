@@ -395,6 +395,9 @@ export class GhnService {
     }
     const ghnEnvironment = customOptions?.environment || GhnEnvironment.LIVE;
     const existingRawPayload = (order.rawPayload as Record<string, any>) || {};
+    if (order.status === OrderStatus.PENDING && !existingRawPayload.shopConfirmedAt) {
+      throw new BadRequestException('Shop cần xác nhận đơn trước khi tạo vận đơn GHN');
+    }
     const canReplaceInternalTestWaybill =
       order.status === OrderStatus.SHIPPING &&
       !existingRawPayload.ghnOrderCode &&
@@ -584,6 +587,7 @@ export class GhnService {
       ghnEnvironment,
       ghnRawResponse: ghnResponseData,
       ghnShippedAt: new Date().toISOString(),
+      shopConfirmedAt: rawPayload.shopConfirmedAt || new Date().toISOString(),
       ...(ghnEnvironment === GhnEnvironment.TEST && this.simulationEnabled()
         ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
     };

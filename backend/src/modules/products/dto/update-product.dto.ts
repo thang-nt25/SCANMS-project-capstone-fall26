@@ -145,6 +145,7 @@ export class UpdateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
+  @ArrayMaxSize(4, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
   @IsString({
     each: true,
     message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',
@@ -157,7 +158,7 @@ export class UpdateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsNumber({}, { message: 'Giá bán phải là một số' })
-  @Min(0, { message: 'Giá bán không được âm' })
+  @Min(1, { message: 'Giá bán phải lớn hơn 0' })
   price?: number;
 
   @ApiPropertyOptional({
@@ -182,6 +183,7 @@ export class UpdateProductDto extends ProductPackageDto {
   @ApiPropertyOptional({ example: 100, description: 'Số lượng tồn kho' })
   @IsOptional()
   @IsNumber({}, { message: 'Số lượng tồn kho phải là số nguyên' })
+  @IsInt({ message: 'Số lượng tồn kho phải là số nguyên' })
   @Min(0, { message: 'Tồn kho không được âm' })
   stockQuantity?: number;
 

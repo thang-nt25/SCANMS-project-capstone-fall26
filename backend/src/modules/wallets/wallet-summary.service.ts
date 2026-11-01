@@ -7,6 +7,7 @@ import {
   PAYOUT_TAX_THRESHOLD,
 } from '../payouts/payout-tax.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
+import { walletBalanceConsistency } from './wallet-balance-consistency';
 
 @Injectable()
 export class WalletSummaryService {
@@ -63,7 +64,11 @@ export class WalletSummaryService {
       profile.bankAccountName.trim(),
     );
 
+    const balanceConsistency = walletBalanceConsistency(wallet, wallet.storeWallets);
+    const earningsReviewRequired = Boolean(wallet.earningsReviewRequired || balanceConsistency.requiresReview);
+
     return {
+      balanceConsistency,
       cooperationStores: partnerships.map((partnership) => {
         const balance = wallet.storeWallets.find((item) => item.storeId === partnership.storeId);
         return {
@@ -79,6 +84,8 @@ export class WalletSummaryService {
       }),
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
+      shoppingBalance: wallet?.shoppingBalance?.toFixed(2) ?? '0.00',
+      earningsReviewRequired,
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
         storeId: balance.storeId,
         storeName: balance.store.name,
@@ -116,19 +123,9 @@ export class WalletSummaryService {
       },
       kycStatus: profile?.kycStatus ?? KycStatus.UNVERIFIED,
       canWithdraw:
+        !earningsReviewRequired &&
         profile?.kycStatus === KycStatus.VERIFIED &&
         hasBankAccount &&
-        Boolean(
-          wallet?.storeWallets.some(
-            (balance) =>
-              !balance.store.isDeleted &&
-              balance.store.owner.isActive &&
-              !balance.store.owner.isDeleted &&
-              balance.availableBalance.greaterThanOrEqualTo(
-                this.policy.minimumAmount,
-              ),
-          ),
-        ) &&
         Boolean(
           wallet?.availableBalance.greaterThanOrEqualTo(
             this.policy.minimumAmount,
@@ -156,9 +153,77 @@ export class WalletSummaryService {
       }),
       this.prisma.financialLedger.count({ where }),
     ]);
+    // Resolve only references on this owner's page, in batches. No customer or bank details.
+    const referenceIds = (...types: string[]) => [...new Set(entries
+      .filter(entry => entry.referenceId && types.includes(entry.referenceType ?? ''))
+      .map(entry => entry.referenceId!))];
+    const commissionIds = referenceIds('COMMISSION', 'ORDER_REFUND');
+    const payoutIds = referenceIds('PAYOUT_REQUEST');
+    const bonusIds = referenceIds('MONTHLY_BONUS');
+    const orderIds = referenceIds('ORDER_PAYMENT', 'ORDER_REFUND', 'RECONCILIATION_ORDER');
+    const refundIds = referenceIds('ORDER_REFUND');
+    const storeIds = [...new Set(entries.map(entry => entry.storeId).filter((id): id is string => Boolean(id)))];
+    const orderSelect = { id: true, externalOrderSn: true, store: { select: { name: true } } } as const;
+    const ownOrder: Prisma.OrderWhereInput = { OR: [
+      { customerId: collaboratorId }, { attributedCollaboratorId: collaboratorId },
+      { commissions: { some: { collaboratorId } } },
+    ] };
+    const queryWhen = <T>(ids: string[], query: () => PromiseLike<T[]>): Promise<T[]> =>
+      ids.length ? Promise.resolve(query()) : Promise.resolve([]);
+    const [commissions, payouts, bonuses, orders, refunds, stores] = await Promise.all([
+      queryWhen(commissionIds, () => this.prisma.commission.findMany({
+        where: { id: { in: commissionIds }, collaboratorId },
+        select: { id: true, order: { select: orderSelect } },
+      })),
+      queryWhen(payoutIds, () => this.prisma.payoutRequest.findMany({
+        where: { id: { in: payoutIds }, collaboratorId },
+        select: { id: true, store: { select: { name: true } } },
+      })),
+      queryWhen(bonusIds, () => this.prisma.monthlyBonusResult.findMany({
+        where: { id: { in: bonusIds }, collaboratorId },
+        select: { id: true, yearMonth: true, store: { select: { name: true } } },
+      })),
+      queryWhen(orderIds, () => this.prisma.order.findMany({
+        where: { id: { in: orderIds }, ...ownOrder }, select: orderSelect,
+      })),
+      queryWhen(refundIds, () => this.prisma.orderRefund.findMany({
+        where: { id: { in: refundIds }, order: ownOrder },
+        select: { id: true, order: { select: orderSelect } },
+      })),
+      queryWhen(storeIds, () => this.prisma.store.findMany({
+        where: { id: { in: storeIds } }, select: { id: true, name: true },
+      })),
+    ]);
+    type ReferenceDetails = { storeName: string | null; orderId: string | null; orderCode: string | null; period: string | null };
+    const details = new Map<string, ReferenceDetails>();
+    const forOrder = (order: { id: string; externalOrderSn: string; store: { name: string } }): ReferenceDetails => ({
+      storeName: order.store.name, orderId: order.id, orderCode: order.externalOrderSn, period: null,
+    });
+    orders.forEach(order => {
+      details.set(`ORDER_PAYMENT:${order.id}`, forOrder(order));
+      details.set(`RECONCILIATION_ORDER:${order.id}`, forOrder(order));
+      details.set(`ORDER_REFUND:${order.id}`, forOrder(order));
+    });
+    commissions.forEach(commission => {
+      details.set(`COMMISSION:${commission.id}`, forOrder(commission.order));
+      // Older refund entries reference the commission instead of an OrderRefund.
+      details.set(`ORDER_REFUND:${commission.id}`, forOrder(commission.order));
+    });
+    refunds.forEach(refund => details.set(`ORDER_REFUND:${refund.id}`, forOrder(refund.order)));
+    payouts.forEach(payout => details.set(`PAYOUT_REQUEST:${payout.id}`, {
+      storeName: payout.store?.name ?? null, orderId: null, orderCode: null, period: null,
+    }));
+    bonuses.forEach(bonus => details.set(`MONTHLY_BONUS:${bonus.id}`, {
+      storeName: bonus.store.name, orderId: null, orderCode: null, period: bonus.yearMonth,
+    }));
+    const storeNames = new Map(stores.map(store => [store.id, store.name] as const));
     return {
       entries: entries.map((entry) => ({
         ...entry,
+        referenceDetails: details.get(`${entry.referenceType}:${entry.referenceId}`) ??
+          (entry.storeId && storeNames.has(entry.storeId) ? {
+            storeName: storeNames.get(entry.storeId)!, orderId: null, orderCode: null, period: null,
+          } : null),
         amount: entry.amount.toFixed(2),
         balanceBefore: entry.balanceBefore.toFixed(2),
         balanceAfter: entry.balanceAfter.toFixed(2),
@@ -195,9 +260,10 @@ export class WalletSummaryService {
         bankName: dto.bankName.trim(),
         bankAccountNumber: dto.bankAccountNumber.trim(),
         bankAccountName: dto.bankAccountName.trim().toUpperCase(),
+        kycStatus: KycStatus.UNVERIFIED,
       },
     });
-    return { success: true, message: 'Đã cập nhật thông tin tài khoản nhận tiền thành công.' };
+    return { success: true, message: 'Đã cập nhật tài khoản nhận tiền. Vui lòng nộp lại hồ sơ eKYC để xác minh trước khi rút thu nhập.' };
   }
 
   async disconnectBankAccount(collaboratorId: string) {
@@ -207,6 +273,7 @@ export class WalletSummaryService {
         bankName: '',
         bankAccountNumber: '',
         bankAccountName: '',
+        kycStatus: KycStatus.UNVERIFIED,
       },
     });
     return { success: true, message: 'Đã ngừng sử dụng tài khoản nhận tiền.' };

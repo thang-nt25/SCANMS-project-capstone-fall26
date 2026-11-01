@@ -24,6 +24,9 @@ interface ApiEnvelope<T> {
 }
 
 export const walletService = {
+    async demoTopUpAvailability() {
+      return (await api.get<never, ApiEnvelope<{ available: boolean }>>('/wallets/top-up-demo/availability', { headers: { 'x-skip-cache': 'true' } })).data;
+    },
   async payosAvailability() {
     return (await api.get<never, ApiEnvelope<{ available: boolean }>>('/wallets/top-up-payos/availability', { headers: { 'x-skip-cache': 'true' } })).data;
   },

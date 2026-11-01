@@ -22,6 +22,15 @@ export interface WalletSummary {
   unallocatedPendingBalance: string;
   pendingBalance: string;
   availableBalance: string;
+  shoppingBalance?: string;
+  earningsReviewRequired?: boolean;
+  balanceConsistency?: {
+    requiresReview: boolean;
+    allocatedAvailableBalance: string;
+    allocatedPendingBalance: string;
+    unallocatedAvailableBalance: string;
+    unallocatedPendingBalance: string;
+  };
   minimumWithdrawalAmount: string;
   withdrawalTaxPolicy: { threshold: string; rate: string };
   kycStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
@@ -84,6 +93,12 @@ export interface LedgerEntry {
   balanceAfter: string;
   referenceId: string | null;
   referenceType: string | null;
+  referenceDetails?: {
+    storeName: string | null;
+    orderId: string | null;
+    orderCode: string | null;
+    period: string | null;
+  } | null;
   createdAt: string;
 }
 

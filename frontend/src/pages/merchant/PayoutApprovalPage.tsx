@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import "./PayoutApprovalPage.css";
 import { useParams } from "react-router-dom";
 import { Download, RefreshCw, ReceiptText, ShieldCheck, Landmark, ChevronRight, Plus, BarChart3, Clock, Hourglass, CheckCircle, FileText, AlertTriangle, X, Search } from "lucide-react";
 import {
@@ -717,7 +718,7 @@ export default function PayoutApprovalPage() {
         setSelected([]);
         if (!fixtureMode) await load();
       } catch (err: any) {
-        toast.error(err?.message || "Lỗi xuất file VietQR");
+        toast.error(await getPayoutErrorMessage(err));
         throw err;
       }
     });
@@ -1314,7 +1315,7 @@ export default function PayoutApprovalPage() {
             </label>
             <table
               aria-label="Danh sách payout"
-              className="w-full min-w-[1200px] table-fixed text-left text-xs"
+              className="payout-table w-full min-w-[1200px] table-fixed text-left text-xs"
             >
             <colgroup>
               <col className="w-[42px]" />
@@ -1589,6 +1590,7 @@ export default function PayoutApprovalPage() {
                       try {
                         const blob = await payoutService.downloadBatch(storeId, batch.id);
                         saveWorkbook(blob, `SCANMS-VietQR-${batch.id}.xlsx`);
+                        toast.success('Đã tải file Excel của lô thanh toán.');
                       } catch (error) {
                         if (!fixtureMode) throw error;
                         const batchRows = [

@@ -9,7 +9,9 @@ describe('fair verified reviews and platform moderation', () => {
       product: { store: { ownerId: 'shop' } } };
     const prisma: any = { productReview: { create: jest.fn().mockImplementation(({ data }) => ({ id: 'review', ...data })),
       findUnique: jest.fn().mockResolvedValue(review), update: jest.fn().mockResolvedValue(review) },
-      auditLog: { create: jest.fn().mockResolvedValue({}), findMany: jest.fn().mockResolvedValue([]) } };
+      auditLog: { create: jest.fn().mockResolvedValue({ id: 'report' }), findMany: jest.fn().mockResolvedValue([]) },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'admin' }, { id: 'manager' }]) },
+      notification: { createMany: jest.fn().mockResolvedValue({ count: 2 }) } };
     prisma.$transaction = jest.fn(fn => fn(prisma));
     const service = new ProductsService(prisma, {} as any, cache() as any);
     const customer = Object.assign(Object.create(CustomerService.prototype), { prisma, cacheService: cache() }) as CustomerService;
@@ -38,10 +40,13 @@ describe('fair verified reviews and platform moderation', () => {
   });
   it('reports without hiding or modifying stars, and records the evidence for the platform', async () => {
     const { service, prisma } = fixture();
-    await service.reportReview('shop', 'review', { reason: 'SPAM', details: 'Có thông tin quảng cáo không liên quan', evidence: ['https://example.com/proof.jpg'] });
+    const images = Array.from({ length: 12 }, (_, index) => `https://example.com/proof-${index}.jpg`);
+    await service.reportReview('shop', 'review', { reason: 'SPAM', details: 'Có thông tin quảng cáo không liên quan', evidence: ['https://example.com/proof.jpg'], images, videos: ['https://example.com/video.mp4'] });
     expect(prisma.productReview.update).not.toHaveBeenCalled();
     expect(prisma.auditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'shop', action: 'PRODUCT_REVIEW_REPORTED',
-      details: expect.objectContaining({ reviewId: 'review', evidence: ['https://example.com/proof.jpg'] }) }) });
+      details: expect.objectContaining({ reviewId: 'review', evidence: ['https://example.com/proof.jpg'], images, videos: ['https://example.com/video.mp4'] }) }) });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: { role: { in: [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER] }, isActive: true, isDeleted: false }, select: { id: true } });
+    expect(prisma.notification.createMany).toHaveBeenCalledWith({ data: [expect.objectContaining({ userId: 'admin', type: 'PRODUCT_REVIEW_REPORTED', data: { reviewId: 'review', productId: 'product', reportId: 'report' } }), expect.objectContaining({ userId: 'manager' })] });
   });
   it('prevents another Shop from replying or reporting', async () => {
     const { service, prisma } = fixture();

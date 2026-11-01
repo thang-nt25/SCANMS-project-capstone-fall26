@@ -479,6 +479,8 @@ describe('ChatService (FR-25)', () => {
         displayCode: 'SORA20',
         discountType: 'PERCENTAGE',
         discountValue: { toString: () => '20' },
+        benefitType: 'SHIPPING',
+        fundingSource: 'PLATFORM_FUNDED',
         minimumOrderAmount: { toString: () => '300000' },
         maximumDiscountAmount: null,
         usageLimitTotal: 50,
@@ -504,6 +506,8 @@ describe('ChatService (FR-25)', () => {
         type: 'COUPON_VOUCHER',
         couponCode: 'SORA20',
         discountValue: 20,
+        benefitType: 'SHIPPING',
+        fundingSource: 'PLATFORM_FUNDED',
         minimumOrderAmount: 300000,
         remainingUses: 38,
         storeName: 'Sora Skin',
@@ -513,6 +517,19 @@ describe('ChatService (FR-25)', () => {
           where: expect.objectContaining({ storeId: mockStoreId }),
         }),
       );
+    });
+  });
+
+  describe('unavailable voucher sharing', () => {
+    it.each([
+      null,
+      { usageLimitTotal: 2, usageCount: 2 },
+      { budgetTotal: 10000, budgetUsed: 10000 },
+      { scopeType: 'CAMPAIGN', campaign: { isActive: false } },
+      { liveSession: { status: 'ENDED', inviteStatus: 'ACCEPTED' } },
+    ])('rejects unavailable vouchers before a message can be saved: %p', async overrides => {
+      prisma.coupon.findFirst.mockResolvedValue(overrides === null ? null : { usageLimitTotal: null, usageCount: 0, scopeType: 'STORE_WIDE', ...overrides });
+      await expect(service.normalizeShareCardMessage(mockStoreId, JSON.stringify({ type: 'COUPON_VOUCHER', couponId: '8b8b8b8b-8b8b-4b8b-8b8b-8b8b8b8b8b8b' }))).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

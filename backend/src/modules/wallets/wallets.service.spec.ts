@@ -18,11 +18,14 @@ describe('WalletsService', () => {
       collaboratorId,
       pendingBalance: new Prisma.Decimal(pending),
       availableBalance: new Prisma.Decimal(available),
+      shoppingBalance: new Prisma.Decimal(0),
       version: 1,
     };
     return {
       wallet,
       tx: {
+        financePosting: { create: jest.fn().mockResolvedValue({}) },
+        storeWallet: { findMany: jest.fn().mockResolvedValue([]) },
         financialLedger: {
           create: jest.fn().mockResolvedValue({ id: 'ledger-id' }),
         },
@@ -42,6 +45,18 @@ describe('WalletsService', () => {
       getWalletUpdateInput: () => walletUpdateInput,
     };
   }
+
+  it.each([undefined, 'sora'])('blocks inconsistent balances before debiting with store scope %s', async storeId => {
+    const { tx } = createTransaction('0', '1580000');
+    tx.storeWallet.findMany.mockResolvedValueOnce([{
+      storeId: 'sora', availableBalance: new Prisma.Decimal(504000), pendingBalance: new Prisma.Decimal(744000),
+    }] as never);
+    await expect(new WalletsService(new FinancialLedgerService()).debitAvailableBalanceForWithdrawal(
+      tx as unknown as Prisma.TransactionClient, collaboratorId, new Prisma.Decimal(200000), reference, storeId,
+    )).rejects.toThrow('Số dư tổng và phân bổ gian hàng chưa khớp');
+    expect(tx.wallet.update).not.toHaveBeenCalled();
+    expect(tx.financialLedger.create).not.toHaveBeenCalled();
+  });
 
   it('moves a mature commission from pending to available under a row lock', async () => {
     const service = new WalletsService(new FinancialLedgerService());

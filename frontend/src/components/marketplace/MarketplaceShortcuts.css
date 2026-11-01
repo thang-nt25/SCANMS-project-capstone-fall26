@@ -1,0 +1,16 @@
+@reference "../../index.css";
+.marketplace-shortcuts { @apply [border-bottom:1px_solid_#eae4d7]; @apply [background:#fff]; }
+.marketplace-shortcuts__items { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [max-width:1200px]; @apply [margin:0_auto]; @apply [padding:0_24px]; }
+.marketplace-shortcuts__item { @apply relative; @apply flex; @apply [min-width:0]; @apply [min-height:46px]; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [border:0]; @apply [background:transparent]; @apply [padding:8px_12px]; @apply [color:#7d715e]; @apply [font-size:12px]; @apply [font-weight:550]; @apply [line-height:1.4]; @apply [text-decoration:none]; @apply cursor-pointer; }
+.marketplace-shortcuts__item svg { @apply [flex-shrink:0]; @apply [color:#b88e4f]; @apply [stroke-width:1.7]; }
+.marketplace-shortcuts__item::after { @apply absolute; @apply [right:28%]; @apply [bottom:0]; @apply [left:28%]; @apply [height:2px]; @apply [background:#b88e4f]; @apply [content:'']; @apply [opacity:0]; }
+.marketplace-shortcuts__item:hover { @apply [color:#1a1612]; }
+.marketplace-shortcuts__item[aria-current] { @apply [color:#8c6226]; @apply [font-weight:650]; }
+.marketplace-shortcuts__item[aria-current]::after { @apply [opacity:1]; }
+.marketplace-shortcuts__item:focus-visible { @apply [outline:2px_solid_#b88e4f]; @apply [outline-offset:-4px]; @apply [border-radius:6px]; }
+.marketplace-shortcuts[data-compact="true"] .marketplace-shortcuts__item { @apply [min-height:40px]; }
+@media (max-width: 640px) {
+  .marketplace-shortcuts__items { @apply [padding:0_12px]; }
+  .marketplace-shortcuts__item { @apply [min-height:42px]; @apply [gap:6px]; @apply [padding:8px_4px]; @apply [font-size:11px]; }
+  .marketplace-shortcuts__item svg { @apply [width:15px]; @apply [height:15px]; }
+}

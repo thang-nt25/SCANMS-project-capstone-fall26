@@ -21,6 +21,7 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
+import './StoreReferralLinksPage.css';
 
 export default function StoreReferralLinksPage() {
   const initStartedRef = useRef(false);
@@ -165,21 +166,17 @@ export default function StoreReferralLinksPage() {
   return (
     <div className="promotions-links mx-auto flex w-full min-w-0 max-w-[1520px] flex-col gap-4 pb-8 pt-3 font-sans text-[#1A1612] sm:pt-4">
       {/* Header Giám sát */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-        <div>
-          <h2 className="text-base font-bold text-[#1A1612] m-0">Hiệu suất link tiếp thị đối tác</h2>
-        </div>
-      </div>
 
       {/* Search & Filter Bar */}
-      <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-[0_3px_12px_rgba(35,29,21,0.035)] sm:p-4">
+      <div className="referral-filters rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-[0_3px_12px_rgba(35,29,21,0.035)] sm:p-4">
         <form onSubmit={handleSearch} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_200px_180px_auto] xl:items-center">
           {/* Search Box */}
           <div className="relative w-full min-w-0 md:col-span-2 xl:col-span-1">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
             <input
               type="text"
-              placeholder="Tìm theo mã shortCode, tên sản phẩm hoặc tên KOL..."
+              placeholder="Tìm mã liên kết, sản phẩm hoặc KOL..."
+              aria-label="Tìm liên kết tiếp thị"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-10 pr-4 text-sm text-[#1A1612] outline-none transition placeholder:text-[#7D715E]/65 focus:border-[#C59B58] focus:bg-white focus:ring-2 focus:ring-[#C59B58]/15"
@@ -242,7 +239,8 @@ export default function StoreReferralLinksPage() {
       </div>
 
       {/* Main Table Card */}
-      <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
+      <div className="referral-table-panel min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-sm">
+        <div className="referral-table-heading"><div><h2>Liên kết tiếp thị</h2></div><span>{loading ? 'Đang tải…' : `${links.length} liên kết`}</span></div>
         {loading ? (
           <div className="p-16 text-center text-[#7D715E] flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F]" />
@@ -277,20 +275,19 @@ export default function StoreReferralLinksPage() {
                 <col className="w-[140px]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[10px] font-bold uppercase tracking-[0.08em] text-[#5F5547]">
+                <tr className="border-b border-[#EEDFC6] bg-[#FBF5EB]/50 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#7D715E]">
                   <th className="px-4 py-3.5">
                     <span className="block">KOL tiếp thị</span>
-                    <span className="mt-1 block text-[10px] font-normal normal-case tracking-normal text-[#7D715E]">Hiển thị {links.length} liên kết</span>
                   </th>
                   <th className="px-4 py-3.5">Sản phẩm &amp; chính sách</th>
                   <th className="px-4 py-3.5">Mã link &amp; kênh</th>
                   <th className="whitespace-nowrap px-2 py-3.5 text-center">Nhấp</th>
                   <th className="whitespace-nowrap px-2 py-3.5 text-center">Đơn</th>
                   <th className="whitespace-nowrap px-3 py-3.5">Trạng thái</th>
-                  <th className="sticky right-0 z-20 bg-[#FAF8F5] px-3 py-3.5 text-center shadow-[-1px_0_0_#EAE4D7]">Thao tác</th>
+                  <th className="sticky right-0 z-20 bg-[#FDFBF6] px-3 py-3.5 text-center shadow-[-1px_0_0_#EAE4D7]">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0EAE0] text-xs">
+              <tbody className="divide-y divide-[#EAE4D7]/60 bg-white text-xs">
                 {links.map((link) => {
                   const cleanLabel = formatCleanLabel(link.label);
                   const isCopied = copiedId === link.id;
@@ -303,11 +300,11 @@ export default function StoreReferralLinksPage() {
                   const productImg = getSafeProductImageUrl(link.product?.imageUrl);
 
                   return (
-                    <tr key={link.id} className="transition-colors hover:bg-[#FBF5EB]/45">
+                    <tr key={link.id} className="transition-colors hover:bg-[#FBF5EB]/25">
                       {/* 1. KOL Column */}
                       <td className="px-3 py-3">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-extrabold text-[#8A642C]">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB]/60 text-xs font-semibold text-[#B88E4F]">
                             {kolInitials}
                           </div>
                           <div className="min-w-0">
@@ -342,15 +339,15 @@ export default function StoreReferralLinksPage() {
                             >
                               {link.product?.title || 'Sản phẩm'}
                             </div>
-                            <div className="mt-1 text-sm font-bold text-[#8A642C]">
+                            <div className="mt-1 text-sm font-semibold text-[#1A1612]">
                               {Number(link.product?.price || 0).toLocaleString('vi-VN')} ₫
                             </div>
                             <div className="mt-1">
                               <span
                                 className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
                                   link.commissionType === 'EXCLUSIVE_DEAL'
-                                    ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]'
-                                    : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
+                                    ? 'border-[#EEDFC6] bg-[#FBF5EB]/60 text-[#B88E4F]'
+                                    : 'border-[#EAE4D7] bg-white text-[#7D715E]'
                                 }`}
                               >
                                 {link.commissionType === 'EXCLUSIVE_DEAL' ? (
@@ -370,7 +367,7 @@ export default function StoreReferralLinksPage() {
                       {/* 3. ShortCode & Channel Column */}
                       <td className="px-3 py-3">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <code className="select-all min-w-0 break-all rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 font-mono text-xs font-semibold text-[#1A1612]">
+                          <code className="select-all min-w-0 break-all rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1 font-mono text-xs font-medium text-[#1A1612]">
                             {link.shortCode}
                           </code>
                           <button
@@ -383,7 +380,7 @@ export default function StoreReferralLinksPage() {
                           </button>
                         </div>
                         <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[10px] text-[#7D715E]">
-                          <span className="shrink-0 rounded-md bg-[#F3EFE6] px-1.5 py-0.5 font-bold text-[#5F5547]">{link.channel || 'Đa kênh'}</span>
+                          <span className="shrink-0 rounded-md border border-[#EEDFC6]/60 bg-[#FBF5EB]/50 px-1.5 py-0.5 font-medium text-[#7D715E]">{link.channel || 'Đa kênh'}</span>
                           {cleanLabel && (
                             <>
                               <span className="truncate" title={cleanLabel}>
@@ -396,8 +393,8 @@ export default function StoreReferralLinksPage() {
 
                       {/* 4. Click Metrics */}
                       <td data-label="Lượt nhấp" className="px-1.5 py-3 text-center">
-                        <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1.5 font-bold text-[#1A1612]">
-                          <MousePointerClick className="h-3.5 w-3.5 text-[#8A642C]" />
+                        <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2 py-1.5 font-semibold text-[#1A1612]">
+                          <MousePointerClick className="h-3.5 w-3.5 text-[#B88E4F]" />
                           <span>{link.totalClicks || 0}</span>
                         </div>
                       </td>
@@ -407,8 +404,8 @@ export default function StoreReferralLinksPage() {
                         <div
                           className={`inline-flex min-w-10 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 font-bold ${
                             (link.totalOrders || 0) > 0
-                              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]'
-                              : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
+                              ? 'border-[#EEDFC6] bg-[#FBF5EB]/60 text-[#B88E4F]'
+                              : 'border-[#EAE4D7] bg-white text-[#7D715E]'
                           }`}
                         >
                           <ShoppingBag className="h-3.5 w-3.5" />
@@ -434,12 +431,12 @@ export default function StoreReferralLinksPage() {
                             )}
                           </div>
                         ) : link.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-bold text-[#8A642C] whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB]/50 px-2.5 py-1 text-[11px] font-medium text-[#B88E4F] whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#C59B58]" />
                             <span>Đang hoạt động</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#F3EFE6] px-2.5 py-1 text-[11px] font-bold text-[#7D715E] whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EAE4D7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#7D715E] whitespace-nowrap">
                             <Clock className="w-3 h-3 text-amber-600" />
                             <span>Tạm ngừng</span>
                           </span>
@@ -461,7 +458,7 @@ export default function StoreReferralLinksPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenBlockModal(link)}
-                            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs font-bold text-rose-700 shadow-2xs transition hover:bg-rose-100 whitespace-nowrap cursor-pointer select-none active:scale-95"
+                            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-2 text-xs font-medium text-[#DC2626] transition hover:bg-red-50 whitespace-nowrap cursor-pointer select-none active:scale-95"
                             title="Khóa link này nếu phát hiện KOL vi phạm cam kết hoặc spam tiêu cực"
                           >
                             <ShieldAlert className="w-3.5 h-3.5" />
@@ -482,7 +479,7 @@ export default function StoreReferralLinksPage() {
       {/* Block Confirmation Modal */}
       {isBlockModalOpen && selectedLinkToBlock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 animate-in zoom-in-95 duration-200 text-[#1A1612]">
+          <div className="referral-block-dialog bg-white rounded-3xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-6 animate-in zoom-in-95 duration-200 text-[#1A1612]">
             <div className="flex items-center justify-between mb-4 border-b border-[#EAE4D7] pb-3">
               <h3 className="text-base font-extrabold text-rose-600 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5" />

@@ -1,7 +1,11 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryProductsDto {
+  @IsOptional()
+  @IsIn(['chat-share'])
+  scope?: 'chat-share';
+
   @IsOptional()
   @IsString()
   search?: string;

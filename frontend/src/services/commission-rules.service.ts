@@ -258,9 +258,18 @@ export const commissionRulesService = {
   ): Promise<any> {
     const res: any = await api.get(
       `/stores/${storeId}/commission-rules/kol-progress/${collaboratorId}`,
-      { params: yearMonth ? { yearMonth } : {} },
+      { params: yearMonth ? { yearMonth } : {}, headers: { 'x-skip-cache': '1' } },
     );
-    return res.data || res;
+    const progress = res.data || res;
+    return {
+      ...progress,
+      monthlyRevenue: progress.validRevenue,
+      orderCount: progress.validOrdersCount,
+      highestReachedRule: progress.currentMilestone,
+      totalBonus: progress.estimatedTotalBonus,
+      nextRule: progress.nextMilestone,
+      missingRevenueToNextMilestone: progress.nextMilestone?.missingRevenue,
+    };
   },
 
   async getMyBonusProgress(

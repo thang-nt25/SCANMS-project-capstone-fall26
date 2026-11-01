@@ -1,4 +1,7 @@
 # 🏛️ KẾ HOẠCH TỔNG THỂ TÁI CẤU TRÚC HỆ THỐNG SCANMS
+
+> **Chuẩn áp dụng Main Flow 5 — 31/10/2026:** Escrow 7 ngày lịch từ giao thành công, giữ tiếp nếu có claim/thẩm định; không cộng ngày lễ. FR-09 lấy mốc cao nhất, thưởng cố định hoặc % tổng doanh thu sạch, dùng chính sách đầu tháng và snapshot lịch sử; thay đổi giữa kỳ áp dụng kỳ sau. Chốt sau khi tháng kết thúc, cron 00:10 bù kỳ cũ. Công thức đơn dùng max + Live, trần 25%; Campaign tổng 11–16%, Live 2–3% theo AGENTS.md. Ngưỡng tích lũy 20/50/100 triệu tương ứng Bạc/Vàng/Kim Cương; 52 triệu là Vàng. Khi ví dụ/sơ đồ cũ khác quy tắc này, dùng chuẩn cập nhật tại đầu Blueprint. Xem [kết quả triển khai](MAIN_FLOW_5_FIX_RESULTS_2026-10-31.md) và [đăng ký dịch vụ bên ngoài](FLOW5_EXTERNAL_SERVICES_SETUP.md).
+
 ## HỆ THỐNG QUẢN LÝ ĐỘI NGŨ CỘNG TÁC VIÊN BÁN HÀNG & TIẾP THỊ LIÊN KẾT NỘI BỘ DOANH NGHIỆP
 ### (Enterprise In-House Sales Collaborator & Affiliate Network Management System)
 
@@ -720,7 +723,7 @@ $$\text{Tỷ lệ áp dụng đơn hàng} = \max\Big(R_{\text{Deal VIP}},\; R_{\
 ### 8.2. Cơ Chế Thưởng Mốc Doanh Số Tháng (FR-09) Hoàn Toàn Độc Lập
 * **Không cộng dồn vào POS đơn hàng lẻ:** Nhiều người nhầm lẫn thưởng mốc tháng là cộng thêm $2\%$ vào từng đơn hàng khi bán. Điều này sai nguyên lý kế toán vì tại thời điểm bán một đơn hàng lẻ ngày 5 trong tháng, chưa thể biết cuối tháng KOC đó có đạt mốc 100 triệu hay không!
 * **Quy trình kết chuyển độc lập cuối kỳ:**
-  1. Vào $23:59:59$ ngày cuối cùng của tháng, cronjob hệ thống kích hoạt hàm `settleMonthlyBonus()` trong `commission-rules.service.ts`.
+  1. Sau khi tháng kết thúc theo giờ Việt Nam, cronjob 00:10 hằng ngày kích hoạt quyết toán các kỳ đã đóng và bù kỳ bị bỏ lỡ bằng `settleMonthlyBonus()` trong `commission-rules.service.ts`; không chốt khi tháng còn mở.
   2. Hệ thống quét tổng doanh thu hợp lệ sạch (sau khi trừ các đơn đổi trả) của từng KOC theo từng Store.
   3. Nếu tổng doanh thu vượt mốc cấu hình (ví dụ: đạt trên 100 triệu), hệ thống tính số tiền thưởng tương ứng (ví dụ: $2.000.000\text{₫}$ hoặc $+2\%$ trên tổng doanh thu tháng đó).
   4. Hệ thống khởi tạo một giao dịch cộng tiền độc lập vào Ví KOC với mã giao dịch `MONTHLY_BONUS_REWARD` và lưu vết vào bảng `MonthlyBonusResult`.

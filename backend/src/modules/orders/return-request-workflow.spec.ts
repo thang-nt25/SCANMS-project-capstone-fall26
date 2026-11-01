@@ -1,4 +1,4 @@
-import { ForbiddenException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { OrderStatus, ReturnRequestStatus, UserRole } from '@prisma/client';
 import { OrdersService } from './orders.service';
 import { ReturnDecision } from './dto/respond-return-request.dto';
@@ -88,6 +88,7 @@ describe('Shop return request workflow', () => {
       UserRole.SHOP_MANAGER,
       {
         decision: ReturnDecision.REJECT,
+        rejectionReason: 'EVIDENCE_MISMATCH',
         response: 'Bằng chứng không khớp sản phẩm',
       },
     );
@@ -95,6 +96,9 @@ describe('Shop return request workflow', () => {
       where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
       data: { status: OrderStatus.COMPLETED },
     });
+    expect(tx.returnRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ shopResponse: 'Lý do: Bằng chứng chưa xác nhận lỗi được phản ánh\nGiải thích: Bằng chứng không khớp sản phẩm' }),
+    }));
   });
 
   it('does not accept a repeated decision', async () => {
@@ -102,9 +106,22 @@ describe('Shop return request workflow', () => {
     await expect(
       service.respondReturnRequest(orderId, 'owner-1', UserRole.SHOP_MANAGER, {
         decision: ReturnDecision.REJECT,
+        rejectionReason: 'EVIDENCE_MISMATCH',
         response: 'Bằng chứng không khớp sản phẩm',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.order.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('requires a specific rejection reason and a nonblank explanation before writing', async () => {
+    const { service, prisma, tx } = setup();
+    await expect(service.respondReturnRequest(orderId, 'owner-1', UserRole.SHOP_MANAGER, {
+      decision: ReturnDecision.REJECT, response: 'Bằng chứng không khớp sản phẩm',
+    })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.respondReturnRequest(orderId, 'owner-1', UserRole.SHOP_MANAGER, {
+      decision: ReturnDecision.REJECT, rejectionReason: 'OTHER', response: '          ',
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.returnRequest.updateMany).not.toHaveBeenCalled();
   });
 });

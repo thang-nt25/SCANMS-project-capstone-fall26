@@ -94,8 +94,10 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/customer-reviews', label: 'Đánh giá & khiếu nại', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/affiliate-oversight', label: 'Tiếp thị & Dòng tiền Sàn', icon: Link2, section: 'KIỂM DUYỆT SÀN' },
+      { path: '/admin/finance/payouts', label: 'Quản trị chi trả', icon: Wallet, section: 'TÀI CHÍNH & ĐỐI SOÁT' },
       { path: '/admin/fraud-sentinel', label: 'Giám sát gian lận', icon: ShieldAlert, section: 'AN TOÀN & BẢO MẬT' },
       { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán toàn sàn', icon: ShieldCheck, section: 'AN TOÀN & BẢO MẬT' },
+      ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, section: 'CÔNG CỤ NỘI BỘ' }] : []),
     ],
   },
   SYSTEM_MANAGER: {
@@ -103,6 +105,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Chuyên Viên Vận Hành Sàn',
     items: [
       { path: '/admin/analytics', label: 'Báo cáo Vận hành', icon: TrendingUp, section: 'TỔNG QUAN' },
+      { path: '/admin/finance/payouts', label: 'Quản trị chi trả', icon: Wallet, section: 'TÀI CHÍNH & ĐỐI SOÁT' },
       { path: '/admin/users', label: 'Thẩm định eKYC Đối tác', icon: ShieldCheck, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu', icon: Package, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/pricing', label: 'Gi\u00e1 s\u00e0n & Khuy\u1ebfn m\u00e3i', icon: Tag, section: 'KI\u1ec2M DUY\u1ec6T S\u00c0N' },
@@ -111,6 +114,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/affiliate-oversight', label: 'Giám sát Tiếp thị', icon: Link2, section: 'GIÁM SÁT TIẾP THỊ' },
       { path: '/admin/fraud-sentinel', label: 'Giám sát gian lận', icon: ShieldAlert, section: 'AN NINH & TRA CỨU' },
       { path: '/admin/audit-logs', label: 'Nhật ký hoạt động', icon: ShieldCheck, section: 'AN NINH & TRA CỨU' },
+      ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, section: 'CÔNG CỤ NỘI BỘ' }] : []),
     ],
   },
 };

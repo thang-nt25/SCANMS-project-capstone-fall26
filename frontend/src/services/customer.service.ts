@@ -99,6 +99,10 @@ export interface CustomerReturnRequest {
   returnAddress?: string | null;
   returnInstructions?: string | null;
   shopResponse?: string | null;
+  inspectionNotes?: string | null;
+  receivedAt?: string | null;
+  inspectionCompletedAt?: string | null;
+  dispute?: { id: string; status: 'OPEN' | 'RESOLVED' } | null;
   submittedAt: string;
   updatedAt: string;
 }

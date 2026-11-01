@@ -85,9 +85,22 @@ export class ManualOrderCustomerDto {
   @IsString()
   @MaxLength(100)
   ward?: string;
+
+  @ValidateIf((customer: ManualOrderCustomerDto) => customer.latitude !== undefined || customer.longitude !== undefined)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ValidateIf((customer: ManualOrderCustomerDto) => customer.latitude !== undefined || customer.longitude !== undefined)
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 }
 
 export enum ManualPaymentMethod {
+  MANUAL = 'MANUAL',
   COD = 'COD',
   BANK_TRANSFER = 'BANK_TRANSFER',
   E_WALLET = 'E_WALLET',

@@ -1,3 +1,5 @@
+import { ExecutiveFinanceReport } from '../../components/wallet/FinanceReports';
+import { authService } from '../../services/auth.service';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, Trophy, Sparkles } from 'lucide-react';
@@ -9,7 +11,8 @@ import KolRecommendationPage from '../merchant/KolRecommendationPage';
 
 export default function AdminAnalyticsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'realtime';
+  const isAdmin = authService.getCurrentUser()?.role === 'SYSTEM_ADMIN';
+  const activeTab = searchParams.get('tab') || (isAdmin ? 'finance' : 'realtime');
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => ({ [activeTab]: true }));
 
   useEffect(() => {
@@ -21,6 +24,7 @@ export default function AdminAnalyticsHubPage() {
   };
 
   const tabs: HubTabItem[] = [
+    ...(isAdmin ? [{ id: 'finance', label: 'Tài chính doanh nghiệp', icon: TrendingUp }] : []),
     {
       id: 'realtime',
       label: 'Analytics thời gian thực',
@@ -58,6 +62,7 @@ export default function AdminAnalyticsHubPage() {
       />
 
       <div className="w-full min-h-[500px]">
+        {isAdmin && activeTab === 'finance' && <ExecutiveFinanceReport />}
         {visitedTabs['realtime'] && (
           <div className={activeTab === 'realtime' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <RealtimeAnalyticsPage />

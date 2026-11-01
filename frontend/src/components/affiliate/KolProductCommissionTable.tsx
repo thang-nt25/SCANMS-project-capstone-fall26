@@ -32,23 +32,6 @@ export default function KolProductCommissionTable({ items, loading }: Props) {
 
   return (
     <div className="rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-[#EAE4D7] bg-[#FAF8F5]/60 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
-            <Award className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-[#1A1612] m-0">Hiệu suất hoa hồng theo sản phẩm</h3>
-              <span className="px-2 py-0.5 rounded-full bg-white border border-[#EAE4D7] text-[10px] font-bold text-[#7D715E]">
-                {items.length} sản phẩm
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {items.length === 0 ? (
         <div className="p-8 text-center flex flex-col items-center justify-center">
           <div className="w-12 h-12 rounded-2xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center mb-2.5">

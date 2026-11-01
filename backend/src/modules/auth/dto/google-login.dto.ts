@@ -12,7 +12,7 @@ export class GoogleLoginDto {
 
   @ApiPropertyOptional({
     description:
-      'Vai trò mong muốn khi đăng ký lần đầu qua Google: COLLABORATOR | SHOP_MANAGER',
+      'Trường tương thích client cũ; đăng nhập không cấp quyền. Tài khoản Google mới luôn là CUSTOMER.',
     example: 'COLLABORATOR',
   })
   @IsOptional()
