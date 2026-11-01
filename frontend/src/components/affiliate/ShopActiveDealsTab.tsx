@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  BadgePercent,
   UserCheck,
   FileCheck,
   Percent,
@@ -163,7 +162,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
       if (approve) {
         const terms = voucherTermsById[proposalId] || defaultVipTerms;
         await referralLinksService.approveExclusiveDeal(proposalId, terms);
-        toast.success('Đã duyệt Deal VIP và kích hoạt voucher.');
+        toast.success('Đã chấp thuận Thỏa thuận Độc quyền và kích hoạt link tiếp thị.');
       } else {
         await referralLinksService.rejectExclusiveDeal(proposalId);
         toast.info('Đã từ chối đề xuất Deal.');
@@ -219,7 +218,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
     const url = `${window.location.origin}/r/${deal.referralLink.shortCode}`;
     navigator.clipboard.writeText(url);
     setCopiedId(deal.id);
-    toast.success('Đã sao chép link Deal VIP!');
+    toast.success('Đã sao chép link thỏa thuận độc quyền!');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -266,39 +265,13 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
-      {/* 1. Header Hero Bar (Minimal, Professional, No Wordy Badges or Long Paragraphs) */}
-      <div className="rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 sm:p-5 shadow-xs">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-2xs">
-              <BadgePercent className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="m-0 text-base font-black text-[#1A1612]">
-                Thỏa Thuận Hoa Hồng Độc Quyền
-              </h3>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={fetchAll}
-            className="flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] px-3 py-1.5 text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs shrink-0"
-            title="Làm mới dữ liệu"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Top Priority Alert: PENDING PROPOSALS (If any) */}
+      {/* 1. Top Priority Alert: PENDING PROPOSALS (If any) */}
       {pendingProposals.length > 0 && activeSubTab !== 'PENDING' && (
         <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 shadow-2xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Inbox className="w-4 h-4 text-[#B88E4F]" />
             <span className="text-xs font-bold text-[#1A1612]">
-              Có {pendingProposals.length} đề xuất Deal VIP từ đối tác đang chờ duyệt
+              Có {pendingProposals.length} đề xuất Thỏa thuận Độc quyền từ đối tác đang chờ duyệt
             </span>
           </div>
           <button
@@ -362,50 +335,62 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         </div>
       </div>
 
-      {/* 4. Unified Sub-Tabs Navigation (Sharp Icons, Compact) */}
-      <div className="flex items-center gap-1 border-b border-[#EAE4D7] pb-2.5">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('ACTIVE')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-            activeSubTab === 'ACTIVE'
-              ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-              : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-          }`}
-        >
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>Đang hiệu lực ({activeData.totalActiveDeals})</span>
-        </button>
+      {/* 3. Unified Sub-Tabs Navigation (Sharp Icons, Compact) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAE4D7] pb-2.5">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('ACTIVE')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'ACTIVE'
+                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
+                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Đang hiệu lực ({activeData.totalActiveDeals})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('PENDING')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'PENDING'
+                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
+                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Đề xuất chờ duyệt</span>
+            {pendingProposals.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                {pendingProposals.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('HISTORY')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeSubTab === 'HISTORY'
+                ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
+                : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
+            }`}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            <span>Lịch sử & Đã đóng ({historyProposals.length})</span>
+          </button>
+        </div>
 
         <button
           type="button"
-          onClick={() => setActiveSubTab('PENDING')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-            activeSubTab === 'PENDING'
-              ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-              : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-          }`}
+          onClick={fetchAll}
+          className="flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] px-3 py-1.5 text-xs font-bold text-[#1A1612] transition cursor-pointer shadow-2xs shrink-0"
+          title="Làm mới dữ liệu thỏa thuận"
         >
-          <Clock className="w-3.5 h-3.5" />
-          <span>Đề xuất chờ duyệt</span>
-          {pendingProposals.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
-              {pendingProposals.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('HISTORY')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-            activeSubTab === 'HISTORY'
-              ? 'bg-[#C59B58] text-[#231D15] shadow-2xs'
-              : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
-          }`}
-        >
-          <Archive className="w-3.5 h-3.5" />
-          <span>Lịch sử & Đã đóng ({historyProposals.length})</span>
+          <RotateCcw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+          <span>Làm mới</span>
         </button>
       </div>
 
@@ -547,8 +532,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {deals.map((deal) => {
                         const p = deal.progress;
-                        const target = deal.targetOrders || p.targetOrders || 0;
-                        const completed = p.completedOrders || 0;
+                        const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
+                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
+                        const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
                         const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
 
                         return (
@@ -590,7 +576,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <span className="text-[#7D715E]">Tiến độ cam kết:</span>
                               {target > 0 ? (
                                 <span className="font-bold text-[#1A1612]">
-                                  {completed}/{target} đơn ({percent}%)
+                                  {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
@@ -665,8 +651,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                   <tbody className="divide-y divide-[#EAE4D7]">
                     {filteredActiveDeals.map((deal) => {
                       const p = deal.progress;
-                      const target = deal.targetOrders || p.targetOrders || 0;
-                      const completed = p.completedOrders || 0;
+                      const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
+                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
+                      const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
                       const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
 
                       return (
@@ -734,7 +721,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                           <td className="p-3">
                             {target > 0 ? (
                               <span className="font-bold text-[#1A1612]">
-                                {completed}/{target} đơn ({percent}%)
+                                {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">

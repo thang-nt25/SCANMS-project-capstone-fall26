@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, ShieldCheck, Clock } from 'lucide-react';
+import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, ShieldCheck, Clock, Sparkles, ShoppingBag } from 'lucide-react';
 import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
@@ -292,9 +292,84 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               )}
             </div>
             <p className="mt-auto pt-3 border-t border-[#EAE4D7] text-[11px] text-[#7D715E]">
-              Hệ thống áp dụng cơ chế Ân hạn 30 ngày và Soft Landing chuyển tiếp bậc, bảo vệ quyền lợi đối tác chiến lược.
+              Hệ thống áp dụng cơ chế ân hạn 30 ngày và chuyển tiếp bậc từng bước, bảo vệ quyền lợi đối tác kinh doanh.
             </p>
           </section>
+
+          {/* Recommended Products for Fast GMV Maintenance */}
+          {tierStatus?.recommendedProducts && tierStatus.recommendedProducts.length > 0 && (
+            <section className="col-span-full p-4 sm:p-5 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB]" aria-labelledby="tier-recommended-title">
+              <header className="flex items-center justify-between flex-wrap gap-3 mb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid place-items-center w-8 h-8 rounded-lg bg-white border border-[#EEDFC6] text-[#B88E4F]">
+                    <Sparkles className="w-4 h-4 text-[#B88E4F]" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 id="tier-recommended-title" className="text-sm font-bold text-[#1A1612]">
+                      Sản phẩm gợi ý đẩy số nhanh để bảo toàn &amp; thăng hạng
+                    </h2>
+                    <p className="text-[11px] text-[#7D715E]">
+                      Các sản phẩm có tỷ lệ hoa hồng cao và dễ ra đơn từ các nhãn hàng đối tác.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to="/collaborator/marketing?tab=links"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#8C6226] hover:text-[#1A1612] transition-colors"
+                >
+                  Tất cả sản phẩm <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </Link>
+              </header>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {tierStatus.recommendedProducts.map((prod) => (
+                  <article
+                    key={prod.id}
+                    className="p-3 border border-[#EAE4D7] rounded-xl bg-white flex flex-col justify-between hover:border-[#C59B58] transition-all shadow-2xs group"
+                  >
+                    <div>
+                      <div className="relative aspect-video w-full rounded-lg bg-[#FAF8F5] overflow-hidden mb-2.5 border border-[#EAE4D7]">
+                        {prod.imageUrl ? (
+                          <img
+                            src={prod.imageUrl}
+                            alt={prod.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center text-[#B88E4F]">
+                            <ShoppingBag className="w-6 h-6" />
+                          </div>
+                        )}
+                        <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-[#C59B58] text-white shadow-xs">
+                          {prod.customCommissionRate || 10}% thù lao
+                        </span>
+                      </div>
+
+                      <div className="text-[10px] font-semibold text-[#B88E4F] uppercase tracking-wider line-clamp-1">
+                        {prod.store?.name || 'Nhãn hàng đối tác'}
+                      </div>
+                      <h3 className="text-xs font-bold text-[#1A1612] line-clamp-2 mt-0.5" title={prod.title}>
+                        {prod.title}
+                      </h3>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
+                      <strong className="text-xs sm:text-sm font-extrabold text-[#1A1612] tabular-nums">
+                        {currency(Number(prod.price || 0))}
+                      </strong>
+                      <Link
+                        to={`/collaborator/marketing?tab=links&storeId=${prod.store?.id || ""}&productId=${prod.id}&create=1`}
+                        className="px-2.5 py-1 rounded-lg bg-[#FBF5EB] hover:bg-[#C59B58] text-[#8C6226] hover:text-white border border-[#EEDFC6] text-[11px] font-bold transition-all shadow-2xs shrink-0"
+                      >
+                        Lấy link
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Featured Creators */}
           <section className="col-span-full p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-featured-title">

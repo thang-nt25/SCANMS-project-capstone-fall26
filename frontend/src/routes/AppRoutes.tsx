@@ -1,3 +1,5 @@
+const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage'));
+const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
 
@@ -55,6 +57,7 @@ const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPa
 
 // Consolidated Hub Pages (Tối ưu trải nghiệm gộp Menu)
 const ShopCollaborationPage = lazy(() => import('../pages/collaborator/ShopCollaborationPage'));
+const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingToolkitPage'));
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
@@ -193,6 +196,7 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="shop" />}>
             <Route element={<RouteContent />}>
               <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
+              <Route path="merchant/pricing" element={<ProductPricingPage />} />
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
@@ -257,10 +261,10 @@ function AppRoutes() {
               <Route path="kol/referral-links" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
-              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
+              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
-              <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
+              <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />
@@ -296,6 +300,8 @@ function AppRoutes() {
               <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
               <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
               <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
+              <Route path="admin/pricing" element={<ProductPricingPage reviewer />} />
+              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
               <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />

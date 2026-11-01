@@ -16,6 +16,7 @@ import {
 } from './dto/campaign.dto';
 import { CampaignParticipantStatus } from '@prisma/client';
 import { ChatGateway } from '../chat/chat.gateway';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class CampaignsService {
@@ -28,11 +29,22 @@ export class CampaignsService {
     private readonly chatGateway?: ChatGateway,
   ) {}
 
-  private assertBonusPolicy(campaign: { bonusCommissionRate: unknown; bonusBudgetTotal: unknown }) {
+  private assertBonusPolicy(campaign: {
+    bonusCommissionRate: unknown;
+    bonusBudgetTotal: unknown;
+  }) {
     const rate = Number(campaign.bonusCommissionRate);
     const budget = Number(campaign.bonusBudgetTotal);
-    if (!Number.isFinite(rate) || rate < 1 || rate > 2 || !Number.isFinite(budget) || budget <= 0) {
-      throw new BadRequestException('Chiến dịch cần thưởng từ 1% đến 2% và ngân sách trần lớn hơn 0. Hãy tạo lại chiến dịch cũ chưa đúng chính sách.');
+    if (
+      !Number.isFinite(rate) ||
+      rate < 2 ||
+      rate > 4 ||
+      !Number.isFinite(budget) ||
+      budget <= 0
+    ) {
+      throw new BadRequestException(
+        'Chiến dịch cần thưởng từ 2% đến 4% và ngân sách trần lớn hơn 0. Hãy tạo lại chiến dịch cũ chưa đúng chính sách.',
+      );
     }
   }
 
@@ -40,7 +52,7 @@ export class CampaignsService {
   async createCampaign(userId: string, dto: CreateCampaignDto) {
     this.assertBonusPolicy(dto);
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: userId, isDeleted: false },
+      where: managedStoreWhere(userId),
     });
     if (!store) {
       throw new ForbiddenException('Bạn không có quyền quản lý cửa hàng nào.');
@@ -99,7 +111,7 @@ export class CampaignsService {
   // ─── Shop: Lấy danh sách chiến dịch của cửa hàng ─────────────────────
   async getShopCampaigns(userId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: userId, isDeleted: false },
+      where: managedStoreWhere(userId),
     });
     if (!store) {
       throw new ForbiddenException('Bạn không có quyền quản lý cửa hàng nào.');
@@ -156,7 +168,7 @@ export class CampaignsService {
   ) {
     // 1. Kiểm tra campaign thuộc về shop này
     const campaign = await this.prisma.campaign.findFirst({
-      where: { id: campaignId, store: { ownerId: userId, isDeleted: false } },
+      where: { id: campaignId, store: managedStoreWhere(userId) },
       include: {
         store: {
           select: {
@@ -310,7 +322,12 @@ export class CampaignsService {
       throw new NotFoundException('Cuộc hội thoại không tồn tại.');
     }
 
-    if (conv.store.ownerId !== userId) {
+    if (
+      !(await this.prisma.store.findFirst({
+        where: { ...managedStoreWhere(userId), id: conv.storeId },
+        select: { id: true },
+      }))
+    ) {
       throw new ForbiddenException(
         'Bạn không phải chủ sở hữu của cửa hàng trong cuộc hội thoại này.',
       );
@@ -455,13 +472,29 @@ export class CampaignsService {
   async getInvitationState(userId: string, participantId: string) {
     const invitation = await this.prisma.campaignParticipant.findUnique({
       where: { id: participantId },
-      include: { campaign: { include: { store: { select: { ownerId: true } } } } },
+      include: {
+        campaign: { include: { store: { select: { ownerId: true } } } },
+      },
     });
     if (!invitation) throw new NotFoundException('Không tìm thấy lời mời.');
-    if (invitation.collaboratorId !== userId && invitation.campaign.store.ownerId !== userId) {
+    if (
+      invitation.collaboratorId !== userId &&
+      !(await this.prisma.store.findFirst({
+        where: {
+          ...managedStoreWhere(userId),
+          id: invitation.campaign.storeId,
+        },
+        select: { id: true },
+      }))
+    ) {
       throw new ForbiddenException('Bạn không có quyền xem lời mời này.');
     }
-    return { id: invitation.id, status: invitation.status, isActive: invitation.campaign.isActive, endDate: invitation.campaign.endDate };
+    return {
+      id: invitation.id,
+      status: invitation.status,
+      isActive: invitation.campaign.isActive,
+      endDate: invitation.campaign.endDate,
+    };
   }
 
   // ─── KOL: Chấp nhận lời mời ──────────────────────────────────────────
@@ -500,7 +533,10 @@ export class CampaignsService {
     }
 
     this.assertBonusPolicy(participant.campaign);
-    if (!participant.campaign.isActive || participant.campaign.endDate <= new Date()) {
+    if (
+      !participant.campaign.isActive ||
+      participant.campaign.endDate <= new Date()
+    ) {
       throw new BadRequestException('Chiến dịch đã tạm dừng hoặc kết thúc.');
     }
     const updated = await this.prisma.campaignParticipant.update({
@@ -775,6 +811,125 @@ export class CampaignsService {
   }
 
   // ─── Helper: Ghi nhật ký kiểm toán hệ thống (AuditLog) ───────────────
+
+  // ─── KOL: Khám phá các chiến dịch mở toàn sàn ────────────────────────
+  async exploreCampaigns(userId: string) {
+    const now = new Date();
+    const campaigns = await this.prisma.campaign.findMany({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gt: now },
+        store: { isDeleted: false },
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+            categoryName: true,
+            defaultCommissionRate: true,
+          },
+        },
+        campaignProducts: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+        participants: {
+          where: { collaboratorId: userId },
+          select: { id: true, status: true, joinedAt: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return campaigns.map((c) => {
+      const budgetTotal = Number(c.bonusBudgetTotal || 0);
+      const budgetUsed = Number(c.bonusBudgetUsed || 0);
+      const budgetRemaining = Math.max(0, budgetTotal - budgetUsed);
+      const budgetProgressPct = budgetTotal > 0 ? Math.min(100, Math.round((budgetUsed / budgetTotal) * 100)) : 0;
+      const isBudgetExhausted = budgetTotal > 0 && budgetUsed >= budgetTotal;
+      const participant = c.participants[0] || null;
+      const isJoined = participant?.status === CampaignParticipantStatus.ACCEPTED;
+      const isInvited = participant?.status === CampaignParticipantStatus.INVITED;
+
+      return {
+        ...c,
+        bonusCommissionRate: Number(c.bonusCommissionRate),
+        bonusBudgetTotal: budgetTotal,
+        bonusBudgetUsed: budgetUsed,
+        budgetRemaining,
+        budgetProgressPct,
+        isBudgetExhausted,
+        isJoined,
+        isInvited,
+        participantId: participant?.id || null,
+      };
+    });
+  }
+
+  // ─── KOL: 1-Click Tham gia chiến dịch mở ─────────────────────────────
+  async joinCampaign(userId: string, campaignId: string) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: { store: true },
+    });
+
+    if (!campaign || !campaign.isActive) {
+      throw new NotFoundException('Chiến dịch không tồn tại hoặc đã ngừng hoạt động.');
+    }
+
+    const now = new Date();
+    if (campaign.endDate && new Date(campaign.endDate) <= now) {
+      throw new BadRequestException('Chiến dịch này đã hết thời hạn áp dụng.');
+    }
+
+    const budgetTotal = Number(campaign.bonusBudgetTotal || 0);
+    const budgetUsed = Number(campaign.bonusBudgetUsed || 0);
+    if (budgetTotal > 0 && budgetUsed >= budgetTotal) {
+      throw new BadRequestException('Ngân sách thưởng của chiến dịch đã được giải ngân hết.');
+    }
+
+    const participant = await this.prisma.campaignParticipant.upsert({
+      where: {
+        campaignId_collaboratorId: {
+          campaignId,
+          collaboratorId: userId,
+        },
+      },
+      create: {
+        campaignId,
+        collaboratorId: userId,
+        status: CampaignParticipantStatus.ACCEPTED,
+        joinedAt: new Date(),
+      },
+      update: {
+        status: CampaignParticipantStatus.ACCEPTED,
+        joinedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      participantId: participant.id,
+      campaignId: campaign.id,
+      storeId: campaign.storeId,
+      bonusCommissionRate: Number(campaign.bonusCommissionRate),
+      message: `Đã tham gia chiến dịch "${campaign.name}" thành công! Bạn có thể tạo link/QR tiếp thị ngay.`,
+    };
+  }
+
   private async _createAuditLog(userId: string, action: string, details: any) {
     try {
       await this.prisma.auditLog.create({

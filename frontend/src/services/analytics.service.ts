@@ -36,6 +36,27 @@ export interface DashboardOverviewResponse {
 
     averageOrderValue: number;
     activeReferralLinks: number;
+    activeCollaboratorsCount?: number;
+  };
+  storesBreakdown?: Array<{
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    category: string | null;
+    managerName: string | null;
+    managerEmail: string | null;
+    revenue: number;
+    orders: number;
+    growth: string;
+    status: string;
+  }>;
+  operationsSummary?: {
+    activeStoresCount: number;
+    activeCollaboratorsCount: number;
+    pendingOrdersCount: number;
+    pendingPayoutsCount: number;
+    pendingDisputesCount: number;
+    unassignedStoresCount: number;
   };
 }
 
@@ -179,6 +200,8 @@ export interface LiveSessionSummaryItem {
 
 export interface ActiveDealPartnerItem {
   id: string;
+  targetRevenue?: number | null;
+  scopeType?: string;
   collaboratorId: string;
   collaboratorName: string;
   collaboratorEmail?: string;
@@ -204,6 +227,7 @@ export interface ActiveDealPartnerItem {
     completedOrders: number;
     pendingOrders: number;
     validRevenue: number;
+    targetRevenue?: number;
     targetOrders: number;
     status: string;
     percent?: number;
@@ -298,6 +322,7 @@ export const analyticsService = {
     page?: number;
     limit?: number;
     status?: string;
+    period?: '7d' | '30d' | 'month' | 'all';
   }, fresh = false) => {
     const res = await api.get<{ data?: any } | any>(
       '/dashboard/shop/kol-orders',

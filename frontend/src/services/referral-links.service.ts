@@ -91,6 +91,8 @@ export interface CreateReferralLinkPayload {
 }
 
 export interface ExclusiveDealProposal {
+  scopeType?: 'SINGLE_PRODUCT' | 'SELECTED_PRODUCTS' | 'STORE_WIDE';
+  targetRevenue?: number | string | null;
   targetOrders?: number | null;
   commitmentDays?: number | null;
   closedAt?: string | null;
@@ -105,7 +107,7 @@ export interface ExclusiveDealProposal {
   publicCommissionRate?: number | null;
   isCurrentDeal?: boolean;
   salesCommitment: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'PENDING_ADMIN_APPROVAL' | 'APPROVED' | 'REJECTED';
   shopResponse?: string | null;
   shortUrl?: string | null;
   vipVoucherCode?: string | null;
@@ -155,10 +157,25 @@ export const referralLinksService = {
     productId: string;
     proposedCommissionRate: number;
     salesCommitment: string;
-    targetOrders: number;
+    targetOrders?: number;
+    targetRevenue: number;
+    scopeType?: 'SINGLE_PRODUCT' | 'SELECTED_PRODUCTS' | 'STORE_WIDE';
+    productIds?: string[];
     commitmentDays: number;
   }): Promise<ExclusiveDealProposal> {
     const res: any = await api.post('/affiliate-deals/proposals', payload);
+    return res?.data?.data || res?.data || res;
+  },
+
+  async createShopDealOffer(payload: {
+    collaboratorId: string;
+    productId: string;
+    proposedCommissionRate: number;
+    salesCommitment: string;
+    targetOrders: number;
+    commitmentDays: number;
+  }): Promise<ExclusiveDealProposal> {
+    const res: any = await api.post('/affiliate-deals/shop-offers', payload);
     return res?.data?.data || res?.data || res;
   },
 
@@ -311,7 +328,12 @@ export const referralLinksService = {
 };
 
 export interface DealKpiProgress {
-  state: 'PENDING' | 'ACTIVE' | 'SETTLING' | 'ACHIEVED' | 'REVIEW_REQUIRED' | 'CLOSED' | 'LEGACY' | 'REJECTED';
+  targetRevenue?: number;
+  validRevenue?: number;
+  pendingRevenue?: number;
+  missingRevenue?: number;
+  kpiType?: 'REVENUE';
+  state: 'PENDING' | 'PENDING_ADMIN_APPROVAL' | 'ACTIVE' | 'SETTLING' | 'ACHIEVED' | 'REVIEW_REQUIRED' | 'CLOSED' | 'LEGACY' | 'REJECTED';
   targetOrders: number | null;
   completedOrders: number;
   pendingOrders: number;
@@ -322,6 +344,13 @@ export interface DealKpiProgress {
   settlementEndsAt: string | null;
   serverTime: string;
   canTerminate: boolean;
+  validSales?: number;
+  baseRate?: number;
+  approvedRate?: number;
+  rebateBonusRate?: number;
+  baseCommissionEarned?: number;
+  vipRebateEscrow?: number;
+  rebateStatus?: 'ESCROW_LOCKED' | 'UNLOCKED' | 'FORFEITED' | 'PENDING';
 }
 
 export default referralLinksService;

@@ -12,7 +12,7 @@ const context: SeedContext = {
 };
 
 describe('Tuan checkout contracts in seed v3', () => {
-  it('uses historical additive policy, product-scoped VIP and micro Live bonus', () => {
+  it('uses best-benefit policy, product-scoped VIP and micro Live bonus', () => {
     const data = buildDataset(context);
     const order = data.orders.find(
       (row) => row.externalOrderSn === 'SEED-DH-03-1',
@@ -50,7 +50,7 @@ describe('Tuan checkout contracts in seed v3', () => {
       at: new Date(data.liveSessions[2].startsAt),
     };
     expect(seedCommissionBreakdown(data, input)).toMatchObject({
-      deal: 2,
+      deal: 12,
       live: 2,
     });
     expect(
@@ -70,39 +70,36 @@ describe('Tuan checkout contracts in seed v3', () => {
     ).toMatchObject({ deal: 0, campaign: 0, live: 0 });
   });
 
-  it('stores goods and freight vouchers separately without reducing commission by freight', () => {
+  it('seeds only creator coupons and calculates remuneration on original goods value, before freight', () => {
     const data = buildDataset(context);
-    expect(data.coupons).toHaveLength(37);
+    expect(data.coupons).toHaveLength(21);
+    expect(data.stackedRedemptions).toHaveLength(0);
+    expect(data.coupons.filter((row) => row.benefitType !== 'SHIPPING')).toHaveLength(20);
+    expect(data.coupons.find((row) => row.codeNormalized === 'SCANMSFREESHIP')).toMatchObject({
+      benefitType: 'SHIPPING', fundingSource: 'PLATFORM_FUNDED', discountValue: 100,
+    });
     expect(data.savedCoupons).toHaveLength(30);
     const order = data.orders.find(
       (row) => row.externalOrderSn === 'SEED-DH-02-2',
     )!;
-    const vouchers = data.stackedRedemptions.filter(
-      (row) => row.orderId === order.id,
-    );
-    expect(vouchers.map((row) => row.benefitType)).toEqual([
-      'GOODS',
-      'SHIPPING',
-    ]);
     const item = data.orderItems.find((row) => row.orderId === order.id)!;
     const netGoods =
       amount(order.subtotalAmount) - amount(order.couponDiscountAmount);
     expect(amount(item.calculatedCommissionAmount)).toBe(
-      commissionAmount(netGoods, amount(item.appliedCommissionRate)),
+      commissionAmount(amount(item.unitPrice) * item.quantity, amount(item.appliedCommissionRate)),
     );
-    expect(
-      amount(order.discountAmount) - amount(order.couponDiscountAmount),
-    ).toBe(15_000);
+    expect(amount(order.discountAmount)).toBe(amount(order.couponDiscountAmount));
     expect(amount(order.finalAmount)).toBe(
-      netGoods + amount(order.shippingFee) - 15_000,
+      netGoods + amount(order.shippingFee),
     );
-    expect(
-      vouchers.every(
-        (row) =>
-          amount(row.shopFundedAmount) === 0 &&
-          amount(row.platformFundedAmount) === amount(row.discountAmount),
-      ),
-    ).toBe(true);
+    const flow4 = data.orders.find((row) => row.externalOrderSn === 'SEED-DH-04-2')!;
+    const flow4Item = data.orderItems.find((row) => row.orderId === flow4.id)!;
+    expect(flow4.attributedCollaboratorId).toBe(seedId('creator:0'));
+    expect(flow4.couponCodeSnapshot).toBe('THAONHI16');
+    expect(amount(flow4.subtotalAmount)).toBe(450_000);
+    expect(amount(flow4.couponDiscountAmount)).toBe(22_500);
+    expect(amount(flow4Item.appliedCommissionRate)).toBe(16);
+    expect(amount(flow4Item.calculatedCommissionAmount)).toBe(72_000);
   });
 
   it('keeps synthetic freight distinct from actual zero-cost sandbox evidence', () => {
@@ -140,7 +137,7 @@ describe('Tuan checkout contracts in seed v3', () => {
     });
     expect(
       evidence.stackedRedemptions.filter((row) => row.orderId === zero.id),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   it('maps all sample addresses and never claims unknown sample freight was paid or free', () => {
@@ -183,9 +180,9 @@ describe('Tuan checkout contracts in seed v3', () => {
       },
     ],
     [
-      'cross-Shop voucher',
+      'cross-Shop creator coupon',
       (data: ReturnType<typeof buildDataset>) => {
-        data.stackedRedemptions[0].couponId = seedId('platform-GOODS:14');
+        data.redemptions[0].couponId = seedId('kol-coupon:1');
       },
     ],
   ])('rejects %s before database writes', (_name, mutate) => {

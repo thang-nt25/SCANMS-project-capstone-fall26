@@ -9,6 +9,8 @@ import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { Prisma, UserRole } from '@prisma/client';
+import { publicBusinessProfile } from './public-store-profile';
+import { publicChatPerformance, shopResponseQuery, ShopResponseRow } from './shop-response.query';
 
 export const PROFESSIONAL_SHOP_DESCRIPTIONS: Record<string, string> = {
   'sora-skin':
@@ -69,7 +71,7 @@ export class StoresService {
   ) {}
 
   async getPublicStoreById(storeIdentifier: string) {
-    const cacheKey = `stores:public:id:${storeIdentifier}`;
+    const cacheKey = `stores:public:id:v2:${storeIdentifier}`;
     const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
     if (cached) return cached;
 
@@ -81,7 +83,7 @@ export class StoresService {
         isActive: true,
         isVerified: true,
         onboardingStatus: 'VERIFIED',
-        owner: { isActive: true },
+        owner: { isActive: true, isDeleted: false },
       },
       select: {
         id: true,
@@ -92,6 +94,8 @@ export class StoresService {
         isActive: true,
         isVerified: true,
         createdAt: true,
+        onboardingData: true,
+        returnWarehouse: true,
         policyReturn: true,
         policyWarranty: true,
         policyShipping: true,
@@ -130,15 +134,19 @@ export class StoresService {
       _count: { rating: true },
     });
     const reviewCount = reviewsAggregate._count.rating || 0;
-    const rating = reviewCount
-      ? Math.round((reviewsAggregate._avg.rating ?? 4.9) * 10) / 10
-      : 4.9;
+    const rating = reviewCount && reviewsAggregate._avg.rating != null
+      ? Math.round(reviewsAggregate._avg.rating * 10) / 10
+      : null;
+    const responseRows = await this.prisma.$queryRaw<ShopResponseRow[]>(shopResponseQuery(store.id));
+    const { onboardingData, returnWarehouse, _count, ...publicStore } = store;
 
     const result = {
-      ...store,
+      ...publicStore,
+      ...publicBusinessProfile(onboardingData, returnWarehouse),
+      chatPerformance: publicChatPerformance(responseRows[0]),
       description: resolveStoreDescription(store),
-      productCount: store._count.products,
-      followerCount: store._count.follows,
+      productCount: _count.products,
+      followerCount: _count.follows,
       rating,
       reviewCount,
       categories: categories.map((item) => item.categoryName).filter(Boolean),
@@ -169,6 +177,8 @@ export class StoresService {
     } else {
       await this.prisma.storeFollow.deleteMany({ where: { storeId: store.id, userId } });
     }
+    await this.cache?.del?.(`stores:public:id:v2:${store.id}`);
+    if (store.slug) await this.cache?.del?.(`stores:public:id:v2:${store.slug}`);
     return { following };
   }
 
@@ -273,6 +283,9 @@ export class StoresService {
     }
 
     const ownerProfileUpdates = {
+      ...(dto.companyName !== undefined && {
+        companyName: dto.companyName?.trim() || null,
+      }),
       ...(dto.representativeName !== undefined && {
         representativeName: dto.representativeName.trim(),
       }),
@@ -361,10 +374,10 @@ export class StoresService {
 
     await this.cache?.del?.('stores:marketplace');
     await this.cache?.del?.('stores:sponsored_placements');
-    await this.cache?.del?.(`stores:public:id:${store.id}`);
+    await this.cache?.del?.(`stores:public:id:v2:${store.id}`);
     if (store.slug) {
       await this.cache?.del?.(`stores:public:slug:${store.slug}`);
-      await this.cache?.del?.(`stores:public:id:${store.slug}`);
+      await this.cache?.del?.(`stores:public:id:v2:${store.slug}`);
     }
     if (updated.slug && updated.slug !== store.slug) {
       await this.cache?.del?.(`stores:public:slug:${updated.slug}`);
@@ -670,9 +683,9 @@ export class StoresService {
     return result;
   }
 
-  async getAllStoresAdmin() {
+  async getAllStoresAdmin(includeDeleted = false) {
     return this.prisma.store.findMany({
-      where: { isDeleted: false },
+      where: includeDeleted ? {} : { isDeleted: false },
       select: {
         id: true,
         name: true,
@@ -684,6 +697,8 @@ export class StoresService {
         ownerId: true,
         isVerified: true,
         isActive: true,
+        isDeleted: true,
+        deletedAt: true,
         defaultCommissionRate: true,
         createdAt: true,
         owner: {
@@ -743,7 +758,14 @@ export class StoresService {
       contactName: dto.contactName?.trim() || 'Bộ phận kho vận',
       contactPhone: dto.contactPhone?.trim() || '0901234567',
       address: dto.warehouseAddress?.trim() || 'TP. Hồ Chí Minh',
-      ghnDistrictId: dto.ghnDistrictId || 1442,
+      provinceCode: (dto as any).provinceCode ? String((dto as any).provinceCode) : '',
+      provinceName: (dto as any).provinceName?.trim() || '',
+      districtCode: (dto as any).districtCode ? String((dto as any).districtCode) : '',
+      districtName: (dto as any).districtName?.trim() || '',
+      wardCode: (dto as any).wardCode ? String((dto as any).wardCode) : '',
+      wardName: (dto as any).wardName?.trim() || '',
+      detailAddress: (dto as any).detailAddress?.trim() || '',
+      ghnDistrictId: dto.ghnDistrictId ? Number(dto.ghnDistrictId) : 1442,
       ghnWardCode: dto.ghnWardCode?.trim() || '20109',
     };
 
@@ -788,5 +810,110 @@ export class StoresService {
     }
 
     return newStore;
+  }
+
+  async toggleStoreStatus(storeId: string, isActive?: boolean) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId, isDeleted: false },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const nextStatus = typeof isActive === 'boolean' ? isActive : !store.isActive;
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isActive: nextStatus },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+    });
+    return updated;
+  }
+
+  async updateStoreByAdmin(storeId: string, dto: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const rawName = dto.name ? dto.name.trim() : store.name;
+    const currentWarehouse = (store.returnWarehouse as any) || {};
+    const updatedWarehouse = {
+      warehouseName: dto.warehouseName?.trim() || currentWarehouse.warehouseName || `Kho ${rawName}`,
+      contactName: dto.contactName?.trim() || currentWarehouse.contactName || 'Bộ phận kho vận',
+      contactPhone: dto.contactPhone?.trim() || currentWarehouse.contactPhone || '0901234567',
+      address: dto.warehouseAddress?.trim() || currentWarehouse.address || 'TP. Hồ Chí Minh',
+      provinceCode: dto.provinceCode !== undefined ? String(dto.provinceCode) : (currentWarehouse.provinceCode || ''),
+      provinceName: dto.provinceName?.trim() || currentWarehouse.provinceName || '',
+      districtCode: dto.districtCode !== undefined ? String(dto.districtCode) : (currentWarehouse.districtCode || ''),
+      districtName: dto.districtName?.trim() || currentWarehouse.districtName || '',
+      wardCode: dto.wardCode !== undefined ? String(dto.wardCode) : (currentWarehouse.wardCode || ''),
+      wardName: dto.wardName?.trim() || currentWarehouse.wardName || '',
+      detailAddress: dto.detailAddress?.trim() || currentWarehouse.detailAddress || '',
+      ghnDistrictId: dto.ghnDistrictId !== undefined ? Number(dto.ghnDistrictId) : (currentWarehouse.ghnDistrictId || 1442),
+      ghnWardCode: dto.ghnWardCode ? String(dto.ghnWardCode).trim() : (currentWarehouse.ghnWardCode || '20109'),
+    };
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        name: rawName,
+        categoryName: dto.categoryName ? dto.categoryName.trim() : store.categoryName,
+        description: dto.description !== undefined ? dto.description.trim() : store.description,
+        logoUrl: dto.logoUrl !== undefined ? dto.logoUrl.trim() : store.logoUrl,
+        returnWarehouse: updatedWarehouse,
+        ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
+      },
+      include: {
+        owner: { select: { id: true, fullName: true, email: true } },
+        _count: { select: { products: { where: { isDeleted: false } } } },
+      },
+    });
+
+    if (dto.ownerId && dto.ownerId !== store.ownerId) {
+      await this.prisma.user.update({
+        where: { id: dto.ownerId },
+        data: { role: UserRole.SHOP_MANAGER, storeId: store.id },
+      });
+    }
+
+    return updated;
+  }
+
+  async deleteStoreByAdmin(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId, isDeleted: false },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isDeleted: true, deletedAt: new Date(), isActive: false },
+    });
+    return { success: true, message: 'Đã lưu trữ cửa hàng thành công' };
+  }
+  async restoreStoreByAdmin(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+    if (!store) {
+      throw new NotFoundException('Không tìm thấy cửa hàng');
+    }
+    const restored = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { isDeleted: false, deletedAt: null, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        isDeleted: true,
+        deletedAt: true,
+      },
+    });
+    return restored;
   }
 }

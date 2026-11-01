@@ -1,3 +1,5 @@
+// Pricing transactions have separate PostgreSQL integration coverage.
+jest.mock('../pricing/pricing-policy', () => ({ lockPricingProducts: jest.fn(), reservePromotionBudget: jest.fn(), releasePromotionBudget: jest.fn() }));
 import { OrdersService } from './orders.service';
 import { allocateDiscount, liveVoucherActive, priceVoucherLines } from '../coupons/voucher-pricing';
 
@@ -6,6 +8,7 @@ describe('Word section 6 checkout margin protection', () => {
     const coupons: Record<string, any> = {
       shop: { id: 'shop', codeNormalized: 'KOL50', storeId: 'store', status: 'ACTIVE', benefitType: 'GOODS',
         fundingSource: 'SHOP_FUNDED', scopeType: 'PRODUCTS', couponProducts: [{ productId: 'a' }], couponCategories: [],
+        collaborator: { role: 'COLLABORATOR' },
         discountType: 'FIXED_AMOUNT', discountValue: 50000, minimumOrderAmount: null, maximumDiscountAmount: null,
         usageLimitTotal: 20, usageCount: 0, usageLimitPerCustomer: 1, budgetTotal: 1000000, budgetUsed: 0, shopFundingRate: 100 },
       platform: { id: 'platform', codeNormalized: 'SAN20', displayCode: 'SAN20', storeId: 'store', status: 'ACTIVE', benefitType: 'GOODS',
@@ -19,6 +22,7 @@ describe('Word section 6 checkout margin protection', () => {
     const tx: any = {
       $queryRaw: jest.fn().mockResolvedValue([]), $executeRaw: jest.fn().mockResolvedValue(1),
       store: { findUnique: jest.fn().mockResolvedValue(store) },
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneNumber: '0911111111' }) },
       coupon: { findUnique: jest.fn(async ({ where }: any) => Object.values(coupons).find(c => where.id ? c.id === where.id : c.codeNormalized === where.codeNormalized)), update: jest.fn() },
       couponRedemption: { count: jest.fn().mockResolvedValue(0), create: jest.fn() },
       stackedVoucherRedemption: { count: jest.fn().mockResolvedValue(0), create: jest.fn() },
@@ -44,10 +48,18 @@ describe('Word section 6 checkout margin protection', () => {
     await run();
     const data = tx.order.create.mock.calls[0][0].data;
     expect(data.orderItems.create).toEqual(expect.arrayContaining([
-      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 26000 }),
+      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 32500 }),
       expect.objectContaining({ productId: 'b', appliedCommissionRate: 10, calculatedCommissionAmount: 25000 }),
     ]));
     expect(Number(data.finalAmount)).toBe(475000);
+  });
+
+  it('keeps a creator code valid at checkout when the product also has a direct discount', async () => {
+    const { coupons, params, tx, run } = fixture();
+    coupons.shop.stackableWithProductDiscount = false;
+    params.anyProductHasDirectDiscount = true;
+    await expect(run()).resolves.toBeDefined();
+    expect(tx.order.create.mock.calls[0][0].data.couponCodeSnapshot).toBe('KOL50');
   });
 
   it.each([undefined, null, -1, '25000', NaN])('rejects missing or invalid shipping before writing an order: %p', async (totalFee) => {

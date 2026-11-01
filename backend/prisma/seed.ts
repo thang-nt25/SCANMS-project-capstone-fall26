@@ -105,7 +105,7 @@ async function main(): Promise<void> {
           : 'Dataset already exists; no accounts or demo progress were overwritten.',
       );
       console.log(
-        'Accounts: admin@seed.scanms.test; shop01..15@seed.scanms.test; kol01..20@seed.scanms.test; customer01..30@seed.scanms.test. Password: SCANMS_SEED_PASSWORD from your environment.',
+        'Accounts: admin@seed.scanms.test; manager@seed.scanms.test; shop01..04@seed.scanms.test; kol01..20@seed.scanms.test; customer01..30@seed.scanms.test. Password: SCANMS_SEED_PASSWORD from your environment.',
       );
     }
   } finally {

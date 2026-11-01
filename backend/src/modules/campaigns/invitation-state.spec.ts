@@ -3,15 +3,23 @@ import { CampaignsService } from './campaigns.service';
 
 describe('Invitation state access', () => {
   const findUnique = jest.fn();
+  const findFirst = jest.fn();
   const service = new CampaignsService({
     campaignParticipant: { findUnique },
+    store: { findFirst },
   } as any);
-  beforeEach(() => findUnique.mockReset());
+  beforeEach(() => {
+    findUnique.mockReset();
+    findFirst.mockImplementation(async ({ where }: any) =>
+      where.OR[0].owner.is.id === 'shop' ? { id: 'store' } : null,
+    );
+  });
   const invitation = {
     id: 'invitation',
     collaboratorId: 'creator',
     status: 'ACCEPTED',
     campaign: {
+      storeId: 'store',
       isActive: true,
       endDate: new Date('2027-01-01'),
       store: { ownerId: 'shop' },

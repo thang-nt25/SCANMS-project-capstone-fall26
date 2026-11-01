@@ -43,7 +43,7 @@ export const PRODUCT_TEMPLATES = [
     name: 'Serum Dưỡng Trắng Mờ Thâm Vitamin C 15%',
     category: 'Mỹ phẩm & Chăm sóc da',
     image: 'vitamin-c-15-serum.jpg',
-    price: 280_000,
+    price: 450_000,
     size: '30 ml',
     largeSize: '50 ml',
     attrName: 'Dung tích',

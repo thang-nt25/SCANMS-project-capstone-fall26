@@ -36,6 +36,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       const storeId = seedId(`store:${storeIndex}`);
       // Secondary purchases exercise the additional creators (indices 16..19, including Diamond tier).
       const creatorIndex =
+        purchase === 1 && customerIndex === 3 ? 0 :
         purchase === 1 ? storeIndex + 16 : storeIndex;
       const collaboratorId = seedId(`creator:${creatorIndex}`);
       const status =
@@ -86,9 +87,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           ? data.coupons.find(
               (row) =>
                 row.id ===
-                seedId(
-                  `${customerIndex % 2 ? 'kol-coupon' : 'shop-coupon'}:${customerIndex % 2 ? creatorIndex : storeIndex}`,
-                ),
+                seedId(`kol-coupon:${creatorIndex}`),
             )
           : undefined;
       const shopDiscount = coupon
@@ -114,29 +113,13 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
       const shippingFee = requireShippingFee(
         shippingEvidence?.fee ?? 24_000 + (storeIndex % 4) * 3_000,
       );
-      const stacked =
-        purchase === 1 && subtotalAmount >= 100_000
-          ? (['GOODS', 'SHIPPING'] as const)
-              .map((benefit) => {
-                const voucher = data.coupons.find(
-                  (row) =>
-                    row.id === seedId(`platform-${benefit}:${storeIndex}`),
-                )!;
-                const discount = Math.min(
-                  amount(voucher.discountValue),
-                  benefit === 'GOODS'
-                    ? subtotalAmount - shopDiscount
-                    : shippingFee,
-                );
-                return { voucher, benefitType: benefit, discount };
-              })
-              .filter((row) => row.discount > 0)
-          : [];
-      const platformGoods = stacked
-        .filter((row) => row.benefitType === 'GOODS')
-        .reduce((sum, row) => sum + row.discount, 0);
-      const discountAmount =
-        shopDiscount + stacked.reduce((sum, row) => sum + row.discount, 0);
+      const stacked: Array<{
+        voucher: (typeof data.coupons)[number];
+        benefitType: 'GOODS' | 'SHIPPING';
+        discount: number;
+      }> = [];
+      const platformGoods = 0;
+      const discountAmount = shopDiscount;
       const linePricing = priceVoucherLines(
         products.map((row) => amount(row.price) * quantity),
         products.map(() => true),
@@ -236,6 +219,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         const itemId = seedId(`order-item:${key}:${itemIndex}`);
         const unitPrice = amount(product.price);
         const netItemSubtotal = linePricing[itemIndex].netGoods;
+        const remunerationBase = unitPrice * quantity;
         const breakdown = seedCommissionBreakdown(data, {
           collaboratorId,
           productId: product.id!,
@@ -245,18 +229,19 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           at: createdAt,
         });
         const itemCommission = commissionAmount(
-          netItemSubtotal,
+          remunerationBase,
           breakdown.rate,
         );
         commissionBreakdown.push({
           productId: product.id!,
           netGoods: netItemSubtotal,
+          remunerationBase,
           ...breakdown,
           liveSessionId: historicalLive?.id ?? null,
         });
         if (breakdown.campaignId) {
           const reserved = commissionAmount(
-            netItemSubtotal,
+            remunerationBase,
             breakdown.campaign,
           );
           campaignBonusReservations[breakdown.campaignId] =
@@ -276,7 +261,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
             ? breakdown.rate - breakdown.live
             : null,
           regularCommissionAmount: breakdown.live
-            ? commissionAmount(netItemSubtotal, breakdown.rate - breakdown.live)
+            ? commissionAmount(remunerationBase, breakdown.rate - breakdown.live)
             : null,
           calculatedCommissionAmount: itemCommission,
           commissionSnapshotAt: createdAt,
@@ -336,10 +321,10 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         voucher.usageCount = (voucher.usageCount ?? 0) + 1;
         voucher.budgetUsed = amount(voucher.budgetUsed) + discount;
       }
-      if (purchase === 1)
+      if (purchase === 1 && coupon)
         data.savedCoupons.push({
           userId: customer.id!,
-          couponId: seedId(`platform-GOODS:${storeIndex}`),
+          couponId: coupon.id!,
           savedAt: createdAt,
         });
 

@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BadgeCheck, Heart, MessageSquare, Search, Store, Ticket, Check, Star, Clock } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ChevronRight, Search, Ticket, Check, Clock } from 'lucide-react';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
-import { couponService, type PublicStoreCoupon } from '../../services/coupon.service';
+import {
+  couponService,
+  type PublicStoreCoupon,
+} from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
 import { PublicHeader } from '../../components/layout/PublicHeader';
-import { StoreActivityStatus } from '../../components/store/StoreActivityStatus';
+import { ShopProfileHeader } from '../../components/store/ShopProfileHeader';
+import { ShopProductCard } from '../../components/store/ShopProductCard';
+import type {
+  PublicShop as Shop,
+  ShopProduct as Product,
+} from '../../types/storefront.types';
 import { useScanmsChat } from '../../context/ScanmsChatContext';
-import { LiveSessionDealBadge, useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
+import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { Select } from '../../components/ui/Select';
 
-function formatVoucherRemainingTime(expiresAt?: string | null): { text: string; isUrgent: boolean } {
+function formatVoucherRemainingTime(expiresAt?: string | null): {
+  text: string;
+  isUrgent: boolean;
+} {
   if (!expiresAt) return { text: 'Vô thời hạn', isUrgent: false };
   const now = Date.now();
   const exp = new Date(expiresAt).getTime();
@@ -35,38 +46,12 @@ function formatVoucherRemainingTime(expiresAt?: string | null): { text: string; 
   return { text: `HSD: ${day}.${month}.${year}`, isUrgent: false };
 }
 
-type Shop = {
-  id: string;
-  name: string;
-  slug?: string;
-  logoUrl?: string;
-  description?: string;
-  isActive: boolean;
-  isVerified: boolean;
-  productCount: number;
-  followerCount: number;
-  rating?: number | null;
-  reviewCount?: number;
-  categories: string[];
-};
-
-type Product = {
-  id: string;
-  sku: string;
-  title: string;
-  imageUrl?: string;
-  price: number;
-  originalPrice?: number;
-  categoryName?: string;
-};
-
 type ProductResult = {
   items: Product[];
   pagination: { page: number; totalPages: number; total: number };
 };
 
 const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value;
-const money = (value: number) => `${Number(value).toLocaleString('vi-VN')} ₫`;
 
 export default function ShopPage() {
   const { shopId, slug } = useParams();
@@ -76,6 +61,13 @@ export default function ShopPage() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [result, setResult] = useState<ProductResult | null>(null);
+  const [activeTab, setActiveTab] = useState('home');
+  const [highlights, setHighlights] = useState<Product[]>([]);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
+  const [highlightsError, setHighlightsError] = useState('');
+  const [highlightsRevision, setHighlightsRevision] = useState(0);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsRevision, setProductsRevision] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +85,12 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
 
-  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals((result?.items || []).map((product) => product.id));
+  const { deals: liveDeals, now: liveDealsNow } = useLiveSessionDeals([
+    ...new Set([
+      ...(result?.items || []).map((product) => product.id),
+      ...highlights.map((product) => product.id),
+    ]),
+  ]);
 
   // 1. Fetch Store Profile
   useEffect(() => {
@@ -102,10 +99,20 @@ export default function ShopPage() {
     setLoading(true);
     setShop(null);
     setResult(null);
+    setActiveTab('home');
+    setHighlights([]);
+    setHighlightsError('');
+    setSearchInput('');
+    setSearch('');
+    setCategory('all');
+    setSortBy('newest');
+    setPage(1);
+    setError('');
     setFollowing(false);
     setShopCoupons([]);
 
-    api.get(`/stores/public/id/${identifier}`)
+    api
+      .get(`/stores/public/id/${identifier}`)
       .then((res) => {
         if (active) {
           const data = unwrap(res);
@@ -114,20 +121,23 @@ export default function ShopPage() {
         }
       })
       .catch(() => {
-        if (active) setError('Không tìm thấy Shop hoặc Shop đã ngừng hoạt động.');
+        if (active)
+          setError('Không tìm thấy Shop hoặc Shop đã ngừng hoạt động.');
       })
       .finally(() => {
         if (active) setLoading(false);
       });
 
     if (authService.getCurrentUser()) {
-      api.get(`/stores/public/id/${identifier}/follow`)
+      api
+        .get(`/stores/public/id/${identifier}/follow`)
         .then((res) => {
           if (active) setFollowing(Boolean(unwrap(res)?.following));
         })
         .catch(() => undefined);
 
-      api.get('/coupons/saved')
+      api
+        .get('/coupons/saved')
         .then((res) => {
           const raw = unwrap(res);
           if (active && Array.isArray(raw)) {
@@ -137,21 +147,66 @@ export default function ShopPage() {
         .catch(() => undefined);
     }
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [identifier]);
 
-  // 2. Fetch Shop Products & Shop Coupons when shop is loaded
+  // Catalogue filters and home recommendations have independent request states.
+  useEffect(() => {
+    if (!shop?.id || activeTab === 'home') return;
+    let active = true;
+    setProductsLoading(true);
+    setError('');
+    setResult(null);
+    api
+      .get('/public/products', {
+        params: { storeId: shop.id, search, category, sortBy, page, limit: 16 },
+      })
+      .then((res) => {
+        if (active) setResult(unwrap(res));
+      })
+      .catch(() => {
+        if (active) setError('Không tải được sản phẩm của Shop.');
+      })
+      .finally(() => {
+        if (active) setProductsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [shop?.id, activeTab, search, category, sortBy, page, productsRevision]);
+
   useEffect(() => {
     if (!shop?.id) return;
     let active = true;
+    setHighlightsLoading(true);
+    setHighlightsError('');
+    api
+      .get('/public/products', {
+        params: { storeId: shop.id, sortBy: 'sales', page: 1, limit: 6 },
+        headers: { 'x-skip-cache': '1' },
+      })
+      .then((res) => {
+        if (active) setHighlights(unwrap(res).items || []);
+      })
+      .catch(() => {
+        if (active) setHighlightsError('Chưa tải được sản phẩm gợi ý.');
+      })
+      .finally(() => {
+        if (active) setHighlightsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [shop?.id, highlightsRevision]);
 
-    // Fetch Products
-    api.get('/public/products', { params: { storeId: shop.id, search, category, sortBy, page, limit: 16 } })
-      .then((res) => { if (active) setResult(unwrap(res)); })
-      .catch(() => { if (active) setError('Không tải được sản phẩm của Shop.'); });
-
+  useEffect(() => {
+    if (!shop?.id) return;
+    let active = true;
     // Fetch Public Coupons of this Store
-    couponService.getPublicStoreCoupons(shop.id)
+    couponService
+      .getPublicStoreCoupons(shop.id)
       .then((coupons) => {
         if (active) {
           const filtered = coupons.filter(
@@ -159,15 +214,27 @@ export default function ShopPage() {
               c.benefitType !== 'SHIPPING' &&
               c.fundingSource !== 'PLATFORM_FUNDED' &&
               !c.code.toUpperCase().startsWith('KOL') &&
-              !c.code.toUpperCase().startsWith('PHANHAIY')
+              !c.code.toUpperCase().startsWith('PHANHAIY'),
           );
           setShopCoupons(filtered);
         }
       })
       .catch(() => {});
 
-    return () => { active = false; };
-  }, [shop?.id, search, category, sortBy, page]);
+    return () => {
+      active = false;
+    };
+  }, [shop?.id]);
+
+  const selectTab = (tab: string, nextCategory = 'all') => {
+    setActiveTab(tab);
+    setCategory(nextCategory);
+    setPage(1);
+    setSearch('');
+    setSearchInput('');
+    setSortBy('newest');
+    setError('');
+  };
 
   // Open Chat
   const chat = () => {
@@ -175,7 +242,7 @@ export default function ShopPage() {
     openChat({
       id: shop.id,
       name: shop.name,
-      logoUrl: shop.logoUrl,
+      logoUrl: shop.logoUrl || undefined,
       isVerified: Boolean(shop.isVerified),
     });
   };
@@ -183,18 +250,36 @@ export default function ShopPage() {
   // Toggle Follow
   const toggleFollow = async () => {
     if (!authService.getCurrentUser()) {
-      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      navigate(
+        `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
+      );
       return;
     }
     if (!shop?.id || savingFollow) return;
     setSavingFollow(true);
     try {
-      await (following ? api.delete(`/stores/public/id/${shop.id}/follow`) : api.post(`/stores/public/id/${shop.id}/follow`));
+      await (following
+        ? api.delete(`/stores/public/id/${shop.id}/follow`)
+        : api.post(`/stores/public/id/${shop.id}/follow`));
       setFollowing(!following);
-      setShop((current) => current ? { ...current, followerCount: current.followerCount + (following ? -1 : 1) } : current);
-      toast.success(following ? 'Đã hủy theo dõi gian hàng' : 'Đã theo dõi gian hàng thành công!');
+      setShop((current) =>
+        current
+          ? {
+              ...current,
+              followerCount: Math.max(
+                0,
+                current.followerCount + (following ? -1 : 1),
+              ),
+            }
+          : current,
+      );
+      toast.success(
+        following
+          ? 'Đã hủy theo dõi gian hàng'
+          : 'Đã theo dõi gian hàng thành công!',
+      );
     } catch {
-      setError('Chưa thể cập nhật theo dõi. Vui lòng thử lại.');
+      toast.error('Chưa thể cập nhật theo dõi. Vui lòng thử lại.');
     } finally {
       setSavingFollow(false);
     }
@@ -204,7 +289,9 @@ export default function ShopPage() {
   const handleSaveCoupon = async (voucher: PublicStoreCoupon) => {
     if (!authService.getCurrentUser()) {
       toast.info('Vui lòng đăng nhập để lưu mã giảm giá vào Ví Voucher');
-      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      navigate(
+        `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
+      );
       return;
     }
     try {
@@ -213,7 +300,9 @@ export default function ShopPage() {
       setSavedCouponIds((prev) => [...new Set([...prev, voucher.id])]);
       toast.success(`Đã lưu mã “${voucher.code}” vào Ví Voucher của bạn!`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Không thể lưu mã giảm giá lúc này');
+      toast.error(
+        err?.response?.data?.message || 'Không thể lưu mã giảm giá lúc này',
+      );
     } finally {
       setSavingCouponId(null);
     }
@@ -224,296 +313,387 @@ export default function ShopPage() {
       <PublicHeader />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
         {loading ? (
-          <div className="py-20 text-center text-[#7D715E]">Đang tải thông tin gian hàng...</div>
+          <div className="py-20 text-center text-[#7D715E]">
+            Đang tải thông tin gian hàng...
+          </div>
         ) : error && !shop ? (
-          <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-700">
+          <div
+            role="alert"
+            className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-700"
+          >
             {error}
           </div>
-        ) : shop && (
-          <>
-            {/* Header Thẻ Gian Hàng Chuẩn TMĐT */}
-            <section className="rounded-3xl border border-[#EAE4D7] bg-white p-5 shadow-xs sm:p-8">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#EAE4D7] bg-[#F3EFE6] text-3xl font-bold text-[#B88E4F] sm:h-28 sm:w-28">
-                  {shop.logoUrl ? (
-                    <img
-                      src={shop.logoUrl}
-                      alt={`Logo ${shop.name}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
-                      }}
-                    />
-                  ) : (
-                    <Store size={36} />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="flex items-center gap-2 text-2xl font-bold sm:text-3xl">
-                    {shop.name}
-                    {shop.isVerified && (
-                      <BadgeCheck size={22} className="text-[#B88E4F]" aria-label="Shop đã xác minh" />
-                    )}
-                  </h1>
-                  <StoreActivityStatus storeId={shop.id} className="mt-1" />
-                  {shop.description && (
-                    <p className="mt-2 max-w-2xl text-sm text-[#7D715E] leading-relaxed">
-                      {shop.description}
-                    </p>
-                  )}
-                  <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-[#7D715E]">
-                    <span className="font-medium text-[#1A1612]">
-                      {shop.isActive ? 'Shop đang hoạt động' : 'Shop ngừng hoạt động'}
-                    </span>
-                    <span>·</span>
-                    <span>{shop.productCount} sản phẩm</span>
-                    <span>·</span>
-                    <span>{Number(shop.followerCount).toLocaleString('vi-VN')} người theo dõi</span>
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-[#1A1612]">
-                      <Star size={13} className="fill-[#C59B58] text-[#C59B58]" />
-                      {shop.rating ? Number(shop.rating).toFixed(1) : '4.9'}
-                      <span className="font-normal text-[#7D715E]">
-                        ({shop.reviewCount ? Number(shop.reviewCount).toLocaleString('vi-VN') : 18} đánh giá)
-                      </span>
-                    </span>
-                  </p>
-                </div>
-                <div className="flex gap-2 sm:flex-col shrink-0">
+        ) : (
+          shop && (
+            <>
+              <ShopProfileHeader
+                key={shop.id}
+                shop={shop}
+                following={following}
+                savingFollow={savingFollow}
+                onFollow={() => void toggleFollow()}
+                onChat={chat}
+              />
+              <nav
+                aria-label="Điều hướng gian hàng"
+                className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white px-3 shadow-xs sm:gap-5 sm:px-5"
+              >
+                {[
+                  { key: 'home', label: 'Trang chủ', category: 'all' },
+                  {
+                    key: 'products',
+                    label: 'Tất cả sản phẩm',
+                    category: 'all',
+                  },
+                  ...(shop.categories || []).map((name) => ({
+                    key: 'category:' + name,
+                    label: name,
+                    category: name,
+                  })),
+                ].map((tab) => (
                   <button
+                    key={tab.key}
                     type="button"
-                    onClick={toggleFollow}
-                    disabled={savingFollow}
-                    className="flex-1 rounded-xl border border-[#C59B58] px-5 py-2.5 font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] disabled:opacity-50 transition cursor-pointer"
+                    aria-current={activeTab === tab.key ? 'page' : undefined}
+                    onClick={() => selectTab(tab.key, tab.category)}
+                    className={
+                      'shrink-0 border-b-2 px-3 py-4 text-sm font-semibold transition ' +
+                      (activeTab === tab.key
+                        ? 'border-[#C59B58] text-[#B88E4F]'
+                        : 'border-transparent text-[#7D715E] hover:text-[#B88E4F]')
+                    }
                   >
-                    <Heart size={16} className={`mr-2 inline ${following ? 'fill-[#C59B58]' : ''}`} />
-                    {following ? 'Đang theo dõi' : 'Theo dõi'}
+                    {tab.label}
                   </button>
-                  <button
-                    type="button"
-                    onClick={chat}
-                    className="flex-1 rounded-xl bg-[#C59B58] px-5 py-2.5 font-semibold text-[#231D15] hover:bg-[#B88E4F] transition cursor-pointer"
-                  >
-                    <MessageSquare size={16} className="mr-2 inline" />
-                    Chat ngay
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {/* Khối Mã Giảm Giá Của Shop (Thu Thập / Sưu Tập Voucher) */}
-            {shopCoupons.length > 0 && (
-              <section className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 sm:p-6 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Ticket className="w-5 h-5 text-[#C59B58]" />
-                    <h2 className="text-base sm:text-lg font-bold text-[#1A1612]">
-                      Mã Giảm Giá Của Shop
-                    </h2>
-                  </div>
-                  <span className="text-xs text-[#7D715E]">
-                    Lưu mã vào ví để áp dụng khi thanh toán
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {shopCoupons.map((voucher) => {
-                    const isSaved = savedCouponIds.includes(voucher.id);
-                    const isPercentage = voucher.discountType === 'PERCENTAGE';
-                    const isSaving = savingCouponId === voucher.id;
-                    const expiry = formatVoucherRemainingTime(voucher.expiresAt);
-
-                    return (
-                      <div
-                        key={voucher.id}
-                        className="flex items-stretch rounded-2xl border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden hover:border-[#C59B58] transition shadow-xs"
+                ))}
+              </nav>
+              {activeTab === 'home' && (
+                <section
+                  aria-labelledby="shop-highlights-title"
+                  className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 shadow-xs sm:p-6"
+                >
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2
+                        id="shop-highlights-title"
+                        className="text-lg font-bold sm:text-xl"
                       >
-                        {/* Cuống vé */}
-                        <div className="w-20 bg-[#F3EFE6] border-r border-dashed border-[#EEDFC6] p-2 flex flex-col items-center justify-center text-center shrink-0">
-                          <Ticket className="w-5 h-5 text-[#B88E4F] mb-1" />
-                          <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wide">
-                            VOUCHER
-                          </span>
-                        </div>
+                        Shop gợi ý cho bạn
+                      </h2>
+                      <p className="mt-1 text-xs text-[#7D715E]">
+                        Sản phẩm bán chạy trong gian hàng
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => selectTab('products')}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-semibold text-[#B88E4F] hover:bg-[#FBF5EB]"
+                    >
+                      Xem tất cả <ChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  {highlightsLoading ? (
+                    <p
+                      role="status"
+                      className="py-8 text-center text-sm text-[#7D715E]"
+                    >
+                      Đang tải sản phẩm…
+                    </p>
+                  ) : highlightsError ? (
+                    <div className="py-6 text-center">
+                      <p role="alert" className="text-sm text-[#DC2626]">
+                        {highlightsError}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setHighlightsRevision((value) => value + 1)
+                        }
+                        className="mt-3 rounded-xl border border-[#EAE4D7] px-4 py-2 text-sm"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : !highlights.length ? (
+                    <p className="py-8 text-center text-sm text-[#7D715E]">
+                      Shop chưa có sản phẩm đang bán.
+                    </p>
+                  ) : (
+                    <div
+                      className={
+                        'grid grid-cols-2 gap-3 sm:grid-cols-3 ' +
+                        (highlights.length > 3 ? 'xl:grid-cols-6' : '')
+                      }
+                    >
+                      {highlights.map((product) => (
+                        <ShopProductCard
+                          key={product.id}
+                          product={product}
+                          deal={liveDeals[product.id]}
+                          now={liveDealsNow}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
 
-                        {/* Thân vé */}
-                        <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-                          <div>
-                            <p className="text-sm font-bold text-[#1A1612] truncate">
-                              {isPercentage
-                                ? `Giảm ${voucher.discountValue}%`
-                                : `Giảm ${Number(voucher.discountValue).toLocaleString('vi-VN')} ₫`}
-                              {voucher.maximumDiscountAmount
-                                ? ` (Tối đa ${Number(voucher.maximumDiscountAmount).toLocaleString('vi-VN')} ₫)`
-                                : ''}
-                            </p>
-                            <p className="text-xs text-[#7D715E] mt-0.5">
-                              Đơn từ {Number(voucher.minimumOrderAmount || 0).toLocaleString('vi-VN')} ₫
-                            </p>
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className="inline-block font-mono text-[10px] font-semibold text-[#8A642C] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded">
-                                {voucher.code}
+              {/* Khối Mã Giảm Giá Của Shop (Thu Thập / Sưu Tập Voucher) */}
+              {activeTab === 'home' && shopCoupons.length > 0 && (
+                <section className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 sm:p-6 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Ticket className="w-5 h-5 text-[#C59B58]" />
+                      <h2 className="text-base sm:text-lg font-bold text-[#1A1612]">
+                        Mã Giảm Giá Của Shop
+                      </h2>
+                    </div>
+                    <span className="text-xs text-[#7D715E]">
+                      Lưu mã vào ví để áp dụng khi thanh toán
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {shopCoupons.map((voucher) => {
+                      const isSaved = savedCouponIds.includes(voucher.id);
+                      const isPercentage =
+                        voucher.discountType === 'PERCENTAGE';
+                      const isSaving = savingCouponId === voucher.id;
+                      const expiry = formatVoucherRemainingTime(
+                        voucher.expiresAt,
+                      );
+
+                      return (
+                        <div
+                          key={voucher.id}
+                          className="flex items-stretch rounded-2xl border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden hover:border-[#C59B58] transition shadow-xs"
+                        >
+                          {/* Cuống vé */}
+                          <div className="w-20 bg-[#F3EFE6] border-r border-dashed border-[#EEDFC6] p-2 flex flex-col items-center justify-center text-center shrink-0">
+                            <Ticket className="w-5 h-5 text-[#B88E4F] mb-1" />
+                            <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wide">
+                              VOUCHER
+                            </span>
+                          </div>
+
+                          {/* Thân vé */}
+                          <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                            <div>
+                              <p className="text-sm font-bold text-[#1A1612] truncate">
+                                {isPercentage
+                                  ? `Giảm ${voucher.discountValue}%`
+                                  : `Giảm ${Number(voucher.discountValue).toLocaleString('vi-VN')} ₫`}
+                                {voucher.maximumDiscountAmount
+                                  ? ` (Tối đa ${Number(voucher.maximumDiscountAmount).toLocaleString('vi-VN')} ₫)`
+                                  : ''}
+                              </p>
+                              <p className="text-xs text-[#7D715E] mt-0.5">
+                                Đơn từ{' '}
+                                {Number(
+                                  voucher.minimumOrderAmount || 0,
+                                ).toLocaleString('vi-VN')}{' '}
+                                ₫
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="inline-block font-mono text-[10px] font-semibold text-[#8A642C] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded">
+                                  {voucher.code}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
+                                    expiry.isUrgent
+                                      ? 'bg-amber-100/80 text-amber-800 font-bold border border-amber-300'
+                                      : 'bg-[#F3EFE6] text-[#7D715E]'
+                                  }`}
+                                >
+                                  <Clock
+                                    size={10}
+                                    className={
+                                      expiry.isUrgent
+                                        ? 'text-amber-700'
+                                        : 'text-[#8A642C]'
+                                    }
+                                  />
+                                  <span>{expiry.text}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="mt-2.5 pt-2 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
+                              <span className="text-[10px] text-[#7D715E]">
+                                {voucher.remainingUses !== null
+                                  ? `Còn ${voucher.remainingUses} lượt`
+                                  : 'Số lượng có hạn'}
                               </span>
-                              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
-                                expiry.isUrgent
-                                  ? 'bg-amber-100/80 text-amber-800 font-bold border border-amber-300'
-                                  : 'bg-[#F3EFE6] text-[#7D715E]'
-                              }`}>
-                                <Clock size={10} className={expiry.isUrgent ? 'text-amber-700' : 'text-[#8A642C]'} />
-                                <span>{expiry.text}</span>
-                              </span>
+                              <button
+                                type="button"
+                                disabled={isSaved || isSaving}
+                                onClick={() => handleSaveCoupon(voucher)}
+                                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                  isSaved
+                                    ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] cursor-default'
+                                    : 'bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] cursor-pointer'
+                                }`}
+                              >
+                                {isSaved ? (
+                                  <>
+                                    <Check
+                                      size={12}
+                                      className="text-emerald-700"
+                                    />
+                                    <span>Đã lưu</span>
+                                  </>
+                                ) : isSaving ? (
+                                  'Đang lưu...'
+                                ) : (
+                                  'Lưu mã'
+                                )}
+                              </button>
                             </div>
                           </div>
-
-                          <div className="mt-2.5 pt-2 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-[#7D715E]">
-                              {voucher.remainingUses !== null ? `Còn ${voucher.remainingUses} lượt` : 'Số lượng có hạn'}
-                            </span>
-                            <button
-                              type="button"
-                              disabled={isSaved || isSaving}
-                              onClick={() => handleSaveCoupon(voucher)}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                isSaved
-                                  ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] cursor-default'
-                                  : 'bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] cursor-pointer'
-                              }`}
-                            >
-                              {isSaved ? (
-                                <>
-                                  <Check size={12} className="text-emerald-700" />
-                                  <span>Đã lưu</span>
-                                </>
-                              ) : isSaving ? (
-                                'Đang lưu...'
-                              ) : (
-                                'Lưu mã'
-                              )}
-                            </button>
-                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* Danh Sách Sản Phẩm */}
-            <section className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 sm:p-6 shadow-xs">
-              <h2 className="text-xl font-bold">Sản phẩm của {shop.name}</h2>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setPage(1);
-                  setSearch(searchInput.trim());
-                }}
-                className="mt-4 flex flex-wrap gap-2"
-              >
-                <label className="flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-[#EAE4D7] px-3 bg-[#FAF8F5] focus-within:bg-white focus-within:border-[#C59B58] transition">
-                  <Search size={16} className="text-[#7D715E]" />
-                  <input
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Tìm trong Shop"
-                    className="w-full py-2.5 outline-none bg-transparent text-sm"
-                  />
-                </label>
-                <button type="submit" className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-4 py-2 font-semibold text-[#231D15] transition cursor-pointer">
-                  Tìm
-                </button>
-                <Select
-                  aria-label="Danh mục"
-                  value={category}
-                  onChange={(event) => {
-                    setCategory(event.target.value);
-                    setPage(1);
-                  }}
-                  className="min-w-[160px]"
-                >
-                  <option value="all">Tất cả danh mục</option>
-                  {(shop.categories || []).map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  aria-label="Sắp xếp"
-                  value={sortBy}
-                  onChange={(event) => {
-                    setSortBy(event.target.value);
-                    setPage(1);
-                  }}
-                  className="min-w-[140px]"
-                >
-                  <option value="newest">Mới nhất</option>
-                  <option value="price_asc">Giá tăng dần</option>
-                  <option value="price_desc">Giá giảm dần</option>
-                </Select>
-              </form>
-
-              {error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{error}</p>}
-              {result?.items.length === 0 && (
-                <p className="py-12 text-center text-[#7D715E]">Chưa có sản phẩm phù hợp.</p>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
 
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {result?.items.map((product) => (
-                  <Link
-                    key={product.id}
-                    to={`/products/${product.sku || product.id}`}
-                    className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white transition hover:border-[#C59B58] hover:shadow-md flex flex-col justify-between"
+              {/* Danh Sách Sản Phẩm */}
+              {activeTab !== 'home' && (
+                <section
+                  id="shop-products"
+                  className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 sm:p-6 shadow-xs"
+                >
+                  <h2 className="text-xl font-bold">
+                    Sản phẩm của {shop.name}
+                  </h2>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setPage(1);
+                      setSearch(searchInput.trim());
+                    }}
+                    className="mt-4 flex flex-wrap gap-2"
                   >
-                    <div>
-                      <div className="relative aspect-square bg-[#F3EFE6]">
-                        <LiveSessionDealBadge deal={liveDeals[product.id]} now={liveDealsNow} />
-                        {product.imageUrl && (
-                          <img
-                            src={product.imageUrl}
-                            alt={product.title}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <p className="line-clamp-2 min-h-10 text-sm font-semibold text-[#1A1612]">
-                          {product.title}
-                        </p>
-                        <p className="mt-2 font-bold text-[#B88E4F]">{money(product.price)}</p>
-                        {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
-                          <p className="text-xs text-[#7D715E] line-through">{money(product.originalPrice)}</p>
-                        )}
-                      </div>
+                    <label className="flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-[#EAE4D7] px-3 bg-[#FAF8F5] focus-within:bg-white focus-within:border-[#C59B58] transition">
+                      <Search size={16} className="text-[#7D715E]" />
+                      <input
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        placeholder="Tìm trong Shop"
+                        className="w-full py-2.5 outline-none bg-transparent text-sm"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-4 py-2 font-semibold text-[#231D15] transition cursor-pointer"
+                    >
+                      Tìm
+                    </button>
+                    <Select
+                      aria-label="Danh mục"
+                      value={category}
+                      onChange={(event) => {
+                        setCategory(event.target.value);
+                        setActiveTab(
+                          event.target.value === 'all'
+                            ? 'products'
+                            : 'category:' + event.target.value,
+                        );
+                        setPage(1);
+                      }}
+                      className="min-w-[160px]"
+                    >
+                      <option value="all">Tất cả danh mục</option>
+                      {(shop.categories || []).map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label="Sắp xếp"
+                      value={sortBy}
+                      onChange={(event) => {
+                        setSortBy(event.target.value);
+                        setPage(1);
+                      }}
+                      className="min-w-[140px]"
+                    >
+                      <option value="newest">Mới nhất</option>
+                      <option value="price_asc">Giá tăng dần</option>
+                      <option value="price_desc">Giá giảm dần</option>
+                    </Select>
+                  </form>
+
+                  {error && (
+                    <div className="mt-3 text-sm">
+                      <p role="alert" className="text-[#DC2626]">
+                        {error}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProductsRevision((value) => value + 1)
+                        }
+                        className="mt-2 rounded-lg border border-[#EAE4D7] px-3 py-2"
+                      >
+                        Thử lại
+                      </button>
                     </div>
-                  </Link>
-                ))}
-              </div>
+                  )}
+                  {result?.items.length === 0 && (
+                    <p className="py-12 text-center text-[#7D715E]">
+                      Chưa có sản phẩm phù hợp.
+                    </p>
+                  )}
 
-              {(result?.pagination.totalPages || 0) > 1 && (
-                <nav aria-label="Phân trang sản phẩm" className="mt-6 flex items-center justify-center gap-3">
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => setPage(page - 1)}
-                    className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40 hover:bg-[#F3EFE6] transition"
-                  >
-                    Trước
-                  </button>
-                  <span className="text-sm font-medium text-[#7D715E]">
-                    {page} / {result?.pagination.totalPages}
-                  </span>
-                  <button
-                    disabled={page >= (result?.pagination.totalPages || 1)}
-                    onClick={() => setPage(page + 1)}
-                    className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40 hover:bg-[#F3EFE6] transition"
-                  >
-                    Sau
-                  </button>
-                </nav>
+                  {productsLoading && (
+                    <p
+                      role="status"
+                      className="py-8 text-center text-sm text-[#7D715E]"
+                    >
+                      Đang tải sản phẩm…
+                    </p>
+                  )}
+                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {result?.items.map((product) => (
+                      <ShopProductCard
+                        key={product.id}
+                        product={product}
+                        deal={liveDeals[product.id]}
+                        now={liveDealsNow}
+                      />
+                    ))}
+                  </div>
+
+                  {(result?.pagination.totalPages || 0) > 1 && (
+                    <nav
+                      aria-label="Phân trang sản phẩm"
+                      className="mt-6 flex items-center justify-center gap-3"
+                    >
+                      <button
+                        disabled={page <= 1}
+                        onClick={() => setPage(page - 1)}
+                        className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40 hover:bg-[#F3EFE6] transition"
+                      >
+                        Trước
+                      </button>
+                      <span className="text-sm font-medium text-[#7D715E]">
+                        {page} / {result?.pagination.totalPages}
+                      </span>
+                      <button
+                        disabled={page >= (result?.pagination.totalPages || 1)}
+                        onClick={() => setPage(page + 1)}
+                        className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40 hover:bg-[#F3EFE6] transition"
+                      >
+                        Sau
+                      </button>
+                    </nav>
+                  )}
+                </section>
               )}
-            </section>
-          </>
+            </>
+          )
         )}
       </main>
     </div>

@@ -1,7 +1,10 @@
+import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { UserRole, OrderStatus } from '@prisma/client';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { readShopKolPerformance } from './shop-kol-performance';
 import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
 import {
   DashboardAnalyticsQueryDto,
@@ -32,7 +35,7 @@ export class DashboardService {
   // ─── Lấy storeId từ userId (Shop) ────────────────────────────────────
   private async getStoreId(userId: string): Promise<string | null> {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: userId, isDeleted: false },
+      where: managedStoreWhere(userId),
     });
     return store?.id ?? null;
   }
@@ -69,6 +72,17 @@ export class DashboardService {
         startDate = monthStart(0); endDate = now; break;
       case AnalyticsQuickRange.LAST_MONTH:
         startDate = monthStart(-1); endDate = new Date(monthStart(0).getTime() - 1); break;
+      case AnalyticsQuickRange.THIS_QUARTER: {
+        const qMonth = Math.floor(local.getUTCMonth() / 3) * 3;
+        startDate = new Date(Date.UTC(local.getUTCFullYear(), qMonth, 1) - VIETNAM_OFFSET_MS);
+        endDate = now;
+        break;
+      }
+      case AnalyticsQuickRange.THIS_YEAR: {
+        startDate = new Date(Date.UTC(local.getUTCFullYear(), 0, 1) - VIETNAM_OFFSET_MS);
+        endDate = now;
+        break;
+      }
       default:
         if (dto.startDate && dto.endDate) {
           startDate = new Date(dto.startDate); endDate = new Date(dto.endDate);
@@ -300,6 +314,125 @@ export class DashboardService {
       `;
       estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
       pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
+    } else {
+      const rows = await this.prisma.$queryRaw<Array<{ estimatedCommission: string | number | null; pendingOrdersCount: bigint }>>`
+        SELECT COALESCE(SUM(oi.calculated_commission_amount), 0) AS "estimatedCommission",
+               COUNT(DISTINCT o.id) AS "pendingOrdersCount"
+        FROM "orders" o
+        JOIN "order_items" oi ON oi.order_id = o.id
+        LEFT JOIN "commissions" c ON c.order_id = o.id AND c.status IN ('APPROVED', 'PAID')
+        WHERE o.status IN ('PENDING', 'SHIPPING', 'DELIVERED')
+          AND c.id IS NULL
+      `;
+      estimatedCommission = Number(rows[0]?.estimatedCommission || 0);
+      pendingOrdersCount = Number(rows[0]?.pendingOrdersCount || 0);
+    }
+
+    let storesBreakdown: Array<{
+      id: string;
+      name: string;
+      logoUrl: string | null;
+      category: string | null;
+      managerName: string | null;
+      managerEmail: string | null;
+      revenue: number;
+      orders: number;
+      growth: string;
+      status: string;
+    }> = [];
+
+    let operationsSummary: {
+      activeStoresCount: number;
+      activeCollaboratorsCount: number;
+      pendingOrdersCount: number;
+      pendingPayoutsCount: number;
+      pendingDisputesCount: number;
+      unassignedStoresCount: number;
+    } | null = null;
+
+    if ((role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER) && !storeId) {
+      const [
+        currStoreAgg,
+        prevStoreAgg,
+        storesList,
+        activeCollabsCount,
+        pendingPayoutsCount,
+        pendingDisputesCount,
+      ] = await Promise.all([
+        this.prisma.order.groupBy({
+          by: ['storeId'],
+          where: {
+            ...currentOrderWhere,
+            status: { in: ['DELIVERED', 'COMPLETED'] },
+          },
+          _sum: { finalAmount: true },
+          _count: { id: true },
+        }),
+        this.prisma.order.groupBy({
+          by: ['storeId'],
+          where: {
+            ...prevOrderWhere,
+            status: { in: ['DELIVERED', 'COMPLETED'] },
+          },
+          _sum: { finalAmount: true },
+          _count: { id: true },
+        }),
+        this.prisma.store.findMany({
+          where: { isDeleted: false },
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            categoryName: true,
+            ownerId: true,
+            owner: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        }),
+        this.prisma.user.count({
+          where: { role: UserRole.COLLABORATOR, isActive: true, isDeleted: false },
+        }),
+        this.prisma.payoutRequest.count({
+          where: { status: 'PENDING' },
+        }),
+        this.prisma.returnRequest.count({
+          where: {
+            status: { in: ['REQUESTED', 'SHOP_APPROVED', 'PICKUP_BOOKED', 'RETURN_SHIPPED', 'INSPECTING', 'REFUND_PENDING'] },
+          },
+        }),
+      ]);
+
+      const prevMap = new Map(prevStoreAgg.map((p) => [p.storeId, Number(p._sum.finalAmount ?? 0)]));
+      const currMap = new Map(currStoreAgg.map((c) => [c.storeId, { revenue: Number(c._sum.finalAmount ?? 0), orders: c._count.id }]));
+
+      storesBreakdown = storesList.map((st) => {
+        const curr = currMap.get(st.id) || { revenue: 0, orders: 0 };
+        const prevRev = prevMap.get(st.id) || 0;
+        const growthPct = this._calcGrowthPercent(curr.revenue, prevRev);
+        return {
+          id: st.id,
+          name: st.name,
+          logoUrl: st.logoUrl,
+          category: st.categoryName || null,
+          managerName: st.owner?.fullName ?? null,
+          managerEmail: st.owner?.email ?? null,
+          revenue: curr.revenue,
+          orders: curr.orders,
+          growth: growthPct >= 0 ? `+${growthPct.toFixed(1)}%` : `${growthPct.toFixed(1)}%`,
+          status: 'Hoạt động',
+        };
+      }).sort((a, b) => b.revenue - a.revenue);
+
+      const unassignedStoresCount = storesList.filter((s) => !s.ownerId).length;
+
+      operationsSummary = {
+        activeStoresCount: storesList.length,
+        activeCollaboratorsCount: activeCollabsCount,
+        pendingOrdersCount,
+        pendingPayoutsCount,
+        pendingDisputesCount,
+        unassignedStoresCount,
+      };
     }
 
     const overviewResult = {
@@ -338,7 +471,10 @@ export class DashboardService {
 
         averageOrderValue,
         activeReferralLinks: activeLinksCount,
+        activeCollaboratorsCount: operationsSummary?.activeCollaboratorsCount ?? 0,
       },
+      storesBreakdown,
+      operationsSummary,
     };
     await this.cacheService.set(cacheKey, overviewResult, 30);
     return overviewResult;
@@ -1199,106 +1335,9 @@ export class DashboardService {
     kolId: string,
     query: QueryReferralOrdersDto,
   ) {
-    let storeId: string | null = null;
-    if (userRole === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      if (!storeId) throw new ForbiddenException('Không tìm thấy gian hàng của bạn.');
-    } else if (
-      userRole === UserRole.SYSTEM_ADMIN ||
-      userRole === UserRole.SYSTEM_MANAGER
-    ) {
-      storeId = query.storeId || null;
-    } else {
-      throw new ForbiddenException('Không có quyền xem dữ liệu.');
-    }
-
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    const where: any = {
-      attributedCollaboratorId: kolId,
-      ...(storeId ? { storeId } : {}),
-    };
-
-    if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
-    }
-
-    const [total, orders] = await Promise.all([
-      this.prisma.order.count({ where }),
-      this.prisma.order.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          externalOrderSn: true,
-          status: true,
-          finalAmount: true,
-          createdAt: true,
-          customerName: true,
-          orderItems: {
-            select: {
-              id: true,
-              quantity: true,
-              unitPrice: true,
-              appliedCommissionRate: true,
-              calculatedCommissionAmount: true,
-              product: {
-                select: {
-                  id: true,
-                  title: true,
-                  imageUrl: true,
-                },
-              },
-            },
-          },
-          commissions: {
-            select: {
-              id: true,
-              status: true,
-              commissionAmount: true,
-            },
-          },
-        },
-      }),
-    ]);
-
-    const items = orders.map((order) => {
-      const totalCommission = order.orderItems.reduce(
-        (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
-        0,
-      );
-      const firstProduct =
-        order.orderItems[0]?.product?.title || 'Sản phẩm tiếp thị';
-      const otherCount = order.orderItems.length - 1;
-
-      return {
-        id: order.id,
-        orderCode: order.externalOrderSn,
-        createdAt: order.createdAt,
-        customerName: order.customerName,
-        productTitle:
-          otherCount > 0 ? `${firstProduct} (+${otherCount})` : firstProduct,
-        orderTotal: Number(order.finalAmount),
-        finalAmount: Number(order.finalAmount),
-        commissionEarned: totalCommission,
-        commissionAmount: totalCommission,
-        commissionRate: order.orderItems[0]?.appliedCommissionRate || 10,
-        status: order.status,
-      };
-    });
-
-    return {
-      success: true,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-      items,
-    };
+    const scope = await this.resolveAnalyticsScope(userId, userRole, query.storeId);
+    if (!scope.isShop) throw new ForbiddenException('Chỉ quản lý được phép xem hiệu suất đối tác của gian hàng.');
+    return readShopKolPerformance(this.prisma, scope.storeId, kolId, query);
   }
 
   // ─── 9. TỔNG HỢP HOA HỒNG THEO TỪNG SẢN PHẨM CỦA KOL (PRODUCT BREAKDOWN) ───
@@ -1312,23 +1351,6 @@ export class DashboardService {
     if (tierName.toLowerCase().includes('bạc') || tierName.toLowerCase().includes('silver')) tierBonus = 1;
     else if (tierName.toLowerCase().includes('vàng') || tierName.toLowerCase().includes('gold')) tierBonus = 2;
     else if (tierName.toLowerCase().includes('kim cương') || tierName.toLowerCase().includes('diamond')) tierBonus = 3;
-
-    const activeDeals = await this.prisma.exclusiveDealProposal.findMany({
-      where: {
-        collaboratorId,
-        status: 'APPROVED',
-      },
-      select: {
-        productId: true,
-        approvedCommissionRate: true,
-        proposedCommissionRate: true,
-      },
-    });
-    const dealRateByProduct = new Map<string, number>();
-    for (const d of activeDeals) {
-      const rate = Number(d.approvedCommissionRate || d.proposedCommissionRate || 0);
-      dealRateByProduct.set(d.productId, rate);
-    }
 
     const orderItems = await this.prisma.orderItem.findMany({
       where: {
@@ -1352,6 +1374,8 @@ export class DashboardService {
       },
     });
 
+    const resolvedDeals = await activeDealMap(this.prisma, orderItems.map(item => ({ collaboratorId, productId: item.productId, storeId: item.product.store.id })));
+    const dealRateByProduct = new Map(orderItems.map(item => [item.productId, Number(resolvedDeals.get(collaboratorId + ':' + item.productId)?.approvedCommissionRate || 0)]));
     const productMap = new Map<string, {
       productId: string;
       productTitle: string;

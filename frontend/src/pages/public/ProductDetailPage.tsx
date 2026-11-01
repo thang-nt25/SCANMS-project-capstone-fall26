@@ -347,7 +347,11 @@ export default function ProductDetailPage() {
       navigate('/collaborator/profile?tab=kyc');
       return;
     }
-    if (sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)) {
+    if (sampleRequestStatus?.status === 'COMPLETED') {
+      toast.info('Bạn đã từng nhận sản phẩm mẫu này và hoàn tất video review. Mỗi Creator chỉ được tài trợ 1 suất mẫu cho mỗi dòng sản phẩm.');
+      return;
+    }
+    if (sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status)) {
       toast.info(`Yêu cầu mẫu này đang ở trạng thái: ${sampleRequestStatus.statusLabel || sampleRequestStatus.status}.`);
       navigate('/collaborator/collaboration?tab=samples');
       return;
@@ -1963,7 +1967,7 @@ export default function ProductDetailPage() {
                     onClick={handleRequestSample}
                     disabled={Boolean(isKolUser && (
                       loadingSampleStatus ||
-                      (sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)) ||
+                      (sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status)) ||
                       !sampleFeatureEnabled ||
                       !sampleQuotaAvailable ||
                       (sampleEligibility && !sampleEligibility.canRequest)
@@ -1973,9 +1977,13 @@ export default function ProductDetailPage() {
                   >
                     <Package className="w-4 h-4" />
                     <span>
-                      {sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status)
+                      {sampleRequestStatus?.status === 'COMPLETED'
+                        ? 'Đã nhận & hoàn tất mẫu'
+                        : sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status)
                         ? 'Yêu cầu mẫu đang được xử lý'
-                        : 'Đăng ký nhận sản phẩm mẫu'}
+                        : !sampleQuotaAvailable
+                        ? 'Đã hết suất mẫu'
+                        : `Đăng ký nhận mẫu ${(selectedVariantIsReal ? selectedVariant?.sampleQuotaRemaining : data?.product?.sampleQuotaRemaining) != null ? `(Còn ${selectedVariantIsReal ? selectedVariant?.sampleQuotaRemaining : data?.product?.sampleQuotaRemaining} suất)` : ''}`}
                     </span>
                   </button>
                 )}
@@ -2032,7 +2040,9 @@ export default function ProductDetailPage() {
                     'Đăng nhập tài khoản KOL/Creator để gửi cam kết nhận mẫu.'
                   ) : loadingSampleStatus ? (
                     'Đang kiểm tra điều kiện và trạng thái yêu cầu mẫu…'
-                  ) : sampleRequestStatus && !['REJECTED', 'CANCELLED', 'COMPLETED'].includes(sampleRequestStatus.status) ? (
+                  ) : sampleRequestStatus?.status === 'COMPLETED' ? (
+                    <span className="text-[#059669] font-medium">✓ Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
+                  ) : sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status) ? (
                     <>Yêu cầu mẫu của bạn: <strong className="text-[#8C6226]">{sampleRequestStatus.status}</strong>. <Link to="/collaborator/collaboration?tab=samples" className="underline text-[#8C6226]">Xem tiến độ</Link></>
                   ) : !sampleFeatureEnabled ? (
                     'Shop hiện chưa bật cấp mẫu cho sản phẩm này.'
@@ -2041,7 +2051,7 @@ export default function ProductDetailPage() {
                   ) : sampleEligibility && !sampleEligibility.canRequest ? (
                     sampleEligibility.blockReason || 'Hoàn tất xác minh KYC và liên kết kênh mạng xã hội để xin mẫu.'
                   ) : (
-                    'Shop xét duyệt yêu cầu trước khi gửi; thời hạn nộp video tối đa 14 ngày sau khi bạn xác nhận đã nhận mẫu.'
+                    `Shop mở cấp mẫu dùng thử (Còn ${(selectedVariantIsReal ? selectedVariant?.sampleQuotaRemaining : data?.product?.sampleQuotaRemaining) ?? 0} suất). Cam kết trả video review trong 14 ngày sau khi nhận.`
                   )}
                 </div>
               )}

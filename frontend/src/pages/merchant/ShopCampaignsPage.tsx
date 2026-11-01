@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../services/api';
-import { Ticket, Plus, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
+import { Sparkles, Plus, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
 import type { Campaign } from '@/types/campaigns.types';
 import { CreateCampaignModal } from '../../components/common/CreateCampaignModal';
 
@@ -281,18 +281,15 @@ function InviteKolModal({
 
 function CampaignCard({
   campaign,
-  vouchers = [],
   onInvite,
 }: {
   campaign: Campaign;
-  vouchers?: any[];
   onInvite: (c: Campaign) => void;
 }) {
-  const navigate = useNavigate();
   const expired = isExpired(campaign.endDate);
   const paused = !campaign.isActive;
   const scheduled = new Date(campaign.startDate) > new Date();
-  const needsPolicy = !(Number(campaign.bonusBudgetTotal) > 0) || Number(campaign.bonusCommissionRate) < 1 || Number(campaign.bonusCommissionRate) > 2;
+  const needsPolicy = !(Number(campaign.bonusBudgetTotal) > 0) || Number(campaign.bonusCommissionRate) < 2 || Number(campaign.bonusCommissionRate) > 4;
   const accepted = campaign.participants?.filter((p) => p.status === 'ACCEPTED').length || 0;
   const invited = campaign.participants?.filter((p) => p.status === 'INVITED').length || 0;
 
@@ -325,10 +322,50 @@ function CampaignCard({
           </span>
         </div>
 
-        <p className="mb-3 text-xs leading-relaxed text-[#7D715E]">
-          {needsPolicy ? 'Chiến dịch cũ chưa có ngân sách hợp lệ. Tạo chiến dịch mới với thưởng 1–2% và ngân sách trần.'
-            : `Ngân sách thưởng: ${Number(campaign.bonusBudgetUsed || 0).toLocaleString('vi-VN')} / ${Number(campaign.bonusBudgetTotal).toLocaleString('vi-VN')} ₫`}
-        </p>
+        <div className="mb-3 text-xs leading-relaxed text-[#7D715E] space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span>Ngân sách thưởng trần:</span>
+            <strong className="text-[#1A1612]">
+              {Number(campaign.bonusBudgetUsed || 0).toLocaleString('vi-VN')} / {Number(campaign.bonusBudgetTotal || 0).toLocaleString('vi-VN')} ₫
+            </strong>
+          </div>
+          {Number(campaign.bonusBudgetTotal) > 0 && (
+            <>
+              <div className="w-full bg-[#F3EFE6] rounded-full h-1.5 overflow-hidden border border-[#EAE4D7]">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    Number(campaign.bonusBudgetUsed || 0) >= Number(campaign.bonusBudgetTotal)
+                      ? 'bg-rose-500'
+                      : 'bg-[#C59B58]'
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.max(
+                        0,
+                        Math.round(
+                          (Number(campaign.bonusBudgetUsed || 0) /
+                            Number(campaign.bonusBudgetTotal)) *
+                            100
+                        )
+                      )
+                    )}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-[#7D715E]">
+                <span>Đã giải ngân {Math.min(100, Math.round((Number(campaign.bonusBudgetUsed || 0) / Number(campaign.bonusBudgetTotal)) * 100))}%</span>
+                {Number(campaign.bonusBudgetUsed || 0) >= Number(campaign.bonusBudgetTotal) ? (
+                  <span className="font-bold text-rose-600">Đã giải ngân hết trần</span>
+                ) : (
+                  <span className="font-semibold text-[#059669]">
+                    Còn {(Number(campaign.bonusBudgetTotal) - Number(campaign.bonusBudgetUsed || 0)).toLocaleString('vi-VN')} ₫
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <div className="my-3 p-3 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] flex items-center justify-between">
           <span className="text-xs font-semibold text-[#7D715E]">Hoa hồng thưởng thêm</span>
           <span className="text-xl font-black text-[#B88E4F]">+{campaign.bonusCommissionRate}%</span>
@@ -345,49 +382,20 @@ function CampaignCard({
           </div>
         </div>
 
-        {/* Vouchers đính kèm chiến dịch này */}
+        {/* Cơ chế thù lao thưởng nóng chiến dịch */}
         <div className="my-3 pt-2.5 border-t border-[#EAE4D7]">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold text-[#1A1612] flex items-center gap-1.5">
-              <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
-              Voucher đính kèm ({vouchers.length})
+              <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+              Cơ chế thù lao thưởng nóng
             </span>
-            {vouchers.length === 0 && (
-              <span className="text-[10px] text-[#7D715E]">Chưa gắn voucher</span>
-            )}
+            <span className="text-[10px] font-black text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
+              +{campaign.bonusCommissionRate || 2}% Thù lao
+            </span>
           </div>
-
-          {vouchers.length > 0 ? (
-            <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-              {vouchers.map((v) => {
-                const discountText = v.discountType === 'PERCENTAGE'
-                  ? `Giảm ${v.discountValue}%`
-                  : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}₫`;
-                return (
-                  <div
-                    key={v.id}
-                    className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-xs"
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-[11px] font-black text-[#8F682E] bg-white px-1.5 py-0.5 rounded border border-[#EEDFC6]">
-                        {v.displayCode || v.code}
-                      </span>
-                      <span className="text-[11px] font-bold text-[#1A1612] truncate">
-                        {discountText}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#7D715E] shrink-0">
-                      {v.minimumOrderAmount ? `Đơn từ ${Number(v.minimumOrderAmount / 1000).toLocaleString('vi-VN')}k` : 'Mọi đơn'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-[11px] text-[#7D715E] italic">
-              Chưa có voucher ưu đãi. Bấm "Thêm Voucher" để cấp mã cho KOL.
-            </p>
-          )}
+          <p className="text-[11px] text-[#7D715E] leading-relaxed">
+            Đối tác tiếp thị tham gia nhận ngay đường link có gắn mã chiến dịch. Thưởng nóng tự động giải ngân khi đơn hàng hoàn tất.
+          </p>
         </div>
 
         {(campaign.participants?.length || 0) > 0 && (
@@ -419,23 +427,12 @@ function CampaignCard({
         <button
           id={`btn-invite-${campaign.id}`}
           type="button"
-          className="flex-1 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
           onClick={() => onInvite(campaign)}
           disabled={expired || paused || needsPolicy}
         >
           <UserPlus className="w-3.5 h-3.5" />
-          <span>Mời KOL Tham Gia</span>
-        </button>
-
-        <button
-          id={`btn-add-voucher-${campaign.id}`}
-          type="button"
-          className="py-2.5 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-          onClick={() => navigate(`/merchant/promotions?tab=coupons&createVoucher=1&campaignId=${campaign.id}`)}
-          title="Tạo voucher gắn vào chiến dịch này"
-        >
-          <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
-          <span>Thêm Voucher</span>
+          <span>Mời Đối Tác Tiếp Thị</span>
         </button>
       </div>
     </div>
@@ -450,7 +447,7 @@ export default function ShopCampaignsPage({ embedded = false }: { embedded?: boo
     () => searchParams.get('returnTo') === 'dashboard',
   );
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
+  // coupons state removed as campaigns focus on performance remuneration budget
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [inviteTarget, setInviteTarget] = useState<Campaign | null>(null);
@@ -503,15 +500,7 @@ export default function ShopCampaignsPage({ embedded = false }: { embedded?: boo
         }
       }
 
-      if (storeId) {
-        try {
-          const coupRes: any = await api.get(`/stores/${storeId}/coupons`);
-          const rawCoups = coupRes?.data?.data || coupRes?.data || coupRes || [];
-          setCoupons(Array.isArray(rawCoups) ? rawCoups : []);
-        } catch {
-          setCoupons([]);
-        }
-      }
+      // coupons fetch removed
     } catch {
       // ignore
     } finally {
@@ -581,14 +570,10 @@ export default function ShopCampaignsPage({ embedded = false }: { embedded?: boo
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {campaigns.map((c) => {
-              const campVouchers = coupons.filter(
-                (v) => v.campaignId === c.id || v.campaign?.id === c.id
-              );
               return (
                 <CampaignCard
                   key={c.id}
                   campaign={c}
-                  vouchers={campVouchers}
                   onInvite={(target) => {
                     setInviteTarget(target);
                   }}

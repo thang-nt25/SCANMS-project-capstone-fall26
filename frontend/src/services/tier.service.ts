@@ -8,6 +8,15 @@ export interface TierPolicy {
   maintenanceThreshold?: number;
 }
 
+export interface RecommendedProduct {
+  id: string;
+  title: string;
+  price: number;
+  imageUrl?: string;
+  customCommissionRate?: number;
+  store?: { id: string; name: string; logoUrl?: string };
+}
+
 export interface TierStatus {
   currentTier: TierPolicy;
   currentRevenue: number;
@@ -27,6 +36,7 @@ export interface TierStatus {
   cycleStatus?: 'PROMOTED_OR_EXCEEDED' | 'MAINTAINED' | 'GRACE_PERIOD';
   daysRemaining?: number;
   stepDownTier?: { id: string; name: string; extraBonusPercentage: number } | null;
+  recommendedProducts?: RecommendedProduct[];
 }
 
 export const tierService = {

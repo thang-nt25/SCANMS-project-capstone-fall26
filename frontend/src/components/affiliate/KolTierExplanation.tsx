@@ -73,7 +73,7 @@ export function KolTierExplanation({ status }: { status: TierStatus }) {
                 <p className="text-[11px] text-[#7D715E]">
                   Cần bổ sung thêm <strong className="text-[#B45309] font-semibold">{money(revenueNeededToMaintain)}</strong> trước ngày chốt sổ để hoàn tất điều kiện duy trì.
                   {stepDownTier && (
-                    <span> Trường hợp không kịp bổ sung, hệ thống sẽ áp dụng quy chế Soft Landing (chuyển tiếp sang hạng {stepDownTier.name} +{stepDownTier.extraBonusPercentage}%), tránh rớt sốc cấp bậc.</span>
+                    <span> Trường hợp không kịp bổ sung, hệ thống sẽ áp dụng quy chế chuyển tiếp bậc an toàn (hạ sang hạng {stepDownTier.name} +{stepDownTier.extraBonusPercentage}%), tránh rớt đột ngột nhiều cấp bậc.</span>
                   )}
                 </p>
               </div>
@@ -92,7 +92,7 @@ export function KolTierExplanation({ status }: { status: TierStatus }) {
       </div>
 
       <div className="mt-2.5 border-t border-[#EEDFC6] pt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#7D715E]">
-        <span>Chỉ tính đơn tiếp thị đã giao / hoàn tất (không gồm phí ship, sau trừ hoàn trả & voucher).</span>
+        <span>Chỉ tính đơn tiếp thị đã giao / hoàn tất (không tính phí vận chuyển, đã trừ các khoản đổi trả & mã ưu đãi).</span>
         <span className="flex items-center gap-1">
           <CalendarDays size={13} className="text-[#B88E4F]" />
           Chốt sổ định kỳ lúc 00:15 ngày 1 mỗi tháng

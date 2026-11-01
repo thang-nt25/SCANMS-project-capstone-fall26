@@ -1,5 +1,6 @@
 import {
   IsOptional,
+  IsIn,
   IsString,
   IsEnum,
   IsInt,
@@ -25,6 +26,8 @@ export enum AnalyticsQuickRange {
   LAST_30_DAYS = '30d',
   THIS_MONTH = 'this_month',
   LAST_MONTH = 'last_month',
+  THIS_QUARTER = 'this_quarter',
+  THIS_YEAR = 'this_year',
   CUSTOM = 'custom',
 }
 
@@ -148,6 +151,11 @@ export class TopBreakdownQueryDto {
 }
 
 export class QueryReferralOrdersDto {
+  @ApiPropertyOptional({ description: 'Kỳ báo cáo hiệu suất KOC của Shop', enum: ['7d', '30d', 'month', 'all'] })
+  @IsOptional()
+  @IsIn(['7d', '30d', 'month', 'all'])
+  period?: '7d' | '30d' | 'month' | 'all';
+
   @ApiPropertyOptional({ description: 'Trang hiện tại', example: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
