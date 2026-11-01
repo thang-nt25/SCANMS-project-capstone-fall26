@@ -35,6 +35,8 @@ databaseTests('catalog ranking SQL with isolated read-only fixtures', () => {
     order_items(product_id, order_id, quantity) AS (VALUES
       ('old', 'delivered', 3), ('old', 'completed', 2), ('old', 'pending', 100),
       ('old', 'cancelled', 900), ('old', 'returned', 800), ('new', 'completed', 1), ('visited', 'delivered', 4)),
+    product_reviews(product_id, rating, is_approved) AS (VALUES
+      ('old', 5, true), ('old', 4, true), ('old', 1, false), ('new', 3, true)),
     audit_logs(action, details) AS (VALUES
       ('ANALYTICS_PAGE_VIEW', '{"productId":"visited"}'::jsonb),
       ('ANALYTICS_PAGE_VIEW', '{"productId":"visited"}'::jsonb),
@@ -60,6 +62,12 @@ databaseTests('catalog ranking SQL with isolated read-only fixtures', () => {
     const rows = await run({ sortBy: 'sales' });
     expect(rows.map(row => Number(row.soldCount))).toEqual([5, 4, 1, 0]);
     expect(Number(rows.find(row => row.id === 'visited').viewCount)).toBe(3);
+  });
+  it('aggregates only visible reviews without multiplying units sold', async () => {
+    const rows = await run({ sortBy: 'sales' });
+    expect(rows.find(row => row.id === 'old')).toMatchObject({ rating: 4.5, reviewCount: '2', soldCount: '5' });
+    expect(rows.find(row => row.id === 'new')).toMatchObject({ rating: 3, reviewCount: '1' });
+    expect(rows.find(row => row.id === 'zero')).toMatchObject({ rating: null, reviewCount: '0', soldCount: '0' });
   });
   it('sorts before pagination and applies category, store and price filters', async () => {
     expect((await run({ sortBy: 'sales', limit: 2, page: 2 })).map(row => row.id)).toEqual(['new', 'zero']);

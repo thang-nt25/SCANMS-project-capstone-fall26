@@ -1,3 +1,5 @@
+import { lockPricingProducts, reservePromotionBudget, releasePromotionBudget } from '../pricing/pricing-policy';
+import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import {
   Injectable,
   NotFoundException,
@@ -12,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { exclusiveDealBonus } from './exclusive-deal-bonus';
-import { additiveCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
@@ -1004,6 +1006,7 @@ export class OrdersService {
     } = params;
 
     const confirmedShippingFee = requireShippingFee(shippingQuote?.totalFee);
+    await lockPricingProducts(tx, dto.items.map(item => item.productId));
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
     let shopFundedAmount = 0;
     const requestedLiveIds = [...new Set(dto.items.map((item) => item.liveSessionId).filter((id): id is string => Boolean(id)))];
@@ -1652,35 +1655,8 @@ export class OrdersService {
           include: { exclusiveDeal: true, campaign: true },
         })
       : null;
-    const approvedExclusiveDeals = attributedCollaboratorId
-      ? await tx.exclusiveDealProposal.findMany({
-          where: {
-            collaboratorId: attributedCollaboratorId,
-            productId: {
-              in: [...new Set(dto.items.map((item) => item.productId))],
-            },
-            status: 'APPROVED',
-            closedAt: null,
-          },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            collaboratorId: true,
-            storeId: true,
-            productId: true,
-            approvedCommissionRate: true,
-          },
-        })
-      : [];
-    const currentDealByProduct = new Map<
-      string,
-      (typeof approvedExclusiveDeals)[number]
-    >();
-    for (const deal of approvedExclusiveDeals) {
-      if (!currentDealByProduct.has(deal.productId)) {
-        currentDealByProduct.set(deal.productId, deal);
-      }
-    }
+    const scopedDeals = await activeDealMap(tx, attributedCollaboratorId ? dto.items.map(item => ({ collaboratorId: attributedCollaboratorId, productId: item.productId, storeId: lockedStore.id })) : []);
+    const currentDealByProduct = new Map(dto.items.map(item => [item.productId, scopedDeals.get(attributedCollaboratorId + ':' + item.productId)]));
 
     const campaignBonusReservations = new Map<string, number>();
     const campaignLineBonuses = dto.items.map(() => ({ campaignId: null as string | null, campaignBonusRate: 0 }));
@@ -1702,19 +1678,20 @@ export class OrdersService {
       );
       const campaign = attributedReferralLink?.campaign;
       const campaignBonus = campaignBonusRate(campaign, lockedStore.id);
-      campaignLineBonuses[lineIndex] = { campaignId: campaignBonus && campaign ? campaign.id : null, campaignBonusRate: campaignBonus };
+      const fundedCampaignBonus = campaignBonus > Math.max(tierBonus, dealBonus) ? campaignBonus : 0;
+      campaignLineBonuses[lineIndex] = { campaignId: fundedCampaignBonus && campaign ? campaign.id : null, campaignBonusRate: fundedCampaignBonus };
       const liveSession = item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
         ? liveSources.find((session) => session.id === item.liveSessionId &&
             session.products.some((product) => product.productId === prod.id &&
               (!product.variantId || product.variantId === item.variantId)))
         : null;
       const liveBonus = liveBonusRate(liveSession);
-      const finalCommissionRate = additiveCommissionRate(tierBonus, dealBonus, campaignBonus, liveBonus);
-      const regularCommissionRate = finalCommissionRate - liveBonus;
+      const finalCommissionRate = precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, liveBonus);
+      const regularCommissionRate = precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, 0);
       const netItemSubtotal = linePricing[lineIndex].netGoods;
-      if (campaignBonus && campaign) {
+      if (fundedCampaignBonus && campaign) {
         campaignBonusReservations.set(campaign.id,
-          (campaignBonusReservations.get(campaign.id) || 0) + netItemSubtotal * campaignBonus / 100);
+          (campaignBonusReservations.get(campaign.id) || 0) + netItemSubtotal * fundedCampaignBonus / 100);
       }
       const calculatedCommission =
         netItemSubtotal * (finalCommissionRate / 100);
@@ -1922,6 +1899,7 @@ export class OrdersService {
       },
     });
 
+    await reservePromotionBudget(tx, order.id, finalOrderItemsToSave.map((item, index) => ({ ...item, netGoods: linePricing[index].netGoods })));
     await notifyCustomerOrderEvent(tx, order, 'ORDER_CREATED', {
       storeName: store.name,
       paymentMethod,
@@ -3116,6 +3094,7 @@ export class OrdersService {
       }
 
       // 3. Xử lý hoàn trả Coupon (Issue 4 & FR-16 Mục 31)
+      await releasePromotionBudget(tx, orderId);
       const redemption = await tx.couponRedemption.findUnique({
         where: { orderId },
       });

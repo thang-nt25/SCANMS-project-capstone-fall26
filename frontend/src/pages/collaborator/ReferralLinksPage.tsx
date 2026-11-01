@@ -1,6 +1,6 @@
+import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealKpiProgress } from '@/components/affiliate/DealKpiProgress';
-import { DealDemoPanel } from '@/components/affiliate/DealDemoPanel';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
@@ -43,7 +43,6 @@ import {
   HelpCircle,
   BarChart3,
   ShieldCheck,
-  Video,
 } from 'lucide-react';
 import { referralLinksService } from '../../services/referral-links.service';
 import type {
@@ -157,27 +156,9 @@ export default function ReferralLinksPage() {
   const [selectedProduct, setSelectedProduct] = useState<EligibleProduct | null>(null);
   const [dealProposals, setDealProposals] = useState<any[]>([]);
   const [dealProposalProduct, setDealProposalProduct] = useState<EligibleProduct | null>(null);
-  const [dealProposalStep, setDealProposalStep] = useState<1 | 2 | 3>(1);
-  const [dealProposalRate, setDealProposalRate] = useState('0');
-  const [dealSalesCommitment, setDealSalesCommitment] = useState('');
   const [loadingDealProposals, setLoadingDealProposals] = useState(false);
-  const [submittingDealProposal, setSubmittingDealProposal] = useState(false);
   const [deletingDealId, setDeletingDealId] = useState<string | null>(null);
   const [dealToDelete, setDealToDelete] = useState<any | null>(null);
-  const [dealVideoCount, setDealVideoCount] = useState(4);
-  const [dealLiveCount, setDealLiveCount] = useState(2);
-  const [dealTargetOrders, setDealTargetOrders] = useState(80);
-  const [dealTimeframeDays, setDealTimeframeDays] = useState(30);
-  const [dealAgreedSanctions, setDealAgreedSanctions] = useState(false);
-  const [dealSanctionsPolicyOpen, setDealSanctionsPolicyOpen] = useState(false);
-  const [kolDealStatus, setKolDealStatus] = useState<{
-    isBlocked: boolean;
-    violationsCount: number;
-    cooldownUntil: string | null;
-    remainingDays: number;
-    reason: string | null;
-    sampleRequestsBlocked: boolean;
-  } | null>(null);
   const [isExclusiveDealsCollapsed, setIsExclusiveDealsCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem('scanms_deals_collapsed') === 'true';
@@ -711,37 +692,7 @@ export default function ReferralLinksPage() {
     }
   };
 
-  const updateCommitmentFromKpis = (video: number, live: number, orders: number, days: number) => {
-    setDealVideoCount(video);
-    setDealLiveCount(live);
-    setDealTargetOrders(orders);
-    setDealTimeframeDays(days);
-    setDealSalesCommitment(
-      `Cam kết trong chu kỳ ${days} ngày: Đăng tối thiểu ${video} video review unboxing chất lượng cao gắn link affiliate, thực hiện ${live} phiên livestream ghim giỏ hàng tối thiểu 45 phút, và hướng đến đạt tối thiểu ${orders} đơn hàng giao thành công. Cam kết tuân thủ quy chế chế tài 4 cấp độ của SCANMS nếu không đạt chỉ tiêu.`,
-    );
-  };
-
-  const openExclusiveDealDialog = (product: EligibleProduct) => {
-    setDealProposalStep(1);
-    setDealProposalProduct(product);
-    const currentDeal = dealProposals.find(
-      (deal) => deal.productId === product.id && deal.isCurrentDeal,
-    );
-    const minimumRate = Math.max(10, Number(currentDeal?.approvedCommissionRate ?? 0));
-    setDealProposalRate(String(Math.min(13, minimumRate + 1)));
-    setDealVideoCount(4);
-    setDealLiveCount(2);
-    setDealTargetOrders(80);
-    setDealTimeframeDays(30);
-    setDealAgreedSanctions(false);
-    setDealSanctionsPolicyOpen(false);
-    setDealSalesCommitment(
-      'Cam kết trong chu kỳ 30 ngày: Đăng tối thiểu 4 video review unboxing chất lượng cao gắn link affiliate, thực hiện 2 phiên livestream ghim giỏ hàng tối thiểu 45 phút, và hướng đến đạt tối thiểu 80 đơn hàng giao thành công. Cam kết tuân thủ quy chế chế tài 4 cấp độ của SCANMS nếu không đạt chỉ tiêu.',
-    );
-    referralLinksService.getMyDealStatus()
-      .then((status) => setKolDealStatus(status))
-      .catch(() => setKolDealStatus(null));
-  };
+  const openExclusiveDealDialog = (product: EligibleProduct) => { setDealProposalProduct(product); };
 
   const openDealRevision = (deal: any) => {
     const existingProduct = eligibleProducts.find((product) => product.id === deal.productId);
@@ -793,55 +744,6 @@ export default function ReferralLinksPage() {
       toast.error(err?.response?.data?.message || err?.message || 'Không thể xóa đề xuất deal lúc này.');
     } finally {
       setDeletingDealId(null);
-    }
-  };
-
-  const handleSubmitExclusiveDeal = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!dealProposalProduct || submittingDealProposal) return;
-    if (kolDealStatus?.isBlocked) {
-      toast.error(
-        `Tài khoản đang trong thời gian chế tài (Lần ${kolDealStatus.violationsCount} - Khóa quyền xin deal còn ${kolDealStatus.remainingDays} ngày).`,
-      );
-      return;
-    }
-    if (!dealAgreedSanctions) {
-      toast.error('Vui lòng tích xác nhận cam kết tuân thủ Quy chế Chế tài 4 Cấp độ của SCANMS.');
-      return;
-    }
-    const openRate = 10;
-    const currentDeal = dealProposals.find(
-      (deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal,
-    );
-    const minimumRate = Math.max(openRate, Number(currentDeal?.approvedCommissionRate ?? 0));
-    const proposedRate = Number(dealProposalRate);
-    if (![11, 12, 13].includes(proposedRate) || proposedRate <= minimumRate) {
-      toast.error(`Chọn nấc +1%, +2% hoặc +3% cao hơn deal đang áp dụng (${minimumRate}%).`);
-      return;
-    }
-    if (dealSalesCommitment.trim().length < 5) {
-      toast.error('Hãy nhập cam kết doanh số cụ thể để Shop xem xét.');
-      return;
-    }
-
-    setSubmittingDealProposal(true);
-    try {
-      const proposal = await referralLinksService.createExclusiveDeal({
-        videoReviewCommitment: dealAgreedSanctions && dealVideoCount >= 1,
-        productId: dealProposalProduct.id,
-        proposedCommissionRate: proposedRate,
-        salesCommitment: dealSalesCommitment.trim(),
-        targetOrders: dealTargetOrders,
-        commitmentDays: dealTimeframeDays,
-      });
-      setDealProposals((current) => [proposal, ...current.filter((item) => item.id !== proposal.id)]);
-      toast.success('Đã gửi đề xuất qua Chat cho Shop.');
-      setDealProposalProduct(null);
-      navigate('/chat');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Không thể gửi đề xuất deal.');
-    } finally {
-      setSubmittingDealProposal(false);
     }
   };
 
@@ -1034,14 +936,6 @@ export default function ReferralLinksPage() {
         return 'Đa kênh / Khác';
     }
   };
-
-  const dealProposalCurrentDeal = dealProposalProduct
-    ? dealProposals.find((deal) => deal.productId === dealProposalProduct.id && deal.isCurrentDeal)
-    : undefined;
-  const dealProposalMinimumRate = Math.max(
-    10,
-    Number(dealProposalCurrentDeal?.approvedCommissionRate ?? 0),
-  );
 
   return (
     <div className="space-y-4">
@@ -3049,369 +2943,7 @@ export default function ReferralLinksPage() {
       )}
 
 
-      {dealProposalProduct && (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center kol-deal-proposal-overlay bg-[#231D15]/25 p-4 backdrop-blur-xs" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !submittingDealProposal) setDealProposalProduct(null);
-        }}>
-          <form role="dialog" aria-modal="true" aria-labelledby="deal-proposal-title" onSubmit={(event) => {
-            if (dealProposalStep < 3) {
-              event.preventDefault();
-              if (dealProposalStep === 1 && Number(dealProposalRate) > dealProposalMinimumRate && Number(dealProposalRate) <= 100) setDealProposalStep(2);
-              if (dealProposalStep === 2 && dealSalesCommitment.trim().length >= 5) setDealProposalStep(3);
-            } else void handleSubmitExclusiveDeal(event);
-          }} className="kol-deal-proposal-modal w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl border border-[#EAE4D7] bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            {/* Header */}
-            <div className="kol-deal-proposal-heading flex shrink-0 items-start justify-between gap-4 border-b border-[#EAE4D7] px-6 py-4 bg-[#FAF8F5]">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-0.5 text-[11px] font-extrabold text-[#B88E4F]">
-                  <Sparkles className="h-3.5 w-3.5" /> EXCLUSIVE DEAL
-                </span>
-                <h2 id="deal-proposal-title" className="mt-1 text-lg font-black text-[#1A1612]">Đề xuất deal riêng với Shop</h2>
-                <p className="text-xs text-[#7D715E] mt-0.5">Thỏa thuận hoa hồng và kế hoạch hợp tác cùng Shop.</p>
-              </div>
-              <button type="button" onClick={() => setDealProposalProduct(null)} disabled={submittingDealProposal} className="rounded-lg p-2 text-[#7D715E] hover:bg-[#F3EFE6] cursor-pointer" aria-label="Đóng">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <nav className="kol-deal-proposal-steps" aria-label="Các bước đề xuất deal">
-              {(['Hoa hồng', 'Cam kết', 'Xác nhận'] as const).map((label, index) => (
-                <button key={label} type="button" aria-current={dealProposalStep === index + 1 ? 'step' : undefined}
-                  disabled={submittingDealProposal || index + 1 > dealProposalStep}
-                  onClick={() => setDealProposalStep((index + 1) as 1 | 2 | 3)}>
-                  <span>{index + 1}</span>{label}
-                </button>
-              ))}
-            </nav>
-            {/* Body */}
-            <div className="kol-deal-proposal-body flex-1 overflow-y-auto space-y-4 p-6 text-left">
-              {/* Penalty Alert if under Cooldown */}
-              {kolDealStatus?.isBlocked && (
-                <div className="rounded-xl border border-[#DC2626]/30 bg-[#DC2626]/10 p-3.5 text-xs text-[#DC2626]">
-                  <div className="flex items-center gap-2 font-black text-sm">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    Tài khoản đang bị chế tài vi phạm cam kết (Lần {kolDealStatus.violationsCount})
-                  </div>
-                  <p className="mt-1.5 leading-relaxed text-[#DC2626]/90">
-                    Bạn đang bị tạm khóa tính năng đề xuất Deal riêng trong <strong>{kolDealStatus.remainingDays} ngày</strong> (đến ngày {new Date(kolDealStatus.cooldownUntil!).toLocaleDateString('vi-VN')}) do chưa đáp ứng cam kết trước đó.
-                    {kolDealStatus.sampleRequestsBlocked && ' Hạn ngạch nhận mẫu thử hiện tại = 0.'}
-                  </p>
-                </div>
-              )}
-
-              {dealProposalStep === 1 && <>
-              {/* Product Info Card */}
-              <div className="kol-deal-proposal-product flex items-center gap-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
-                <img src={dealProposalProduct.imageUrl || ''} alt="" className="h-14 w-14 rounded-lg border border-[#EAE4D7] bg-white object-cover shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-[#1A1612]">{dealProposalProduct.title}</div>
-                  <div className="mt-1 text-xs text-[#7D715E]">
-                    Gian hàng: <strong className="text-[#1A1612]">{dealProposalProduct.store.name}</strong> · Hoa hồng sàn: <span className="text-[#1A1612] font-semibold">{dealProposalProduct.estimatedCommissionRate}%</span>
-                  </div>
-                  {dealProposalCurrentDeal && (
-                    <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[#B88E4F]">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Deal độc quyền đang áp dụng: {dealProposalCurrentDeal.approvedCommissionRate}%
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Proposed Commission Rate */}
-              <div>
-                <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                  Mức hoa hồng độc quyền đề xuất (%) <span className="text-[#DC2626]">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={dealProposalRate}
-                    onChange={(event) => setDealProposalRate(event.target.value)}
-                    aria-label="Nấc thưởng Deal độc quyền"
-                    className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
-                    required
-                  >
-                    {[1, 2, 3].map((bonus) => <option key={bonus} value={10 + bonus} disabled={10 + bonus <= dealProposalMinimumRate}>
-                      +{bonus}% (tổng {10 + bonus}%)
-                    </option>)}
-                  </select>
-                </div>
-                <span className={`mt-1.5 block text-xs font-medium ${
-                  dealProposalMinimumRate >= 13 ||
-                  Number(dealProposalRate) > 13 ||
-                  (dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate)
-                    ? 'text-[#DC2626]'
-                    : 'text-[#7D715E]'
-                }`}>
-                  {dealProposalMinimumRate >= 13
-                    ? 'Deal hiện tại đã ở nấc +3%, không thể đề xuất cao hơn.'
-                    : Number(dealProposalRate) > 13
-                      ? 'Mức đề xuất không được vượt quá nấc +3%.'
-                      : dealProposalRate.trim() && Number(dealProposalRate) <= dealProposalMinimumRate
-                        ? `Mức đề xuất phải cao hơn ${dealProposalMinimumRate}%.`
-                        : `Mức cao nhất hiện tại là ${dealProposalMinimumRate}%; hãy nhập mức cao hơn.`}
-                </span>
-              </div>
-
-              </>}
-              {dealProposalStep === 2 && <>
-              {/* SMART Commitment Builder Section */}
-              <div className="kol-commitment-plan">
-                <div className="kol-commitment-heading">
-                  <div><h3 className="text-xs font-black uppercase tracking-wider text-[#1A1612] flex items-center gap-1.5">
-                    <Target className="h-4 w-4 text-[#C59B58]" /> Kế hoạch hợp tác
-                  </h3><p>Chọn chỉ tiêu phù hợp với kế hoạch của bạn.</p></div>
-                  <button
-                    type="button"
-                    onClick={() => updateCommitmentFromKpis(dealVideoCount, dealLiveCount, dealTargetOrders, dealTimeframeDays)}
-                    className="kol-commitment-reset"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" /> Khôi phục mẫu
-                  </button>
-                </div>
-
-                <DealDemoPanel />
-                <p className="text-xs text-[#7D715E]">KPI bắt đầu khi Shop duyệt, có 14 ngày đối soát sau kỳ. Chỉ đơn hoàn tất và chưa hoàn tiền được ghi nhận.</p>
-                {/* 1. Chu kỳ cam kết */}
-                <div className="kol-commitment-group">
-                  <label className="block text-xs font-bold text-[#7D715E] mb-1.5">
-                    Thời gian thực hiện
-                  </label>
-                  <div className="kol-commitment-options">
-                    {[14, 30, 45].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                          aria-pressed={dealTimeframeDays === days}
-                        onClick={() => updateCommitmentFromKpis(dealVideoCount, dealLiveCount, dealTargetOrders, days)}
-                        className={`py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                          dealTimeframeDays === days
-                            ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] shadow-2xs'
-                            : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58]/50'
-                        }`}
-                      >
-                        {days} ngày
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Sản lượng nội dung */}
-                <div className="kol-commitment-content-grid">
-                  <div className="kol-commitment-group">
-                    <label className="block text-xs font-bold text-[#7D715E] mb-1.5 flex items-center gap-1">
-                      <Video className="h-3.5 w-3.5 text-[#C59B58]" /> Video review
-                    </label>
-                    <div className="kol-commitment-options">
-                      {[2, 4, 6].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          aria-pressed={dealVideoCount === num}
-                          onClick={() => updateCommitmentFromKpis(num, dealLiveCount, dealTargetOrders, dealTimeframeDays)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            dealVideoCount === num
-                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]'
-                              : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58]/50'
-                          }`}
-                        >
-                          {num} video
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="kol-commitment-group">
-                    <label className="block text-xs font-bold text-[#7D715E] mb-1.5 flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-[#C59B58]" /> Livestream ghim giỏ
-                    </label>
-                    <div className="kol-commitment-options">
-                      {[0, 1, 2, 4].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          aria-pressed={dealLiveCount === num}
-                          onClick={() => updateCommitmentFromKpis(dealVideoCount, num, dealTargetOrders, dealTimeframeDays)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            dealLiveCount === num
-                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]'
-                              : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58]/50'
-                          }`}
-                        >
-                          {num === 0 ? 'Không' : `${num} live`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Mục tiêu đơn hàng */}
-                <div className="kol-commitment-group">
-                  <label className="block text-xs font-bold text-[#7D715E] mb-1.5 flex items-center gap-1">
-                    <ShoppingBag className="h-3.5 w-3.5 text-[#C59B58]" /> Đơn hàng giao thành công
-                  </label>
-                  <div className="kol-commitment-options">
-                    {[30, 50, 80, 150].map((orders) => (
-                      <button
-                        key={orders}
-                        type="button"
-                          aria-pressed={dealTargetOrders === orders}
-                        onClick={() => updateCommitmentFromKpis(dealVideoCount, dealLiveCount, orders, dealTimeframeDays)}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                          dealTargetOrders === orders
-                            ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]'
-                            : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E] hover:border-[#C59B58]/50'
-                        }`}
-                      >
-                        {orders} đơn
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Textarea */}
-                <div className="kol-commitment-description">
-                  <label htmlFor="deal-commitment-description" className="block text-xs font-bold text-[#7D715E] mb-1">
-                    Nội dung cam kết gửi Shop <span className="text-[#DC2626]">*</span>
-                  </label>
-                  <textarea
-                    id="deal-commitment-description"
-                    value={dealSalesCommitment}
-                    onChange={(event) => setDealSalesCommitment(event.target.value)}
-                    rows={4}
-                    maxLength={1000}
-                    minLength={5}
-                    placeholder="Mô tả kế hoạch truyền thông và cam kết doanh số..."
-                    className="w-full resize-y rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-2.5 text-xs font-normal text-[#1A1612] outline-none focus:border-[#C59B58] focus:bg-white"
-                    required
-                  />
-                  <div className="kol-commitment-description-hint">
-                    <span>Bổ sung lịch đăng bài hoặc ý tưởng triển khai.</span>
-                    <span>{dealSalesCommitment.length}/1000</span>
-                  </div>
-                </div>
-              </div>
-
-              </>}
-              {dealProposalStep === 3 && <>
-              <section className="kol-deal-proposal-summary" aria-label="Tóm tắt đề xuất">
-                <div className="kol-deal-summary-top">
-                  <div className="kol-deal-summary-product">
-                    <img
-                      src={dealProposalProduct.imageUrl || '/assets/product-placeholder.svg'}
-                      alt={dealProposalProduct.title}
-                      onError={(event) => {
-                        event.currentTarget.onerror = null;
-                        event.currentTarget.src = '/assets/product-placeholder.svg';
-                      }}
-                    />
-                    <div>
-                      <span>Đề xuất của bạn</span>
-                      <h3>{dealProposalProduct.title}</h3>
-                      <p>{dealProposalProduct.store.name}</p>
-                    </div>
-                  </div>
-                  <strong>{dealProposalRate}%<small>Hoa hồng</small></strong>
-                </div>
-                <dl><div><dt>Thời gian</dt><dd>{dealTimeframeDays} ngày</dd></div><div><dt>Video review</dt><dd>{dealVideoCount} video</dd></div><div><dt>Livestream</dt><dd>{dealLiveCount} phiên</dd></div><div><dt>Mục tiêu</dt><dd>{dealTargetOrders} đơn</dd></div></dl>
-                <details><summary>Xem nội dung cam kết</summary><p>{dealSalesCommitment}</p></details>
-              </section>
-              {/* 4-LEVEL SANCTIONS POLICY CARD */}
-              <div className="kol-deal-policy">
-                <div className="kol-deal-policy-heading">
-                  <div className="kol-deal-policy-title">
-                    <ShieldAlert className="h-4 w-4 text-[#C59B58]" />
-                    Quy chế hợp tác SCANMS
-                  </div>
-                  <button
-                    type="button"
-                    aria-expanded={dealSanctionsPolicyOpen}
-                    onClick={() => setDealSanctionsPolicyOpen(!dealSanctionsPolicyOpen)}
-                    className="text-[11px] font-bold text-[#B88E4F] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    {dealSanctionsPolicyOpen ? 'Thu gọn' : 'Xem quy chế'}
-                    {dealSanctionsPolicyOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                </div>
-
-                {dealSanctionsPolicyOpen && <div className="kol-deal-policy-levels">
-                  <p className="kol-deal-policy-intro">Chọn một cấp độ để xem điều kiện áp dụng.</p>
-                  <details name="scanms-deal-policy">
-                    <summary><span className="kol-policy-number">01</span><span>Điều chỉnh hoa hồng<small>Khi chưa đạt chỉ tiêu cam kết</small></span><ChevronDown /></summary>
-                    <div className="kol-policy-detail">Hết chu kỳ cam kết ({dealTimeframeDays} ngày), nếu không đạt chỉ tiêu, Shop có quyền hoàn nguyên hoa hồng về mức Open Offer tiêu chuẩn. Đơn hàng cũ đã phát sinh giữ nguyên hoa hồng.</div>
-                  </details>
-                  <details name="scanms-deal-policy">
-                    <summary><span className="kol-policy-number">02</span><span>Điểm tín nhiệm<small>Ghi nhận mức độ hoàn thành hợp tác</small></span><ChevronDown /></summary>
-                    <div className="kol-policy-detail">Hồ sơ ghi nhận vi phạm, giảm Tỷ lệ hoàn thành cam kết và hạ bậc ưu tiên trên Bảng xếp hạng Leaderboard &amp; AI Matching.</div>
-                  </details>
-                  <details name="scanms-deal-policy">
-                    <summary><span className="kol-policy-number">03</span><span>Quyền xin deal &amp; mẫu thử<small>Thời hạn khóa theo số lần vi phạm</small></span><ChevronDown /></summary>
-                    <div className="kol-policy-detail">
-                      <dl className="kol-policy-violations">
-                        <div><dt>Vi phạm lần 1</dt><dd>Khóa xin deal 1 tuần</dd></div>
-                        <div><dt>Vi phạm lần 2</dt><dd>Khóa xin deal 2 tuần</dd></div>
-                        <div><dt>Vi phạm lần 3</dt><dd>Khóa xin deal 3 tuần</dd></div>
-                        <div><dt>Vi phạm lần 4 trở lên</dt><dd>Khóa xin deal 4 tuần và khóa hạn ngạch nhận mẫu thử (Sample Quota = 0)</dd></div>
-                      </dl>
-                    </div>
-                  </details>
-                  <details name="scanms-deal-policy">
-                    <summary><span className="kol-policy-number">04</span><span>Trọng tài &amp; bồi thường<small>Khi nhận tài trợ nhưng không thực hiện</small></span><ChevronDown /></summary>
-                    <div className="kol-policy-detail">Trường hợp nhận hàng mẫu/tài trợ mà không thực hiện cam kết (bùng hàng/ghosting), Shop được quyền khiếu nại lên Trọng tài SCANMS để truy thu bồi thường hoặc khóa tài khoản vĩnh viễn.</div>
-                  </details>
-                </div>}
-
-                {/* Mandatory Agreement Checkbox */}
-                <label className="mt-3.5 flex items-start gap-2.5 pt-3 border-t border-[#EEDFC6] cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={dealAgreedSanctions}
-                    onChange={(e) => setDealAgreedSanctions(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded-md border-[#C59B58] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
-                  />
-                  <span className="text-xs font-bold text-[#1A1612]">
-                    Tôi cam kết thực hiện ít nhất 1 video review cho sản phẩm và tuân thủ <span className="text-[#B88E4F]">Quy chế chế tài 4 cấp độ</span> của sàn SCANMS. Thưởng Deal cần Shop duyệt trước khi áp dụng.
-                  </span>
-                </label>
-              </div>
-              </>}
-            </div>
-
-            {/* Footer */}
-            <div className="kol-deal-proposal-footer flex shrink-0 items-center justify-between gap-2 border-t border-[#EAE4D7] px-6 py-4 bg-[#FAF8F5]">
-              <span className="text-xs text-[#7D715E]">
-                {dealProposalCurrentDeal ? 'Đơn hàng cũ giữ nguyên hoa hồng hiện tại.' : 'Đề xuất sẽ được chuyển tới hộp Chat của Shop.'}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => dealProposalStep === 1 ? setDealProposalProduct(null) : setDealProposalStep(dealProposalStep === 3 ? 2 : 1)}
-                  disabled={submittingDealProposal}
-                  className="rounded-xl border border-[#EAE4D7] px-4 py-2.5 text-xs font-bold text-[#7D715E] hover:bg-white cursor-pointer"
-                >
-                  {dealProposalStep === 1 ? 'Hủy' : 'Quay lại'}
-                </button>
-                {dealProposalStep < 3 ? <button type="submit" className="kol-deal-proposal-next"
-                  disabled={submittingDealProposal || Boolean(kolDealStatus?.isBlocked) || (dealProposalStep === 1 ? !dealProposalRate.trim() || ![11, 12, 13].includes(Number(dealProposalRate)) || Number(dealProposalRate) <= dealProposalMinimumRate : dealSalesCommitment.trim().length < 5)}>
-                  {dealProposalStep === 1 ? 'Tiếp tục' : 'Xem lại đề xuất'} <ChevronRight className="h-4 w-4" />
-                </button> : <button
-                  type="submit"
-                  disabled={
-                    submittingDealProposal ||
-                    kolDealStatus?.isBlocked ||
-                    !dealAgreedSanctions ||
-                    !dealProposalRate.trim() ||
-                    Number(dealProposalRate) <= dealProposalMinimumRate ||
-                    Number(dealProposalRate) > 100 ||
-                    dealSalesCommitment.trim().length < 5
-                  }
-                  className="kol-deal-send inline-flex items-center gap-2 rounded-xl bg-[#C59B58] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50 shadow-md shadow-[#C59B58]/20 cursor-pointer transition"
-                >
-                  {submittingDealProposal ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                  Gửi đề xuất qua Chat
-                </button>}
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      {dealProposalProduct && <ExclusiveOfferModal mode="proposal" productId={dealProposalProduct.id} storeId={dealProposalProduct.store.id} onClose={() => setDealProposalProduct(null)} onSuccess={conversationId => { setDealProposalProduct(null); navigate('/chat?conversationId=' + conversationId); }} />}
 
       <SubmitKolVideoModal
         isOpen={isSubmitVideoModalOpen}
