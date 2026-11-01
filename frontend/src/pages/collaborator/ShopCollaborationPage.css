@@ -1,5 +1,23 @@
 .collaboration-chat-pane { border: 1px solid #EAE4D7; border-radius: 16px; box-shadow: 0 4px 20px rgb(35 29 21 / 3%); }
+.collaboration-split-layout { gap: 0; }
+.collaboration-split-layout > .collaboration-chat-pane { border: 0; border-radius: 0; box-shadow: none; margin: 0; }
+.collaboration-split-layout > div:first-child { border-color: #EAE4D7; }
+@media(min-width:768px) {
+  #partner-collaboration-workspace .collaboration-split-layout > div:first-child { position: relative; border-right: 1px solid #DECFB7; }
+  #partner-collaboration-workspace .collaboration-split-layout > .collaboration-chat-pane { border: 0; border-radius: 0; margin: 0; box-shadow: none; }
+}
 .collaboration-chat-pane .collaboration-shop-heading { padding: 12px 16px; gap: 12px; }
+.collaboration-chat-pane .collaboration-compact-tabs { padding: 12px 16px; gap: 10px; }
+.collaboration-chat-pane .collaboration-compact-tabs > button { min-height: 46px; padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; box-shadow: none; }
+.collaboration-chat-pane .collaboration-compact-tabs > button[aria-selected=true] { border-color: #EEDFC6; font-weight: 600; }
+.collaboration-chat-pane .collaboration-compact-tabs .collaboration-compact-step { display: grid; place-items: center; width: 27px; height: 27px; flex-shrink: 0; border: 1px solid #EAE4D7; border-radius: 50%; background: #fff; color: #7D715E; font-weight: 400; font-size: 12px; }
+.collaboration-chat-pane .collaboration-compact-tabs [aria-selected=true] .collaboration-compact-step { border-color: #C59B58; background: #FBF5EB; color: #8F682E; }
+.collaboration-chat-pane .collaboration-compact-tabs > button > span:last-child { min-width: 20px; height: 20px; padding: 0 5px; border: 0; border-radius: 5px; background: #FAF8F5; font-size: 10px; }
+.collaboration-chat-pane .collaboration-shop-heading > div { min-width: 0; }
+.collaboration-chat-pane .collaboration-shop-heading button { max-width: 100%; }
+.collaboration-chat-pane .collaboration-cooperation-inline { margin-top: 4px; }
+.collaboration-chat-pane .collaboration-cooperation-inline > div:first-child { justify-content: flex-start; gap: 6px 10px; border: 0; background: transparent; padding: 0; color: #7D715E; font-size: 11px; line-height: 1.5; }
+.collaboration-chat-pane .collaboration-cooperation-inline > div:first-child button { min-height: 28px; padding: 4px 8px; font-size: 11px; }
 .collaboration-chat-pane .collaboration-context-name { font-size: 14px; line-height: 21px; font-weight: 650; }
 .collaboration-chat-pane .collaboration-context-avatar { width: 34px; height: 34px; border-radius: 9px; box-shadow: none; }
 .collaboration-chat-pane .collaboration-store-link { min-height: 32px; padding: 6px 10px; font-size: 11px; border-radius: 8px; }
@@ -16,6 +34,13 @@
 .collaboration-deal-bar > div > span > span { font-size: 10px; line-height: 16px; }
 .collaboration-chat-pane .collaboration-deal-bar > button { min-height: 32px; padding: 6px 10px; border-color: #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #1A1612; font-size: 11px; white-space: nowrap; }
 .collaboration-chat-section .chat-message-list { padding: 16px 18px; background: #FAF8F5; scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
+.collaboration-chat-section { isolation: isolate; }
+.collaboration-chat-section .chat-message-list { overscroll-behavior: contain; overflow-x: hidden; scroll-padding: 14px; }
+.collaboration-chat-section .chat-history-toolbar { padding: 7px 14px; background: #fff; font-size: 11px; }
+.collaboration-chat-section .chat-message-entry { position: relative; }
+.collaboration-chat-section .chat-date-divider { position: sticky; top: 0; z-index: 2; margin: 0 0 12px; padding: 6px 0; background: #FAF8F5; }
+.collaboration-chat-section .chat-message-bubble { overflow-wrap: anywhere; }
+.collaboration-chat-section .chat-composer { flex-shrink: 0; border-top: 1px solid #EAE4D7; }
 .collaboration-chat-section .chat-message-list > div + div { margin-top: 16px; }
 .collaboration-chat-section .chat-message-content { max-width: min(86%, 560px); }
 .collaboration-chat-section .chat-message-content > div:first-child:not(.chat-message-bubble):not(.chat-deal-sender) { font-size: 11px; line-height: 17px; }

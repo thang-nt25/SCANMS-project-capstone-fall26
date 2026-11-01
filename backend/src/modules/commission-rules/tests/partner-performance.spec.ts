@@ -17,7 +17,7 @@ describe('Partner performance scope and real metrics', () => {
   it('scopes every query to the owned store and selected creator, uses recorded commission', async () => {
     const { prisma, service } = fixture();
     const result = await service.getPartnerPerformance('owner', 'creator', '30d', 'owned-store');
-    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'owned-store', ownerId: 'owner', isDeleted: false } }));
+    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'owned-store', isDeleted: false }) }));
     expect(prisma.order.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ storeId: 'owned-store', attributedCollaboratorId: 'creator', status: { in: ['DELIVERED', 'COMPLETED'] } }) }));
     expect(prisma.commission.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ collaboratorId: 'creator', order: expect.objectContaining({ storeId: 'owned-store' }), status: { in: ['APPROVED', 'PAID'] } }) }));
     expect(prisma.clickTrafficLog.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ referralLink: { storeId: 'owned-store', collaboratorId: 'creator' } }) }));

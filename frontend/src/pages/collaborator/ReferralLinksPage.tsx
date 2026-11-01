@@ -112,7 +112,13 @@ function useQrDataUrl(value?: string | null) {
   return { dataUrl, qrLoading, qrError, retry };
 }
 
-export default function ReferralLinksPage() {
+export default function ReferralLinksPage({
+  modalOnly = false,
+  onCreateClose,
+}: {
+  modalOnly?: boolean;
+  onCreateClose?: () => void;
+} = {}) {
   const navigate = useNavigate();
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
   const [totalLinks, setTotalLinks] = useState(0);
@@ -127,7 +133,13 @@ export default function ReferralLinksPage() {
   const limit = 15;
 
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(modalOnly);
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    if (modalOnly) {
+      onCreateClose?.();
+    }
+  };
   const [createLinkStep, setCreateLinkStep] = useState<1 | 2>(1);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -938,7 +950,8 @@ export default function ReferralLinksPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={modalOnly ? "contents" : "space-y-4"}>
+      {!modalOnly && (<>
       {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5" aria-label="Thống kê liên kết tiếp thị">
         {[
@@ -1507,6 +1520,7 @@ export default function ReferralLinksPage() {
         )}
       </div>
       </section>
+      </>)}
 
       {isCreateModalOpen && (
         <div className="kol-create-link-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
@@ -1527,7 +1541,7 @@ export default function ReferralLinksPage() {
                 </div>
               </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={closeCreateModal}
                 className="p-1.5 text-[#7D715E] hover:text-[#1A1612] rounded-lg hover:bg-[#FAF8F5] transition-colors"
                 title="Đóng modal"
               >
@@ -1634,7 +1648,7 @@ export default function ReferralLinksPage() {
                     Tạo thêm link khác
                   </button>
                   <button
-                    onClick={() => setIsCreateModalOpen(false)}
+                    onClick={closeCreateModal}
                     className="px-4 py-1.5 bg-gradient-to-r from-[#EBD08C] via-[#E5C783] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#DEC07A] text-white rounded-xl text-xs font-semibold shadow transition-all cursor-pointer"
                   >
                     Xem danh sách link
@@ -2384,7 +2398,7 @@ export default function ReferralLinksPage() {
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => createLinkStep === 2 ? setCreateLinkStep(1) : setIsCreateModalOpen(false)}
+                      onClick={() => (createLinkStep === 2 ? setCreateLinkStep(1) : closeCreateModal())}
                       className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-white transition-colors cursor-pointer"
                     >
                       {createLinkStep === 2 ? 'Quay lại' : 'Hủy bỏ'}

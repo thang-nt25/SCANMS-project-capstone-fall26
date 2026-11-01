@@ -1586,7 +1586,8 @@ export default function ChatBoxPage({
   const seenMessages = useRef(new Set<string>());
 
   const scrollToBottom = useCallback((smooth = false) => {
-    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    const container = messagesContainerRef.current;
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
 
@@ -2878,8 +2879,8 @@ export default function ChatBoxPage({
             )}
 
 
-            {visibleMessages.length > 0 && (
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2 text-xs text-[#7D715E]">
+            {!embedded && visibleMessages.length > 0 && (
+              <div className="chat-history-toolbar flex shrink-0 items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2 text-xs text-[#7D715E]">
                 <span>Đã tải {visibleMessages.length} tin nhắn</span>
                 <button
                   type="button"
@@ -2900,6 +2901,9 @@ export default function ChatBoxPage({
                 }
               }}
             >
+              {embedded && visibleMessages.length > 0 && <div className="flex justify-center">
+                <button type="button" onClick={() => { if (messagesContainerRef.current) messagesContainerRef.current.scrollTop = 0; }} className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] text-[#7D715E] hover:bg-[#FBF5EB]">↑ Xem tin nhắn cũ</button>
+              </div>}
               {messageError && <div role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#DC2626]">{messageError}<button type="button" className="ml-2 underline" onClick={() => { if (hasMore && messages.length) void loadMore(); else void openConversation(activeConv); }}>Thử lại</button></div>}
               {hasMore && (
                 <div className="text-center">
@@ -2932,7 +2936,7 @@ export default function ChatBoxPage({
                   new Date(msg.createdAt).toDateString();
 
                 return (
-                  <div key={msg.id ? `${msg.id}-${idx}` : `msg-${idx}`} className="space-y-2">
+                  <div key={msg.id ? `${msg.id}-${idx}` : `msg-${idx}`} className="chat-message-entry space-y-2">
                     {showDate && (
                       <div className="chat-date-divider my-4 flex items-center justify-center">
                         <span className="rounded-full border border-[#EAE4D7] bg-white px-3 py-1 text-[11px] font-semibold text-[#7D715E] shadow-2xs">
