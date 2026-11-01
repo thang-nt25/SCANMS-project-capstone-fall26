@@ -12,7 +12,7 @@ describe('Campaign micro bonus service guards', () => {
       auditLog: { create: jest.fn() } };
     service = new CampaignsService(prisma);
   });
-  it.each([0, 3, 5, NaN])('rejects invalid rate %s even without a validation pipe', async rate => {
+  it.each([0, 1, 5, NaN])('rejects invalid rate %s even without a validation pipe', async rate => {
     await expect(service.createCampaign('shop-owner', { ...valid, bonusCommissionRate: rate })).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.campaign.create).not.toHaveBeenCalled();
   });
@@ -24,7 +24,7 @@ describe('Campaign micro bonus service guards', () => {
     await expect(service.createCampaign('owner', { ...valid, endDate: valid.startDate })).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.campaign.create).not.toHaveBeenCalled();
   });
-  it.each([1, 2])('persists a valid explicit bonus %s and budget', async rate => {
+  it.each([2, 3, 4])('persists a valid explicit bonus %s and budget', async rate => {
     await service.createCampaign('owner', { ...valid, bonusCommissionRate: rate });
     expect(prisma.campaign.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       bonusCommissionRate: rate, bonusBudgetTotal: 100000,

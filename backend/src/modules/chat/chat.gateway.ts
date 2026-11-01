@@ -10,7 +10,7 @@ import {
   Ack,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards, OnModuleDestroy } from '@nestjs/common';
+import { UseGuards, OnModuleDestroy, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { checkProfanity } from './profanity-filter';
@@ -44,6 +44,7 @@ export class ChatGateway
     OnGatewayDisconnect,
     OnModuleDestroy
 {
+  private readonly logger = new Logger(ChatGateway.name);
   @WebSocketServer()
   server: Server;
 
@@ -77,9 +78,10 @@ export class ChatGateway
       }
 
       const payload = this.jwtService.verify(token);
+      const actor = await this.chatService.getSocketUser(payload.sub);
       client.data.userId = payload.sub;
-      client.data.userFullName = payload.fullName;
-      client.data.userRole = payload.role;
+      client.data.userFullName = actor.fullName;
+      client.data.userRole = actor.role;
 
       // Đăng ký socket vào map
       if (!userSocketMap.has(payload.sub)) {
@@ -89,7 +91,7 @@ export class ChatGateway
       client.join(`user:${payload.sub}`);
 
       console.log(
-        `🔗 User ${payload.fullName} (${payload.sub}) connected: ${client.id}`,
+        `🔗 User ${actor.fullName} (${payload.sub}) connected: ${client.id}`,
       );
       client.emit('connected', { userId: payload.sub, socketId: client.id });
     } catch (err) {
@@ -159,9 +161,16 @@ export class ChatGateway
     ack?: (result: { ok: boolean; error?: string; messageId?: string }) => void,
   ) {
     const userId = client.data.userId;
-    if (!data || (data.messageText !== undefined && typeof data.messageText !== 'string')
-      || (typeof data.messageText === 'string' && data.messageText.length > 5000)) {
-      ack?.({ ok: false, error: 'Tin nhắn phải là văn bản tối đa 5.000 ký tự.' });
+    if (
+      !data ||
+      (data.messageText !== undefined &&
+        typeof data.messageText !== 'string') ||
+      (typeof data.messageText === 'string' && data.messageText.length > 5000)
+    ) {
+      ack?.({
+        ok: false,
+        error: 'Tin nhắn phải là văn bản tối đa 5.000 ký tự.',
+      });
       return;
     }
     let messageText = data.messageText?.trim() || '';
@@ -255,11 +264,10 @@ export class ChatGateway
       // Phát tới tất cả trong phòng conv:xxx và user
       const targetUser =
         conv.customerId || conv.collaboratorId || conv.store.ownerId;
-      this.server
-        .to(`conv:${data.conversationId}`)
-        .to(`user:${conv.store.ownerId}`)
-        .to(`user:${targetUser}`)
-        .emit('new_message', message);
+      await this.broadcastNewMessage(data.conversationId, message, [
+        conv.store.ownerId,
+        targetUser,
+      ]);
 
       ack?.({ ok: true, messageId: message.id });
       return { ok: true, messageId: message.id };
@@ -310,16 +318,47 @@ export class ChatGateway
   }
 
   // Utility: phát tin nhắn mới đồng thời tới phòng chat và các cá nhân liên quan
-  broadcastNewMessage(
+  async broadcastNewMessage(
     conversationId: string,
     message: any,
-    recipientUserId?: string,
+    recipientUserId?: string | string[],
   ) {
-    if (this.server) {
-      this.server.to(`conv:${conversationId}`).emit('new_message', message);
-    }
-    if (recipientUserId) {
-      this.emitToUser(recipientUserId, 'new_message', message);
+    if (!this.server) return;
+    try {
+      let recipients = this.server.to(`conv:${conversationId}`);
+      for (const id of Array.isArray(recipientUserId)
+        ? recipientUserId
+        : recipientUserId
+          ? [recipientUserId]
+          : [])
+        recipients = recipients.to(`user:${id}`);
+      const sockets = await recipients.fetchSockets();
+      const verdicts = new Map<string, Promise<boolean>>();
+      const allowed: string[] = [];
+      await Promise.all(
+        sockets.map(async (socket) => {
+          const userId = socket.data.userId as string;
+          if (!verdicts.has(userId))
+            verdicts.set(
+              userId,
+              this.chatService
+                .getConversationById(conversationId, userId)
+                .then(() => true)
+                .catch(() => false),
+            );
+          if (await verdicts.get(userId)) allowed.push(socket.id);
+          else socket.leave(`conv:${conversationId}`);
+        }),
+      );
+      // Membership can be revoked after join_conversation. Never emit private
+      // cards to stale room members; union socket IDs also prevents duplicates.
+      if (allowed.length) this.server.to(allowed).emit('new_message', message);
+    } catch {
+      // Persistence has committed. Clients recover missed events by reloading
+      // authoritative state; never fall back to an unverified broadcast.
+      this.logger.warn(
+        'Chat event dispatch unavailable; clients can resynchronize.',
+      );
     }
   }
 }

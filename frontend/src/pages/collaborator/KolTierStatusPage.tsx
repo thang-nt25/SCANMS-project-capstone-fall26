@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check } from 'lucide-react';
+import { Crown, Trophy, Award, Target, ArrowUpRight, Gift, Check, ShieldCheck, Clock } from 'lucide-react';
 import { tierService, type TierStatus, type TierPolicy } from '../../services/tier.service';
 import { leaderboardService, type LeaderboardPodium } from '../../services/leaderboard.service';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
@@ -54,6 +54,14 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
   const nextTier = tierStatus?.nextTier;
   const targetSales = Number(nextTier?.minRevenueThreshold || 0);
   const progressPct = Number(tierStatus?.progressPercentage ?? 0);
+
+  const maintenanceThreshold = Number(
+    tierStatus?.maintenanceThreshold ?? Math.round(Number(currentTier?.minRevenueThreshold || 0) * 0.6)
+  );
+  const isMaintained = Boolean(tierStatus?.isMaintained ?? currentRevenue >= maintenanceThreshold);
+  const cycleStatus = tierStatus?.cycleStatus || (isMaintained ? 'MAINTAINED' : 'GRACE_PERIOD');
+  const daysRemaining = tierStatus?.daysRemaining ?? 30;
+
   const podiumEntries = [
     { slot: 2, creator: podium?.rank2 },
     { slot: 1, creator: podium?.rank1 },
@@ -119,7 +127,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
             </section>
           ) : (
             <section className="flex flex-col p-4 sm:p-5 border border-[#EAE4D7] rounded-xl bg-white" aria-labelledby="tier-current-title">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="grid place-items-center w-12 h-12 shrink-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
                     <Crown className="w-6 h-6" aria-hidden="true" />
@@ -128,15 +136,34 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                     <p className="text-[11px] font-medium text-[#7D715E]">Cấp bậc hiện tại</p>
                     <h2 id="tier-current-title" className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] truncate">{currentTier.name}</h2>
                     <p className="text-xs text-[#7D715E] mt-0.5">
-                      Thưởng <strong className="text-[#1A1612] font-semibold">+{Number(currentTier.extraBonusPercentage)}%</strong> cho đơn hàng đủ điều kiện
+                      Thưởng <strong className="text-[#1A1612] font-semibold">+{Number(currentTier.extraBonusPercentage)}%</strong> thù lao cho đơn hàng đủ điều kiện
                     </p>
                   </div>
                 </div>
+
+                {/* Status Pill Badge - Enterprise SaaS standard */}
+                {Number(currentTier.minRevenueThreshold) > 0 && (
+                  cycleStatus === 'GRACE_PERIOD' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#B45309] border border-[#F59E0B]/40 shrink-0">
+                      <Clock size={13} className="text-[#D97706]" />
+                      Ân hạn duy trì: Còn {daysRemaining} ngày
+                    </span>
+                  ) : isMaintained ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] shrink-0">
+                      <ShieldCheck size={13} className="text-[#15803D]" />
+                      Đã bảo toàn hạng tháng tới
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] shrink-0">
+                      Hạng đối tác hoạt động
+                    </span>
+                  )
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 my-4">
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">GMV tháng trước</span>
+                  <span className="text-[11px] text-[#7D715E]">GMV kỳ đánh giá</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{currency(currentRevenue)}</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
@@ -144,12 +171,13 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">{totalOrders.toLocaleString('vi-VN')} đơn</strong>
                 </div>
                 <div className="flex flex-col gap-1 p-2.5 sm:p-3 border border-[#EAE4D7] rounded-lg bg-white">
-                  <span className="text-[11px] text-[#7D715E]">Hoa hồng thưởng</span>
+                  <span className="text-[11px] text-[#7D715E]">Thù lao thưởng</span>
                   <strong className="text-sm sm:text-base font-bold text-[#1A1612] tabular-nums truncate">+{currentTier.extraBonusPercentage || 0}%</strong>
                 </div>
               </div>
 
               <KolTierExplanation status={tierStatus} />
+
               {nextTier ? (
                 <div className="pt-3 border-t border-[#EAE4D7]" id="tier-promotion-progress">
                   <div className="flex items-center justify-between gap-2.5 mb-2">
@@ -162,13 +190,29 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                     </div>
                     <span className="grid place-items-center min-w-[36px] h-7 px-2 border border-[#EAE4D7] rounded-md text-xs font-bold text-[#1A1612]">{progressPct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-[#F3EFE6] overflow-hidden" role="progressbar" aria-label={`Tiến độ lên hạng ${nextTier.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progressPct))}>
+
+                  {/* Dual-Milestone Progress Bar */}
+                  <div className="relative h-2.5 rounded-full bg-[#F3EFE6] overflow-hidden" role="progressbar" aria-label={`Tiến độ lên hạng ${nextTier.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progressPct))}>
                     <div className="h-full bg-[#C59B58] rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }} />
+                    {maintenanceThreshold > 0 && targetSales > 0 && (
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-[#1A1612]/30 z-10"
+                        style={{ left: `${Math.min(95, Math.max(5, (maintenanceThreshold / targetSales) * 100))}%` }}
+                        title={`Ngưỡng duy trì: ${currency(maintenanceThreshold)}`}
+                      />
+                    )}
                   </div>
+
                   <div className="flex justify-between flex-wrap gap-1 text-[11px] text-[#7D715E] mt-1.5">
                     <span>{currency(currentRevenue)} / {currency(targetSales)}</span>
-                    <span>Còn {currency(tierStatus.revenueNeeded)} để đạt ngưỡng</span>
+                    {maintenanceThreshold > 0 && (
+                      <span className="font-medium text-[#1A1612]">
+                        Ngưỡng duy trì 60%: {currency(maintenanceThreshold)} ({isMaintained ? 'Đã đạt' : `Còn thiếu ${currency(tierStatus.revenueNeededToMaintain || 0)}`})
+                      </span>
+                    )}
+                    <span>Còn {currency(tierStatus.revenueNeeded)} để thăng hạng</span>
                   </div>
+
                   {tierStatus.qualifiedTier && Number(tierStatus.qualifiedTier.minRevenueThreshold) > Number(currentTier.minRevenueThreshold) && (
                     <p className="mt-2.5 p-2 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#7D715E] text-xs">
                       Bạn đã đạt ngưỡng hạng {tierStatus.qualifiedTier.name}. Hạng mới có hiệu lực sau khi được đánh giá cấp bậc.
@@ -185,7 +229,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                   <Gift className="w-3.5 h-3.5 text-[#B88E4F]" aria-hidden="true" />
                   <span>Sản phẩm mẫu:</span>
                 </div>
-                <strong className="text-[#1A1612] font-medium">Theo xét duyệt của Shop</strong>
+                <strong className="text-[#1A1612] font-medium">Theo xét duyệt của Nhãn hàng</strong>
               </div>
             </section>
           )}
@@ -199,7 +243,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                 </span>
                 <div>
                   <h2 id="tier-policy-title" className="text-sm font-semibold text-[#1A1612]">Cấp bậc &amp; quyền lợi</h2>
-                  <p className="text-[11px] text-[#7D715E]">Xét hạng theo GMV hợp lệ của tháng trước.</p>
+                  <p className="text-[11px] text-[#7D715E]">Xét hạng theo GMV hợp lệ của kỳ đánh giá định kỳ.</p>
                 </div>
               </div>
               <span className="px-2 py-0.5 border border-[#EAE4D7] rounded-md text-[11px] text-[#7D715E]">
@@ -214,6 +258,7 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
               ) : (
                 tierPolicies.map(policy => {
                   const isCurrent = !statusError && currentTier && samePolicy(currentTier, policy);
+                  const maintThreshold = Math.round(Number(policy.minRevenueThreshold) * 0.6);
                   return (
                     <article
                       key={policy.id}
@@ -233,18 +278,21 @@ export default function KolTierStatusPage({ view = 'tiers' }: { view?: 'tiers' |
                       </div>
                       <div className="flex items-baseline gap-1 mt-1.5">
                         <strong className="text-lg font-bold text-[#1A1612] tracking-tight">+{Number(policy.extraBonusPercentage)}%</strong>
-                        <span className="text-[10px] text-[#7D715E]">hoa hồng thưởng</span>
+                        <span className="text-[10px] text-[#7D715E]">thù lao thưởng</span>
                       </div>
-                      <p className="mt-1 text-[11px] text-[#7D715E]">
-                        Từ <strong className="text-[#1A1612] font-medium">{currency(Number(policy.minRevenueThreshold))}</strong>
-                      </p>
+                      <div className="mt-1 space-y-0.5 text-[11px] text-[#7D715E]">
+                        <p>Thăng hạng: <strong className="text-[#1A1612] font-medium">{currency(Number(policy.minRevenueThreshold))}</strong></p>
+                        {Number(policy.minRevenueThreshold) > 0 && (
+                          <p className="text-[10px] text-[#7D715E]/90">Duy trì (60%): <strong className="text-[#8C6226] font-medium">{currency(maintThreshold)}</strong></p>
+                        )}
+                      </div>
                     </article>
                   );
                 })
               )}
             </div>
             <p className="mt-auto pt-3 border-t border-[#EAE4D7] text-[11px] text-[#7D715E]">
-              Hạng có hiệu lực sau khi hệ thống đánh giá. Hạn mức mẫu do từng Shop xét duyệt.
+              Hệ thống áp dụng cơ chế Ân hạn 30 ngày và Soft Landing chuyển tiếp bậc, bảo vệ quyền lợi đối tác chiến lược.
             </p>
           </section>
 

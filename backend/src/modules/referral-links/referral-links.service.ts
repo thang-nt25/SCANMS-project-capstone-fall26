@@ -1,3 +1,4 @@
+import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import {
   Injectable,
   NotFoundException,
@@ -11,7 +12,11 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
-import { precedenceCommissionRate, campaignBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import {
+  precedenceCommissionRate,
+  campaignBonusRate,
+  tierBonusByName,
+} from '../commissions/commission-policy';
 import { ConfigService } from '@nestjs/config';
 import {
   ReferralLinkStatus,
@@ -21,6 +26,7 @@ import {
   OrderStatus,
   CommissionStatus,
   Prisma,
+  SocialPlatform,
 } from '@prisma/client';
 import { CreateReferralLinkDto } from './dto/create-referral-link.dto';
 import { UpdateReferralLinkDto } from './dto/update-referral-link.dto';
@@ -101,29 +107,21 @@ export class ReferralLinksService {
   private async getCurrentApprovedDeals(
     pairs: Array<{ collaboratorId: string; productId: string }>,
   ) {
-    const uniquePairs = Array.from(
-      new Map(
-        pairs.map((pair) => [`${pair.collaboratorId}:${pair.productId}`, pair]),
-      ).values(),
-    );
-    if (!uniquePairs.length) return new Map<string, any>();
+    return activeDealMap(this.prisma, pairs);
+  }
 
-    const deals = await this.prisma.exclusiveDealProposal.findMany({
-      where: { status: 'APPROVED', closedAt: null, OR: uniquePairs },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        collaboratorId: true,
-        productId: true,
-        approvedCommissionRate: true,
-      },
-    });
-    const currentDeals = new Map<string, any>();
-    for (const deal of deals) {
-      const key = `${deal.collaboratorId}:${deal.productId}`;
-      if (!currentDeals.has(key)) currentDeals.set(key, deal);
-    }
-    return currentDeals;
+  /** Internal atomic issuance after an approved scoped VIP contract. It keeps
+   * lifetime/product caps, while a single authorized contract is not click spam.
+   */
+  async issueDealResources(tx: Prisma.TransactionClient, collaboratorId: string, dealId: string, anchorId: string, products: Array<{ id: string; storeId: string; title: string }>) {
+    const total = await tx.referralLink.count({ where: { collaboratorId, status: 'ACTIVE', deletedAt: null } });
+    if (total + products.length > 500) throw new HttpException('Cấp link VIP vượt hạn mức 500 link hoạt động.', HttpStatus.TOO_MANY_REQUESTS);
+    const counts = await tx.referralLink.groupBy({ by: ['productId'], where: { collaboratorId, productId: { in: products.map(product => product.id) }, deletedAt: null }, _count: { _all: true } });
+    if (counts.some(count => count._count._all >= 20)) throw new HttpException('Một sản phẩm đã đạt hạn mức 20 link.', HttpStatus.TOO_MANY_REQUESTS);
+    const links = products.map(product => ({ id: crypto.randomUUID(), collaboratorId, storeId: product.storeId, productId: product.id, exclusiveDealId: product.id === anchorId ? dealId : null, shortCode: generateShortCode(8), label: `VIP: ${product.title}`.slice(0, 150), channel: SocialPlatform.TIKTOK, destinationPath: `/products/${product.id}`, status: ReferralLinkStatus.ACTIVE }));
+    await tx.referralLink.createMany({ data: links });
+    await tx.auditLog.createMany({ data: links.map(link => ({ userId: collaboratorId, action: 'REFERRAL_LINK_CREATED', details: { referralLinkId: link.id, exclusiveDealId: dealId, productId: link.productId, scopedBatch: true } })) });
+    return links.map(link => ({ ...link, shortUrl: `${this.getPublicAppUrl()}/r/${link.shortCode}` }));
   }
 
   /**
@@ -140,7 +138,7 @@ export class ReferralLinksService {
   ) {
     const collaborator = await this.prisma.user.findUnique({
       where: { id: collaboratorId },
-      include: { collaboratorProfile: { select: { kycStatus: true } } },
+      include: { collaboratorProfile: { include: { tier: true } } },
     });
     if (
       !collaborator ||
@@ -223,8 +221,10 @@ export class ReferralLinksService {
       take: limit,
     });
 
+    const entitlements = await activeDealMap(this.prisma, products.map(product => ({ collaboratorId, productId: product.id, storeId: product.store.id })));
+    const tier = tierBonusByName(collaborator.collaboratorProfile?.tier?.name);
     return products.map((p) => {
-      const estimatedRate = 10;
+      const estimatedRate = precedenceCommissionRate(tier, Number(entitlements.get(collaboratorId + ':' + p.id)?.approvedCommissionRate || 0));
       return {
         ...p,
         estimatedCommissionRate: estimatedRate,
@@ -247,7 +247,9 @@ export class ReferralLinksService {
     collaboratorId: string,
     dto: CreateReferralLinkDto,
     ipAddress?: string,
+    transaction?: Prisma.TransactionClient,
   ) {
+    const db = transaction ?? this.prisma;
     // 2.1 Bắt buộc nhãn và kênh theo quy định mô hình nhiều link
     if (!dto.label || !dto.label.trim()) {
       throw new BadRequestException('Nhãn gợi nhớ (label) là bắt buộc.');
@@ -257,12 +259,12 @@ export class ReferralLinksService {
     }
 
     // 2.2 Kiểm tra tài khoản KOL hợp lệ
-    const collaborator = await this.prisma.user.findUnique({
+    const collaborator = await db.user.findUnique({
       where: { id: collaboratorId },
       include: { collaboratorProfile: true },
     });
 
-    if (!collaborator || collaborator.deletedAt) {
+    if (!collaborator || collaborator.deletedAt || collaborator.isDeleted) {
       throw new NotFoundException(
         'Tài khoản Cộng tác viên không tồn tại hoặc đã bị xóa.',
       );
@@ -287,12 +289,12 @@ export class ReferralLinksService {
     }
 
     // 2.3 Kiểm tra sản phẩm và Cửa hàng
-    const product = await this.prisma.product.findUnique({
+    const product = await db.product.findUnique({
       where: { id: dto.productId },
       include: { store: true },
     });
 
-    if (!product || product.deletedAt) {
+    if (!product || product.deletedAt || product.isDeleted) {
       throw new NotFoundException('Sản phẩm không tồn tại hoặc đã bị xóa.');
     }
 
@@ -344,12 +346,13 @@ export class ReferralLinksService {
     const now = new Date();
 
     if (dto.exclusiveDealId) {
-      const deal = await this.prisma.exclusiveDealProposal.findUnique({
+      const deal = await db.exclusiveDealProposal.findUnique({
         where: { id: dto.exclusiveDealId },
       });
       if (
         !deal ||
-        deal.status !== 'APPROVED' || deal.closedAt ||
+        deal.status !== 'APPROVED' ||
+        deal.closedAt ||
         deal.collaboratorId !== collaboratorId ||
         deal.storeId !== product.storeId ||
         deal.productId !== product.id
@@ -363,7 +366,7 @@ export class ReferralLinksService {
           'Deal đã duyệt nhưng chưa có mức VIP được chốt.',
         );
       }
-      const existingDealLink = await this.prisma.referralLink.findFirst({
+      const existingDealLink = await db.referralLink.findFirst({
         where: { exclusiveDealId: deal.id, deletedAt: null },
       });
       if (existingDealLink) {
@@ -371,7 +374,7 @@ export class ReferralLinksService {
       }
       validatedExclusiveDeal = deal;
     } else if (dto.campaignId) {
-      const campaign = await this.prisma.campaign.findUnique({
+      const campaign = await db.campaign.findUnique({
         where: { id: dto.campaignId },
       });
 
@@ -403,7 +406,7 @@ export class ReferralLinksService {
       }
 
       // Kiểm tra KOL đã tham gia chiến dịch với trạng thái ACCEPTED chưa
-      const participant = await this.prisma.campaignParticipant.findUnique({
+      const participant = await db.campaignParticipant.findUnique({
         where: {
           campaignId_collaboratorId: {
             campaignId: dto.campaignId,
@@ -422,19 +425,18 @@ export class ReferralLinksService {
       }
 
       // Kiểm tra xem chiến dịch có giới hạn danh mục sản phẩm cụ thể (campaign_products) không
-      const campaignProductCount = await this.prisma.campaignProduct.count({
+      const campaignProductCount = await db.campaignProduct.count({
         where: { campaignId: dto.campaignId },
       });
       if (campaignProductCount > 0) {
-        const isProductInCampaign =
-          await this.prisma.campaignProduct.findUnique({
-            where: {
-              campaignId_productId: {
-                campaignId: dto.campaignId,
-                productId: dto.productId,
-              },
+        const isProductInCampaign = await db.campaignProduct.findUnique({
+          where: {
+            campaignId_productId: {
+              campaignId: dto.campaignId,
+              productId: dto.productId,
             },
-          });
+          },
+        });
         if (!isProductInCampaign) {
           throw new BadRequestException(
             'Sản phẩm đã chọn không nằm trong danh mục áp dụng của chiến dịch này.',
@@ -472,7 +474,7 @@ export class ReferralLinksService {
     // 2.5 Kiểm tra giới hạn tạo link (Mục 32)
     // a. Tối đa 10 link / phút / KOL
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-    const linksInLastMinute = await this.prisma.referralLink.count({
+    const linksInLastMinute = await db.referralLink.count({
       where: {
         collaboratorId,
         createdAt: { gte: oneMinuteAgo },
@@ -487,7 +489,7 @@ export class ReferralLinksService {
     }
 
     // b. Tối đa 500 link đang hoạt động / KOL
-    const activeLinksCount = await this.prisma.referralLink.count({
+    const activeLinksCount = await db.referralLink.count({
       where: {
         collaboratorId,
         status: ReferralLinkStatus.ACTIVE,
@@ -503,7 +505,7 @@ export class ReferralLinksService {
     }
 
     // c. Tối đa 20 link / sản phẩm / KOL
-    const productLinksCount = await this.prisma.referralLink.count({
+    const productLinksCount = await db.referralLink.count({
       where: {
         collaboratorId,
         productId: product.id,
@@ -532,7 +534,7 @@ export class ReferralLinksService {
 
       try {
         // Giao dịch Transaction tạo link và AuditLog cùng nhau
-        createdLink = await this.prisma.$transaction(async (tx) => {
+        const persistLink = async (tx: Prisma.TransactionClient) => {
           const newLink = await tx.referralLink.create({
             data: {
               id: linkId,
@@ -599,11 +601,17 @@ export class ReferralLinksService {
           });
 
           return newLink;
-        });
+        };
+        createdLink = transaction
+          ? await persistLink(transaction)
+          : await this.prisma.$transaction(persistLink);
 
         // Tạo thành công, thoát vòng lặp retry
         break;
       } catch (err: any) {
+        // A PostgreSQL constraint error aborts a caller-owned transaction.
+        // Propagate it so the whole deal activation rolls back atomically.
+        if (transaction) throw err;
         // Nếu đụng unique constraint P2002 trên shortCode -> retry sinh mã mới
         if (
           err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -2421,7 +2429,9 @@ export class ReferralLinksService {
         store: true,
         campaign: true,
         exclusiveDeal: true,
-        collaborator: { include: { collaboratorProfile: { include: { tier: true } } } },
+        collaborator: {
+          include: { collaboratorProfile: { include: { tier: true } } },
+        },
       },
     });
 
@@ -2465,38 +2475,30 @@ export class ReferralLinksService {
       };
     }
 
-    const currentDeal = await this.prisma.exclusiveDealProposal.findFirst({
-          where: {
-            collaboratorId: link.collaboratorId,
-            productId: link.productId,
-            status: 'APPROVED',
-            closedAt: null,
-          },
-          orderBy: { createdAt: 'desc' },
-          select: { status: true, approvedCommissionRate: true },
-        })
-      ;
-    const isApplicableDeal = (deal: any) => {
-      if (!deal || deal.status !== 'APPROVED' || deal.closedAt) return false;
-      const rate = Number(deal.approvedCommissionRate);
-      return Number.isFinite(rate) && rate >= 10 && rate <= 25;
-    };
-    const effectiveDeal = isApplicableDeal(currentDeal)
-      ? currentDeal
-      : isApplicableDeal(link.exclusiveDeal)
-        ? link.exclusiveDeal
-        : null;
+    const effectiveDeal = (await activeDealMap(this.prisma, [{ collaboratorId: link.collaboratorId, productId: link.productId, storeId: params.storeId }])).get(link.collaboratorId + ':' + link.productId);
 
     // A renewed deal applies to new orders through every VIP link; existing
     // orders retain their immutable OrderItem commission snapshots.
-    const approvedDealRate = effectiveDeal?.approvedCommissionRate != null
-      ? Number(effectiveDeal.approvedCommissionRate) : 0;
-    const dealRate = Number.isFinite(approvedDealRate) && approvedDealRate >= 10 && approvedDealRate <= 25
-      ? approvedDealRate : 0;
+    const dealBonus =
+      effectiveDeal?.status === 'APPROVED' &&
+      effectiveDeal.approvedCommissionRate != null
+        ? Math.min(
+            15,
+            Math.max(0, Number(effectiveDeal.approvedCommissionRate) - 10),
+          )
+        : 0;
     const campaignBonus = campaignBonusRate(link.campaign, params.storeId);
-    const tierBonus = tierBonusByName(link.collaborator?.collaboratorProfile?.tier?.name);
-    const campaignRate = campaignBonus ? 10 + campaignBonus : 0;
-    const commissionRate = precedenceCommissionRate(tierBonus, dealRate, campaignRate);
+    const tierBonus = tierBonusByName(
+      link.collaborator?.collaboratorProfile?.tier?.name,
+    );
+    const commissionRate = precedenceCommissionRate(
+      tierBonus,
+      10 + dealBonus,
+      10 + campaignBonus,
+      0,
+    );
+    const dealRate = 10 + dealBonus;
+    const campaignRate = 10 + campaignBonus;
 
     const price = Number(link.product.price);
     const calculatedCommissionAmount = (price * commissionRate) / 100;
@@ -2592,7 +2594,10 @@ export class ReferralLinksService {
 
       for (const item of items) {
         if (item.commissionSnapshotAt) {
-          await tx.orderItem.update({ where: { id: item.id }, data: { referralLinkId: params.referralLinkId } });
+          await tx.orderItem.update({
+            where: { id: item.id },
+            data: { referralLinkId: params.referralLinkId },
+          });
           continue;
         }
         const itemAmount =

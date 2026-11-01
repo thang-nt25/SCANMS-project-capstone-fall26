@@ -1,18 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
-import { Link2, Package, Tag, Video, Plus, Gift } from 'lucide-react';
+import { Link2, Package, Tag, Video, Plus, Gift, FolderOpen } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
 import ReferralLinksPage from './ReferralLinksPage';
 import SampleRequestsPage from './SampleRequestsPage';
 import KolCouponsPage from './KolCouponsPage';
+import MediaHubBrowserPage from './MediaHubBrowserPage';
 
 export default function MarketingToolkitPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const rawTab = searchParams.get('tab') || 'links';
-  // Chuẩn hóa tab cũ 'media' -> 'samples'
-  const activeTab = useMemo(() => (rawTab === 'media' ? 'samples' : rawTab), [rawTab]);
+  const activeTab = useMemo(() => ['links', 'samples', 'coupons', 'media'].includes(rawTab) ? rawTab : 'links', [rawTab]);
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
     [activeTab]: true,
   });
@@ -39,9 +39,11 @@ export default function MarketingToolkitPage() {
       label: 'Mã giảm giá độc quyền',
       icon: Tag,
     },
+    { id: 'media', label: 'Media Hub', icon: FolderOpen },
   ];
 
   const renderContextualActions = () => {
+    if (activeTab === 'media') return null;
     if (activeTab === 'links') {
       return (
         <div className="flex items-center gap-2 xl:col-span-2 justify-start sm:justify-end flex-wrap">
@@ -152,6 +154,9 @@ export default function MarketingToolkitPage() {
 
         <div className={activeTab === 'coupons' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-coupons">
           {visitedTabs['coupons'] && <KolCouponsPage />}
+        </div>
+        <div className={activeTab === 'media' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-media">
+          {(visitedTabs['media'] || activeTab === 'media') && <MediaHubBrowserPage />}
         </div>
       </div>
 

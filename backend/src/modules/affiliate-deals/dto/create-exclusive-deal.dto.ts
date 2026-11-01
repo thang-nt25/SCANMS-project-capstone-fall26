@@ -11,14 +11,38 @@ import {
   IsInt,
   Min,
   Max,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  ArrayUnique,
+  ArrayMaxSize,
 } from 'class-validator';
+import { ExclusiveDealScope } from '@prisma/client';
 
 export class CreateExclusiveDealDto {
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(1000000)
   targetOrders?: number;
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1)
+  @Max(1000000000000)
+  targetRevenue!: number;
+
+  @IsOptional()
+  @IsEnum(ExclusiveDealScope)
+  scopeType?: ExclusiveDealScope;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(100)
+  @IsUUID(undefined, { each: true })
+  productIds?: string[];
 
   @Type(() => Number)
   @IsInt()
@@ -30,11 +54,14 @@ export class CreateExclusiveDealDto {
 
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @IsIn([11, 12, 13, 14, 15, 16], { message: 'Tỷ lệ deal từ 11% đến 16%.' })
+  @Min(10)
+  @Max(25)
   proposedCommissionRate: number;
 
   @IsBoolean()
-  @Equals(true, { message: 'KOL phải cam kết thực hiện video review cho sản phẩm.' })
+  @Equals(true, {
+    message: 'KOL phải cam kết thực hiện video review cho sản phẩm.',
+  })
   videoReviewCommitment: boolean;
 
   @IsString()

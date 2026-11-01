@@ -88,7 +88,7 @@ export default function LoginPage() {
       return;
     }
     const account = getDemoLogin(selectedRole);
-    setIdentifier(account?.identifier || '');
+    setIdentifier(account?.identifier || getRememberedIdentifier(selectedRole) || '');
     setPassword(account?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);

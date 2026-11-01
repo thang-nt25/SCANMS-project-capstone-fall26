@@ -1,3 +1,5 @@
+// Pricing transactions have separate PostgreSQL integration coverage.
+jest.mock('../pricing/pricing-policy', () => ({ lockPricingProducts: jest.fn(), reservePromotionBudget: jest.fn(), releasePromotionBudget: jest.fn() }));
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../core/database/prisma.service';

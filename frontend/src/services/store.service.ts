@@ -14,6 +14,7 @@ export interface StoreSettings {
   defaultCommissionRate: number;
   attributionWindowDays: number;
   representativeName?: string;
+  companyName?: string;
   businessType?: string;
   taxCode?: string;
   contactPhone?: string;
@@ -25,6 +26,7 @@ export interface StoreSettings {
   onboardingStatus?: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFO' | 'VERIFIED' | 'REJECTED';
   isVerified?: boolean;
   onboardingData?: {
+    companyName?: string | null;
     representativeName?: string | null;
     businessType?: string | null;
     taxCode?: string | null;

@@ -157,6 +157,8 @@ export class KolLifetimeStatsSummaryDto {
 }
 
 export class KolMatchResultDto {
+  @ApiPropertyOptional({ enum: ['COLD_START', 'PERFORMANCE'] })
+  scoringMode?: 'COLD_START' | 'PERFORMANCE';
   @ApiProperty({
     description: 'ID định danh của KOL',
     example: '22222222-3030-4000-8000-000000000001',
@@ -202,6 +204,9 @@ export class KolMatchResultDto {
 
   @ApiPropertyOptional({ enum: ['SALES', 'PROFILE', 'NONE'], description: 'Căn cứ liên quan đến ngành hàng: lịch sử đơn hoặc hồ sơ/kênh.' })
   categoryMatchSource?: 'SALES' | 'PROFILE' | 'NONE';
+
+  @ApiPropertyOptional({ description: 'Nhà sáng tạo tiềm năng mới (Cold-Start / Rising Star)' })
+  isRisingStar?: boolean;
 
   @ApiPropertyOptional({ description: 'Ngành hàng đang được đối sánh.' })
   matchedCategory?: string;

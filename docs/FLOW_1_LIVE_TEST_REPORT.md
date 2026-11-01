@@ -334,3 +334,26 @@ flowchart TD
    - Không có code break, không có fallback giả lập.
    - Toàn bộ 133 test suites (1521 unit tests) và integration test vòng đời Flow 1 đều đạt tỷ lệ pass **100%**.
 
+---
+
+## 6. PHỤ LỤC: LIÊN KẾT LIÊN HOÀN VỚI FLOW 2 & FLOW 3 (ONBOARDING $\rightarrow$ HỢP TÁC & DEAL VIP)
+
+> [!NOTE]
+> **Tính Kế Thừa Liền Mạch Giữa 5 Main Flows Trong Hệ Thống SCANMS:**
+> Kết quả kiểm thử thành công của **Flow 1** chính là nền tảng dữ liệu đầu vào chuẩn mực và bất biến cho **Flow 2** và **Flow 3**:
+
+```mermaid
+flowchart LR
+    F1["FLOW 1: Onboarding Nhân Sự & eKYC Đối Tác<br/>(Cấp Hạng Đồng 10%, Kênh MXH FR-07)"] --> F2["FLOW 2: Khóa Ngành Hàng & AI Radar Matchmaker<br/>(Slide-Over Drawer Phương án B & Xếp Hạng Thật)"]
+    F2 --> F3["FLOW 3: Đàm Phán Deal VIP 2 Chiều & Mẫu Thử<br/>(Chat Socket.IO Store-wide / SKU & Đồng Hồ SLA 14 Ngày)"]
+```
+
+1. **Từ Flow 1 sang Flow 2 (Onboarding $\rightarrow$ Hợp Tác & AI Matchmaker):**
+   - Tài khoản Đối tác Tiếp thị Lê Hoàng Yến Nhi sau khi được Hội đồng Thẩm định phê chuẩn eKYC tại Flow 1 sẽ mang cấp bậc khởi điểm **Hạng Đồng (Base Rate 10%)** cùng kênh TikTok `@yennhi.skintips` được xác minh tích xanh.
+   - Khi Giám đốc Nhãn hàng (`SHOP_MANAGER`) tại Flow 2 thực hiện tìm kiếm đối tác cho dòng sản phẩm Skincare, hệ thống kích hoạt **Slide-Over Drawer AI Radar (Lựa chọn Phương án B)** ngay tại trang Quản lý Sản phẩm, quét phân tích ma trận 4 trục và đưa Yến Nhi vào nhóm KOC tiềm năng mà không làm gián đoạn vị trí làm việc của Shop.
+   - Bảng Xếp Hạng KOL hiển thị chính xác Cấp bậc (Tier) và dữ liệu doanh số từ Sổ cái bán hàng thay vì gán cứng giá trị 0đ.
+2. **Từ Flow 2 sang Flow 3 (Hợp Tác $\rightarrow$ Đàm Phán Deal VIP 2 Chiều & Hàng Mẫu SLA 14 Ngày):**
+   - Shop Manager có thể trực tiếp bấm *"Đề Xuất Deal VIP"* ngay từ khay KOC, chủ động gửi Thỏa Thuận Thù Lao Độc Quyền (Store-wide hoặc nhóm SKU) cho KOC qua khung Chat Socket.IO ($\le 16\%$ tự trị, $> 16\%$ Admin duyệt).
+   - KOC nhận thẻ thỏa thuận, bấm chấp thuận và tiến hành đăng ký mượn Hàng mẫu trải nghiệm 0đ đi kèm cam kết xuất bản video review trong thời hạn **SLA 14 ngày**.
+
+

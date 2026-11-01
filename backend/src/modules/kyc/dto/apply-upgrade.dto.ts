@@ -78,26 +78,26 @@ export class ApplyKolUpgradeDto {
   @IsString()
   taxCode?: string;
 
-  @ApiProperty({ example: 'Vietcombank', description: 'Tên ngân hàng' })
-  @IsString({ message: 'Tên ngân hàng không được để trống' })
-  @IsNotEmpty({ message: 'Tên ngân hàng không được để trống' })
-  bankName: string;
+  @ApiPropertyOptional({ example: 'Vietcombank', description: 'Tên ngân hàng' })
+  @IsOptional()
+  @IsString()
+  bankName?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '0123456789',
-    description: 'Số tài khoản ngân hàng nhận hoa hồng',
+    description: 'Số tài khoản ngân hàng nhận hoa hồng (tùy chọn lúc đăng ký)',
   })
-  @IsString({ message: 'Số tài khoản không được để trống' })
-  @IsNotEmpty({ message: 'Số tài khoản không được để trống' })
-  bankAccountNumber: string;
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'NGUYEN THANH THANG',
-    description: 'Tên chủ tài khoản (In hoa)',
+    description: 'Tên chủ tài khoản (In hoa, tùy chọn lúc đăng ký)',
   })
-  @IsString({ message: 'Tên chủ tài khoản không được để trống' })
-  @IsNotEmpty({ message: 'Tên chủ tài khoản không được để trống' })
-  bankAccountName: string;
+  @IsOptional()
+  @IsString()
+  bankAccountName?: string;
 
   @ApiPropertyOptional({
     example: 'KOL chuyên review mỹ phẩm organic và thời trang',

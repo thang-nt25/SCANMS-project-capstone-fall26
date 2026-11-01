@@ -16,6 +16,7 @@ import { CouponStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { chatNotificationPreview } from './chat-notification';
 import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -36,6 +37,22 @@ export class ChatService {
     private readonly cloudinary: CloudinaryService,
   ) {}
 
+  async getSocketUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        isDeleted: true,
+      },
+    });
+    if (!user || !user.isActive || user.isDeleted)
+      throw new ForbiddenException('Tài khoản không hoạt động');
+    return user;
+  }
+
   // ---- Conversation ----
 
   // KOL/Shop tạo hoặc lấy conversation
@@ -45,7 +62,7 @@ export class ChatService {
     let storeId = dto.storeId;
     let collaboratorId = dto.collaboratorId;
     let customerId = dto.customerId;
-    let targetStoreOwnerId: string | undefined;
+    let actingForShop = false;
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },
@@ -55,7 +72,8 @@ export class ChatService {
     // Nếu shop gọi (có collaboratorId, không có storeId) → tự lấy storeId
     if (!storeId && (collaboratorId || customerId)) {
       const store = await this.prisma.store.findFirst({
-        where: { ownerId: userId, isDeleted: false },
+        where: managedStoreWhere(userId),
+        orderBy: { createdAt: 'asc' },
       });
       if (!store)
         throw new BadRequestException(
@@ -72,8 +90,13 @@ export class ChatService {
       if (!targetStore) throw new NotFoundException('Không tìm thấy cửa hàng');
 
       // Người không phải chủ shop chỉ được tạo hội thoại với chính danh tính của mình.
-      targetStoreOwnerId = targetStore.ownerId;
-      if (targetStore.ownerId !== userId) {
+      actingForShop =
+        actor.role === 'SHOP_MANAGER' &&
+        !!(await this.prisma.store.findFirst({
+          where: { ...managedStoreWhere(userId), id: storeId },
+          select: { id: true },
+        }));
+      if (!actingForShop) {
         if (
           (collaboratorId && collaboratorId !== userId) ||
           (customerId && customerId !== userId)
@@ -93,13 +116,6 @@ export class ChatService {
             'Vai trò này không thể tạo hội thoại với Shop',
           );
         }
-      } else if (
-        actor.role !== 'SHOP_MANAGER' &&
-        actor.role !== 'SYSTEM_ADMIN'
-      ) {
-        throw new ForbiddenException(
-          'Chỉ chủ Shop được mở hội thoại thay mặt Shop',
-        );
       }
     }
 
@@ -131,12 +147,17 @@ export class ChatService {
         await this.prisma.storeCollaborator.upsert({
           where: { storeId_collaboratorId: { storeId, collaboratorId } },
           update: {},
-          create: { storeId, collaboratorId, status: 'PENDING', requestedByKol: actor.role === 'COLLABORATOR' },
+          create: {
+            storeId,
+            collaboratorId,
+            status: 'PENDING',
+            requestedByKol: actor.role === 'COLLABORATOR',
+          },
         });
       } catch {}
     }
 
-    if (targetStoreOwnerId === userId) {
+    if (actingForShop) {
       const recipientId = customerId || collaboratorId!;
       const recipient = await this.prisma.user.findUnique({
         where: { id: recipientId },
@@ -185,8 +206,8 @@ export class ChatService {
                 select: {
                   id: true,
                   name: true,
-                  bonusRate: true,
-                  minRevenue: true,
+                  extraBonusPercentage: true,
+                  minRevenueThreshold: true,
                 },
               },
             },
@@ -260,7 +281,7 @@ export class ChatService {
           OR: [
             { collaboratorId: userId },
             { customerId: userId },
-            { store: { ownerId: userId } },
+            { store: managedStoreWhere(userId) },
           ],
         };
     const conversations = await this.prisma.conversation.findMany({
@@ -334,12 +355,16 @@ export class ChatService {
     const messageCounts = conversations.length
       ? await this.prisma.chatMessage.groupBy({
           by: ['conversationId'],
-          where: { conversationId: { in: conversations.map(item => item.id) } },
+          where: {
+            conversationId: { in: conversations.map((item) => item.id) },
+          },
           _count: { _all: true },
         })
       : [];
-    const totals = new Map(messageCounts.map(item => [item.conversationId, item._count._all]));
-    const conversationsWithTotals = conversations.map(conversation => ({
+    const totals = new Map(
+      messageCounts.map((item) => [item.conversationId, item._count._all]),
+    );
+    const conversationsWithTotals = conversations.map((conversation) => ({
       ...conversation,
       messageCount: totals.get(conversation.id) || 0,
     }));
@@ -415,19 +440,33 @@ export class ChatService {
     });
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
 
+    const requester = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, isActive: true, isDeleted: true },
+    });
+    if (
+      !requester ||
+      requester.isActive === false ||
+      requester.isDeleted === true
+    ) {
+      throw new ForbiddenException('Tài khoản không hoạt động');
+    }
+    const managesStore =
+      requester.role === 'SHOP_MANAGER' &&
+      (conv.store.ownerId === userId ||
+        !!(await this.prisma.store.findFirst({
+          where: { ...managedStoreWhere(userId), id: conv.storeId },
+          select: { id: true },
+        })));
     const isParticipant =
       conv.collaboratorId === userId ||
       conv.customerId === userId ||
-      conv.store.ownerId === userId;
+      managesStore;
     if (!isParticipant)
       throw new ForbiddenException('Bạn không có quyền truy cập hội thoại này');
 
     // A customer may chat with a Shop, but must never be able to enter a
     // Shop–KOL thread even if a stale or malformed participant link exists.
-    const requester = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    });
     if (
       requester?.role === 'CUSTOMER' &&
       conv.customerId !== userId &&
@@ -638,7 +677,11 @@ export class ChatService {
       : orderedMessages;
   }
 
-  async exploreMessages(conversationId: string, userId: string, query: ChatExplorerQuery) {
+  async exploreMessages(
+    conversationId: string,
+    userId: string,
+    query: ChatExplorerQuery,
+  ) {
     const conversation = await this.getConversationById(conversationId, userId);
     const where = buildExplorerWhere(conversationId, userId, query);
     // A cursor from another conversation must never influence this query.
@@ -647,27 +690,43 @@ export class ChatService {
         where: { id: query.cursor, conversationId },
         select: { id: true, createdAt: true },
       });
-      if (!anchor) throw new BadRequestException('Mốc tin nhắn không còn tồn tại');
-      where.AND = [{ OR: [
-        { createdAt: { lt: anchor.createdAt } },
-        { createdAt: anchor.createdAt, id: { lt: anchor.id } },
-      ] }];
+      if (!anchor)
+        throw new BadRequestException('Mốc tin nhắn không còn tồn tại');
+      where.AND = [
+        {
+          OR: [
+            { createdAt: { lt: anchor.createdAt } },
+            { createdAt: anchor.createdAt, id: { lt: anchor.id } },
+          ],
+        },
+      ];
     }
     const rows = await this.prisma.chatMessage.findMany({
       where,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 31,
       select: {
-        id: true, conversationId: true, senderId: true, messageText: true,
-        mediaUrl: true, mediaType: true, mediaName: true, createdAt: true, isRead: true,
+        id: true,
+        conversationId: true,
+        senderId: true,
+        messageText: true,
+        mediaUrl: true,
+        mediaType: true,
+        mediaName: true,
+        createdAt: true,
+        isRead: true,
         sender: { select: { id: true, fullName: true, role: true } },
       },
     });
     const page = rows.slice(0, 30);
-    const customer = conversation.customerId === userId ||
-      (conversation.collaboratorId === userId && conversation.collaborator?.role === 'CUSTOMER');
+    const customer =
+      conversation.customerId === userId ||
+      (conversation.collaboratorId === userId &&
+        conversation.collaborator?.role === 'CUSTOMER');
     return {
-      items: customer ? page.filter((row) => !isExclusiveDealMessage(row.messageText)) : page,
+      items: customer
+        ? page.filter((row) => !isExclusiveDealMessage(row.messageText))
+        : page,
       // Advance using scanned rows even if private cards were omitted.
       nextCursor: rows.length > 30 ? page[page.length - 1].id : null,
     };
@@ -736,11 +795,19 @@ export class ChatService {
     messageId?: string,
   ) {
     // Derive the recipient from the authorized conversation, never from the FE.
+    if (isExclusiveDealMessage(messageText))
+      throw new BadRequestException(
+        'Thẻ VIP chỉ được tạo qua quy trình đề nghị và phê duyệt.',
+      );
     const conversation = await this.getConversationById(
       conversationId,
       senderId,
     );
-    const fromShop = conversation.store.ownerId === senderId;
+    // getConversationById already authorizes this actor. An assigned manager
+    // sends on behalf of the shop; do not route their message back to its owner.
+    const fromShop =
+      senderId !== conversation.customerId &&
+      senderId !== conversation.collaboratorId;
     const recipientId = fromShop
       ? conversation.customerId || conversation.collaboratorId
       : conversation.store.ownerId;
@@ -898,7 +965,7 @@ export class ChatService {
           OR: [
             { collaboratorId: userId },
             { customerId: userId },
-            { store: { ownerId: userId } },
+            { store: managedStoreWhere(userId) },
           ],
         },
       },

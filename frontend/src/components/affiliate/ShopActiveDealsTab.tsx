@@ -547,8 +547,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {deals.map((deal) => {
                         const p = deal.progress;
-                        const target = deal.targetOrders || p.targetOrders || 0;
-                        const completed = p.completedOrders || 0;
+                        const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
+                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
+                        const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
                         const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
 
                         return (
@@ -590,7 +591,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                               <span className="text-[#7D715E]">Tiến độ cam kết:</span>
                               {target > 0 ? (
                                 <span className="font-bold text-[#1A1612]">
-                                  {completed}/{target} đơn ({percent}%)
+                                  {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">
@@ -665,8 +666,9 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                   <tbody className="divide-y divide-[#EAE4D7]">
                     {filteredActiveDeals.map((deal) => {
                       const p = deal.progress;
-                      const target = deal.targetOrders || p.targetOrders || 0;
-                      const completed = p.completedOrders || 0;
+                      const revenueKpi = Boolean(deal.targetRevenue || p.targetRevenue);
+                        const target = Number(deal.targetRevenue || p.targetRevenue || deal.targetOrders || p.targetOrders || 0);
+                      const completed = revenueKpi ? p.validRevenue || 0 : p.completedOrders || 0;
                       const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
 
                       return (
@@ -734,7 +736,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                           <td className="p-3">
                             {target > 0 ? (
                               <span className="font-bold text-[#1A1612]">
-                                {completed}/{target} đơn ({percent}%)
+                                {completed.toLocaleString('vi-VN')}/{target.toLocaleString('vi-VN')} {revenueKpi ? '\u0111' : '\u0111\u01a1n'} ({percent}%)
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">

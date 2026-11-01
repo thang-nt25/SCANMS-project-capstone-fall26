@@ -1,3 +1,5 @@
+import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDrawer';
+import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -359,12 +361,17 @@ export default function ProductManagementPage() {
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<any | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
+  const saveLocked = useRef(false);
+  const submittedForm = useRef<HTMLFormElement | null>(null);
+  const confirmedIdentity = useRef('');
+  const [identityWarning, setIdentityWarning] = useState<{ items: SimilarProduct[]; fingerprint: string } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [moderatingProduct, setModeratingProduct] = useState<any | null>(null);
   const [moderatingAction, setModeratingAction] = useState<'APPROVED' | 'REJECTED' | null>(null);
   const [moderationReason, setModerationReason] = useState('');
   const [moderationSubmitting, setModerationSubmitting] = useState(false);
+  const [aiDrawerProduct, setAiDrawerProduct] = useState<Product | null>(null);
 
   const pendingApprovalCount = useMemo(() => {
     return products.filter((p: any) => (p.moderationStatus || 'APPROVED') === 'DRAFT').length;
@@ -986,6 +993,8 @@ export default function ProductManagementPage() {
   };
 
   const closeProductModal = () => {
+    setIdentityWarning(null);
+    confirmedIdentity.current = '';
     setShowModal(false);
     if (returnToDashboard) {
       setReturnToDashboard(false);
@@ -1292,7 +1301,8 @@ export default function ProductManagementPage() {
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
-    if (savingProduct) return;
+    if (savingProduct || saveLocked.current) return;
+    submittedForm.current = e.currentTarget as HTMLFormElement;
     setSaveError(null);
 
     let packageData: ReturnType<typeof productPackageInput>;
@@ -1481,8 +1491,16 @@ export default function ProductManagementPage() {
       combinedDescription = specsBlock + combinedDescription;
     }
 
+    saveLocked.current = true;
     setSavingProduct(true);
     try {
+      const fingerprint = JSON.stringify([editingProduct?.id, currentStoreId, formTitle.trim(), formSku.trim(), formBarcode.trim()]);
+      if ((!editingProduct || editingProduct.title !== formTitle.trim()) && confirmedIdentity.current !== fingerprint) {
+        const response: any = await api.get('/products/identity-check', { timeout: 120000, params: { title: formTitle.trim(), storeId: currentStoreId, productId: editingProduct?.id }, headers: { 'x-skip-cache': '1' } });
+        const body = response?.data?.data || response?.data || response;
+        if (!Array.isArray(body?.items)) throw new Error('Không kiểm tra được danh mục trùng. Vui lòng thử lại.');
+        if (body.items.length) { setIdentityWarning({ items: body.items, fingerprint }); return; }
+      }
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
           ...packageData,
@@ -1550,74 +1568,14 @@ export default function ProductManagementPage() {
       setSaveError(readableMessage);
       showToast(readableMessage);
     } finally {
+      saveLocked.current = false;
       setSavingProduct(false);
     }
   };
 
 
 
-  const demoProducts =
-    products.length > 0
-      ? products
-      : [
-          {
-            id: 'p-1',
-            sku: 'SR-VTC-15',
-            title: 'Serum Vitamin C 15% Dưỡng Sáng Đều Màu Da',
-            category: 'Chăm sóc da',
-            price: 459000,
-            commissionRate: 10,
-            stockQuantity: 120,
-            status: 'active',
-            images: ['/assets/products/real/vitamin-c-15-serum.jpg'],
-          },
-          {
-            id: 'p-2',
-            sku: 'SUN-SPF50-PA',
-            title: 'Kem Chống Nắng Phổ Rộng SPF50+ PA++++ Kiểm Dầu',
-            category: 'Chống nắng',
-            price: 389000,
-            commissionRate: 10,
-            stockQuantity: 84,
-            status: 'active',
-            images: ['/assets/products/real/spf50-oil-control.jpg'],
-          },
-          {
-            id: 'p-3',
-            sku: 'CL-GEL-TEA',
-            title: 'Gel Rửa Mặt Tràm Trà Trị Mụn Dịu Nhẹ',
-            category: 'Làm sạch',
-            price: 219000,
-            commissionRate: 10,
-            stockQuantity: 0,
-            status: 'out_of_stock',
-            images: ['/assets/products/real/tea-tree-cleanser.jpg'],
-          },
-          {
-            id: 'p-4',
-            sku: 'TN-BHA-2',
-            title: 'Toner BHA 2% Thu Nhỏ Lỗ Chân Lông & Tẩy Tế Bào Chết',
-            category: 'Toner & Nước hoa hồng',
-            price: 349000,
-            commissionRate: 10,
-            stockQuantity: 45,
-            status: 'active',
-            images: ['/assets/products/real/bha-toner-2pct.png'],
-          },
-          {
-            id: 'p-5',
-            sku: 'MSK-HYA-5X',
-            title: 'Mặt Nạ Cấp Ẩm Chuyên Sâu Hyaluronic Acid 5X',
-            category: 'Mặt nạ',
-            price: 199000,
-            commissionRate: 10,
-            stockQuantity: 15,
-            status: 'paused',
-            images: ['/assets/products/real/centella-sheet-mask.jpg'],
-          },
-        ];
 
-  void demoProducts;
 
   const displayProducts = products;
 
@@ -1721,7 +1679,7 @@ export default function ProductManagementPage() {
       })()}
 
       {/* Unified Toolbar: Compact Search, Filters & Action Buttons in One Row */}
-      <Card className="product-toolbar p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
+      <Card className="product-toolbar relative z-20 overflow-visible p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
         <div className="product-toolbar-layout grid grid-cols-[minmax(280px,1fr)_minmax(0,1.3fr)] @max-[900px]/product-management:grid-cols-1 items-stretch gap-3 @max-[900px]/product-management:gap-2.5">
           {/* Left: Compact search input & filter controls */}
           <div className="product-filter-controls grid grid-cols-[minmax(0,1fr)_160px] items-stretch min-w-0 gap-2">
@@ -2036,12 +1994,12 @@ export default function ProductManagementPage() {
                         {moderationStatus === 'APPROVED' && (
                           <button
                             type="button"
-                            onClick={() => navigate(`/merchant/kol-hub?mode=ai-matching&productId=${p.id}`)}
+                            onClick={() => setAiDrawerProduct(p)}
                             className="h-8 px-2.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#C59B58] text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
                             title="Tìm KOC phù hợp cho sản phẩm này qua AI Radar Matchmaker"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
-                            <span className="hidden xl:inline">Tìm KOC bằng AI</span>
+                            <span className="hidden sm:inline">Gợi ý KOC</span>
                           </button>
                         )}
 
@@ -2772,12 +2730,6 @@ export default function ProductManagementPage() {
                         <PlusCircle size={14} /> + Thêm phân loại
                       </button>
                     </div>
-                    {Number(formPrice || 0) > 0 && (
-                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#EEDFC6] text-[11px] text-[#7D715E]">
-                        <ShieldCheck size={13} className="text-[#B88E4F]" />
-                        <span>Giá sàn bảo vệ (MAP tối thiểu): <strong className="text-[#1A1612]">{Math.round(Number(formPrice) * 0.7).toLocaleString('vi-VN')} ₫</strong> — Không được giảm giá dưới ngưỡng an toàn này khi chạy chiến dịch.</span>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
@@ -3712,6 +3664,17 @@ export default function ProductManagementPage() {
 
 
       {showReviewModeration && <ReviewManagementDialog admin={isAdminOrManager} onClose={() => setShowReviewModeration(false)} />}
+
+      <ProductAiMatchDrawer
+        product={aiDrawerProduct}
+        isOpen={Boolean(aiDrawerProduct)}
+        onClose={() => setAiDrawerProduct(null)}
+      />
+      {identityWarning && <ProductIdentityWarning items={identityWarning.items} onCancel={() => setIdentityWarning(null)} onConfirm={() => {
+        confirmedIdentity.current = identityWarning.fingerprint;
+        setIdentityWarning(null);
+        submittedForm.current?.requestSubmit();
+      }} />}
     </div>
   );
 }

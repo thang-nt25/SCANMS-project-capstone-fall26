@@ -1,3 +1,6 @@
+import { normalizePartnerTier } from '../../utils/partner-tier';
+import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
+import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
@@ -30,6 +33,7 @@ import {
   Mail,
   X,
   Crown,
+  Sparkles,
   ArrowUpRight,
   PackageCheck,
   RefreshCw,
@@ -59,7 +63,7 @@ function formatConvTime(dateStr?: string | null) {
 }
 
 function getChatMessagePreview(messageText?: string, mediaName?: string): string {
-  if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện...';
+  if (!messageText) return mediaName ? `📎 ${mediaName}` : '';
   try {
     const parsed = JSON.parse(messageText);
     if (parsed.type === 'CAMPAIGN_INVITE') {
@@ -127,6 +131,7 @@ export interface PartnerKol {
   }>;
   kycStatus?: 'VERIFIED' | 'PENDING' | 'UNVERIFIED';
   commissionRate?: number; // Custom % for this KOL
+  statsAvailable?: boolean;
   stats: {
     totalRevenue: number;
     totalOrders: number;
@@ -139,27 +144,6 @@ export interface PartnerKol {
   lastMessageTimestamp?: number;
   unreadCount?: number;
 }
-
-type PartnerTier = NonNullable<PartnerKol['tier']>;
-
-const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
-  const tierName =
-    typeof tier === 'string'
-      ? tier
-      : tier && typeof tier === 'object' && 'name' in tier
-        ? String((tier as { name?: unknown }).name ?? '')
-        : '';
-  const normalized = tierName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase();
-
-  if (normalized.includes('DIAMOND') || normalized.includes('KIM CUONG')) return 'DIAMOND';
-  if (normalized.includes('GOLD') || normalized.includes('VANG')) return 'GOLD';
-  if (normalized.includes('SILVER') || normalized.includes('BAC')) return 'SILVER';
-  if (normalized.includes('BRONZE') || normalized.includes('DONG')) return 'BRONZE';
-  return undefined;
-};
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
   const p = (platform || '').toUpperCase();
@@ -314,8 +298,9 @@ export default function ShopKolHubPage() {
   const tabParam = searchParams.get('tab') || 'messages';
   const modeParam = searchParams.get('mode'); // 'ai-matching' or null
 
-  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'ai-matching';
+  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching';
   const [kols, setKols] = useState<PartnerKol[]>([]);
+  const [allPlatformKols, setAllPlatformKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
   const [viewMode, setViewMode] = useState<'CRM' | 'LEADERBOARD' | 'ALL_DEALS'>(
     tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
@@ -357,6 +342,10 @@ export default function ShopKolHubPage() {
 
   const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
   const [kolOrders, setKolOrders] = useState<ReferralOrderItem[]>([]);
+  const [kolPerformance, setKolPerformance] = useState<{ totalOrders: number; totalRevenue: number; accruedCommission: number } | null>(null);
+  const [performanceError, setPerformanceError] = useState('');
+  const [performancePage, setPerformancePage] = useState(1);
+  const [performancePages, setPerformancePages] = useState(0);
   const [loadingKolOrders, setLoadingKolOrders] = useState(false);
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
@@ -370,6 +359,7 @@ export default function ShopKolHubPage() {
   const [directoryCreators, setDirectoryCreators] = useState<any[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
+  const [showVipCampaignModal, setShowVipCampaignModal] = useState(false);
 
   useEffect(() => {
     if (showInviteModal) {
@@ -400,6 +390,8 @@ export default function ShopKolHubPage() {
     }
     if (tabParam === 'deals') {
       setViewMode('ALL_DEALS');
+    } else if (tabParam === 'leaderboard') {
+      setViewMode('LEADERBOARD');
     } else if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
       setViewMode('CRM');
       setActiveTab(tabParam as any);
@@ -552,12 +544,13 @@ export default function ShopKolHubPage() {
             } : undefined,
             kycStatus: profile.kycStatus || undefined,
             commissionRate: undefined,
+            statsAvailable: Boolean(m.stats),
             stats: {
-              totalRevenue: 0,
-              totalOrders: 0,
+              totalRevenue: Number(m.stats?.totalRevenue ?? 0),
+              totalOrders: Number(m.stats?.totalOrders ?? 0),
               sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
               pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
-              completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+              completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[c.id]?.completed ?? 0),
             },
           });
         });
@@ -597,8 +590,8 @@ export default function ShopKolHubPage() {
               kycStatus: profile.kycStatus || undefined,
               commissionRate: undefined,
               stats: {
-                totalRevenue: 0,
-                totalOrders: 0,
+                totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+                totalOrders: Number(c.stats?.totalOrders ?? 0),
                 sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
                 pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
                 completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -648,8 +641,8 @@ export default function ShopKolHubPage() {
           kycStatus: profile.kycStatus || undefined,
           commissionRate: undefined,
           stats: {
-            totalRevenue: 0,
-            totalOrders: 0,
+            totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+            totalOrders: Number(c.stats?.totalOrders ?? 0),
             sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
             pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
             completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -663,30 +656,26 @@ export default function ShopKolHubPage() {
 
       // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
       const mergedMap = new Map<string, PartnerKol>();
-      convKols.forEach((k) => mergedMap.set(k.id, k));
-
-      requestKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
+      const measuredMembers = new Map(backendKols.map(member => [member.id, member]));
+      // Active Inbox: Only creators with real messages or active pending requests
+      convKols.forEach((k) => {
+        if ((k.lastMessageTimestamp ?? 0) > 0 || (k.lastMessage && k.lastMessage.trim().length > 0)) {
           mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-            phone: existing.phone || k.phone,
-          });
         }
       });
 
-      backendKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
-          mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-          });
+      requestKols.forEach((k) => {
+        if (k.stats.pendingSamplesCount > 0 || k.stats.sampleRequestsCount > 0) {
+          if (!mergedMap.has(k.id)) {
+            mergedMap.set(k.id, k);
+          } else {
+            const existing = mergedMap.get(k.id)!;
+            mergedMap.set(k.id, {
+              ...existing,
+              stats: { ...existing.stats, ...k.stats },
+              phone: existing.phone || k.phone,
+            });
+          }
         }
       });
 
@@ -698,11 +687,12 @@ export default function ShopKolHubPage() {
       }
 
       // Sort with latest message / interaction first
-      const allKols = Array.from(mergedMap.values()).sort((a, b) => {
+      const allKols = Array.from(mergedMap.values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })).sort((a, b) => {
         return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
       });
 
       setKols(allKols);
+      setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {
         if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
@@ -745,22 +735,34 @@ if (sequence !== sampleLoadSequence.current) return;
   }, [kols, selectedKolId]);
 
   useEffect(() => {
+    let active = true;
+    setKolOrders([]);
+    setKolPerformance(null);
+    setPerformanceError('');
     if (activeTab === 'performance' && selectedKol?.id) {
       setLoadingKolOrders(true);
       analyticsService
-        .getShopKolOrders(selectedKol.id, { limit: 20 })
+        .getShopKolOrders(selectedKol.id, { limit: 20, page: performancePage, period: performanceRange }, true)
         .then((res) => {
+          if (!active) return;
+          if (!res?.summary) throw new Error('Chưa tải được số liệu tổng hợp.');
           setKolOrders(res?.items || []);
+          setKolPerformance(res.summary);
+          setPerformancePages(res.totalPages || 0);
         })
         .catch((err) => {
-          console.error('Lỗi tải đơn hàng tiếp thị của KOL:', err);
+          if (!active) return;
+          setPerformanceError(err?.message || 'Không tải được hiệu suất KOC.');
           setKolOrders([]);
         })
         .finally(() => {
-          setLoadingKolOrders(false);
+          if (active) setLoadingKolOrders(false);
         });
     }
-  }, [activeTab, selectedKol?.id]);
+    return () => { active = false; };
+  }, [activeTab, selectedKol?.id, performancePage, performanceRange]);
+
+  useEffect(() => { setPerformancePage(1); }, [selectedKol?.id, performanceRange]);
 
   // Multi-channel list for selected KOL
   const allChannels = useMemo(() => {
@@ -807,8 +809,9 @@ return true;
   }, [kols, searchQuery, filterTag, samplesMap]);
 
   const sortedLeaderboardKols = useMemo(() => {
-    return [...kols].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
-  }, [kols]);
+    const source = allPlatformKols.length > 0 ? allPlatformKols : kols;
+    return [...source].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
+  }, [allPlatformKols, kols]);
 
   // Selected KOL Samples
   const currentKolSamples = useMemo(() => {
@@ -820,13 +823,16 @@ return true;
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
     const params = new URLSearchParams(searchParams);
-    const kolId = selectedKol?.id || selectedKolId;
-    if (kolId) params.set('kol', kolId);
-    else params.delete('kol');
-    params.set('tab', activeTab);
-    if (enabled) params.set('mode', 'ai-matching');
-    else params.delete('mode');
-    setSearchParams(params, { replace: !enabled });
+    if (enabled) {
+      params.set('tab', 'radar');
+      params.delete('mode');
+    } else {
+      if (params.get('tab') === 'radar') {
+        params.set('tab', 'messages');
+      }
+      params.delete('mode');
+    }
+    setSearchParams(params, { replace: true });
   };
 
   const handleSelectKol = (kolId: string) => {
@@ -1430,7 +1436,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('CRM');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'messages', kol: selectedKolId }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'CRM' && !isAiMatchingMode
@@ -1446,7 +1452,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('LEADERBOARD');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'leaderboard' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'LEADERBOARD' && !isAiMatchingMode
@@ -1462,7 +1468,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('ALL_DEALS');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'deals' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'ALL_DEALS' && !isAiMatchingMode
@@ -1472,6 +1478,21 @@ return true;
           >
             <Handshake size={13} className={viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
             <span>Thỏa thuận độc quyền</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchParams({ tab: 'radar' }, { replace: true });
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              isAiMatchingMode
+                ? 'bg-[#FBF5EB] text-[#8C6226] shadow-2xs border border-[#EEDFC6]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <Sparkles size={13} className={isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Gợi ý KOC (AI Radar)</span>
           </button>
         </div>
 
@@ -1486,11 +1507,11 @@ return true;
           </button>
           <button
             type="button"
-            onClick={() => setAiMatchingMode(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-white text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
+            onClick={() => setShowVipCampaignModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
           >
-            <Search size={13} />
-            <span>Gợi ý KOL</span>
+            <Crown size={13} className="text-[#B88E4F]" />
+            <span>Đề xuất Deal VIP</span>
           </button>
         </div>
       </div>
@@ -1510,7 +1531,7 @@ return true;
               </div>
               <h2 className="text-sm font-bold text-[#1A1612]">Bảng xếp hạng nhà sáng tạo đối tác</h2>
             </div>
-            <span className="text-xs text-[#7D715E]">{kols.length} đối tác</span>
+            <span className="text-xs text-[#7D715E]">{sortedLeaderboardKols.length} hồ sơ · “—” khi chưa có thống kê tại Shop</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -1527,8 +1548,10 @@ return true;
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]">
-                {sortedLeaderboardKols.map((kol, idx) => {
+                {sortedLeaderboardKols.map((rawKol, idx) => {
                   const rank = idx + 1;
+                  const effectiveTier = normalizePartnerTier(rawKol.tier);
+                  const kol = { ...rawKol, tier: effectiveTier };
                   return (
                     <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
                       <td className="py-3 px-4 text-center font-bold">
@@ -1579,31 +1602,45 @@ return true;
                             ? 'bg-[#F1F3F5] text-[#5C6470] border-[#DCE0E5]'
                             : 'bg-[#F3EFE6] text-[#7D715E] border-[#EAE4D7]'
                         }`}>
-                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : 'Đồng'}
+                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : kol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-[#1A1612] tabular-nums">
-                        {kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫
+                        {kol.statsAvailable ? `${kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫` : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
-                        {kol.stats.totalOrders}
+                        {kol.statsAvailable ? kol.stats.totalOrders : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
                         {kol.stats.completedVideosCount}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectKol(kol.id);
-                            setViewMode('CRM');
-                            handleTabChange('messages');
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
-                        >
-                          <MessageSquare size={13} />
-                          <span>Nhắn tin</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectKol(kol.id);
+                              setViewMode('CRM');
+                              handleTabChange('messages');
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          >
+                            <MessageSquare size={13} className="text-[#C59B58]" />
+                            <span>Nhắn tin</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedKolId(kol.id);
+                              setShowInviteModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Thiết lập thỏa thuận thù lao độc quyền"
+                          >
+                            <Crown size={13} />
+                            <span>Deal VIP</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2128,7 +2165,7 @@ return true;
 
                       <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
                         <Crown className="w-2.5 h-2.5 text-[#B88E4F]" />
-                        <span>Hoa hồng: 10% chuẩn sàn</span>
+                        <PartnerRemunerationSummary role="SHOP_MANAGER" storeId={ownedStore?.id} collaboratorId={selectedKol.id} tier={selectedKol.tier} />
                       </span>
                     </div>
 
@@ -2138,18 +2175,13 @@ return true;
                         type="button"
                         id="btn-header-vip-invite"
                         onClick={() => {
-                          setViewMode('CRM');
-                          handleTabChange('messages');
-                          setTimeout(() => {
-                            const btn = document.getElementById('btn-composer-vip-invite') || document.getElementById('btn-open-vip-invite');
-                            if (btn) btn.click();
-                          }, 50);
+                          setShowVipCampaignModal(true);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs"
-                        title="Mời chiến dịch tiếp thị VIP cho KOL này"
+                        title="Đề nghị thỏa thuận VIP theo sản phẩm với KOC này"
                       >
                         <Crown className="w-3.5 h-3.5" />
-                        <span>Mời Chiến Dịch VIP</span>
+                        <span>Đề nghị VIP</span>
                       </button>
 
                       <button
@@ -2686,17 +2718,9 @@ return true;
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
               {activeTab === 'performance' && (() => {
-                const effectiveCommissionRate = selectedKol.commissionRate || 10;
-                const rawRevenue = selectedKol.stats?.totalRevenue || 0;
-                const rawOrders = selectedKol.stats?.totalOrders || 0;
-
-                const realReferredRevenue = kolOrders.reduce((sum, o: any) => sum + Number(o.finalAmount || o.orderTotal || 0), 0);
-                const realReferredCommission = kolOrders.reduce((sum, o: any) => sum + Number(o.commissionAmount || o.commissionEarned || 0), 0);
-                const displayRevenue = rawRevenue > 0 ? rawRevenue : realReferredRevenue;
-                const displayOrders = rawOrders > 0 ? rawOrders : kolOrders.length;
-                const displayCommission = rawRevenue > 0
-                  ? Math.round((rawRevenue * effectiveCommissionRate) / 100)
-                  : realReferredCommission;
+                const displayRevenue = kolPerformance?.totalRevenue || 0;
+                const displayOrders = kolPerformance?.totalOrders || 0;
+                const displayCommission = kolPerformance?.accruedCommission || 0;
                 const displayAov = displayOrders > 0 ? Math.round(displayRevenue / displayOrders) : 0;
                 const hasOrders = displayOrders > 0;
 
@@ -2789,20 +2813,23 @@ onClick={() => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-[#059669]">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
                           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          Đối soát thời gian thực
+                          Theo kỳ báo cáo đã chọn
                         </span>
                       </div>
                     </div>
 
-                    {/* 3. Top 4 Metric Cards (Tone Sáng, Sang Trọng, Chuẩn Vàng Be) */}
-                    <div className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    {performanceError && <p role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#DC2626]">{performanceError}</p>}
+                    {loadingKolOrders && <p role="status" className="text-sm text-[#7D715E]">Đang tải số liệu kỳ báo cáo…</p>}
+                    <div className="flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
+                    {/* Aggregates come from the API across every page in the period. */}
+                    <div style={{ display: !kolPerformance || loadingKolOrders ? 'none' : undefined }} className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                       {/* Card 1: Doanh thu thuần */}
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-                            Doanh thu thuần từ KOL
+                            Doanh số đơn đã giao
                           </span>
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
                             <TrendingUp className="h-4 w-4" />
@@ -2826,7 +2853,7 @@ onClick={() => {
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-                            Hoa hồng chi trả KOL
+                            Hoa hồng đã ghi nhận
                           </span>
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
                             <DollarSign className="h-4 w-4" />
@@ -2836,7 +2863,7 @@ onClick={() => {
                           {displayCommission.toLocaleString('vi-VN')} ₫
                         </div>
                         <div className="mt-1.5 text-[11px] text-[#7D715E]">
-                          Tỷ lệ áp dụng: <strong className="text-[#1A1612]">{effectiveCommissionRate}%</strong> · Tự động đối soát
+                          Gồm tiền chờ và đã đối soát; chưa đồng nghĩa đã rút tiền.
                         </div>
                       </div>
 
@@ -2856,7 +2883,7 @@ onClick={() => {
                         <div className="mt-1.5 text-[11px]">
                           {hasOrders ? (
                             <span className="font-semibold text-[#059669]">
-                              Đã giao: {ordersList.filter(o => o.status === 'DELIVERED').length}/{displayOrders} đơn ({displayOrders > 0 ? Math.round((ordersList.filter(o => o.status === 'DELIVERED').length / displayOrders) * 100) : 0}%)
+                              Đã giao/hoàn tất trong kỳ, tổng hợp đủ các trang.
                             </span>
                           ) : (
                             <span className="text-[#7D715E]">Chờ đơn hàng chốt đầu tiên</span>
@@ -2892,15 +2919,15 @@ onClick={() => {
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-[#1A1612] flex items-center gap-1.5">
                           <BarChart3 className="h-4 w-4 text-[#B88E4F]" />
-                          Tiến độ xử lý & Đối soát đơn hàng
+                          Trạng thái đơn trên trang này
                         </span>
-                        <span className="text-[11px] text-[#7D715E]">Truy vấn từ cơ sở dữ liệu đơn hàng tiếp thị</span>
+                        <span className="text-[11px] text-[#7D715E]">{ordersList.length} đơn đang hiển thị</span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
                           <span className="block text-[10px] font-bold uppercase text-[#7D715E]">1. Đang xử lý</span>
-                          <strong className="text-lg font-black text-[#1A1612] mt-0.5 block">
-                            {ordersList.filter(o => o.status !== 'DELIVERED' && o.status !== 'SHIPPING').length} đơn
+                          <strong data-order-status-count="pending" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#7D715E]">Chờ đóng gói & xuất kho</span>
                         </div>
@@ -2912,19 +2939,19 @@ onClick={() => {
                           <span className="text-[10px] text-blue-600 font-medium">Đang trên đường giao</span>
                         </div>
                         <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
-                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">3. Giao thành công</span>
-                          <strong className="text-lg font-black text-[#059669] mt-0.5 block">
-                            {ordersList.filter(o => o.status === 'DELIVERED').length} đơn
+                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">3. Đã giao / Hoàn tất</span>
+                          <strong data-order-status-count="delivered" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['DELIVERED', 'COMPLETED'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#059669] font-medium">Đã giao tới khách</span>
                         </div>
                         <div className="rounded-xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-white p-3">
-                          <span className="block text-[10px] font-bold uppercase text-[#8F682E]">4. Tỷ lệ hoàn tất</span>
-                          <strong className="text-lg font-black text-[#B88E4F] mt-0.5 block">
-                            {displayOrders > 0 ? Math.round((ordersList.filter(o => o.status === 'DELIVERED').length / displayOrders) * 100) : 0}%
+                          <span className="block text-[10px] font-bold uppercase text-[#8F682E]">4. Hủy / Đổi trả</span>
+                          <strong data-order-status-count="returned" className="text-lg font-black text-[#B88E4F] mt-0.5 block">
+                            {ordersList.filter(o => ['CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'DISPUTED'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#B88E4F] font-bold">
-                            {ordersList.filter(o => o.status === 'DELIVERED').length}/{displayOrders} đơn hoàn tất
+                            Gồm yêu cầu đang khiếu nại
                           </span>
                         </div>
                       </div>
@@ -2995,7 +3022,7 @@ setActiveTab('messages');
                                 <th className="p-3.5">Khách hàng</th>
                                 <th className="p-3.5">Sản phẩm tiếp thị</th>
                                 <th className="p-3.5">Giá trị đơn</th>
-                                <th className="p-3.5">Hoa hồng KOL ({effectiveCommissionRate}%)</th>
+                                <th className="p-3.5">Hoa hồng đã ghi nhận</th>
                                 <th className="p-3.5">Trạng thái</th>
                               </tr>
                             </thead>
@@ -3252,6 +3279,17 @@ setActiveTab('messages');
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}
+
+      {showVipCampaignModal && (
+        <ExclusiveOfferModal
+          collaborator={selectedKol ? { id: selectedKol.id, fullName: selectedKol.fullName } : undefined}
+          onClose={() => setShowVipCampaignModal(false)}
+          onSuccess={() => {
+            setShowVipCampaignModal(false);
+            toast.success('Đã gửi đề nghị VIP, chờ KOC xác nhận.');
+          }}
+        />
+      )}
     </div>
   );
 }

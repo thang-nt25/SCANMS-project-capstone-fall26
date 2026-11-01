@@ -107,7 +107,7 @@ flowchart TD
 | **2** | **Cấu trúc Kho bãi (Warehouse)** | Mỗi shop tự đăng ký một địa chỉ kho riêng lẻ như người bán tự do, sàn không quản lý điều kiện kho bãi. | Doanh nghiệp triển khai **Multi-Warehouse Fulfillment (Kho vệ tinh theo đặc thù ngành hàng)**: Kho mát thực phẩm/dược liệu, kho gia dụng cồng kềnh, kho thời trang may mặc. | Đáp ứng chuẩn mực bảo quản hàng hóa thực tế và tích hợp API GHN chuẩn xác (`from_district_id`, `from_ward_code`) để shipper lấy hàng đúng kho. |
 | **3** | **Kiểm duyệt Sản phẩm (Product Moderation)** | Sàn kiểm duyệt shop ngoài đăng bán theo dạng "kiểm duyệt nội dung cộng đồng", dễ phát sinh tiêu cực hoặc chậm trễ. | Quy trình kiểm soát nội bộ chuẩn mực **Maker - Checker (Người tạo - Người duyệt pháp chế)**: Shop Manager nhập liệu $\rightarrow$ System Manager pháp chế kiểm tra tính pháp lý trước khi mở bán. | Đảm bảo 100% sản phẩm có giấy công bố y tế/mỹ phẩm hợp pháp, kiểm soát giá bán niêm yết và chống trùng lặp mã vạch EAN-13 giữa các ngành hàng. |
 | **4** | **Dòng tiền Bán hàng (Cash Inflow)** | Tiền khách thanh toán bị giam ở tài khoản trung gian của sàn chợ. | Toàn bộ $100\%$ tiền thanh toán (VietQR, PayOS, COD shipper GHN) chảy thẳng vào **Tài Khoản Doanh Nghiệp Tập Trung (Corporate Master Account)**. | Doanh nghiệp chủ động nắm giữ dòng tiền kinh doanh tập trung, phục vụ hạch toán tài chính và luân chuyển vốn. |
-| **5** | **Yêu cầu Rút tiền (Payout Outflow)** | Shop bán xong có số dư ví trên sàn và phải tạo lệnh gửi Admin sàn xin duyệt rút tiền về tài khoản ngân hàng của chủ shop. | **Shop Manager KHÔNG RÚT TIỀN**. Tiền bán hàng là của doanh nghiệp. **CHỈ CÓ KOC MỚI THỰC HIỆN LỆNH RÚT TIỀN (Payout)** để nhận hoa hồng tiếp thị sau 7 ngày Escrow (khấu trừ 10% thuế TNCN). | Tháo gỡ mâu thuẫn vô lý khi nhân sự công ty lại phải "làm đơn xin công ty cho rút tiền doanh thu". |
+| **5** | **Yêu cầu Rút tiền (Payout Outflow)** | Shop bán xong có số dư ví trên sàn và phải tạo lệnh gửi Admin sàn xin duyệt rút tiền về tài khoản ngân hàng của chủ shop. | **Shop Manager KHÔNG RÚT TIỀN**. Tiền bán hàng là của doanh nghiệp. **CHỈ CÓ KOC MỚI THỰC HIỆN LỆNH RÚT TIỀN (Payout)** để nhận hoa hồng tiếp thị sau 14 ngày bảo chứng đối soát (khấu trừ 10% thuế TNCN). | Tháo gỡ mâu thuẫn vô lý khi nhân sự công ty lại phải "làm đơn xin công ty cho rút tiền doanh thu". |
 | **6** | **Báo cáo Tài chính của Shop** | Shop nhìn vào số dư ví cá nhân để rút tiền lẻ tẻ như một hộ kinh doanh cá thể. | Shop Manager xem **Báo Cáo Doanh Thu & Chi Phí Tiếp Thị (Store P&L & Commission Expenses)**: Doanh thu Net, Giá vốn (COGS), Chi phí hoa hồng KOC, Lợi nhuận đóng góp. | Cung cấp góc nhìn quản trị kinh doanh cho từng Brand Manager, giúp đánh giá hiệu quả chiến dịch tiếp thị liên kết (Affiliate ROI). |
 | **7** | **Hệ thống Ví Người Dùng** | Hệ thống duy trì ví cho Khách hàng, ví cho KOC, và cả ví số dư cho từng Shop (`StoreWallet`). | **Chỉ duy trì 2 loại ví thực tế:**<br>1. Ví Khách Hàng (`Customer Wallet`): Nhận tiền hoàn khi đổi trả.<br>2. Ví KOC (`Collaborator Wallet`): Tích lũy hoa hồng bán hàng. | Đơn giản hóa cấu trúc cơ sở dữ liệu kế toán, loại bỏ các giao dịch ví ảo không có thật giữa nội bộ công ty với nhau. |
 | **8** | **Quy trình Đổi trả / Hoàn tiền** | Khách hàng kiện Shop, Sàn đứng ra phân xử như Tòa án dân sự trung gian giữa 2 người ngoài xa lạ. | Quy trình **Chăm sóc Khách hàng (CSKH) nội bộ**: Khách khiếu nại $\rightarrow$ Thu hồi hàng về kho Store $\rightarrow$ Tự động **ĐÓNG BĂNG/HỦY HOA HỒNG KOC** trên đơn hàng bị trả. | Bảo vệ doanh nghiệp không bị thất thoát tiền hoa hồng khi khách hàng đã trả lại hàng và nhận tiền hoàn. |
@@ -139,7 +139,7 @@ flowchart TD
 2. **Shop Manager KHÔNG RÚT TIỀN:** Shop Manager là nhân sự nội bộ công ty (hưởng lương/KPI), không phải người bán tự do. Do đó, loại bỏ hoàn toàn tính năng Shop rút tiền và tab rút tiền Shop. Thay vào đó, Shop Manager theo dõi **Báo Cáo Doanh Thu & Chi Phí Tiếp Thị (Store P&L & Commission Expenses)**:
    $$\text{Doanh Thu Thuần} = \text{Tổng Doanh Số} - \text{Hàng Đổi Trả}$$
    $$\text{Lợi Nhuận Đóng Góp Store} = \text{Doanh Thu Thuần} - \text{Giá Vốn (COGS)} - \text{Hoa Hồng KOC} - \text{Chi Phí Hàng Mẫu}$$
-3. **CHỈ CÓ KOC MỚI RÚT TIỀN (Payout):** Tiền hoa hồng phát sinh từ đơn hàng thành công nằm trong Ví KOC ở trạng thái Escrow 7 ngày (tránh rủi ro đổi trả). Hết 7 ngày, KOC bấm Payout về ngân hàng cá nhân; Admin duyệt chi và tự động **khấu trừ 10% Thuế TNCN**.
+3. **CHỈ CÓ KOC MỚI RÚT TIỀN (Payout):** Tiền hoa hồng phát sinh từ đơn hàng thành công nằm trong Ví KOC ở trạng thái bảo chứng đối soát 14 ngày (tránh rủi ro đổi trả). Hết 14 ngày bảo chứng đối soát, KOC bấm rút tiền về ngân hàng cá nhân; Admin duyệt chi và tự động **khấu trừ 10% Thuế TNCN**.
 4. **Hệ thống chỉ còn 2 loại Ví thực tế:** Ví Khách Hàng (nhận tiền hoàn đổi trả) và Ví KOC (tích lũy hoa hồng).
 
 ---
@@ -167,7 +167,7 @@ flowchart TD
    * **Tiêu chuẩn vận hành quốc tế:** Mọi sàn TMĐT và nền tảng Affiliate lớn trên thế giới (TikTok Shop Seller Center, Shopee, Amazon Seller Central, Impact.com) đều vận hành theo đúng chuẩn này: Người bán/Nhãn hàng chỉ khai báo số lượng hàng sẵn sàng mở bán (`stockQuantity`), nền tảng không bao giờ can thiệp vào sổ sách nhập hàng xưởng của họ.
 3. **Nguồn gốc Dòng Tiền & Hàng Hóa thực tế trên SCANMS:**
    * **Không có chuyện "tiền tự sinh ra" hay "hàng tự xuất hiện":** Tiền trên hệ thống SCANMS là **tiền thật $100\%$ do Người mua hàng (Khách hàng) thanh toán** qua PayOS/VietQR hoặc trả COD cho shipper GHN.
-   * Khi đơn hàng giao thành công và vượt qua thời gian bảo chứng Escrow (7 ngày), hệ thống tự động bóc tách:
+   * Khi đơn hàng giao thành công và vượt qua thời gian bảo chứng đối soát (14 ngày), hệ thống tự động bóc tách:
      * Trả Thù lao cho KOC ($10\% - 16\%$) vào Ví rút tiền.
      * Trích Phí dịch vụ nền tảng ($3\%$).
      * Toàn bộ phần Doanh thu thuần còn lại ($\sim 81\% - 87\%$) thuộc về Tài khoản Doanh nghiệp/Nhãn hàng để bù đắp giá vốn hàng bán và ghi nhận lợi nhuận ròng.
@@ -207,7 +207,7 @@ flowchart TD
 1. **Thẩm định & Duyệt eKYC:** Đối soát CCCD, số tài khoản ngân hàng và kênh mạng xã hội của KOC đăng ký mới.
 2. **Kiểm duyệt Sản phẩm (Product Moderation):** Thẩm định pháp chế, giấy phép công bố và tính hợp lệ của sản phẩm do Shop Manager nhập lên sàn.
 3. **Phê duyệt Lệnh Rút Tiền Hằng Ngày (Daily Payout Approvals):**
-   * Đối soát số dư khả dụng (đã vượt qua 7 ngày Escrow sạch không khiếu nại).
+   * Đối soát số dư khả dụng (đã vượt qua 14 ngày bảo chứng đối soát sạch không khiếu nại).
    * Tự động tính toán và khấu trừ **$10\%$ Thuế TNCN tại nguồn** theo luật thuế.
    * Bấm nút **"Duyệt giải ngân Napas 24/7"** (`POST /api/v1/payouts/:id/approve`) để chuyển tiền về tài khoản ngân hàng của KOC.
 4. **Trọng tài Hoàn tiền & Thu hồi Chiết khấu (Dispute Mediation & Clawback):**
@@ -813,3 +813,55 @@ Livestream không phải là 1 trong 5 Main Flows bắt buộc để chấm đi�
 | **2. Phan Xuân Thịnh** | **Main Flow 2** *(Khóa Ngành Hàng, Hợp Tác 2 Chiều & AI Matchmaker)* + **Nửa đầu Main Flow 3** *(Chat Realtime & Thỏa thuận VIP)* | Thuật toán AI Ma trận Trọng số 4 Trục trong `ai-recommendation.service.ts`, Thị trường hợp tác 2 chiều (Shop mời Top KOC & KOC xin hợp tác), Kiến trúc WebSocket Socket.IO đàm phán gửi Thẻ mời chiến dịch VIP realtime. |
 | **3. Nguyễn Đình Tuấn** | **Nửa sau Main Flow 3** *(Tài Trợ Hàng Mẫu SLA 14 Ngày)* + **Nửa đầu Main Flow 4** *(Attribution, Link/QR, Coupon Định Danh & Chống Tự Mua)* | Quản trị hàng mẫu và đồng hồ SLA 14 ngày `deal-kpi.policy.ts`, Bộ sinh Smart Link / Dynamic QR, Coupon Attribution `THAONHI16`, Động cơ AI Fraud Sentinel phát hiện gian lận tự mua (Self-referral). |
 | **4. Nguyễn Phú Quý** | **Nửa sau Main Flow 4** *(Giao Nhận GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Clawback)* + **Nửa đầu Main Flow 5** *(Bảo Chứng Escrow & Thưởng Mốc Doanh Số FR-09)* | Tích hợp vận đơn GHN, Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên hoa hồng vs Hoàn tiền kích hoạt Clawback Engine, Cơ chế Tạm giữ Bảo chứng Escrow 7-14 ngày, Thuật toán quyết toán thưởng mốc tháng FR-09 & thăng hạng KOC. |
+
+---
+
+# PHẦN 9: ĐỒNG BỘ KIẾN TRÚC NGHIỆP VỤ 3 TAB GIAN HÀNG, QUY TRÌNH DEAL VIP 2 CHIỀU & BẢN CHẤT CHIẾN DỊCH SEEDING KOC (THỐNG NHẤT 31/10/2026)
+
+### 9.1. Bản Chất "Chiến Dịch (Campaigns)" Trong Hệ Thống Quản Trị In-House Tiếp Thị vs Sàn TMĐT
+Nhiều sinh viên và người vận hành nhầm lẫn "Chiến dịch" của hệ thống In-House Affiliate với các đợt "Mega Sale" của sàn chợ Shopee/Lazada:
+* **Chiến dịch trên Sàn TMĐT B2C:** Nhắm vào **Khách mua lẻ**, giảm giá sốc, tung voucher freeship toàn sàn để kích cầu tiêu dùng ngắn hạn.
+* **Chiến dịch trên Nền tảng Doanh nghiệp SCANMS (Chuẩn UpPromote / Impact.com / GRIN):** Là **Chiến Dịch Kích Hoạt Đội Ngũ Nhà Sáng Tạo (Creator Seeding Campaign)**:
+  1. *Đối tượng tham gia:* Đội ngũ KOC/Creator thuộc mạng lưới đối tác đã được kiểm duyệt.
+  2. *Cơ cấu ngân sách:* Quỹ thù lao thưởng thêm (**+2% đến +4%** thù lao chiến dịch) + Quỹ hàng mẫu Seeding 0đ.
+  3. *Cam kết trách nhiệm:* KOC nhận hàng mẫu 0đ bắt buộc phải có cam kết trả video nghiệm thu trong thời hạn **SLA 14 ngày**.
+  4. *Attribution định danh:* Tự động sinh Coupon độc quyền định danh theo chiến dịch (ví dụ: `SUMMER_THAONHI10`) bảo vệ quyền lợi thù lao không thể bị cướp.
+
+### 9.2. Ma Trận Nghiệp Vụ Chuẩn Hóa Trên 3 Tab Quản Trị Gian Hàng (Merchant Portal)
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              SCANMS ENTERPRISE MERCHANT PORTAL                         │
+├──────────────────────────────┬───────────────────────────┬─────────────────────────────┤
+│   TAB 1: SẢN PHẨM & KHO      │  TAB 2: MẠNG LƯỚI KOL     │  TAB 3: KHUYẾN MÃI & THƯỞNG │
+│      (Products Hub)          │     (Partner Hub)         │      (Promotions Hub)       │
+└──────────────────────────────┴───────────────────────────┴─────────────────────────────┘
+```
+
+1. **Tab 1: Sản Phẩm & Kho Hàng (Products Hub):**
+   * *Khóa Ngành Hàng Cố Định:* Danh mục tự động gán theo Store và bị khóa cứng (Readonly), cấm sửa.
+   * *Bảo Vệ Giá Sàn (Floor Price / MAP):* Tạo sản phẩm chỉ nhập Giá niêm yết, cấm tự gõ đè giá giảm làm bán dưới giá vốn.
+   * *Slide-Over Drawer AI Radar (Chốt Lựa Chọn Phương Án B):* Khi Shop Manager bấm `[✨ Tìm KOC bằng AI]` trên dòng sản phẩm, hệ thống mở một **Ngăn kéo trượt (Slide-Over Drawer)** từ bên phải hiển thị Biểu đồ Radar 4 Trục và Top 5 KOC phù hợp nhất, **giữ nguyên 100% ngữ cảnh danh mục hàng hóa**, không làm gián đoạn vị trí cuộn trang.
+   * *Sửa lỗi Stacking Context Dropdown Trạng Thái:* Thêm `relative z-20 overflow-visible` vào toolbar card để menu lọc hiển thị nổi lên trên bề mặt bảng dữ liệu.
+
+2. **Tab 2: Mạng Lưới KOL & Hợp Tác (Partner Hub):**
+   * Chuẩn hóa 4 Tab con đồng cấp: `[💬 Tin nhắn & Đàm phán]`, `[🏆 Xếp hạng KOL]`, `[🤝 Thỏa thuận độc quyền]`, `[✨ Gợi ý KOC (AI Radar)]`.
+   * *Bảng Xếp Hạng KOL Sổ Cái Thật:* Xóa bỏ toàn bộ hardcode 0đ, truy vấn chuẩn quan hệ `tier` và tổng hợp doanh số sạch, số đơn thành công trực tiếp từ database.
+   * *Chat Socket.IO Realtime:* Header hiển thị chuẩn Tier Badge, tỷ lệ thù lao thực tế (thay thế chuỗi hardcode 10%) và liên kết mạng xã hội xác minh.
+
+3. **Tab 3: Khuyến Mãi & Thưởng (Promotions Hub):**
+   * *Xóa sạch voucher rác TMĐT:* Loại bỏ voucher freeship, voucher tích xu hoàn tiền gây âm giá đơn hàng.
+   * *Coupon Độc Quyền Định Danh KOC:* Cấu trúc `[TÊN_KOC][MỨC_GIẢM]` (Vũ khí bắt attribution số 1).
+   * *Chiến Dịch Tiếp Thị KOC (Creator Seeding):* Quản lý ngân sách thưởng, hàng mẫu và đồng hồ SLA 14 ngày.
+   * *Thưởng Mốc Doanh Số Tháng (FR-09):* Bảng thưởng lũy tiến quét doanh số cuối tháng độc lập với đơn POS.
+
+### 9.3. Cơ Chế Shop Manager Chủ Động Đàm Phán Deal Thù Lao VIP (2 Chiều)
+* Giám đốc Nhãn hàng (`SHOP_MANAGER`) chủ động gửi **Thỏa Thuận Thù Lao Độc Quyền (Exclusive Remuneration Offer)** qua Chat Socket.IO.
+* **3 Phạm vi thỏa thuận linh hoạt:**
+  1. *Toàn bộ Gian hàng (Store-Wide Override):* Ví dụ áp dụng 14% cho mọi sản phẩm của Sora Skincare.
+  2. *Nhóm Sản Phẩm Được Chọn (Selective SKUs List):* Ví dụ áp dụng 16% cho combo Dưỡng Trắng Skincare.
+  3. *Từng Sản Phẩm Cụ Thể (Single SKU Deal).*
+* **Phân định thẩm quyền kiểm soát:**
+  * Mức thù lao $\le 16\%$: Thuộc khung tự trị của Shop Manager, gửi thẻ và KOC bấm chấp nhận là kích hoạt tức thời.
+  * Mức thù lao $> 16\%$ (tối đa $25\%$): Kích hoạt Maker-Checker chuyển Tổng Giám Đốc (`SYSTEM_ADMIN`) phê duyệt ngoại lệ ngân sách trên Executive Dashboard.
+

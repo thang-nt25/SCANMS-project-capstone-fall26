@@ -1,7 +1,10 @@
+import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { UserRole, OrderStatus } from '@prisma/client';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { readShopKolPerformance } from './shop-kol-performance';
 import { DAY_MS, VIETNAM_OFFSET_MS, vietnamDayKey, vietnamDayStart, vietnamHour } from './analytics-time';
 import {
   DashboardAnalyticsQueryDto,
@@ -32,7 +35,7 @@ export class DashboardService {
   // ─── Lấy storeId từ userId (Shop) ────────────────────────────────────
   private async getStoreId(userId: string): Promise<string | null> {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: userId, isDeleted: false },
+      where: managedStoreWhere(userId),
     });
     return store?.id ?? null;
   }
@@ -1199,106 +1202,9 @@ export class DashboardService {
     kolId: string,
     query: QueryReferralOrdersDto,
   ) {
-    let storeId: string | null = null;
-    if (userRole === UserRole.SHOP_MANAGER) {
-      storeId = await this.getStoreId(userId);
-      if (!storeId) throw new ForbiddenException('Không tìm thấy gian hàng của bạn.');
-    } else if (
-      userRole === UserRole.SYSTEM_ADMIN ||
-      userRole === UserRole.SYSTEM_MANAGER
-    ) {
-      storeId = query.storeId || null;
-    } else {
-      throw new ForbiddenException('Không có quyền xem dữ liệu.');
-    }
-
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    const where: any = {
-      attributedCollaboratorId: kolId,
-      ...(storeId ? { storeId } : {}),
-    };
-
-    if (query.status && query.status !== 'ALL') {
-      where.status = query.status;
-    }
-
-    const [total, orders] = await Promise.all([
-      this.prisma.order.count({ where }),
-      this.prisma.order.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          externalOrderSn: true,
-          status: true,
-          finalAmount: true,
-          createdAt: true,
-          customerName: true,
-          orderItems: {
-            select: {
-              id: true,
-              quantity: true,
-              unitPrice: true,
-              appliedCommissionRate: true,
-              calculatedCommissionAmount: true,
-              product: {
-                select: {
-                  id: true,
-                  title: true,
-                  imageUrl: true,
-                },
-              },
-            },
-          },
-          commissions: {
-            select: {
-              id: true,
-              status: true,
-              commissionAmount: true,
-            },
-          },
-        },
-      }),
-    ]);
-
-    const items = orders.map((order) => {
-      const totalCommission = order.orderItems.reduce(
-        (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
-        0,
-      );
-      const firstProduct =
-        order.orderItems[0]?.product?.title || 'Sản phẩm tiếp thị';
-      const otherCount = order.orderItems.length - 1;
-
-      return {
-        id: order.id,
-        orderCode: order.externalOrderSn,
-        createdAt: order.createdAt,
-        customerName: order.customerName,
-        productTitle:
-          otherCount > 0 ? `${firstProduct} (+${otherCount})` : firstProduct,
-        orderTotal: Number(order.finalAmount),
-        finalAmount: Number(order.finalAmount),
-        commissionEarned: totalCommission,
-        commissionAmount: totalCommission,
-        commissionRate: order.orderItems[0]?.appliedCommissionRate || 10,
-        status: order.status,
-      };
-    });
-
-    return {
-      success: true,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-      items,
-    };
+    const scope = await this.resolveAnalyticsScope(userId, userRole, query.storeId);
+    if (!scope.isShop) throw new ForbiddenException('Chỉ quản lý được phép xem hiệu suất đối tác của gian hàng.');
+    return readShopKolPerformance(this.prisma, scope.storeId, kolId, query);
   }
 
   // ─── 9. TỔNG HỢP HOA HỒNG THEO TỪNG SẢN PHẨM CỦA KOL (PRODUCT BREAKDOWN) ───
@@ -1312,23 +1218,6 @@ export class DashboardService {
     if (tierName.toLowerCase().includes('bạc') || tierName.toLowerCase().includes('silver')) tierBonus = 1;
     else if (tierName.toLowerCase().includes('vàng') || tierName.toLowerCase().includes('gold')) tierBonus = 2;
     else if (tierName.toLowerCase().includes('kim cương') || tierName.toLowerCase().includes('diamond')) tierBonus = 3;
-
-    const activeDeals = await this.prisma.exclusiveDealProposal.findMany({
-      where: {
-        collaboratorId,
-        status: 'APPROVED',
-      },
-      select: {
-        productId: true,
-        approvedCommissionRate: true,
-        proposedCommissionRate: true,
-      },
-    });
-    const dealRateByProduct = new Map<string, number>();
-    for (const d of activeDeals) {
-      const rate = Number(d.approvedCommissionRate || d.proposedCommissionRate || 0);
-      dealRateByProduct.set(d.productId, rate);
-    }
 
     const orderItems = await this.prisma.orderItem.findMany({
       where: {
@@ -1352,6 +1241,8 @@ export class DashboardService {
       },
     });
 
+    const resolvedDeals = await activeDealMap(this.prisma, orderItems.map(item => ({ collaboratorId, productId: item.productId, storeId: item.product.store.id })));
+    const dealRateByProduct = new Map(orderItems.map(item => [item.productId, Number(resolvedDeals.get(collaboratorId + ':' + item.productId)?.approvedCommissionRate || 0)]));
     const productMap = new Map<string, {
       productId: string;
       productTitle: string;

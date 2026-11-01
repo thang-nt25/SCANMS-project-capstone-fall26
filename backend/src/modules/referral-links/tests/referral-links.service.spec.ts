@@ -752,7 +752,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       expect(res.collaboratorId).toBe('collab-1');
     });
 
-    it('uses the best approved VIP rate and does not pay an invalid legacy campaign', async () => {
+    it('caps an approved VIP entitlement at 25% and does not pay an invalid legacy campaign', async () => {
       prisma.referralLink.findUnique.mockResolvedValue({
         id: 'vip-link-1',
         shortCode: 'vip12345',
@@ -776,7 +776,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         },
         exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 25 },
       });
-
+      prisma.exclusiveDealProposal.findMany.mockResolvedValue([{ status: 'APPROVED', collaboratorId: 'collab-1', productId: 'prod-1', storeId: 'store-1', approvedCommissionRate: 25, scopeType: 'SINGLE_PRODUCT' }]);
       const result = await service.verifyAttributionForOrder({
         shortCode: 'vip12345',
         storeId: 'store-1',
@@ -810,10 +810,11 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         campaign: null,
         exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 20 },
       });
-      prisma.exclusiveDealProposal.findFirst.mockResolvedValue({
+      prisma.exclusiveDealProposal.findMany.mockResolvedValue([{
+        collaboratorId: "collab-1", productId: "prod-1", storeId: "store-1", scopeType: "SINGLE_PRODUCT",
         status: 'APPROVED',
-        approvedCommissionRate: 30,
-      });
+        approvedCommissionRate: 16,
+      }]);
 
       const result = await service.verifyAttributionForOrder({
         shortCode: 'vipold12',
@@ -821,8 +822,8 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         productId: 'prod-1',
       });
 
-      expect(result.appliedCommissionRate).toBe(20);
-      expect(result.calculatedCommissionAmount).toBe(20000);
+      expect(result.appliedCommissionRate).toBe(16);
+      expect(result.calculatedCommissionAmount).toBe(16000);
     });
 
     it('Sản phẩm hoặc Cửa hàng không khớp -> Từ chối attribution', async () => {
