@@ -9,6 +9,8 @@ import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { Prisma, UserRole } from '@prisma/client';
+import { publicBusinessProfile } from './public-store-profile';
+import { publicChatPerformance, shopResponseQuery, ShopResponseRow } from './shop-response.query';
 
 export const PROFESSIONAL_SHOP_DESCRIPTIONS: Record<string, string> = {
   'sora-skin':
@@ -69,7 +71,7 @@ export class StoresService {
   ) {}
 
   async getPublicStoreById(storeIdentifier: string) {
-    const cacheKey = `stores:public:id:${storeIdentifier}`;
+    const cacheKey = `stores:public:id:v2:${storeIdentifier}`;
     const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
     if (cached) return cached;
 
@@ -81,7 +83,7 @@ export class StoresService {
         isActive: true,
         isVerified: true,
         onboardingStatus: 'VERIFIED',
-        owner: { isActive: true },
+        owner: { isActive: true, isDeleted: false },
       },
       select: {
         id: true,
@@ -92,6 +94,8 @@ export class StoresService {
         isActive: true,
         isVerified: true,
         createdAt: true,
+        onboardingData: true,
+        returnWarehouse: true,
         policyReturn: true,
         policyWarranty: true,
         policyShipping: true,
@@ -130,15 +134,19 @@ export class StoresService {
       _count: { rating: true },
     });
     const reviewCount = reviewsAggregate._count.rating || 0;
-    const rating = reviewCount
-      ? Math.round((reviewsAggregate._avg.rating ?? 4.9) * 10) / 10
-      : 4.9;
+    const rating = reviewCount && reviewsAggregate._avg.rating != null
+      ? Math.round(reviewsAggregate._avg.rating * 10) / 10
+      : null;
+    const responseRows = await this.prisma.$queryRaw<ShopResponseRow[]>(shopResponseQuery(store.id));
+    const { onboardingData, returnWarehouse, _count, ...publicStore } = store;
 
     const result = {
-      ...store,
+      ...publicStore,
+      ...publicBusinessProfile(onboardingData, returnWarehouse),
+      chatPerformance: publicChatPerformance(responseRows[0]),
       description: resolveStoreDescription(store),
-      productCount: store._count.products,
-      followerCount: store._count.follows,
+      productCount: _count.products,
+      followerCount: _count.follows,
       rating,
       reviewCount,
       categories: categories.map((item) => item.categoryName).filter(Boolean),
@@ -169,6 +177,8 @@ export class StoresService {
     } else {
       await this.prisma.storeFollow.deleteMany({ where: { storeId: store.id, userId } });
     }
+    await this.cache?.del?.(`stores:public:id:v2:${store.id}`);
+    if (store.slug) await this.cache?.del?.(`stores:public:id:v2:${store.slug}`);
     return { following };
   }
 
@@ -273,6 +283,9 @@ export class StoresService {
     }
 
     const ownerProfileUpdates = {
+      ...(dto.companyName !== undefined && {
+        companyName: dto.companyName?.trim() || null,
+      }),
       ...(dto.representativeName !== undefined && {
         representativeName: dto.representativeName.trim(),
       }),
@@ -361,10 +374,10 @@ export class StoresService {
 
     await this.cache?.del?.('stores:marketplace');
     await this.cache?.del?.('stores:sponsored_placements');
-    await this.cache?.del?.(`stores:public:id:${store.id}`);
+    await this.cache?.del?.(`stores:public:id:v2:${store.id}`);
     if (store.slug) {
       await this.cache?.del?.(`stores:public:slug:${store.slug}`);
-      await this.cache?.del?.(`stores:public:id:${store.slug}`);
+      await this.cache?.del?.(`stores:public:id:v2:${store.slug}`);
     }
     if (updated.slug && updated.slug !== store.slug) {
       await this.cache?.del?.(`stores:public:slug:${updated.slug}`);

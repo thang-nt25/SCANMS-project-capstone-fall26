@@ -200,6 +200,8 @@ export interface LiveSessionSummaryItem {
 
 export interface ActiveDealPartnerItem {
   id: string;
+  targetRevenue?: number | null;
+  scopeType?: string;
   collaboratorId: string;
   collaboratorName: string;
   collaboratorEmail?: string;
@@ -225,6 +227,7 @@ export interface ActiveDealPartnerItem {
     completedOrders: number;
     pendingOrders: number;
     validRevenue: number;
+    targetRevenue?: number;
     targetOrders: number;
     status: string;
     percent?: number;
@@ -319,6 +322,7 @@ export const analyticsService = {
     page?: number;
     limit?: number;
     status?: string;
+    period?: '7d' | '30d' | 'month' | 'all';
   }, fresh = false) => {
     const res = await api.get<{ data?: any } | any>(
       '/dashboard/shop/kol-orders',

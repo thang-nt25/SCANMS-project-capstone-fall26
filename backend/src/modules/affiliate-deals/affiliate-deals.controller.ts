@@ -21,6 +21,8 @@ import { CreateShopDealOfferDto } from './dto/create-shop-deal-offer.dto';
 import { RejectExclusiveDealDto } from './dto/reject-exclusive-deal.dto';
 import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
+import { InviteExclusiveDealDto } from './dto/invite-exclusive-deal.dto';
+import { ReviewExceptionDto } from './dto/review-exception.dto';
 
 @ApiTags('Affiliate Offers & Exclusive Deals')
 @ApiBearerAuth('JWT-auth')
@@ -28,6 +30,18 @@ import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 @Controller('affiliate-deals')
 export class AffiliateDealsController {
   constructor(private readonly service: AffiliateDealsService) {}
+
+  @Get('exceptions')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  exceptions(@CurrentUser('role') role: UserRole) {
+    return this.service.listExceptions(role);
+  }
+
+  @Patch(':id/exception-review')
+  @Roles(UserRole.SYSTEM_ADMIN)
+  exceptionReview(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') actorId: string, @CurrentUser('role') role: UserRole, @Body() dto: ReviewExceptionDto) {
+    return this.service.reviewException(id, actorId, role, dto.approve, dto.note);
+  }
 
   @Get('mine')
   @Roles(UserRole.COLLABORATOR)
@@ -82,10 +96,40 @@ export class AffiliateDealsController {
     return this.service.getShopProposals(userId, role);
   }
 
+  @Post('offers')
+  @Roles(UserRole.SHOP_MANAGER)
+  invite(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: InviteExclusiveDealDto,
+  ) {
+    return this.service.inviteShopOffer(userId, role, dto);
+  }
+
+  @Patch(':id/accept')
+  @Roles(UserRole.COLLABORATOR)
+  acceptOffer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.service.respondToOffer(id, userId, true);
+  }
+
+  @Patch(':id/decline')
+  @Roles(UserRole.COLLABORATOR)
+  declineOffer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: RejectExclusiveDealDto,
+  ) {
+    return this.service.respondToOffer(id, userId, false, dto.reason);
+  }
+
   @Get('shop/active-partners')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
-    summary: 'Shop xem danh sách các KOL đang có Deal độc quyền hiệu lực và tiến độ KPI',
+    summary:
+      'Shop xem danh sách các KOL đang có Deal độc quyền hiệu lực và tiến độ KPI',
   })
   getShopActivePartners(
     @CurrentUser('id') userId: string,
@@ -95,13 +139,33 @@ export class AffiliateDealsController {
   }
 
   @Get(':id/progress')
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
   getProgress(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
   ) {
     return this.service.getProgress(id, userId, role);
+  }
+
+  @Get(':id')
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
+  getState(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.getProposalState(id, userId, role);
   }
 
   @Patch(':id/approve')

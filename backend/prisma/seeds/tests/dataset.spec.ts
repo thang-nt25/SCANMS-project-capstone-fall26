@@ -216,7 +216,7 @@ describe('Capstone dataset business integrity', () => {
     const other = buildDataset(context);
     other.coupons[0].stackableWithShopVoucher = true;
     expect(() => validateDataset(other)).toThrow(
-      'two shop merchandise vouchers cannot stack',
+      'only platform-funded vouchers can stack with a shop coupon',
     );
   });
 

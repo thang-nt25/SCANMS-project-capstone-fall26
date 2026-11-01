@@ -11,6 +11,11 @@ import { PublicHeader } from '../../components/layout/PublicHeader';
 import { carrierStatusLabel } from '@/utils/return-status.utils';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
+const liabilityLabels: Record<string, string> = {
+  LOGISTICS_FAULT: 'GHN / vận chuyển',
+  SHOP_FAULT: 'Shop / hàng hóa',
+  CUSTOMER_REASON: 'Khách đổi ý',
+};
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
 
@@ -22,6 +27,7 @@ function ErrorText({ error }: { error: unknown }) {
 }
 
 function CustomerActions({ request }: { request: ReturnDetail }) {
+  const liabilityEvent = [...request.events].reverse().find((event) => event.type === 'LIABILITY_ASSESSED');
   const [showDispute, setShowDispute] = useState(false);
   const [carrierName, setCarrierName] = useState(request.customerShipment?.carrierName ?? '');
   const [trackingNumber, setTrackingNumber] = useState(request.customerShipment?.trackingNumber ?? '');
@@ -86,6 +92,8 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 
     {request.inspectionNotes && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra của Shop</h3>
+      {liabilityEvent?.data?.liability &&
+        <p className="mt-2 text-sm font-semibold">Trách nhiệm: {liabilityLabels[liabilityEvent.data.liability] || 'Chưa xác định'}</p>}
       <p className="mt-2 whitespace-pre-wrap text-sm">{request.inspectionNotes}</p>
     </section>}
 
@@ -126,11 +134,16 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 }
 
 function ShopActions({ request }: { request: ReturnDetail }) {
+  const managerAssessment = [...request.events].reverse().find((event) =>
+    event.type === 'LIABILITY_ASSESSED' && event.data?.source === 'SYSTEM_MANAGER_REVIEW');
+  const compensationClaim = [...request.events].reverse().find((event) => event.type === 'GHN_COMPENSATION_CLAIM_OPENED');
   const [warehouse, setWarehouse] = useState<ReturnAddress>(request.returnWarehouse || {
     name: request.order.storeName, phone: '', address: '', wardName: '', provinceName: '', districtName: '',
   });
   const [editingWarehouse, setEditingWarehouse] = useState(!request.returnWarehouse);
   const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>('REFUND');
+  const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>(
+    (managerAssessment?.data?.liability as 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON') || 'SHOP_FAULT');
   const [notes, setNotes] = useState('');
   const [carrierName, setCarrierName] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -149,6 +162,10 @@ function ShopActions({ request }: { request: ReturnDetail }) {
   }
 
   return <div className="space-y-4">
+    {compensationClaim && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+      <h3 className="font-bold">Hồ sơ yêu cầu GHN bồi hoàn</h3>
+      <p className="mt-1 text-[#7D715E]">Đang chờ đối soát nội bộ với GHN. Vận đơn gốc: {compensationClaim.data?.originalTrackingNumber || 'chưa có mã'}; vận đơn bù: {compensationClaim.data?.replacementTrackingNumber || 'chưa có mã'}.</p>
+    </section>}
     {request.inspectionEscalatedAt && ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
       <p role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm font-semibold text-[#8A6736]">
         Hồ sơ đã quá 48 giờ kiểm tra và được thông báo cho Admin. Vui lòng cập nhật kết quả sớm.
@@ -217,7 +234,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       </button><ErrorText error={startAction.error} />
     </div>}
     {request.status === 'INSPECTING' && <form
-      onSubmit={(event) => void submit(event, inspectAction, { resolution, notes: notes.trim() })}
+      onSubmit={(event) => void submit(event, inspectAction, { resolution, liability: (managerAssessment?.data?.liability as typeof liability) || liability, notes: notes.trim() })}
       className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra</h3>
       <select value={resolution} onChange={(event) => setResolution(event.target.value as typeof resolution)} className={field}>
@@ -225,9 +242,16 @@ function ShopActions({ request }: { request: ReturnDetail }) {
         <option value="EXCHANGE">Chấp nhận đổi sản phẩm</option>
         <option value="REJECT">Từ chối sau kiểm tra</option>
       </select>
+      <label className="block text-sm font-semibold">Bên chịu trách nhiệm</label>
+      <select value={managerAssessment?.data?.liability || liability} disabled={Boolean(managerAssessment)} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
+        <option value="LOGISTICS_FAULT" disabled={!managerAssessment}>GHN / vận chuyển (cần System Manager xác minh)</option>
+        <option value="SHOP_FAULT">Shop / hàng hóa</option>
+        <option value="CUSTOMER_REASON">Khách đổi ý</option>
+      </select>
+      {managerAssessment && <p className="text-xs text-[#7D715E]">System Manager đã xác định trách nhiệm; Shop xử lý theo kết luận này.</p>}
       <textarea required minLength={10} maxLength={2000} rows={4} value={notes}
         onChange={(event) => setNotes(event.target.value)} placeholder="Nêu tình trạng hàng và căn cứ quyết định" className={field} />
-      <p className="text-xs text-[#7D715E]">Chọn hoàn tiền chỉ tạo hồ sơ chờ thanh toán, không tự chuyển tiền.</p>
+      <p className="text-xs text-[#7D715E]">Hoàn vào ví khi chuyển tiền nội bộ thành công; nếu chưa thể chuyển, hồ sơ tiếp tục chờ đối soát.</p>
       <button disabled={inspectAction.isPending} className={primary}>Lưu kết quả kiểm tra</button>
       <ErrorText error={inspectAction.error} />
     </form>}
@@ -243,6 +267,60 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       <ErrorText error={exchangeAction.error} />
     </form>}
   </div>;
+}
+
+function AdminActions({ request }: { request: ReturnDetail }) {
+  const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('LOGISTICS_FAULT');
+  const [notes, setNotes] = useState('');
+  const assessment = useReturnAction(request.id, returnService.assessLiability);
+  const current = (assessment.data as ReturnDetail | undefined)?.id === request.id
+    ? (assessment.data as ReturnDetail) : request;
+  const savedAssessment = [...current.events].reverse().find((event) =>
+    event.type === 'LIABILITY_ASSESSED' && event.data?.source === 'SYSTEM_MANAGER_REVIEW');
+  const mayAssess = ['REQUESTED', 'SHOP_APPROVED', 'PICKUP_BOOKED', 'RETURN_SHIPPED', 'RETURN_RECEIVED', 'INSPECTING'].includes(request.status);
+  if (savedAssessment) return <section role="status" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    <h2 className="font-bold">Đã lưu kết luận trách nhiệm</h2>
+    <p className="mt-2">Bên chịu trách nhiệm: <strong>{liabilityLabels[savedAssessment.data?.liability || ''] || 'Chưa xác định'}</strong></p>
+    {savedAssessment.data?.notes && <p className="mt-1 text-[#7D715E]">Căn cứ: {savedAssessment.data.notes}</p>}
+    <p className="mt-2 text-[#7D715E]">Hồ sơ vẫn ở bước xử lý hiện tại. Khách cần gửi hàng trả về Shop; sau khi nhận và kiểm tra, Shop chọn đổi sản phẩm hoặc hoàn tiền theo kết luận này.</p>
+    <Link to="/admin/return-disputes" className="mt-3 inline-block font-semibold text-[#8A6736] underline">Quay lại danh sách đổi trả</Link>
+  </section>;
+  if (!mayAssess) return <p className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
+    Hồ sơ đã qua bước xác định trách nhiệm. Xem kết quả kiểm tra và thu nhập đối tác ở trên.
+  </p>;
+  return <form className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4"
+    onSubmit={(event) => { event.preventDefault(); void assessment.mutateAsync({ liability, notes: notes.trim() }).catch(() => undefined); }}>
+    <h2 className="font-bold">System Manager xác định bên chịu trách nhiệm</h2>
+    <p className="text-sm text-[#7D715E]">Đối chiếu ảnh, video mở hộp và tình trạng kiện hàng trước khi Shop quyết định đổi hoặc hoàn tiền.</p>
+    <select value={liability} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
+      <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+      <option value="SHOP_FAULT">Shop / hàng hóa</option>
+      <option value="CUSTOMER_REASON">Khách đổi ý</option>
+    </select>
+    <textarea required minLength={10} maxLength={2000} rows={3} value={notes}
+      onChange={(event) => setNotes(event.target.value)} placeholder="Ghi rõ bằng chứng và căn cứ kết luận"
+      className={field} />
+    {notes.trim().length < 10 && <p className="text-xs text-[#7D715E]">Nhập ít nhất 10 ký tự để lưu kết luận ({notes.trim().length}/10).</p>}
+    <button type="submit" disabled={assessment.isPending || notes.trim().length < 10} className={primary}>
+      {assessment.isPending ? 'Đang lưu…' : 'Lưu kết luận trách nhiệm'}
+    </button>
+    <ErrorText error={assessment.error} />
+  </form>;
+}
+
+function AdminRefundRetry({ request }: { request: ReturnDetail }) {
+  const retry = useReturnAction(request.id, returnService.retryPendingRefund);
+  if (!['REFUND_PENDING', 'REFUND_FAILED'].includes(request.status) ||
+      !request.refund || !['PENDING', 'FAILED'].includes(request.refund.status)) return null;
+  return <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    <h2 className="font-bold">Hoàn tiền đang chờ xử lý</h2>
+    <p className="mt-2 text-[#7D715E]">Số tiền {money(request.refund.amount)} chưa vào ví khách. Thu nhập KOL chỉ bị thu hồi sau khi hoàn tiền thành công.</p>
+    <button type="button" disabled={retry.isPending}
+      onClick={() => void retry.mutateAsync(undefined).catch(() => undefined)} className={`${primary} mt-3`}>
+      {retry.isPending ? 'Đang xử lý…' : 'Thử hoàn tiền vào ví khách'}
+    </button>
+    <ErrorText error={retry.error} />
+  </section>;
 }
 
 export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' | 'admin' }) {
@@ -278,6 +356,21 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <p className="mt-1 text-sm text-[#7D715E]">Gian hàng: {detail.data.order.storeName}</p>
           </header>
           <ReturnTimeline request={detail.data} />
+          {mode !== 'customer' && detail.data.partnerIncome && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4" aria-label="Thu nhập đối tác của đơn hàng">
+            <h2 className="font-bold text-[#1A1612]">Thu nhập đối tác của đơn hàng</h2>
+            <p className="mt-2 text-xl font-black text-[#8A6736]">{money(detail.data.partnerIncome.amount)}</p>
+            <p className="mt-1 text-sm text-[#7D715E]">
+              {detail.data.partnerIncome.status === 'REVERSED'
+                ? `Đã thu hồi ${money(detail.data.partnerIncome.reversedAmount || 0)} sau khi hoàn tiền thành công; ví KOC còn 0 ₫ từ đơn này.`
+                : detail.data.resolution === 'EXCHANGE'
+                  ? 'Đổi hàng 1-1: khoản thu nhập của KOC được bảo lưu.'
+                  : detail.data.partnerIncome.status === 'PENDING'
+                    ? 'Đang tạm giữ trong Escrow, chưa thể rút.'
+                    : detail.data.partnerIncome.status === 'AVAILABLE'
+                      ? 'Đã giải tỏa vào số dư khả dụng của KOC.'
+                      : 'Mức dự kiến theo đơn; hệ thống sẽ ghi ví khi đơn đủ điều kiện.'}
+            </p>
+          </section>}
           {detail.data.shopResponse && <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
             Phản hồi của Shop: {detail.data.shopResponse}</p>}
           <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
@@ -298,9 +391,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             </div>
           </section>
           {mode === 'shop' ? <ShopActions request={detail.data} /> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
-            <p className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">
-              Chế độ xem của Admin. Khách có thể mở khiếu nại nếu Shop chưa hoàn tất kiểm tra sau 48 giờ.
-            </p>}
+            <><AdminRefundRetry request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>
     </main>

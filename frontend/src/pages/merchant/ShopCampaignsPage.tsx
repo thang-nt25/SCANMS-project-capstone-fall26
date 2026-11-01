@@ -289,7 +289,7 @@ function CampaignCard({
   const expired = isExpired(campaign.endDate);
   const paused = !campaign.isActive;
   const scheduled = new Date(campaign.startDate) > new Date();
-  const needsPolicy = !(Number(campaign.bonusBudgetTotal) > 0) || Number(campaign.bonusCommissionRate) < 1 || Number(campaign.bonusCommissionRate) > 2;
+  const needsPolicy = !(Number(campaign.bonusBudgetTotal) > 0) || Number(campaign.bonusCommissionRate) < 2 || Number(campaign.bonusCommissionRate) > 4;
   const accepted = campaign.participants?.filter((p) => p.status === 'ACCEPTED').length || 0;
   const invited = campaign.participants?.filter((p) => p.status === 'INVITED').length || 0;
 

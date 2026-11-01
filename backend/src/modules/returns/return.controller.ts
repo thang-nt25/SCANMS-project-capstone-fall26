@@ -25,6 +25,7 @@ import {
   disputeSchema,
   inspectionSchema,
   instructionsSchema,
+  liabilityAssessmentSchema,
   resolveDisputeSchema,
   ReturnZodPipe,
   shipmentSchema,
@@ -35,6 +36,7 @@ import {
   type DisputeInput,
   type InspectionInput,
   type InstructionsInput,
+  type LiabilityAssessmentInput,
   type ResolveDisputeInput,
   type ShipmentInput,
   type WarehouseInput,
@@ -222,6 +224,30 @@ export class ReturnGhnWebhookController {
 @Controller('admin/return-disputes')
 export class ReturnDisputeAdminController {
   constructor(private readonly returns: ReturnService) {}
+
+  @Get('active-returns')
+  listActive(@CurrentUser('role') role: UserRole) {
+    return this.returns.listForOversight(role);
+  }
+
+  @Patch('active-returns/:id/liability')
+  assessLiability(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(liabilityAssessmentSchema)) body: LiabilityAssessmentInput,
+  ) {
+    return this.returns.assessLiability(userId, role, id, body);
+  }
+
+  @Post('active-returns/:id/refund/retry')
+  retryPendingRefund(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.retryPendingRefund(userId, role, id);
+  }
 
   @Get('overdue-inspections')
   listStalled(@CurrentUser('role') role: UserRole) {

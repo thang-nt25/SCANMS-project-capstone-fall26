@@ -1,8 +1,10 @@
 # Bộ dữ liệu Capstone SCANMS
 
+> **Flow 4 (bản v4):** Bộ seed tạo 4 shop, 12 sản phẩm, 20 mã độc quyền KOL và một mã freeship toàn sàn `SCANMSFREESHIP` (giảm 100% phí ship, tối đa 100.000₫; tối đa 3 lần/khách mới; ngân sách 20 triệu, 500 lượt). Mã không hết hạn; chỉ áp dụng cho số điện thoại chưa có đơn mua trước đó, và các đơn đã dùng mã này được tính trong hạn mức 3 lần. Serum Sora 30 ml có giá 450.000₫; KOL 01 là Đinh Thảo Nhi (tài khoản demo), mã `THAONHI16` giảm 5% và deal được duyệt 16%. Đơn một sản phẩm: 427.500₫ tiền hàng sau giảm, thu nhập KOL 72.000₫ (16% giá gốc). `seed:plan` chỉ xem trước; DB nhóm hiện tại chưa được nạp lại và có thể vẫn chứa dữ liệu cũ. Xem [kịch bản review Flow 4](../../../docs/review%202/FA26SE032_R2_Kich_Ban_Thuyet_Trinh.md) để dùng DB riêng.
+
 Entry point vẫn là `backend/prisma/seed.ts`, được gọi bằng `npx prisma db seed` theo `prisma.config.ts`. Các module trong thư mục này chỉ xây dựng fixture và ghi dữ liệu qua Prisma; không thay thế controller/service của ứng dụng.
 
-Phiên bản hiện tại là **`scanms-capstone-2026-v3`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1, không sinh tài khoản trùng khi nâng phiên bản. Nếu DB đã có manifest v1/v2, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB. Không chạy reset DB nhóm khi lịch sử migration chưa được đối soát và chưa được phê duyệt.
+Phiên bản hiện tại là **`scanms-capstone-2026-v4`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1. Nếu DB đã có manifest cũ v1/v2/v3, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB. Không chạy reset DB nhóm khi lịch sử migration chưa được đối soát và chưa được phê duyệt.
 
 `prisma/seed-runner.cjs` nạp ts-node của chính dự án và `tsconfig.seed.json`, giúp lệnh Prisma chạy được cả khi terminal/CI không có `node_modules/.bin` trên PATH. Nếu PowerShell chặn các shim `.ps1`, dùng `npm.cmd` và `npx.cmd` cho các câu lệnh bên dưới.
 
@@ -42,19 +44,19 @@ Sau khi chủ dự án cung cấp cấu hình dịch vụ, đã bổ sung các k
 
 | Nhóm                 | Số lượng | Ràng buộc chính                                                                                 |
 | -------------------- | -------: | ----------------------------------------------------------------------------------------------- |
-| Shop                 |       15 | Mỗi Shop có một chủ riêng, hồ sơ duyệt, kho giao/nhận trả, chính sách, thông tin ngân hàng demo |
+| Shop                 |        4 | Bốn Shop trọng tâm, mỗi Shop có nhân sự, kho giao/nhận trả và chính sách demo                  |
 | Creator              |       20 | 5 Đồng, 7 Bạc, 5 Vàng, 3 Kim Cương; có hồ sơ, kênh và địa chỉ                                   |
 | Khách                |       30 | Có tài khoản CUSTOMER và địa chỉ mặc định đầy đủ ba cấp                                         |
-| Sản phẩm             |       30 | Hai sản phẩm/Shop, giá nền và hoa hồng 10%, quota mẫu 8–20                                      |
-| Biến thể             |      120 | Hai dung tích/khối lượng × hai kiểu đóng gói; tổng tồn bằng tồn sản phẩm                        |
+| Sản phẩm             |       12 | Ba sản phẩm/Shop, Serum Sora 30 ml có giá 450.000₫                                              |
+| Biến thể             |       48 | Bốn biến thể/sản phẩm; tổng tồn bằng tồn sản phẩm                                                 |
 | Đơn hàng             |       60 | Hai đơn/khách; có PENDING, SHIPPING, DELIVERED, COMPLETED, RETURN_REQUESTED                     |
-| Đánh giá             |       66 | 2–3 đánh giá/sản phẩm, đều gắn với đơn COMPLETED chứa đúng sản phẩm                             |
+| Đánh giá             |       36 | Đánh giá gắn với đơn COMPLETED chứa đúng sản phẩm                                               |
 | Hàng mẫu             |       20 | Năm hồ sơ mỗi trạng thái PENDING, SHIPPED, RECEIVED, COMPLETED                                  |
-| Live                 |        5 | Hai phòng LIVE, ba phòng ENDED; có sản phẩm, voucher và governance.pinnedProductId hợp lệ     |
+| Live                 |        5 | Fixture phụ, không có voucher Live; không nằm trong demo Flow 4                                 |
 | Hội thoại / tin nhắn | 50 / 100 | Khách–Shop và KOL–Shop; có thẻ sản phẩm, thẻ đề xuất deal                                       |
 | Thông báo            |      160 | 60 thông báo đơn hàng và 100 thông báo chat; ID/read-state khớp tin nhắn để đọc chat hạ chuông |
-| Voucher              |       70 | 15 Shop, 20 KOL, 5 Live, 15 tiền hàng sàn, 15 phí ship; counter/budget đối soát cả hai bảng redemption |
-| Mã đã lưu            |       30 | Mỗi Customer lưu một voucher sàn; khóa kép user/coupon                                        |
+| Coupon KOL / freeship sàn |       21 | 20 mã KOL và một mã `SCANMSFREESHIP` áp dụng mọi shop                                      |
+| Mã đã lưu            |       30 | Mỗi Customer lưu một mã KOL; khóa kép user/coupon                                               |
 | Cước gửi mẫu         |       15 | TEST, Shop chịu phí, COD 0; amount NULL/PENDING_CONFIRMATION vì chưa có chứng từ GHN thật      |
 | Đổi trả              |        6 | Có ảnh/video, hồ sơ chờ duyệt hoặc được duyệt để tiếp tục test lấy hàng                         |
 | Ví / bút toán        | 66 / 212 | Tách AVAILABLE/PENDING; số dư tính từ lịch sử, không tự gán tiền không có nguồn                 |
@@ -129,12 +131,13 @@ npm run seed:check
 ## Tài khoản và kịch bản kiểm thử
 
 - Admin: `admin@seed.scanms.test`.
-- Shop: `shop01@seed.scanms.test` đến `shop15@seed.scanms.test`, tương ứng thứ tự trong `data/catalog.data.ts`.
+- Quản lý hệ thống: `manager@seed.scanms.test`.
+- Shop: `shop01@seed.scanms.test` đến `shop04@seed.scanms.test`, tương ứng thứ tự trong `data/catalog.data.ts`.
 - KOL: `kol01@seed.scanms.test` đến `kol20@seed.scanms.test`.
 - Khách: `customer01@seed.scanms.test` đến `customer30@seed.scanms.test`.
 - Mật khẩu: giá trị `SCANMS_SEED_PASSWORD` tại lần seed đầu.
 - Payout có thuế: đăng nhập Shop 01/02 và KOL 01/02.
-- Hồ sơ đã duyệt để test lấy hàng: Khách 05, Shop 08. Hồ sơ chờ duyệt: Khách 10, Shop 13.
+- Cả 4 shop trong bộ seed đều có trạng thái xác minh `VERIFIED`; khách demo vẫn cần khai báo danh tính khi thanh toán.
 - Định danh khách được lưu trong bảng `customer_identities` sau migration `20261016140000_customer_identity_storage`; seeder không tự xác minh danh tính khách demo. Khách mới cần khai báo theo giao diện hiện có trước khi thanh toán mới. Dữ liệu JSON cũ cần import riêng có xác nhận theo `docs/CUSTOMER_AUTH_IDENTITY_HARDENING.md`; đây là tự khai báo, không thay thế KYC.
 
 Các phòng LIVE là fixture có thời hạn, chưa tự phát video: KOC vẫn phải bắt đầu phiên phát qua tính năng hiện có. Không tạo người xem ảo trong phòng LIVE. Log người xem ở phòng ENDED là lịch sử demo lưu trong DB. Chạy seed lại giữ trạng thái đang test; muốn dựng lại mốc thời gian demo cần reset có xác nhận.

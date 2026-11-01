@@ -61,8 +61,7 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState(() => {
     if (registeredEmail) return registeredEmail;
     const account = getDemoLogin(role);
-    const roleOpt = ROLES.find((r) => r.id === role);
-    return account?.identifier || roleOpt?.email || getRememberedIdentifier(role) || '';
+    return account?.identifier || getRememberedIdentifier(role) || '';
   });
   const [password, setPassword] = useState(() => registeredEmail ? '' : getDemoLogin(role)?.password || '');
   const [passwordAuthState, setPasswordAuthState] = useState<PasswordAuthState>('idle');
@@ -84,9 +83,12 @@ export default function LoginPage() {
 
   const handleRoleSelect = (selectedRole: RoleType) => {
     if (loading || passwordAuthState === 'success') return;
+    if (selectedRole === role) {
+      setIsRoleDropdownOpen(false);
+      return;
+    }
     const account = getDemoLogin(selectedRole);
-    const roleOpt = ROLES.find((r) => r.id === selectedRole);
-    setIdentifier(account?.identifier || roleOpt?.email || '');
+    setIdentifier(account?.identifier || getRememberedIdentifier(selectedRole) || '');
     setPassword(account?.password || '');
     setPasswordAuthState('idle');
     setRole(selectedRole);

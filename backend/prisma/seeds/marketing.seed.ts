@@ -1,5 +1,5 @@
 import type { SeedContext, SeedDataset } from './seed.types';
-import { ADMIN_ID, daysFrom, seedId } from './seed.helpers';
+import { daysFrom, seedId } from './seed.helpers';
 import { CREATOR_NAMES } from './data/people.data';
 import { SHOPS } from './data/catalog.data';
 
@@ -27,67 +27,6 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
         productId: seedId(`product:${index * 3 + slot}`),
         createdAt,
       });
-    data.coupons.push({
-      id: seedId(`shop-coupon:${index}`),
-      storeId,
-      collaboratorId: seedId(`shop-owner:${index}`),
-      codeNormalized: `SHOP${String(index + 1).padStart(2, '0')}SAVE`,
-      displayCode: `SHOP${String(index + 1).padStart(2, '0')}SAVE`,
-      status: 'ACTIVE',
-      discountType: 'FIXED_AMOUNT',
-      discountValue: 15_000,
-      minimumOrderAmount: 100_000,
-      maximumDiscountAmount: 15_000,
-      usageLimitTotal: 200,
-      usageLimitPerCustomer: 2,
-      budgetTotal: 3_000_000,
-      budgetUsed: 0,
-      startsAt: createdAt,
-      expiresAt: daysFrom(context, 60),
-      scopeType: 'STORE_WIDE',
-      fundingSource: 'SHOP_FUNDED',
-      shopFundingRate: 100,
-      platformFundingRate: 0,
-      stackableWithShopVoucher: false,
-      stackableWithProductDiscount: false,
-      approvedBy: seedId(`shop-owner:${index}`),
-      approvedAt: createdAt,
-      createdAt,
-    });
-    // Platform coupons are issued by Admin and scoped to one Shop by the real schema.
-    for (const benefitType of ['GOODS', 'SHIPPING'] as const) {
-      const code = `SAN${String(index + 1).padStart(2, '0')}${benefitType === 'GOODS' ? 'SAVE' : 'SHIP'}`;
-      data.coupons.push({
-        id: seedId(`platform-${benefitType}:${index}`),
-        storeId,
-        collaboratorId: ADMIN_ID,
-        codeNormalized: code,
-        displayCode: code,
-        status: 'ACTIVE',
-        benefitType,
-        discountType: 'FIXED_AMOUNT',
-        discountValue: benefitType === 'GOODS' ? 10_000 : 15_000,
-        maximumDiscountAmount: benefitType === 'GOODS' ? 10_000 : 15_000,
-        minimumOrderAmount: 100_000,
-        usageLimitTotal: 200,
-        usageLimitPerCustomer: 2,
-        budgetTotal: 3_000_000,
-        budgetUsed: 0,
-        usageCount: 0,
-        fundingSource: 'PLATFORM_FUNDED',
-        shopFundingRate: 0,
-        platformFundingRate: 100,
-        scopeType: 'STORE_WIDE',
-        stackableWithProductDiscount: true,
-        stackableWithShopVoucher: benefitType === 'GOODS',
-        stackableWithPlatformVoucher: true,
-        startsAt: createdAt,
-        expiresAt: daysFrom(context, 60),
-        approvedBy: ADMIN_ID,
-        approvedAt: createdAt,
-        createdAt,
-      });
-    }
   });
 
   CREATOR_NAMES.forEach((name, creatorIndex) => {
@@ -120,7 +59,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       createdAt,
     });
     const couponId = seedId(`kol-coupon:${creatorIndex}`);
-    const code = `KOL${String(creatorIndex + 1).padStart(2, '0')}SAVE`;
+    const code = creatorIndex === 0 ? 'THAONHI16' : `KOL${String(creatorIndex + 1).padStart(2, '0')}SAVE`;
     data.coupons.push({
       id: couponId,
       storeId,
@@ -131,7 +70,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
       discountType: 'PERCENTAGE',
       discountValue: 5,
       minimumOrderAmount: 100_000,
-      maximumDiscountAmount: 30_000,
+      maximumDiscountAmount: creatorIndex === 0 ? 50_000 : 30_000,
       usageLimitTotal: 100,
       usageLimitPerCustomer: 2,
       budgetTotal: 3_000_000,
@@ -172,15 +111,15 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     }
     const product = data.products[storeIndex * 3];
     const proposalId = seedId(`deal:${creatorIndex}`);
-    // VIP deal still stores base + bonus (12); checkout extracts +2 via exclusiveDealBonus.
+    // The first Sora deal is the Flow 4 example: 16% on the original goods value.
     data.deals.push({
       id: proposalId,
       storeId,
       collaboratorId,
       productId: product.id!,
       conversationId,
-      proposedCommissionRate: 12,
-      approvedCommissionRate: 12,
+      proposedCommissionRate: creatorIndex === 0 ? 16 : 12,
+      approvedCommissionRate: creatorIndex === 0 ? 16 : 12,
       salesCommitment:
         'Đề xuất cộng 2 điểm phần trăm trên mức nền 10%; cam kết một video trải nghiệm sau khi nhận mẫu.',
       status: 'APPROVED',
@@ -226,7 +165,7 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
           storeId,
           storeName: SHOPS[storeIndex].name,
           publicCommissionRate: 10,
-          proposedCommissionRate: 12,
+          proposedCommissionRate: creatorIndex === 0 ? 16 : 12,
           salesCommitment:
             'Cam kết quay video trải nghiệm. Đề xuất cộng 2% trên mức nền 10%.',
           status: 'APPROVED',
@@ -244,6 +183,39 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
         createdAt: daysFrom(context, -1),
       },
     );
+  });
+
+  // Single platform-wide free-shipping voucher for checkout demos.
+  // Coupon requires store/collaborator foreign keys, so anchor it to the first
+  // seeded store and admin; checkout recognizes platform-funded shipping as global.
+  data.coupons.push({
+    id: seedId('platform-free-shipping'),
+    storeId: seedId('store:0'),
+    collaboratorId: seedId('user:admin'),
+    codeNormalized: 'SCANMSFREESHIP',
+    displayCode: 'SCANMSFREESHIP',
+    status: 'ACTIVE',
+    discountType: 'PERCENTAGE',
+    discountValue: 100,
+    minimumOrderAmount: 0,
+    maximumDiscountAmount: 100_000,
+    usageLimitTotal: 500,
+    usageLimitPerCustomer: 3,
+    budgetTotal: 20_000_000,
+    budgetUsed: 0,
+    startsAt: createdAt,
+    expiresAt: null,
+    scopeType: 'STORE_WIDE',
+    fundingSource: 'PLATFORM_FUNDED',
+    shopFundingRate: 0,
+    platformFundingRate: 100,
+    benefitType: 'SHIPPING',
+    stackableWithProductDiscount: true,
+    stackableWithShopVoucher: true,
+    stackableWithPlatformVoucher: true,
+    approvedBy: seedId('user:admin'),
+    approvedAt: createdAt,
+    createdAt,
   });
 
   for (let index = 0; index < 5; index++) {
@@ -296,32 +268,6 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
           lastSeenAt: new Date(endsAt.getTime() - 60_000),
           leftAt: endsAt,
         });
-    data.coupons.push({
-      id: seedId(`live-coupon:${index}`),
-      storeId: seedId(`store:${index}`),
-      collaboratorId: seedId(`creator:${index}`),
-      liveSessionId: sessionId,
-      codeNormalized: `LIVE${index + 1}SAVE`,
-      displayCode: `LIVE${index + 1}SAVE`,
-      status: active ? 'ACTIVE' : 'EXPIRED',
-      discountType: 'FIXED_AMOUNT',
-      discountValue: 15_000,
-      minimumOrderAmount: 100_000,
-      maximumDiscountAmount: 15_000,
-      scopeType: 'STORE_WIDE',
-      fundingSource: 'SHOP_FUNDED',
-      shopFundingRate: 100,
-      platformFundingRate: 0,
-      usageLimitTotal: 50,
-      usageLimitPerCustomer: 1,
-      budgetTotal: 750_000,
-      startsAt,
-      expiresAt: endsAt,
-      approvedBy: seedId(`shop-owner:${index}`),
-      approvedAt: new Date(startsAt.getTime() - 3_600_000),
-      stackableWithShopVoucher: false,
-      createdAt: daysFrom(context, -10),
-    });
   }
 
   data.users

@@ -1,5 +1,5 @@
 export const CREATOR_NAMES = [
-  'Nguyễn Mai Anh',
+  'Đinh Thảo Nhi',
   'Trần Thu Hà',
   'Lê Ngọc Linh',
   'Phạm Hoàng Nam',
@@ -14,7 +14,7 @@ export const CREATOR_NAMES = [
   'Phan Hải Yến',
   'Trịnh Đức Huy',
   'Mai Thùy Dung',
-  'Đinh Thảo Nhi',
+  'Nguyễn Mai Anh',
   'Võ Minh Khang',
   'Cao Bích Ngọc',
   'Tạ Ngọc Anh',

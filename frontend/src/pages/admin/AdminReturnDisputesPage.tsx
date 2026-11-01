@@ -7,11 +7,13 @@ import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { toast } from '../../utils/toast';
 
 type Ruling = 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP';
+type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
 
 export default function AdminReturnDisputesPage() {
   const client = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ruling, setRuling] = useState<Ruling>('APPROVE_REFUND');
+  const [liability, setLiability] = useState<Liability>('LOGISTICS_FAULT');
   const [notes, setNotes] = useState('');
   const disputes = useQuery({
     queryKey: ['return-disputes'],
@@ -23,8 +25,13 @@ export default function AdminReturnDisputesPage() {
     queryFn: returnService.getAdminStalled,
     refetchInterval: 30_000,
   });
+  const activeReturns = useQuery({
+    queryKey: ['active-return-oversight'],
+    queryFn: returnService.getActiveReturns,
+    refetchInterval: 30_000,
+  });
   const resolve = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { ruling: Ruling; notes: string } }) =>
+    mutationFn: ({ id, data }: { id: string; data: { ruling: Ruling; liability: Liability; notes: string } }) =>
       returnService.resolveDispute(id, data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['return-disputes'] });
@@ -43,7 +50,7 @@ export default function AdminReturnDisputesPage() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)) return;
-    resolve.mutate({ id: selected.id, data: { ruling, notes: notes.trim() } });
+    resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
 
   return <main className="min-h-screen bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
@@ -54,12 +61,29 @@ export default function AdminReturnDisputesPage() {
           <h1 className="mt-1 text-2xl font-black">Khiếu nại trả hàng đang mở</h1>
           <p className="mt-1 text-sm text-[#7D715E]">Đối chiếu lịch sử, bằng chứng và kết quả kiểm tra trước khi ra quyết định.</p>
         </div>
-        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); }}
+        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); }}
           disabled={disputes.isFetching || stalled.isFetching}
           className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm disabled:opacity-50">
           <RefreshCw className="h-4 w-4" /> Làm mới
         </button>
       </header>
+
+      <section className="rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
+        <h2 className="font-bold">Hồ sơ đổi trả đang xử lý</h2>
+        <p className="mt-1 text-xs text-[#7D715E]">System Manager xác minh lỗi vận chuyển hoặc lỗi hàng hóa trước khi Shop xử lý đổi, hoàn.</p>
+        {activeReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ…</p>}
+        {activeReturns.error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">Không tải được hồ sơ đổi trả.</p>}
+        {!activeReturns.isLoading && !activeReturns.error && activeReturns.data?.length === 0 &&
+          <p className="mt-3 text-sm text-[#7D715E]">Chưa có hồ sơ đang xử lý.</p>}
+        {!!activeReturns.data?.length && <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {activeReturns.data.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
+            className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 hover:border-[#C59B58]">
+            <span className="block text-sm font-bold">#{item.order.externalOrderSn}</span>
+            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {item.status}</span>
+            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">Xem bằng chứng và xác định trách nhiệm →</span>
+          </Link>)}
+        </div>}
+      </section>
 
       <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Hồ sơ quá hạn kiểm tra">
         <h2 className="font-bold">Shop chậm kiểm tra quá 48 giờ</h2>
@@ -123,12 +147,20 @@ export default function AdminReturnDisputesPage() {
                 {canUpholdShop && <option value="UPHOLD_SHOP">Giữ quyết định của Shop</option>}
               </select>
             </label>
+            <label className="block text-sm">Bên chịu trách nhiệm
+              <select value={liability} onChange={(event) => setLiability(event.target.value as Liability)}
+                className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
+                <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+                <option value="SHOP_FAULT">Shop / hàng hóa</option>
+                <option value="CUSTOMER_REASON">Khách đổi ý</option>
+              </select>
+            </label>
             <label className="block text-sm">Căn cứ phân xử
               <textarea required minLength={20} maxLength={3000} rows={4} value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3" />
             </label>
-            <p className="text-xs text-[#7D715E]">Chấp thuận hoàn tiền chỉ tạo hồ sơ chờ xử lý; chưa chuyển tiền cho khách.</p>
+            <p className="text-xs text-[#7D715E]">Nếu ví khách sẵn sàng, hoàn tiền và thu hồi thu nhập được ghi cùng giao dịch; nếu chưa, hồ sơ ở trạng thái chờ đối soát.</p>
             {!canUpholdShop && <p className="text-xs text-[#7D715E]">Shop đang giữ hàng khách trả; không thể đóng hồ sơ nếu chưa có phương án trả hàng hoặc bồi hoàn.</p>}
             <button type="submit" disabled={resolve.isPending || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)}
               className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">

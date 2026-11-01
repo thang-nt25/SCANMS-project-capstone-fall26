@@ -39,6 +39,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { LiveSessionsModule } from './modules/live-sessions/live-sessions.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReturnModule } from './modules/returns/return.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 
 import { validateEnv } from './core/config/env.validation';
@@ -101,6 +102,7 @@ import { validateEnv } from './core/config/env.validation';
     LiveSessionsModule,
     ShippingModule,
     ReturnModule,
+    PricingModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],

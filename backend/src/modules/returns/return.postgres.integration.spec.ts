@@ -226,6 +226,7 @@ const isLocal = (() => {
         requestId,
         {
           resolution: 'REFUND',
+          liability: 'SHOP_FAULT',
           notes: 'Hàng trả đúng sản phẩm và đầy đủ bằng chứng.',
         },
       );

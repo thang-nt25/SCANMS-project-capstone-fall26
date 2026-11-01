@@ -1,5 +1,5 @@
 import {
-  additiveCommissionRate,
+  precedenceCommissionRate,
   campaignBonusRate,
   liveBonusRate,
   tierBonusByName,
@@ -72,6 +72,7 @@ export function seedCommissionBreakdown(
     input.collaboratorId,
     input.storeId,
   );
+  const dealRate = dealBonus ? 10 + dealBonus : 0;
   const campaignBonus =
     participating && campaign
       ? campaignBonusRate(
@@ -100,18 +101,20 @@ export function seedCommissionBreakdown(
         input.at,
       )
     : 0;
+  const campaignRate = campaignBonus ? 10 + campaignBonus : 0;
+  const campaignWins = campaignRate > Math.max(dealRate, 10 + tierBonus);
   return {
     base: 10,
     tier: tierBonus,
-    deal: dealBonus,
-    campaign: campaignBonus,
+    deal: dealRate,
+    campaign: campaignWins ? campaignBonus : 0,
     live: liveBonus,
-    rate: additiveCommissionRate(
+    rate: precedenceCommissionRate(
       tierBonus,
-      dealBonus,
-      campaignBonus,
+      dealRate,
+      campaignRate,
       liveBonus,
     ),
-    campaignId: campaignBonus ? campaign!.id! : null,
+    campaignId: campaignWins ? campaign!.id! : null,
   };
 }

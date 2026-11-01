@@ -21,8 +21,8 @@ export class CreateCampaignDto {
 
   @ApiProperty({ description: 'Mức hoa hồng thưởng thêm (%)', example: 2 })
   @IsNumber()
-  @Min(1, { message: 'Hoa hồng thưởng thêm tối thiểu 1%' })
-  @Max(2, { message: 'Hoa hồng thưởng thêm tối đa 2%' })
+  @Min(2, { message: 'Hoa hồng thưởng thêm tối thiểu 2%' })
+  @Max(4, { message: 'Hoa hồng thưởng thêm tối đa 4%' })
   bonusCommissionRate: number;
 
   @ApiProperty({ description: 'Ngân sách tối đa cho phần hoa hồng thưởng thêm (VNĐ)' })

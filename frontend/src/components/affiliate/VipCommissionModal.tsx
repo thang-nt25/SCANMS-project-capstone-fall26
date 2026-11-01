@@ -81,17 +81,17 @@ export function VipCommissionModal({ creator, rate, saving, onRateChange, onClos
                 id="vip-commission-rate"
                 type="range"
                 min={11}
-                max={13}
+                max={16}
                 step={1}
                 value={rate}
                 disabled={saving}
                 onChange={event => onRateChange(Number(event.target.value))}
                 className="block w-full h-[5px] my-4 border-0 rounded-lg appearance-none cursor-pointer accent-[#C59B58]"
-                style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 11) / 2 * 100))}%, #EAE4D7 0)` }}
+                style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 11) / 5 * 100))}%, #EAE4D7 0)` }}
               />
-              <div className="flex justify-between text-[#7D715E] text-[10px]"><span>10% cơ bản + 1% VIP</span><span>10% cơ bản + 3% VIP</span></div>
-              <div className="grid grid-cols-3 gap-1 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ hoa hồng">
-                {[11, 12, 13].map(value => (
+              <div className="flex justify-between text-[#7D715E] text-[10px]"><span>Thù lao VIP 11%</span><span>Thù lao VIP 16%</span></div>
+              <div className="grid grid-cols-6 gap-1 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ thù lao">
+                {[11, 12, 13, 14, 15, 16].map(value => (
                   <button
                     key={value}
                     type="button"

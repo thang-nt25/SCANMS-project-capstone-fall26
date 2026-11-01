@@ -1,7 +1,14 @@
 import { Prisma } from '@prisma/client';
 import { catalogEligibleCte, type CatalogQueryOptions } from './catalog-query';
 
-export interface CatalogRankingRow { id: string; soldCount: bigint | number; viewCount: bigint | number; matchKind?: 'direct' | 'related' }
+export interface CatalogRankingRow {
+  id: string;
+  soldCount: bigint | number;
+  viewCount: bigint | number;
+  rating: number | null;
+  reviewCount: bigint | number;
+  matchKind?: 'direct' | 'related';
+}
 
 export function catalogRankingQuery(options: CatalogQueryOptions) {
   const sort = {
@@ -17,13 +24,20 @@ export function catalogRankingQuery(options: CatalogQueryOptions) {
       FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN eligible e ON e.id = oi.product_id
       WHERE o.status IN ('DELIVERED', 'COMPLETED')
       GROUP BY oi.product_id
+    ), ratings AS (
+      SELECT r.product_id, AVG(r.rating)::double precision AS rating, COUNT(*) AS review_count
+      FROM product_reviews r JOIN eligible e ON e.id = r.product_id
+      WHERE r.is_approved = true
+      GROUP BY r.product_id
     ), views AS (
       SELECT a.details->>'productId' AS product_id, COUNT(*) AS quantity
       FROM audit_logs a JOIN eligible e ON e.id::text = a.details->>'productId'
       WHERE a.action = 'ANALYTICS_PAGE_VIEW'
       GROUP BY a.details->>'productId'
     )
-    SELECT e.id, e.match_kind AS "matchKind", COALESCE(sold.quantity, 0) AS "soldCount", COALESCE(views.quantity, 0) AS "viewCount"
+    SELECT e.id, e.match_kind AS "matchKind", COALESCE(sold.quantity, 0) AS "soldCount", COALESCE(views.quantity, 0) AS "viewCount",
+      ratings.rating AS rating, COALESCE(ratings.review_count, 0) AS "reviewCount"
     FROM eligible e LEFT JOIN sold ON sold.product_id = e.id LEFT JOIN views ON views.product_id = e.id::text
+      LEFT JOIN ratings ON ratings.product_id = e.id
     ORDER BY ${sort} LIMIT ${options.limit} OFFSET ${(options.page - 1) * options.limit}`;
 }

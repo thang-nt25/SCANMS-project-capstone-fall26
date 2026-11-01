@@ -6,10 +6,11 @@ import {
 } from "@/services/referral-links.service";
 
 const labels: Record<Progress["state"], string> = {
+  PENDING_ADMIN_APPROVAL: "Chờ Admin duyệt ngoại lệ — chưa bắt đầu tính giờ",
   PENDING: "Chờ Shop duyệt — chưa bắt đầu tính giờ",
   ACTIVE: "Đang chạy cam kết KPI sản lượng",
   SETTLING: "Đang chờ đối soát đơn hàng",
-  ACHIEVED: "Đã đạt KPI số đơn",
+  ACHIEVED: "Đã đạt KPI cam kết",
   REVIEW_REQUIRED: "Chưa đạt KPI — chờ Shop xem xét",
   CLOSED: "Deal đã đóng",
   LEGACY: "Cam kết chỉ tiêu sản lượng",
@@ -105,23 +106,20 @@ export function DealKpiProgress({ id }: { id: string }) {
                   {progress.percent}% hoàn thành
                 </span>
               </div>
-
-              {progress.targetOrders != null && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-[#7D715E]">
-                    <span>Đơn hàng hợp lệ đã chốt</span>
-                    <strong className="text-[#1A1612] tabular-nums">
-                      {progress.completedOrders} / {progress.targetOrders} đơn
-                    </strong>
-                  </div>
-                  <div className="w-full h-2 bg-[#F3EFE6] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[#C59B58] transition-all"
-                      style={{ width: `${Math.min(100, progress.percent)}%` }}
-                    />
-                  </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] text-[#7D715E]">
+                  <span>{progress.targetRevenue ? 'Doanh thu hợp lệ đã chốt' : 'Đơn hàng hợp lệ đã chốt'}</span>
+                  <strong className="text-[#1A1612] tabular-nums">
+                    {progress.targetRevenue ? `${Number(progress.validRevenue || 0).toLocaleString('vi-VN')} / ${Number(progress.targetRevenue).toLocaleString('vi-VN')} đ` : `${progress.completedOrders} / ${progress.targetOrders ?? '—'} đơn`}
+                  </strong>
                 </div>
-              )}
+                <div className="w-full h-2 bg-[#F3EFE6] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#C59B58] transition-all"
+                    style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
+                  />
+                </div>
+              </div>
 
               {/* Two-Tier Retrospective KPI Rebate Escrow Breakdown */}
               <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-xs space-y-2.5">

@@ -19,14 +19,14 @@ describe('public catalogue real metrics', () => {
         { id: 'higher', title: 'Higher', createdAt: new Date('2026-01-02') },
       ]) },
       $queryRaw: jest.fn().mockResolvedValue([
-        { id: 'higher', soldCount: 7n, viewCount: 3n }, { id: 'lower', soldCount: 0n, viewCount: 0n },
+        { id: 'higher', soldCount: 7n, viewCount: 3n, rating: 4.666666, reviewCount: 3n }, { id: 'lower', soldCount: 0n, viewCount: 0n, rating: null, reviewCount: 0n },
       ]),
     };
     const service = new ProductsService(prisma, {} as any, {} as any);
     const result = await service.findPublicMarketplace({ sortBy: 'sales', limit: 2 });
     expect(result.items.map(item => item.id)).toEqual(['higher', 'lower']);
-    expect(result.items[0]).toMatchObject({ soldCount: 7, viewCount: 3 });
-    expect(result.items[1]).toMatchObject({ soldCount: 0, viewCount: 0 });
+    expect(result.items[0]).toMatchObject({ soldCount: 7, viewCount: 3, rating: 4.7, reviewCount: 3 });
+    expect(result.items[1]).toMatchObject({ soldCount: 0, viewCount: 0, rating: null, reviewCount: 0 });
     expect(() => JSON.stringify(result)).not.toThrow();
     const query = prisma.product.findMany.mock.calls[0][0];
     expect(query.select.createdAt).toBe(true);

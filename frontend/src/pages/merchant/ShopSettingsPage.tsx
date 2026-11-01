@@ -49,6 +49,7 @@ export default function ShopSettingsPage() {
   const [attributionWindowDays, setAttributionWindowDays] = useState<number>(30);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [shopOwnerDetails, setShopOwnerDetails] = useState({
+    companyName: '',
     representativeName: currentUser?.fullName || '',
     contactPhone: currentUser?.phoneNumber || '',
     contactEmail: currentUser?.email || '',
@@ -104,6 +105,9 @@ export default function ShopSettingsPage() {
       const returnAddr = onboardingData.returnWarehouseAddress || returnWarehouse.address || pickupAddr;
 
       const loadedDetails = {
+        companyName: onboardingData.companyName !== undefined
+          ? onboardingData.companyName || ''
+          : onboardingData.businessName || onboardingData.registeredBusinessName || '',
         representativeName:
           onboardingData.representativeName || store.owner?.fullName || currentUser?.fullName || '',
         contactPhone: onboardingData.contactPhone || store.owner?.phoneNumber || '',
@@ -185,6 +189,7 @@ export default function ShopSettingsPage() {
     try {
       await storeService.updateMyStore({
         name,
+        companyName: detailsToSave.companyName.trim(),
         description,
         logoUrl: logoUrl.trim(),
         websiteUrl: '',
@@ -224,6 +229,7 @@ export default function ShopSettingsPage() {
       : (ownerDetailsDraft.returnWarehouseAddress || ownerDetailsDraft.warehouseAddress).trim();
 
     const details = {
+      companyName: ownerDetailsDraft.companyName.trim(),
       representativeName: ownerDetailsDraft.representativeName.trim(),
       businessType: ownerDetailsDraft.businessType,
       contactPhone: ownerDetailsDraft.contactPhone.trim(),
@@ -494,6 +500,17 @@ export default function ShopSettingsPage() {
                 {isEditingOwnerDetails ? (
                   <div className="space-y-3.5">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-semibold text-[#1A1612] sm:col-span-2">
+                        Tên doanh nghiệp / hộ kinh doanh
+                        <input
+                          value={ownerDetailsDraft.companyName}
+                          maxLength={200}
+                          onChange={(event) => setOwnerDetailsDraft({ ...ownerDetailsDraft, companyName: event.target.value })}
+                          placeholder="Nhập tên đăng ký kinh doanh (nếu có)"
+                          className="mt-1.5 h-11 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-sm font-normal outline-none transition placeholder:text-[#A99D8A] focus:border-[#C59B58]"
+                        />
+                        <span className="mt-1 block text-[11px] font-normal text-[#7D715E]">Tên này hiển thị công khai trên trang gian hàng.</span>
+                      </label>
                       <label className="block text-xs font-semibold text-[#1A1612]">
                         Người đại diện <span className="text-rose-600">*</span>
                         <input
@@ -616,6 +633,13 @@ export default function ShopSettingsPage() {
                 ) : (
                   <div className="settings-owner-details">
                   <div className="settings-owner-info grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3 sm:col-span-2">
+                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
+                      <div className="min-w-0">
+                        <p className="m-0 text-[11px] text-[#7D715E]">Tên doanh nghiệp / hộ kinh doanh</p>
+                        <p className="m-0 mt-0.5 break-words text-sm font-semibold text-[#1A1612]">{shopOwnerDetails.companyName || 'Chưa cập nhật'}</p>
+                      </div>
+                    </div>
                     <div className="flex min-h-[64px] min-w-0 items-start gap-2.5 rounded-xl border border-[#F0EAE0] bg-[#FAF8F5] p-3">
                       <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                       <div className="min-w-0">

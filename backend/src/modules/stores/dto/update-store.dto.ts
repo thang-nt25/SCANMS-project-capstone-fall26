@@ -14,6 +14,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStoreDto {
   @ApiPropertyOptional({
+    description: 'Tên doanh nghiệp hiển thị công khai trên gian hàng',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  companyName?: string;
+
+  @ApiPropertyOptional({
     example: 'Mỹ phẩm & Chăm sóc da',
     description: 'Ngành hàng kinh doanh chuyên biệt của Gian hàng',
   })
@@ -109,7 +117,8 @@ export class UpdateStoreDto {
   businessAddress?: string;
 
   @ApiPropertyOptional({
-    example: 'Kho Logistics SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
+    example:
+      'Kho Logistics SCANMS, 123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',
     description: 'Địa chỉ kho nhận hàng hoàn trả (Return Warehouse)',
   })
   @IsOptional()

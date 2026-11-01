@@ -45,7 +45,7 @@ export function SendVipCampaignModal({
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createdCampaignId, setCreatedCampaignId] = useState('');
-  const [draft, setDraft] = useState(() => ({ name: '', rate: '5', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
+  const [draft, setDraft] = useState(() => ({ name: '', rate: '1', budget: '1000000', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
   const sending = useRef(false);
   const creatingRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -104,11 +104,12 @@ export function SendVipCampaignModal({
     setCreateError('');
     const start = new Date(draft.start), end = new Date(draft.end), rate = Number(draft.rate);
     if (!draft.name.trim()) { setCreateError('Vui lòng nhập tên chiến dịch.'); return; }
-    if (!draft.rate.trim() || !Number.isFinite(rate) || rate < 0 || rate > 100) { setCreateError('Hoa hồng thưởng thêm phải từ 0 đến 100%.'); return; }
+    if (!Number.isInteger(rate) || rate < 2 || rate > 4) { setCreateError('Thưởng chiến dịch phải từ 2% đến 4%.'); return; }
+    if (!Number.isFinite(Number(draft.budget)) || Number(draft.budget) <= 0) { setCreateError('Ngân sách thưởng phải lớn hơn 0.'); return; }
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end <= new Date()) { setCreateError('Ngày kết thúc phải sau ngày bắt đầu và thời điểm hiện tại.'); return; }
     creatingRef.current = true; setSaving(true);
     try {
-      const response: any = await api.post('/campaigns', { name: draft.name.trim(), bonusCommissionRate: rate, startDate: start.toISOString(), endDate: end.toISOString() });
+      const response: any = await api.post('/campaigns', { name: draft.name.trim(), bonusCommissionRate: rate, bonusBudgetTotal: Number(draft.budget), startDate: start.toISOString(), endDate: end.toISOString() });
       const campaign: Campaign = response?.data || response;
       if (!campaign?.id || !campaign.isActive || !(new Date(campaign.endDate).getTime() >= Date.now())) throw new Error('Máy chủ chưa xác nhận chiến dịch còn hiệu lực. Hãy tải lại trước khi thử tạo thêm.');
       setCampaigns(previous => [campaign, ...previous.filter(item => item.id !== campaign.id)]);
@@ -157,8 +158,10 @@ export function SendVipCampaignModal({
         <header className="p-4 sm:p-5 flex items-center gap-2.5 sm:gap-3 border-b border-[#EAE4D7]">
           <span className="grid place-items-center w-[42px] h-[42px] rounded-[13px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0"><Megaphone size={22} className="stroke-[1.75]" /></span>
           <div>
+
             <h3 id="vip-campaign-title" className="text-lg sm:text-[19px] leading-snug font-semibold tracking-tight text-[#1A1612] m-0">Mời Tham Gia Chiến Dịch Kích Cầu</h3>
             <p className="text-[11px] text-[#7D715E] m-0 mt-1 leading-relaxed">{creating ? 'Thiết lập chiến dịch để tiếp tục gửi lời mời.' : isTargetLocked ? `Mời đối tác ${collaboratorName || 'KOC'} tham gia chiến dịch kích cầu.` : 'Chọn KOL và chiến dịch để gửi lời mời.'}</p>
+
           </div>
           <button type="button" aria-label="Đóng" disabled={busy} onClick={onClose} className="ml-auto shrink-0 grid place-items-center w-7 h-7 border-0 rounded-lg bg-[#FAF8F5] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer transition-colors"><X size={18} /></button>
         </header>
@@ -180,33 +183,16 @@ export function SendVipCampaignModal({
                 <input id="vip-create-name" autoFocus required maxLength={200} placeholder="VD: Hợp tác KOL tháng 10" value={draft.name} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">Phạm vi thỏa thuận thù lao</label>
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <label className="flex items-center gap-2 p-2.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:border-[#C59B58]">
-                    <input type="radio" name="dealScope" defaultChecked className="text-[#C59B58] focus:ring-[#C59B58]" />
-                    <span className="text-xs font-medium text-[#1A1612]">Toàn bộ Gian hàng</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-2.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:border-[#C59B58]">
-                    <input type="radio" name="dealScope" className="text-[#C59B58] focus:ring-[#C59B58]" />
-                    <span className="text-xs font-medium text-[#1A1612]">Sản phẩm cụ thể</span>
-                  </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="vip-create-rate" className="text-xs font-semibold text-[#1A1612]">Thưởng chiến dịch (%)</label>
+                  <span className="text-[10px] text-[#7D715E]">Thưởng thêm 2%–4%</span>
                 </div>
+                <input id="vip-create-rate" type="number" min={2} max={4} step="1" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
+                <p className="mt-2 text-xs text-[#7D715E]">Chiến dịch và thỏa thuận VIP theo sản phẩm được quản lý riêng.</p>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="vip-create-rate" className="text-xs font-semibold text-[#1A1612]">Mức thù lao thỏa thuận (%)</label>
-                  <span className="text-[10px] text-[#7D715E]">Tối đa 25% trần sàn</span>
-                </div>
-                <input id="vip-create-rate" type="number" min={10} max={25} step="0.5" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
-                {Number(draft.rate) > 16 ? (
-                  <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
-                    ⚠️ <strong>Vượt khung tự trị 16% (Ngân sách Siêu KOL):</strong> Thỏa thuận cần Ban Giám Đốc (SYSTEM_ADMIN) phê duyệt Maker-Checker trước khi áp dụng cho đơn hàng.
-                  </div>
-                ) : (
-                  <div className="mt-2 p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] text-[11px] leading-relaxed">
-                    ✓ <strong>Trong khung tự trị của Shop (10% - 16%):</strong> Hợp đồng có hiệu lực ngay khi KOC đồng ý nhận lời mời.
-                  </div>
-                )}
+                <label htmlFor="vip-create-budget" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Ngân sách thưởng (đ)</label>
+                <input id="vip-create-budget" type="number" min={1} required value={draft.budget} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, budget: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-white text-[#1A1612] text-xs" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

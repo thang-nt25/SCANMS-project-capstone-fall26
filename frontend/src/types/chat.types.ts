@@ -5,6 +5,7 @@ export interface ChatUser {
   avatarUrl?: string | null;
   collaboratorProfile?: {
     avatarUrl?: string | null;
+    tier?: { name: string; extraBonusPercentage?: number | string } | null;
   } | null;
 }
 
@@ -102,7 +103,7 @@ export interface ChatExclusiveDeal {
   proposedCommissionRate?: number;
   approvedCommissionRate?: number;
   salesCommitment?: string;
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status?: 'PENDING' | 'PENDING_ADMIN_APPROVAL' | 'APPROVED' | 'REJECTED';
   shopResponse?: string | null;
   shortUrl?: string | null;
 }
