@@ -55,7 +55,7 @@ export const inspectionSchema = z
 
 export const liabilityAssessmentSchema = z.object({
   liability: z.enum(['LOGISTICS_FAULT', 'SHOP_FAULT', 'CUSTOMER_REASON']),
-  notes: text(20, 2000),
+  notes: text(10, 2000),
 }).strict();
 
 export const disputeSchema = z

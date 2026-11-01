@@ -286,10 +286,11 @@ function AdminActions({ request }: { request: ReturnDetail }) {
       <option value="SHOP_FAULT">Shop / hàng hóa</option>
       <option value="CUSTOMER_REASON">Khách đổi ý</option>
     </select>
-    <textarea required minLength={20} maxLength={2000} rows={3} value={notes}
+    <textarea required minLength={10} maxLength={2000} rows={3} value={notes}
       onChange={(event) => setNotes(event.target.value)} placeholder="Ghi rõ bằng chứng và căn cứ kết luận"
       className={field} />
-    <button type="submit" disabled={assessment.isPending || notes.trim().length < 20} className={primary}>
+    {notes.trim().length < 10 && <p className="text-xs text-[#7D715E]">Nhập ít nhất 10 ký tự để lưu kết luận ({notes.trim().length}/10).</p>}
+    <button type="submit" disabled={assessment.isPending || notes.trim().length < 10} className={primary}>
       {assessment.isPending ? 'Đang lưu…' : 'Lưu kết luận trách nhiệm'}
     </button>
     <ErrorText error={assessment.error} />
