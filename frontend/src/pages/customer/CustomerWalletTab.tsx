@@ -78,11 +78,8 @@ export const CustomerWalletTab: React.FC = () => {
   };
 
   const getLedgerBadge = (entry: LedgerEntry) => {
-    const isPositive =
-      entry.transactionType === 'COMMISSION_APPROVED' ||
-      entry.referenceType === 'TOPUP_DEMO' ||
-      entry.referenceType === 'TOPUP_PAYOS' ||
-      entry.referenceType === 'ORDER_REFUND';
+    const numAmount = Number(entry.amount);
+    const isPositive = numAmount > 0;
 
     if (entry.referenceType === 'TOPUP_PAYOS') {
       return { label: 'Nạp tiền qua payOS', badgeClass: 'bg-[#FBF5EB] text-[#7D715E] border-[#EEDFC6]', sign: '+', colorClass: 'text-[#1A1612] font-bold' };
@@ -109,6 +106,14 @@ export const CustomerWalletTab: React.FC = () => {
         badgeClass: 'bg-amber-50 text-[#B88E4F] border-[#EEDFC6]',
         sign: '-',
         colorClass: 'text-[#DC2626] font-bold',
+      };
+    }
+    if (entry.referenceType === 'WALLET_RECLASSIFICATION') {
+      return {
+        label: isPositive ? 'Điều chỉnh số dư (+)' : 'Điều chỉnh số dư (-)',
+        badgeClass: isPositive ? 'bg-[#FBF5EB] text-[#7D715E] border-[#EEDFC6]' : 'bg-gray-50 text-gray-700 border-gray-200',
+        sign: isPositive ? '+' : '-',
+        colorClass: isPositive ? 'text-[#1A1612] font-bold' : 'text-[#DC2626] font-bold',
       };
     }
     return {
@@ -299,7 +304,7 @@ export const CustomerWalletTab: React.FC = () => {
                           </span>
                         </td>
                         <td className={`p-[11px_16px] text-right font-mono font-semibold whitespace-nowrap ${badge.colorClass}`}>
-                          {badge.sign}{formatMoney(Number(entry.amount))}
+                          {badge.sign}{formatMoney(Math.abs(Number(entry.amount)))}
                         </td>
                         <td className="p-[11px_16px] text-right text-[#7D715E] font-mono whitespace-nowrap">
                           {formatMoney(Number(entry.balanceBefore))}

@@ -17,17 +17,29 @@ describe('AffiliateDealsService', () => {
 
   beforeEach(() => {
     tx = {
-      coupon: { create: jest.fn().mockResolvedValue({ id: '88888888-8888-4888-8888-888888888888' }) },
+      coupon: {
+        create: jest
+          .fn()
+          .mockResolvedValue({ id: '88888888-8888-4888-8888-888888888888' }),
+      },
       couponProduct: { create: jest.fn() },
       referralLink: { update: jest.fn() },
-      exclusiveDealProposal: { create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+      exclusiveDealProposal: {
+        create: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
       chatMessage: { create: jest.fn() },
       conversation: { update: jest.fn() },
     };
     const productFindMock = jest.fn();
     prisma = {
       user: { findUnique: jest.fn() },
-      store: { findUnique: jest.fn() },
+      store: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: storeId }),
+        findMany: jest.fn().mockResolvedValue([{ id: storeId }]),
+      },
       product: {
         findUnique: productFindMock,
         findFirst: productFindMock,
@@ -53,6 +65,7 @@ describe('AffiliateDealsService', () => {
     referralLinksService = {
       createReferralLink: jest.fn().mockResolvedValue({
         id: '77777777-7777-4777-8777-777777777777',
+        productId,
         shortCode: 'VIP12345',
         shortUrl: 'http://localhost:5173/r/VIP12345',
       }),
@@ -62,11 +75,48 @@ describe('AffiliateDealsService', () => {
       chatGateway,
       referralLinksService,
     );
+    tx.product = { ...prisma.product, findMany: jest.fn(async () => [{ id: productId, storeId, title: 'Serum' }]) };
+    tx.user = { findUnique: jest.fn(async (args: any) => args.select ? { isActive: true, isDeleted: false, role: 'SHOP_MANAGER' } : prisma.user.findUnique(args)) };
+    tx.store = prisma.store;
+    tx.exclusiveDealProduct = { createMany: jest.fn(), upsert: jest.fn() };
+    tx.couponProduct.createMany = jest.fn();
+    tx.referralLink.updateMany = jest.fn();
+    tx.$queryRaw = jest.fn().mockResolvedValue([{ locked: 1 }]);
+    tx.auditLog = { create: jest.fn() };
+    tx.conversation.findFirst = prisma.conversation.findFirst;
+    tx.conversation.create = prisma.conversation.create;
+    tx.exclusiveDealProposal.findFirst = prisma.exclusiveDealProposal.findFirst;
+    tx.exclusiveDealProposal.updateMany =
+      prisma.exclusiveDealProposal.updateMany;
+    tx.exclusiveDealProposal.findUnique = jest.fn(async (args: any) => {
+      const proposal = await prisma.exclusiveDealProposal.findUnique(args);
+      if (!proposal) return proposal;
+      return {
+        ...proposal,
+        collaborator: { fullName: 'Mai Anh', isActive: true, isDeleted: false, role: 'COLLABORATOR', collaboratorProfile: { kycStatus: 'VERIFIED' }, ...proposal.collaborator },
+        store: { isActive: true, isDeleted: false, ...proposal.store },
+        product: {
+          isActive: true,
+          isDeleted: false,
+          isAffiliateEnabled: true,
+          moderationStatus: 'APPROVED',
+          ...proposal.product,
+        },
+      };
+    });
   });
 
   it('requires explicit video review commitment before accepting a proposal', async () => {
-    await expect(service.createProposal(collaboratorId, { productId, proposedCommissionRate: 12,
-      salesCommitment: 'Review video', videoReviewCommitment: false })).rejects.toThrow('video review');
+    await expect(
+      service.createProposal(collaboratorId, {
+        targetRevenue: 10000000,
+        commitmentDays: 30,
+        productId,
+        proposedCommissionRate: 12,
+        salesCommitment: 'Review video',
+        videoReviewCommitment: false,
+      }),
+    ).rejects.toThrow('video review');
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
@@ -80,13 +130,16 @@ describe('AffiliateDealsService', () => {
     });
 
     await expect(
-      service.createProposal(collaboratorId, { videoReviewCommitment: true,
+      service.createProposal(collaboratorId, {
+        targetRevenue: 10000000,
+        commitmentDays: 30,
+        videoReviewCommitment: true,
         productId,
         proposedCommissionRate: 25,
         salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.product.findFirst).not.toHaveBeenCalled();
+    expect(tx.exclusiveDealProposal.create).not.toHaveBeenCalled();
   });
 
   it('sends a verified KOL proposal into the shop chat without auto-approving partnership', async () => {
@@ -134,8 +187,11 @@ describe('AffiliateDealsService', () => {
       messageText: 'deal card',
     });
 
-    const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
-      targetOrders: 80, commitmentDays: 30,
+    const result = await service.createProposal(collaboratorId, {
+        targetRevenue: 10000000,
+        commitmentDays: 30,
+      videoReviewCommitment: true,
+      targetOrders: 80,
       productId,
       proposedCommissionRate: 12,
       salesCommitment: 'Tạo 4 video, mục tiêu 80 đơn hàng.',
@@ -170,7 +226,8 @@ describe('AffiliateDealsService', () => {
       productId,
       conversationId,
       proposedCommissionRate: 13,
-      targetOrders: 80, commitmentDays: 30,
+      targetOrders: 80,
+      commitmentDays: 30,
       status: 'PENDING',
       store: { id: storeId, ownerId: shopOwnerId, defaultCommissionRate: 10 },
       product: { id: productId, title: 'Serum', customCommissionRate: 15 },
@@ -193,12 +250,19 @@ describe('AffiliateDealsService', () => {
       proposalId,
       shopOwnerId,
       'SHOP_MANAGER',
-      { discountPercent: 7, minimumOrderAmount: 250000, maximumDiscountAmount: 60000, usageLimitTotal: 30, budgetTotal: 1500000, validDays: 45 },
+      {
+        discountPercent: 7,
+        minimumOrderAmount: 250000,
+        maximumDiscountAmount: 60000,
+        usageLimitTotal: 30,
+        budgetTotal: 1500000,
+        validDays: 45,
+      },
     );
 
-    expect(prisma.exclusiveDealProposal.updateMany).toHaveBeenCalledWith(
+    expect(tx.exclusiveDealProposal.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: proposalId, status: 'PENDING' },
+        where: { id: proposalId },
         data: expect.objectContaining({
           status: 'APPROVED',
           approvedCommissionRate: 13,
@@ -208,10 +272,23 @@ describe('AffiliateDealsService', () => {
     expect(referralLinksService.createReferralLink).toHaveBeenCalledWith(
       collaboratorId,
       expect.objectContaining({ productId, exclusiveDealId: proposalId }),
+      undefined,
+      tx,
     );
     expect(result.approvedCommissionRate).toBe(13);
     expect(result.vipVoucherCode).toMatch(/^MAIANH7/);
-    expect(tx.coupon.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ discountValue: 7, minimumOrderAmount: 250000, maximumDiscountAmount: 60000, usageLimitTotal: 30, budgetTotal: 1500000, fundingSource: 'SHOP_FUNDED' }) }));
+    expect(tx.coupon.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          discountValue: 7,
+          minimumOrderAmount: 250000,
+          maximumDiscountAmount: 60000,
+          usageLimitTotal: 30,
+          budgetTotal: 1500000,
+          fundingSource: 'SHOP_FUNDED',
+        }),
+      }),
+    );
     const decisionCard = JSON.parse(
       tx.chatMessage.create.mock.calls[0][0].data.messageText,
     );
@@ -276,10 +353,14 @@ describe('AffiliateDealsService', () => {
       messageText: data.messageText,
     }));
 
-    const result = await service.createProposal(collaboratorId, { videoReviewCommitment: true,
+    const result = await service.createProposal(collaboratorId, {
+        targetRevenue: 10000000,
+        commitmentDays: 30,
+      videoReviewCommitment: true,
       productId,
       proposedCommissionRate: 13,
-      targetOrders: 80, commitmentDays: 30,
+      targetOrders: 80,
+
       salesCommitment: 'Tăng doanh số trong tháng này',
     });
 
@@ -304,6 +385,8 @@ describe('AffiliateDealsService', () => {
       productId,
       conversationId,
       proposedCommissionRate: 12,
+      targetOrders: 30,
+      commitmentDays: 30,
       status: 'PENDING',
       store: { id: storeId, ownerId: shopOwnerId, defaultCommissionRate: 10 },
       product: { id: productId, title: 'Serum', customCommissionRate: 30 },
@@ -315,11 +398,14 @@ describe('AffiliateDealsService', () => {
       name: 'Sora Skin',
       deletedAt: null,
     });
-    prisma.exclusiveDealProposal.findFirst.mockResolvedValue({ id: 'current', approvedCommissionRate: 13 });
+    prisma.exclusiveDealProposal.findFirst.mockResolvedValue({
+      id: 'current',
+      approvedCommissionRate: 13,
+    });
 
     await expect(
-      service.approveProposal(proposalId, shopOwnerId, 'SHOP_MANAGER' as any),
-    ).rejects.toThrow('deal VIP');
+      service.approveProposal(proposalId, shopOwnerId, 'SHOP_MANAGER'),
+    ).rejects.toThrow('VIP');
     expect(prisma.exclusiveDealProposal.updateMany).not.toHaveBeenCalled();
     expect(referralLinksService.createReferralLink).not.toHaveBeenCalled();
   });
@@ -329,9 +415,12 @@ describe('AffiliateDealsService', () => {
       storeId,
       collaboratorId,
       status: 'APPROVED',
-      targetOrders: 10, commitmentDays: 30,
-      commitmentStartedAt: new Date('2020-01-01'), commitmentEndsAt: new Date('2020-02-01'),
-      settlementEndsAt: new Date('2020-02-15'), closedAt: null,
+      targetOrders: 10,
+      commitmentDays: 30,
+      commitmentStartedAt: new Date('2020-01-01'),
+      commitmentEndsAt: new Date('2020-02-01'),
+      settlementEndsAt: new Date('2020-02-15'),
+      closedAt: null,
       product: { title: 'Sản phẩm' },
     });
     prisma.exclusiveDealProposal.update = jest.fn().mockResolvedValue({});
@@ -340,20 +429,21 @@ describe('AffiliateDealsService', () => {
       ownerId: shopOwnerId,
     });
     prisma.collaboratorProfile = {
-      findUnique: jest
-        .fn()
-        .mockResolvedValue({
-          id: 'profile-1',
-          socialLinksJson: { dealViolations: { count: 3 } },
-          sampleRequestsBlockedAt: null,
-        }),
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'profile-1',
+        socialLinksJson: { dealViolations: { count: 3 } },
+        sampleRequestsBlockedAt: null,
+      }),
       update: jest.fn().mockResolvedValue({}),
     };
     prisma.order = { count: jest.fn().mockResolvedValue(0) };
     tx.order = prisma.order;
     tx.$queryRaw = jest.fn().mockResolvedValue([]);
-    tx.exclusiveDealProposal.findUnique = prisma.exclusiveDealProposal.findUnique;
-    tx.exclusiveDealProposal.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    tx.exclusiveDealProposal.findUnique =
+      prisma.exclusiveDealProposal.findUnique;
+    tx.exclusiveDealProposal.updateMany = jest
+      .fn()
+      .mockResolvedValue({ count: 1 });
     tx.collaboratorProfile = prisma.collaboratorProfile;
     tx.auditLog = { create: jest.fn() };
     jest
@@ -362,12 +452,110 @@ describe('AffiliateDealsService', () => {
     const result = await service.terminateDeal(
       proposalId,
       shopOwnerId,
-      'SHOP_MANAGER' as any,
+      'SHOP_MANAGER',
       { reason: 'Không hoàn thành cam kết', escalateDispute: true },
     );
     expect(result.sampleRequestsBlocked).toBe(false);
     const update = prisma.collaboratorProfile.update.mock.calls[0][0].data;
     expect(update).not.toHaveProperty('sampleRequestsBlockedAt');
     expect(update).not.toHaveProperty('sampleRequestsBlockReason');
+  });
+
+  describe('store staff access', () => {
+    beforeEach(() => {
+      prisma.store.findUnique.mockResolvedValue({
+        id: storeId,
+        ownerId: shopOwnerId,
+      });
+      prisma.exclusiveDealProposal.findUnique.mockResolvedValue({
+        id: proposalId,
+        storeId,
+        collaboratorId,
+      });
+      prisma.exclusiveDealProposal.findMany = jest.fn().mockResolvedValue([]);
+    });
+
+    it('allows assigned staff to read progress without pretending to be the owner', async () => {
+      await expect(
+        service.getProgress(proposalId, 'staff', 'SHOP_MANAGER'),
+      ).resolves.toBeDefined();
+      expect(prisma.store.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: storeId,
+            OR: expect.arrayContaining([
+              {
+                staffMembers: {
+                  some: {
+                    id: 'staff',
+                    role: 'SHOP_MANAGER',
+                    isActive: true,
+                    isDeleted: false,
+                  },
+                },
+              },
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('rejects an unassigned manager before updating or creating a referral', async () => {
+      prisma.store.findFirst.mockResolvedValue(null);
+      await expect(
+        service.approveProposal(proposalId, 'stranger', 'SHOP_MANAGER'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.exclusiveDealProposal.updateMany).not.toHaveBeenCalled();
+      expect(referralLinksService.createReferralLink).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unrelated collaborator without querying manager membership', async () => {
+      await expect(
+        service.getProgress(proposalId, 'other-kol', 'COLLABORATOR'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.store.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('does not expose a soft-deleted store', async () => {
+      prisma.store.findUnique.mockResolvedValue({
+        id: storeId,
+        ownerId: shopOwnerId,
+        isDeleted: true,
+      });
+      await expect(
+        service.getProgress(proposalId, shopOwnerId, 'SHOP_MANAGER'),
+      ).rejects.toThrow('Không tìm thấy');
+    });
+
+    it('scopes the proposal list to the stores managed by the current user', async () => {
+      await service.getShopProposals('staff', 'SHOP_MANAGER');
+      expect(prisma.exclusiveDealProposal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            store: expect.objectContaining({
+              isDeleted: false,
+              OR: expect.any(Array),
+            }),
+          },
+        }),
+      );
+    });
+
+    it('does not reuse the active-partners cache after a store assignment is removed', async () => {
+      const cache: any = { get: jest.fn(), set: jest.fn() };
+      service = new AffiliateDealsService(
+        prisma,
+        chatGateway,
+        referralLinksService,
+        cache,
+      );
+      await service.getShopActivePartners('staff', 'SHOP_MANAGER');
+      prisma.store.findMany.mockResolvedValue([]);
+      await service.getShopActivePartners('staff', 'SHOP_MANAGER');
+      expect(cache.get.mock.calls[0][0]).not.toBe(cache.get.mock.calls[1][0]);
+      expect(
+        prisma.exclusiveDealProposal.findMany.mock.calls[1][0].where.storeId,
+      ).toEqual({ in: [] });
+    });
   });
 });

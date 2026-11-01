@@ -10,7 +10,10 @@ import {
   ChevronRight,
   ArrowRight,
   RefreshCw,
+  ShieldCheck,
+  Truck,
   MessageCircle,
+  Tag,
 } from 'lucide-react';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { useCart, type CartItem } from '@/context/CartContext';
@@ -23,7 +26,6 @@ import {
 import type { CheckoutShopGroup } from '@/components/checkout/CheckoutItemsSection';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { toast } from '@/utils/toast';
-import './CartPage.css';
 
 const isAvailable = (item: CartItem) => item.isActive && item.stockQuantity > 0;
 
@@ -83,6 +85,7 @@ export default function CartPage() {
   }, [appliedShopCoupons]);
 
   const platformDiscount = appliedPlatformCoupon ? appliedPlatformCoupon.discountAmount : 0;
+  const shippingDiscount = appliedShippingCoupon ? appliedShippingCoupon.discountAmount : 0;
   const estimatedTotal = Math.max(0, subtotal - totalShopDiscount - platformDiscount);
 
   const handleCheckout = () => {
@@ -102,111 +105,543 @@ export default function CartPage() {
   };
 
   return (
-    <div className="cart-page">
-      <PublicHeader cartPage sticky={false} />
-      <main className="cart-page__main">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+      {/* Top Header */}
+      <PublicHeader />
 
-        {cart.length === 0 ? (
-          <section className="cart-page__empty">
-            <ShoppingBag size={46} strokeWidth={1.4} />
-            <h2>Giỏ hàng của bạn đang trống</h2>
-            <p>Khám phá sản phẩm từ các gian hàng trên SCANMS.</p>
-            <Link className="cart-page__button cart-page__button--primary" to="/marketplace">Tiếp tục mua sắm <ArrowRight size={17} /></Link>
-          </section>
-        ) : (
-          <>
-            <div className="cart-page__table-head cart-page__columns" aria-hidden="true">
-              <label><input type="checkbox" checked={allSelected} onChange={event => toggleSelectAll(event.target.checked)} disabled={selectable.length === 0} tabIndex={-1} />Sản phẩm ({totalCount})</label>
-              <span>Đơn giá</span><span>Số lượng</span><span>Số tiền</span><span>Thao tác</span>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Breadcrumb & Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <nav className="flex items-center gap-2 text-xs text-[#7D715E] mb-1.5" aria-label="Breadcrumb">
+              <Link to="/marketplace" className="hover:text-[#B88E4F] transition-colors">Trang chủ</Link>
+              <span>/</span>
+              <span className="font-semibold text-[#1A1612]">Giỏ hàng</span>
+            </nav>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1A1612]">
+                Giỏ Hàng
+              </h1>
+              {totalCount > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
+                  {totalCount} sản phẩm
+                </span>
+              )}
             </div>
+          </div>
 
-            <div className="cart-page__shops">
+          {cart.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void refreshCartStock()}
+                disabled={isValidatingStock || isCartSyncing}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                <RefreshCw size={14} className={isValidatingStock || isCartSyncing ? 'animate-spin' : ''} />
+                <span>{isValidatingStock || isCartSyncing ? 'Đang kiểm tra tồn kho...' : 'Cập nhật giá & kho'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Freeship Alert Banner */}
+        {cart.length > 0 && (
+          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#EAE4D7] shadow-xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+              <Truck size={20} />
+            </div>
+            <div className="min-w-0 flex-1 text-xs">
+              <p className="font-bold text-[#1A1612] sm:text-sm">
+                Ưu đãi miễn phí vận chuyển toàn quốc từ SCANMS
+              </p>
+              <p className="text-[#7D715E] mt-0.5">
+                Nhấn vào <strong className="text-[#B88E4F] font-semibold">SCANMS Voucher</strong> ở thanh tóm tắt bên phải để áp dụng mã giảm cước vận chuyển GHN lên đến 30.000₫.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Cart Contents */}
+        {cart.length === 0 ? (
+          /* Empty Cart State */
+          <div className="bg-white rounded-3xl border border-[#EAE4D7] p-12 sm:p-16 text-center max-w-xl mx-auto shadow-xs my-8">
+            <div className="w-24 h-24 rounded-3xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <ShoppingBag size={44} strokeWidth={1.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#1A1612] mb-2">
+              Giỏ hàng của bạn đang trống
+            </h2>
+            <p className="text-sm text-[#7D715E] mb-8 leading-relaxed max-w-md mx-auto">
+              Không có sản phẩm nào trong giỏ hàng. Khám phá các sản phẩm chính hãng với ưu đãi hoa hồng & voucher tốt nhất ngay hôm nay!
+            </p>
+            <Link
+              to="/marketplace"
+              className="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm shadow-md transition-all active:scale-95"
+            >
+              <span>Khám phá Marketplace ngay</span>
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+        ) : (
+          /* Main 2-Column SCANMS E-Commerce Layout */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Product Table grouped by Shop (8 cols) */}
+            <div className="lg:col-span-8 space-y-4">
+              {/* Header Bar */}
+              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs hidden md:grid md:grid-cols-12 gap-4 items-center text-xs font-bold text-[#7D715E]">
+                <div className="col-span-6 flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer"
+                    checked={allSelected}
+                    disabled={!selectable.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selected.length > 0 && !allSelected;
+                    }}
+                    onChange={() => toggleSelectAll()}
+                  />
+                  <span>Sản phẩm ({cart.length})</span>
+                </div>
+                <div className="col-span-2 text-center">Đơn giá</div>
+                <div className="col-span-2 text-center">Số lượng</div>
+                <div className="col-span-2 text-right">Số tiền</div>
+              </div>
+
+              {/* Grouped by Store */}
               {groupedByStore.map((group) => {
-                const available = group.items.filter(isAvailable);
-                const groupSelected = available.filter(item => selectedItemIds.includes(item.cartItemId));
-                const groupAllSelected = available.length > 0 && groupSelected.length === available.length;
+                const groupSelected = group.items.filter(
+                  (item) => isAvailable(item) && selectedItemIds.includes(item.cartItemId),
+                );
                 const groupSubtotal = groupSelected.reduce((sum, item) => sum + item.price * item.quantity, 0);
                 const shopVoucher = appliedShopCoupons[group.storeId];
-                const shopUrl = `/shops/${encodeURIComponent(group.storeSlug || group.storeId)}`;
-                return (
-                  <section className="cart-page__shop" key={group.storeId} aria-label={`Gian hàng ${group.storeName}`}>
-                    <header className="cart-page__shop-heading">
-                      <input type="checkbox" aria-label={`Chọn gian hàng ${group.storeName}`} checked={groupAllSelected} disabled={available.length === 0}
-                        ref={node => { if (node) node.indeterminate = groupSelected.length > 0 && !groupAllSelected; }}
-                        onChange={() => toggleSelectStore(group.storeId)} />
-                      <Link to={shopUrl}><Store size={18} /><strong>{group.storeName}</strong><ChevronRight size={14} /></Link>
-                      <button type="button" className="cart-page__chat" onClick={() => openChat({ id: group.storeId, name: group.storeName })}><MessageCircle size={16} />Chat với shop</button>
-                    </header>
 
-                    {group.items.map(item => {
-                      const availableItem = isAvailable(item);
-                      return (
-                        <article className={`cart-page__item cart-page__columns${availableItem ? '' : ' cart-page__item--unavailable'}`} key={item.cartItemId}>
-                          <div className="cart-page__product">
-                            <input type="checkbox" aria-label={`Chọn ${item.title}`} checked={availableItem && selectedItemIds.includes(item.cartItemId)} disabled={!availableItem} onChange={() => toggleSelectItem(item.cartItemId)} />
-                            <Link to={`/products/${encodeURIComponent(item.productId)}`} className="cart-page__image" aria-label={`Xem ${item.title}`}>
-                              <img src={getSafeProductImageUrl(item.imageUrl)} alt={item.title} onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = getSafeProductImageUrl(); }} />
-                            </Link>
-                            <div className="cart-page__product-info">
-                              <Link className="cart-page__product-title" to={`/products/${encodeURIComponent(item.productId)}`}>{item.title}</Link>
-                              {(item.availableVariants?.length ?? 0) > 1 ? (
-                                <select aria-label={`Phân loại ${item.title}`} value={item.variantId || ''} onChange={event => updateVariant(item.cartItemId, event.target.value)}>
-                                  {item.availableVariants?.map(variant => <option key={variant.id} value={variant.id} disabled={variant.isActive === false || variant.stockQuantity <= 0}>{variant.name}{variant.stockQuantity <= 0 ? ' — Hết hàng' : ''}</option>)}
-                                </select>
-                              ) : item.variantName ? <span className="cart-page__variant">{item.variantName}</span> : null}
-                              {!availableItem && <span className="cart-page__stock">{item.isActive ? 'Hết hàng' : 'Ngừng kinh doanh'}</span>}
-                              {availableItem && item.quantity > item.stockQuantity && <span className="cart-page__stock">Chỉ còn {item.stockQuantity} sản phẩm</span>}
+                return (
+                  <div
+                    key={group.storeId}
+                    className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs overflow-hidden transition-all"
+                  >
+                    {/* Shop Header */}
+                    <div className="p-3.5 sm:p-4 border-b border-[#EAE4D7] bg-[#FAF8F5]/60 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer"
+                          checked={group.allSelected}
+                          disabled={!group.items.some(isAvailable)}
+                          ref={(el) => {
+                            if (el) el.indeterminate = group.someSelected;
+                          }}
+                          onChange={() => toggleSelectStore(group.storeId)}
+                        />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-7 h-7 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                            <Store size={15} />
+                          </span>
+                          <Link
+                            to={`/shops/${group.storeSlug || group.storeId}`}
+                            className="font-bold text-sm text-[#1A1612] hover:text-[#B88E4F] transition-colors truncate"
+                          >
+                            {group.storeName}
+                          </Link>
+                          <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                            Chính hãng
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {openChat && (
+                          <button
+                            type="button"
+                            onClick={() => openChat({ id: group.storeId, name: group.storeName })}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] transition-colors cursor-pointer"
+                          >
+                            <MessageCircle size={13} />
+                            <span>Chat ngay</span>
+                          </button>
+                        )}
+                        <Link
+                          to={`/shops/${group.storeSlug || group.storeId}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#EAE4D7] bg-white text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F] transition-colors"
+                        >
+                          <span>Xem Shop</span>
+                          <ChevronRight size={13} />
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Shop Products List */}
+                    <div className="divide-y divide-[#EAE4D7]">
+                      {group.items.map((item) => {
+                        const available = isAvailable(item);
+                        const isItemSelected = selectedItemIds.includes(item.cartItemId);
+                        const variants = item.availableVariants || [];
+
+                        return (
+                          <div
+                            key={item.cartItemId}
+                            className={`p-4 transition-colors ${!available ? 'opacity-50 bg-[#FAF8F5]' : ''}`}
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                              {/* Checkbox, Image, Title (Col 6) */}
+                              <div className="md:col-span-6 flex items-start gap-3 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 rounded accent-[#C59B58] cursor-pointer mt-3 shrink-0"
+                                  checked={isItemSelected && available}
+                                  disabled={!available}
+                                  onChange={() => toggleSelectItem(item.cartItemId)}
+                                />
+                                <Link
+                                  to={`/products/${item.productId}`}
+                                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-white border border-[#EAE4D7] p-1 shrink-0 overflow-hidden flex items-center justify-center hover:border-[#C59B58] transition-colors"
+                                >
+                                  <img
+                                    src={getSafeProductImageUrl(item.imageUrl, item.title)}
+                                    alt={item.title}
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      if (!e.currentTarget.dataset.fallback) {
+                                        e.currentTarget.dataset.fallback = 'true';
+                                        e.currentTarget.src = getSafeProductImageUrl(null, item.title);
+                                      }
+                                    }}
+                                  />
+                                </Link>
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="font-semibold text-xs sm:text-sm text-[#1A1612] line-clamp-2 leading-snug">
+                                    <Link
+                                      to={`/products/${item.productId}`}
+                                      className="hover:text-[#B88E4F] transition-colors"
+                                    >
+                                      {item.title}
+                                    </Link>
+                                  </h3>
+
+                                  {/* Variant info or selector */}
+                                  <div className="mt-1.5">
+                                    {variants.length > 1 ? (
+                                      <select
+                                        value={item.variantId || ''}
+                                        onChange={(e) => updateVariant(item.cartItemId, e.target.value)}
+                                        className="text-[11px] py-1 px-2 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#1A1612] max-w-full font-medium"
+                                      >
+                                        {!item.variantId && <option value="" disabled>Chọn biến thể</option>}
+                                        {variants.map((v) => (
+                                          <option
+                                            key={v.id}
+                                            value={v.id}
+                                            disabled={v.isActive === false || v.stockQuantity <= 0}
+                                          >
+                                            {v.name} {v.stockQuantity <= 0 ? '(Hết hàng)' : ''}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : item.variantName ? (
+                                      <span className="inline-block text-[11px] px-2 py-0.5 rounded bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
+                                        Phân loại: {item.variantName}
+                                      </span>
+                                    ) : null}
+                                  </div>
+
+                                  {!available && (
+                                    <p className="text-[11px] font-bold text-[#DC2626] mt-1">
+                                      {item.stockQuantity <= 0 ? 'Sản phẩm tạm hết hàng' : 'Sản phẩm đã ngừng kinh doanh'}
+                                    </p>
+                                  )}
+                                  {available && item.stockQuantity <= 3 && (
+                                    <p className="text-[11px] font-semibold text-[#B88E4F] mt-1">
+                                      Chỉ còn {item.stockQuantity} sản phẩm trong kho
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Price (Col 2) */}
+                              <div className="md:col-span-2 md:text-center flex md:block items-baseline justify-between">
+                                <span className="text-xs text-[#7D715E] md:hidden">Đơn giá:</span>
+                                <div>
+                                  <strong className="text-sm font-bold text-[#1A1612]">
+                                    {formatMoney(item.price)}
+                                  </strong>
+                                  {!!item.originalPrice && item.originalPrice > item.price && (
+                                    <del className="block text-[11px] text-[#7D715E] mt-0.5">
+                                      {formatMoney(item.originalPrice)}
+                                    </del>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quantity (Col 2) */}
+                              <div className="md:col-span-2 flex items-center md:justify-center justify-between">
+                                <span className="text-xs text-[#7D715E] md:hidden">Số lượng:</span>
+                                <div className="inline-flex items-center border border-[#EAE4D7] rounded-xl bg-white overflow-hidden shadow-2xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                                    disabled={!available || item.quantity <= 1}
+                                    className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
+                                    title="Giảm số lượng"
+                                  >
+                                    <Minus size={13} />
+                                  </button>
+                                  <span className="w-10 text-center text-xs font-bold text-[#1A1612] tabular-nums">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                                    disabled={!available || item.quantity >= item.stockQuantity}
+                                    className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] disabled:opacity-30 transition-colors cursor-pointer"
+                                    title="Tăng số lượng"
+                                  >
+                                    <Plus size={13} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Total & Action (Col 2) */}
+                              <div className="md:col-span-2 flex items-center justify-between md:justify-end gap-3">
+                                <span className="text-xs text-[#7D715E] md:hidden">Thành tiền:</span>
+                                <strong className="text-sm font-bold text-[#B88E4F] tabular-nums">
+                                  {formatMoney(item.price * item.quantity)}
+                                </strong>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(item.cartItemId)}
+                                  className="w-8 h-8 flex items-center justify-center text-[#7D715E] hover:text-[#DC2626] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Xóa sản phẩm"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                          <div className="cart-page__price"><span>{formatMoney(item.price)}</span>{Number(item.originalPrice) > item.price && <del>{formatMoney(Number(item.originalPrice))}</del>}</div>
-                          <div className="cart-page__quantity">
-                            <button type="button" aria-label={`Giảm số lượng ${item.title}`} disabled={!availableItem || item.quantity <= 1 || isCartSyncing} onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}><Minus size={14} /></button>
-                            <span aria-label={`Số lượng ${item.title}`}>{item.quantity}</span>
-                            <button type="button" aria-label={`Tăng số lượng ${item.title}`} disabled={!availableItem || item.quantity >= item.stockQuantity || isCartSyncing} onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}><Plus size={14} /></button>
-                          </div>
-                          <strong className="cart-page__line-total">{formatMoney(item.price * item.quantity)}</strong>
-                          <button type="button" className="cart-page__remove" aria-label={`Xóa ${item.title}`} onClick={() => removeItem(item.cartItemId)}><Trash2 size={17} /><span>Xóa</span></button>
-                        </article>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
 
-                    <footer className="cart-page__shop-footer">
-                      <button type="button" onClick={() => setIsVoucherModalOpen(true)}><Ticket size={17} />{shopVoucher ? `Voucher shop: ${shopVoucher.code}` : 'Chọn voucher của shop'}<ChevronRight size={14} /></button>
-                      <span>Tiền hàng đã chọn <strong>{formatMoney(groupSubtotal)}</strong></span>
-                    </footer>
-                  </section>
+                    {/* Shop Footer: Shop Voucher Row & Subtotal */}
+                    <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/80 border-t border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      {/* Shop Voucher Trigger */}
+                      <div
+                        onClick={() => setIsVoucherModalOpen(true)}
+                        className="flex items-center gap-2 cursor-pointer group"
+                      >
+                        <Ticket size={16} className="text-[#B88E4F]" />
+                        <span className="font-semibold text-[#1A1612]">Voucher của Shop:</span>
+                        {shopVoucher ? (
+                          <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold">
+                            {shopVoucher.code} (-{formatMoney(shopVoucher.discountAmount)})
+                          </span>
+                        ) : (
+                          <span className="text-[#B88E4F] group-hover:underline font-medium">
+                            Chọn hoặc nhập mã ưu đãi của Shop &gt;
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Store Subtotal */}
+                      {group.items.length > 0 && (
+                        <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
+                          <span className="text-[#7D715E]">Tiền hàng gian hàng đã chọn:</span>
+                          <strong className="text-sm font-bold text-[#1A1612] tabular-nums">
+                            {formatMoney(groupSubtotal)}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
+
+              {/* Bulk Actions Bar */}
+              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 shadow-xs flex items-center justify-between text-xs font-semibold">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded accent-[#C59B58]"
+                      checked={allSelected}
+                      disabled={!selectable.length}
+                      onChange={() => toggleSelectAll()}
+                    />
+                    <span>Chọn tất cả ({selectable.length})</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemoveSelected}
+                    disabled={selected.length === 0}
+                    className="text-[#7D715E] hover:text-[#DC2626] transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    Xóa các mục đã chọn
+                  </button>
+                </div>
+                <div className="text-[#7D715E]">
+                  Đã chọn <strong className="text-[#1A1612]">{selectedCount}</strong> sản phẩm
+                </div>
+              </div>
             </div>
 
-            <section className="cart-page__voucher" aria-label="Ưu đãi giỏ hàng">
-              <button type="button" className="cart-page__refresh" onClick={() => void refreshCartStock()} disabled={isValidatingStock || isCartSyncing}>
-                <RefreshCw size={15} className={isValidatingStock ? 'cart-page__spin' : ''} />{isValidatingStock ? 'Đang cập nhật…' : 'Cập nhật giá & kho'}
-              </button>
-              <div><Ticket size={21} /><strong>SCANMS Voucher</strong></div>
-              <button type="button" id="cart-scanms-voucher-btn" onClick={() => setIsVoucherModalOpen(true)}>Chọn hoặc nhập mã <ChevronRight size={16} /></button>
-              {(totalShopDiscount > 0 || platformDiscount > 0 || appliedShippingCoupon) && <p>
-                {totalShopDiscount > 0 && <span>Voucher shop: −{formatMoney(totalShopDiscount)}</span>}
-                {platformDiscount > 0 && <span>Voucher sàn: −{formatMoney(platformDiscount)}</span>}
-                {appliedShippingCoupon && <span>Mã vận chuyển: {appliedShippingCoupon.code}</span>}
-              </p>}
-            </section>
+            {/* Right Column: Sticky Summary & SCANMS Voucher Card (4 cols) */}
+            <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
+              {/* SCANMS Voucher Trigger Card (3 Tầng Ưu Đãi) */}
+              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 sm:p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
+                      <Ticket size={17} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-[#1A1612]">SCANMS Voucher</h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    id="cart-scanms-voucher-btn"
+                    onClick={() => setIsVoucherModalOpen(true)}
+                    className="text-xs font-bold text-[#B88E4F] hover:text-[#C59B58] transition-colors inline-flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>{appliedPlatformCoupon || appliedShippingCoupon || totalShopDiscount > 0 ? 'Đổi mã' : 'Chọn mã'}</span>
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
 
-            <section className="cart-page__checkout" aria-label="Tổng tiền và mua hàng">
-              <div className="cart-page__bulk">
-                <label><input type="checkbox" aria-label="Chọn tất cả sản phẩm" checked={allSelected} disabled={selectable.length === 0} onChange={event => toggleSelectAll(event.target.checked)}
-                  ref={node => { if (node) node.indeterminate = selected.length > 0 && !allSelected; }} />Chọn tất cả <span>({selectable.length})</span></label>
-                <button type="button" disabled={selected.length === 0} onClick={handleRemoveSelected}>Xóa đã chọn</button>
+                {/* Display Applied Vouchers Pill Tags */}
+                <div className="space-y-2 pt-2 border-t border-[#EAE4D7]">
+                  {/* Freeship */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#7D715E] flex items-center gap-1.5">
+                      <Truck size={13} className="text-[#B88E4F]" />
+                      <span>Mã Vận chuyển:</span>
+                    </span>
+                    {appliedShippingCoupon ? (
+                      <span className="font-bold text-[#059669] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {appliedShippingCoupon.code} (-{formatMoney(appliedShippingCoupon.discountAmount)})
+                      </span>
+                    ) : (
+                      <span className="text-[#7D715E] text-[11px]">Chưa áp dụng</span>
+                    )}
+                  </div>
+
+                  {/* Sàn */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#7D715E] flex items-center gap-1.5">
+                      <Tag size={13} className="text-[#B88E4F]" />
+                      <span>Mã giảm giá Sàn:</span>
+                    </span>
+                    {appliedPlatformCoupon ? (
+                      <span className="font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EEDFC6]">
+                        {appliedPlatformCoupon.code} (-{formatMoney(appliedPlatformCoupon.discountAmount)})
+                      </span>
+                    ) : (
+                      <span className="text-[#7D715E] text-[11px]">Chưa áp dụng</span>
+                    )}
+                  </div>
+
+                  {/* Shop */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#7D715E] flex items-center gap-1.5">
+                      <Store size={13} className="text-[#B88E4F]" />
+                      <span>Voucher Shop:</span>
+                    </span>
+                    {totalShopDiscount > 0 ? (
+                      <span className="font-bold text-[#B88E4F] bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EEDFC6]">
+                        -{formatMoney(totalShopDiscount)}
+                      </span>
+                    ) : (
+                      <span className="text-[#7D715E] text-[11px]">Chưa áp dụng</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="cart-page__checkout-total" aria-live="polite">
-                <span>Tổng tiền <span>({selectedCount} sản phẩm)</span><strong>{formatMoney(estimatedTotal)}</strong></span>
-                <small>{totalShopDiscount + platformDiscount > 0 ? `Đã giảm ${formatMoney(totalShopDiscount + platformDiscount)} · ` : ''}Chưa gồm phí vận chuyển</small>
+
+              {/* Order Summary & Checkout Card */}
+              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-5 sm:p-6 shadow-xs">
+                <h3 className="font-bold text-base text-[#1A1612] mb-4">
+                  Tóm tắt đơn hàng
+                </h3>
+
+                <div className="space-y-3 text-xs">
+                  <div className="flex items-center justify-between text-[#7D715E]">
+                    <span>Tổng tiền hàng ({selectedCount} món):</span>
+                    <strong className="text-sm font-semibold text-[#1A1612] tabular-nums">
+                      {formatMoney(subtotal)}
+                    </strong>
+                  </div>
+
+                  {totalShopDiscount > 0 && (
+                    <div className="flex items-center justify-between text-[#B88E4F]">
+                      <span>Giảm giá từ Shop:</span>
+                      <strong className="font-bold tabular-nums">
+                        -{formatMoney(totalShopDiscount)}
+                      </strong>
+                    </div>
+                  )}
+
+                  {platformDiscount > 0 && (
+                    <div className="flex items-center justify-between text-[#B88E4F]">
+                      <span>Mã giảm giá sàn SCANMS:</span>
+                      <strong className="font-bold tabular-nums">
+                        -{formatMoney(platformDiscount)}
+                      </strong>
+                    </div>
+                  )}
+
+                  {shippingDiscount > 0 && (
+                    <div className="flex items-center justify-between text-[#059669]">
+                      <span>Ước tính giảm phí vận chuyển:</span>
+                      <strong className="font-bold tabular-nums">
+                        -{formatMoney(shippingDiscount)}
+                      </strong>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-[#EAE4D7] flex items-baseline justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-[#1A1612] block">
+                        Tổng thanh toán (Tạm tính):
+                      </span>
+                      <span className="text-[10px] text-[#7D715E]">
+                        (Chưa gồm cước GHN thực tế)
+                      </span>
+                    </div>
+                    <strong className="text-2xl font-black text-[#B88E4F] tabular-nums tracking-tight">
+                      {formatMoney(estimatedTotal)}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Main Checkout Button */}
+                <button
+                  type="button"
+                  id="cart-checkout-btn"
+                  onClick={handleCheckout}
+                  disabled={selected.length === 0 || isValidatingStock || isCartSyncing}
+                  className="mt-6 w-full py-4 px-6 rounded-2xl bg-[#C59B58] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:border-[#EAE4D7] disabled:text-[#7D715E] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>Tiến hành Mua Hàng</span>
+                  {selectedCount > 0 && <span>({selectedCount})</span>}
+                  <ArrowRight size={18} />
+                </button>
+
+                {selected.length === 0 && (
+                  <p className="mt-2 text-center text-[11px] text-[#7D715E]">
+                    Vui lòng chọn ít nhất 1 sản phẩm để tiếp tục đặt hàng
+                  </p>
+                )}
+
+                {/* Trust & Guarantee Badge */}
+                <div className="mt-5 pt-4 border-t border-[#EAE4D7] flex items-center gap-2.5 text-[11px] text-[#7D715E]">
+                  <ShieldCheck size={18} className="text-[#B88E4F] shrink-0" />
+                  <span>
+                    Bảo đảm thanh toán an toàn 100% qua bảo chứng sàn SCANMS & Đổi trả dễ dàng trong 14 ngày.
+                  </span>
+                </div>
               </div>
-              <button type="button" id="cart-checkout-btn" className="cart-page__button cart-page__button--primary" disabled={selected.length === 0 || isValidatingStock || isCartSyncing} onClick={handleCheckout}>
-                {isValidatingStock || isCartSyncing ? 'Đang cập nhật…' : 'Mua hàng'}<ArrowRight size={17} />
-              </button>
-            </section>
-          </>
+            </div>
+          </div>
         )}
       </main>
 
@@ -216,7 +651,7 @@ export default function CartPage() {
         onClose={() => setIsVoucherModalOpen(false)}
         groups={itemsGroupedByShop}
         shippingFeesByStore={{}}
-        totalShippingFee={0}
+        totalShippingFee={30000} // Cước tạm tính giả định cho trang giỏ hàng
         rawGoodsSubtotal={subtotal}
         appliedShopCoupons={appliedShopCoupons}
         appliedPlatformCoupon={appliedPlatformCoupon}

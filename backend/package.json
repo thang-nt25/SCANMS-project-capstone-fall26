@@ -28,9 +28,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --forceExit --runInBand",
-    "redis:start": "powershell -WindowStyle Hidden -Command \"Start-Process -FilePath 'C:\\Users\\tuann\\AppData\\Local\\Microsoft\\WinGet\\Packages\\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\\Redis-8.10.1-Windows-x64-msys2\\redis-server.exe' -WorkingDirectory 'C:\\Users\\tuann\\AppData\\Local\\Microsoft\\WinGet\\Packages\\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\\Redis-8.10.1-Windows-x64-msys2' -WindowStyle Hidden\""
+    "redis:start": "powershell -WindowStyle Hidden -Command \"Start-Process -FilePath 'C:\\Users\\tuann\\AppData\\Local\\Microsoft\\WinGet\\Packages\\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\\Redis-8.10.1-Windows-x64-msys2\\redis-server.exe' -WorkingDirectory 'C:\\Users\\tuann\\AppData\\Local\\Microsoft\\WinGet\\Packages\\taizod1024.redis-windows-fork_Microsoft.Winget.Source_8wekyb3d8bbwe\\Redis-8.10.1-Windows-x64-msys2' -WindowStyle Hidden\"",
+    "semantic:prepare": "ts-node --transpile-only scripts/prepare-semantic-model.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",

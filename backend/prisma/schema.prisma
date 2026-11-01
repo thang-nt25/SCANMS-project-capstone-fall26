@@ -211,8 +211,24 @@ enum ReferralLinkStatus {
 
 enum ExclusiveDealStatus {
   PENDING
+  PENDING_ADMIN_APPROVAL
   APPROVED
   REJECTED
+}
+
+enum ExclusiveDealScope {
+  SINGLE_PRODUCT
+  SELECTED_PRODUCTS
+  STORE_WIDE
+}
+
+enum PricePromotionStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  REJECTED
+  EXPIRED
+  CANCELLED
 }
 
 enum StoreCollaboratorStatus {
@@ -325,6 +341,10 @@ model User {
   campaignParticipants      CampaignParticipant[]
   exclusiveDealProposals    ExclusiveDealProposal[]     @relation("ExclusiveDealCollaborator")
   reviewedExclusiveDeals    ExclusiveDealProposal[]     @relation("ExclusiveDealReviewer")
+  initiatedExclusiveDeals   ExclusiveDealProposal[]     @relation("ExclusiveDealInitiator")
+  exceptionApprovedDeals    ExclusiveDealProposal[]     @relation("ExclusiveDealExceptionReviewer")
+  requestedPricePromotions  ProductPricePromotion[]     @relation("PricePromotionRequester")
+  reviewedPricePromotions   ProductPricePromotion[]     @relation("PricePromotionReviewer")
   storeCollaborations       StoreCollaborator[]         @relation("CollaboratorStoreRelations")
   monthlyBonusResults       MonthlyBonusResult[]        @relation("CollaboratorMonthlyBonusResults")
   auditLogs                 AuditLog[]
@@ -430,6 +450,7 @@ model Store {
   financialLedgers       FinancialLedger[]
   payoutBatches          PayoutBatch[]
   exclusiveDealProposals ExclusiveDealProposal[]
+  pricePromotions ProductPricePromotion[]
   liveSessions          LiveShoppingSession[]
   sponsoredPlacements    SponsoredPlacement[]
 
@@ -585,6 +606,8 @@ model Product {
   imageUrl             String?   @map("image_url")
   originalPrice        Decimal?  @map("original_price") @db.Decimal(15, 2)
   price                Decimal   @db.Decimal(15, 2)
+  listPrice            Decimal?  @map("list_price") @db.Decimal(15, 2)
+  floorPrice           Decimal?  @map("floor_price") @db.Decimal(15, 2)
   customCommissionRate Decimal?  @default(10.00) @map("custom_commission_rate") @db.Decimal(5, 2)
   stockQuantity        Int       @default(0) @map("stock_quantity")
   isActive             Boolean   @default(true) @map("is_active")
@@ -622,6 +645,8 @@ model Product {
   customerWishlists      CustomerWishlist[]
   customerCartItems      CustomerCartItem[]
   exclusiveDealProposals ExclusiveDealProposal[]
+  dealResources          ExclusiveDealProduct[]
+  pricePromotions        ProductPricePromotion[]
   liveSessionProducts   LiveSessionProduct[]
 
   @@index([storeId], map: "idx_fk_products_store")
@@ -666,6 +691,8 @@ model ProductVariant {
   attributes         Json     @default("{}")
   imageUrl           String?  @map("image_url") @db.Text
   price              Decimal? @db.Decimal(15, 2)
+  listPrice          Decimal? @map("list_price") @db.Decimal(15, 2)
+  floorPrice         Decimal? @map("floor_price") @db.Decimal(15, 2)
   stockQuantity      Int      @default(0) @map("stock_quantity")
   isActive           Boolean  @default(true) @map("is_active")
   sampleEnabled      Boolean? @map("sample_enabled")
@@ -680,6 +707,7 @@ model ProductVariant {
   customerCartItems CustomerCartItem[]
   sampleRequests    SampleProductRequest[]
   liveSessionProducts LiveSessionProduct[]
+  pricePromotions ProductPricePromotion[]
 
   @@index([productId], map: "idx_fk_product_variants_product")
   @@map("product_variants")
@@ -933,6 +961,7 @@ model ReferralLink {
   orders              Order[]
   orderItems          OrderItem[]
   attributionSessions AttributionSession[]
+  dealResource        ExclusiveDealProduct?
 
   @@index([collaboratorId, createdAt(sort: Desc)], map: "idx_fk_ref_links_collab")
   @@index([storeId], map: "idx_fk_ref_links_store")
@@ -1072,6 +1101,16 @@ model ExclusiveDealProposal {
   storeId                String              @map("store_id") @db.Uuid
   productId              String              @map("product_id") @db.Uuid
   conversationId         String              @map("conversation_id") @db.Uuid
+  // Null for legacy/KOC proposals. A shop offer keeps its sender and immutable coupon terms.
+  initiatedById          String?             @map("initiated_by_id") @db.Uuid
+  offerTerms             Json?               @map("offer_terms") @db.JsonB
+  scopeType              ExclusiveDealScope  @default(SINGLE_PRODUCT) @map("scope_type")
+  scopeKey               String?             @map("scope_key") @db.VarChar(100)
+  targetRevenue          Decimal?            @map("target_revenue") @db.Decimal(15, 2)
+  recipientAcceptedAt    DateTime?           @map("recipient_accepted_at") @db.Timestamptz(6)
+  adminApprovedAt        DateTime?           @map("admin_approved_at") @db.Timestamptz(6)
+  adminApprovedById      String?             @map("admin_approved_by_id") @db.Uuid
+  exceptionNote          String?             @map("exception_note") @db.VarChar(1000)
   proposedCommissionRate Decimal             @map("proposed_commission_rate") @db.Decimal(5, 2)
   approvedCommissionRate Decimal?            @map("approved_commission_rate") @db.Decimal(5, 2)
   salesCommitment        String              @map("sales_commitment") @db.VarChar(1000)
@@ -1093,13 +1132,74 @@ model ExclusiveDealProposal {
   product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reviewer     User?         @relation("ExclusiveDealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  initiator    User?         @relation("ExclusiveDealInitiator", fields: [initiatedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
   referralLink ReferralLink?
+  scopeProducts ExclusiveDealProduct[]
+  exceptionReviewer User? @relation("ExclusiveDealExceptionReviewer", fields: [adminApprovedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([storeId, status, createdAt(sort: Desc)], map: "idx_exclusive_deal_store_status")
   @@index([collaboratorId, status], map: "idx_exclusive_deal_collaborator_status")
   @@index([productId], map: "idx_exclusive_deal_product")
   @@index([conversationId], map: "idx_exclusive_deal_conversation")
   @@map("exclusive_deal_proposals")
+}
+
+model ExclusiveDealProduct {
+  proposalId String @map("proposal_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  referralLinkId String? @unique @map("referral_link_id") @db.Uuid
+  proposal ExclusiveDealProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  referralLink ReferralLink? @relation(fields: [referralLinkId], references: [id], onDelete: SetNull)
+  @@id([proposalId, productId])
+  @@index([productId])
+  @@map("exclusive_deal_products")
+}
+
+model ProductPricePromotion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  variantId String? @map("variant_id") @db.Uuid
+  requestedById String @map("requested_by_id") @db.Uuid
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  proposedPrice Decimal @map("proposed_price") @db.Decimal(15, 2)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  budgetTotal Decimal @map("budget_total") @db.Decimal(15, 2)
+  budgetUsed Decimal @default(0) @map("budget_used") @db.Decimal(15, 2)
+  reason String @db.VarChar(1000)
+  reviewNote String? @map("review_note") @db.VarChar(1000)
+  status PricePromotionStatus @default(PENDING)
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  activatedAt DateTime? @map("activated_at") @db.Timestamptz(6)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  requester User @relation("PricePromotionRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewer User? @relation("PricePromotionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  usages ProductPromotionUsage[]
+  @@index([status, startsAt, endsAt])
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([productId, variantId, status])
+  @@map("product_price_promotions")
+}
+
+model ProductPromotionUsage {
+  promotionId String @map("promotion_id") @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+  discountAmount Decimal @map("discount_amount") @db.Decimal(15, 2)
+  quantity Int
+  releasedAt DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  promotion ProductPricePromotion @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@id([promotionId, orderId])
+  @@index([orderId])
+  @@map("product_promotion_usages")
 }
 
 // ==========================================
@@ -1399,6 +1499,7 @@ model Order {
   attributionAdjustments AttributionAdjustment[]
   paymentTransactions    PaymentTransaction[]
   returnRequest          ReturnRequest?
+  promotionUsages        ProductPromotionUsage[]
 
   @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
   @@index([storeId], map: "idx_fk_orders_store")
@@ -1552,14 +1653,14 @@ model Commission {
 // ==========================================
 
 model Wallet {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  collaboratorId   String   @unique @map("collaborator_id") @db.Uuid
-  availableBalance Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
-  pendingBalance   Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
-  shoppingBalance  Decimal  @default(0.00) @map("shopping_balance") @db.Decimal(15, 2)
-  earningsReviewRequired Boolean @default(false) @map("earnings_review_required")
-  version          Int      @default(1)
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collaboratorId         String   @unique @map("collaborator_id") @db.Uuid
+  availableBalance       Decimal  @default(0.00) @map("available_balance") @db.Decimal(15, 2)
+  pendingBalance         Decimal  @default(0.00) @map("pending_balance") @db.Decimal(15, 2)
+  shoppingBalance        Decimal  @default(0.00) @map("shopping_balance") @db.Decimal(15, 2)
+  earningsReviewRequired Boolean  @default(false) @map("earnings_review_required")
+  version                Int      @default(1)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   collaborator     User              @relation(fields: [collaboratorId], references: [id], onDelete: Cascade, onUpdate: NoAction)

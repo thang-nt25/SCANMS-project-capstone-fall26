@@ -34,8 +34,11 @@ export class StoreCollaboratorsController {
 
   @Post('request')
   @Roles(UserRole.COLLABORATOR)
-  request(@Req() req: AuthenticatedRequest, @Body() dto: RequestStoreCooperationDto) {
-    return this.service.requestCooperation(req.user!.id, dto.storeId);
+  request(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: RequestStoreCooperationDto,
+  ) {
+    return this.service.requestCooperation(req.user!.id, dto.storeId, dto.note);
   }
 
   @Patch(':id/shop-approve')

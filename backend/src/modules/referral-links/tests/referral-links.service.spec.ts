@@ -752,7 +752,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
       expect(res.collaboratorId).toBe('collab-1');
     });
 
-    it('keeps an approved flat VIP rate of 25% and ignores an invalid legacy campaign', async () => {
+    it('caps an approved VIP entitlement at 25% and does not pay an invalid legacy campaign', async () => {
       prisma.referralLink.findUnique.mockResolvedValue({
         id: 'vip-link-1',
         shortCode: 'vip12345',
@@ -776,7 +776,7 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         },
         exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 25 },
       });
-
+      prisma.exclusiveDealProposal.findMany.mockResolvedValue([{ status: 'APPROVED', collaboratorId: 'collab-1', productId: 'prod-1', storeId: 'store-1', approvedCommissionRate: 25, scopeType: 'SINGLE_PRODUCT' }]);
       const result = await service.verifyAttributionForOrder({
         shortCode: 'vip12345',
         storeId: 'store-1',
@@ -810,10 +810,11 @@ describe('ReferralLinksService (FR-10 Unit Tests)', () => {
         campaign: null,
         exclusiveDeal: { status: 'APPROVED', approvedCommissionRate: 20 },
       });
-      prisma.exclusiveDealProposal.findFirst.mockResolvedValue({
+      prisma.exclusiveDealProposal.findMany.mockResolvedValue([{
+        collaboratorId: "collab-1", productId: "prod-1", storeId: "store-1", scopeType: "SINGLE_PRODUCT",
         status: 'APPROVED',
         approvedCommissionRate: 16,
-      });
+      }]);
 
       const result = await service.verifyAttributionForOrder({
         shortCode: 'vipold12',

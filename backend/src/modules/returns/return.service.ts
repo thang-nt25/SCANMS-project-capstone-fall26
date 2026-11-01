@@ -12,6 +12,7 @@ import { WalletsService } from '../wallets/wallets.service';
 import { CommissionRulesService } from '../commission-rules/commission-rules.service';
 import { timingSafeEqual } from 'crypto';
 import {
+  CommissionStatus,
   OrderStatus,
   Prisma,
   ReturnRequestStatus,
@@ -84,6 +85,26 @@ export class ReturnService {
     @Optional() private readonly walletsService?: WalletsService,
     private readonly commissionRulesService?: CommissionRulesService,
   ) {}
+
+  /** A confirmed internal-wallet refund and its income clawback share one DB transaction. */
+  private async reverseIncomeAfterRefund(tx: Prisma.TransactionClient, orderId: string) {
+    const commissions = await tx.commission.findMany({
+      where: { orderId, status: { in: [CommissionStatus.PENDING, CommissionStatus.APPROVED, CommissionStatus.PAID] } },
+      select: { id: true, collaboratorId: true, commissionAmount: true, status: true, storeWalletTracked: true, order: { select: { storeId: true } } },
+    });
+    for (const commission of commissions) {
+      if (commission.commissionAmount.greaterThan(0)) {
+        const reference = { id: commission.id, type: 'COMMISSION' };
+        const storeId = commission.storeWalletTracked ? commission.order.storeId : undefined;
+        if (commission.status === CommissionStatus.PENDING) {
+          await this.walletsService!.reversePendingBalance(tx, commission.collaboratorId, commission.commissionAmount, reference, storeId);
+        } else {
+          await this.walletsService!.reverseAvailableBalance(tx, commission.collaboratorId, commission.commissionAmount, reference, storeId);
+        }
+      }
+      await tx.commission.update({ where: { id: commission.id }, data: { status: CommissionStatus.REVERSED, reversedAt: new Date() } });
+    }
+  }
 
   private scope(
     userId: string,
@@ -934,6 +955,14 @@ export class ReturnService {
         inspectionCompletedAt: new Date(),
         resolution: input.resolution === 'REJECT' ? null : input.resolution,
       });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'LIABILITY_ASSESSED',
+          data: { liability: input.liability, resolution: input.resolution, notes: input.notes },
+        },
+      });
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         // Existing requests are order-wide. Amount is server-calculated, never accepted from the browser.
         const amount = detail.order.finalAmount.minus(
@@ -975,6 +1004,12 @@ export class ReturnService {
         });
 
         if (refundSucceeded) {
+          await this.reverseIncomeAfterRefund(tx, detail.orderId);
+          await tx.order.update({
+            where: { id: detail.orderId },
+            data: { refundedAmount: { increment: amount } },
+          });
+
 
           await this.move(
             tx,
@@ -1271,6 +1306,16 @@ export class ReturnService {
       });
       if (changed.count !== 1)
         throw new ConflictException('Khiếu nại đã được phân xử');
+      if (input.liability) {
+        await tx.returnEvent.create({
+          data: {
+            returnRequestId: detail.id,
+            actorId: adminId,
+            type: 'LIABILITY_ASSESSED',
+            data: { liability: input.liability, ruling: input.ruling, notes: input.notes, source: 'SYSTEM_MANAGER_ARBITRATION' },
+          },
+        });
+      }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         const amount = detail.order.finalAmount.minus(
           detail.order.refundedAmount,
@@ -1313,6 +1358,12 @@ export class ReturnService {
         });
 
         if (refundSucceeded) {
+          await this.reverseIncomeAfterRefund(tx, detail.orderId);
+          await tx.order.update({
+            where: { id: detail.orderId },
+            data: { refundedAmount: { increment: amount } },
+          });
+
 
           await this.move(
             tx,

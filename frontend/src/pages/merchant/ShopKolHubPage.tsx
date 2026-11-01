@@ -1,11 +1,11 @@
-import { InviteKolModal } from '../../components/affiliate/InviteKolModal';
-import { usePendingCooperation } from '../../hooks/usePendingCooperation';
-import './ShopKolHubPage.css';
+import { normalizePartnerTier } from '../../utils/partner-tier';
+import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
+import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
 import { SampleGhnEnvironmentPicker, SampleSandboxWaybills, SampleSandboxStatus, isSandboxShipment, sampleDisplayStatus } from '../../components/shipping/SampleGhnEnvironmentPicker';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Users,
   MessageSquare,
@@ -14,35 +14,41 @@ import {
   UserCheck,
   Search,
   ExternalLink,
+  TrendingUp,
   Award,
   Truck,
-  Handshake,
-  Sparkles,
   CheckCircle2,
   Clock,
   Video,
   Plus,
+  Copy,
   Check,
+  DollarSign,
   Share2,
+  ShoppingBag,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   UserPlus,
   Mail,
   X,
+  Crown,
+  Sparkles,
   ArrowUpRight,
   PackageCheck,
   RefreshCw,
   FileText,
+  Handshake,
+  Ticket,
 } from 'lucide-react';
 import api from '../../services/api';
+import { analyticsService, type ReferralOrderItem } from '../../services/analytics.service';
 import ChatBoxPage from '../chat/ChatBoxPage';
 import KolRecommendationPage from './KolRecommendationPage';
 import { toast } from '../../utils/toast';
 import { Select } from '../../components/ui/Select';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { PartnerPerformance } from '../../components/affiliate/PartnerPerformance';
 import SampleViolationAction from '../../components/affiliate/SampleViolationAction';
 import SampleDeadlineExtension from '../../components/affiliate/SampleDeadlineExtension';
 import ShopActiveDealsTab from '../../components/affiliate/ShopActiveDealsTab';
@@ -57,11 +63,27 @@ function formatConvTime(dateStr?: string | null) {
 }
 
 function getChatMessagePreview(messageText?: string, mediaName?: string): string {
-  if (!messageText) return mediaName ? `📎 ${mediaName}` : 'Bắt đầu cuộc trò chuyện...';
+  if (!messageText) return mediaName ? `📎 ${mediaName}` : '';
   try {
     const parsed = JSON.parse(messageText);
+    if (parsed.type === 'CAMPAIGN_INVITE') {
+      const bonus = parsed.bonusCommissionRate ? ` (+${parsed.bonusCommissionRate}%)` : '';
+      return `🎁 Thư mời chiến dịch VIP: ${parsed.campaignName || parsed.title || 'Chiến dịch'}${bonus}`;
+    }
+    if (parsed.type === 'CAMPAIGN_ACCEPTED') {
+      return `✅ Đã tham gia chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'CAMPAIGN_REJECTED') {
+      return `❌ Đã từ chối chiến dịch: ${parsed.campaignName || parsed.title || 'Chiến dịch'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL') {
+      return `🎟️ Đề xuất mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
+    if (parsed.type === 'COUPON_PROPOSAL_APPROVED') {
+      return `✅ Đã kích hoạt mã riêng: ${parsed.code || parsed.couponCode || 'Voucher VIP'}`;
+    }
     if (parsed.type === 'EXCLUSIVE_DEAL_PROPOSAL') {
-      return '🤝 Đề xuất deal độc quyền';
+      return `🤝 Đề xuất deal độc quyền: ${parsed.productTitle || 'Sản phẩm'}`;
     }
     if (parsed.type === 'EXCLUSIVE_DEAL_DECISION') {
       return parsed.status === 'APPROVED' ? '✅ Đã duyệt deal độc quyền' : '❌ Đã từ chối deal độc quyền';
@@ -109,6 +131,7 @@ export interface PartnerKol {
   }>;
   kycStatus?: 'VERIFIED' | 'PENDING' | 'UNVERIFIED';
   commissionRate?: number; // Custom % for this KOL
+  statsAvailable?: boolean;
   stats: {
     totalRevenue: number;
     totalOrders: number;
@@ -121,27 +144,6 @@ export interface PartnerKol {
   lastMessageTimestamp?: number;
   unreadCount?: number;
 }
-
-type PartnerTier = NonNullable<PartnerKol['tier']>;
-
-const normalizePartnerTier = (tier: unknown): PartnerTier | undefined => {
-  const tierName =
-    typeof tier === 'string'
-      ? tier
-      : tier && typeof tier === 'object' && 'name' in tier
-        ? String((tier as { name?: unknown }).name ?? '')
-        : '';
-  const normalized = tierName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase();
-
-  if (normalized.includes('DIAMOND') || normalized.includes('KIM CUONG')) return 'DIAMOND';
-  if (normalized.includes('GOLD') || normalized.includes('VANG')) return 'GOLD';
-  if (normalized.includes('SILVER') || normalized.includes('BAC')) return 'SILVER';
-  if (normalized.includes('BRONZE') || normalized.includes('DONG')) return 'BRONZE';
-  return undefined;
-};
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
   const p = (platform || '').toUpperCase();
@@ -176,8 +178,33 @@ export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platf
   return <ExternalLink className={className} />;
 }
 
-export const getKolAvatarSrc = (src?: string, _name?: string, _id?: string) => {
-  return src && !src.includes('placeholder') && !src.includes('default') && !src.endsWith('/null') && !src.endsWith('/undefined') ? src : '';
+export const getKolAvatarSrc = (src?: string, name?: string, id?: string) => {
+  if (src && !src.includes('placeholder') && !src.includes('default') && !src.endsWith('/null') && !src.endsWith('/undefined')) {
+    return src;
+  }
+  const normalized = (name || '').toLowerCase();
+  if (normalized.includes('thắng') || normalized.includes('thang')) return '/assets/kol-avatar-thang.jpg';
+  if (normalized.includes('linh')) return '/assets/kol-avatar-linh.jpg';
+  if (normalized.includes('nam')) return '/assets/kol-avatar-nam.jpg';
+  if (normalized.includes('nhật') || normalized.includes('nhat')) return '/assets/kol-avatar-nhat.jpg';
+  if (normalized.includes('hà') || normalized.includes('ha')) return '/assets/kol-avatar-ha.jpg';
+  if (normalized.includes('mai anh')) return '/assets/kol-avatar-maianh.jpg';
+  if (normalized.includes('tuấn') || normalized.includes('tuan')) return '/assets/kol-avatar-tuan.jpg';
+  if (normalized.includes('xinh') || normalized.includes('đẹp')) return '/assets/kol-avatar-depxinh.jpg';
+
+  const fallbacks = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+  ];
+  const str = id || name || 'KOL';
+  let sum = 0;
+  for (let i = 0; i < str.length; i++) sum += str.charCodeAt(i);
+  return fallbacks[sum % fallbacks.length] || fallbacks[0];
 };
 
 function KolAvatar({
@@ -196,12 +223,12 @@ function KolAvatar({
 
   return (
     <span className={`${className} relative inline-flex items-center justify-center overflow-hidden rounded-full bg-[#F3EFE6] text-[#B88E4F] font-bold border border-[#EEDFC6] shadow-2xs`}>
-      {resolvedSrc && failedSource !== resolvedSrc ? <img
-        src={resolvedSrc}
+      <img
+        src={failedSource === resolvedSrc ? getKolAvatarSrc('', name, id) : resolvedSrc}
         alt={name}
         className="h-full w-full object-cover"
         onError={() => setFailedSource(resolvedSrc)}
-      /> : name.split(/\s+/).filter(Boolean).slice(-2).map(part => part[0]).join('').toUpperCase()}
+      />
     </span>
   );
 }
@@ -267,20 +294,19 @@ export interface AffiliateOrderItem {
 
 export default function ShopKolHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const inviteFromSampleDeals = useRef(searchParams.get('action') === 'invite' && searchParams.get('from') === 'sample-deals');
   const kolParam = searchParams.get('kol');
   const tabParam = searchParams.get('tab') || 'messages';
   const modeParam = searchParams.get('mode'); // 'ai-matching' or null
 
-  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'ai-matching';
+  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching';
   const [kols, setKols] = useState<PartnerKol[]>([]);
+  const [allPlatformKols, setAllPlatformKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
   const [viewMode, setViewMode] = useState<'CRM' | 'LEADERBOARD' | 'ALL_DEALS'>(
     tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
   );
   const [activeTab, setActiveTab] = useState<'messages' | 'samples' | 'performance' | 'profile'>(
-    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as 'messages' | 'samples' | 'performance' | 'profile'
+    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as any
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -305,26 +331,22 @@ export default function ShopKolHubPage() {
 
   // Commission & Invite Modals
   const [showInviteModal, setShowInviteModal] = useState(false);
-  useEffect(() => {
-    if (searchParams.get('action') !== 'invite') return;
-    setShowInviteModal(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete('action');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-  const closeInviteModal = () => {
-    setShowInviteModal(false);
-    if (inviteFromSampleDeals.current) {
-      inviteFromSampleDeals.current = false;
-      navigate('/merchant/orders?tab=samples&section=deals', { replace: true });
-    }
-  };
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [workspaceError, setWorkspaceError] = useState('');
+  const [sharedShopLink, setSharedShopLink] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
   const [copyingLink, setCopyingLink] = useState(false);
   const [ownedStore, setOwnedStore] = useState<{ id: string; name: string } | null>(null);
-  const { counts: pendingCooperation, refresh: refreshPendingCooperation } = usePendingCooperation(ownedStore?.id);
 
+  const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
+  const [kolOrders, setKolOrders] = useState<ReferralOrderItem[]>([]);
+  const [kolPerformance, setKolPerformance] = useState<{ totalOrders: number; totalRevenue: number; accruedCommission: number } | null>(null);
+  const [performanceError, setPerformanceError] = useState('');
+  const [performancePage, setPerformancePage] = useState(1);
+  const [performancePages, setPerformancePages] = useState(0);
+  const [loadingKolOrders, setLoadingKolOrders] = useState(false);
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
@@ -337,7 +359,14 @@ export default function ShopKolHubPage() {
   const [directoryCreators, setDirectoryCreators] = useState<any[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
+  const [showVipCampaignModal, setShowVipCampaignModal] = useState(false);
 
+  useEffect(() => {
+    if (showInviteModal) {
+      setInviteError('');
+      setInviteSuccess('');
+    }
+  }, [showInviteModal]);
 
   // Click outside listener for KOL actions dropdown
   useEffect(() => {
@@ -359,7 +388,12 @@ export default function ShopKolHubPage() {
     if (kolParam && kolParam !== selectedKolId) {
       setSelectedKolId(kolParam);
     }
-    if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
+    if (tabParam === 'deals') {
+      setViewMode('ALL_DEALS');
+    } else if (tabParam === 'leaderboard') {
+      setViewMode('LEADERBOARD');
+    } else if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
+      setViewMode('CRM');
       setActiveTab(tabParam as any);
     }
   }, [kolParam, tabParam, modeParam]);
@@ -369,14 +403,13 @@ export default function ShopKolHubPage() {
   const loadBackendData = useCallback(async () => {
     const sequence = ++sampleLoadSequence.current;
     setLoadingBackendData(true);
-    setWorkspaceError('');
     try {
 // 1. Fetch conversations, sample requests, and store members in parallel
       const [sampleRes, statsRes, convsRes, membersRes]: [any, any, any, any] = await Promise.all([
-        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } }),
+        api.get('/sample-requests/shop', { headers: { 'x-skip-cache': 'true' } }).catch(() => []),
         api.get('/sample-requests/shop/stats', { headers: { 'x-skip-cache': 'true' } }).catch(() => null),
-        api.get('/chat/conversations', { headers: { 'x-skip-cache': '1' } }),
-        api.get('/store-collaborators/shop', { headers: { 'x-skip-cache': '1' } }),
+        api.get('/chat/conversations').catch(() => []),
+        api.get('/store-collaborators/shop').catch(() => ({})),
       ]);
 
       setSampleProgramStats(statsRes?.data || statsRes || null);
@@ -511,15 +544,63 @@ export default function ShopKolHubPage() {
             } : undefined,
             kycStatus: profile.kycStatus || undefined,
             commissionRate: undefined,
+            statsAvailable: Boolean(m.stats),
             stats: {
-              totalRevenue: 0,
-              totalOrders: 0,
+              totalRevenue: Number(m.stats?.totalRevenue ?? 0),
+              totalOrders: Number(m.stats?.totalOrders ?? 0),
               sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
               pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
-              completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+              completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[c.id]?.completed ?? 0),
             },
           });
         });
+      }
+
+      // 3. Load active verified creators from backend database
+      let dbKols: PartnerKol[] = [];
+      try {
+        const creatorsRes: any = await api.get('/chat/search-collaborators', { headers: { 'x-skip-cache': '1' } });
+        const creatorsData = creatorsRes?.data || creatorsRes;
+        if (Array.isArray(creatorsData) && creatorsData.length > 0) {
+          dbKols = creatorsData.map((c: any) => {
+            const profile = c.collaboratorProfile || {};
+            const channel = c.socialChannels?.[0];
+            return {
+              id: c.id,
+              fullName: c.fullName || 'Nhà Sáng Tạo SCANMS',
+              email: c.email || '',
+              phone: c.phoneNumber || '',
+              avatarUrl: profile.avatarUrl || c.avatarUrl || undefined,
+              tier: normalizePartnerTier(profile.tier),
+              handle: channel?.channelName ? `@${channel.channelName}` : undefined,
+              primaryChannel: channel
+                ? {
+                    platform: channel.platformName?.toUpperCase() as any,
+                    url: channel.channelUrl || '',
+                    followers: Number(channel.followerCount ?? profile.totalFollowers ?? 0),
+                  }
+                : undefined,
+              socialChannels: (c.socialChannels || []).map((sc: any) => ({
+                platform: sc.platformName?.toUpperCase() as any,
+                url: sc.channelUrl,
+                handle: `@${sc.channelName}`,
+                followers: Number(sc.followerCount ?? profile.totalFollowers ?? 0),
+                isVerified: sc.isVerified,
+              })),
+              kycStatus: profile.kycStatus || undefined,
+              commissionRate: undefined,
+              stats: {
+                totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+                totalOrders: Number(c.stats?.totalOrders ?? 0),
+                sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
+                pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
+                completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
+              },
+            };
+          });
+        }
+      } catch {
+        dbKols = [];
       }
 
       // 4. Load active conversations with collaborators (real chat history)
@@ -528,7 +609,7 @@ export default function ShopKolHubPage() {
 
       convsList.forEach((conv: any) => {
         const c = conv.collaborator;
-        if (!c || !c.id || c.role === 'CUSTOMER' || conv.customerId) return;
+        if (!c || !c.id) return;
         const profile = c.collaboratorProfile || {};
         const channel = c.socialChannels?.[0];
         const lastMsg = conv.chatMessages?.[0];
@@ -560,8 +641,8 @@ export default function ShopKolHubPage() {
           kycStatus: profile.kycStatus || undefined,
           commissionRate: undefined,
           stats: {
-            totalRevenue: 0,
-            totalOrders: 0,
+            totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+            totalOrders: Number(c.stats?.totalOrders ?? 0),
             sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
             pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
             completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -575,40 +656,43 @@ export default function ShopKolHubPage() {
 
       // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
       const mergedMap = new Map<string, PartnerKol>();
-      convKols.forEach((k) => mergedMap.set(k.id, k));
+      const measuredMembers = new Map(backendKols.map(member => [member.id, member]));
+      // Active Inbox: Only creators with real messages or active pending requests
+      convKols.forEach((k) => {
+        if ((k.lastMessageTimestamp ?? 0) > 0 || (k.lastMessage && k.lastMessage.trim().length > 0)) {
+          mergedMap.set(k.id, k);
+        }
+      });
 
       requestKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
-          mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-            phone: existing.phone || k.phone,
-          });
+        if (k.stats.pendingSamplesCount > 0 || k.stats.sampleRequestsCount > 0) {
+          if (!mergedMap.has(k.id)) {
+            mergedMap.set(k.id, k);
+          } else {
+            const existing = mergedMap.get(k.id)!;
+            mergedMap.set(k.id, {
+              ...existing,
+              stats: { ...existing.stats, ...k.stats },
+              phone: existing.phone || k.phone,
+            });
+          }
         }
       });
 
-      backendKols.forEach((k) => {
-        if (!mergedMap.has(k.id)) {
-          mergedMap.set(k.id, k);
-        } else {
-          const existing = mergedMap.get(k.id)!;
-          mergedMap.set(k.id, {
-            ...existing,
-            stats: { ...existing.stats, ...k.stats },
-          });
-        }
-      });
+      // Only include creators with real engagement (conversations, samples, or memberships).
+      // If a specific KOL was requested via URL, ensure they are in the list.
+      if (kolParam && !mergedMap.has(kolParam)) {
+        const found = dbKols.find(k => k.id === kolParam);
+        if (found) mergedMap.set(found.id, found);
+      }
 
       // Sort with latest message / interaction first
-      if (sequence !== sampleLoadSequence.current) return;
-      const allKols = Array.from(mergedMap.values()).sort((a, b) => {
+      const allKols = Array.from(mergedMap.values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })).sort((a, b) => {
         return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
       });
 
       setKols(allKols);
+      setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {
         if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
@@ -621,7 +705,9 @@ export default function ShopKolHubPage() {
       }
     } catch {
 if (sequence !== sampleLoadSequence.current) return;
-      setWorkspaceError('Không tải được dữ liệu hợp tác mới nhất. Vui lòng thử lại.');
+      setKols([]);
+      setSamplesMap({});
+      setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
       if (sequence === sampleLoadSequence.current) setLoadingBackendData(false);
@@ -647,6 +733,36 @@ if (sequence !== sampleLoadSequence.current) return;
   const selectedKol = useMemo(() => {
     return kols.find((k) => k.id === selectedKolId) || kols[0] || null;
   }, [kols, selectedKolId]);
+
+  useEffect(() => {
+    let active = true;
+    setKolOrders([]);
+    setKolPerformance(null);
+    setPerformanceError('');
+    if (activeTab === 'performance' && selectedKol?.id) {
+      setLoadingKolOrders(true);
+      analyticsService
+        .getShopKolOrders(selectedKol.id, { limit: 20, page: performancePage, period: performanceRange }, true)
+        .then((res) => {
+          if (!active) return;
+          if (!res?.summary) throw new Error('Chưa tải được số liệu tổng hợp.');
+          setKolOrders(res?.items || []);
+          setKolPerformance(res.summary);
+          setPerformancePages(res.totalPages || 0);
+        })
+        .catch((err) => {
+          if (!active) return;
+          setPerformanceError(err?.message || 'Không tải được hiệu suất KOC.');
+          setKolOrders([]);
+        })
+        .finally(() => {
+          if (active) setLoadingKolOrders(false);
+        });
+    }
+    return () => { active = false; };
+  }, [activeTab, selectedKol?.id, performancePage, performanceRange]);
+
+  useEffect(() => { setPerformancePage(1); }, [selectedKol?.id, performanceRange]);
 
   // Multi-channel list for selected KOL
   const allChannels = useMemo(() => {
@@ -675,13 +791,12 @@ if (sequence !== sampleLoadSequence.current) return;
   // Filtered KOL List
   const filteredKols = useMemo(() => {
     return kols.filter((kol) => {
-      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
-      const q = normalize(searchQuery.trim());
+      const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
-        normalize(kol.fullName).includes(q) ||
-        normalize(kol.email).includes(q) ||
-        (kol.handle && normalize(kol.handle).includes(q));
+        kol.fullName.toLowerCase().includes(q) ||
+        kol.email.toLowerCase().includes(q) ||
+        (kol.handle && kol.handle.toLowerCase().includes(q));
 
       if (!matchSearch) return false;
 
@@ -694,8 +809,9 @@ return true;
   }, [kols, searchQuery, filterTag, samplesMap]);
 
   const sortedLeaderboardKols = useMemo(() => {
-    return [...kols].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
-  }, [kols]);
+    const source = allPlatformKols.length > 0 ? allPlatformKols : kols;
+    return [...source].sort((a, b) => (b.stats?.totalRevenue || 0) - (a.stats?.totalRevenue || 0));
+  }, [allPlatformKols, kols]);
 
   // Selected KOL Samples
   const currentKolSamples = useMemo(() => {
@@ -707,13 +823,16 @@ return true;
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
     const params = new URLSearchParams(searchParams);
-    const kolId = selectedKol?.id || selectedKolId;
-    if (kolId) params.set('kol', kolId);
-    else params.delete('kol');
-    params.set('tab', activeTab);
-    if (enabled) params.set('mode', 'ai-matching');
-    else params.delete('mode');
-    setSearchParams(params, { replace: !enabled });
+    if (enabled) {
+      params.set('tab', 'radar');
+      params.delete('mode');
+    } else {
+      if (params.get('tab') === 'radar') {
+        params.set('tab', 'messages');
+      }
+      params.delete('mode');
+    }
+    setSearchParams(params, { replace: true });
   };
 
   const handleSelectKol = (kolId: string) => {
@@ -737,7 +856,18 @@ return true;
   };
 
   // Handler: Change Tab
-  const handleTabChange = (tabId: 'messages' | 'samples' | 'performance' | 'profile') => {
+  const handleTabChange = (tabId: 'messages' | 'samples' | 'performance' | 'profile' | 'deals') => {
+    if (tabId === 'deals') {
+      setViewMode('ALL_DEALS');
+      setSearchParams(
+        {
+          tab: 'deals',
+        },
+        { replace: true }
+      );
+      return;
+    }
+    setViewMode('CRM');
     setActiveTab(tabId);
     setSearchParams(
       {
@@ -862,6 +992,34 @@ return true;
     await loadBackendData();
   };
 
+  // Handler: Send Kol Invitation
+  const handleInviteKol = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inviting) return;
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+    setInviteError('');
+    setInviteSuccess('');
+    setInviting(true);
+    try {
+      const response: any = await api.post('/store-collaborators/invite', {
+        email,
+        ...(ownedStore ? { storeId: ownedStore.id } : {}),
+      });
+      const result = response?.data || response;
+      if (!result?.invitation?.id) throw new Error('Máy chủ chưa xác nhận lời mời. Vui lòng thử lại.');
+      setInviteSuccess(`Đã gửi lời mời tới ${result.collaborator?.fullName || email}. Đang chờ KOL phản hồi trên SCANMS.`);
+      setInviteEmail('');
+      toast.success('Đã gửi lời mời hợp tác trên SCANMS.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không gửi được lời mời. Vui lòng thử lại.';
+      setInviteError(message);
+      toast.error(message);
+    } finally {
+      setInviting(false);
+    }
+  };
+
   // Copy Store Invite Link
   const handleCopyInviteLink = async () => {
     if (copyingLink) return;
@@ -872,13 +1030,14 @@ return true;
       const store = response?.data || response;
       if (!store?.slug) throw new Error('Gian hàng chưa có đường dẫn công khai để chia sẻ.');
       const link = new URL(`/shop/${encodeURIComponent(store.slug)}`, window.location.origin).href;
-      if (!navigator.clipboard?.writeText) throw new Error('Trình duyệt không hỗ trợ sao chép tự động. Hãy mở trang gian hàng để sao chép đường dẫn.');
+      setSharedShopLink(link);
+      if (!navigator.clipboard?.writeText) throw new Error('Trình duyệt không hỗ trợ sao chép tự động. Hãy chọn và chép liên kết bên dưới.');
       await navigator.clipboard.writeText(link);
       setCopiedLink(true);
       toast.success('Đã sao chép trang gian hàng trên SCANMS.');
       setTimeout(() => setCopiedLink(false), 2500);
     } catch (error) {
-      toast.error(error instanceof DOMException ? 'Trình duyệt chưa cho phép sao chép. Hãy mở trang gian hàng để sao chép đường dẫn.' : error instanceof Error ? error.message : 'Không sao chép được đường dẫn gian hàng.');
+      toast.error(error instanceof DOMException ? 'Trình duyệt chưa cho phép sao chép. Hãy chọn và chép liên kết bên dưới.' : error instanceof Error ? error.message : 'Không sao chép được. Bạn có thể chọn và chép liên kết bên dưới.');
     } finally {
       setCopyingLink(false);
     }
@@ -994,7 +1153,34 @@ return true;
     });
   }, [directoryCreators, discoverySearch, discoveryFilter, discoveryTier]);
 
-  const inviteModal = showInviteModal && <InviteKolModal onClose={closeInviteModal} store={ownedStore} />;
+  const inviteModal = showInviteModal && createPortal(
+    <div className="kol-invite-overlay fixed inset-0 z-[110] flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs" onClick={() => { if (!inviting) setShowInviteModal(false); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="invite-kol-title" className="kol-invite-dialog flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_24px_70px_rgba(35,29,21,0.18)]" onKeyDown={event => { if (event.key === 'Escape' && !inviting) setShowInviteModal(false); }} onClick={(event) => event.stopPropagation()}>
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[#EAE4D7] px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><UserPlus className="h-5 w-5" /></span>
+            <div><h3 id="invite-kol-title" className="text-base font-semibold text-[#1A1612]">Mời KOL hợp tác</h3><p className="mt-0.5 text-xs text-[#7D715E]">{ownedStore?.name || 'Kết nối đội ngũ nhà sáng tạo trên SCANMS'}</p></div>
+          </div>
+          <button type="button" disabled={inviting} onClick={() => setShowInviteModal(false)} aria-label="Đóng lời mời KOL" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#7D715E] transition hover:bg-[#FBF5EB] disabled:opacity-40"><X className="h-4 w-4" /></button>
+        </header>
+        <form onSubmit={handleInviteKol} className="min-h-0 overflow-y-auto px-5 py-5">
+          <p className="kol-invite-description mb-4 text-sm leading-relaxed text-[#7D715E]">Gửi lời mời tới email tài khoản SCANMS của KOL/CTV.</p>
+          <label htmlFor="kol-invite-email" className="mb-1.5 block text-sm font-medium text-[#1A1612]">Email của KOL/CTV <span className="text-[#DC2626]">*</span></label>
+          <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B88E4F]" /><input id="kol-invite-email" type="email" required autoComplete="email" maxLength={254} disabled={inviting} placeholder="tenkol@example.com" value={inviteEmail} onChange={(event) => { setInviteEmail(event.target.value); setInviteError(''); setInviteSuccess(''); }} aria-invalid={!!inviteError} aria-describedby="kol-invite-help" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-white pl-10 pr-3 text-sm text-[#1A1612] outline-none transition placeholder:text-[#A79B89] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10 disabled:opacity-60" /></div>
+          <p id="kol-invite-help" className="mt-2 text-xs leading-relaxed text-[#7D715E]">Hợp tác được xác nhận khi KOL chấp nhận lời mời.</p>
+          {inviteError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{inviteError}</p>}
+          {inviteSuccess && <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><p>{inviteSuccess}</p></div>}
+          <button type="submit" disabled={inviting || !inviteEmail.trim()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C59B58] text-sm font-semibold text-[#231D15] transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50"><UserPlus className="h-4 w-4" />{inviting ? 'Đang gửi…' : 'Gửi lời mời hợp tác'}</button>
+          <details className="group mt-5 border-t border-[#EAE4D7] pt-4">
+            <summary className="flex items-center gap-2 list-none cursor-pointer py-1 text-xs text-[#7D715E] [&::-webkit-details-marker]:hidden hover:text-[#1A1612]"><Share2 className="h-3.5 w-3.5 text-[#B88E4F]" /><span>Chia sẻ gian hàng</span><span className="ml-auto text-sm text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+            <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Gửi trang shop để KOL tìm hiểu. Liên kết này không tạo lời mời hợp tác.</p>
+            <button type="button" disabled={copyingLink} onClick={handleCopyInviteLink} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] transition hover:bg-[#FBF5EB] disabled:opacity-50">{copiedLink ? <Check className="h-4 w-4 text-[#059669]" /> : <Copy className="h-4 w-4 text-[#B88E4F]" />}{copyingLink ? 'Đang lấy liên kết…' : copiedLink ? 'Đã sao chép' : 'Sao chép trang gian hàng'}</button>
+            {sharedShopLink && <input readOnly aria-label="Liên kết trang gian hàng" value={sharedShopLink} onFocus={(event) => event.target.select()} className="mt-2 h-9 w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs text-[#7D715E] outline-none" />}
+          </details>
+        </form>
+      </section>
+    </div>, document.body
+  );
 
   const discoveryModal = showDiscoveryModal && createPortal(
         <div
@@ -1221,10 +1407,6 @@ return true;
     return <div className="min-h-[420px] grid place-items-center text-sm text-[#7D715E]">Đang tải hồ sơ KOL…</div>;
   }
 
-  if (kols.length === 0 && !isAiMatchingMode && workspaceError) {
-    return <div role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-6 text-sm text-[#7D715E]">{workspaceError} <button type="button" onClick={() => void loadBackendData()} className="ml-2 underline">Thử lại</button></div>;
-  }
-
   if (kols.length === 0 && !isAiMatchingMode) {
     return (
       <div className="w-full min-h-[420px] bg-[#FAF8F5] rounded-2xl border border-[#EAE4D7] p-8 flex flex-col items-center justify-center text-center">
@@ -1247,7 +1429,6 @@ return true;
 
   return (
     <div className="w-full flex flex-col pb-4" id="shop-kol-hub-workspace">
-      {workspaceError && <div role="alert" className="mb-3 rounded-xl border border-[#EAE4D7] bg-white p-3 text-xs text-[#DC2626]">{workspaceError} <button type="button" onClick={() => void loadBackendData()} className="underline">Thử lại</button></div>}
       {/* Top Sub-Navigation Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3 shrink-0">
         <div className="inline-flex p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] gap-1">
@@ -1255,7 +1436,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('CRM');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'messages', kol: selectedKolId }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'CRM' && !isAiMatchingMode
@@ -1271,7 +1452,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('LEADERBOARD');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'leaderboard' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'LEADERBOARD' && !isAiMatchingMode
@@ -1287,7 +1468,7 @@ return true;
             type="button"
             onClick={() => {
               setViewMode('ALL_DEALS');
-              setAiMatchingMode(false);
+              setSearchParams({ tab: 'deals' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'ALL_DEALS' && !isAiMatchingMode
@@ -1297,6 +1478,21 @@ return true;
           >
             <Handshake size={13} className={viewMode === 'ALL_DEALS' && !isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
             <span>Thỏa thuận độc quyền</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchParams({ tab: 'radar' }, { replace: true });
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              isAiMatchingMode
+                ? 'bg-[#FBF5EB] text-[#8C6226] shadow-2xs border border-[#EEDFC6]'
+                : 'text-[#7D715E] hover:text-[#1A1612]'
+            }`}
+          >
+            <Sparkles size={13} className={isAiMatchingMode ? 'text-[#B88E4F]' : ''} />
+            <span>Gợi ý KOC (AI Radar)</span>
           </button>
         </div>
 
@@ -1311,15 +1507,14 @@ return true;
           </button>
           <button
             type="button"
-            onClick={() => setAiMatchingMode(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-white text-xs font-semibold text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
+            onClick={() => setShowVipCampaignModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
           >
-            <Search size={13} />
-            <span>Gợi ý KOL</span>
+            <Crown size={13} className="text-[#B88E4F]" />
+            <span>Đề xuất Deal VIP</span>
           </button>
         </div>
       </div>
-
 
       {/* Mode 1: AI Recommendation Mode */}
       {isAiMatchingMode ? (
@@ -1336,7 +1531,7 @@ return true;
               </div>
               <h2 className="text-sm font-bold text-[#1A1612]">Bảng xếp hạng nhà sáng tạo đối tác</h2>
             </div>
-            <span className="text-xs text-[#7D715E]">{kols.length} đối tác</span>
+            <span className="text-xs text-[#7D715E]">{sortedLeaderboardKols.length} hồ sơ · “—” khi chưa có thống kê tại Shop</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -1353,8 +1548,10 @@ return true;
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]">
-                {sortedLeaderboardKols.map((kol, idx) => {
+                {sortedLeaderboardKols.map((rawKol, idx) => {
                   const rank = idx + 1;
+                  const effectiveTier = normalizePartnerTier(rawKol.tier);
+                  const kol = { ...rawKol, tier: effectiveTier };
                   return (
                     <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
                       <td className="py-3 px-4 text-center font-bold">
@@ -1405,31 +1602,45 @@ return true;
                             ? 'bg-[#F1F3F5] text-[#5C6470] border-[#DCE0E5]'
                             : 'bg-[#F3EFE6] text-[#7D715E] border-[#EAE4D7]'
                         }`}>
-                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : 'Đồng'}
+                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : kol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-[#1A1612] tabular-nums">
-                        {kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫
+                        {kol.statsAvailable ? `${kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫` : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
-                        {kol.stats.totalOrders}
+                        {kol.statsAvailable ? kol.stats.totalOrders : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
                         {kol.stats.completedVideosCount}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectKol(kol.id);
-                            setViewMode('CRM');
-                            handleTabChange('messages');
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
-                        >
-                          <MessageSquare size={13} />
-                          <span>Nhắn tin</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectKol(kol.id);
+                              setViewMode('CRM');
+                              handleTabChange('messages');
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          >
+                            <MessageSquare size={13} className="text-[#C59B58]" />
+                            <span>Nhắn tin</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedKolId(kol.id);
+                              setShowInviteModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Thiết lập thỏa thuận thù lao độc quyền"
+                          >
+                            <Crown size={13} />
+                            <span>Deal VIP</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1439,7 +1650,7 @@ return true;
           </div>
         </div>
       ) : viewMode === 'ALL_DEALS' ? (
-        /* THỎA THUẬN ĐỘC QUYỀN TOÀN SHOP */
+        /* THỎA THUẬN ĐỘC QUYỀN TOÀN SHOP (TÍCH HỢP TOÀN DIỆN THỐNG NHẤT) */
         <div className="rounded-2xl border border-[#EAE4D7] bg-white overflow-hidden shadow-xs p-4 sm:p-6">
           <ShopActiveDealsTab
             onSelectKolForChat={(kolId) => {
@@ -1451,7 +1662,7 @@ return true;
         </div>
       ) : (
         /* KHÔNG GIAN 1-1 (CREATOR CRM VIEW) */
-        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col sm:flex-row h-[calc(100dvh-110px)] min-h-[520px] max-h-[960px]">
+        <div className="shop-kol-shell bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col sm:flex-row h-[calc(100dvh-155px)] min-h-[520px] max-h-[960px]">
           {/* LEFT COLUMN: KOL List & Filters */}
           <div
             className={`shop-kol-sidebar ${
@@ -1640,30 +1851,32 @@ return true;
                   </div>
 
                   {/* Filter Tabs Under Search */}
-                  <div className="kol-list-filters flex items-center gap-3 mt-2.5 pt-1 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setFilterTag('ALL')}
-                      className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
-                        filterTag === 'ALL'
-                          ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                          : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                      }`}
-                    >
-                      Tất cả
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterTag('PENDING_SAMPLE')}
-                      className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
-                        filterTag === 'PENDING_SAMPLE'
-                          ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
-                          : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
-                      }`}
-                    >
-                      <span>Mẫu mới</span>
-                      <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 animate-pulse" />
-                    </button>
+                  <div className="kol-list-filters flex items-center justify-between gap-1.5 mt-2.5 pt-1 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => { setViewMode('CRM'); setFilterTag('ALL'); }}
+                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
+                          filterTag === 'ALL'
+                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
+                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                        }`}
+                      >
+                        Tất cả
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setViewMode('CRM'); setFilterTag('PENDING_SAMPLE'); }}
+                        className={`font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 pb-1 text-xs relative ${
+                          filterTag === 'PENDING_SAMPLE'
+                            ? 'text-[#1A1612] font-black border-b-2 border-[#C59B58]'
+                            : 'border-b-2 border-transparent text-[#7D715E] hover:text-[#1A1612]'
+                        }`}
+                      >
+                        <span>Mẫu mới</span>
+                        <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-200 animate-pulse" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Global Discovery Tools */}
@@ -1885,6 +2098,7 @@ return true;
 
           {/* RIGHT COLUMN: Dedicated KOL Workspace */}
           <div className={`shop-kol-detail flex-1 flex flex-col min-w-0 bg-white${isDetailHeaderCompact ? ' is-header-compact' : ''}`}>
+            <StoreCooperationPanel mode="shop" />
             {!selectedKol ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF8F5]">
                 <div className="w-14 h-14 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center mb-3 shadow-2xs">
@@ -1924,28 +2138,70 @@ return true;
                       className="w-10 h-10 rounded-lg object-cover text-xs font-bold text-[#B88E4F]"
                     />
                   </button>
+                  <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-gradient-to-r from-[#C59B58] to-[#B88E4F] text-white shadow-2xs border border-white">
+                    {selectedKol.tier === 'DIAMOND' ? 'Kim cương' : selectedKol.tier === 'GOLD' ? 'Vàng' : selectedKol.tier === 'SILVER' ? 'Bạc' : selectedKol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
+                  </span>
                 </div>
 
                 <div className="kol-profile-copy min-w-0 flex flex-1 flex-col justify-center gap-1.5 [.is-header-compact_&]:gap-0">
-                  {/* Row 1: Full Name + Badges */}
-                  <div className="kol-profile-name-row flex flex-wrap items-center gap-2 min-w-0">
-                    <h2
-                      className="kol-profile-name min-w-0 [.is-header-compact_&]:text-[14px] [.is-header-compact_&]:leading-[22px]"
-                      title={selectedKol.fullName}
-                    >
-                      <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
-                        {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
-                      </button>
-                    </h2>
-                    <span className="kol-profile-tier">{selectedKol.tier === 'DIAMOND' ? 'Kim cương' : selectedKol.tier === 'GOLD' ? 'Vàng' : selectedKol.tier === 'SILVER' ? 'Bạc' : selectedKol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}</span>
+                  {/* Row 1: Full Name + Badges + Quick Smart Actions */}
+                  <div className="kol-profile-name-row flex flex-wrap items-center justify-between gap-2 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <h2
+                        className="kol-profile-name min-w-0 [.is-header-compact_&]:text-[14px] [.is-header-compact_&]:leading-[22px]"
+                        title={selectedKol.fullName}
+                      >
+                        <button type="button" onClick={() => openKolProfile(selectedKol.id)} className="text-left hover:text-[#B88E4F] transition-colors">
+                          {selectedKol.fullName.replace(/\s*\([^)]*\)/g, '').trim() || selectedKol.fullName}
+                        </button>
+                      </h2>
 
-                    {selectedKol.kycStatus === 'VERIFIED' && (
-                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
-                        <CheckCircle2 className="w-3 h-3 text-[#059669]" />
-                        <span>Đã xác thực</span>
+                      {selectedKol.kycStatus === 'VERIFIED' && (
+                        <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-white text-[#7D715E] border border-[#EAE4D7] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
+                          <CheckCircle2 className="w-3 h-3 text-[#059669]" />
+                          <span>Đã xác thực</span>
+                        </span>
+                      )}
+
+                      <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
+                        <Crown className="w-2.5 h-2.5 text-[#B88E4F]" />
+                        <PartnerRemunerationSummary role="SHOP_MANAGER" storeId={ownedStore?.id} collaboratorId={selectedKol.id} tier={selectedKol.tier} />
                       </span>
-                    )}
+                    </div>
 
+                    {/* Quick Smart Actions on Header */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        id="btn-header-vip-invite"
+                        onClick={() => {
+                          setShowVipCampaignModal(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs"
+                        title="Đề nghị thỏa thuận VIP theo sản phẩm với KOC này"
+                      >
+                        <Crown className="w-3.5 h-3.5" />
+                        <span>Đề nghị VIP</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="btn-header-issue-voucher"
+                        onClick={() => {
+                          setViewMode('CRM');
+                          handleTabChange('messages');
+                          setTimeout(() => {
+                            const btn = document.getElementById('btn-composer-voucher');
+                            if (btn) btn.click();
+                          }, 50);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition cursor-pointer shadow-xs"
+                        title="Cấp hoặc tạo voucher riêng cho KOL này"
+                      >
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>Cấp Voucher Riêng</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Row 2: Multi-channel Social Stack (TikTok, YouTube, Facebook, Instagram with official brand logos) */}
@@ -1975,39 +2231,44 @@ return true;
                 </div>
               </div>
 
-              <span className="kol-profile-commission-note"><Sparkles size={13} aria-hidden="true" /><span>Hoa hồng theo sản phẩm & thỏa thuận</span></span>
             </div>
 
             {/* 2. Sub-Tabs Header (Compact SCANMS Style) */}
             <div className="shop-kol-tabs shrink-0 overflow-x-auto border-b border-[#EAE4D7] bg-white px-3 py-1.5 no-scrollbar [.is-header-compact_&]:py-[3px] [.is-header-compact_&_button]:min-h-[34px]">
-              <div className="grid w-full min-w-[460px] grid-cols-4 items-stretch gap-1.5">
+              <div className="grid w-full min-w-[500px] grid-cols-4 items-stretch gap-1.5">
                 <button
                   type="button"
                   id="tab-btn-messages"
                   aria-pressed={activeTab === 'messages'}
-                  onClick={() => handleTabChange('messages')}
+                  onClick={() => {
+                    setViewMode('CRM');
+                    handleTabChange('messages');
+                  }}
                   className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
-                    activeTab === 'messages'
+                    activeTab === 'messages' && viewMode === 'CRM'
                       ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
                       : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
-                  <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-                  <span>Tin nhắn & deal</span>
+                  <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'messages' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <span>Tin nhắn & đàm phán</span>
                 </button>
 
                 <button
                   type="button"
                   id="tab-btn-samples"
                   aria-pressed={activeTab === 'samples'}
-                  onClick={() => handleTabChange('samples')}
+                  onClick={() => {
+                    setViewMode('CRM');
+                    handleTabChange('samples');
+                  }}
                   className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
-                    activeTab === 'samples'
+                    activeTab === 'samples' && viewMode === 'CRM'
                       ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
                       : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
-                  <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <Package className={`w-3.5 h-3.5 ${activeTab === 'samples' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                   <span>Hàng mẫu</span>
                   {(samplesMap[selectedKol.id] || []).length > 0 && (
                     <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-black bg-[#C59B58] text-white inline-flex items-center justify-center shadow-2xs">
@@ -2020,32 +2281,36 @@ return true;
                   type="button"
                   id="tab-btn-performance"
                   aria-pressed={activeTab === 'performance'}
-                  onClick={() => handleTabChange('performance')}
+                  onClick={() => {
+                    setViewMode('CRM');
+                    handleTabChange('performance');
+                  }}
                   className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
-                    activeTab === 'performance'
+                    activeTab === 'performance' && viewMode === 'CRM'
                       ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
                       : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
-                  <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <BarChart3 className={`w-3.5 h-3.5 ${activeTab === 'performance' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                   <span>Hiệu suất</span>
                 </button>
 
                 <button
                   type="button"
                   id="tab-btn-profile"
-                  title={pendingCooperation[selectedKol.id] ? `${pendingCooperation[selectedKol.id]} yêu cầu hợp tác chờ duyệt` : 'Hồ sơ & kênh'}
                   aria-pressed={activeTab === 'profile'}
-                  onClick={() => handleTabChange('profile')}
+                  onClick={() => {
+                    setViewMode('CRM');
+                    handleTabChange('profile');
+                  }}
                   className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C59B58] ${
-                    activeTab === 'profile'
+                    activeTab === 'profile' && viewMode === 'CRM'
                       ? 'border-[#C59B58] text-[#1A1612] font-bold bg-[#FBF5EB]'
                       : 'border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
-                  <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                  <UserCheck className={`w-3.5 h-3.5 ${activeTab === 'profile' && viewMode === 'CRM' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
                   <span>Hồ sơ & kênh</span>
-                  {pendingCooperation[selectedKol.id] > 0 && <span className="kol-cooperation-badge" role="status" aria-label={`${pendingCooperation[selectedKol.id]} yêu cầu hợp tác chờ duyệt`}>{pendingCooperation[selectedKol.id]}</span>}
                 </button>
               </div>
 
@@ -2055,29 +2320,27 @@ return true;
 
             {/* 3. Sub-Tab Content Areas */}
             <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
-              {/* TAB 1: MESSAGES (Full height seamless embedded ChatBox) */}
-              {activeTab === 'messages' && (
-                <div className="h-full min-h-0 w-full overflow-hidden animate-in fade-in-50 duration-200">
-                  <div className="h-full min-h-0 overflow-hidden">
-                    <ChatBoxPage
-                      embedded
-                      targetCollaboratorId={selectedKol.id}
-                      targetCollaboratorName={selectedKol.fullName}
-                      targetCollaboratorAvatar={selectedKol.avatarUrl}
-                      hideSidebar
-                      hideHeaderInChat
-                      className="h-full w-full border-0 rounded-none shadow-none bg-white"
-                    />
+              {/* TAB 1: MESSAGES (Full height seamless embedded ChatBox with persistent DOM cache) */}
+                  <div className={`h-full min-h-0 w-full overflow-hidden ${activeTab === 'messages' ? 'block' : 'hidden'}`}>
+                    <div className="h-full min-h-0 overflow-hidden">
+                      <ChatBoxPage
+                        embedded
+                        targetCollaboratorId={selectedKol.id}
+                        targetCollaboratorName={selectedKol.fullName}
+                        targetCollaboratorAvatar={selectedKol.avatarUrl}
+                        hideSidebar
+                        hideHeaderInChat
+                        className="h-full w-full border-0 rounded-none shadow-none bg-white"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Các Tab còn lại: Có vùng cuộn độc lập bên trong */}
-              {activeTab !== 'messages' && (
-                <div onScroll={event => {
-                  const top = event.currentTarget.scrollTop;
-                  setIsDetailHeaderCompact(current => top > 100 ? true : top < 12 ? false : current);
-                }} className={`h-full w-full overflow-y-auto ${activeTab === 'samples' ? 'px-3 pb-4 pt-3 sm:px-4 sm:pt-3.5' : 'p-4 sm:p-6'} space-y-3`}>
+                  {/* Các Tab còn lại: Có vùng cuộn độc lập bên trong */}
+                  <div onScroll={event => {
+                    const top = event.currentTarget.scrollTop;
+                    setIsDetailHeaderCompact(current => top > 100 ? true : top < 12 ? false : current);
+                  }} className={`h-full w-full overflow-y-auto ${activeTab === 'samples' ? 'px-3 pb-4 pt-3 sm:px-4 sm:pt-3.5' : 'p-4 sm:p-6'} space-y-3 ${activeTab !== 'messages' ? 'block' : 'hidden'}`}>
+
                   {/* TAB 2: SAMPLE REQUESTS MANAGEMENT */}
                   {activeTab === 'samples' && (
                     <div className="animate-in fade-in-50 duration-200 space-y-3">
@@ -2454,16 +2717,359 @@ return true;
               )}
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
-              {activeTab === 'performance' && <PartnerPerformance
-                key={selectedKol.id} collaboratorId={selectedKol.id} storeId={ownedStore?.id}
-                name={selectedKol.fullName} onChat={() => handleTabChange('messages')} />}
+              {activeTab === 'performance' && (() => {
+                const displayRevenue = kolPerformance?.totalRevenue || 0;
+                const displayOrders = kolPerformance?.totalOrders || 0;
+                const displayCommission = kolPerformance?.accruedCommission || 0;
+                const displayAov = displayOrders > 0 ? Math.round(displayRevenue / displayOrders) : 0;
+                const hasOrders = displayOrders > 0;
+
+                const ordersList = kolOrders.map((ord: any) => ({
+                  id: ord.id,
+                  orderCode: ord.orderCode || ord.externalOrderSn || `#${ord.id?.slice(0, 8)}`,
+                  createdAt: ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit',
+                  }) : '—',
+                  customerName: ord.customerName || ord.customerPhoneMasked || 'Khách mua qua link',
+                  productTitle: ord.productTitle || (Array.isArray(ord.products) ? ord.products.map((p: any) => `${p.title} (x${p.quantity})`).join(', ') : 'Sản phẩm tiếp thị'),
+                  orderTotal: Number(ord.finalAmount || ord.orderTotal || 0),
+                  commissionEarned: Number(ord.commissionAmount || ord.commissionEarned || 0),
+                  status: ord.status,
+                }));
+
+                return (
+                  <div className="kol-performance animate-in fade-in-50 duration-200 space-y-4">
+                    {/* 1. Header Policy & Strategic Overview Bar */}
+                    <div className="kol-performance-heading rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FAF8F5] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-xs">
+                          <Award className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#B88E4F]">
+                              Hiệu suất tiếp thị liên kết
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-white px-2 py-0.5 text-[10px] font-bold text-[#B88E4F]">
+                              <Crown className="h-3 w-3" /> Hạng {selectedKol.tier || 'KOL VIP'}
+                            </span>
+                          </div>
+                          <h3 className="m-0 text-sm sm:text-base font-extrabold text-[#1A1612]">
+                            Báo cáo doanh số: {selectedKol.fullName}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+onClick={() => {
+                            setActiveTab('messages');
+                            setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
+                          }}
+                          className="flex items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2 text-xs font-bold text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer shadow-xs"
+                          title="Thương lượng tỷ lệ hoa hồng độc quyền hoặc tạo Deal riêng cho nhà sáng tạo này"
+                        >
+<Handshake className="h-3.5 w-3.5 text-[#B88E4F]" />
+                          <span>Thỏa thuận Deal độc quyền</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyInviteLink}
+                          className="flex items-center gap-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer shadow-xs"
+                        >
+                          {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                          <span>{copiedLink ? 'Đã chép link' : 'Sao chép link tiếp thị'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2. Range Filter & Realtime Indicator */}
+                    <div className="kol-performance-toolbar flex flex-wrap items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
+                        {[
+                          { key: '7d', label: '7 ngày qua' },
+                          { key: '30d', label: '30 ngày qua' },
+                          { key: 'month', label: 'Tháng này' },
+                          { key: 'all', label: 'Toàn thời gian' },
+                        ].map((tab) => (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            aria-pressed={performanceRange === tab.key}
+                            onClick={() => setPerformanceRange(tab.key as any)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                              performanceRange === tab.key
+                                ? 'bg-white text-[#1A1612] shadow-xs border border-[#EAE4D7]'
+                                : 'text-[#7D715E] hover:text-[#1A1612]'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          Theo kỳ báo cáo đã chọn
+                        </span>
+                      </div>
+                    </div>
+
+                    {performanceError && <p role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#DC2626]">{performanceError}</p>}
+                    {loadingKolOrders && <p role="status" className="text-sm text-[#7D715E]">Đang tải số liệu kỳ báo cáo…</p>}
+                    <div className="flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
+                    {/* Aggregates come from the API across every page in the period. */}
+                    <div style={{ display: !kolPerformance || loadingKolOrders ? 'none' : undefined }} className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      {/* Card 1: Doanh thu thuần */}
+                      <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
+                            Doanh số đơn đã giao
+                          </span>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
+                            <TrendingUp className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-black tracking-tight text-[#1A1612]">
+                          {displayRevenue.toLocaleString('vi-VN')} ₫
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1 text-[11px]">
+                          {hasOrders ? (
+                            <span className="font-medium text-[#7D715E]">
+                              Ghi nhận thực tế từ {displayOrders} đơn hàng
+                            </span>
+                          ) : (
+                            <span className="text-[#7D715E]">Chưa phát sinh doanh số trong kỳ</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card 2: Hoa hồng đã chi trả */}
+                      <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
+                            Hoa hồng đã ghi nhận
+                          </span>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
+                            <DollarSign className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-black tracking-tight text-[#B88E4F]">
+                          {displayCommission.toLocaleString('vi-VN')} ₫
+                        </div>
+                        <div className="mt-1.5 text-[11px] text-[#7D715E]">
+                          Gồm tiền chờ và đã đối soát; chưa đồng nghĩa đã rút tiền.
+                        </div>
+                      </div>
+
+                      {/* Card 3: Số đơn chốt thành công */}
+                      <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
+                            Số đơn chốt thành công
+                          </span>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
+                            <ShoppingBag className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-black tracking-tight text-[#1A1612]">
+                          {displayOrders} đơn
+                        </div>
+                        <div className="mt-1.5 text-[11px]">
+                          {hasOrders ? (
+                            <span className="font-semibold text-[#059669]">
+                              Đã giao/hoàn tất trong kỳ, tổng hợp đủ các trang.
+                            </span>
+                          ) : (
+                            <span className="text-[#7D715E]">Chờ đơn hàng chốt đầu tiên</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card 4: Giá trị trung bình đơn & Chuyển đổi */}
+                      <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
+                            Giá trị TB đơn (AOV)
+                          </span>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                            <ShoppingBag className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold font-mono tabular-nums tracking-tight text-[#1A1612]">
+                          {displayAov > 0 ? `${displayAov.toLocaleString('vi-VN')} ₫` : '0 ₫'}
+                        </div>
+                        <div className="mt-1.5 text-[11px] text-[#7D715E]">
+                          {hasOrders ? (
+                            <span>Doanh số TB trên mỗi đơn chốt</span>
+                          ) : (
+                            <span>Chưa có dữ liệu</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Trạng thái đối soát đơn hàng (100% Realtime Calculation) */}
+                    <div className="kol-performance-funnel rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 sm:p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#1A1612] flex items-center gap-1.5">
+                          <BarChart3 className="h-4 w-4 text-[#B88E4F]" />
+                          Trạng thái đơn trên trang này
+                        </span>
+                        <span className="text-[11px] text-[#7D715E]">{ordersList.length} đơn đang hiển thị</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">1. Đang xử lý</span>
+                          <strong data-order-status-count="pending" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(o.status)).length} đơn
+                          </strong>
+                          <span className="text-[10px] text-[#7D715E]">Chờ đóng gói & xuất kho</span>
+                        </div>
+                        <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">2. Đang vận chuyển</span>
+                          <strong className="text-lg font-black text-blue-700 mt-0.5 block">
+                            {ordersList.filter(o => o.status === 'SHIPPING').length} đơn
+                          </strong>
+                          <span className="text-[10px] text-blue-600 font-medium">Đang trên đường giao</span>
+                        </div>
+                        <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">3. Đã giao / Hoàn tất</span>
+                          <strong data-order-status-count="delivered" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['DELIVERED', 'COMPLETED'].includes(o.status)).length} đơn
+                          </strong>
+                          <span className="text-[10px] text-[#059669] font-medium">Đã giao tới khách</span>
+                        </div>
+                        <div className="rounded-xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-white p-3">
+                          <span className="block text-[10px] font-bold uppercase text-[#8F682E]">4. Hủy / Đổi trả</span>
+                          <strong data-order-status-count="returned" className="text-lg font-black text-[#B88E4F] mt-0.5 block">
+                            {ordersList.filter(o => ['CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'DISPUTED'].includes(o.status)).length} đơn
+                          </strong>
+                          <span className="text-[10px] text-[#B88E4F] font-bold">
+                            Gồm yêu cầu đang khiếu nại
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 5. Orders List Table or Empty State (Tone Sáng Tuyệt Đẹp) */}
+                    <div className="kol-performance-orders rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
+                      <div className="border-b border-[#EAE4D7] bg-[#FAF8F5]/60 px-4 py-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#1A1612] m-0">
+                            Đơn Hàng Gần Đây Qua Link Tiếp Thị
+                          </h4>
+                          <span className="rounded-full border border-[#EAE4D7] bg-white px-2 py-0.5 text-[10px] font-bold text-[#7D715E]">
+                            {ordersList.length} đơn
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-[#7D715E]">
+                          Đối soát hoa hồng tự động theo từng đơn hàng
+                        </span>
+                      </div>
+
+                      {loadingKolOrders ? (
+                        <div className="py-12 px-6 text-center bg-white flex items-center justify-center gap-2 text-xs font-semibold text-[#7D715E]">
+                          <RefreshCw className="w-4 h-4 animate-spin text-[#B88E4F]" />
+                          <span>Đang tải đơn hàng tiếp thị...</span>
+                        </div>
+                      ) : ordersList.length === 0 ? (
+                        <div className="py-12 px-6 text-center bg-white flex flex-col items-center justify-center">
+                          <div className="w-14 h-14 rounded-2xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-[#FAF8F5] text-[#B88E4F] flex items-center justify-center mb-3 shadow-xs">
+                            <ShoppingBag className="w-7 h-7" />
+                          </div>
+                          <h5 className="text-base font-extrabold text-[#1A1612] m-0">
+                            Chưa phát sinh đơn hàng qua link của {selectedKol.fullName}
+                          </h5>
+                          <p className="text-xs text-[#7D715E] max-w-lg mt-1.5 mb-5 leading-relaxed">
+                            Khi khách hàng hoàn tất mua sắm qua Affiliate Link hoặc giỏ hàng Livestream của nhà sáng tạo này, toàn bộ đơn hàng và hoa hồng đối soát sẽ tự động cập nhật thời gian thực tại đây.
+                          </p>
+                          <div className="flex flex-wrap items-center justify-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={handleCopyInviteLink}
+                              className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] px-4 py-2 text-xs font-bold text-[#8F682E] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Sao chép link tiếp thị</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+setActiveTab('messages');
+                                setSearchParams({ kol: selectedKol.id, tab: 'messages' }, { replace: true });
+                              }}
+                              className="rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] px-4 py-2 text-xs font-bold text-[#1A1612] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+<MessageSquare className="w-3.5 h-3.5 text-[#B88E4F]" />
+                              <span>Gửi tin nhắn thương lượng deal</span>
+                            </button>
+
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-[#FAF8F5] text-[#7D715E] font-bold border-b border-[#EAE4D7]">
+                              <tr>
+                                <th className="p-3.5">Mã đơn</th>
+                                <th className="p-3.5">Thời gian</th>
+                                <th className="p-3.5">Khách hàng</th>
+                                <th className="p-3.5">Sản phẩm tiếp thị</th>
+                                <th className="p-3.5">Giá trị đơn</th>
+                                <th className="p-3.5">Hoa hồng đã ghi nhận</th>
+                                <th className="p-3.5">Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#EAE4D7]">
+                              {ordersList.map((ord) => (
+                                <tr key={ord.id} className="hover:bg-[#FAF8F5]/70 transition">
+                                  <td className="p-3.5 font-mono font-bold text-[#1A1612]">{ord.orderCode}</td>
+                                  <td className="p-3.5 text-[#7D715E] whitespace-nowrap">{ord.createdAt}</td>
+                                  <td className="p-3.5 font-medium text-[#1A1612]">{ord.customerName}</td>
+                                  <td className="p-3.5 font-semibold text-[#1A1612]">{ord.productTitle}</td>
+                                  <td className="p-3.5 font-black text-[#1A1612]">
+                                    {(ord.orderTotal || 0).toLocaleString('vi-VN')} ₫
+                                  </td>
+                                  <td className="p-3.5 font-black text-[#B88E4F]">
+                                    +{(ord.commissionEarned || 0).toLocaleString('vi-VN')} ₫
+                                  </td>
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                                        ord.status === 'DELIVERED'
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                          : ord.status === 'SHIPPING'
+                                          ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                                      }`}
+                                    >
+                                      {ord.status === 'DELIVERED'
+                                        ? '✓ Giao thành công'
+                                        : ord.status === 'SHIPPING'
+                                        ? '🚚 Đang giao'
+                                        : '⏳ Đang xử lý'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* TAB 4: PROFILE & SOCIAL CHANNELS */}
               {activeTab === 'profile' && (
                 <div className="kol-channel-profile animate-in fade-in-50 duration-200 space-y-5">
-                  <div className="kol-cooperation-request">
-                    <StoreCooperationPanel mode="shop" collaboratorId={selectedKol.id} onChanged={() => void refreshPendingCooperation()} />
-                  </div>
                   <div className="kol-channel-panel bg-white border border-[#EAE4D7] rounded-2xl p-6 shadow-xs space-y-6">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#1A1612] uppercase tracking-wider mb-3">
@@ -2578,11 +3184,10 @@ return true;
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </>
-    )}
-  </div>
+          </div>
+  </>
+)}
+</div>
 </div>
 )}
 
@@ -2674,6 +3279,17 @@ return true;
 
       {/* MODAL 4: Danh Bạ & Khám Phá Nhà Sáng Tạo (KOL/KOC) SCANMS */}
       {discoveryModal}
+
+      {showVipCampaignModal && (
+        <ExclusiveOfferModal
+          collaborator={selectedKol ? { id: selectedKol.id, fullName: selectedKol.fullName } : undefined}
+          onClose={() => setShowVipCampaignModal(false)}
+          onSuccess={() => {
+            setShowVipCampaignModal(false);
+            toast.success('Đã gửi đề nghị VIP, chờ KOC xác nhận.');
+          }}
+        />
+      )}
     </div>
   );
 }

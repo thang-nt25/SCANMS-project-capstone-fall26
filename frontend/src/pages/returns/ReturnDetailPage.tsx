@@ -16,6 +16,11 @@ import { getSafeProductImageUrl, handleProductImageError } from '../../utils/mar
 import './ReturnDetailPage.css';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
+const liabilityLabels: Record<string, string> = {
+  LOGISTICS_FAULT: 'GHN / vận chuyển',
+  SHOP_FAULT: 'Shop / hàng hóa',
+  CUSTOMER_REASON: 'Khách đổi ý',
+};
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
 
@@ -56,6 +61,7 @@ function ErrorText({ error }: { error: unknown }) {
 function CustomerActions({ request }: { request: ReturnDetail }) {
   const [searchParams] = useSearchParams();
   const mayDispute = canRequestReturnReview(request);
+  const liabilityEvent = [...request.events].reverse().find((event) => event.type === 'LIABILITY_ASSESSED');
   const [showDispute, setShowDispute] = useState(() => mayDispute && searchParams.get('dispute') === '1');
   const [carrierName, setCarrierName] = useState(request.customerShipment?.carrierName ?? '');
   const [trackingNumber, setTrackingNumber] = useState(request.customerShipment?.trackingNumber ?? '');
@@ -119,6 +125,8 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 
     {request.inspectionNotes && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra của Shop</h3>
+      {liabilityEvent?.data?.liability &&
+        <p className="mt-2 text-sm font-semibold">Trách nhiệm: {liabilityLabels[liabilityEvent.data.liability] || 'Chưa xác định'}</p>}
       <p className="mt-2 whitespace-pre-wrap text-sm">{request.inspectionNotes}</p>
     </section>}
 
@@ -164,6 +172,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
   });
   const [editingWarehouse, setEditingWarehouse] = useState(!request.returnWarehouse);
   const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>('REFUND');
+  const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('LOGISTICS_FAULT');
   const [notes, setNotes] = useState('');
   const [carrierName, setCarrierName] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -250,7 +259,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       </button><ErrorText error={startAction.error} />
     </div>}
     {request.status === 'INSPECTING' && <form
-      onSubmit={(event) => void submit(event, inspectAction, { resolution, notes: notes.trim() })}
+      onSubmit={(event) => void submit(event, inspectAction, { resolution, liability, notes: notes.trim() })}
       className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra</h3>
       <select value={resolution} onChange={(event) => setResolution(event.target.value as typeof resolution)} className={field}>
@@ -258,9 +267,15 @@ function ShopActions({ request }: { request: ReturnDetail }) {
         <option value="EXCHANGE">Chấp nhận đổi sản phẩm</option>
         <option value="REJECT">Từ chối sau kiểm tra</option>
       </select>
+      <label className="block text-sm font-semibold">Bên chịu trách nhiệm</label>
+      <select value={liability} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
+        <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+        <option value="SHOP_FAULT">Shop / hàng hóa</option>
+        <option value="CUSTOMER_REASON">Khách đổi ý</option>
+      </select>
       <textarea required minLength={10} maxLength={2000} rows={4} value={notes}
         onChange={(event) => setNotes(event.target.value)} placeholder="Nêu tình trạng hàng và căn cứ quyết định" className={field} />
-      <p className="text-xs text-[#7D715E]">Chọn hoàn tiền chỉ tạo hồ sơ chờ thanh toán, không tự chuyển tiền.</p>
+      <p className="text-xs text-[#7D715E]">Hoàn vào ví khi chuyển tiền nội bộ thành công; nếu chưa thể chuyển, hồ sơ tiếp tục chờ đối soát.</p>
       <button disabled={inspectAction.isPending} className={primary}>Lưu kết quả kiểm tra</button>
       <ErrorText error={inspectAction.error} />
     </form>}

@@ -9,7 +9,11 @@ import { CreateMediaDto } from './dto/create-media.dto';
 import { QueryMediaDto } from './dto/query-media.dto';
 import { ReviewMediaDto, ReviewActionStatus } from './dto/review-media.dto';
 import { UserRole } from '@prisma/client';
-import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
+import {
+  CacheService,
+  NOOP_CACHE_SERVICE,
+} from '../../core/cache/cache.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class MediaService {
@@ -52,16 +56,12 @@ export class MediaService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const cacheKey = `media:list:${viewer.role}:${viewer.id}:${query.storeId || ''}:${query.productId || ''}:${query.assetType || ''}:${page}:${limit}`;
-    const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
-    if (cached) return cached;
-
     const where: any = {
       isDeleted: false,
     };
 
     if (viewer.role === UserRole.SHOP_MANAGER) {
-      where.store = { ownerId: viewer.id, isDeleted: false };
+      where.store = managedStoreWhere(viewer.id);
     } else if (viewer.role === UserRole.COLLABORATOR) {
       where.store = {
         isDeleted: false,
@@ -72,11 +72,30 @@ export class MediaService {
       };
       // KOL chỉ xem tài nguyên đã duyệt hoặc chính video mình đã nộp.
       where.OR = [{ status: 'APPROVED' }, { collaboratorId: viewer.id }];
+    } else if (
+      viewer.role !== UserRole.SYSTEM_ADMIN &&
+      viewer.role !== UserRole.SYSTEM_MANAGER
+    ) {
+      throw new ForbiddenException('Bạn không có quyền truy cập Media Hub');
     }
 
-    if (query.storeId) {
-      where.storeId = query.storeId;
-    }
+    // Re-evaluate membership before reading cached private media. Revoking an
+    // assignment or partnership must take effect without waiting for the TTL.
+    const stores = await this.prisma.store.findMany({
+      where: {
+        ...(where.store || { isDeleted: false }),
+        ...(query.storeId ? { id: query.storeId } : {}),
+      },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    const storeIds = stores.map((store) => store.id);
+    where.storeId = { in: storeIds };
+    const cacheKey = `media:list:v2:${JSON.stringify([viewer.role, viewer.id, storeIds, query.productId || null, query.assetType || null, page, limit])}`;
+    const cached = this.cacheService?.get
+      ? await this.cacheService.get<any>(cacheKey)
+      : null;
+    if (cached) return cached;
 
     if (query.scope === 'library' || query.scope === 'visual-library') {
       where.status = 'APPROVED';
@@ -158,8 +177,16 @@ export class MediaService {
         );
       }
     } else {
+      if (userRole !== UserRole.SHOP_MANAGER)
+        throw new ForbiddenException(
+          'Bạn không có quyền tạo tài nguyên của Shop',
+        );
       const store = await this.prisma.store.findFirst({
-        where: { ownerId: userId, isDeleted: false },
+        where: {
+          ...managedStoreWhere(userId),
+          ...(dto.storeId ? { id: dto.storeId } : {}),
+        },
+        orderBy: { createdAt: 'asc' },
       });
 
       if (!store) {
@@ -225,7 +252,13 @@ export class MediaService {
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||
       userRole === UserRole.SYSTEM_MANAGER;
-    const isStoreOwner = asset.store?.ownerId === userId;
+    const isStoreOwner =
+      userRole === UserRole.SHOP_MANAGER &&
+      (asset.store?.ownerId === userId ||
+        !!(await this.prisma.store.findFirst({
+          where: { ...managedStoreWhere(userId), id: asset.storeId },
+          select: { id: true },
+        })));
     const isOwnerCollaborator = asset.collaboratorId === userId;
 
     if (!isSystemAdminOrManager && !isStoreOwner && !isOwnerCollaborator) {
@@ -410,7 +443,14 @@ export class MediaService {
     if (
       reviewerRole !== 'SYSTEM_ADMIN' &&
       reviewerRole !== 'SYSTEM_MANAGER' &&
-      asset.store.ownerId !== reviewerId
+      !(
+        reviewerRole === UserRole.SHOP_MANAGER &&
+        (asset.store.ownerId === reviewerId ||
+          (await this.prisma.store.findFirst({
+            where: { ...managedStoreWhere(reviewerId), id: asset.storeId },
+            select: { id: true },
+          })))
+      )
     ) {
       throw new ForbiddenException(
         'Bạn chỉ có quyền kiểm duyệt media thuộc gian hàng do bạn sở hữu',

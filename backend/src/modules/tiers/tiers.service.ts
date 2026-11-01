@@ -13,8 +13,7 @@ import {
 import { Prisma, type CollaboratorTier } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { tierBonusByName } from '../commissions/commission-policy';
-import { cleanGoodsRevenue } from '../payouts/finance-revenue';
-import { isSelfReferral, requiresReferralReview } from '../commissions/self-referral';
+import { goodsDiscount } from '../coupons/voucher-pricing';
 
 @Injectable()
 export class TiersService implements OnApplicationBootstrap {
@@ -41,7 +40,7 @@ export class TiersService implements OnApplicationBootstrap {
     const year = vietnamTime.getUTCFullYear();
     const month = vietnamTime.getUTCMonth();
     return {
-      gte: new Date(0),
+      gte: new Date(Date.UTC(year, month - 1, 1) - 7 * 60 * 60 * 1000),
       lt: new Date(Date.UTC(year, month, 1) - 7 * 60 * 60 * 1000),
     };
   }
@@ -91,18 +90,15 @@ export class TiersService implements OnApplicationBootstrap {
     userId: string,
     period = this.previousMonthWindow(),
   ) {
-    let revenue = new Prisma.Decimal(0);
+    let revenue = 0;
     let orderCount = 0;
     let cursor: string | undefined;
     while (true) {
       const orders = await this.prisma.order.findMany({
         where: {
           attributedCollaboratorId: userId,
-          status: 'COMPLETED',
-          completedAt: period,
-          AND: [
-            { OR: [{ customerId: null }, { customerId: { not: userId } }] },
-          ],
+          status: { in: ['COMPLETED', 'DELIVERED'] },
+          createdAt: period,
         },
         select: {
           id: true,
@@ -111,28 +107,31 @@ export class TiersService implements OnApplicationBootstrap {
           couponDiscountAmount: true,
           finalAmount: true,
           refundedAmount: true,
-          customerId: true,
-          customerEmail: true,
-          customerPhone: true,
-          rawPayload: true,
-          attributedCollaborator: { select: { id: true, email: true, phoneNumber: true } },
         },
         orderBy: { id: 'asc' },
         take: 500,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
       for (const order of orders) {
-        if (isSelfReferral(order, order.attributedCollaborator) || requiresReferralReview(order)) continue;
+        const netGoods = Math.max(
+          0,
+          Number(order.subtotalAmount) - goodsDiscount(order),
+        );
+        const paid = Math.max(0, Number(order.finalAmount));
+        const refunded = Math.min(
+          paid,
+          Math.max(0, Number(order.refundedAmount || 0)),
+        );
         // Refund records contain an amount for the whole order, without a goods/shipping split.
         // Allocate a partial refund proportionally, as the commission refund flow does.
-        const netRevenue = cleanGoodsRevenue(order);
-        revenue = revenue.plus(netRevenue);
-        if (netRevenue.gt(0)) orderCount++;
+        const netRevenue = paid > 0 ? (netGoods * (paid - refunded)) / paid : 0;
+        revenue += netRevenue;
+        if (netRevenue > 0) orderCount++;
       }
       if (orders.length < 500) break;
       cursor = orders[orders.length - 1].id;
     }
-    return { revenue: revenue.toNumber(), orderCount };
+    return { revenue: Math.max(0, revenue), orderCount };
   }
 
   private qualifiedTier(tiers: CollaboratorTier[], revenue: number) {
@@ -143,15 +142,22 @@ export class TiersService implements OnApplicationBootstrap {
     );
   }
 
-  private unassignedCompletedOrdersCount(userId: string) {
-    return this.prisma.order.count({
-      where: {
-        attributedCollaboratorId: userId,
-        status: 'COMPLETED',
-        completedAt: null,
-        OR: [{ customerId: null }, { customerId: { not: userId } }],
-      },
-    });
+  getMaintenanceThreshold(tier: CollaboratorTier): number {
+    return Math.round(Number(tier.minRevenueThreshold) * 0.6);
+  }
+
+  getStepDownTier(
+    tiers: CollaboratorTier[],
+    currentTier: CollaboratorTier,
+  ): CollaboratorTier {
+    const sorted = [...tiers].sort(
+      (a, b) => Number(a.minRevenueThreshold) - Number(b.minRevenueThreshold),
+    );
+    const currentIndex = sorted.findIndex(
+      (t) => t.id === currentTier.id || t.name === currentTier.name,
+    );
+    if (currentIndex <= 0) return sorted[0];
+    return sorted[currentIndex - 1];
   }
 
   private async synchronizeTier(
@@ -169,7 +175,7 @@ export class TiersService implements OnApplicationBootstrap {
       month: '2-digit',
       year: 'numeric',
       timeZone: 'Asia/Ho_Chi_Minh',
-    }).format(new Date(period.lt.getTime() - 1));
+    }).format(period.gte);
     const promoted =
       profile.tier &&
       Number(matchedTier.minRevenueThreshold) >
@@ -179,15 +185,30 @@ export class TiersService implements OnApplicationBootstrap {
         where: { id: profile.id, tierId: profile.tier?.id || null },
         data: { tierId: matchedTier.id },
       });
-      if (!result.count) return false;
+      if (!result.count) {
+        const persisted = await tx.collaboratorProfile.findUnique({
+          where: { id: profile.id },
+          include: { tier: true },
+        });
+        if (
+          persisted?.tier &&
+          this.policyKey(persisted.tier) === this.policyKey(matchedTier)
+        )
+          return false;
+        throw new ConflictException(
+          'Cấp bậc vừa được cập nhật ở nơi khác. Vui lòng tải lại.',
+        );
+      }
       await tx.notification.create({
         data: {
           userId: profile.userId,
           type: 'TIER_UPDATED',
           title: promoted
             ? `Bạn đã lên hạng ${matchedTier.name}`
-            : `Cấp bậc được cập nhật: ${matchedTier.name}`,
-          message: `Doanh số sạch tích lũy đến hết tháng ${month} là ${revenue.toLocaleString('vi-VN')} đ. Cấp bậc ${matchedTier.name} áp dụng cho các đơn mới đủ điều kiện.`,
+            : `Cấp bậc chuyển tiếp Soft Landing: ${matchedTier.name}`,
+          message: promoted
+            ? `Chúc mừng! GMV hợp lệ tháng ${month} đạt ${revenue.toLocaleString('vi-VN')} đ, bạn đã thăng hạng ${matchedTier.name}. Thưởng thù lao cấp bậc áp dụng +${this.tierBonus(matchedTier)}%.`
+            : `Kỳ đánh giá tháng ${month}: Hệ thống đã áp dụng quy chế Soft Landing chuyển tiếp sang hạng ${matchedTier.name} (+${this.tierBonus(matchedTier)}% thù lao). Hãy tiếp tục tích lũy GMV để sớm lấy lại vị thế VIP.`,
           data: {
             actionUrl: '/collaborator/tiers',
             oldTier: profile.tier?.name || null,
@@ -206,7 +227,7 @@ export class TiersService implements OnApplicationBootstrap {
   }
 
   /**
-   * Xem cấp bậc hiện tại và tiến độ lên hạng của KOL
+   * Xem cấp bậc hiện tại và tiến độ lên hạng của KOL (Hỗ trợ Ngưỡng duy trì 60% & Ân hạn 30 ngày)
    */
   async getMyTierStatus(userId: string) {
     const profile = await this.prisma.collaboratorProfile.findUnique({
@@ -226,8 +247,6 @@ export class TiersService implements OnApplicationBootstrap {
     // Tính tổng doanh thu từ các đơn hàng thành công mà KOL này mang lại
     const period = this.previousMonthWindow();
     const sales = await this.previousMonthSales(userId, period);
-    const unassignedCompletedOrdersCount = await this.unassignedCompletedOrdersCount(userId);
-    const assessmentIncomplete = unassignedCompletedOrdersCount > 0;
     const vietnamMonth = new Date(period.lt.getTime() + 7 * 60 * 60 * 1000);
     const currentEvaluation = new Date(period.lt.getTime() + 15 * 60 * 1000);
     const nextEvaluationAt =
@@ -246,37 +265,44 @@ export class TiersService implements OnApplicationBootstrap {
     const currentRevenue = sales.revenue;
     const totalOrders = sales.orderCount;
 
-    // Repair a missed monthly run or a seeded rank in storage as well as in the
-    // response, so commission readers and the leaderboard use the same rank.
-    const qualifiedTier = this.qualifiedTier(tiers, currentRevenue);
-    let currentTier = profile.tier ?? tiers[0];
+    let currentTier = profile.tier || tiers[0];
+    if (!profile.tier) {
+      await this.synchronizeTier(profile, currentTier, currentRevenue, period);
+    }
+
+    // Kiểm tra thăng hạng nếu GMV đạt ngưỡng cao hơn
+    const higherTierCandidate = this.qualifiedTier(tiers, currentRevenue);
     if (
-      !assessmentIncomplete &&
-      (!profile.tier || this.policyKey(currentTier) !== this.policyKey(qualifiedTier))
+      Number(higherTierCandidate.minRevenueThreshold) >
+      Number(currentTier.minRevenueThreshold)
     ) {
-      const changed = await this.synchronizeTier(
+      await this.synchronizeTier(
         profile,
-        qualifiedTier,
+        higherTierCandidate,
         currentRevenue,
         period,
       );
-      if (changed) currentTier = qualifiedTier;
-      else {
-        const latest = await this.prisma.collaboratorProfile.findUnique({
-          where: { userId },
-          include: { tier: true },
-        });
-        if (
-          !latest?.tier ||
-          this.policyKey(latest.tier) !== this.policyKey(qualifiedTier)
-        ) {
-          throw new ConflictException(
-            'Cấp bậc đang được đồng bộ. Vui lòng tải lại sau ít giây.',
-          );
-        }
-        currentTier = latest.tier;
-      }
+      // A concurrent writer is accepted only when it selected the same policy.
+      currentTier = higherTierCandidate;
     }
+
+    const maintenanceThreshold = this.getMaintenanceThreshold(currentTier);
+    const isMaintained = currentRevenue >= maintenanceThreshold;
+    const revenueNeededToMaintain = Math.max(
+      0,
+      maintenanceThreshold - currentRevenue,
+    );
+    const maintenanceProgressPercentage =
+      maintenanceThreshold > 0
+        ? Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round((currentRevenue / maintenanceThreshold) * 100),
+            ),
+          )
+        : 100;
+
     const nextTier =
       tiers.find(
         (tier) =>
@@ -296,28 +322,42 @@ export class TiersService implements OnApplicationBootstrap {
       revenueNeeded = Math.max(0, nextThreshold - currentRevenue);
     }
 
+    const cycleStatus: 'PROMOTED_OR_EXCEEDED' | 'MAINTAINED' | 'GRACE_PERIOD' =
+      currentRevenue >= Number(currentTier.minRevenueThreshold)
+        ? 'PROMOTED_OR_EXCEEDED'
+        : isMaintained
+          ? 'MAINTAINED'
+          : 'GRACE_PERIOD';
+
+    const stepDownTier = this.getStepDownTier(tiers, currentTier);
+    const nowTime = Date.now();
+    const evalTime = nextEvaluationAt.getTime();
+    const daysRemaining = Math.max(
+      1,
+      Math.ceil((evalTime - nowTime) / (24 * 60 * 60 * 1000)),
+    );
+
     return {
       currentTier: {
         id: currentTier.id,
         name: currentTier.name,
         extraBonusPercentage: this.tierBonus(currentTier),
         minRevenueThreshold: Number(currentTier.minRevenueThreshold),
+        maintenanceThreshold,
       },
       currentRevenue,
       totalOrders,
-      assessmentIncomplete,
-      unassignedCompletedOrdersCount,
-      revenueBasis: 'CUMULATIVE_CLOSED_MONTHS_VIETNAM',
+      revenueBasis: 'PREVIOUS_MONTH_VIETNAM',
       assessmentPeriod: {
         startsAt: period.gte.toISOString(),
         endsAt: period.lt.toISOString(),
       },
       nextEvaluationAt: nextEvaluationAt.toISOString(),
       qualifiedTier: {
-        id: qualifiedTier.id,
-        name: qualifiedTier.name,
-        extraBonusPercentage: this.tierBonus(qualifiedTier),
-        minRevenueThreshold: Number(qualifiedTier.minRevenueThreshold),
+        id: currentTier.id,
+        name: currentTier.name,
+        extraBonusPercentage: this.tierBonus(currentTier),
+        minRevenueThreshold: Number(currentTier.minRevenueThreshold),
       },
       nextTier: nextTier
         ? {
@@ -329,20 +369,29 @@ export class TiersService implements OnApplicationBootstrap {
         : null,
       progressPercentage,
       revenueNeeded,
+      // Governance: Duy trì 60% & Ân hạn 30 ngày Soft Landing
+      maintenanceThreshold,
+      maintenanceProgressPercentage,
+      revenueNeededToMaintain,
+      isMaintained,
+      cycleStatus,
+      daysRemaining,
+      stepDownTier:
+        stepDownTier && stepDownTier.id !== currentTier.id
+          ? {
+              id: stepDownTier.id,
+              name: stepDownTier.name,
+              extraBonusPercentage: this.tierBonus(stepDownTier),
+            }
+          : null,
     };
   }
 
   /**
-   * Xếp hạng KOL theo GMV tháng trước, gồm cả tăng và giảm hạng.
+   * Xếp hạng KOL theo GMV tháng trước, áp dụng Ngưỡng duy trì 60% và Soft Landing.
    */
-  @Cron('15 0 * * *', { timeZone: 'Asia/Ho_Chi_Minh', waitForCompletion: true })
+  @Cron('15 0 1 * *', { timeZone: 'Asia/Ho_Chi_Minh' })
   async evaluateAllCollaborators() {
-    if (process.env.DISABLE_SCHEDULED_JOBS === 'true')
-      return {
-        message: 'Scheduled jobs disabled',
-        updatedCount: 0,
-        details: [],
-      };
     const tiers = await this.getAllTiers();
     if (!tiers.length) {
       throw new NotFoundException('Chưa có chính sách cấp bậc được cấu hình');
@@ -353,26 +402,36 @@ export class TiersService implements OnApplicationBootstrap {
     });
 
     let updatedCount = 0;
-    const pendingReview: { userId: string; unassignedCompletedOrdersCount: number }[] = [];
     const details: any[] = [];
     const period = this.previousMonthWindow();
 
     for (const p of profiles) {
-      const unassignedCompletedOrdersCount = await this.unassignedCompletedOrdersCount(p.userId);
-      if (unassignedCompletedOrdersCount > 0) {
-        pendingReview.push({ userId: p.userId, unassignedCompletedOrdersCount });
-        continue;
-      }
       const totalRevenue = (await this.previousMonthSales(p.userId, period))
         .revenue;
+      const currentTier = p.tier || tiers[0];
+      const maintenanceThreshold = this.getMaintenanceThreshold(currentTier);
 
-      // Tìm tier cao nhất mà doanh thu thỏa mãn
-      const matchedTier = this.qualifiedTier(tiers, totalRevenue);
+      let targetTier = currentTier;
+      const higherTier = this.qualifiedTier(tiers, totalRevenue);
 
-      if (!p.tier || this.policyKey(p.tier) !== this.policyKey(matchedTier)) {
+      if (
+        Number(higherTier.minRevenueThreshold) >
+        Number(currentTier.minRevenueThreshold)
+      ) {
+        // Thăng hạng mới
+        targetTier = higherTier;
+      } else if (totalRevenue >= maintenanceThreshold) {
+        // Đạt ngưỡng duy trì 60% -> Giữ nguyên hạng
+        targetTier = currentTier;
+      } else {
+        // Dưới ngưỡng duy trì -> Áp dụng Soft Landing: Hạ 1 bậc thay vì rớt sốc xuống Đồng
+        targetTier = this.getStepDownTier(tiers, currentTier);
+      }
+
+      if (this.policyKey(currentTier) !== this.policyKey(targetTier)) {
         const changed = await this.synchronizeTier(
           p,
-          matchedTier,
+          targetTier,
           totalRevenue,
           period,
         );
@@ -380,17 +439,16 @@ export class TiersService implements OnApplicationBootstrap {
         updatedCount++;
         details.push({
           userId: p.userId,
-          oldTier: p.tier?.name || 'Chưa xếp hạng',
-          newTier: matchedTier.name,
+          oldTier: currentTier.name,
+          newTier: targetTier.name,
           revenue: totalRevenue,
         });
       }
     }
 
     return {
-      message: `Đã hoàn tất quét và đánh giá cấp bậc cho ${profiles.length} cộng tác viên`,
+      message: `Đã hoàn tất quét và đánh giá cấp bậc cho ${profiles.length} cộng tác viên (Quy chế Duy trì 60% & Soft Landing)`,
       updatedCount,
-      pendingReview,
       details,
     };
   }

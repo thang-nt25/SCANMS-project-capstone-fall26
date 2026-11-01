@@ -125,7 +125,7 @@ export class LiveSessionsService {
       }),
       this.prisma.store.findUnique({ where: { id: storeId }, select: { defaultCommissionRate: true } }),
       this.prisma.exclusiveDealProposal.findMany({
-        where: { storeId, status: 'APPROVED', closedAt: null, approvedCommissionRate: { not: null } },
+        where: { storeId, status: 'APPROVED', closedAt: null, approvedCommissionRate: { not: null }, OR: [{ commitmentEndsAt: null }, { commitmentEndsAt: { gt: new Date() } }] },
         select: {
           collaboratorId: true,
           approvedCommissionRate: true,
@@ -161,7 +161,7 @@ export class LiveSessionsService {
     const dealRateMap = new Map<string, number>();
     for (const deal of approvedDeals) {
       if (deal.approvedCommissionRate !== null) {
-        const rate = 10 + Math.min(3, Math.max(0, Number(deal.approvedCommissionRate) - 10));
+        const rate = Math.min(25, Number(deal.approvedCommissionRate));
         const current = dealRateMap.get(deal.collaboratorId) || 0;
         if (rate > current) dealRateMap.set(deal.collaboratorId, rate);
       }
@@ -182,8 +182,8 @@ export class LiveSessionsService {
       const campaignBonusRate = campaignBonusMap.get(c.id) ?? 0;
       const isExclusiveVip = exclusiveDealRate !== null;
       const tierBonusRate = tierBonusByName(c.collaboratorProfile?.tier?.name);
-      const baseRate = (exclusiveDealRate ?? defaultCommissionRate) + tierBonusRate;
-      const currentEffectiveRate = baseRate + campaignBonusRate;
+      const baseRate = Math.max(exclusiveDealRate ?? defaultCommissionRate, defaultCommissionRate + tierBonusRate);
+      const currentEffectiveRate = Math.min(25, Math.max(baseRate, defaultCommissionRate + campaignBonusRate));
       return {
         ...c,
         isExclusiveVip,
@@ -612,7 +612,7 @@ export class LiveSessionsService {
           const storeName = fullSession.store?.name || 'Gian Hàng';
           const kolName = fullSession.creator?.fullName || 'KOL';
           const discountInfo = fullSession.coupon?.discountValue
-            ? `${fullSession.coupon.discountValue}${fullSession.coupon.discountType === 'PERCENTAGE' ? '%' : '₫'}`
+            ? `${String(fullSession.coupon.discountValue)}${fullSession.coupon.discountType === 'PERCENTAGE' ? '%' : '₫'}`
             : 'đến 40%';
           await this.prisma.notification.createMany({
             data: allUsers.map((u) => ({

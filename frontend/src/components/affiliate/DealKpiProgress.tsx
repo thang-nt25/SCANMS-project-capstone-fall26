@@ -6,10 +6,11 @@ import {
 } from "@/services/referral-links.service";
 
 const labels: Record<Progress["state"], string> = {
+  PENDING_ADMIN_APPROVAL: "Chờ Admin duyệt ngoại lệ — chưa bắt đầu tính giờ",
   PENDING: "Chờ Shop duyệt — chưa bắt đầu tính giờ",
   ACTIVE: "Đang thực hiện cam kết",
   SETTLING: "Đang chờ đối soát đơn hàng",
-  ACHIEVED: "Đã đạt KPI số đơn",
+  ACHIEVED: "Đã đạt KPI cam kết",
   REVIEW_REQUIRED: "Chưa đạt KPI — chờ Shop xem xét",
   CLOSED: "Deal đã đóng",
   LEGACY: "Deal cũ chưa có KPI cấu trúc",
@@ -97,9 +98,9 @@ export function DealKpiProgress({ id }: { id: string }) {
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-[#7D715E]">Đơn hàng hợp lệ đã chốt</span>
+                  <span className="text-[#7D715E]">{progress.targetRevenue ? 'Doanh thu hợp lệ đã chốt' : 'Đơn hàng hợp lệ đã chốt'}</span>
                   <span className="font-bold text-[#1A1612]">
-                    {progress.completedOrders} / {progress.targetOrders ?? '—'} đơn
+                    {progress.targetRevenue ? `${Number(progress.validRevenue || 0).toLocaleString('vi-VN')} / ${Number(progress.targetRevenue).toLocaleString('vi-VN')} đ` : `${progress.completedOrders} / ${progress.targetOrders ?? '—'} đơn`}
                   </span>
                 </div>
                 <div className="w-full bg-[#FAF8F5] rounded-full h-1.5 border border-[#EAE4D7] overflow-hidden">

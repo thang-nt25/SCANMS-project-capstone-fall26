@@ -1,3 +1,5 @@
+const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage'));
+const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
 const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
@@ -194,6 +196,7 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="shop" />}>
             <Route element={<RouteContent />}>
               <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
+              <Route path="merchant/pricing" element={<ProductPricingPage />} />
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
@@ -258,7 +261,7 @@ function AppRoutes() {
               <Route path="kol/referral-links" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
-              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
+              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration?tab=invites" replace />} />
@@ -299,6 +302,8 @@ function AppRoutes() {
               <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
               <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
               <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
+              <Route path="admin/pricing" element={<ProductPricingPage reviewer />} />
+              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
               <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />

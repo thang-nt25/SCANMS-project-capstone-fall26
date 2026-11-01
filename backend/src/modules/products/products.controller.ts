@@ -26,6 +26,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateProductEditorDto } from './dto/update-product-editor.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
+import { QueryProductIdentityDto } from './dto/query-product-identity.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -43,6 +44,14 @@ import { ReviewEvidenceService } from './review-evidence.service';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService, private readonly reviewEvidenceService: ReviewEvidenceService) {}
+
+  @Get('identity-check')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  checkIdentity(@Query() query: QueryProductIdentityDto, @CurrentUser('id') userId: string, @CurrentUser('role') role: UserRole) {
+    return this.productsService.findSimilarProducts(userId, role, query);
+  }
 
   @Get('landing/:idOrSlug')
   @ApiOperation({

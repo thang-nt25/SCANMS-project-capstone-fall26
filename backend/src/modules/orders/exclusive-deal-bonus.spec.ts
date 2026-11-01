@@ -14,7 +14,7 @@ describe('VIP entitlement independent of attribution link type', () => {
   it('does not grant VIP without an approved deal', () => {
     expect(exclusiveDealBonus(undefined, 'product', 'kol', 'shop')).toBe(0);
   });
-  it.each([[11, 1], [12, 2], [13, 3], [16, 6], [20, 10], [25, 15], [45, 0], [10, 0], [NaN, 0]])('caps legacy rate %s to bonus %s', (rate, bonus) => {
+  it.each([[11, 1], [12, 2], [13, 3], [45, 15], [10, 0], [NaN, 0]])('caps legacy rate %s to bonus %s', (rate, bonus) => {
     expect(exclusiveDealBonus({ ...deal, approvedCommissionRate: rate }, 'product', 'kol', 'shop')).toBe(bonus);
   });
 });

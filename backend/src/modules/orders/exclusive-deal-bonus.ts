@@ -9,5 +9,5 @@ export function exclusiveDealBonus(
       deal.collaboratorId !== collaboratorId || deal.storeId !== storeId ||
       deal.approvedCommissionRate == null) return 0;
   const rate = Number(deal.approvedCommissionRate);
-  return Number.isFinite(rate) && rate >= 10 && rate <= 25 ? rate - 10 : 0;
+  return Number.isFinite(rate) ? Math.min(15, Math.max(0, rate - 10)) : 0;
 }

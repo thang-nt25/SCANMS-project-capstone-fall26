@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { KolMatchResult } from '@/services/ai-recommendation.service';
 import { downloadReport } from '@/utils/report-export';
 import {
@@ -13,6 +13,18 @@ export function KolComparisonPanel({
   candidates: KolMatchResult[];
 }) {
   const [ids, setIds] = useState<string[]>(['', '', '']);
+
+  // Tự động đối sánh top 2-3 KOLs khi danh sách đề xuất sẵn sàng
+  useEffect(() => {
+    if (candidates.length >= 2 && ids.every((id) => !id)) {
+      setIds([
+        candidates[0]?.collaboratorId || '',
+        candidates[1]?.collaboratorId || '',
+        candidates[2]?.collaboratorId || '',
+      ]);
+    }
+  }, [candidates]);
+
   const selected = ids
     .map((id) => candidates.find((item) => item.collaboratorId === id))
     .filter((item): item is KolMatchResult => !!item);
@@ -66,7 +78,7 @@ export function KolComparisonPanel({
   ];
   if (!candidates.length) return null;
   return (
-    <details className="my-4 rounded-2xl border border-[#EEDFC6] bg-white p-4">
+    <details className="my-4 rounded-2xl border border-[#EEDFC6] bg-white p-4" open={selected.length >= 2}>
       <summary className="cursor-pointer text-sm font-bold text-[#1A1612]">
         So sánh tối đa 3 KOL trước khi mời hợp tác
       </summary>

@@ -36,7 +36,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createdCampaignId, setCreatedCampaignId] = useState('');
-  const [draft, setDraft] = useState(() => ({ name: '', rate: '4', budget: '', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
+  const [draft, setDraft] = useState(() => ({ name: '', rate: '1', budget: '1000000', start: localDateTime(new Date()), end: localDateTime(new Date(Date.now() + 7 * 86400000)) }));
   const sending = useRef(false);
   const creatingRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,8 +93,8 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
     setCreateError('');
     const start = new Date(draft.start), end = new Date(draft.end), rate = Number(draft.rate);
     if (!draft.name.trim()) { setCreateError('Vui lòng nhập tên chiến dịch.'); return; }
-    if (!draft.rate.trim() || !Number.isFinite(rate) || rate < 1 || rate > 6) { setCreateError('Hoa hồng chiến dịch thêm từ 1% đến 6%, tương ứng tổng mức 11%–16%.'); return; }
-    if (!Number.isFinite(Number(draft.budget)) || Number(draft.budget) <= 0) { setCreateError('Cần nhập ngân sách hoa hồng lớn hơn 0.'); return; }
+    if (!Number.isInteger(rate) || rate < 2 || rate > 4) { setCreateError('Thưởng chiến dịch phải từ 2% đến 4%.'); return; }
+    if (!Number.isFinite(Number(draft.budget)) || Number(draft.budget) <= 0) { setCreateError('Ngân sách thưởng phải lớn hơn 0.'); return; }
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end <= new Date()) { setCreateError('Ngày kết thúc phải sau ngày bắt đầu và thời điểm hiện tại.'); return; }
     creatingRef.current = true; setSaving(true);
     try {
@@ -146,7 +146,7 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
         <header className="p-4 sm:p-5 flex items-center gap-2.5 sm:gap-3 border-b border-[#EAE4D7]">
           <span className="grid place-items-center w-[42px] h-[42px] rounded-[13px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0"><Crown size={22} /></span>
           <div>
-            <h3 id="vip-campaign-title" className="text-lg sm:text-[19px] leading-snug font-semibold tracking-tight text-[#1A1612] m-0">Mời chiến dịch VIP</h3>
+            <h3 id="vip-campaign-title" className="text-lg sm:text-[19px] leading-snug font-semibold tracking-tight text-[#1A1612] m-0">Mời tham gia chiến dịch</h3>
             <p className="text-[11px] text-[#7D715E] m-0 mt-1 leading-relaxed">{creating ? 'Thiết lập chiến dịch để tiếp tục gửi lời mời.' : conversationId ? 'Chọn chiến dịch để mời KOL đang trò chuyện.' : 'Chọn KOL và chiến dịch để gửi lời mời.'}</p>
           </div>
           <button type="button" aria-label="Đóng" disabled={busy} onClick={onClose} className="ml-auto shrink-0 grid place-items-center w-7 h-7 border-0 rounded-lg bg-[#FAF8F5] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] cursor-pointer transition-colors"><X size={18} /></button>
@@ -169,11 +169,16 @@ export function SendVipCampaignModal({ conversationId, collaboratorName, onClose
                 <input id="vip-create-name" autoFocus required maxLength={200} placeholder="VD: Hợp tác KOL tháng 10" value={draft.name} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
               </div>
               <div>
-                <label htmlFor="vip-create-rate" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Hoa hồng thưởng thêm (%)</label>
-                <input id="vip-create-rate" type="number" min={1} max={6} step="0.01" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
-                <label htmlFor="vip-create-budget" className="block mt-3 text-xs font-semibold">Ngân sách hoa hồng (VNĐ)</label>
-                <input id="vip-create-budget" type="number" min={1} required value={draft.budget} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, budget: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-xs" />
-                <small className="block mt-1 text-[10px] leading-relaxed text-[#7D715E]">Được cộng thêm vào hoa hồng thông thường của sản phẩm.</small>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="vip-create-rate" className="text-xs font-semibold text-[#1A1612]">Thưởng chiến dịch (%)</label>
+                  <span className="text-[10px] text-[#7D715E]">Thưởng thêm 2%–4%</span>
+                </div>
+                <input id="vip-create-rate" type="number" min={2} max={4} step="1" required value={draft.rate} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, rate: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5] text-[#1A1612] text-xs outline-none focus:border-[#C59B58] focus:bg-white" />
+                <p className="mt-2 text-xs text-[#7D715E]">Chiến dịch và thỏa thuận VIP theo sản phẩm được quản lý riêng.</p>
+              </div>
+              <div>
+                <label htmlFor="vip-create-budget" className="block text-xs font-semibold text-[#1A1612] mb-1.5">Ngân sách thưởng (đ)</label>
+                <input id="vip-create-budget" type="number" min={1} required value={draft.budget} disabled={saving} onChange={event => setDraft(previous => ({ ...previous, budget: event.target.value }))} className="w-full h-10 px-3 border border-[#EAE4D7] rounded-[10px] bg-white text-[#1A1612] text-xs" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

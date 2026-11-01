@@ -8,18 +8,25 @@ import { SyncProductVariantsDto } from '../dto/sync-product-variants.dto';
 describe('Product variant images', () => {
   it('accepts deterministic UUID v5 IDs of seeded variants when saving stock', async () => {
     const dto = plainToInstance(SyncProductVariantsDto, {
-      variants: [{
-        id: '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1',
-        sku: 'SEED-002-V1', name: '100 ml', price: 160000,
-        stockQuantity: 20, imageUrl: 'https://example.com/product.jpg',
-      }],
+      variants: [
+        {
+          id: '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1',
+          sku: 'SEED-002-V1',
+          name: '100 ml',
+          price: 160000,
+          stockQuantity: 20,
+          imageUrl: 'https://example.com/product.jpg',
+        },
+      ],
     });
     expect(await validate(dto)).toEqual([]);
   });
   const productId = 'a1a1a1a1-1111-4111-8111-111111111111';
   const variantId = 'b2b2b2b2-2222-4222-8222-222222222222';
   const prisma: any = {
+    $queryRaw: jest.fn().mockResolvedValue([]),
     store: { findFirst: jest.fn() },
+    productPricePromotion: { count: jest.fn().mockResolvedValue(0) },
     product: { findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
     mediaAsset: { create: jest.fn(), createMany: jest.fn() },
     productVariant: {
@@ -50,6 +57,7 @@ describe('Product variant images', () => {
         { id: 'c3c3c3c3-3333-4333-8333-333333333333' },
       ],
     });
+    prisma.product.findUniqueOrThrow = jest.fn(() => prisma.product.findFirst());
     prisma.productVariant.findMany.mockResolvedValue([]);
     prisma.productVariant.update.mockImplementation((args: any) => ({
       id: args.where.id,
@@ -125,30 +133,66 @@ describe('Product variant images', () => {
     expect(result.variants).toHaveLength(2);
     expect(prisma.product.update).toHaveBeenCalledWith({
       where: { id: productId },
-      data: { stockQuantity: 20 },
+      data: expect.objectContaining({ stockQuantity: 20 }),
     });
   });
 
   it('saves stock for seeded SKUs with Vietnamese attribute keys without requesting moderation', async () => {
     const seededId = '3fde0d41-abf1-5b38-83e5-d78b2d9f39a1';
-    const attributes = { 'Đóng gói': 'Tiêu chuẩn', 'Dung tích / Khối lượng': '100 ml' };
+    const attributes = {
+      'Đóng gói': 'Tiêu chuẩn',
+      'Dung tích / Khối lượng': '100 ml',
+    };
     prisma.product.findFirst.mockResolvedValue({
-      id: productId, price: 160000, moderationStatus: 'APPROVED',
-      store: { ownerId: 'shop-owner', isVerified: true, onboardingStatus: 'VERIFIED' },
-      variants: [{ id: seededId, sku: 'SEED-002-V1', name: '100 ml / Tiêu chuẩn',
-        attributes, price: 160000, imageUrl: 'https://example.com/product.jpg',
-        stockQuantity: 0, isActive: true }],
+      id: productId,
+      price: 160000,
+      moderationStatus: 'APPROVED',
+      store: {
+        ownerId: 'shop-owner',
+        isVerified: true,
+        onboardingStatus: 'VERIFIED',
+      },
+      variants: [
+        {
+          id: seededId,
+          sku: 'SEED-002-V1',
+          name: '100 ml / Tiêu chuẩn',
+          attributes,
+          price: 160000,
+          imageUrl: 'https://example.com/product.jpg',
+          stockQuantity: 0,
+          isActive: true,
+        },
+      ],
     });
-    const result = await service.syncProductVariants('shop-owner', UserRole.SHOP_MANAGER, productId, {
-      variants: [{ id: seededId, sku: 'SEED-002-V1', name: '100 ml / Tiêu chuẩn',
-        attributes, price: 160000, imageUrl: 'https://example.com/product.jpg', stockQuantity: 20 }],
-    });
+    const result = await service.syncProductVariants(
+      'shop-owner',
+      UserRole.SHOP_MANAGER,
+      productId,
+      {
+        variants: [
+          {
+            id: seededId,
+            sku: 'SEED-002-V1',
+            name: '100 ml / Tiêu chuẩn',
+            attributes,
+            price: 160000,
+            imageUrl: 'https://example.com/product.jpg',
+            stockQuantity: 20,
+          },
+        ],
+      },
+    );
     expect(result.requiresModeration).toBe(false);
-    expect(prisma.productVariant.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: seededId }, data: expect.objectContaining({ stockQuantity: 20, attributes }),
-    }));
+    expect(prisma.productVariant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: seededId },
+        data: expect.objectContaining({ stockQuantity: 20, attributes }),
+      }),
+    );
     expect(prisma.product.update).toHaveBeenCalledWith({
-      where: { id: productId }, data: { stockQuantity: 20 },
+      where: { id: productId },
+      data: { stockQuantity: 20 },
     });
   });
 
@@ -178,6 +222,7 @@ describe('Product variant images', () => {
   it('creates a complete product with its variants and combined stock without optional commission or sample settings', async () => {
     prisma.store.findFirst.mockResolvedValue({
       id: 'store-1',
+      categoryName: 'Mỹ phẩm & Chăm sóc da',
       isVerified: true,
       onboardingStatus: 'VERIFIED',
     });
@@ -279,6 +324,7 @@ describe('Product variant images', () => {
   it('rejects a new product missing required evidence and details before persisting it', async () => {
     prisma.store.findFirst.mockResolvedValue({
       id: 'store-1',
+      categoryName: 'Mỹ phẩm & Chăm sóc da',
       isVerified: true,
       onboardingStatus: 'VERIFIED',
     });
@@ -294,6 +340,35 @@ describe('Product variant images', () => {
       } as any),
     ).rejects.toThrow(BadRequestException);
 
+    expect(prisma.product.create).not.toHaveBeenCalled();
+  });
+
+  it.each([null, ''])(
+    'requires a configured store category before creating a product (%s)',
+    async (categoryName) => {
+      prisma.store.findFirst.mockResolvedValue({ id: 'store-1', categoryName });
+      await expect(
+        service.create('shop-owner', UserRole.SHOP_MANAGER, {
+          sku: 'INVALID',
+          categoryName: 'Mỹ phẩm',
+        } as any),
+      ).rejects.toThrow('chưa được cấu hình ngành hàng');
+      expect(prisma.product.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a forged product category before persisting anything', async () => {
+    prisma.store.findFirst.mockResolvedValue({
+      id: 'store-1',
+      name: 'Beauty Store',
+      categoryName: 'Mỹ phẩm',
+    });
+    await expect(
+      service.create('shop-owner', UserRole.SHOP_MANAGER, {
+        sku: 'INVALID',
+        categoryName: 'Công nghệ',
+      } as any),
+    ).rejects.toThrow('sai ngành hàng');
     expect(prisma.product.create).not.toHaveBeenCalled();
   });
 });

@@ -70,6 +70,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan Gian hàng', icon: Store, section: 'TỔNG QUAN' },
       { path: '/merchant/orders', label: 'Đơn hàng', icon: ShoppingBag, section: 'VẬN HÀNH & HÀNG HÓA' },
+      { path: '/merchant/pricing', label: 'Gi\u00e1 b\u00e1n & MAP', icon: Tag, section: 'V\u1eacN H\u00c0NH & H\u00c0NG H\u00d3A' },
       { path: '/merchant/products', label: 'Sản phẩm', icon: Box, section: 'VẬN HÀNH & HÀNG HÓA' },
       { path: '/merchant/kol-hub', label: 'Mạng lưới KOL & Hợp tác', icon: Users, section: 'TIẾP THỊ & HỢP TÁC' },
       { path: '/merchant/promotions', label: 'Khuyến mãi & Thưởng', icon: Tag, section: 'TIẾP THỊ & HỢP TÁC' },
@@ -85,9 +86,11 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Báo cáo Doanh số & GMV', icon: TrendingUp, section: 'TỔNG QUAN & BÁO CÁO' },
       { path: '/admin/payouts', label: 'Chi trả & Dòng tiền Sàn', icon: ReceiptText, section: 'TỔNG QUAN & BÁO CÁO' },
+      { path: '/admin/vip-exceptions', label: 'Ngo\u1ea1i l\u1ec7 VIP', icon: ShieldCheck, section: 'KI\u1ec2M DUY\u1ec6T S\u00c0N' },
       { path: '/admin/personnel', label: 'Nhân sự & Bổ nhiệm Shop', icon: UserPlus, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
       { path: '/admin/users', label: 'Thẩm định eKYC Đối tác', icon: ShieldCheck, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
       { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu KOL', icon: Package, section: 'KIỂM SOÁT & NGƯỜI DÙNG' },
+      { path: '/admin/pricing', label: 'Gi\u00e1 s\u00e0n & Khuy\u1ebfn m\u00e3i', icon: Tag, section: 'KI\u1ec2M DUY\u1ec6T S\u00c0N' },
       { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/customer-reviews', label: 'Đánh giá & khiếu nại', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/affiliate-oversight', label: 'Tiếp thị & Dòng tiền Sàn', icon: Link2, section: 'KIỂM DUYỆT SÀN' },
@@ -105,6 +108,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/finance/payouts', label: 'Quản trị chi trả', icon: Wallet, section: 'TÀI CHÍNH & ĐỐI SOÁT' },
       { path: '/admin/users', label: 'Thẩm định eKYC Đối tác', icon: ShieldCheck, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu', icon: Package, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
+      { path: '/admin/pricing', label: 'Gi\u00e1 s\u00e0n & Khuy\u1ebfn m\u00e3i', icon: Tag, section: 'KI\u1ec2M DUY\u1ec6T S\u00c0N' },
       { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, section: 'THẨM ĐỊNH & KIỂM DUYỆT' },
       { path: '/admin/customer-reviews', label: 'Đánh giá & khiếu nại', icon: Box, section: 'KIỂM DUYỆT SÀN' },
       { path: '/admin/affiliate-oversight', label: 'Giám sát Tiếp thị', icon: Link2, section: 'GIÁM SÁT TIẾP THỊ' },

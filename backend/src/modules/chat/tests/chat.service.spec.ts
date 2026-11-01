@@ -109,10 +109,17 @@ describe('ChatService (FR-25)', () => {
 
       expect(res.id).toBe(mockConversationId);
       expect(prisma.conversation.create).not.toHaveBeenCalled();
-      expect(prisma.storeCollaborator.upsert).toHaveBeenCalledWith(expect.objectContaining({
-        update: {},
-        create: { storeId: mockStoreId, collaboratorId: mockCollaboratorId, status: 'PENDING', requestedByKol: true },
-      }));
+      expect(prisma.storeCollaborator.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: {},
+          create: {
+            storeId: mockStoreId,
+            collaboratorId: mockCollaboratorId,
+            status: 'PENDING',
+            requestedByKol: true,
+          },
+        }),
+      );
     });
 
     it('should resolve storeId when shop manager initiates chat with collaboratorId', async () => {
@@ -130,7 +137,11 @@ describe('ChatService (FR-25)', () => {
 
       expect(res.id).toBe(mockConversationId);
       expect(prisma.store.findFirst).toHaveBeenCalledWith({
-        where: { ownerId: mockOwnerId, isDeleted: false },
+        where: expect.objectContaining({
+          isDeleted: false,
+          OR: expect.any(Array),
+        }),
+        orderBy: { createdAt: 'asc' },
       });
       expect(prisma.conversation.create).toHaveBeenCalled();
     });
@@ -278,7 +289,9 @@ describe('ChatService (FR-25)', () => {
 
     it('does not count messages outside an empty conversation list', async () => {
       prisma.conversation.findMany.mockResolvedValue([]);
-      expect(await service.getConversationsByUser(mockCollaboratorId)).toEqual([]);
+      expect(await service.getConversationsByUser(mockCollaboratorId)).toEqual(
+        [],
+      );
       expect(prisma.chatMessage.groupBy).not.toHaveBeenCalled();
     });
   });
@@ -581,17 +594,31 @@ describe('ChatService (FR-25)', () => {
   describe('searchCollaborators & searchStores', () => {
     it('returns profile avatars with account avatar fallback for chat contacts', async () => {
       prisma.user.findMany.mockResolvedValue([
-        { id: 'profile', avatarUrl: '/account.png', collaboratorProfile: { avatarUrl: '/profile.png' } },
-        { id: 'account', avatarUrl: '/account.png', collaboratorProfile: { avatarUrl: null } },
+        {
+          id: 'profile',
+          avatarUrl: '/account.png',
+          collaboratorProfile: { avatarUrl: '/profile.png' },
+        },
+        {
+          id: 'account',
+          avatarUrl: '/account.png',
+          collaboratorProfile: { avatarUrl: null },
+        },
         { id: 'empty', avatarUrl: null, collaboratorProfile: null },
       ]);
 
       const res = await service.searchCollaborators();
 
-      expect(res.map((user) => user.avatarUrl)).toEqual(['/profile.png', '/account.png', null]);
-      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        select: expect.objectContaining({ avatarUrl: true }),
-      }));
+      expect(res.map((user) => user.avatarUrl)).toEqual([
+        '/profile.png',
+        '/account.png',
+        null,
+      ]);
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: expect.objectContaining({ avatarUrl: true }),
+        }),
+      );
     });
 
     it('should search collaborators with case-insensitive query', async () => {
@@ -624,15 +651,20 @@ describe('ChatService (FR-25)', () => {
     it.each([
       ['deleteConversation', mockCollaboratorId],
       ['clearConversationMessages', mockOwnerId],
-    ] as const)('%s refuses a participant without deleting shared rows', async (action, userId) => {
-      prisma.chatMessage.deleteMany = jest.fn();
-      prisma.conversation.delete = jest.fn();
+    ] as const)(
+      '%s refuses a participant without deleting shared rows',
+      async (action, userId) => {
+        prisma.chatMessage.deleteMany = jest.fn();
+        prisma.conversation.delete = jest.fn();
 
-      await expect(service[action](mockConversationId, userId)).rejects.toThrow(ForbiddenException);
+        await expect(
+          service[action](mockConversationId, userId),
+        ).rejects.toThrow(ForbiddenException);
 
-      expect(prisma.chatMessage.deleteMany).not.toHaveBeenCalled();
-      expect(prisma.conversation.delete).not.toHaveBeenCalled();
-      expect(prisma.conversation.update).not.toHaveBeenCalled();
-    });
+        expect(prisma.chatMessage.deleteMany).not.toHaveBeenCalled();
+        expect(prisma.conversation.delete).not.toHaveBeenCalled();
+        expect(prisma.conversation.update).not.toHaveBeenCalled();
+      },
+    );
   });
 });

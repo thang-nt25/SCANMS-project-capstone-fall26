@@ -1,3 +1,4 @@
+import { assertCataloguePriceEdit, assertFloor, lockPricingProducts } from '../pricing/pricing-policy';
 import {
   Injectable,
   NotFoundException,
@@ -7,6 +8,8 @@ import {
   InternalServerErrorException,
   HttpException,
   HttpStatus,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -34,6 +37,10 @@ import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ran
 import { catalogCountQuery, catalogSuggestionsQuery, type CatalogSuggestionRow } from './utils/catalog-query';
 import { ReviewReplyDto, ReviewReportDto, ResolveReviewReportDto } from './dto/review-actions.dto';
 import { reviewContentIssue } from './review-content-policy';
+import { assertProductIdentity } from './product-identity.policy';
+import { ProductSemanticMatcher } from './product-semantic-matcher.service';
+import { QueryProductIdentityDto } from './dto/query-product-identity.dto';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class ProductsService {
@@ -66,6 +73,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+    @Optional() private readonly semanticMatcher?: ProductSemanticMatcher,
   ) {}
 
   public async invalidateMarketplaceCache(): Promise<void> {
@@ -633,7 +641,7 @@ export class ProductsService {
     }
 
     const options = { search, category, storeId, minPrice, maxPrice, sortBy, page: safePage, limit: safeLimit };
-    const cacheKey = `marketplace:products:catalog:${JSON.stringify(options)}:${includeCommission ? '1' : '0'}`;
+    const cacheKey = `marketplace:products:catalog:v2:${JSON.stringify(options)}:${includeCommission ? '1' : '0'}`;
     const cached = this.cacheService?.get ? await this.cacheService.get<any>(cacheKey) : null;
     if (cached) return cached;
 
@@ -695,7 +703,7 @@ export class ProductsService {
     const response = {
       items: ranked.flatMap((row) => {
         const item = itemsById.get(row.id);
-        return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount), matchKind: row.matchKind || 'direct' }] : [];
+        return item ? [{ ...item, soldCount: Number(row.soldCount), viewCount: Number(row.viewCount), rating: row.rating == null ? null : Math.round(Number(row.rating) * 10) / 10, reviewCount: Number(row.reviewCount ?? 0), matchKind: row.matchKind || 'direct' }] : [];
       }),
       pagination: {
         total,
@@ -1025,6 +1033,8 @@ export class ProductsService {
             sku: true,
             attributes: true,
             price: true,
+            listPrice: true,
+            floorPrice: true,
             imageUrl: true,
             stockQuantity: true,
           },
@@ -1130,6 +1140,39 @@ export class ProductsService {
     };
   }
 
+  async findSimilarProducts(userId: string, role: UserRole, query: QueryProductIdentityDto) {
+    if (role !== UserRole.SHOP_MANAGER && role !== UserRole.SYSTEM_MANAGER && role !== UserRole.SYSTEM_ADMIN) {
+      throw new ForbiddenException('Không có quyền kiểm tra danh mục.');
+    }
+    if (role !== UserRole.SHOP_MANAGER && !query.storeId) {
+      throw new BadRequestException('Cần chỉ định gian hàng để kiểm tra danh mục.');
+    }
+    const store = await this.prisma.store.findFirst({
+      where: role === UserRole.SHOP_MANAGER
+        ? { ...managedStoreWhere(userId), ...(query.storeId ? { id: query.storeId } : {}) }
+        : { id: query.storeId, isDeleted: false, deletedAt: null },
+      select: { id: true },
+    });
+    if (!store) throw new ForbiddenException('Không có quyền truy cập gian hàng.');
+    if (query.productId && !await this.prisma.product.findFirst({
+      where: { id: query.productId, storeId: store.id, isDeleted: false },
+      select: { id: true },
+    })) {
+      throw new ForbiddenException('Không có quyền kiểm tra sản phẩm này.');
+    }
+    const candidates = await this.prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        deletedAt: null,
+        ...(query.productId ? { id: { not: query.productId } } : {}),
+        OR: [{ storeId: store.id }, { isActive: true, moderationStatus: ProductModerationStatus.APPROVED }],
+      },
+      select: { id: true, title: true, sku: true },
+    });
+    if (!this.semanticMatcher) throw new ServiceUnavailableException('Bộ đối chiếu ngữ nghĩa chưa sẵn sàng.');
+    return this.semanticMatcher.compare(query.title, candidates);
+  }
+
   async create(userId: string, userRole: UserRole, dto: CreateProductDto) {
     let store;
     if (
@@ -1170,7 +1213,12 @@ export class ProductsService {
 
     // Strict Single-Vertical & Brand Whitelisting Rule:
     // If store has an assigned categoryName, merchant managers must adhere to it.
-    if (userRole === UserRole.SHOP_MANAGER && store.categoryName) {
+    if (userRole === UserRole.SHOP_MANAGER) {
+      if (!store.categoryName?.trim()) {
+        throw new BadRequestException(
+          'Gian hàng chưa được cấu hình ngành hàng. Liên hệ quản trị trước khi tạo sản phẩm.',
+        );
+      }
       if (
         dto.categoryName &&
         dto.categoryName.trim().toLowerCase() !== store.categoryName.trim().toLowerCase()
@@ -1257,6 +1305,7 @@ export class ProductsService {
         ),
         imageUrl: variant.imageUrl!.trim(),
         price: variant.price ?? dto.price,
+        listPrice: variant.price ?? dto.price,
         stockQuantity: variant.stockQuantity,
       };
     });
@@ -1265,6 +1314,7 @@ export class ProductsService {
     );
 
     const product = await this.prisma.$transaction(async (tx) => {
+      await assertProductIdentity(tx, { storeId: store.id, sku: dto.sku, barcode: dto.barcode });
       const created = await tx.product.create({
         data: {
           storeId: store.id,
@@ -1274,6 +1324,7 @@ export class ProductsService {
           description: dto.description?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
+          listPrice: dto.price,
           originalPrice: dto.originalPrice || null,
           customCommissionRate: 10,
           stockQuantity: preparedVariants.length
@@ -1397,7 +1448,12 @@ export class ProductsService {
 
     // Strict Single-Vertical & Brand Whitelisting Rule:
     // If store has an assigned categoryName, merchant managers must adhere to it.
-    if (userRole === UserRole.SHOP_MANAGER && product.store.categoryName) {
+    if (userRole === UserRole.SHOP_MANAGER && dto.categoryName !== undefined) {
+      if (!product.store.categoryName?.trim()) {
+        throw new BadRequestException(
+          'Gian hàng chưa được cấu hình ngành hàng. Liên hệ quản trị trước khi đổi danh mục sản phẩm.',
+        );
+      }
       if (
         dto.categoryName &&
         dto.categoryName.trim().toLowerCase() !==
@@ -1569,7 +1625,7 @@ export class ProductsService {
         ...(dto.imageUrl !== undefined && {
           imageUrl: dto.imageUrl?.trim() || null,
         }),
-        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.price !== undefined && { price: dto.price, ...(Number(dto.price) !== Number(product.price) ? { listPrice: dto.price } : {}) }),
         ...(dto.originalPrice !== undefined && {
           originalPrice: dto.originalPrice,
         }),
@@ -1595,10 +1651,13 @@ export class ProductsService {
         }),
       },
     });
-    const updated = activeVariants.length && dto.stockQuantity === 0
+    const identityChanged = (dto.barcode !== undefined && dto.barcode !== product.barcode) || (dto.sku !== undefined && dto.sku !== product.sku);
+    const updated = identityChanged || dto.price !== undefined || (activeVariants.length && dto.stockQuantity === 0)
       ? await this.prisma.$transaction(async (tx) => {
+          if (dto.price !== undefined) await assertCataloguePriceEdit(tx, id, dto.price);
+          if (identityChanged) await assertProductIdentity(tx, { id, storeId: product.storeId, sku: dto.sku ?? product.sku, barcode: dto.barcode !== undefined ? dto.barcode : product.barcode });
           const result = await updateProduct(tx as typeof this.prisma);
-          await tx.productVariant.updateMany({
+          if (activeVariants.length && dto.stockQuantity === 0) await tx.productVariant.updateMany({
             where: { productId: id, isActive: true },
             data: { stockQuantity: 0 },
           });
@@ -1758,6 +1817,8 @@ export class ProductsService {
             name: true,
             attributes: true,
             price: true,
+            listPrice: true,
+            floorPrice: true,
             imageUrl: true,
             isActive: true,
             stockQuantity: true,
@@ -1898,6 +1959,9 @@ export class ProductsService {
     }
 
     const persistVariants = async (tx: Prisma.TransactionClient) => {
+      await lockPricingProducts(tx, [productId]);
+      const currentPricing = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+      if (variantsChanged && await tx.productPricePromotion.count({ where: { productId, status: { in: ['APPROVED', 'ACTIVE'] } } })) throw new ConflictException('Hủy khuyến mãi đã duyệt trước khi thay đổi cấu trúc SKU.');
       const saved: any[] = [];
       if (requiresModeration) {
         await tx.product.update({
@@ -1912,11 +1976,15 @@ export class ProductsService {
         });
       }
       for (const [index, variant] of variants.entries()) {
+        const previous = variant.id ? currentVariantsById.get(variant.id) : null;
+        const price = variant.price ?? product.price;
+        assertFloor(price, previous?.floorPrice ?? currentPricing.floorPrice);
         const data = {
           sku: normalizedSkus[index],
           name: variant.name.trim(),
           attributes: normalizedAttributes[index],
-          price: variant.price ?? product.price,
+          price,
+          listPrice: previous && Number(previous.price) === Number(price) ? previous.listPrice ?? price : price,
           stockQuantity: variant.stockQuantity,
           imageUrl: variant.imageUrl?.trim() || null,
           isActive: true,

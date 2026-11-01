@@ -1,6 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
+
+const openModalIds: string[] = [];
 
 export interface ModalProps {
   isOpen: boolean;
@@ -29,15 +31,37 @@ export function Modal({
   stickyHeader = false,
   maxWidth = 'md',
 }: ModalProps) {
+  const dialogId = useId();
+  const dialog = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    openModalIds.push(dialogId);
+    dialog.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+      if (openModalIds.at(-1) !== dialogId) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close.current();
+      }
+      if (e.key === 'Tab') {
+        const focusable = [...(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]') || [])].filter(element => element.getClientRects().length);
+        const first = focusable[0], last = focusable.at(-1);
+        if (!first) { e.preventDefault(); return; }
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { e.preventDefault(); first.focus(); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      const index = openModalIds.indexOf(dialogId);
+      if (index >= 0) openModalIds.splice(index, 1);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [isOpen, dialogId]);
 
   if (!isOpen) return null;
 
@@ -61,9 +85,14 @@ export function Modal({
       onClick={onClose}
     >
       <div
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? `${dialogId}-title` : undefined}
+        tabIndex={-1}
         className={cn(
-          'bg-white rounded-2xl w-full shadow-2xl border border-slate-200 flex flex-col text-left transition-all',
-          stickyHeader ? 'max-h-[90dvh] overflow-hidden' : 'p-6 sm:p-7 gap-4',
+          'bg-white rounded-2xl w-full shadow-2xl border border-[#EAE4D7] flex flex-col text-left transition-all outline-none',
+          stickyHeader ? 'max-h-[90dvh] overflow-hidden' : 'max-h-[90dvh] overflow-y-auto p-6 sm:p-7 gap-4',
           maxWidthStyles[maxWidth],
           className
         )}
@@ -82,7 +111,7 @@ export function Modal({
                 </div>
               )}
               <div>
-                {title && <h3 className="text-lg font-bold text-slate-900 m-0">{title}</h3>}
+                {title && <h3 id={`${dialogId}-title`} className="text-lg font-bold text-[#1A1612] m-0">{title}</h3>}
                 {subtitle && <p className="text-xs text-slate-500 mt-0.5 m-0">{subtitle}</p>}
               </div>
             </div>
