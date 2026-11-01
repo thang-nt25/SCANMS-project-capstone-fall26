@@ -98,15 +98,16 @@ describe('Deal KPI contract', () => {
   it('refuses sanctions before the settlement window without any writes', async () => {
     const prisma = {
       exclusiveDealProposal: {
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({
-            ...deal,
-            settlementEndsAt: new Date('2999-01-01'),
-          }),
+        findUnique: jest.fn().mockResolvedValue({
+          ...deal,
+          settlementEndsAt: new Date('2999-01-01'),
+        }),
         findFirst: jest.fn().mockResolvedValue(null),
       },
-      store: { findUnique: jest.fn().mockResolvedValue({ ownerId: 'owner' }) },
+      store: {
+        findUnique: jest.fn().mockResolvedValue({ ownerId: 'owner' }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'store' }),
+      },
       order: { count: jest.fn().mockResolvedValue(0) },
       $transaction: jest.fn(),
     };

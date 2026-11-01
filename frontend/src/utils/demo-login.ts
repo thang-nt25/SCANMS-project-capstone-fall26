@@ -120,18 +120,18 @@ export const ALL_DEMO_ACCOUNTS: Record<DemoLoginRole, DemoAccountDetail[]> = {
 
 // Local development only. Production builds discard the credential branch.
 export function getDemoLogin(role: DemoLoginRole): { identifier: string; password: string } | null {
-  const defaultAccounts: Record<DemoLoginRole, { identifier: string; password: string }> = {
-    customer: { identifier: 'customer.an@scanms.vn', password: 'Customer@123456' },
-    kol: { identifier: 'kol.bronze@scanms.vn', password: 'Kol@123456' },
-    shop: { identifier: 'manager.sora@scanms.vn', password: 'Shop@123456' },
-    manager: { identifier: 'manager@scanms.vn', password: 'Manager@123456' },
-    admin: { identifier: 'admin@scanms.vn', password: 'Admin@123456' },
-  };
+  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_LOGIN !== 'true') return null;
 
-  const envAccount = {
-    identifier: import.meta.env[`VITE_DEMO_${role.toUpperCase()}_IDENTIFIER`] || defaultAccounts[role]?.identifier,
-    password: import.meta.env[`VITE_DEMO_${role.toUpperCase()}_PASSWORD`] || defaultAccounts[role]?.password,
+  // Vite replaces explicit env properties; never mix a configured identifier
+  // with a fallback password belonging to a different account.
+  const accounts = {
+    customer: { identifier: import.meta.env.VITE_DEMO_CUSTOMER_IDENTIFIER, password: import.meta.env.VITE_DEMO_CUSTOMER_PASSWORD },
+    kol: { identifier: import.meta.env.VITE_DEMO_KOL_IDENTIFIER, password: import.meta.env.VITE_DEMO_KOL_PASSWORD },
+    shop: { identifier: import.meta.env.VITE_DEMO_SHOP_IDENTIFIER, password: import.meta.env.VITE_DEMO_SHOP_PASSWORD },
+    manager: { identifier: import.meta.env.VITE_DEMO_MANAGER_IDENTIFIER, password: import.meta.env.VITE_DEMO_MANAGER_PASSWORD },
+    admin: { identifier: import.meta.env.VITE_DEMO_ADMIN_IDENTIFIER, password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD },
   };
-
-  return envAccount.identifier && envAccount.password ? envAccount : defaultAccounts[role] || null;
+  const account = accounts[role];
+  const identifier = account?.identifier?.trim();
+  return identifier ? { identifier, password: account?.password || '' } : null;
 }

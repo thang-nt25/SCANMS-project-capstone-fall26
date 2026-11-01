@@ -1,4 +1,6 @@
-import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
+import { normalizePartnerTier } from '../../utils/partner-tier';
+import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
+import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
@@ -129,6 +131,7 @@ export interface PartnerKol {
   }>;
   kycStatus?: 'VERIFIED' | 'PENDING' | 'UNVERIFIED';
   commissionRate?: number; // Custom % for this KOL
+  statsAvailable?: boolean;
   stats: {
     totalRevenue: number;
     totalOrders: number;
@@ -141,33 +144,6 @@ export interface PartnerKol {
   lastMessageTimestamp?: number;
   unreadCount?: number;
 }
-
-type PartnerTier = NonNullable<PartnerKol['tier']>;
-
-const normalizePartnerTier = (tier: unknown, revenue?: number): PartnerTier | undefined => {
-  if (revenue !== undefined && revenue > 0) {
-    if (revenue >= 100000000) return 'DIAMOND';
-    if (revenue >= 50000000) return 'GOLD';
-    if (revenue >= 20000000) return 'SILVER';
-    return 'BRONZE';
-  }
-  const tierName =
-    typeof tier === 'string'
-      ? tier
-      : tier && typeof tier === 'object' && 'name' in tier
-        ? String((tier as { name?: unknown }).name ?? '')
-        : '';
-  const normalized = tierName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase();
-
-  if (normalized.includes('DIAMOND') || normalized.includes('KIM CUONG')) return 'DIAMOND';
-  if (normalized.includes('GOLD') || normalized.includes('VANG')) return 'GOLD';
-  if (normalized.includes('SILVER') || normalized.includes('BAC')) return 'SILVER';
-  if (normalized.includes('BRONZE') || normalized.includes('DONG')) return 'BRONZE';
-  return 'BRONZE';
-};
 
 export function SocialBrandIcon({ platform, className = 'w-3.5 h-3.5' }: { platform: string; className?: string }) {
   const p = (platform || '').toUpperCase();
@@ -366,6 +342,10 @@ export default function ShopKolHubPage() {
 
   const [performanceRange, setPerformanceRange] = useState<'7d' | '30d' | 'month' | 'all'>('30d');
   const [kolOrders, setKolOrders] = useState<ReferralOrderItem[]>([]);
+  const [kolPerformance, setKolPerformance] = useState<{ totalOrders: number; totalRevenue: number; accruedCommission: number } | null>(null);
+  const [performanceError, setPerformanceError] = useState('');
+  const [performancePage, setPerformancePage] = useState(1);
+  const [performancePages, setPerformancePages] = useState(0);
   const [loadingKolOrders, setLoadingKolOrders] = useState(false);
 
   // Creator Discovery Directory Modal (Khám phá & Thêm KOL mới)
@@ -522,7 +502,7 @@ export default function ShopKolHubPage() {
               email: creator.email || '',
               phone: creator.phoneNumber || undefined,
               avatarUrl: profile.avatarUrl || creator.avatarUrl || undefined,
-              tier: normalizePartnerTier(profile.tier, Number(profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
+              tier: normalizePartnerTier(profile.tier),
               handle: channel?.channelName ? `@${channel.channelName}` : undefined,
               primaryChannel: channel ? {
                 platform: (channel.platformName?.toUpperCase() as any) || 'TIKTOK',
@@ -564,9 +544,10 @@ export default function ShopKolHubPage() {
             } : undefined,
             kycStatus: profile.kycStatus || undefined,
             commissionRate: undefined,
+            statsAvailable: Boolean(m.stats),
             stats: {
-              totalRevenue: Number(m.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : (c.stats?.totalRevenue ?? 0))),
-              totalOrders: Number(m.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
+              totalRevenue: Number(m.stats?.totalRevenue ?? 0),
+              totalOrders: Number(m.stats?.totalOrders ?? 0),
               sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
               pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
               completedVideosCount: Number(m.stats?.completedVideosCount ?? sampleStatsByKol[c.id]?.completed ?? 0),
@@ -609,8 +590,8 @@ export default function ShopKolHubPage() {
               kycStatus: profile.kycStatus || undefined,
               commissionRate: undefined,
               stats: {
-                totalRevenue: Number(c.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
-                totalOrders: Number(c.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
+                totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+                totalOrders: Number(c.stats?.totalOrders ?? 0),
                 sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
                 pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
                 completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -660,8 +641,8 @@ export default function ShopKolHubPage() {
           kycStatus: profile.kycStatus || undefined,
           commissionRate: undefined,
           stats: {
-            totalRevenue: Number(c.stats?.totalRevenue ?? (profile.totalEarnedCommission ? Number(profile.totalEarnedCommission) * 8 : 0)),
-            totalOrders: Number(c.stats?.totalOrders ?? (profile.totalOrdersReferred || (profile.totalEarnedCommission ? Math.max(Math.round(Number(profile.totalEarnedCommission) / 80000), 5) : 0))),
+            totalRevenue: Number(c.stats?.totalRevenue ?? 0),
+            totalOrders: Number(c.stats?.totalOrders ?? 0),
             sampleRequestsCount: sampleStatsByKol[c.id]?.total || 0,
             pendingSamplesCount: sampleStatsByKol[c.id]?.pending || 0,
             completedVideosCount: sampleStatsByKol[c.id]?.completed || 0,
@@ -675,6 +656,7 @@ export default function ShopKolHubPage() {
 
       // 4. Merge all active collaborators (Chat Conversations + Sample Requests + Store Members)
       const mergedMap = new Map<string, PartnerKol>();
+      const measuredMembers = new Map(backendKols.map(member => [member.id, member]));
       // Active Inbox: Only creators with real messages or active pending requests
       convKols.forEach((k) => {
         if ((k.lastMessageTimestamp ?? 0) > 0 || (k.lastMessage && k.lastMessage.trim().length > 0)) {
@@ -705,12 +687,12 @@ export default function ShopKolHubPage() {
       }
 
       // Sort with latest message / interaction first
-      const allKols = Array.from(mergedMap.values()).sort((a, b) => {
+      const allKols = Array.from(mergedMap.values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })).sort((a, b) => {
         return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
       });
 
       setKols(allKols);
-      if (dbKols.length > 0) setAllPlatformKols(dbKols);
+      setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {
         if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
@@ -753,22 +735,34 @@ if (sequence !== sampleLoadSequence.current) return;
   }, [kols, selectedKolId]);
 
   useEffect(() => {
+    let active = true;
+    setKolOrders([]);
+    setKolPerformance(null);
+    setPerformanceError('');
     if (activeTab === 'performance' && selectedKol?.id) {
       setLoadingKolOrders(true);
       analyticsService
-        .getShopKolOrders(selectedKol.id, { limit: 20 })
+        .getShopKolOrders(selectedKol.id, { limit: 20, page: performancePage, period: performanceRange }, true)
         .then((res) => {
+          if (!active) return;
+          if (!res?.summary) throw new Error('Chưa tải được số liệu tổng hợp.');
           setKolOrders(res?.items || []);
+          setKolPerformance(res.summary);
+          setPerformancePages(res.totalPages || 0);
         })
         .catch((err) => {
-          console.error('Lỗi tải đơn hàng tiếp thị của KOL:', err);
+          if (!active) return;
+          setPerformanceError(err?.message || 'Không tải được hiệu suất KOC.');
           setKolOrders([]);
         })
         .finally(() => {
-          setLoadingKolOrders(false);
+          if (active) setLoadingKolOrders(false);
         });
     }
-  }, [activeTab, selectedKol?.id]);
+    return () => { active = false; };
+  }, [activeTab, selectedKol?.id, performancePage, performanceRange]);
+
+  useEffect(() => { setPerformancePage(1); }, [selectedKol?.id, performanceRange]);
 
   // Multi-channel list for selected KOL
   const allChannels = useMemo(() => {
@@ -1537,7 +1531,7 @@ return true;
               </div>
               <h2 className="text-sm font-bold text-[#1A1612]">Bảng xếp hạng nhà sáng tạo đối tác</h2>
             </div>
-            <span className="text-xs text-[#7D715E]">{kols.length} đối tác</span>
+            <span className="text-xs text-[#7D715E]">{sortedLeaderboardKols.length} hồ sơ · “—” khi chưa có thống kê tại Shop</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -1556,7 +1550,7 @@ return true;
               <tbody className="divide-y divide-[#EAE4D7]">
                 {sortedLeaderboardKols.map((rawKol, idx) => {
                   const rank = idx + 1;
-                  const effectiveTier = normalizePartnerTier(rawKol.tier, rawKol.stats.totalRevenue) || 'BRONZE';
+                  const effectiveTier = normalizePartnerTier(rawKol.tier);
                   const kol = { ...rawKol, tier: effectiveTier };
                   return (
                     <tr key={kol.id} className="hover:bg-[#FBF5EB]/40 transition">
@@ -1608,14 +1602,14 @@ return true;
                             ? 'bg-[#F1F3F5] text-[#5C6470] border-[#DCE0E5]'
                             : 'bg-[#F3EFE6] text-[#7D715E] border-[#EAE4D7]'
                         }`}>
-                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : 'Đồng'}
+                          {kol.tier === 'DIAMOND' ? 'Kim Cương' : kol.tier === 'GOLD' ? 'Vàng' : kol.tier === 'SILVER' ? 'Bạc' : kol.tier === 'BRONZE' ? 'Đồng' : 'Chưa xếp hạng'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-[#1A1612] tabular-nums">
-                        {kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫
+                        {kol.statsAvailable ? `${kol.stats.totalRevenue.toLocaleString('vi-VN')} ₫` : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
-                        {kol.stats.totalOrders}
+                        {kol.statsAvailable ? kol.stats.totalOrders : '—'}
                       </td>
                       <td className="py-3 px-4 text-center font-medium text-[#1A1612] tabular-nums">
                         {kol.stats.completedVideosCount}
@@ -2171,7 +2165,7 @@ return true;
 
                       <span className="kol-profile-badge inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shrink-0 whitespace-nowrap [.is-header-compact_&]:py-[2px] [.is-header-compact_&]:text-[9px]">
                         <Crown className="w-2.5 h-2.5 text-[#B88E4F]" />
-                        <span>Thù lao: {selectedKol.commissionRate ? `${selectedKol.commissionRate}% (Deal VIP)` : selectedKol.tier === 'DIAMOND' ? '13% (Kim Cương)' : selectedKol.tier === 'GOLD' ? '12% (Vàng)' : selectedKol.tier === 'SILVER' ? '11% (Bạc)' : '10% (Đồng)'}</span>
+                        <PartnerRemunerationSummary role="SHOP_MANAGER" storeId={ownedStore?.id} collaboratorId={selectedKol.id} tier={selectedKol.tier} />
                       </span>
                     </div>
 
@@ -2184,10 +2178,10 @@ return true;
                           setShowVipCampaignModal(true);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#B88E4F] transition cursor-pointer shadow-2xs"
-                        title="Mời chiến dịch tiếp thị VIP cho KOL này"
+                        title="Đề nghị thỏa thuận VIP theo sản phẩm với KOC này"
                       >
                         <Crown className="w-3.5 h-3.5" />
-                        <span>Mời Chiến Dịch VIP</span>
+                        <span>Đề nghị VIP</span>
                       </button>
 
                       <button
@@ -2724,17 +2718,9 @@ return true;
 
               {/* TAB 3: PERFORMANCE & AFFILIATE ORDERS (Tone Sáng, Sang Trọng, Chuẩn SCANMS) */}
               {activeTab === 'performance' && (() => {
-                const effectiveCommissionRate = selectedKol.commissionRate || 10;
-                const rawRevenue = selectedKol.stats?.totalRevenue || 0;
-                const rawOrders = selectedKol.stats?.totalOrders || 0;
-
-                const realReferredRevenue = kolOrders.reduce((sum, o: any) => sum + Number(o.finalAmount || o.orderTotal || 0), 0);
-                const realReferredCommission = kolOrders.reduce((sum, o: any) => sum + Number(o.commissionAmount || o.commissionEarned || 0), 0);
-                const displayRevenue = rawRevenue > 0 ? rawRevenue : realReferredRevenue;
-                const displayOrders = rawOrders > 0 ? rawOrders : kolOrders.length;
-                const displayCommission = rawRevenue > 0
-                  ? Math.round((rawRevenue * effectiveCommissionRate) / 100)
-                  : realReferredCommission;
+                const displayRevenue = kolPerformance?.totalRevenue || 0;
+                const displayOrders = kolPerformance?.totalOrders || 0;
+                const displayCommission = kolPerformance?.accruedCommission || 0;
                 const displayAov = displayOrders > 0 ? Math.round(displayRevenue / displayOrders) : 0;
                 const hasOrders = displayOrders > 0;
 
@@ -2827,20 +2813,23 @@ onClick={() => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-[#059669]">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-semibold text-[#7D715E]">
                           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          Đối soát thời gian thực
+                          Theo kỳ báo cáo đã chọn
                         </span>
                       </div>
                     </div>
 
-                    {/* 3. Top 4 Metric Cards (Tone Sáng, Sang Trọng, Chuẩn Vàng Be) */}
-                    <div className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    {performanceError && <p role="alert" className="rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#DC2626]">{performanceError}</p>}
+                    {loadingKolOrders && <p role="status" className="text-sm text-[#7D715E]">Đang tải số liệu kỳ báo cáo…</p>}
+                    <div className="flex items-center justify-end gap-2 text-xs text-[#7D715E]"><button type="button" disabled={loadingKolOrders || performancePage <= 1} onClick={() => setPerformancePage(page => page - 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang trước</button><span>Trang {performancePage}/{Math.max(1, performancePages)}</span><button type="button" disabled={loadingKolOrders || performancePage >= performancePages} onClick={() => setPerformancePage(page => page + 1)} className="rounded-lg border border-[#EAE4D7] px-3 py-2 disabled:opacity-40">Trang sau</button></div>
+                    {/* Aggregates come from the API across every page in the period. */}
+                    <div style={{ display: !kolPerformance || loadingKolOrders ? 'none' : undefined }} className="kol-performance-metrics grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                       {/* Card 1: Doanh thu thuần */}
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-                            Doanh thu thuần từ KOL
+                            Doanh số đơn đã giao
                           </span>
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
                             <TrendingUp className="h-4 w-4" />
@@ -2864,7 +2853,7 @@ onClick={() => {
                       <div className="group rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-white to-[#FAF8F5] p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] transition-all hover:border-[#C59B58] hover:shadow-md">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">
-                            Hoa hồng chi trả KOL
+                            Hoa hồng đã ghi nhận
                           </span>
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] group-hover:scale-105 transition">
                             <DollarSign className="h-4 w-4" />
@@ -2874,7 +2863,7 @@ onClick={() => {
                           {displayCommission.toLocaleString('vi-VN')} ₫
                         </div>
                         <div className="mt-1.5 text-[11px] text-[#7D715E]">
-                          Tỷ lệ áp dụng: <strong className="text-[#1A1612]">{effectiveCommissionRate}%</strong> · Tự động đối soát
+                          Gồm tiền chờ và đã đối soát; chưa đồng nghĩa đã rút tiền.
                         </div>
                       </div>
 
@@ -2894,7 +2883,7 @@ onClick={() => {
                         <div className="mt-1.5 text-[11px]">
                           {hasOrders ? (
                             <span className="font-semibold text-[#059669]">
-                              Đã giao: {ordersList.filter(o => o.status === 'DELIVERED').length}/{displayOrders} đơn ({displayOrders > 0 ? Math.round((ordersList.filter(o => o.status === 'DELIVERED').length / displayOrders) * 100) : 0}%)
+                              Đã giao/hoàn tất trong kỳ, tổng hợp đủ các trang.
                             </span>
                           ) : (
                             <span className="text-[#7D715E]">Chờ đơn hàng chốt đầu tiên</span>
@@ -2930,15 +2919,15 @@ onClick={() => {
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-[#1A1612] flex items-center gap-1.5">
                           <BarChart3 className="h-4 w-4 text-[#B88E4F]" />
-                          Tiến độ xử lý & Đối soát đơn hàng
+                          Trạng thái đơn trên trang này
                         </span>
-                        <span className="text-[11px] text-[#7D715E]">Truy vấn từ cơ sở dữ liệu đơn hàng tiếp thị</span>
+                        <span className="text-[11px] text-[#7D715E]">{ordersList.length} đơn đang hiển thị</span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
                           <span className="block text-[10px] font-bold uppercase text-[#7D715E]">1. Đang xử lý</span>
-                          <strong className="text-lg font-black text-[#1A1612] mt-0.5 block">
-                            {ordersList.filter(o => o.status !== 'DELIVERED' && o.status !== 'SHIPPING').length} đơn
+                          <strong data-order-status-count="pending" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#7D715E]">Chờ đóng gói & xuất kho</span>
                         </div>
@@ -2950,19 +2939,19 @@ onClick={() => {
                           <span className="text-[10px] text-blue-600 font-medium">Đang trên đường giao</span>
                         </div>
                         <div className="rounded-xl border border-[#EAE4D7] bg-white p-3">
-                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">3. Giao thành công</span>
-                          <strong className="text-lg font-black text-[#059669] mt-0.5 block">
-                            {ordersList.filter(o => o.status === 'DELIVERED').length} đơn
+                          <span className="block text-[10px] font-bold uppercase text-[#7D715E]">3. Đã giao / Hoàn tất</span>
+                          <strong data-order-status-count="delivered" className="text-lg font-black text-[#1A1612] mt-0.5 block">
+                            {ordersList.filter(o => ['DELIVERED', 'COMPLETED'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#059669] font-medium">Đã giao tới khách</span>
                         </div>
                         <div className="rounded-xl border border-[#EEDFC6] bg-gradient-to-br from-[#FBF5EB] to-white p-3">
-                          <span className="block text-[10px] font-bold uppercase text-[#8F682E]">4. Tỷ lệ hoàn tất</span>
-                          <strong className="text-lg font-black text-[#B88E4F] mt-0.5 block">
-                            {displayOrders > 0 ? Math.round((ordersList.filter(o => o.status === 'DELIVERED').length / displayOrders) * 100) : 0}%
+                          <span className="block text-[10px] font-bold uppercase text-[#8F682E]">4. Hủy / Đổi trả</span>
+                          <strong data-order-status-count="returned" className="text-lg font-black text-[#B88E4F] mt-0.5 block">
+                            {ordersList.filter(o => ['CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'DISPUTED'].includes(o.status)).length} đơn
                           </strong>
                           <span className="text-[10px] text-[#B88E4F] font-bold">
-                            {ordersList.filter(o => o.status === 'DELIVERED').length}/{displayOrders} đơn hoàn tất
+                            Gồm yêu cầu đang khiếu nại
                           </span>
                         </div>
                       </div>
@@ -3033,7 +3022,7 @@ setActiveTab('messages');
                                 <th className="p-3.5">Khách hàng</th>
                                 <th className="p-3.5">Sản phẩm tiếp thị</th>
                                 <th className="p-3.5">Giá trị đơn</th>
-                                <th className="p-3.5">Hoa hồng KOL ({effectiveCommissionRate}%)</th>
+                                <th className="p-3.5">Hoa hồng đã ghi nhận</th>
                                 <th className="p-3.5">Trạng thái</th>
                               </tr>
                             </thead>
@@ -3292,12 +3281,12 @@ setActiveTab('messages');
       {discoveryModal}
 
       {showVipCampaignModal && (
-        <SendVipCampaignModal
-          collaboratorName={selectedKol?.fullName}
+        <ExclusiveOfferModal
+          collaborator={selectedKol ? { id: selectedKol.id, fullName: selectedKol.fullName } : undefined}
           onClose={() => setShowVipCampaignModal(false)}
           onSuccess={() => {
             setShowVipCampaignModal(false);
-            toast.success('Đã gửi Thư mời Chiến dịch VIP thành công!');
+            toast.success('Đã gửi đề nghị VIP, chờ KOC xác nhận.');
           }}
         />
       )}

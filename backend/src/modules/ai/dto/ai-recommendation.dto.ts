@@ -157,6 +157,8 @@ export class KolLifetimeStatsSummaryDto {
 }
 
 export class KolMatchResultDto {
+  @ApiPropertyOptional({ enum: ['COLD_START', 'PERFORMANCE'] })
+  scoringMode?: 'COLD_START' | 'PERFORMANCE';
   @ApiProperty({
     description: 'ID định danh của KOL',
     example: '22222222-3030-4000-8000-000000000001',

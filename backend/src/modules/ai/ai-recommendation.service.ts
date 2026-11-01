@@ -5,7 +5,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
+import {
+  CacheService,
+  NOOP_CACHE_SERVICE,
+} from '../../core/cache/cache.service';
 import {
   RecommendKolsQueryDto,
   KolMatchResultDto,
@@ -16,6 +19,8 @@ import {
 } from './dto/ai-recommendation.dto';
 import { OrderStatus, UserRole } from '@prisma/client';
 import { textMatchesCategory } from './category-match.utils';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { matchingScore } from './matching-score.policy';
 
 @Injectable()
 export class AiRecommendationService {
@@ -31,10 +36,6 @@ export class AiRecommendationService {
     currentUserRole: string,
     onlyCollaboratorId?: string,
   ): Promise<AiRecommendationResponseDto> {
-    const cacheKey = `ai:recommend:kols:${query.productId || 'none'}:${query.category || 'all'}:${query.minTier || 'all'}:${query.limit || '5'}:${onlyCollaboratorId || 'all'}`;
-    const cached = await this.cacheService.get<AiRecommendationResponseDto>(cacheKey);
-    if (cached) return cached;
-
     let targetProduct: any = null;
     let targetCategory = query.category;
     let targetPrice = 0;
@@ -62,14 +63,46 @@ export class AiRecommendationService {
         currentUserRole === UserRole.SHOP_MANAGER &&
         targetProduct.store.ownerId !== currentUserId
       ) {
-        throw new ForbiddenException(
-          'Chỉ được quét KOL cho sản phẩm của gian hàng mình.',
-        );
+        const managedStore = await this.prisma.store.findFirst({
+          where: {
+            ...managedStoreWhere(currentUserId),
+            id: targetProduct.store.id,
+          },
+          select: { id: true },
+        });
+        if (!managedStore) {
+          throw new ForbiddenException(
+            'Chỉ được quét KOL cho sản phẩm của gian hàng mình.',
+          );
+        }
       }
-      targetCategory = targetProduct.categoryName?.trim() || query.category?.trim() || undefined;
-      if (!targetCategory) throw new BadRequestException('Sản phẩm chưa có ngành hàng. Hãy chọn ngành hàng trong bộ lọc trước khi đối sánh KOL.');
+      targetCategory =
+        targetProduct.categoryName?.trim() ||
+        query.category?.trim() ||
+        undefined;
+      if (!targetCategory)
+        throw new BadRequestException(
+          'Sản phẩm chưa có ngành hàng. Hãy chọn ngành hàng trong bộ lọc trước khi đối sánh KOL.',
+        );
       targetPrice = Number(targetProduct.price || 0);
     }
+
+    // Authorization and product eligibility must run even when the result is cached.
+    // Include every filter and the caller to prevent cross-shop/filter cache reuse.
+    const cacheKey = `ai:recommend:kols:v3:${JSON.stringify([
+      currentUserId,
+      currentUserRole,
+      query.productId ?? null,
+      query.category ?? null,
+      query.minTier ?? null,
+      query.priceRange ?? PriceRangeFilter.ALL,
+      query.minConversionRate ?? null,
+      query.limit ?? 5,
+      onlyCollaboratorId ?? null,
+    ])}`;
+    const cached =
+      await this.cacheService.get<AiRecommendationResponseDto>(cacheKey);
+    if (cached) return cached;
 
     // 2. Lấy danh sách tất cả Collaborators đủ điều kiện (KYC, Active)
     const collaborators = await this.prisma.user.findMany({
@@ -206,10 +239,19 @@ export class AiRecommendationService {
       let primaryCategory = 'Chưa có lịch sử bán hàng';
       let maxCatCount = 0;
       let categoryMatchSource: 'SALES' | 'PROFILE' | 'NONE' = 'NONE';
-      const profileText = [c.collaboratorProfile?.bio, ...socialChannels.map(channel => channel.channelName)].filter(Boolean).join(' ');
-      const hasCategoryEvidence = (category: string) => [...stats.categoryOrderCounts.keys()].some(cat => textMatchesCategory(cat, category)) || textMatchesCategory(profileText, category);
+      const profileText = [
+        c.collaboratorProfile?.bio,
+        ...socialChannels.map((channel) => channel.channelName),
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const hasCategoryEvidence = (category: string) =>
+        [...stats.categoryOrderCounts.keys()].some((cat) =>
+          textMatchesCategory(cat, category),
+        ) || textMatchesCategory(profileText, category);
       if (targetCategory && !hasCategoryEvidence(targetCategory)) continue;
-      if (query.category?.trim() && !hasCategoryEvidence(query.category.trim())) continue;
+      if (query.category?.trim() && !hasCategoryEvidence(query.category.trim()))
+        continue;
 
       for (const [cat, count] of stats.categoryOrderCounts.entries()) {
         if (count > maxCatCount) {
@@ -249,7 +291,7 @@ export class AiRecommendationService {
             )
           : 0;
 
-      const isColdStart = stats.totalOrders === 0;
+      const isColdStart = stats.totalOrders < 5;
       let conversionRateScore = 0;
       if (isColdStart) {
         conversionRateScore = 75;
@@ -320,7 +362,7 @@ export class AiRecommendationService {
       else if (totalFollowers >= 100000)
         tierAndSocialScore = Math.min(100, tierAndSocialScore + 3);
       else if (isColdStart && totalFollowers >= 50000)
-        tierAndSocialScore = 75;
+        tierAndSocialScore = Math.max(tierAndSocialScore, 75);
 
       // Tiêu chí 4: Điểm phù hợp phân khúc giá (Price Fit Score - 20%)
       let priceFitScore = 0;
@@ -363,18 +405,9 @@ export class AiRecommendationService {
       }
 
       // 5. TỔNG HỢP MATCH SCORE (Công thức ma trận trọng số)
-      const finalMatchScore = Math.min(
-        100,
-        Math.max(
-          0,
-          Math.round(
-            categoryScore * 0.35 +
-              conversionRateScore * 0.25 +
-              tierAndSocialScore * 0.2 +
-              priceFitScore * 0.2,
-          ),
-        ),
-      );
+      // Profile evidence drives cold start; after five orders performance dominates.
+      const weighting = matchingScore(stats.totalOrders, totalFollowers, categoryScore, conversionRateScore, priceFitScore);
+      const finalMatchScore = weighting.score;
 
       // Đánh giá mức độ
       let matchLevel = 'Phù Hợp';
@@ -382,7 +415,7 @@ export class AiRecommendationService {
       else if (finalMatchScore >= 78) matchLevel = 'Rất Phù Hợp';
       else if (finalMatchScore >= 65) matchLevel = 'Phù Hợp';
       else matchLevel = 'Tiềm Năng';
-      const isRisingStar = stats.totalOrders === 0;
+      const isRisingStar = isColdStart;
       if (isRisingStar) matchLevel = '✨ Tiềm Năng Mới (Rising Star)';
 
       // 6. Sinh lời giải thích AI tự nhiên (Explainable AI Reasoning)
@@ -422,7 +455,8 @@ export class AiRecommendationService {
         matchScore: finalMatchScore,
         matchLevel,
         categoryMatchSource,
-        isRisingStar: stats.totalOrders === 0,
+        isRisingStar,
+        scoringMode: weighting.mode,
         matchedCategory: targetCategory,
         scoreBreakdown,
         aiReasoning,
@@ -528,9 +562,12 @@ export class AiRecommendationService {
     orders: number,
     categorySource: 'SALES' | 'PROFILE' | 'NONE',
   ): string {
-    const categoryEvidence = categorySource === 'PROFILE'
-      ? ` Hồ sơ/kênh có nội dung liên quan đến ${category}; chưa có đơn hoàn tất trong ngành này.`
-      : categorySource === 'SALES' ? ` Có lịch sử đơn hoàn tất trong nhóm ngành ${category}.` : '';
+    const categoryEvidence =
+      categorySource === 'PROFILE'
+        ? ` Hồ sơ/kênh có nội dung liên quan đến ${category}; chưa có đơn hoàn tất trong ngành này.`
+        : categorySource === 'SALES'
+          ? ` Có lịch sử đơn hoàn tất trong nhóm ngành ${category}.`
+          : '';
     if (!orders)
       return `${kolName} chưa có đơn affiliate hoàn tất trên SCANMS. Điểm ${score}/100 chủ yếu dựa trên hồ sơ; chưa đủ dữ liệu để đánh giá hiệu quả bán "${productTitle}".${categoryEvidence}`;
     return `${kolName}: ${score}/100 điểm gợi ý cho "${productTitle}" với ngành mục tiêu ${category}.${categoryEvidence} Căn cứ chung: ${orders} đơn affiliate đã giao/hoàn tất trên SCANMS, tỷ lệ đơn trên lượt nhấp hợp lệ duy nhất ${cr}% và hạng ${tier}. Điểm dùng để xếp hạng tham khảo, không phải xác suất chốt đơn.`;

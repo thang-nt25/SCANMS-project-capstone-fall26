@@ -60,7 +60,7 @@ describe('Word additive commission contract', () => {
     const dto = Object.assign(new CreateExclusiveDealDto(), {
       productId: '11111111-1111-4111-8111-111111111111', proposedCommissionRate,
       salesCommitment: 'Thực hiện video review', videoReviewCommitment: true,
-      targetOrders: 50, commitmentDays: 30,
+      targetRevenue: 10000000, commitmentDays: 30,
     });
     expect(validateSync(dto)).toHaveLength(0);
     dto.videoReviewCommitment = false;

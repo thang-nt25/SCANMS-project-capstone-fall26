@@ -40,6 +40,10 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
   const available = variants.length ? variants.some((candidate) => candidate.stockQuantity > 0) : (product.stockQuantity ?? 0) > 0;
   const selectedAvailable = !variant || variant.stockQuantity > 0;
   const needsSelection = choosing && !variant;
+  const soldCount = Number(product.soldCount ?? 0);
+  const soldLabel = Number.isFinite(soldCount)
+    ? Math.max(0, Math.trunc(soldCount)).toLocaleString('vi-VN')
+    : '0';
 
   useEffect(() => {
     if (!choosing) return;
@@ -78,10 +82,13 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <Link to={product.storeId ? `/shops/${product.storeId}` : '/search'} className="mb-2 inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F]"><Store size={13} className="shrink-0" /><span className="truncate">{product.brand}</span></Link>
         <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm"><Link to={`/products/${product.sku || product.id}`} className="hover:text-[#B88E4F]">{product.name}</Link></h3>
-        <div className="mb-2 mt-1.5 flex items-center justify-between gap-1 flex-wrap">
-          <span className="text-[10px] text-[#7D715E]">{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
+        <div className="mb-2 mt-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] text-[#7D715E]">
+            <span>{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
+            <span data-product-sold-count className="whitespace-nowrap tabular-nums">Đã bán {soldLabel}</span>
+          </div>
           {product.commissionRate && product.commissionRate > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
+            <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
               Thù lao tiếp thị: {product.commissionRate}%
             </span>
           )}

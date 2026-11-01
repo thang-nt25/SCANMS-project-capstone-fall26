@@ -1,3 +1,5 @@
+// Pricing transactions have separate PostgreSQL integration coverage.
+jest.mock('../pricing/pricing-policy', () => ({ lockPricingProducts: jest.fn(), reservePromotionBudget: jest.fn(), releasePromotionBudget: jest.fn() }));
 import { OrdersService } from './orders.service';
 import { allocateDiscount, liveVoucherActive, priceVoucherLines } from '../coupons/voucher-pricing';
 
