@@ -151,7 +151,10 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       expect(mockPrisma.coupon.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            storeId: 'store-uuid-1',
+            OR: expect.arrayContaining([
+              expect.objectContaining({ storeId: 'store-uuid-1', fundingSource: CouponFundingSource.SHOP_FUNDED }),
+              expect.objectContaining({ fundingSource: CouponFundingSource.PLATFORM_FUNDED, benefitType: 'SHIPPING' }),
+            ]),
             status: CouponStatus.ACTIVE,
             deletedAt: null,
           }),

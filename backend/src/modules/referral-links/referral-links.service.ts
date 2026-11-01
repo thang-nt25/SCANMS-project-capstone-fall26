@@ -2476,11 +2476,20 @@ export class ReferralLinksService {
           select: { status: true, approvedCommissionRate: true },
         })
       ;
-    const effectiveDeal = currentDeal ?? (link.exclusiveDeal?.closedAt ? null : link.exclusiveDeal);
+    const isApplicableDeal = (deal: any) => {
+      if (!deal || deal.status !== 'APPROVED' || deal.closedAt) return false;
+      const rate = Number(deal.approvedCommissionRate);
+      return Number.isFinite(rate) && rate >= 10 && rate <= 25;
+    };
+    const effectiveDeal = isApplicableDeal(currentDeal)
+      ? currentDeal
+      : isApplicableDeal(link.exclusiveDeal)
+        ? link.exclusiveDeal
+        : null;
 
     // A renewed deal applies to new orders through every VIP link; existing
     // orders retain their immutable OrderItem commission snapshots.
-    const approvedDealRate = effectiveDeal?.status === 'APPROVED' && effectiveDeal.approvedCommissionRate != null
+    const approvedDealRate = effectiveDeal?.approvedCommissionRate != null
       ? Number(effectiveDeal.approvedCommissionRate) : 0;
     const dealRate = Number.isFinite(approvedDealRate) && approvedDealRate >= 10 && approvedDealRate <= 25
       ? approvedDealRate : 0;

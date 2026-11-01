@@ -289,21 +289,12 @@ export class CouponsService {
         liveSession: { include: { products: { select: { productId: true, variantId: true } } } },
       }, orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }], take: 100,
     });
-    const account = userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { phoneNumber: true } }) : null;
-    const phone = account?.phoneNumber?.trim();
-    const used = userId && coupons.length ? await this.prisma.couponRedemption.groupBy({
-      by: ['couponId'], where: {
-        couponId: { in: coupons.map(coupon => coupon.id) }, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.RESERVED] },
-        OR: [{ customerId: userId }, ...(phone ? [{ customerPhone: phone }] : [])],
-      }, _count: { _all: true },
-    }) : [];
-    const counts = new Map(used.map(row => [row.couponId, row._count._all]));
     const results = await Promise.all(coupons.map(async coupon => {
       try {
         const evaluated = await this.evaluateCoupon({
-          code: coupon.displayCode, storeId, customerPhone: phone,
+          code: coupon.displayCode, storeId,
           items: [{ productId: product.id, variantId: variant?.id, quantity: query.quantity }],
-        }, undefined, userId, { coupon, products: [product], variants: variant ? [variant] : [], redemptions: counts.get(coupon.id) || 0 });
+        }, undefined, userId, { coupon, products: [product], variants: variant ? [variant] : [] });
         if (evaluated.discountAmount <= 0) return null;
         return {
           id: coupon.id, displayCode: coupon.displayCode, code: coupon.displayCode,
@@ -2042,7 +2033,7 @@ export class CouponsService {
     dto: ValidateCouponDto,
     rateLimitKey?: string,
     userId?: string,
-    preview?: { coupon: any; products: any[]; variants: any[]; redemptions: number },
+    preview?: { coupon: any; products: any[]; variants: any[] },
   ) {
 
     const codeNormalized = dto.code.trim().toUpperCase();
