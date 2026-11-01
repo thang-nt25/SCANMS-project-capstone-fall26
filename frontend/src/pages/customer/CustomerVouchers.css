@@ -1,29 +1,30 @@
-﻿.customer-vouchers .voucher-wallet-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; min-height: 58px; padding: 10px 12px; margin-bottom: 16px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; }
-.customer-vouchers .voucher-wallet-label { display: inline-flex; align-items: center; gap: 9px; color: #1A1612; font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
-.customer-vouchers .voucher-wallet-label > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #FBF5EB; color: #B88E4F; }
-.customer-vouchers .voucher-wallet-filters { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.customer-vouchers .voucher-wallet-filters > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 10px; margin: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #7D715E; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.5; cursor: pointer; }
-.customer-vouchers .voucher-wallet-filters > button[aria-pressed=true] { border-color: #EEDFC6; background: #FBF5EB; color: #8F682E; }
-.customer-vouchers .voucher-wallet-filters > button > span { display: grid; place-items: center; min-width: 17px; padding: 1px 4px; border-radius: 4px; background: #F3EFE6; color: #7D715E; font-size: 9px; font-variant-numeric: tabular-nums; }
-.customer-vouchers .voucher-wallet-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 224px; padding: 32px 20px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; text-align: center; }
-.customer-vouchers .voucher-wallet-empty-icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 12px; border-radius: 12px; background: #FBF5EB; color: #B88E4F; }
-.customer-vouchers .voucher-wallet-empty-content { max-width: 440px; min-width: 0; }
-.customer-vouchers .voucher-wallet-empty h2 { margin: 0; color: #1A1612; font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.55; letter-spacing: normal; }
-.customer-vouchers .voucher-wallet-empty p { margin: 10px 0 16px; color: #7D715E; font-size: 12px; line-height: 1.7; }
-.customer-vouchers .voucher-wallet-explore { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 34px; max-width: 100%; padding: 7px 13px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #B88E4F; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.5; text-decoration: none; cursor: pointer; }
-.customer-vouchers .voucher-wallet-explore:hover { background: #F3EFE6; border-color: #C59B58; }
-.customer-vouchers .voucher-wallet-loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 220px; color: #7D715E; font-size: 13px; }
-.customer-vouchers .voucher-wallet-loading svg { color: #B88E4F; animation: voucher-wallet-spin 1s linear infinite; }
-.customer-vouchers .voucher-wallet-loading p { margin: 0; }
-.customer-vouchers :is(.voucher-wallet-filters button, .voucher-wallet-explore):focus-visible { outline: 2px solid #C59B58; outline-offset: 4px; }
+@reference "../../index.css";
+.customer-vouchers .voucher-wallet-toolbar { @apply flex; @apply flex-wrap; @apply items-center; @apply [gap:12px_20px]; @apply [min-height:58px]; @apply [padding:10px_12px]; @apply [margin-bottom:16px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.customer-vouchers .voucher-wallet-label { @apply inline-flex; @apply items-center; @apply [gap:9px]; @apply [color:#1A1612]; @apply [font-size:12px]; @apply [font-weight:600]; @apply [line-height:1.5]; @apply whitespace-nowrap; }
+.customer-vouchers .voucher-wallet-label > span { @apply grid; @apply place-items-center; @apply [width:28px]; @apply [height:28px]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.customer-vouchers .voucher-wallet-filters { @apply flex; @apply items-center; @apply [gap:8px]; @apply [margin-left:auto]; }
+.customer-vouchers .voucher-wallet-filters > button { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:34px]; @apply [padding:7px_10px]; @apply [margin:0]; @apply [border:1px_solid_transparent]; @apply [border-radius:7px]; @apply [background:transparent]; @apply [color:#7D715E]; @apply [font-family:inherit]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [line-height:1.5]; @apply cursor-pointer; }
+.customer-vouchers .voucher-wallet-filters > button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; }
+.customer-vouchers .voucher-wallet-filters > button > span { @apply grid; @apply place-items-center; @apply [min-width:17px]; @apply [padding:1px_4px]; @apply [border-radius:4px]; @apply [background:#F3EFE6]; @apply [color:#7D715E]; @apply [font-size:9px]; font-variant-numeric: tabular-nums; }
+.customer-vouchers .voucher-wallet-empty { @apply flex; @apply flex-col; @apply items-center; @apply justify-center; @apply [min-height:224px]; @apply [padding:32px_20px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; @apply text-center; }
+.customer-vouchers .voucher-wallet-empty-icon { @apply grid; @apply place-items-center; @apply [width:46px]; @apply [height:46px]; @apply [margin-bottom:12px]; @apply [border-radius:12px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.customer-vouchers .voucher-wallet-empty-content { @apply [max-width:440px]; @apply [min-width:0]; }
+.customer-vouchers .voucher-wallet-empty h2 { @apply [margin:0]; @apply [color:#1A1612]; @apply [font-family:inherit]; @apply [font-size:16px]; @apply [font-weight:600]; @apply [line-height:1.55]; @apply [letter-spacing:normal]; }
+.customer-vouchers .voucher-wallet-empty p { @apply [margin:10px_0_16px]; @apply [color:#7D715E]; @apply [font-size:12px]; @apply [line-height:1.7]; }
+.customer-vouchers .voucher-wallet-explore { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:10px]; @apply [min-height:34px]; @apply [max-width:100%]; @apply [padding:7px_13px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; @apply [font-family:inherit]; @apply [font-size:12px]; @apply [font-weight:600]; @apply [line-height:1.5]; @apply [text-decoration:none]; @apply cursor-pointer; }
+.customer-vouchers .voucher-wallet-explore:hover { @apply [background:#F3EFE6]; @apply [border-color:#C59B58]; }
+.customer-vouchers .voucher-wallet-loading { @apply flex; @apply items-center; @apply justify-center; @apply [gap:10px]; @apply [min-height:220px]; @apply [color:#7D715E]; @apply [font-size:13px]; }
+.customer-vouchers .voucher-wallet-loading svg { @apply [color:#B88E4F]; @apply [animation:voucher-wallet-spin_1s_linear_infinite]; }
+.customer-vouchers .voucher-wallet-loading p { @apply [margin:0]; }
+.customer-vouchers :is(.voucher-wallet-filters button, .voucher-wallet-explore):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:4px]; }
 @keyframes voucher-wallet-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .customer-vouchers .voucher-wallet-loading svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .customer-vouchers .voucher-wallet-loading svg { @apply [animation:none]; } }
 
 @container customer-vouchers (max-width: 479px) {
-  .customer-vouchers .voucher-wallet-toolbar { gap: 10px; }
-  .customer-vouchers .voucher-wallet-filters { gap: 2px; }
-  .customer-vouchers .voucher-wallet-filters > button { padding-inline: 6px; }
-  .customer-vouchers .voucher-wallet-label { font-size: 11px; gap: 6px; }
-  .customer-vouchers .voucher-wallet-empty { padding: 28px 16px; }
-  .customer-vouchers .voucher-wallet-empty h2 { font-size: 15px; }
+  .customer-vouchers .voucher-wallet-toolbar { @apply [gap:10px]; }
+  .customer-vouchers .voucher-wallet-filters { @apply [gap:2px]; }
+  .customer-vouchers .voucher-wallet-filters > button { @apply [padding-inline:6px]; }
+  .customer-vouchers .voucher-wallet-label { @apply [font-size:11px]; @apply [gap:6px]; }
+  .customer-vouchers .voucher-wallet-empty { @apply [padding:28px_16px]; }
+  .customer-vouchers .voucher-wallet-empty h2 { @apply [font-size:15px]; }
 }

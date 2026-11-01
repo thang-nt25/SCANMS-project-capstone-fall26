@@ -1,18 +1,19 @@
-.kol-report-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.kol-report-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 9px 10px; border: 1px solid #eae4d7; border-radius: 10px; background: #fff; font-size: 12px; font-weight: 500; color: #7d715e; cursor: pointer; }
-.kol-report-step { display: grid; place-items: center; flex-shrink: 0; width: 25px; height: 25px; border: 1px solid #eae4d7; border-radius: 50%; font-size: 11px; font-weight: 400; }
-.kol-report-tabs button[aria-pressed=true] { border-color: #eedfc6; background: #fbf5eb; color: #1a1612; font-weight: 600; }
-.kol-report-tabs button[aria-pressed=true] .kol-report-step { border-color: #c59b58; color: #9a7135; }
-.kol-report-tabs small { border-radius: 5px; padding: 1px 5px; background: #faf8f5; font-size: 10px; font-variant-numeric: tabular-nums; color: #7d715e; }
-.kol-report-tabs button:focus-visible { outline: 2px solid #b88e4f; outline-offset: 2px; }
+@reference "../../index.css";
+.kol-report-tabs { @apply grid; @apply [grid-template-columns:repeat(4,_minmax(0,_1fr))]; @apply [gap:10px]; }
+.kol-report-tabs button { @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [min-height:46px]; @apply [padding:9px_10px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:10px]; @apply [background:#fff]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [color:#7d715e]; @apply cursor-pointer; }
+.kol-report-step { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:25px]; @apply [height:25px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-size:11px]; @apply [font-weight:400]; }
+.kol-report-tabs button[aria-pressed=true] { @apply [border-color:#eedfc6]; @apply [background:#fbf5eb]; @apply [color:#1a1612]; @apply [font-weight:600]; }
+.kol-report-tabs button[aria-pressed=true] .kol-report-step { @apply [border-color:#c59b58]; @apply [color:#9a7135]; }
+.kol-report-tabs small { @apply [border-radius:5px]; @apply [padding:1px_5px]; @apply [background:#faf8f5]; @apply [font-size:10px]; font-variant-numeric: tabular-nums; @apply [color:#7d715e]; }
+.kol-report-tabs button:focus-visible { @apply [outline:2px_solid_#b88e4f]; @apply [outline-offset:2px]; }
 .kol-detail-report table { font-variant-numeric: tabular-nums; }
-.kol-detail-report table thead { background: #fff; }
-.kol-detail-report table th { padding: 12px 14px; font-size: 12px; font-weight: 500; background: #fff; }
-.kol-detail-report table td { padding: 12px 14px; font-size: 12px; line-height: 20px; }
-.kol-detail-report table td img { width: 38px; height: 38px; }
-.kol-detail-report table td span.text-\[10px\] { font-size: 11px; line-height: 17px; }
-.kol-detail-report table td:first-child { white-space: nowrap; }
+.kol-detail-report table thead { @apply [background:#fff]; }
+.kol-detail-report table th { @apply [padding:12px_14px]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [background:#fff]; }
+.kol-detail-report table td { @apply [padding:12px_14px]; @apply [font-size:12px]; @apply [line-height:20px]; }
+.kol-detail-report table td img { @apply [width:38px]; @apply [height:38px]; }
+.kol-detail-report table td span.text-\[10px\] { @apply [font-size:11px]; @apply [line-height:17px]; }
+.kol-detail-report table td:first-child { @apply whitespace-nowrap; }
 @media (max-width: 639px) {
-  .kol-report-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .kol-report-tabs button { font-size: 11px; min-height: 42px; }
+  .kol-report-tabs { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:8px]; }
+  .kol-report-tabs button { @apply [font-size:11px]; @apply [min-height:42px]; }
 }

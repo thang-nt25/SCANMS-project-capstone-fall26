@@ -1,168 +1,169 @@
-.commission-workspace { max-width: none; padding-top: 0; padding-bottom: 24px; }
-.commission-workspace > * + * { margin-top: 18px; }
-.commission-workspace .commission-heading { padding: 18px 20px; border-radius: 13px; box-shadow: none; }
-.commission-heading h2 { font-size: 17px; line-height: 24px; font-weight: 650; letter-spacing: -.35px; }
-.commission-heading p { margin: 5px 0 0; font-size: 11px; line-height: 18px; color: #7D715E; }
-.commission-heading > button { height: 36px; padding-inline: 13px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8C6226; font-size: 11px; font-weight: 550; box-shadow: none; }
-.commission-heading > button:hover { background: #F3EFE6; }
-.commission-history { border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
-.commission-history > div:first-child { padding: 14px 20px; }
-.commission-history h3 { font-size: 12px; line-height: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.commission-workspace > .commission-tiers { container-type: inline-size; margin-top: 10px; }
-.commission-tiers-empty { padding: 20px 16px; }
-.commission-rules-list { display: grid; gap: 8px; }
+@reference "../../index.css";
+.commission-workspace { @apply [max-width:none]; @apply [padding-top:0]; @apply [padding-bottom:24px]; }
+.commission-workspace > * + * { @apply [margin-top:18px]; }
+.commission-workspace .commission-heading { @apply [padding:18px_20px]; @apply [border-radius:13px]; box-shadow: none; }
+.commission-heading h2 { @apply [font-size:17px]; @apply [line-height:24px]; @apply [font-weight:650]; @apply [letter-spacing:-.35px]; }
+.commission-heading p { @apply [margin:5px_0_0]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [color:#7D715E]; }
+.commission-heading > button { @apply [height:36px]; @apply [padding-inline:13px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+.commission-heading > button:hover { @apply [background:#F3EFE6]; }
+.commission-history { @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.commission-history > div:first-child { @apply [padding:14px_20px]; }
+.commission-history h3 { @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:600]; @apply [letter-spacing:0]; @apply [text-transform:none]; }
+.commission-workspace > .commission-tiers { @apply [container-type:inline-size]; @apply [margin-top:10px]; }
+.commission-tiers-empty { @apply [padding:20px_16px]; }
+.commission-rules-list { @apply grid; @apply [gap:8px]; }
 .commission-rule {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 12px 16px;
-  padding: 14px 16px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF;
+  @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply items-center; @apply [gap:12px_16px];
+  @apply [padding:14px_16px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF];
 }
-.commission-rule--inactive { background: #FAF8F5; }
-.commission-rule-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
-.commission-rule-name { margin: 0; min-width: 0; color: #1A1612; font-size: 13px; line-height: 20px; font-weight: 600; overflow-wrap: anywhere; }
-.commission-rule-status { flex-shrink: 0; align-self: flex-start; padding: 3px 8px; border: 1px solid #EEDFC6; border-radius: 999px; background: #FBF5EB; color: #B88E4F; font-size: 11px; line-height: 16px; font-weight: 500; white-space: nowrap; }
-.commission-rule--inactive .commission-rule-status { border-color: #EAE4D7; background: #F3EFE6; color: #7D715E; }
-.commission-rule-metric { min-width: 0; }
-.commission-rule-metric > span { display: block; color: #7D715E; font-size: 11px; line-height: 18px; }
-.commission-rule-metric > p { margin: 3px 0 0; color: #1A1612; font-size: 14px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.commission-rule-reward > p { color: #B88E4F; }
-.commission-rule-method { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid #EAE4D7; }
-.commission-rule-method > p { font-size: 12px; font-weight: 500; }
-.commission-rule-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
-.commission-rule-actions > button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #7D715E; cursor: pointer; }
-.commission-rule-actions > button:hover { border-color: #EEDFC6; background: #FBF5EB; color: #B88E4F; }
-.commission-rule-actions > .commission-rule-delete:hover { border-color: #DC2626; color: #DC2626; }
-.commission-rule-actions svg { width: 15px; height: 15px; }
+.commission-rule--inactive { @apply [background:#FAF8F5]; }
+.commission-rule-heading { @apply [grid-column:1_/_-1]; @apply flex; @apply items-center; @apply justify-between; @apply [gap:10px]; @apply [min-width:0]; }
+.commission-rule-name { @apply [margin:0]; @apply [min-width:0]; @apply [color:#1A1612]; @apply [font-size:13px]; @apply [line-height:20px]; @apply [font-weight:600]; @apply [overflow-wrap:anywhere]; }
+.commission-rule-status { @apply [flex-shrink:0]; @apply [align-self:flex-start]; @apply [padding:3px_8px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:999px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; @apply [font-size:11px]; @apply [line-height:16px]; @apply [font-weight:500]; @apply whitespace-nowrap; }
+.commission-rule--inactive .commission-rule-status { @apply [border-color:#EAE4D7]; @apply [background:#F3EFE6]; @apply [color:#7D715E]; }
+.commission-rule-metric { @apply [min-width:0]; }
+.commission-rule-metric > span { @apply block; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.commission-rule-metric > p { @apply [margin:3px_0_0]; @apply [color:#1A1612]; @apply [font-size:14px]; @apply [line-height:20px]; @apply [font-weight:600]; font-variant-numeric: tabular-nums; @apply [overflow-wrap:anywhere]; }
+.commission-rule-reward > p { @apply [color:#B88E4F]; }
+.commission-rule-method { @apply [grid-column:1_/_-1]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; }
+.commission-rule-method > p { @apply [font-size:12px]; @apply [font-weight:500]; }
+.commission-rule-actions { @apply [grid-column:1_/_-1]; @apply flex; @apply justify-end; @apply items-center; @apply [gap:4px]; }
+.commission-rule-actions > button { @apply grid; @apply place-items-center; @apply [width:32px]; @apply [height:32px]; @apply [padding:0]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply cursor-pointer; }
+.commission-rule-actions > button:hover { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.commission-rule-actions > .commission-rule-delete:hover { @apply [border-color:#DC2626]; @apply [color:#DC2626]; }
+.commission-rule-actions svg { @apply [width:15px]; @apply [height:15px]; }
 @container (min-width: 480px) and (max-width: 879px) {
-  .commission-rule-method { grid-column: auto; padding-top: 0; border-top: 0; }
-  .commission-rule-actions { grid-column: auto; align-self: end; }
+  .commission-rule-method { @apply [grid-column:auto]; @apply [padding-top:0]; @apply [border-top:0]; }
+  .commission-rule-actions { @apply [grid-column:auto]; @apply [align-self:end]; }
 }
 @container (min-width: 880px) {
-  .commission-rule { grid-template-columns: minmax(0, 1.5fr) minmax(0, .85fr) minmax(0, .85fr) minmax(0, 1.25fr) 104px; min-height: 88px; gap: 20px; }
-  .commission-rule-heading { grid-column: auto; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; }
-  .commission-rule-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-  .commission-rule-method { grid-column: auto; padding-top: 0; border-top: 0; }
-  .commission-rule-metric { align-self: start; padding-top: 6px; }
-  .commission-rule-actions { grid-column: auto; }
+  .commission-rule { @apply [grid-template-columns:minmax(0,_1.5fr)_minmax(0,_.85fr)_minmax(0,_.85fr)_minmax(0,_1.25fr)_104px]; @apply [min-height:88px]; @apply [gap:20px]; }
+  .commission-rule-heading { @apply [grid-column:auto]; @apply flex-col; @apply items-start; @apply justify-center; @apply [gap:5px]; }
+  .commission-rule-name { @apply [display:-webkit-box]; @apply [-webkit-box-orient:vertical]; @apply [-webkit-line-clamp:2]; @apply overflow-hidden; }
+  .commission-rule-method { @apply [grid-column:auto]; @apply [padding-top:0]; @apply [border-top:0]; }
+  .commission-rule-metric { @apply [align-self:start]; @apply [padding-top:6px]; }
+  .commission-rule-actions { @apply [grid-column:auto]; }
 }
-.commission-tools { align-items: start; gap: 18px; }
-.commission-settlement, .commission-simulator { padding: 20px; border-radius: 13px; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
-.commission-settlement > div:first-child { gap: 12px; padding-bottom: 15px; align-items: center; }
-.commission-settlement h3, .commission-simulator h3 { font-size: 13px; line-height: 20px; font-weight: 600; text-transform: none; letter-spacing: -.1px; }
-.commission-settlement > div:first-child > div:first-child > span { width: 30px; height: 30px; border-radius: 8px; }
-.commission-settlement > div:first-child > div:last-child { flex-shrink: 0; gap: 7px; }
-.commission-settlement > div:first-child > div:last-child input { width: 76px; }
-.commission-workspace input { height: 38px; border-radius: 8px; border-color: #EAE4D7; font-size: 12px; font-weight: 500; background: #FFFFFF; }
-.commission-workspace button[aria-haspopup='listbox'] { min-height: 38px; height: 38px; border-radius: 8px; box-shadow: none; font-size: 12px; font-weight: 500; }
-.commission-settlement label { font-size: 11px; font-weight: 550; gap: 10px; flex-wrap: wrap; }
-.commission-settlement label > span { font-size: 10px; font-weight: 400; }
-.commission-settlement > div:last-child[class*='text-center'] { padding: 20px; border-radius: 9px; font-size: 11px; line-height: 18px; background: #FAF8F5; }
-.commission-settlement > div[class*='bg-gradient'] { background: #FEFCF8; border-radius: 11px; padding: 16px; }
-.commission-settlement > div[class*='bg-gradient'] .font-black { font-weight: 650; }
-.commission-settlement > div[class*='bg-gradient'] .font-extrabold { font-weight: 600; }
-.commission-settlement > div[class*='bg-gradient'] button { border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #8C6226; font-size: 11px; font-weight: 550; box-shadow: none; }
-.commission-simulator > div:first-child { gap: 9px; padding-bottom: 15px; margin-bottom: 16px; }
-.commission-simulator > div:first-child > span { width: 30px; height: 30px; border-radius: 8px; }
-.commission-simulator label { font-size: 11px; font-weight: 550; line-height: 18px; display: block; margin-bottom: 5px; }
-.commission-simulator > div:last-child { padding: 14px; border-radius: 9px; background: #FEFCF8; font-size: 11px; }
-.commission-simulator > div:last-child > div { gap: 12px; }
-.commission-simulator > div:last-child .font-bold { font-weight: 550; }
-.commission-simulator > div:last-child > div:last-child { padding-top: 12px; margin-top: 12px; }
-.commission-simulator > div:last-child > div:last-child > span:last-child { font-size: 17px; line-height: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.commission-history > div:nth-child(2):not(.overflow-x-auto) { padding: 24px 20px; font-size: 11px; }
-.commission-history table { min-width: 700px; }
-.commission-history thead { background: #FFFFFF; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; }
-.commission-history th { font-weight: 500; padding: 12px 16px; }
-.commission-history td { padding: 13px 16px; font-size: 11px; font-weight: 500; }
-.commission-history td button { padding: 6px 9px; border: 1px solid #EEDFC6; border-radius: 7px; background: #FBF5EB; color: #8C6226; font-weight: 550; }
-.commission-rule-dialog { padding: 22px; border-radius: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; }
-.commission-rule-dialog h3 { font-size: 16px; font-weight: 650; }
-.commission-rule-dialog label { font-size: 11px; font-weight: 550; gap: 6px; }
-.commission-rule-dialog input { height: 40px; font-size: 12px; font-weight: 400; border-radius: 8px; background: #FFFFFF; }
-.commission-rule-dialog form > div:last-child > button { border-radius: 8px; font-weight: 550; }
-.commission-rule-dialog form > div:last-child > button:last-child { border: 1px solid #EEDFC6; background: #FBF5EB; color: #8C6226; }
-.commission-workspace button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
-@media (min-width: 1024px) { .commission-tools { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); } .commission-tools > div { grid-column: auto; min-width: 0; } }
+.commission-tools { @apply [align-items:start]; @apply [gap:18px]; }
+.commission-settlement, .commission-simulator { @apply [padding:20px]; @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.commission-settlement > div:first-child { @apply [gap:12px]; @apply [padding-bottom:15px]; @apply items-center; }
+.commission-settlement h3, .commission-simulator h3 { @apply [font-size:13px]; @apply [line-height:20px]; @apply [font-weight:600]; @apply [text-transform:none]; @apply [letter-spacing:-.1px]; }
+.commission-settlement > div:first-child > div:first-child > span { @apply [width:30px]; @apply [height:30px]; @apply [border-radius:8px]; }
+.commission-settlement > div:first-child > div:last-child { @apply [flex-shrink:0]; @apply [gap:7px]; }
+.commission-settlement > div:first-child > div:last-child input { @apply [width:76px]; }
+.commission-workspace input { @apply [height:38px]; @apply [border-radius:8px]; @apply [border-color:#EAE4D7]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [background:#FFFFFF]; }
+.commission-workspace button[aria-haspopup='listbox'] { @apply [min-height:38px]; @apply [height:38px]; @apply [border-radius:8px]; box-shadow: none; @apply [font-size:12px]; @apply [font-weight:500]; }
+.commission-settlement label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [gap:10px]; @apply flex-wrap; }
+.commission-settlement label > span { @apply [font-size:10px]; @apply [font-weight:400]; }
+.commission-settlement > div:last-child[class*='text-center'] { @apply [padding:20px]; @apply [border-radius:9px]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [background:#FAF8F5]; }
+.commission-settlement > div[class*='bg-gradient'] { @apply [background:#FEFCF8]; @apply [border-radius:11px]; @apply [padding:16px]; }
+.commission-settlement > div[class*='bg-gradient'] .font-black { @apply [font-weight:650]; }
+.commission-settlement > div[class*='bg-gradient'] .font-extrabold { @apply [font-weight:600]; }
+.commission-settlement > div[class*='bg-gradient'] button { @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+.commission-simulator > div:first-child { @apply [gap:9px]; @apply [padding-bottom:15px]; @apply [margin-bottom:16px]; }
+.commission-simulator > div:first-child > span { @apply [width:30px]; @apply [height:30px]; @apply [border-radius:8px]; }
+.commission-simulator label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [line-height:18px]; @apply block; @apply [margin-bottom:5px]; }
+.commission-simulator > div:last-child { @apply [padding:14px]; @apply [border-radius:9px]; @apply [background:#FEFCF8]; @apply [font-size:11px]; }
+.commission-simulator > div:last-child > div { @apply [gap:12px]; }
+.commission-simulator > div:last-child .font-bold { @apply [font-weight:550]; }
+.commission-simulator > div:last-child > div:last-child { @apply [padding-top:12px]; @apply [margin-top:12px]; }
+.commission-simulator > div:last-child > div:last-child > span:last-child { @apply [font-size:17px]; @apply [line-height:22px]; @apply [font-weight:650]; font-variant-numeric: tabular-nums; }
+.commission-history > div:nth-child(2):not(.overflow-x-auto) { @apply [padding:24px_20px]; @apply [font-size:11px]; }
+.commission-history table { @apply [min-width:700px]; }
+.commission-history thead { @apply [background:#FFFFFF]; @apply [font-size:10px]; @apply [font-weight:500]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.commission-history th { @apply [font-weight:500]; @apply [padding:12px_16px]; }
+.commission-history td { @apply [padding:13px_16px]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.commission-history td button { @apply [padding:6px_9px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-weight:550]; }
+.commission-rule-dialog { @apply [padding:22px]; @apply [border-radius:16px]; @apply [max-height:calc(100dvh_-_32px)]; @apply overflow-y-auto; }
+.commission-rule-dialog h3 { @apply [font-size:16px]; @apply [font-weight:650]; }
+.commission-rule-dialog label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [gap:6px]; }
+.commission-rule-dialog input { @apply [height:40px]; @apply [font-size:12px]; @apply [font-weight:400]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.commission-rule-dialog form > div:last-child > button { @apply [border-radius:8px]; @apply [font-weight:550]; }
+.commission-rule-dialog form > div:last-child > button:last-child { @apply [border:1px_solid_#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; }
+.commission-workspace button:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (min-width: 1024px) { .commission-tools { @apply [grid-template-columns:minmax(0,_1.85fr)_minmax(0,_1fr)]; } .commission-tools > div { @apply [grid-column:auto]; @apply [min-width:0]; } }
 @media (max-width: 639px) {
-  .commission-workspace > * + * { margin-top: 14px; }
-  .commission-workspace .commission-heading { padding: 16px; gap: 14px; }
-  .commission-heading h2 { font-size: 16px; }
-  .commission-heading > button { align-self: flex-start; }
-  .commission-settlement, .commission-simulator { padding: 16px; }
-  .commission-settlement > div:first-child { align-items: flex-start; }
-  .commission-settlement > div:first-child > div:last-child { width: 100%; }
-  .commission-settlement > div:first-child > div:last-child > div { flex: 1; }
-  .commission-rule-dialog { padding: 18px; }
+  .commission-workspace > * + * { @apply [margin-top:14px]; }
+  .commission-workspace .commission-heading { @apply [padding:16px]; @apply [gap:14px]; }
+  .commission-heading h2 { @apply [font-size:16px]; }
+  .commission-heading > button { @apply [align-self:flex-start]; }
+  .commission-settlement, .commission-simulator { @apply [padding:16px]; }
+  .commission-settlement > div:first-child { @apply items-start; }
+  .commission-settlement > div:first-child > div:last-child { @apply [width:100%]; }
+  .commission-settlement > div:first-child > div:last-child > div { @apply [flex:1]; }
+  .commission-rule-dialog { @apply [padding:18px]; }
 }
 
 /* Three compact workspace panels with the same outlined step treatment as KYC. */
-.commission-workspace [hidden] { display: none !important; }
-.commission-workspace .commission-heading { padding: 14px 18px; border-radius: 14px; background: #fffdfa; }
-.commission-heading h2 { font-size: 16px; }
-.commission-heading > div:last-child { gap: 10px; }
+.commission-workspace [hidden] { @apply hidden!; }
+.commission-workspace .commission-heading { @apply [padding:14px_18px]; @apply [border-radius:14px]; @apply [background:#fffdfa]; }
+.commission-heading h2 { @apply [font-size:16px]; }
+.commission-heading > div:last-child { @apply [gap:10px]; }
 .commission-view-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #eae4d7;
-  border-radius: 14px;
-  background: #fffdfa;
+  @apply grid;
+  @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))];
+  @apply [gap:10px];
+  @apply [padding:12px];
+  @apply [border:1px_solid_#eae4d7];
+  @apply [border-radius:14px];
+  @apply [background:#fffdfa];
 }
 .commission-view-tabs button {
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  min-height: 46px; padding: 8px 12px;
-  border: 1px solid #eae4d7; border-radius: 10px;
-  background: #fffdfa; color: #7d715e;
-  font-size: 12px; cursor: pointer;
+  @apply flex; @apply items-center; @apply justify-center; @apply [gap:9px];
+  @apply [min-height:46px]; @apply [padding:8px_12px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:10px];
+  @apply [background:#fffdfa]; @apply [color:#7d715e];
+  @apply [font-size:12px]; @apply cursor-pointer;
 }
 .commission-view-tabs button > span {
-  display: grid; place-items: center; flex: 0 0 28px; height: 28px;
-  border: 1px solid #eae4d7; border-radius: 50%; font-weight: 400;
+  @apply grid; @apply place-items-center; @apply [flex:0_0_28px]; @apply [height:28px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-weight:400];
 }
-.commission-view-tabs button[aria-pressed='true'] { background: #fbf5eb; color: #1a1612; border-color: #eedfc6; font-weight: 600; }
-.commission-view-tabs button[aria-pressed='true'] > span { border-color: #c59b58; color: #8c6226; }
+.commission-view-tabs button[aria-pressed='true'] { @apply [background:#fbf5eb]; @apply [color:#1a1612]; @apply [border-color:#eedfc6]; @apply [font-weight:600]; }
+.commission-view-tabs button[aria-pressed='true'] > span { @apply [border-color:#c59b58]; @apply [color:#8c6226]; }
 .commission-workspace .commission-team,
 .commission-workspace .commission-settlement,
-.commission-workspace .commission-simulator { padding: 16px; background: #fffdfa; box-shadow: none; border-radius: 14px; }
-.commission-team h3, .commission-tools h3 { font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; }
-.commission-team > .grid { gap: 10px; }
-.commission-team > .grid > div { padding: 12px; border-radius: 10px; background: #faf8f5; }
-.commission-team table { background: #fffdfa; }
-.commission-team thead { background: #faf8f5; text-transform: none; letter-spacing: 0; font-size: 11px; }
-.commission-team th, .commission-team td { padding: 12px; }
-.commission-tools .bg-gradient-to-br { background-image: none; background-color: #fffdfa; border-color: #eae4d7; padding: 12px; border-radius: 10px; }
-.commission-tools .bg-gradient-to-br > .grid { gap: 10px; }
-.commission-tools .bg-gradient-to-br > .grid > div { border-radius: 10px; min-width: 0; }
-.commission-workspace .commission-history { border: 1px solid #eae4d7; background: #fffdfa; padding: 14px; }
-.commission-workspace .commission-history > div:first-child { padding: 0 0 12px; border-bottom: 1px solid #eae4d7; }
+.commission-workspace .commission-simulator { @apply [padding:16px]; @apply [background:#fffdfa]; box-shadow: none; @apply [border-radius:14px]; }
+.commission-team h3, .commission-tools h3 { @apply [font-size:13px]; @apply [font-weight:600]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.commission-team > .grid { @apply [gap:10px]; }
+.commission-team > .grid > div { @apply [padding:12px]; @apply [border-radius:10px]; @apply [background:#faf8f5]; }
+.commission-team table { @apply [background:#fffdfa]; }
+.commission-team thead { @apply [background:#faf8f5]; @apply [text-transform:none]; @apply [letter-spacing:0]; @apply [font-size:11px]; }
+.commission-team th, .commission-team td { @apply [padding:12px]; }
+.commission-tools .bg-gradient-to-br { @apply [background-image:none]; @apply [background-color:#fffdfa]; @apply [border-color:#eae4d7]; @apply [padding:12px]; @apply [border-radius:10px]; }
+.commission-tools .bg-gradient-to-br > .grid { @apply [gap:10px]; }
+.commission-tools .bg-gradient-to-br > .grid > div { @apply [border-radius:10px]; @apply [min-width:0]; }
+.commission-workspace .commission-history { @apply [border:1px_solid_#eae4d7]; @apply [background:#fffdfa]; @apply [padding:14px]; }
+.commission-workspace .commission-history > div:first-child { @apply [padding:0_0_12px]; @apply [border-bottom:1px_solid_#eae4d7]; }
 @media (max-width: 640px) {
-  .commission-view-tabs { gap: 6px; padding: 8px; }
-  .commission-view-tabs button { flex-direction: column; gap: 5px; padding: 8px 4px; font-size: 11px; }
+  .commission-view-tabs { @apply [gap:6px]; @apply [padding:8px]; }
+  .commission-view-tabs button { @apply flex-col; @apply [gap:5px]; @apply [padding:8px_4px]; @apply [font-size:11px]; }
 }
-.commission-period-picker { display: grid; grid-template-columns: 130px 110px; gap: 8px; align-items: center; }
+.commission-period-picker { @apply grid; @apply [grid-template-columns:130px_110px]; @apply [gap:8px]; @apply items-center; }
 .commission-workspace .commission-period-picker button[aria-haspopup='listbox'] {
-  height: 40px; min-height: 40px; width: 100%; padding: 8px 12px;
-  border: 1px solid #eae4d7; border-radius: 9px;
-  background: #fffdfa; color: #1a1612; font-size: 12px; font-weight: 500;
+  @apply [height:40px]; @apply [min-height:40px]; @apply [width:100%]; @apply [padding:8px_12px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:9px];
+  @apply [background:#fffdfa]; @apply [color:#1a1612]; @apply [font-size:12px]; @apply [font-weight:500];
 }
 @media (max-width: 400px) {
-  .commission-period-picker { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: 100%; }
-  .commission-heading > div { flex-wrap: wrap; width: 100%; }
+  .commission-period-picker { @apply [grid-template-columns:minmax(0,_1fr)_minmax(0,_1fr)]; @apply [width:100%]; }
+  .commission-heading > div { @apply flex-wrap; @apply [width:100%]; }
 }
-.commission-workspace .commission-tools-tabbed { display: block; }
+.commission-workspace .commission-tools-tabbed { @apply block; }
 .commission-tools-tabbed .commission-settlement,
-.commission-tools-tabbed .commission-simulator { background: #fffdfa; padding: 16px; }
-.commission-tools-tabbed .commission-simulator { max-width: none; }
-.commission-tools-tabbed .commission-simulator > .space-y-1 { max-width: 460px; }
-.commission-tools-tabbed .commission-simulator > div:last-child { background: #fbf5eb; border: 1px solid #eedfc6; }
-.commission-tools-tabbed .commission-settlement .bg-gradient-to-br { background: #fffdfa; padding: 12px; }
-.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid > div { grid-column: auto; min-height: 82px; padding: 12px; }
+.commission-tools-tabbed .commission-simulator { @apply [background:#fffdfa]; @apply [padding:16px]; }
+.commission-tools-tabbed .commission-simulator { @apply [max-width:none]; }
+.commission-tools-tabbed .commission-simulator > .space-y-1 { @apply [max-width:460px]; }
+.commission-tools-tabbed .commission-simulator > div:last-child { @apply [background:#fbf5eb]; @apply [border:1px_solid_#eedfc6]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br { @apply [background:#fffdfa]; @apply [padding:12px]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid > div { @apply [grid-column:auto]; @apply [min-height:82px]; @apply [padding:12px]; }
 @media (max-width: 600px) {
-  .commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { grid-template-columns: 1fr; }
+  .commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { @apply [grid-template-columns:1fr]; }
 }
-.commission-data-review > ul { display: grid; gap: 8px; list-style: none; padding: 0; }
-.commission-data-review > ul > li { padding: 10px 12px; background: #fffdfa; border: 1px solid #eae4d7; border-radius: 9px; }
-.commission-data-review > ul > li > details > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; }
-.commission-data-review > ul > li > details > summary > span { color: #7d715e; font-size: 11px; }
-.commission-data-review details > ul { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 6px 12px; max-height: 180px; overflow-y: auto; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid #eae4d7; list-style: none; }
-.commission-data-review details > ul > li { font-size: 11px; overflow-wrap: anywhere; }
+.commission-data-review > ul { @apply grid; @apply [gap:8px]; @apply [list-style:none]; @apply [padding:0]; }
+.commission-data-review > ul > li { @apply [padding:10px_12px]; @apply [background:#fffdfa]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:9px]; }
+.commission-data-review > ul > li > details > summary { @apply flex; @apply justify-between; @apply items-center; @apply [gap:12px]; @apply [font-size:12px]; }
+.commission-data-review > ul > li > details > summary > span { @apply [color:#7d715e]; @apply [font-size:11px]; }
+.commission-data-review details > ul { @apply grid; @apply [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]; @apply [gap:6px_12px]; @apply [max-height:180px]; @apply overflow-y-auto; @apply [margin:10px_0_0]; @apply [padding:10px_0_0]; @apply [border-top:1px_solid_#eae4d7]; @apply [list-style:none]; }
+.commission-data-review details > ul > li { @apply [font-size:11px]; @apply [overflow-wrap:anywhere]; }

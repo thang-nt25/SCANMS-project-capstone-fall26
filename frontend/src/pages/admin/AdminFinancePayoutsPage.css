@@ -1,137 +1,138 @@
-#admin-finance-payouts-page { min-width: 0; max-width: 100%; color: #1A1612; }
-#admin-finance-payouts-page *, #admin-finance-payouts-page *::before { box-sizing: border-box; }
-#admin-finance-payouts-page > *, #admin-finance-payouts-page form, #admin-finance-payouts-page label { min-width: 0; }
-#admin-finance-payouts-page .finance-main-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; padding: 12px; border: 1px solid #EAE4D7; border-radius: 14px; background: #fff; }
-#admin-finance-payouts-page .finance-main-tabs button { min-height: 46px; padding: 10px 14px; border: 1px solid #EAE4D7; border-radius: 10px; justify-content: center; line-height: 1.5; background: #fff; font-size: 13px; }
-#admin-finance-payouts-page .finance-main-tabs button[aria-pressed=true] { background: #FBF5EB; border-color: #EEDFC6; color: #8F682E; }
-#admin-finance-payouts-page .finance-main-tabs svg { flex-shrink: 0; }
-#admin-finance-payouts-page .finance-tab-number { display: inline-grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border: 1px solid #EAE4D7; border-radius: 50%; color: #7D715E; font-weight: 400; font-size: 12px; background: #fff; }
-#admin-finance-payouts-page [aria-pressed=true] .finance-tab-number, #admin-finance-payouts-page [aria-selected=true] .finance-tab-number { border-color: #C59B58; background: #FBF5EB; color: #8F682E; }
-#admin-finance-payouts-page .finance-tab-count { padding: 1px 7px; border-radius: 6px; background: #F3EFE6; font-size: 11px; }
-#admin-finance-payouts-page .finance-operation-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; padding-top: 0; border-top: 0; }
-#admin-finance-payouts-page .finance-operation-tabs button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; height: auto !important; padding: 10px !important; border: 1px solid #EAE4D7; background: #fff; color: #7D715E; }
-#admin-finance-payouts-page .finance-operation-tabs button[aria-selected=true] { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; font-weight: 600; }
-#admin-finance-payouts-page .finance-operation-tabs ~ form { border-top: 0; padding-top: 0; }
-#admin-finance-payouts-page .finance-kpis > div { min-width: 0; padding: 18px; border-radius: 12px; box-shadow: none; }
-#admin-finance-payouts-page .finance-kpis > div > div:first-child { min-height: 32px; font-size: 12px; letter-spacing: 0; line-height: 1.5; font-weight: 600; }
-#admin-finance-payouts-page .finance-kpis .text-2xl { font-family: inherit; font-size: clamp(20px,1.6vw,28px); letter-spacing: -.5px; color: #1A1612; line-height: 1.4; white-space: nowrap; }
-#admin-finance-payouts-page .finance-kpis > div:first-child { background: #FFFDFA; }
-#admin-finance-payouts-page .finance-filter button { min-height: 36px; border-radius: 8px; font-weight: 600; }
-#admin-finance-payouts-page .finance-filter { display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 12px; }
-#admin-finance-payouts-page .finance-filter > div:first-child { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; min-width: 0; }
-#admin-finance-payouts-page .finance-filter > div:first-child > button { width: 100%; min-height: 40px; padding: 8px 10px; text-align: center; line-height: 1.4; }
-#admin-finance-payouts-page .finance-filter > .relative { width: 280px; max-width: 100%; }
-#admin-finance-payouts-page .finance-filter input { height: 38px; background: #fff; }
-#admin-finance-payouts-page .finance-payout-table table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; }
-#admin-finance-payouts-page table th { background: #FFFDFA; color: #7D715E; font-size: 12px; font-weight: 600; line-height: 1.5; }
+@reference "../../index.css";
+#admin-finance-payouts-page { @apply [min-width:0]; @apply [max-width:100%]; @apply [color:#1A1612]; }
+#admin-finance-payouts-page *, #admin-finance-payouts-page *::before { @apply box-border; }
+#admin-finance-payouts-page > *, #admin-finance-payouts-page form, #admin-finance-payouts-page label { @apply [min-width:0]; }
+#admin-finance-payouts-page .finance-main-tabs { @apply grid; @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; @apply [gap:10px]; @apply [padding:12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:14px]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-main-tabs button { @apply [min-height:46px]; @apply [padding:10px_14px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply justify-center; @apply [line-height:1.5]; @apply [background:#fff]; @apply [font-size:13px]; }
+#admin-finance-payouts-page .finance-main-tabs button[aria-pressed=true] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#8F682E]; }
+#admin-finance-payouts-page .finance-main-tabs svg { @apply [flex-shrink:0]; }
+#admin-finance-payouts-page .finance-tab-number { @apply inline-grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:28px]; @apply [height:28px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:50%]; @apply [color:#7D715E]; @apply [font-weight:400]; @apply [font-size:12px]; @apply [background:#fff]; }
+#admin-finance-payouts-page [aria-pressed=true] .finance-tab-number, #admin-finance-payouts-page [aria-selected=true] .finance-tab-number { @apply [border-color:#C59B58]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; }
+#admin-finance-payouts-page .finance-tab-count { @apply [padding:1px_7px]; @apply [border-radius:6px]; @apply [background:#F3EFE6]; @apply [font-size:11px]; }
+#admin-finance-payouts-page .finance-operation-tabs { @apply grid; @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; @apply [gap:12px]; @apply [padding-top:0]; @apply [border-top:0]; }
+#admin-finance-payouts-page .finance-operation-tabs button { @apply flex; @apply items-center; @apply justify-center; @apply [gap:10px]; @apply [min-height:50px]; @apply [height:auto]!; @apply [padding:10px]!; @apply [border:1px_solid_#EAE4D7]; @apply [background:#fff]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page .finance-operation-tabs button[aria-selected=true] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#1A1612]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .finance-operation-tabs ~ form { @apply [border-top:0]; @apply [padding-top:0]; }
+#admin-finance-payouts-page .finance-kpis > div { @apply [min-width:0]; @apply [padding:18px]; @apply [border-radius:12px]; box-shadow: none; }
+#admin-finance-payouts-page .finance-kpis > div > div:first-child { @apply [min-height:32px]; @apply [font-size:12px]; @apply [letter-spacing:0]; @apply [line-height:1.5]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .finance-kpis .text-2xl { @apply [font-family:inherit]; font-size: clamp(20px,1.6vw,28px); @apply [letter-spacing:-.5px]; @apply [color:#1A1612]; @apply [line-height:1.4]; @apply whitespace-nowrap; }
+#admin-finance-payouts-page .finance-kpis > div:first-child { @apply [background:#FFFDFA]; }
+#admin-finance-payouts-page .finance-filter button { @apply [min-height:36px]; @apply [border-radius:8px]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .finance-filter { @apply grid; @apply [grid-template-columns:minmax(0,1fr)_280px]; @apply [gap:12px]; }
+#admin-finance-payouts-page .finance-filter > div:first-child { @apply grid; @apply [grid-template-columns:repeat(5,minmax(0,1fr))]; @apply [gap:8px]; @apply [min-width:0]; }
+#admin-finance-payouts-page .finance-filter > div:first-child > button { @apply [width:100%]; @apply [min-height:40px]; @apply [padding:8px_10px]; @apply text-center; @apply [line-height:1.4]; }
+#admin-finance-payouts-page .finance-filter > .relative { @apply [width:280px]; @apply [max-width:100%]; }
+#admin-finance-payouts-page .finance-filter input { @apply [height:38px]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-payout-table table { @apply [width:100%]; @apply [min-width:0]; @apply [table-layout:fixed]; @apply [border-collapse:collapse]; }
+#admin-finance-payouts-page table th { @apply [background:#FFFDFA]; @apply [color:#7D715E]; @apply [font-size:12px]; @apply [font-weight:600]; @apply [line-height:1.5]; }
 #admin-finance-payouts-page .finance-payout-table th,
-#admin-finance-payouts-page .finance-payout-table td { padding: 14px 12px; font-size: 13px; vertical-align: top; line-height: 1.6; overflow-wrap: anywhere; white-space: normal; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(1) { width: 15%; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(2) { width: 20%; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(3) { width: 23%; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(4) { width: 21%; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(5) { width: 10%; }
-#admin-finance-payouts-page .finance-payout-table th:nth-child(6) { width: 11%; }
-#admin-finance-payouts-page .finance-payout-table .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; }
-#admin-finance-payouts-page .payout-risk-trigger { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 8px; border: 1px solid #EEDFC6; border-radius: 7px; background: #FBF5EB; text-align: left; font-size: 11px; cursor: pointer; }
-#admin-finance-payouts-page .payout-amounts { margin: 0; display: grid; gap: 5px; }
-#admin-finance-payouts-page .payout-amounts > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; }
-#admin-finance-payouts-page .payout-amounts dt { color: #7D715E; font-size: 11px; }
-#admin-finance-payouts-page .payout-amounts dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
-#admin-finance-payouts-page .payout-amounts > div:last-child { padding-top: 5px; border-top: 1px solid #EEDFC6; color: #8F682E; }
-#admin-finance-payouts-page .payout-actions { flex-direction: column; align-items: stretch; }
-#admin-finance-payouts-page .payout-actions button { width: 100%; padding: 7px 6px; line-height: 1.4; }
+#admin-finance-payouts-page .finance-payout-table td { @apply [padding:14px_12px]; @apply [font-size:13px]; @apply [vertical-align:top]; @apply [line-height:1.6]; @apply [overflow-wrap:anywhere]; @apply whitespace-normal; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(1) { @apply [width:15%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(2) { @apply [width:20%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(3) { @apply [width:23%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(4) { @apply [width:21%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(5) { @apply [width:10%]; }
+#admin-finance-payouts-page .finance-payout-table th:nth-child(6) { @apply [width:11%]; }
+#admin-finance-payouts-page .finance-payout-table .font-mono { @apply [font-family:inherit]; font-variant-numeric: tabular-nums; @apply [letter-spacing:0]; }
+#admin-finance-payouts-page .payout-risk-trigger { @apply inline-flex; @apply items-center; @apply [gap:6px]; @apply [margin-top:8px]; @apply [padding:5px_8px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FBF5EB]; @apply text-left; @apply [font-size:11px]; @apply cursor-pointer; }
+#admin-finance-payouts-page .payout-amounts { @apply [margin:0]; @apply grid; @apply [gap:5px]; }
+#admin-finance-payouts-page .payout-amounts > div { @apply flex; @apply flex-wrap; @apply justify-between; @apply [gap:2px_8px]; }
+#admin-finance-payouts-page .payout-amounts dt { @apply [color:#7D715E]; @apply [font-size:11px]; }
+#admin-finance-payouts-page .payout-amounts dd { @apply [margin:0]; font-variant-numeric: tabular-nums; @apply [font-weight:600]; }
+#admin-finance-payouts-page .payout-amounts > div:last-child { @apply [padding-top:5px]; @apply [border-top:1px_solid_#EEDFC6]; @apply [color:#8F682E]; }
+#admin-finance-payouts-page .payout-actions { @apply flex-col; @apply items-stretch; }
+#admin-finance-payouts-page .payout-actions button { @apply [width:100%]; @apply [padding:7px_6px]; @apply [line-height:1.4]; }
 @media(max-width:800px) {
-  #admin-finance-payouts-page .finance-payout-table thead { display: none; }
-  #admin-finance-payouts-page .finance-payout-table tbody { display: block; }
-  #admin-finance-payouts-page .finance-payout-table tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 8px; gap: 2px; }
-  #admin-finance-payouts-page .finance-payout-table td { display: block; padding: 8px; }
+  #admin-finance-payouts-page .finance-payout-table thead { @apply hidden; }
+  #admin-finance-payouts-page .finance-payout-table tbody { @apply block; }
+  #admin-finance-payouts-page .finance-payout-table tr { @apply grid; @apply [grid-template-columns:repeat(2,minmax(0,1fr))]; @apply [padding:8px]; @apply [gap:2px]; }
+  #admin-finance-payouts-page .finance-payout-table td { @apply block; @apply [padding:8px]; }
 }
-#admin-finance-payouts-page .finance-pagination { padding: 12px 16px; border: 1px solid #EAE4D7; border-radius: 10px; background: #fff; font-size: 12px; }
-#admin-finance-payouts-page .finance-pagination button { min-height: 32px; padding: 5px 12px; border: 1px solid #EAE4D7; border-radius: 7px; background: #fff; }
-#admin-finance-payouts-page .finance-pagination button:disabled { opacity: .45; cursor: not-allowed; }
-#admin-finance-payouts-page [hidden] { display: none !important; }
-#admin-finance-payouts-page .payout-rejection-dialog { max-width: 600px; padding: 28px; max-height: 90dvh; overflow-y: auto; }
-#admin-finance-payouts-page .payout-rejection-dialog h3 { margin: 0 0 14px; padding-bottom: 16px; border-bottom: 1px solid #EAE4D7; font-size: 21px; line-height: 1.4; }
-#admin-finance-payouts-page .payout-rejection-dialog > p { padding: 14px 16px; margin: 0 0 20px; border: 1px solid #EEDFC6; border-radius: 10px; background: #FBF5EB; font-size: 15px; line-height: 1.65; color: #665B4B; }
-#admin-finance-payouts-page .payout-rejection-dialog label { display: block; margin-bottom: 9px; font-size: 14px; color: #514737; }
-#admin-finance-payouts-page .payout-rejection-dialog textarea { min-height: 132px; padding: 14px 16px; font-size: 15px; line-height: 1.65; background: #fff; border-color: #DECFB7; resize: vertical; }
-#admin-finance-payouts-page .payout-rejection-dialog textarea:focus { border-color: #B88E4F; box-shadow: 0 0 0 3px #FBF5EB; }
-#admin-finance-payouts-page .payout-rejection-dialog form > div:last-child { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; padding-top: 18px; }
-#admin-finance-payouts-page .payout-rejection-dialog button { min-height: 46px; justify-content: center; padding: 10px 16px; font-size: 15px; border-radius: 10px; }
-#admin-finance-payouts-page .payout-rejection-dialog button[type=submit] { border: 1px solid #EEDFC6; background: #FBF5EB; color: #8F682E; }
-#admin-finance-payouts-page .payout-rejection-dialog button[type=submit]:hover { background: #F3E6D1; border-color: #C59B58; }
-@media(max-width:600px) { #admin-finance-payouts-page .payout-rejection-dialog { padding: 20px; } }
-#admin-finance-payouts-page .payout-approval-dialog { max-width: 720px; max-height: 90dvh; overflow-y: auto; padding: 26px; color: #1A1612; }
-#admin-finance-payouts-page .payout-approval-dialog h3 { font-size: 20px; line-height: 1.4; }
-#admin-finance-payouts-page .payout-approval-dialog form { display: grid; gap: 16px; }
-#admin-finance-payouts-page .payout-approval-dialog form > * { margin-top: 0; }
+#admin-finance-payouts-page .finance-pagination { @apply [padding:12px_16px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [background:#fff]; @apply [font-size:12px]; }
+#admin-finance-payouts-page .finance-pagination button { @apply [min-height:32px]; @apply [padding:5px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:7px]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-pagination button:disabled { @apply [opacity:.45]; @apply cursor-not-allowed; }
+#admin-finance-payouts-page [hidden] { @apply hidden!; }
+#admin-finance-payouts-page .payout-rejection-dialog { @apply [max-width:600px]; @apply [padding:28px]; @apply [max-height:90dvh]; @apply overflow-y-auto; }
+#admin-finance-payouts-page .payout-rejection-dialog h3 { @apply [margin:0_0_14px]; @apply [padding-bottom:16px]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [font-size:21px]; @apply [line-height:1.4]; }
+#admin-finance-payouts-page .payout-rejection-dialog > p { @apply [padding:14px_16px]; @apply [margin:0_0_20px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:10px]; @apply [background:#FBF5EB]; @apply [font-size:15px]; @apply [line-height:1.65]; @apply [color:#665B4B]; }
+#admin-finance-payouts-page .payout-rejection-dialog label { @apply block; @apply [margin-bottom:9px]; @apply [font-size:14px]; @apply [color:#514737]; }
+#admin-finance-payouts-page .payout-rejection-dialog textarea { @apply [min-height:132px]; @apply [padding:14px_16px]; @apply [font-size:15px]; @apply [line-height:1.65]; @apply [background:#fff]; @apply [border-color:#DECFB7]; @apply resize-y; }
+#admin-finance-payouts-page .payout-rejection-dialog textarea:focus { @apply [border-color:#B88E4F]; @apply [box-shadow:0_0_0_3px_#FBF5EB]; }
+#admin-finance-payouts-page .payout-rejection-dialog form > div:last-child { @apply grid; @apply [grid-template-columns:1fr_1fr]; @apply [gap:12px]; @apply [margin-top:20px]; @apply [padding-top:18px]; }
+#admin-finance-payouts-page .payout-rejection-dialog button { @apply [min-height:46px]; @apply justify-center; @apply [padding:10px_16px]; @apply [font-size:15px]; @apply [border-radius:10px]; }
+#admin-finance-payouts-page .payout-rejection-dialog button[type=submit] { @apply [border:1px_solid_#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; }
+#admin-finance-payouts-page .payout-rejection-dialog button[type=submit]:hover { @apply [background:#F3E6D1]; @apply [border-color:#C59B58]; }
+@media(max-width:600px) { #admin-finance-payouts-page .payout-rejection-dialog { @apply [padding:20px]; } }
+#admin-finance-payouts-page .payout-approval-dialog { @apply [max-width:720px]; @apply [max-height:90dvh]; @apply overflow-y-auto; @apply [padding:26px]; @apply [color:#1A1612]; }
+#admin-finance-payouts-page .payout-approval-dialog h3 { @apply [font-size:20px]; @apply [line-height:1.4]; }
+#admin-finance-payouts-page .payout-approval-dialog form { @apply grid; @apply [gap:16px]; }
+#admin-finance-payouts-page .payout-approval-dialog form > * { @apply [margin-top:0]; }
 #admin-finance-payouts-page .payout-approval-dialog p,
-#admin-finance-payouts-page .payout-approval-dialog .text-xs { font-size: 14px; line-height: 1.65; }
-#admin-finance-payouts-page .payout-approval-dialog label { font-size: 14px; color: #514737; line-height: 1.5; margin-bottom: 7px; }
-#admin-finance-payouts-page .payout-approval-dialog input:not([type=file]) { min-height: 46px; font-size: 15px; background: #fff; font-family: inherit; }
-#admin-finance-payouts-page .payout-recipient { padding: 16px; }
-#admin-finance-payouts-page .payout-recipient > div { display: grid; grid-template-columns: 145px minmax(0,1fr); gap: 12px; padding: 5px 0; margin: 0; }
-#admin-finance-payouts-page .payout-recipient > div > span:last-child { overflow-wrap: anywhere; text-align: right; }
-#admin-finance-payouts-page .payout-recipient > div:last-child { margin-top: 8px; padding-top: 12px; }
-#admin-finance-payouts-page .payout-recipient > div:last-child > span:last-child { font-size: 22px; }
-#admin-finance-payouts-page .payout-document-upload { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px dashed #D7BD94; border-radius: 10px; background: #FAF8F5; }
-#admin-finance-payouts-page .payout-document-upload span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; color: #7D715E; }
-#admin-finance-payouts-page label.payout-document-picker { flex-shrink: 0; margin: 0; padding: 8px 14px; background: #FBF5EB; border: 1px solid #EEDFC6; border-radius: 8px; color: #8F682E; font-weight: 600; cursor: pointer; }
-#admin-finance-payouts-page .payout-approval-dialog .payout-file-hint { margin: 6px 0 0; font-size: 12px; color: #7D715E; }
-#admin-finance-payouts-page .payout-approval-dialog button { min-height: 40px; font-size: 14px; }
-#admin-finance-payouts-page .payout-approval-dialog { max-width: 680px; padding: 22px; }
-#admin-finance-payouts-page .payout-approval-dialog h3 { font-size: 18px; }
-#admin-finance-payouts-page .payout-approval-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 18px; }
-#admin-finance-payouts-page .payout-approval-tabs button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; border: 1px solid #EAE4D7; border-radius: 10px; color: #7D715E; background: #fff; }
-#admin-finance-payouts-page .payout-approval-tabs button[aria-selected=true] { background: #FBF5EB; border-color: #EEDFC6; color: #1A1612; font-weight: 600; }
-#admin-finance-payouts-page .payout-approval-tabs button span { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #EEDFC6; border-radius: 50%; flex-shrink: 0; color: #8F682E; font-weight: 400; }
-#admin-finance-payouts-page .payout-approval-panel { display: grid; gap: 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
-#admin-finance-payouts-page .payout-approval-dialog form { gap: 14px; }
-#admin-finance-payouts-page .payout-approval-dialog .payout-risk-note { margin-top: 4px; font-size: 12px; }
-#admin-finance-payouts-page .payout-risk-note summary { cursor: pointer; }
-#admin-finance-payouts-page .payout-document-notice { margin: 0; padding: 10px 12px; border: 1px solid #EEDFC6; border-radius: 8px; background: #FBF5EB; color: #7D715E; }
-#admin-finance-payouts-page .payout-continue { padding: 9px 18px; background: #FBF5EB; color: #8F682E; border: 1px solid #EEDFC6; border-radius: 10px; font-weight: 600; }
-@media(max-width:600px) { #admin-finance-payouts-page .payout-approval-dialog { padding: 18px; } #admin-finance-payouts-page .payout-recipient > div { grid-template-columns: 110px minmax(0,1fr); gap: 8px; } }
-#admin-finance-payouts-page .finance-operations { padding: 20px; border-radius: 14px; }
-#admin-finance-payouts-page .finance-operations h2 { font-size: 16px; line-height: 1.5; }
-#admin-finance-payouts-page .finance-tax-result { margin-top: 18px; padding-top: 18px; border-top: 1px solid #EAE4D7; }
-#admin-finance-payouts-page .finance-tax-totals { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0; }
-#admin-finance-payouts-page .finance-tax-totals > div { min-width: 0; padding: 16px 18px; border: 1px solid #EAE4D7; border-radius: 12px; background: #fff; }
-#admin-finance-payouts-page .finance-tax-totals > div:last-child { border-color: #EEDFC6; background: #FBF5EB; }
-#admin-finance-payouts-page .finance-tax-totals dt { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #7D715E; }
-#admin-finance-payouts-page .finance-tax-totals dt span { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #EEDFC6; border-radius: 50%; color: #8F682E; font-size: 12px; flex-shrink: 0; }
-#admin-finance-payouts-page .finance-tax-totals dd { margin: 10px 0 0 38px; color: #1A1612; font-size: clamp(18px,1.7vw,24px); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-#admin-finance-payouts-page .finance-tax-result .finance-tax-caption { margin: 12px 0 0; color: #7D715E; font-size: 12px; line-height: 1.6; }
-@media(max-width:600px) { #admin-finance-payouts-page .finance-tax-totals { grid-template-columns: 1fr; gap: 8px; } #admin-finance-payouts-page .finance-tax-totals > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; } #admin-finance-payouts-page .finance-tax-totals dd { margin: 0; } }
-#admin-finance-payouts-page .finance-operations h3 { font-size: 14px; line-height: 1.5; margin: 0 0 4px; }
-#admin-finance-payouts-page .finance-operations form { gap: 16px 20px; padding-top: 20px; align-items: end; }
-#admin-finance-payouts-page .finance-operations label { font-size: 12px; line-height: 1.6; gap: 6px; color: #7D715E; }
-#admin-finance-payouts-page .finance-vietnamese-period { display: grid; grid-template-columns: 120px 100px; gap: 8px; }
-#admin-finance-payouts-page .finance-operations input, #admin-finance-payouts-page .finance-operations select { width: 100%; min-width: 0; height: 40px; padding: 8px 12px; font-size: 13px; border-radius: 8px; color: #1A1612; background: #fff; }
-#admin-finance-payouts-page .finance-operations input[type=file] { height: auto; min-height: 40px; font-size: 12px; }
-#admin-finance-payouts-page input[type=file]::file-selector-button { margin-right: 10px; padding: 4px 10px; border: 1px solid #EEDFC6; border-radius: 6px; background: #FBF5EB; color: #8F682E; cursor: pointer; }
-#admin-finance-payouts-page .finance-operations button { --action-bg: #FBF5EB; --action-border: #EEDFC6; --action-ink: #1A1612; height: 40px; padding: 8px 14px; font-size: 12px; border-radius: 8px; }
-#admin-finance-payouts-page .finance-operations button.finance-save-cost { --action-bg: #F3E6D1; --action-border: #D7B780; --action-ink: #715126; background: #F3E6D1; border-color: #D7B780; color: #715126; font-weight: 600; }
-#admin-finance-payouts-page .finance-operations button.finance-save-cost:disabled { opacity: 1; --action-bg: #F3EFE6; --action-border: #DECFB7; --action-ink: #8A7A63; background: #F3EFE6; border-color: #DECFB7; color: #8A7A63; cursor: not-allowed; }
-#admin-finance-payouts-page .finance-escrow { padding: 20px; max-width: 100%; overflow: hidden; font-size: 13px; }
-#admin-finance-payouts-page .finance-escrow h2 { font-size: 16px; }
-#admin-finance-payouts-page .finance-escrow p { font-size: 13px; line-height: 1.7; }
-#admin-finance-payouts-page .finance-escrow table { min-width: 760px; }
-#admin-finance-payouts-page .finance-escrow td { font-size: 13px; line-height: 1.6; }
-#admin-finance-payouts-page .finance-escrow table { min-width: 1120px; }
-#admin-finance-payouts-page .finance-escrow td { vertical-align: middle; padding: 16px 12px; }
-#admin-finance-payouts-page .finance-escrow td:first-child { min-width: 170px; }
-#admin-finance-payouts-page .finance-escrow td:nth-child(2) { width: 32%; min-width: 280px; }
-#admin-finance-payouts-page .escrow-product { display: flex; gap: 10px; align-items: center; }
-#admin-finance-payouts-page .escrow-product img { width: 44px; height: 44px; object-fit: contain; border: 1px solid #EAE4D7; border-radius: 8px; background: #fff; flex-shrink: 0; }
-#admin-finance-payouts-page .escrow-product strong { font-size: 12px; font-weight: 600; }
-#admin-finance-payouts-page .escrow-product small, #admin-finance-payouts-page .escrow-store-name { display: block; font-size: 11px; color: #7D715E; margin-top: 3px; }
-#admin-finance-payouts-page .escrow-unit-price { white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
-#admin-finance-payouts-page .finance-escrow > .finance-pagination { margin-top: 16px; }
-#admin-finance-payouts-page .finance-escrow-empty { margin-top: 16px; padding: 16px 18px; border: 1px solid #EEDFC6; border-radius: 10px; background: #FFFDFA; }
-#admin-finance-payouts-page .finance-escrow-empty strong { font-size: 13px; font-weight: 600; }
-#admin-finance-payouts-page .finance-escrow-empty p { margin: 6px 0 0; max-width: 900px; color: #7D715E; font-size: 12px; }
-@media(max-width:900px) { #admin-finance-payouts-page .finance-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media(max-width:1100px) { #admin-finance-payouts-page .finance-filter { grid-template-columns: minmax(0,1fr); } #admin-finance-payouts-page .finance-filter > .relative { width: 100%; } }
-@media(max-width:600px) { #admin-finance-payouts-page .finance-main-tabs { grid-template-columns: 1fr; } #admin-finance-payouts-page .finance-operations { padding: 14px; } }
+#admin-finance-payouts-page .payout-approval-dialog .text-xs { @apply [font-size:14px]; @apply [line-height:1.65]; }
+#admin-finance-payouts-page .payout-approval-dialog label { @apply [font-size:14px]; @apply [color:#514737]; @apply [line-height:1.5]; @apply [margin-bottom:7px]; }
+#admin-finance-payouts-page .payout-approval-dialog input:not([type=file]) { @apply [min-height:46px]; @apply [font-size:15px]; @apply [background:#fff]; @apply [font-family:inherit]; }
+#admin-finance-payouts-page .payout-recipient { @apply [padding:16px]; }
+#admin-finance-payouts-page .payout-recipient > div { @apply grid; @apply [grid-template-columns:145px_minmax(0,1fr)]; @apply [gap:12px]; @apply [padding:5px_0]; @apply [margin:0]; }
+#admin-finance-payouts-page .payout-recipient > div > span:last-child { @apply [overflow-wrap:anywhere]; @apply text-right; }
+#admin-finance-payouts-page .payout-recipient > div:last-child { @apply [margin-top:8px]; @apply [padding-top:12px]; }
+#admin-finance-payouts-page .payout-recipient > div:last-child > span:last-child { @apply [font-size:22px]; }
+#admin-finance-payouts-page .payout-document-upload { @apply flex; @apply items-center; @apply [gap:12px]; @apply [padding:10px_12px]; @apply [border:1px_dashed_#D7BD94]; @apply [border-radius:10px]; @apply [background:#FAF8F5]; }
+#admin-finance-payouts-page .payout-document-upload span { @apply [min-width:0]; @apply [overflow-wrap:anywhere]; @apply [font-size:14px]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page label.payout-document-picker { @apply [flex-shrink:0]; @apply [margin:0]; @apply [padding:8px_14px]; @apply [background:#FBF5EB]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [color:#8F682E]; @apply [font-weight:600]; @apply cursor-pointer; }
+#admin-finance-payouts-page .payout-approval-dialog .payout-file-hint { @apply [margin:6px_0_0]; @apply [font-size:12px]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page .payout-approval-dialog button { @apply [min-height:40px]; @apply [font-size:14px]; }
+#admin-finance-payouts-page .payout-approval-dialog { @apply [max-width:680px]; @apply [padding:22px]; }
+#admin-finance-payouts-page .payout-approval-dialog h3 { @apply [font-size:18px]; }
+#admin-finance-payouts-page .payout-approval-tabs { @apply grid; @apply [grid-template-columns:repeat(2,minmax(0,1fr))]; @apply [gap:10px]; @apply [margin-bottom:18px]; }
+#admin-finance-payouts-page .payout-approval-tabs button { @apply flex; @apply items-center; @apply justify-center; @apply [gap:10px]; @apply [padding:10px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [color:#7D715E]; @apply [background:#fff]; }
+#admin-finance-payouts-page .payout-approval-tabs button[aria-selected=true] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#1A1612]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .payout-approval-tabs button span { @apply grid; @apply place-items-center; @apply [width:27px]; @apply [height:27px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:50%]; @apply [flex-shrink:0]; @apply [color:#8F682E]; @apply [font-weight:400]; }
+#admin-finance-payouts-page .payout-approval-panel { @apply grid; @apply [gap:12px]; @apply [border:0]; @apply [margin:0]; @apply [padding:0]; @apply [min-width:0]; }
+#admin-finance-payouts-page .payout-approval-dialog form { @apply [gap:14px]; }
+#admin-finance-payouts-page .payout-approval-dialog .payout-risk-note { @apply [margin-top:4px]; @apply [font-size:12px]; }
+#admin-finance-payouts-page .payout-risk-note summary { @apply cursor-pointer; }
+#admin-finance-payouts-page .payout-document-notice { @apply [margin:0]; @apply [padding:10px_12px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page .payout-continue { @apply [padding:9px_18px]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:10px]; @apply [font-weight:600]; }
+@media(max-width:600px) { #admin-finance-payouts-page .payout-approval-dialog { @apply [padding:18px]; } #admin-finance-payouts-page .payout-recipient > div { @apply [grid-template-columns:110px_minmax(0,1fr)]; @apply [gap:8px]; } }
+#admin-finance-payouts-page .finance-operations { @apply [padding:20px]; @apply [border-radius:14px]; }
+#admin-finance-payouts-page .finance-operations h2 { @apply [font-size:16px]; @apply [line-height:1.5]; }
+#admin-finance-payouts-page .finance-tax-result { @apply [margin-top:18px]; @apply [padding-top:18px]; @apply [border-top:1px_solid_#EAE4D7]; }
+#admin-finance-payouts-page .finance-tax-totals { @apply grid; @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; @apply [gap:12px]; @apply [margin:0]; }
+#admin-finance-payouts-page .finance-tax-totals > div { @apply [min-width:0]; @apply [padding:16px_18px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-tax-totals > div:last-child { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; }
+#admin-finance-payouts-page .finance-tax-totals dt { @apply flex; @apply items-center; @apply [gap:10px]; @apply [font-size:14px]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page .finance-tax-totals dt span { @apply grid; @apply place-items-center; @apply [width:28px]; @apply [height:28px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:50%]; @apply [color:#8F682E]; @apply [font-size:12px]; @apply [flex-shrink:0]; }
+#admin-finance-payouts-page .finance-tax-totals dd { @apply [margin:10px_0_0_38px]; @apply [color:#1A1612]; font-size: clamp(18px,1.7vw,24px); @apply [font-weight:600]; font-variant-numeric: tabular-nums; @apply [overflow-wrap:anywhere]; }
+#admin-finance-payouts-page .finance-tax-result .finance-tax-caption { @apply [margin:12px_0_0]; @apply [color:#7D715E]; @apply [font-size:12px]; @apply [line-height:1.6]; }
+@media(max-width:600px) { #admin-finance-payouts-page .finance-tax-totals { @apply [grid-template-columns:1fr]; @apply [gap:8px]; } #admin-finance-payouts-page .finance-tax-totals > div { @apply flex; @apply items-center; @apply justify-between; @apply [gap:10px]; @apply [padding:12px]; } #admin-finance-payouts-page .finance-tax-totals dd { @apply [margin:0]; } }
+#admin-finance-payouts-page .finance-operations h3 { @apply [font-size:14px]; @apply [line-height:1.5]; @apply [margin:0_0_4px]; }
+#admin-finance-payouts-page .finance-operations form { @apply [gap:16px_20px]; @apply [padding-top:20px]; @apply [align-items:end]; }
+#admin-finance-payouts-page .finance-operations label { @apply [font-size:12px]; @apply [line-height:1.6]; @apply [gap:6px]; @apply [color:#7D715E]; }
+#admin-finance-payouts-page .finance-vietnamese-period { @apply grid; @apply [grid-template-columns:120px_100px]; @apply [gap:8px]; }
+#admin-finance-payouts-page .finance-operations input, #admin-finance-payouts-page .finance-operations select { @apply [width:100%]; @apply [min-width:0]; @apply [height:40px]; @apply [padding:8px_12px]; @apply [font-size:13px]; @apply [border-radius:8px]; @apply [color:#1A1612]; @apply [background:#fff]; }
+#admin-finance-payouts-page .finance-operations input[type=file] { @apply [height:auto]; @apply [min-height:40px]; @apply [font-size:12px]; }
+#admin-finance-payouts-page input[type=file]::file-selector-button { @apply [margin-right:10px]; @apply [padding:4px_10px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:6px]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; @apply cursor-pointer; }
+#admin-finance-payouts-page .finance-operations button { --action-bg: #FBF5EB; --action-border: #EEDFC6; --action-ink: #1A1612; @apply [height:40px]; @apply [padding:8px_14px]; @apply [font-size:12px]; @apply [border-radius:8px]; }
+#admin-finance-payouts-page .finance-operations button.finance-save-cost { --action-bg: #F3E6D1; --action-border: #D7B780; --action-ink: #715126; @apply [background:#F3E6D1]; @apply [border-color:#D7B780]; @apply [color:#715126]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .finance-operations button.finance-save-cost:disabled { @apply [opacity:1]; --action-bg: #F3EFE6; --action-border: #DECFB7; --action-ink: #8A7A63; @apply [background:#F3EFE6]; @apply [border-color:#DECFB7]; @apply [color:#8A7A63]; @apply cursor-not-allowed; }
+#admin-finance-payouts-page .finance-escrow { @apply [padding:20px]; @apply [max-width:100%]; @apply overflow-hidden; @apply [font-size:13px]; }
+#admin-finance-payouts-page .finance-escrow h2 { @apply [font-size:16px]; }
+#admin-finance-payouts-page .finance-escrow p { @apply [font-size:13px]; @apply [line-height:1.7]; }
+#admin-finance-payouts-page .finance-escrow table { @apply [min-width:760px]; }
+#admin-finance-payouts-page .finance-escrow td { @apply [font-size:13px]; @apply [line-height:1.6]; }
+#admin-finance-payouts-page .finance-escrow table { @apply [min-width:1120px]; }
+#admin-finance-payouts-page .finance-escrow td { @apply [vertical-align:middle]; @apply [padding:16px_12px]; }
+#admin-finance-payouts-page .finance-escrow td:first-child { @apply [min-width:170px]; }
+#admin-finance-payouts-page .finance-escrow td:nth-child(2) { @apply [width:32%]; @apply [min-width:280px]; }
+#admin-finance-payouts-page .escrow-product { @apply flex; @apply [gap:10px]; @apply items-center; }
+#admin-finance-payouts-page .escrow-product img { @apply [width:44px]; @apply [height:44px]; @apply object-contain; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#fff]; @apply [flex-shrink:0]; }
+#admin-finance-payouts-page .escrow-product strong { @apply [font-size:12px]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .escrow-product small, #admin-finance-payouts-page .escrow-store-name { @apply block; @apply [font-size:11px]; @apply [color:#7D715E]; @apply [margin-top:3px]; }
+#admin-finance-payouts-page .escrow-unit-price { @apply whitespace-nowrap; @apply [font-weight:600]; font-variant-numeric: tabular-nums; }
+#admin-finance-payouts-page .finance-escrow > .finance-pagination { @apply [margin-top:16px]; }
+#admin-finance-payouts-page .finance-escrow-empty { @apply [margin-top:16px]; @apply [padding:16px_18px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:10px]; @apply [background:#FFFDFA]; }
+#admin-finance-payouts-page .finance-escrow-empty strong { @apply [font-size:13px]; @apply [font-weight:600]; }
+#admin-finance-payouts-page .finance-escrow-empty p { @apply [margin:6px_0_0]; @apply [max-width:900px]; @apply [color:#7D715E]; @apply [font-size:12px]; }
+@media(max-width:900px) { #admin-finance-payouts-page .finance-kpis { @apply [grid-template-columns:repeat(2,minmax(0,1fr))]; } }
+@media(max-width:1100px) { #admin-finance-payouts-page .finance-filter { @apply [grid-template-columns:minmax(0,1fr)]; } #admin-finance-payouts-page .finance-filter > .relative { @apply [width:100%]; } }
+@media(max-width:600px) { #admin-finance-payouts-page .finance-main-tabs { @apply [grid-template-columns:1fr]; } #admin-finance-payouts-page .finance-operations { @apply [padding:14px]; } }

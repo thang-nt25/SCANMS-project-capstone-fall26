@@ -1,11 +1,12 @@
+@reference "../../index.css";
 /* Match the workspace sidebar identity inset and the content's scrollbar edge. */
 .workspace-topbar .scanms-header-logo {
-  align-items: center;
+  @apply items-center;
 }
 
 @media (min-width: 1024px) {
   .workspace-topbar-inner {
-    padding-left: calc(2rem + 21.5px);
-    padding-right: calc(2rem + var(--workspace-scrollbar-width, 0px));
+    @apply [padding-left:calc(2rem_+_21.5px)];
+    @apply [padding-right:calc(2rem_+_var(--workspace-scrollbar-width,_0px))];
   }
 }

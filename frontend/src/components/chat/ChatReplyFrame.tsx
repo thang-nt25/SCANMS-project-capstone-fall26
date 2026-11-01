@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { CornerUpLeft } from 'lucide-react';
 import type { ChatReply } from '@/types/chat.types';
 import { ChatReplyQuote } from './ChatReplyQuote';
+import { replyActionClass } from './chat-reply.styles';
 
 export function ChatReplyFrame({ id, mine, quote, currentUserId, onReply, onLocate, children, enabled }: {
   id: string; mine: boolean; quote?: ChatReply | null; currentUserId?: string;
@@ -14,6 +15,6 @@ export function ChatReplyFrame({ id, mine, quote, currentUserId, onReply, onLoca
   }}>
     {quote && <ChatReplyQuote message={quote} currentUserId={currentUserId} onLocate={() => onLocate(quote)} />}
     {children}
-    {enabled && <button type="button" className="chat-reply-action" onClick={onReply} aria-label="Trả lời tin nhắn"><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
+    {enabled && <button type="button" className={replyActionClass} onClick={onReply} aria-label="Trả lời tin nhắn"><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
   </div>;
 }

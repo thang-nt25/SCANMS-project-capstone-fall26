@@ -1,3 +1,4 @@
+import { replyActionClass, replyHighlightClass } from '../../components/chat/chat-reply.styles';
 import { CouponVoucherCardBubble, type CouponVoucherCardData } from '../../components/chat/CouponVoucherCardBubble';
 import { chatVoucherDiscount } from '../../utils/chat-voucher';
 import './CustomerMessages.css';
@@ -2974,7 +2975,7 @@ export default function ChatBoxPage({
                       <div id={`chat-message-${msg.id}`} onClick={event => {
                         if ((event.target as HTMLElement).closest('a, button, video, input, select, [role="button"]') || window.getSelection()?.toString()) return;
                         chooseReply(msg);
-                      }} className={`chat-message-content w-fit min-w-0 max-w-[88%] space-y-1 sm:max-w-[82%] lg:max-w-[760px] ${highlightedMessage === msg.id ? 'chat-message-highlight' : ''} ${hasSenderHeader ? `chat-deal-message-content ${!isMine ? 'chat-card-received' : ''}` : ''} ${isMine ? 'items-end' : 'items-start'}`}>
+                      }} className={`chat-message-content flex flex-col w-fit min-w-0 max-w-[88%] space-y-1 sm:max-w-[82%] lg:max-w-[760px] ${highlightedMessage === msg.id ? replyHighlightClass : ''} ${hasSenderHeader ? `chat-deal-message-content ${!isMine ? 'chat-card-received' : ''}` : ''} ${isMine ? 'items-end' : 'items-start'}`}>
                         {!isMine && hasSenderHeader && <div className="chat-deal-sender">
                           <button type="button" onClick={() => openOtherProfile(activeConv)} disabled={!canOpenOtherProfile(activeConv)} title={`Xem hồ sơ ${getOtherParty(activeConv)}`} aria-label={`Xem hồ sơ ${getOtherParty(activeConv)}`}>
                             <ChatAvatar src={msg.sender?.collaboratorProfile?.avatarUrl || msg.sender?.avatarUrl || getOtherAvatarUrl(activeConv)} name={msg.sender?.fullName || getOtherParty(activeConv)} className="w-6 h-6 rounded-full text-[9px]" />
@@ -3070,7 +3071,7 @@ export default function ChatBoxPage({
                             </div>
                           );
                         })()}
-                        {messageReplies && <button type="button" className="chat-reply-action" disabled={isSending} onClick={() => chooseReply(msg)} aria-label={`Trả lời tin nhắn của ${msg.senderId === currentUser?.id ? 'bạn' : (msg.sender?.fullName || (activeConv ? getOtherParty(activeConv) : 'đối phương'))}`}><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
+                        {messageReplies && <button type="button" className={replyActionClass} disabled={isSending} onClick={() => chooseReply(msg)} aria-label={`Trả lời tin nhắn của ${msg.senderId === currentUser?.id ? 'bạn' : (msg.sender?.fullName || (activeConv ? getOtherParty(activeConv) : 'đối phương'))}`}><CornerUpLeft size={13} aria-hidden="true" />Trả lời</button>}
 
                         {!(embedded && hideHeaderInChat && !isMine && hasSenderHeader) && <div
                           className={`flex items-center gap-1 px-1 text-[10px] text-[#7D715E]/80 ${isMine ? 'justify-end' : 'justify-start'

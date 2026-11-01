@@ -1,3 +1,4 @@
+import './ShopKolHubPage.css';
 import { normalizePartnerTier } from '../../utils/partner-tier';
 import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';

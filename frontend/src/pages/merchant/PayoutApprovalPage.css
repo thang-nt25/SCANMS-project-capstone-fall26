@@ -1,82 +1,84 @@
+@reference "../../index.css";
+
 .merchant-payout-page .payout-table td {
-  overflow-wrap: anywhere;
+  @apply [overflow-wrap:anywhere];
 }
 
 .merchant-payout-page .payout-table td[data-label="Yêu cầu"],
 .merchant-payout-page .payout-table td[data-label="Thuế"],
 .merchant-payout-page .payout-table td[data-label="Thực nhận"] {
-  white-space: normal;
+  @apply whitespace-normal;
   font-variant-numeric: tabular-nums;
 }
 
 .merchant-payout-page .payout-status-pill {
-  white-space: normal;
-  padding-inline: 8px;
+  @apply whitespace-normal;
+  @apply [padding-inline:8px];
 }
 
 .merchant-payout-page .payout-table td[data-label="Thao tác"] button {
-  height: auto;
-  min-height: 32px;
-  padding: 6px;
-  white-space: normal;
+  @apply [height:auto];
+  @apply [min-height:32px];
+  @apply [padding:6px];
+  @apply whitespace-normal;
 }
 
 @media (max-width: 1023px) {
   .merchant-payout-page .payout-select-all {
-    grid-template-columns: 32px minmax(0, 1fr) auto;
+    @apply [grid-template-columns:32px_minmax(0,_1fr)_auto];
   }
 
   .merchant-payout-page .payout-table,
   .merchant-payout-page .payout-table tbody {
-    display: block;
-    width: 100%;
+    @apply block;
+    @apply [width:100%];
   }
 
   .merchant-payout-page .payout-table colgroup,
   .merchant-payout-page .payout-table thead {
-    display: none;
+    @apply hidden;
   }
 
   .merchant-payout-page .payout-table tbody tr {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 12px;
-    gap: 8px;
+    @apply grid;
+    @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))];
+    @apply [padding:12px];
+    @apply [gap:8px];
   }
 
   .merchant-payout-page .payout-table td {
-    display: block;
-    min-width: 0;
-    padding: 4px;
-    text-align: left;
+    @apply block;
+    @apply [min-width:0];
+    @apply [padding:4px];
+    @apply text-left;
   }
 
   .merchant-payout-page .payout-table td:first-child,
   .merchant-payout-page .payout-table td[data-label="Thao tác"] {
-    grid-column: 1 / -1;
+    @apply [grid-column:1_/_-1];
   }
 
   .merchant-payout-page .payout-table td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 5px;
-    color: #7D715E;
-    font-size: 10px;
-    font-weight: 500;
+    @apply [content:attr(data-label)];
+    @apply block;
+    @apply [margin-bottom:5px];
+    @apply [color:#7D715E];
+    @apply [font-size:10px];
+    @apply [font-weight:500];
   }
 
   .merchant-payout-page .payout-table td[data-label="Thao tác"] > div {
-    max-width: none;
-    flex-direction: row;
-    flex-wrap: wrap;
+    @apply [max-width:none];
+    @apply flex-row;
+    @apply flex-wrap;
   }
 
   .merchant-payout-page .payout-table td[data-label="Thao tác"] button {
-    width: auto;
-    padding-inline: 12px;
+    @apply [width:auto];
+    @apply [padding-inline:12px];
   }
 
   .merchant-payout-page .payout-status-reference {
-    margin-left: 0;
+    @apply [margin-left:0];
   }
 }

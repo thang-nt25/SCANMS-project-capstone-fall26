@@ -1,62 +1,63 @@
-.merchant-order-detail { width: min(720px, calc(100% - 32px)); max-height: calc(100dvh - 40px); border-radius: 15px; border-color: #EAE4D7; box-shadow: 0 22px 70px rgb(35 29 21 / 16%); }
-.merchant-order-detail::backdrop { background: rgb(35 29 21 / 28%); backdrop-filter: blur(2px); }
-.merchant-order-detail > header { padding: 16px 20px; background: #FFFFFF; }
-.merchant-order-detail .order-detail-heading { align-items: flex-start; gap: 11px; }
-.merchant-order-detail .order-detail-heading-icon { width: 34px; height: 34px; border-radius: 9px; }
-.merchant-order-detail #order-detail-title { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: -.2px; }
-.merchant-order-detail .order-detail-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 5px; color: #7D715E; font-size: 10px; line-height: 17px; }
-.merchant-order-detail .order-detail-meta > span { display: inline-flex; align-items: center; gap: 5px; overflow-wrap: anywhere; }
-.merchant-order-detail .order-detail-meta > span:first-child { color: #79592C; }
-.merchant-order-detail .order-detail-state { flex-shrink: 0; margin-top: 1px; padding: 4px 9px; border: 1px solid #EEDFC6; border-radius: 6px; background: #FBF5EB; color: #79592C; font-size: 10px; font-weight: 500; line-height: 18px; }
-.merchant-order-detail .order-detail-state[data-status=CANCELLED] { color: #DC2626; background: #FFFFFF; border-color: #EAE4D7; }
-.merchant-order-detail .order-detail-heading > button { width: 28px; height: 28px; border: 1px solid #EAE4D7; border-radius: 7px; background: #FFFFFF; }
-.merchant-order-detail [data-order-detail-content] { display: flex; flex-direction: column; flex: 1; gap: 16px; padding: 17px 20px; background: #FFFFFF; scrollbar-width: thin; scrollbar-color: #EEDFC6 transparent; }
-.merchant-order-detail [data-order-detail-content] > * { flex-shrink: 0; margin: 0; }
-.merchant-order-detail h3 { font-size: 12px; line-height: 20px; font-weight: 600; }
-.merchant-order-detail h3 svg { width: 15px; height: 15px; }
-.merchant-order-detail .order-detail-recipient { gap: 11px 18px; padding: 13px 14px; border-radius: 10px; background: #FFFFFF; }
-.merchant-order-detail .order-detail-recipient dt { font-size: 10px; line-height: 17px; }
-.merchant-order-detail .order-detail-recipient dd { margin-top: 3px; font-size: 12px; line-height: 19px; }
-.merchant-order-detail .order-detail-recipient > .col-span-2 { grid-column: 1 / -1; }
-.merchant-order-detail .order-detail-recipient > .border-t { padding-top: 10px; }
-.merchant-order-detail .order-detail-products { border-radius: 10px; }
-.merchant-order-detail .order-detail-product { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; padding: 12px 14px; align-items: center; }
-.merchant-order-detail .order-detail-product > img { grid-column: 1; grid-row: 1; width: 44px; height: 44px; border-radius: 8px; background: #FFFFFF; }
-.merchant-order-detail .order-detail-product > div { grid-column: 2; grid-row: 1; align-self: center; }
-.merchant-order-detail .order-detail-product > div > p:first-child { font-size: 12px; font-weight: 500; line-height: 19px; }
-.merchant-order-detail .order-detail-product > div > p:not(:first-child) { margin-top: 3px; font-family: inherit; font-size: 10px; line-height: 16px; }
-.merchant-order-detail .order-detail-product > strong { grid-column: 3; grid-row: 1; align-self: center; font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
-.merchant-order-detail .order-detail-finance { border-color: #EAE4D7; border-radius: 10px; background: #FFFFFF; }
-.merchant-order-detail .order-detail-finance > div:first-child { padding: 13px 14px 0; }
-.merchant-order-detail .order-detail-finance-heading { margin-bottom: 13px; }
-.merchant-order-detail .order-detail-payment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 7px; color: #7D715E; font-size: 10px; line-height: 18px; }
-.merchant-order-detail .order-detail-payment-state { padding: 2px 7px; border: 1px solid #EEDFC6; border-radius: 5px; background: #FBF5EB; color: #79592C; }
-.merchant-order-detail .order-detail-finance dl { font-size: 12px; }
-.merchant-order-detail .order-detail-finance dl > div { margin-top: 8px; }
-.merchant-order-detail .order-detail-finance dl > div:last-child { margin: 12px -14px 0; padding: 12px 14px; border-top: 1px solid #EAE4D7; background: #FBF5EB; }
-.merchant-order-detail .order-detail-finance dl > div:last-child dt { color: #1A1612; font-size: 12px; font-weight: 600; }
-.merchant-order-detail [data-order-detail-total] { font-size: 21px; line-height: 28px; font-weight: 600; letter-spacing: -.4px; }
-.merchant-order-detail .order-detail-commission { padding: 10px 14px; border-color: #EAE4D7; background: #FFFFFF; font-size: 10px; }
-.merchant-order-detail .order-detail-finance > div:first-child > button { margin-bottom: 12px; }
-.merchant-order-detail > footer { padding: 11px 20px; background: #FAF8F5; }
-.merchant-order-detail > footer > button { min-height: 34px; min-width: 90px; padding: 7px 18px; border-radius: 7px; background: #FFFFFF; font-size: 11px; font-weight: 500; }
-.merchant-order-detail :is(button, a):focus-visible { outline: 2px solid #C59B58; outline-offset: 2px; }
+@reference "../../index.css";
+.merchant-order-detail { @apply [width:min(720px,_calc(100%_-_32px))]; @apply [max-height:calc(100dvh_-_40px)]; @apply [border-radius:15px]; @apply [border-color:#EAE4D7]; @apply [box-shadow:0_22px_70px_rgb(35_29_21_/_16%)]; }
+.merchant-order-detail::backdrop { @apply [background:rgb(35_29_21_/_28%)]; @apply [backdrop-filter:blur(2px)]; }
+.merchant-order-detail > header { @apply [padding:16px_20px]; @apply [background:#FFFFFF]; }
+.merchant-order-detail .order-detail-heading { @apply items-start; @apply [gap:11px]; }
+.merchant-order-detail .order-detail-heading-icon { @apply [width:34px]; @apply [height:34px]; @apply [border-radius:9px]; }
+.merchant-order-detail #order-detail-title { @apply [font-size:16px]; @apply [line-height:22px]; @apply [font-weight:600]; @apply [letter-spacing:-.2px]; }
+.merchant-order-detail .order-detail-meta { @apply flex; @apply flex-wrap; @apply [gap:5px_14px]; @apply [margin-top:5px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.merchant-order-detail .order-detail-meta > span { @apply inline-flex; @apply items-center; @apply [gap:5px]; @apply [overflow-wrap:anywhere]; }
+.merchant-order-detail .order-detail-meta > span:first-child { @apply [color:#79592C]; }
+.merchant-order-detail .order-detail-state { @apply [flex-shrink:0]; @apply [margin-top:1px]; @apply [padding:4px_9px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:6px]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-size:10px]; @apply [font-weight:500]; @apply [line-height:18px]; }
+.merchant-order-detail .order-detail-state[data-status=CANCELLED] { @apply [color:#DC2626]; @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; }
+.merchant-order-detail .order-detail-heading > button { @apply [width:28px]; @apply [height:28px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:7px]; @apply [background:#FFFFFF]; }
+.merchant-order-detail [data-order-detail-content] { @apply flex; @apply flex-col; @apply [flex:1]; @apply [gap:16px]; @apply [padding:17px_20px]; @apply [background:#FFFFFF]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#EEDFC6_transparent]; }
+.merchant-order-detail [data-order-detail-content] > * { @apply [flex-shrink:0]; @apply [margin:0]; }
+.merchant-order-detail h3 { @apply [font-size:12px]; @apply [line-height:20px]; @apply [font-weight:600]; }
+.merchant-order-detail h3 svg { @apply [width:15px]; @apply [height:15px]; }
+.merchant-order-detail .order-detail-recipient { @apply [gap:11px_18px]; @apply [padding:13px_14px]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; }
+.merchant-order-detail .order-detail-recipient dt { @apply [font-size:10px]; @apply [line-height:17px]; }
+.merchant-order-detail .order-detail-recipient dd { @apply [margin-top:3px]; @apply [font-size:12px]; @apply [line-height:19px]; }
+.merchant-order-detail .order-detail-recipient > .col-span-2 { @apply [grid-column:1_/_-1]; }
+.merchant-order-detail .order-detail-recipient > .border-t { @apply [padding-top:10px]; }
+.merchant-order-detail .order-detail-products { @apply [border-radius:10px]; }
+.merchant-order-detail .order-detail-product { @apply [grid-template-columns:44px_minmax(0,_1fr)_auto]; @apply [gap:11px]; @apply [padding:12px_14px]; @apply items-center; }
+.merchant-order-detail .order-detail-product > img { @apply [grid-column:1]; @apply [grid-row:1]; @apply [width:44px]; @apply [height:44px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.merchant-order-detail .order-detail-product > div { @apply [grid-column:2]; @apply [grid-row:1]; @apply [align-self:center]; }
+.merchant-order-detail .order-detail-product > div > p:first-child { @apply [font-size:12px]; @apply [font-weight:500]; @apply [line-height:19px]; }
+.merchant-order-detail .order-detail-product > div > p:not(:first-child) { @apply [margin-top:3px]; @apply [font-family:inherit]; @apply [font-size:10px]; @apply [line-height:16px]; }
+.merchant-order-detail .order-detail-product > strong { @apply [grid-column:3]; @apply [grid-row:1]; @apply [align-self:center]; @apply [font-size:12px]; @apply [font-weight:600]; @apply text-right; @apply whitespace-nowrap; }
+.merchant-order-detail .order-detail-finance { @apply [border-color:#EAE4D7]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; }
+.merchant-order-detail .order-detail-finance > div:first-child { @apply [padding:13px_14px_0]; }
+.merchant-order-detail .order-detail-finance-heading { @apply [margin-bottom:13px]; }
+.merchant-order-detail .order-detail-payment-meta { @apply flex; @apply flex-wrap; @apply items-center; @apply justify-end; @apply [gap:7px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:18px]; }
+.merchant-order-detail .order-detail-payment-state { @apply [padding:2px_7px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:5px]; @apply [background:#FBF5EB]; @apply [color:#79592C]; }
+.merchant-order-detail .order-detail-finance dl { @apply [font-size:12px]; }
+.merchant-order-detail .order-detail-finance dl > div { @apply [margin-top:8px]; }
+.merchant-order-detail .order-detail-finance dl > div:last-child { @apply [margin:12px_-14px_0]; @apply [padding:12px_14px]; @apply [border-top:1px_solid_#EAE4D7]; @apply [background:#FBF5EB]; }
+.merchant-order-detail .order-detail-finance dl > div:last-child dt { @apply [color:#1A1612]; @apply [font-size:12px]; @apply [font-weight:600]; }
+.merchant-order-detail [data-order-detail-total] { @apply [font-size:21px]; @apply [line-height:28px]; @apply [font-weight:600]; @apply [letter-spacing:-.4px]; }
+.merchant-order-detail .order-detail-commission { @apply [padding:10px_14px]; @apply [border-color:#EAE4D7]; @apply [background:#FFFFFF]; @apply [font-size:10px]; }
+.merchant-order-detail .order-detail-finance > div:first-child > button { @apply [margin-bottom:12px]; }
+.merchant-order-detail > footer { @apply [padding:11px_20px]; @apply [background:#FAF8F5]; }
+.merchant-order-detail > footer > button { @apply [min-height:34px]; @apply [min-width:90px]; @apply [padding:7px_18px]; @apply [border-radius:7px]; @apply [background:#FFFFFF]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.merchant-order-detail :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
 @media (min-width: 640px) {
-  .merchant-order-detail .order-detail-recipient { grid-template-columns: minmax(0, .85fr) minmax(0, .85fr) minmax(0, 1.3fr); }
-  .merchant-order-detail .order-detail-recipient > .order-detail-email { grid-column: auto; }
+  .merchant-order-detail .order-detail-recipient { @apply [grid-template-columns:minmax(0,_.85fr)_minmax(0,_.85fr)_minmax(0,_1.3fr)]; }
+  .merchant-order-detail .order-detail-recipient > .order-detail-email { @apply [grid-column:auto]; }
 }
 @media (max-width: 639px) {
-  .merchant-order-detail { width: calc(100% - 20px); max-height: calc(100dvh - 24px); border-radius: 12px; }
-  .merchant-order-detail > header { padding: 14px; }
-  .merchant-order-detail .order-detail-heading { position: relative; flex-wrap: wrap; gap: 8px; padding-right: 34px; }
-  .merchant-order-detail .order-detail-heading > button { position: absolute; right: 0; top: 0; }
-  .merchant-order-detail .order-detail-state { margin-left: 42px; margin-top: 0; }
-  .merchant-order-detail #order-detail-title { font-size: 15px; }
-  .merchant-order-detail [data-order-detail-content] { padding: 14px; gap: 14px; }
-  .merchant-order-detail .order-detail-recipient { padding: 11px 12px; gap: 10px 14px; }
-  .merchant-order-detail .order-detail-product { grid-template-columns: 40px minmax(0, 1fr); gap: 4px 10px; padding: 11px 12px; }
-  .merchant-order-detail .order-detail-product > img { width: 40px; height: 40px; grid-row: 1 / 3; align-self: start; }
-  .merchant-order-detail .order-detail-product > strong { grid-column: 2; grid-row: 2; text-align: left; }
-  .merchant-order-detail .order-detail-payment-meta { gap: 4px; }
-  .merchant-order-detail > footer { padding: 10px 14px; }
+  .merchant-order-detail { @apply [width:calc(100%_-_20px)]; @apply [max-height:calc(100dvh_-_24px)]; @apply [border-radius:12px]; }
+  .merchant-order-detail > header { @apply [padding:14px]; }
+  .merchant-order-detail .order-detail-heading { @apply relative; @apply flex-wrap; @apply [gap:8px]; @apply [padding-right:34px]; }
+  .merchant-order-detail .order-detail-heading > button { @apply absolute; @apply [right:0]; @apply [top:0]; }
+  .merchant-order-detail .order-detail-state { @apply [margin-left:42px]; @apply [margin-top:0]; }
+  .merchant-order-detail #order-detail-title { @apply [font-size:15px]; }
+  .merchant-order-detail [data-order-detail-content] { @apply [padding:14px]; @apply [gap:14px]; }
+  .merchant-order-detail .order-detail-recipient { @apply [padding:11px_12px]; @apply [gap:10px_14px]; }
+  .merchant-order-detail .order-detail-product { @apply [grid-template-columns:40px_minmax(0,_1fr)]; @apply [gap:4px_10px]; @apply [padding:11px_12px]; }
+  .merchant-order-detail .order-detail-product > img { @apply [width:40px]; @apply [height:40px]; @apply [grid-row:1_/_3]; @apply [align-self:start]; }
+  .merchant-order-detail .order-detail-product > strong { @apply [grid-column:2]; @apply [grid-row:2]; @apply text-left; }
+  .merchant-order-detail .order-detail-payment-meta { @apply [gap:4px]; }
+  .merchant-order-detail > footer { @apply [padding:10px_14px]; }
 }

@@ -1,3 +1,4 @@
+import { replyHighlightClass } from './chat-reply.styles';
 import { chatVoucherDiscount, chatVoucherHint } from '../../utils/chat-voucher';
 import { lazy, Suspense, useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -412,8 +413,8 @@ export function ScanmsFloatingChatWidget() {
     const element = document.getElementById(`floating-chat-message-${message.id}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      element.classList.add('chat-message-highlight');
-      setTimeout(() => element.classList.remove('chat-message-highlight'), 2200);
+      element.classList.add(...replyHighlightClass.split(' '));
+      setTimeout(() => element.classList.remove(...replyHighlightClass.split(' ')), 2200);
     } else if (activeConversation) {
       try {
         const response: any = await api.get(`/chat/conversations/${activeConversation.id}/messages/${message.id}`, { headers: { 'x-skip-cache': '1' } });

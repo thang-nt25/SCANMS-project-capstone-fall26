@@ -1,209 +1,210 @@
-#shop-promotions-hub { gap: 18px; }
-#shop-promotions-hub .promotions-tabs [role='tablist'] { padding: 5px; gap: 6px; border-radius: 12px; background: #FFFFFF; border-color: #EAE4D7; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
-#shop-promotions-hub .promotions-tabs [role='tab'] { min-height: 40px; padding: 9px 14px; border-radius: 8px; font-size: 12px; font-weight: 550; box-shadow: none; }
-#shop-promotions-hub .promotions-tabs [role='tab'][aria-selected='true'] { background: #FBF5EB; border-color: #EEDFC6; color: #8C6226; }
-#shop-promotions-hub .promotions-coupons > div { max-width: none; padding-top: 0; }
-#shop-promotions-hub .promotions-coupons > div > * + * { margin-top: 16px; }
-#shop-promotions-hub .coupon-issuer { padding: 20px; border-radius: 14px; box-shadow: none; }
-#shop-promotions-hub .coupon-issuer h2 { font-size: 18px; line-height: 25px; letter-spacing: -.35px; font-weight: 650; }
-#shop-promotions-hub .coupon-issuer p { margin-top: 4px; font-size: 11px; line-height: 18px; }
-#shop-promotions-hub .coupon-issuer > div > div:first-child > div:first-child { width: 36px; height: 36px; border: 0; border-radius: 10px; background: #FBF5EB; }
-#shop-promotions-hub .coupon-issuer button { height: 36px; border-radius: 8px; font-size: 11px; font-weight: 550; background: #FFFFFF; color: #7D715E; border: 1px solid #EAE4D7; }
-#shop-promotions-hub .coupon-issuer > div > div:last-child > button:last-child { background: #FBF5EB; color: #8C6226; border-color: #EEDFC6; }
-#shop-promotions-hub .coupon-issuer > div > div:last-child > span { padding: 8px 10px; border-radius: 8px; font-size: 11px; background: #FFFFFF; }
-#shop-promotions-hub .coupon-metrics { gap: 12px; }
-#shop-promotions-hub .coupon-metrics > div { min-height: 112px; padding: 16px 18px; border-radius: 12px; box-shadow: none; }
-#shop-promotions-hub .coupon-metrics > div > div { margin-bottom: 12px; }
-#shop-promotions-hub .coupon-metrics > div > div > span { font-size: 11px; font-weight: 500; }
-#shop-promotions-hub .coupon-metrics > div > div > div { width: 28px; height: 28px; border: 0; border-radius: 8px; background: #FBF5EB; }
-#shop-promotions-hub .coupon-metrics > div > p { font-size: 25px; line-height: 30px; font-weight: 650; letter-spacing: -.5px; color: #1A1612; font-variant-numeric: tabular-nums; }
-#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] { border: 1px solid #EAE4D7; border-radius: 12px; padding: 14px 16px; background: #FFFFFF; }
-#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] { gap: 6px; }
-#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button { padding: 7px 10px; border-radius: 7px; font-size: 11px; border-color: transparent; }
-#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button[aria-pressed='true'] { border-color: #EEDFC6; background: #FBF5EB; color: #8C6226; }
-#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > .grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 10px; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] { border-radius: 9px; border-color: #EAE4D7; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] > div { padding: 10px 12px; background: #FEFCF9; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] h2 { font-size: 11px; font-weight: 550; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] ul { padding-inline: 12px; border-color: #EAE4D7; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dl { gap: 12px; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dt { font-size: 10px; }
-#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dd { font-size: 12px; }
-#shop-promotions-hub .coupon-filters { padding: 14px; border-radius: 12px; margin-bottom: 0; box-shadow: none; gap: 12px; flex-wrap: wrap; }
-#shop-promotions-hub .coupon-filters > div:first-child { gap: 6px; }
-#shop-promotions-hub .coupon-filters > div:first-child > button { min-height: 36px; padding: 8px 11px; border-radius: 8px; font-size: 11px; font-weight: 550; }
-#shop-promotions-hub .coupon-filters > div:last-child { gap: 10px; flex: 1; justify-content: flex-end; }
-#shop-promotions-hub .coupon-filters > div:last-child > div:first-child { border-radius: 8px; background: #FAF8F5; padding: 3px; }
-#shop-promotions-hub .coupon-filters > div:last-child > div:first-child button { font-size: 10px; font-weight: 500; border-radius: 6px; padding: 6px 9px; box-shadow: none; }
-#shop-promotions-hub .coupon-filters > div:last-child > div:last-child { min-width: 180px; max-width: 300px; flex: 1; }
-#shop-promotions-hub .coupon-filters input { height: 36px; border-radius: 8px; font-size: 11px; background: #FFFFFF; }
-#shop-promotions-hub .coupon-list { gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-#shop-promotions-hub .coupon-card { border-radius: 13px; border-color: #EAE4D7; box-shadow: 0 2px 5px rgb(35 29 21 / 2%); }
-#shop-promotions-hub .coupon-card:hover { box-shadow: 0 4px 12px rgb(35 29 21 / 5%); border-color: #D7C5A8; }
-#shop-promotions-hub .coupon-card > .absolute { display: none; }
-#shop-promotions-hub .coupon-card-heading { padding: 16px; border-bottom: 1px solid #EAE4D7; background: #FFFFFF; }
-#shop-promotions-hub .coupon-card-heading > div:first-child { gap: 8px; flex-wrap: wrap; }
-#shop-promotions-hub .coupon-card-heading > div:first-child > div { gap: 10px; min-width: 0; }
-#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:first-child { width: 36px; height: 36px; border: 0; border-radius: 9px; background: #FBF5EB; box-shadow: none; }
-#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:last-child { min-width: 0; }
-#shop-promotions-hub .coupon-card-heading .font-mono { font-size: 15px; line-height: 22px; letter-spacing: .4px; font-weight: 650; overflow-wrap: anywhere; }
-#shop-promotions-hub .coupon-card-heading p { font-size: 12px; line-height: 20px; font-weight: 600; }
-#shop-promotions-hub .coupon-card-heading > div:first-child > span { border-radius: 6px; padding: 4px 7px; font-size: 9px; line-height: 14px; font-weight: 550; text-transform: none; }
-#shop-promotions-hub .coupon-card-heading > div:last-child { padding-top: 10px; margin-top: 12px; }
-#shop-promotions-hub .coupon-card-heading > div:last-child > span { border-color: #EAE4D7; border-radius: 5px; font-size: 10px; font-weight: 500; background: #FAF8F5; color: #7D715E; }
-#shop-promotions-hub .coupon-card-body { padding: 16px; }
-#shop-promotions-hub .coupon-card-body .font-bold { font-weight: 550; }
-#shop-promotions-hub .coupon-card-body > div:first-child { padding-bottom: 2px; }
-#shop-promotions-hub .coupon-card-body > div:first-child > div > span:last-child { display: block; margin-top: 3px; font-size: 12px; }
-#shop-promotions-hub .coupon-card-body > div[class*='bg-'] { padding: 10px 12px; border-radius: 8px; background: #FAF8F5; }
-#shop-promotions-hub .coupon-card-body .h-1\.5 { height: 4px; }
-#shop-promotions-hub .coupon-card-body .bg-amber-600 { background: #C59B58; }
-#shop-promotions-hub .coupon-card > div:last-child:not(.coupon-card-heading) { border-color: #EAE4D7; }
-#shop-promotions-hub .coupon-card > div:last-child > button { min-height: 32px; border-radius: 7px; font-size: 11px; font-weight: 550; box-shadow: none; }
-#shop-promotions-hub .coupon-card > div:last-child > button:first-child { background: #FFFFFF; border-color: #EAE4D7; color: #8C6226; }
-#shop-promotions-hub button:focus-visible, #shop-promotions-hub a:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
+@reference "../../index.css";
+#shop-promotions-hub { @apply [gap:18px]; }
+#shop-promotions-hub .promotions-tabs [role='tablist'] { @apply [padding:5px]; @apply [gap:6px]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+#shop-promotions-hub .promotions-tabs [role='tab'] { @apply [min-height:40px]; @apply [padding:9px_14px]; @apply [border-radius:8px]; @apply [font-size:12px]; @apply [font-weight:550]; box-shadow: none; }
+#shop-promotions-hub .promotions-tabs [role='tab'][aria-selected='true'] { @apply [background:#FBF5EB]; @apply [border-color:#EEDFC6]; @apply [color:#8C6226]; }
+#shop-promotions-hub .promotions-coupons > div { @apply [max-width:none]; @apply [padding-top:0]; }
+#shop-promotions-hub .promotions-coupons > div > * + * { @apply [margin-top:16px]; }
+#shop-promotions-hub .coupon-issuer { @apply [padding:20px]; @apply [border-radius:14px]; box-shadow: none; }
+#shop-promotions-hub .coupon-issuer h2 { @apply [font-size:18px]; @apply [line-height:25px]; @apply [letter-spacing:-.35px]; @apply [font-weight:650]; }
+#shop-promotions-hub .coupon-issuer p { @apply [margin-top:4px]; @apply [font-size:11px]; @apply [line-height:18px]; }
+#shop-promotions-hub .coupon-issuer > div > div:first-child > div:first-child { @apply [width:36px]; @apply [height:36px]; @apply [border:0]; @apply [border-radius:10px]; @apply [background:#FBF5EB]; }
+#shop-promotions-hub .coupon-issuer button { @apply [height:36px]; @apply [border-radius:8px]; @apply [font-size:11px]; @apply [font-weight:550]; @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply [border:1px_solid_#EAE4D7]; }
+#shop-promotions-hub .coupon-issuer > div > div:last-child > button:last-child { @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [border-color:#EEDFC6]; }
+#shop-promotions-hub .coupon-issuer > div > div:last-child > span { @apply [padding:8px_10px]; @apply [border-radius:8px]; @apply [font-size:11px]; @apply [background:#FFFFFF]; }
+#shop-promotions-hub .coupon-metrics { @apply [gap:12px]; }
+#shop-promotions-hub .coupon-metrics > div { @apply [min-height:112px]; @apply [padding:16px_18px]; @apply [border-radius:12px]; box-shadow: none; }
+#shop-promotions-hub .coupon-metrics > div > div { @apply [margin-bottom:12px]; }
+#shop-promotions-hub .coupon-metrics > div > div > span { @apply [font-size:11px]; @apply [font-weight:500]; }
+#shop-promotions-hub .coupon-metrics > div > div > div { @apply [width:28px]; @apply [height:28px]; @apply [border:0]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; }
+#shop-promotions-hub .coupon-metrics > div > p { @apply [font-size:25px]; @apply [line-height:30px]; @apply [font-weight:650]; @apply [letter-spacing:-.5px]; @apply [color:#1A1612]; font-variant-numeric: tabular-nums; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] { @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [padding:14px_16px]; @apply [background:#FFFFFF]; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] { @apply [gap:6px]; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button { @apply [padding:7px_10px]; @apply [border-radius:7px]; @apply [font-size:11px]; @apply [border-color:transparent]; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > [role='group'] button[aria-pressed='true'] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; }
+#shop-promotions-hub section[aria-label='Tài trợ voucher sàn'] > .grid { @apply [grid-template-columns:repeat(auto-fit,_minmax(min(100%,_290px),_1fr))]; @apply [gap:10px]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] { @apply [border-radius:9px]; @apply [border-color:#EAE4D7]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] > div { @apply [padding:10px_12px]; @apply [background:#FEFCF9]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] h2 { @apply [font-size:11px]; @apply [font-weight:550]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] ul { @apply [padding-inline:12px]; @apply [border-color:#EAE4D7]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dl { @apply [gap:12px]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dt { @apply [font-size:10px]; }
+#shop-promotions-hub section[aria-label^='Đối soát voucher sàn'] dd { @apply [font-size:12px]; }
+#shop-promotions-hub .coupon-filters { @apply [padding:14px]; @apply [border-radius:12px]; @apply [margin-bottom:0]; box-shadow: none; @apply [gap:12px]; @apply flex-wrap; }
+#shop-promotions-hub .coupon-filters > div:first-child { @apply [gap:6px]; }
+#shop-promotions-hub .coupon-filters > div:first-child > button { @apply [min-height:36px]; @apply [padding:8px_11px]; @apply [border-radius:8px]; @apply [font-size:11px]; @apply [font-weight:550]; }
+#shop-promotions-hub .coupon-filters > div:last-child { @apply [gap:10px]; @apply [flex:1]; @apply justify-end; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:first-child { @apply [border-radius:8px]; @apply [background:#FAF8F5]; @apply [padding:3px]; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:first-child button { @apply [font-size:10px]; @apply [font-weight:500]; @apply [border-radius:6px]; @apply [padding:6px_9px]; box-shadow: none; }
+#shop-promotions-hub .coupon-filters > div:last-child > div:last-child { @apply [min-width:180px]; @apply [max-width:300px]; @apply [flex:1]; }
+#shop-promotions-hub .coupon-filters input { @apply [height:36px]; @apply [border-radius:8px]; @apply [font-size:11px]; @apply [background:#FFFFFF]; }
+#shop-promotions-hub .coupon-list { @apply [gap:16px]; @apply [grid-template-columns:repeat(auto-fit,_minmax(min(100%,_300px),_1fr))]; }
+#shop-promotions-hub .coupon-card { @apply [border-radius:13px]; @apply [border-color:#EAE4D7]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+#shop-promotions-hub .coupon-card:hover { @apply [box-shadow:0_4px_12px_rgb(35_29_21_/_5%)]; @apply [border-color:#D7C5A8]; }
+#shop-promotions-hub .coupon-card > .absolute { @apply hidden; }
+#shop-promotions-hub .coupon-card-heading { @apply [padding:16px]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [background:#FFFFFF]; }
+#shop-promotions-hub .coupon-card-heading > div:first-child { @apply [gap:8px]; @apply flex-wrap; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div { @apply [gap:10px]; @apply [min-width:0]; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:first-child { @apply [width:36px]; @apply [height:36px]; @apply [border:0]; @apply [border-radius:9px]; @apply [background:#FBF5EB]; box-shadow: none; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > div > div:last-child { @apply [min-width:0]; }
+#shop-promotions-hub .coupon-card-heading .font-mono { @apply [font-size:15px]; @apply [line-height:22px]; @apply [letter-spacing:.4px]; @apply [font-weight:650]; @apply [overflow-wrap:anywhere]; }
+#shop-promotions-hub .coupon-card-heading p { @apply [font-size:12px]; @apply [line-height:20px]; @apply [font-weight:600]; }
+#shop-promotions-hub .coupon-card-heading > div:first-child > span { @apply [border-radius:6px]; @apply [padding:4px_7px]; @apply [font-size:9px]; @apply [line-height:14px]; @apply [font-weight:550]; @apply [text-transform:none]; }
+#shop-promotions-hub .coupon-card-heading > div:last-child { @apply [padding-top:10px]; @apply [margin-top:12px]; }
+#shop-promotions-hub .coupon-card-heading > div:last-child > span { @apply [border-color:#EAE4D7]; @apply [border-radius:5px]; @apply [font-size:10px]; @apply [font-weight:500]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; }
+#shop-promotions-hub .coupon-card-body { @apply [padding:16px]; }
+#shop-promotions-hub .coupon-card-body .font-bold { @apply [font-weight:550]; }
+#shop-promotions-hub .coupon-card-body > div:first-child { @apply [padding-bottom:2px]; }
+#shop-promotions-hub .coupon-card-body > div:first-child > div > span:last-child { @apply block; @apply [margin-top:3px]; @apply [font-size:12px]; }
+#shop-promotions-hub .coupon-card-body > div[class*='bg-'] { @apply [padding:10px_12px]; @apply [border-radius:8px]; @apply [background:#FAF8F5]; }
+#shop-promotions-hub .coupon-card-body .h-1\.5 { @apply [height:4px]; }
+#shop-promotions-hub .coupon-card-body .bg-amber-600 { @apply [background:#C59B58]; }
+#shop-promotions-hub .coupon-card > div:last-child:not(.coupon-card-heading) { @apply [border-color:#EAE4D7]; }
+#shop-promotions-hub .coupon-card > div:last-child > button { @apply [min-height:32px]; @apply [border-radius:7px]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+#shop-promotions-hub .coupon-card > div:last-child > button:first-child { @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; @apply [color:#8C6226]; }
+#shop-promotions-hub button:focus-visible, #shop-promotions-hub a:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
 @media (max-width: 1100px) {
-  #shop-promotions-hub .coupon-filters { align-items: stretch; flex-direction: column; }
-  #shop-promotions-hub .coupon-filters > div:last-child { width: 100%; justify-content: space-between; }
+  #shop-promotions-hub .coupon-filters { @apply items-stretch; @apply flex-col; }
+  #shop-promotions-hub .coupon-filters > div:last-child { @apply [width:100%]; @apply justify-between; }
 }
 @media (max-width: 639px) {
-  #shop-promotions-hub .promotions-tabs [role='tab'] { padding: 8px 6px; font-size: 10px; gap: 5px; }
-  #shop-promotions-hub .promotions-tabs [role='tab'] svg { width: 13px; height: 13px; }
-  #shop-promotions-hub .coupon-issuer { padding: 16px; }
-  #shop-promotions-hub .coupon-issuer h2 { font-size: 16px; }
-  #shop-promotions-hub .coupon-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  #shop-promotions-hub .coupon-metrics > div { padding: 13px; min-height: 110px; }
-  #shop-promotions-hub .coupon-metrics > div > p { font-size: 22px; }
-  #shop-promotions-hub .coupon-metrics > div > div > span { font-size: 10px; }
-  #shop-promotions-hub .coupon-filters > div:first-child { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
-  #shop-promotions-hub .coupon-filters > div:first-child > button { padding: 7px 5px; justify-content: center; font-size: 10px; gap: 4px; flex-wrap: wrap; }
-  #shop-promotions-hub .coupon-filters > div:last-child > div:last-child { max-width: none; flex-basis: 100%; }
+  #shop-promotions-hub .promotions-tabs [role='tab'] { @apply [padding:8px_6px]; @apply [font-size:10px]; @apply [gap:5px]; }
+  #shop-promotions-hub .promotions-tabs [role='tab'] svg { @apply [width:13px]; @apply [height:13px]; }
+  #shop-promotions-hub .coupon-issuer { @apply [padding:16px]; }
+  #shop-promotions-hub .coupon-issuer h2 { @apply [font-size:16px]; }
+  #shop-promotions-hub .coupon-metrics { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:10px]; }
+  #shop-promotions-hub .coupon-metrics > div { @apply [padding:13px]; @apply [min-height:110px]; }
+  #shop-promotions-hub .coupon-metrics > div > p { @apply [font-size:22px]; }
+  #shop-promotions-hub .coupon-metrics > div > div > span { @apply [font-size:10px]; }
+  #shop-promotions-hub .coupon-filters > div:first-child { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [width:100%]; }
+  #shop-promotions-hub .coupon-filters > div:first-child > button { @apply [padding:7px_5px]; @apply justify-center; @apply [font-size:10px]; @apply [gap:4px]; @apply flex-wrap; }
+  #shop-promotions-hub .coupon-filters > div:last-child > div:last-child { @apply [max-width:none]; @apply [flex-basis:100%]; }
 }
 /* Softer coupon surfaces with stronger text and borders for comfortable reading. */
 #shop-promotions-hub .promotions-coupons .coupon-card {
-  background: #fffdfa;
-  border-color: #e3d9ca;
-  box-shadow: 0 2px 6px rgb(35 29 21 / 3%);
+  @apply [background:#fffdfa];
+  @apply [border-color:#e3d9ca];
+  @apply [box-shadow:0_2px_6px_rgb(35_29_21_/_3%)];
 }
 #shop-promotions-hub .promotions-coupons .coupon-card-heading {
-  background: #faf7f1;
-  background-image: none;
-  border-color: #e3d9ca;
+  @apply [background:#faf7f1];
+  @apply [background-image:none];
+  @apply [border-color:#e3d9ca];
 }
-#shop-promotions-hub .promotions-coupons .coupon-card-body { background: #fffdfa; }
+#shop-promotions-hub .promotions-coupons .coupon-card-body { @apply [background:#fffdfa]; }
 #shop-promotions-hub .promotions-coupons .coupon-card-actions {
-  background: #faf7f1;
-  border-color: #e3d9ca;
+  @apply [background:#faf7f1];
+  @apply [border-color:#e3d9ca];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters {
-  background: #faf8f5;
-  border-color: #e3d9ca;
+  @apply [background:#faf8f5];
+  @apply [border-color:#e3d9ca];
 }
 #shop-promotions-hub .promotions-coupons :is(.coupon-card, .coupon-filters) [class*="text-[#7D715E]"] {
-  color: #655b4b;
+  @apply [color:#655b4b];
 }
 #shop-promotions-hub .promotions-coupons .coupon-card-actions button {
-  border-color: #d1bea0;
+  @apply [border-color:#d1bea0];
 }
 
 /* Equal-width coupon actions and filter controls. */
-#shop-promotions-hub .coupon-issuer > div { display: block; }
+#shop-promotions-hub .coupon-issuer > div { @apply block; }
 #shop-promotions-hub .coupon-issuer .coupon-issuer-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
+  @apply grid;
+  @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))];
+  @apply [gap:12px];
+  @apply [width:100%];
 }
 #shop-promotions-hub .coupon-issuer .coupon-issuer-actions > * {
-  width: 100%; min-width: 0; height: 44px; justify-content: center; margin: 0;
+  @apply [width:100%]; @apply [min-width:0]; @apply [height:44px]; @apply justify-center; @apply [margin:0];
 }
 #shop-promotions-hub .coupon-issuer .coupon-issuer-actions > div:first-child {
-  width: 100%; height: 44px; background: transparent; border-radius: 8px;
+  @apply [width:100%]; @apply [height:44px]; @apply [background:transparent]; @apply [border-radius:8px];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(190px, 1.6fr);
-  align-items: center;
-  gap: 8px;
+  @apply grid;
+  @apply [grid-template-columns:repeat(6,_minmax(0,_1fr))_minmax(190px,_1.6fr)];
+  @apply items-center;
+  @apply [gap:8px];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters > div:first-child,
 #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child,
 #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:first-child {
-  display: contents;
+  @apply [display:contents];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters button {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; min-width: 0; min-height: 42px; height: 42px;
-  padding: 8px 6px; border-radius: 8px; font-size: 11px;
-  border: 1px solid #d8cbb7;
+  @apply flex; @apply items-center; @apply justify-center; @apply [gap:6px];
+  @apply [width:100%]; @apply [min-width:0]; @apply [min-height:42px]; @apply [height:42px];
+  @apply [padding:8px_6px]; @apply [border-radius:8px]; @apply [font-size:11px];
+  @apply [border:1px_solid_#d8cbb7];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:last-child {
-  min-width: 0; max-width: none; width: 100%;
+  @apply [min-width:0]; @apply [max-width:none]; @apply [width:100%];
 }
-#shop-promotions-hub .promotions-coupons .coupon-filters input { height: 42px; }
+#shop-promotions-hub .promotions-coupons .coupon-filters input { @apply [height:42px]; }
 @media (max-width: 1200px) {
-  #shop-promotions-hub .promotions-coupons .coupon-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:last-child { grid-column: 1 / -1; }
+  #shop-promotions-hub .promotions-coupons .coupon-filters { @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; }
+  #shop-promotions-hub .promotions-coupons .coupon-filters > div:last-child > div:last-child { @apply [grid-column:1_/_-1]; }
 }
 @media (max-width: 540px) {
-  #shop-promotions-hub .coupon-issuer .coupon-issuer-actions { grid-template-columns: 1fr; gap: 8px; }
+  #shop-promotions-hub .coupon-issuer .coupon-issuer-actions { @apply [grid-template-columns:1fr]; @apply [gap:8px]; }
 }
 
 /* Compact coupon panels, matching the light outlined step controls. */
 #shop-promotions-hub .promotions-coupons .coupon-filters {
-  padding: 12px;
-  border-radius: 14px;
-  background: #fffdfa;
-  border-color: #eae4d7;
+  @apply [padding:12px];
+  @apply [border-radius:14px];
+  @apply [background:#fffdfa];
+  @apply [border-color:#eae4d7];
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters button {
-  height: 44px;
-  min-height: 44px;
-  font-size: 12px;
-  border-radius: 10px;
-  border-color: #eae4d7;
-  background: #fffdfa;
-  color: #655b4b;
+  @apply [height:44px];
+  @apply [min-height:44px];
+  @apply [font-size:12px];
+  @apply [border-radius:10px];
+  @apply [border-color:#eae4d7];
+  @apply [background:#fffdfa];
+  @apply [color:#655b4b];
   box-shadow: none;
 }
 #shop-promotions-hub .promotions-coupons .coupon-filters button[aria-pressed='true'] {
-  background: #fbf5eb;
-  border-color: #d9b980;
-  color: #795721;
-  font-weight: 600;
+  @apply [background:#fbf5eb];
+  @apply [border-color:#d9b980];
+  @apply [color:#795721];
+  @apply [font-weight:600];
 }
 #shop-promotions-hub .promotions-coupons .coupon-card {
-  min-height: 0;
-  height: auto;
-  aspect-ratio: auto;
-  border-radius: 14px;
-  border-color: #eae4d7;
-  background: #fffdfa;
-  justify-content: flex-start;
+  @apply [min-height:0];
+  @apply [height:auto];
+  @apply [aspect-ratio:auto];
+  @apply [border-radius:14px];
+  @apply [border-color:#eae4d7];
+  @apply [background:#fffdfa];
+  @apply justify-start;
 }
 #shop-promotions-hub .promotions-coupons .coupon-card-heading {
-  padding: 14px 16px;
-  background: #fffdfa;
-  border-color: #eae4d7;
+  @apply [padding:14px_16px];
+  @apply [background:#fffdfa];
+  @apply [border-color:#eae4d7];
 }
 #shop-promotions-hub .promotions-coupons .coupon-card-heading > div:last-child {
-  padding-top: 8px;
-  margin-top: 8px;
+  @apply [padding-top:8px];
+  @apply [margin-top:8px];
 }
 #shop-promotions-hub .promotions-coupons .coupon-card-body {
-  padding: 12px 16px;
-  background: #fffdfa;
-  flex: 1 0 auto;
+  @apply [padding:12px_16px];
+  @apply [background:#fffdfa];
+  @apply [flex:1_0_auto];
 }
-#shop-promotions-hub .promotions-coupons .coupon-card-body > * + * { margin-top: 9px; }
+#shop-promotions-hub .promotions-coupons .coupon-card-body > * + * { @apply [margin-top:9px]; }
 #shop-promotions-hub .promotions-coupons .coupon-card-actions {
-  padding: 10px 12px;
-  background: #faf8f5;
-  border-color: #eae4d7;
+  @apply [padding:10px_12px];
+  @apply [background:#faf8f5];
+  @apply [border-color:#eae4d7];
 }
-#shop-promotions-hub .promotions-coupons .coupon-card-actions button { min-height: 36px; }
+#shop-promotions-hub .promotions-coupons .coupon-card-actions button { @apply [min-height:36px]; }
 #shop-promotions-hub .promotions-coupons .coupon-card-heading > div:first-child > span {
-  font-size: 10px;
-  background: #fbf5eb;
-  color: #795721;
+  @apply [font-size:10px];
+  @apply [background:#fbf5eb];
+  @apply [color:#795721];
 }

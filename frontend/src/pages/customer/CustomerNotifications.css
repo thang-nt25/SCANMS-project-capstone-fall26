@@ -1,66 +1,67 @@
-.customer-notifications { container: customer-notifications / inline-size; }
-.customer-notifications-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 58px; padding: 10px 12px; border: 1px solid #EAE4D7; border-radius: 12px; background: #FFFFFF; }
-.customer-notifications-toolbar nav { display: flex; flex: 1 1 400px; gap: 8px; min-width: 0; }
-.customer-notifications-toolbar nav button { flex: 1; min-height: 36px; padding: 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; font-size: 12px; }
-.customer-notifications-toolbar nav button[aria-pressed=true] { border-color: #EEDFC6; background: #FBF5EB; color: #8F682E; }
-.customer-notifications-toolbar > button { min-height: 36px; margin-left: auto; margin-bottom: 0; padding: 7px 10px; border-color: #EEDFC6; border-radius: 7px; background: #FAF8F5; font-size: 12px; color: #7D715E; }
-.customer-notification-list { display: grid; min-width: 0; container: notification-list / inline-size; border: 1px solid #EAE4D7; border-radius: 12px; overflow: hidden; background: #FFFFFF; }
-.customer-notification-card { min-width: 0; border-bottom: 1px solid #EAE4D7; background: #FFFFFF; transition: background 150ms; }
-.customer-notification-card:last-child { border-bottom: 0; }
-.customer-notification-card[data-read=false] { background: #FFFDFA; }
-.customer-notification-card:hover { background: #FAF8F5; }
-.customer-notification-main { display: grid; grid-template-columns: 60px minmax(0, 1fr); align-items: start; gap: 16px; padding: 16px 18px 6px; }
-.customer-notification-product-image, .customer-notification-icon { display: grid; place-items: center; width: 60px; height: 60px; border: 1px solid #EAE4D7; border-radius: 6px; overflow: hidden; background: #FFFFFF; }
-.customer-notification-product-image img { display: block; width: 100%; height: 100%; padding: 4px; object-fit: contain; }
-.customer-notification-icon { border-color: #EEDFC6; background: #FBF5EB; color: #B88E4F; }
-.customer-notification-card[data-read=true] .customer-notification-icon { border-color: #EAE4D7; background: #FAF8F5; color: #7D715E; }
-.customer-notification-content { min-width: 0; }
-.customer-notification-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 18px; margin-bottom: 4px; font-size: 11px; line-height: 1.5; }
-.customer-notification-category { color: #7D715E; font-size: 11px; font-weight: 500; }
-.customer-notification-unread, .customer-notification-read { display: inline-flex; align-items: center; gap: 5px; color: #8F682E; font-size: 10px; }
-.customer-notification-unread i { width: 4px; height: 4px; border-radius: 50%; background: #C59B58; }
-.customer-notification-read { color: #7D715E; }
-.customer-notification-card h3 { margin: 0; font-family: inherit; font-size: 14px; font-weight: 650; line-height: 1.55; color: #1A1612; }
-.customer-notification-card[data-read=true] h3 { font-weight: 500; }
-.customer-notification-card h3 button { display: block; max-width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
-.customer-notification-card h3 button:hover { color: #8F682E; }
-.customer-notification-message { margin: 5px 0 0; color: #7D715E; font-size: 12px; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
-.customer-notification-references { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 7px; color: #7D715E; font-size: 10px; line-height: 1.6; }
-.customer-notification-references > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-.customer-notification-references strong { font-weight: 500; color: #4A3F33; }
-.customer-notification-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 18px 0 94px; padding: 3px 0 13px; }
-.customer-notification-time { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; color: #7D715E; font-size: 10px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.customer-notification-time svg { flex-shrink: 0; }
-.customer-notification-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
-.customer-notification-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; margin: 0; padding: 6px 10px; border: 1px solid transparent; border-radius: 5px; background: transparent; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1.5; white-space: nowrap; cursor: pointer; }
-.customer-notification-actions svg { flex-shrink: 0; color: #B88E4F; }
-.customer-notification-actions .customer-notification-mark { color: #7D715E; }
-.customer-notification-actions .customer-notification-mark:hover { border-color: #EAE4D7; background: #FFFFFF; color: #1A1612; }
-.customer-notification-actions .customer-notification-open { border-color: #EEDFC6; background: #FBF5EB; color: #1A1612; }
-.customer-notification-actions .customer-notification-open:hover { border-color: #C59B58; background: #F3EFE6; }
-.customer-notification-actions button:disabled { opacity: .55; cursor: wait; }
-.customer-notification-card button:focus-visible { outline: 2px solid #C59B58; outline-offset: 3px; }
-.customer-notification-spinner { animation: customer-notification-spin .8s linear infinite; }
+@reference "../../index.css";
+.customer-notifications { @apply [container:customer-notifications_/_inline-size]; }
+.customer-notifications-toolbar { @apply flex; @apply flex-wrap; @apply items-center; @apply [gap:12px]; @apply [min-height:58px]; @apply [padding:10px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.customer-notifications-toolbar nav { @apply flex; @apply [flex:1_1_400px]; @apply [gap:8px]; @apply [min-width:0]; }
+.customer-notifications-toolbar nav button { @apply [flex:1]; @apply [min-height:36px]; @apply [padding:8px]; @apply [border:1px_solid_transparent]; @apply [border-radius:7px]; @apply [background:transparent]; @apply [font-size:12px]; }
+.customer-notifications-toolbar nav button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; }
+.customer-notifications-toolbar > button { @apply [min-height:36px]; @apply [margin-left:auto]; @apply [margin-bottom:0]; @apply [padding:7px_10px]; @apply [border-color:#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FAF8F5]; @apply [font-size:12px]; @apply [color:#7D715E]; }
+.customer-notification-list { @apply grid; @apply [min-width:0]; @apply [container:notification-list_/_inline-size]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply overflow-hidden; @apply [background:#FFFFFF]; }
+.customer-notification-card { @apply [min-width:0]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [background:#FFFFFF]; @apply [transition:background_150ms]; }
+.customer-notification-card:last-child { @apply [border-bottom:0]; }
+.customer-notification-card[data-read=false] { @apply [background:#FFFDFA]; }
+.customer-notification-card:hover { @apply [background:#FAF8F5]; }
+.customer-notification-main { @apply grid; @apply [grid-template-columns:60px_minmax(0,_1fr)]; @apply [align-items:start]; @apply [gap:16px]; @apply [padding:16px_18px_6px]; }
+.customer-notification-product-image, .customer-notification-icon { @apply grid; @apply place-items-center; @apply [width:60px]; @apply [height:60px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:6px]; @apply overflow-hidden; @apply [background:#FFFFFF]; }
+.customer-notification-product-image img { @apply block; @apply [width:100%]; @apply [height:100%]; @apply [padding:4px]; @apply object-contain; }
+.customer-notification-icon { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.customer-notification-card[data-read=true] .customer-notification-icon { @apply [border-color:#EAE4D7]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; }
+.customer-notification-content { @apply [min-width:0]; }
+.customer-notification-meta { @apply flex; @apply items-center; @apply flex-wrap; @apply [gap:8px_12px]; @apply [min-height:18px]; @apply [margin-bottom:4px]; @apply [font-size:11px]; @apply [line-height:1.5]; }
+.customer-notification-category { @apply [color:#7D715E]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.customer-notification-unread, .customer-notification-read { @apply inline-flex; @apply items-center; @apply [gap:5px]; @apply [color:#8F682E]; @apply [font-size:10px]; }
+.customer-notification-unread i { @apply [width:4px]; @apply [height:4px]; @apply [border-radius:50%]; @apply [background:#C59B58]; }
+.customer-notification-read { @apply [color:#7D715E]; }
+.customer-notification-card h3 { @apply [margin:0]; @apply [font-family:inherit]; @apply [font-size:14px]; @apply [font-weight:650]; @apply [line-height:1.55]; @apply [color:#1A1612]; }
+.customer-notification-card[data-read=true] h3 { @apply [font-weight:500]; }
+.customer-notification-card h3 button { @apply block; @apply [max-width:100%]; @apply [margin:0]; @apply [padding:0]; @apply [border:0]; @apply [border-radius:0]; @apply [background:transparent]; @apply [color:inherit]; @apply [font:inherit]; @apply [line-height:inherit]; @apply text-left; @apply [overflow-wrap:anywhere]; @apply cursor-pointer; }
+.customer-notification-card h3 button:hover { @apply [color:#8F682E]; }
+.customer-notification-message { @apply [margin:5px_0_0]; @apply [color:#7D715E]; @apply [font-size:12px]; @apply [line-height:1.65]; @apply [white-space:pre-line]; @apply [overflow-wrap:anywhere]; }
+.customer-notification-references { @apply flex; @apply flex-wrap; @apply [gap:5px_12px]; @apply [margin-top:7px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:1.6]; }
+.customer-notification-references > span { @apply [min-width:0]; @apply [max-width:100%]; @apply [overflow-wrap:anywhere]; }
+.customer-notification-references strong { @apply [font-weight:500]; @apply [color:#4A3F33]; }
+.customer-notification-footer { @apply flex; @apply flex-wrap; @apply items-center; @apply justify-between; @apply [gap:8px_16px]; @apply [margin:0_18px_0_94px]; @apply [padding:3px_0_13px]; }
+.customer-notification-time { @apply inline-flex; @apply items-center; @apply flex-wrap; @apply [gap:5px]; @apply [min-width:0]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:1.5]; font-variant-numeric: tabular-nums; }
+.customer-notification-time svg { @apply [flex-shrink:0]; }
+.customer-notification-actions { @apply flex; @apply items-center; @apply justify-end; @apply [gap:8px]; @apply [margin-left:auto]; }
+.customer-notification-actions button { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:32px]; @apply [margin:0]; @apply [padding:6px_10px]; @apply [border:1px_solid_transparent]; @apply [border-radius:5px]; @apply [background:transparent]; @apply [font-family:inherit]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [line-height:1.5]; @apply whitespace-nowrap; @apply cursor-pointer; }
+.customer-notification-actions svg { @apply [flex-shrink:0]; @apply [color:#B88E4F]; }
+.customer-notification-actions .customer-notification-mark { @apply [color:#7D715E]; }
+.customer-notification-actions .customer-notification-mark:hover { @apply [border-color:#EAE4D7]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; }
+.customer-notification-actions .customer-notification-open { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#1A1612]; }
+.customer-notification-actions .customer-notification-open:hover { @apply [border-color:#C59B58]; @apply [background:#F3EFE6]; }
+.customer-notification-actions button:disabled { @apply [opacity:.55]; @apply [cursor:wait]; }
+.customer-notification-card button:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+.customer-notification-spinner { @apply [animation:customer-notification-spin_.8s_linear_infinite]; }
 @keyframes customer-notification-spin { to { transform: rotate(360deg); } }
 @container notification-list (max-width: 620px) {
-  .customer-notification-main { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 14px 12px 6px; }
-  .customer-notification-product-image, .customer-notification-icon { width: 48px; height: 48px; }
-  .customer-notification-footer { margin: 0 12px 0 72px; }
-  .customer-notification-actions button { min-height: 40px; }
-  .customer-notification-mark span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .customer-notification-actions .customer-notification-mark { width: 40px; padding: 8px; border-color: #EAE4D7; }
+  .customer-notification-main { @apply [grid-template-columns:48px_minmax(0,_1fr)]; @apply [gap:12px]; @apply [padding:14px_12px_6px]; }
+  .customer-notification-product-image, .customer-notification-icon { @apply [width:48px]; @apply [height:48px]; }
+  .customer-notification-footer { @apply [margin:0_12px_0_72px]; }
+  .customer-notification-actions button { @apply [min-height:40px]; }
+  .customer-notification-mark span { @apply absolute; @apply [width:1px]; @apply [height:1px]; @apply [padding:0]; @apply [margin:-1px]; @apply overflow-hidden; @apply [clip-path:inset(50%)]; @apply whitespace-nowrap; }
+  .customer-notification-actions .customer-notification-mark { @apply [width:40px]; @apply [padding:8px]; @apply [border-color:#EAE4D7]; }
 }
 @container notification-list (max-width: 400px) {
-  .customer-notification-footer { margin-left: 12px; }
-  .customer-notification-time { flex-basis: 100%; }
-  .customer-notification-actions { width: 100%; }
-  .customer-notification-actions .customer-notification-open { flex: 1; }
+  .customer-notification-footer { @apply [margin-left:12px]; }
+  .customer-notification-time { @apply [flex-basis:100%]; }
+  .customer-notification-actions { @apply [width:100%]; }
+  .customer-notification-actions .customer-notification-open { @apply [flex:1]; }
 }
 @container customer-notifications (max-width: 479px) {
-  .customer-notifications-toolbar nav { gap: 0; }
-  .customer-notifications-toolbar nav button { padding: 10px 4px; font-size: 11px; gap: 4px; }
+  .customer-notifications-toolbar nav { @apply [gap:0]; }
+  .customer-notifications-toolbar nav button { @apply [padding:10px_4px]; @apply [font-size:11px]; @apply [gap:4px]; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .customer-notification-card { transition: none; }
-  .customer-notification-spinner { animation: none; }
+  .customer-notification-card { @apply [transition:none]; }
+  .customer-notification-spinner { @apply [animation:none]; }
 }

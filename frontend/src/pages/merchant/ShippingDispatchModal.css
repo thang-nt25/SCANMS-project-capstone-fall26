@@ -1,50 +1,51 @@
-.shipping-dispatch-overlay { padding: 20px; background: rgb(35 29 21 / 28%); backdrop-filter: blur(2px); }
-.shipping-dispatch-modal { width: min(100%, 640px); max-height: calc(100dvh - 40px); border-radius: 15px; box-shadow: 0 22px 70px rgb(35 29 21 / 16%); }
-.shipping-dispatch-header { padding: 17px 20px; gap: 12px; }
-.shipping-dispatch-header > div { min-width: 0; gap: 11px; }
-.shipping-dispatch-header > div > div:first-child { width: 34px; height: 34px; border-radius: 9px; }
-.shipping-dispatch-header > div > div:first-child svg { width: 17px; height: 17px; }
-.shipping-dispatch-header .shipping-dispatch-title { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: -.2px; }
-.shipping-dispatch-header .shipping-dispatch-order { margin-top: 4px; font-size: 10px; line-height: 17px; }
-.shipping-dispatch-header .shipping-dispatch-order span { color: #79592C; font-weight: 500; }
-.shipping-dispatch-header .shipping-dispatch-close { width: 28px; height: 28px; border-radius: 7px; }
-.shipping-dispatch-close svg { width: 16px; height: 16px; }
-.shipping-dispatch-body { padding: 18px 20px; background: #FFFFFF; }
-.shipping-dispatch-body .shipping-dispatch-choices { gap: 10px; margin-top: 0; }
-.shipping-dispatch-choices .shipping-dispatch-choice { gap: 10px; min-height: 78px; padding: 13px 12px; border: 1px solid #EAE4D7; border-radius: 10px; background: #FFFFFF; box-shadow: none; }
-.shipping-dispatch-choices .shipping-dispatch-choice > svg { width: 18px; height: 18px; color: #B88E4F; }
-.shipping-dispatch-choices .shipping-dispatch-choice-live { border-color: #EEDFC6; background: #FFFDF9; }
-.shipping-dispatch-choices .shipping-dispatch-choice:hover:not(:disabled) { border-color: #C59B58; background: #FBF5EB; }
-.shipping-dispatch-modal .shipping-dispatch-choice-title { font-size: 12px; line-height: 19px; font-weight: 600; }
-.shipping-dispatch-modal .shipping-dispatch-choice-description { margin-top: 4px; font-size: 10px; line-height: 17px; }
-.shipping-dispatch-modal .shipping-dispatch-note { gap: 6px; margin-top: 10px; padding: 0; }
-.shipping-dispatch-note svg { width: 13px; height: 13px; margin-top: 2px; }
-.shipping-dispatch-note p { font-size: 10px; line-height: 17px; }
-.shipping-dispatch-body .shipping-dispatch-divider { gap: 10px; margin: 18px 0; font-size: 10px; line-height: 18px; }
-.shipping-dispatch-body .shipping-dispatch-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-.shipping-dispatch-modal .shipping-dispatch-label { margin-bottom: 6px; color: #7D715E; font-size: 11px; line-height: 18px; font-weight: 500; }
-.shipping-dispatch-modal .shipping-dispatch-optional { color: #7D715E; font-size: 10px; font-weight: 400; }
-.shipping-dispatch-fields .shipping-dispatch-input { min-height: 38px; height: 38px; padding: 9px 11px; border: 1px solid #EAE4D7; border-radius: 8px; background: #FFFFFF; color: #1A1612; font-size: 12px; line-height: 18px; font-weight: 400; box-shadow: none; }
-.shipping-dispatch-fields .shipping-dispatch-input::placeholder { color: #A0988B; }
-.shipping-dispatch-fields .shipping-dispatch-input:focus { border-color: #C59B58; box-shadow: 0 0 0 3px rgb(197 155 88 / 10%); }
-.shipping-dispatch-fields textarea.shipping-dispatch-input { display: block; min-height: 62px; height: 62px; resize: vertical; }
-.shipping-dispatch-fields .shipping-dispatch-input[aria-invalid=true] { border-color: #DC2626; }
-.shipping-dispatch-footer { padding: 12px 20px; gap: 10px; background: #FAF8F5; }
-.shipping-dispatch-footer > div { min-width: 0; gap: 8px; }
-.shipping-dispatch-footer button { min-height: 34px; padding: 7px 11px; border-radius: 7px; font-size: 11px; line-height: 18px; font-weight: 500; }
-.shipping-dispatch-footer .shipping-dispatch-submit { background: #FBF5EB; }
+@reference "../../index.css";
+.shipping-dispatch-overlay { @apply [padding:20px]; @apply [background:rgb(35_29_21_/_28%)]; @apply [backdrop-filter:blur(2px)]; }
+.shipping-dispatch-modal { @apply [width:min(100%,_640px)]; @apply [max-height:calc(100dvh_-_40px)]; @apply [border-radius:15px]; @apply [box-shadow:0_22px_70px_rgb(35_29_21_/_16%)]; }
+.shipping-dispatch-header { @apply [padding:17px_20px]; @apply [gap:12px]; }
+.shipping-dispatch-header > div { @apply [min-width:0]; @apply [gap:11px]; }
+.shipping-dispatch-header > div > div:first-child { @apply [width:34px]; @apply [height:34px]; @apply [border-radius:9px]; }
+.shipping-dispatch-header > div > div:first-child svg { @apply [width:17px]; @apply [height:17px]; }
+.shipping-dispatch-header .shipping-dispatch-title { @apply [font-size:16px]; @apply [line-height:22px]; @apply [font-weight:600]; @apply [letter-spacing:-.2px]; }
+.shipping-dispatch-header .shipping-dispatch-order { @apply [margin-top:4px]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.shipping-dispatch-header .shipping-dispatch-order span { @apply [color:#79592C]; @apply [font-weight:500]; }
+.shipping-dispatch-header .shipping-dispatch-close { @apply [width:28px]; @apply [height:28px]; @apply [border-radius:7px]; }
+.shipping-dispatch-close svg { @apply [width:16px]; @apply [height:16px]; }
+.shipping-dispatch-body { @apply [padding:18px_20px]; @apply [background:#FFFFFF]; }
+.shipping-dispatch-body .shipping-dispatch-choices { @apply [gap:10px]; @apply [margin-top:0]; }
+.shipping-dispatch-choices .shipping-dispatch-choice { @apply [gap:10px]; @apply [min-height:78px]; @apply [padding:13px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; box-shadow: none; }
+.shipping-dispatch-choices .shipping-dispatch-choice > svg { @apply [width:18px]; @apply [height:18px]; @apply [color:#B88E4F]; }
+.shipping-dispatch-choices .shipping-dispatch-choice-live { @apply [border-color:#EEDFC6]; @apply [background:#FFFDF9]; }
+.shipping-dispatch-choices .shipping-dispatch-choice:hover:not(:disabled) { @apply [border-color:#C59B58]; @apply [background:#FBF5EB]; }
+.shipping-dispatch-modal .shipping-dispatch-choice-title { @apply [font-size:12px]; @apply [line-height:19px]; @apply [font-weight:600]; }
+.shipping-dispatch-modal .shipping-dispatch-choice-description { @apply [margin-top:4px]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.shipping-dispatch-modal .shipping-dispatch-note { @apply [gap:6px]; @apply [margin-top:10px]; @apply [padding:0]; }
+.shipping-dispatch-note svg { @apply [width:13px]; @apply [height:13px]; @apply [margin-top:2px]; }
+.shipping-dispatch-note p { @apply [font-size:10px]; @apply [line-height:17px]; }
+.shipping-dispatch-body .shipping-dispatch-divider { @apply [gap:10px]; @apply [margin:18px_0]; @apply [font-size:10px]; @apply [line-height:18px]; }
+.shipping-dispatch-body .shipping-dispatch-fields { @apply [grid-template-columns:minmax(0,_1fr)_minmax(0,_1fr)]; @apply [gap:14px]; }
+.shipping-dispatch-modal .shipping-dispatch-label { @apply [margin-bottom:6px]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.shipping-dispatch-modal .shipping-dispatch-optional { @apply [color:#7D715E]; @apply [font-size:10px]; @apply [font-weight:400]; }
+.shipping-dispatch-fields .shipping-dispatch-input { @apply [min-height:38px]; @apply [height:38px]; @apply [padding:9px_11px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:400]; box-shadow: none; }
+.shipping-dispatch-fields .shipping-dispatch-input::placeholder { @apply [color:#A0988B]; }
+.shipping-dispatch-fields .shipping-dispatch-input:focus { @apply [border-color:#C59B58]; @apply [box-shadow:0_0_0_3px_rgb(197_155_88_/_10%)]; }
+.shipping-dispatch-fields textarea.shipping-dispatch-input { @apply block; @apply [min-height:62px]; @apply [height:62px]; @apply resize-y; }
+.shipping-dispatch-fields .shipping-dispatch-input[aria-invalid=true] { @apply [border-color:#DC2626]; }
+.shipping-dispatch-footer { @apply [padding:12px_20px]; @apply [gap:10px]; @apply [background:#FAF8F5]; }
+.shipping-dispatch-footer > div { @apply [min-width:0]; @apply [gap:8px]; }
+.shipping-dispatch-footer button { @apply [min-height:34px]; @apply [padding:7px_11px]; @apply [border-radius:7px]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.shipping-dispatch-footer .shipping-dispatch-submit { @apply [background:#FBF5EB]; }
 @media (max-width: 540px) {
-  .shipping-dispatch-overlay { padding: 10px; }
-  .shipping-dispatch-modal { max-height: calc(100dvh - 20px); border-radius: 12px; }
-  .shipping-dispatch-header { padding: 14px; }
-  .shipping-dispatch-header .shipping-dispatch-title { font-size: 15px; }
-  .shipping-dispatch-body { padding: 15px 14px; }
-  .shipping-dispatch-body .shipping-dispatch-choices { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .shipping-dispatch-choices .shipping-dispatch-choice { min-height: 66px; padding: 11px 12px; }
-  .shipping-dispatch-body .shipping-dispatch-fields { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .shipping-dispatch-footer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding: 10px 14px; }
-  .shipping-dispatch-footer > div { display: contents; }
-  .shipping-dispatch-footer .shipping-dispatch-print { grid-column: 1; grid-row: 1; }
-  .shipping-dispatch-footer .shipping-dispatch-cancel { grid-column: 2; grid-row: 1; justify-self: end; }
-  .shipping-dispatch-footer .shipping-dispatch-submit { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  .shipping-dispatch-overlay { @apply [padding:10px]; }
+  .shipping-dispatch-modal { @apply [max-height:calc(100dvh_-_20px)]; @apply [border-radius:12px]; }
+  .shipping-dispatch-header { @apply [padding:14px]; }
+  .shipping-dispatch-header .shipping-dispatch-title { @apply [font-size:15px]; }
+  .shipping-dispatch-body { @apply [padding:15px_14px]; }
+  .shipping-dispatch-body .shipping-dispatch-choices { @apply [grid-template-columns:minmax(0,_1fr)]; @apply [gap:8px]; }
+  .shipping-dispatch-choices .shipping-dispatch-choice { @apply [min-height:66px]; @apply [padding:11px_12px]; }
+  .shipping-dispatch-body .shipping-dispatch-fields { @apply [grid-template-columns:minmax(0,_1fr)]; @apply [gap:12px]; }
+  .shipping-dispatch-footer { @apply grid; @apply [grid-template-columns:auto_minmax(0,_1fr)]; @apply [gap:8px]; @apply [padding:10px_14px]; }
+  .shipping-dispatch-footer > div { @apply [display:contents]; }
+  .shipping-dispatch-footer .shipping-dispatch-print { @apply [grid-column:1]; @apply [grid-row:1]; }
+  .shipping-dispatch-footer .shipping-dispatch-cancel { @apply [grid-column:2]; @apply [grid-row:1]; @apply [justify-self:end]; }
+  .shipping-dispatch-footer .shipping-dispatch-submit { @apply [grid-column:1_/_-1]; @apply [grid-row:2]; @apply [width:100%]; }
 }
