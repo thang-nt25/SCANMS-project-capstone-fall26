@@ -165,10 +165,7 @@ export function ScanmsCheckoutVoucherModal({
         return { storeId: group.store.id, coupons: collectCheckoutVouchers(results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []))
           .map(coupon => ({ ...coupon, storeId: group.store.id })) };
       }));
-      const platformPromise = api.get('/coupons/available', { signal: controller.signal, headers: { 'x-skip-cache': '1' } })
-        .then((res: any) => { const data = res?.data?.data ?? res?.data ?? res; return Array.isArray(data) ? data as PublicStoreCoupon[] : []; })
-        .catch(() => { errors.push('Không tải được voucher sàn.'); return [] as PublicStoreCoupon[]; });
-      const [saved, publicGroups, platform] = await Promise.all([savedPromise, publicPromise, platformPromise]);
+      const [saved, publicGroups] = await Promise.all([savedPromise, publicPromise]);
       if (!active) return;
       const storeMap: Record<string, PublicStoreCoupon[]> = {};
       for (const group of publicGroups) {
@@ -181,9 +178,9 @@ export function ScanmsCheckoutVoucherModal({
         ]);
       }
       setSavedShopCouponsMap(storeMap);
-      const storeIds = new Set(groups.map(group => group.store.id));
-      setPlatformCoupons(collectCheckoutVouchers([platform, ...publicGroups.map(group => group.coupons)])
-        .filter(c => storeIds.has(c.store?.id || c.storeId || '') || publicGroups.some(group => group.coupons.some(item => item.id === c.id))));
+      setPlatformCoupons(collectCheckoutVouchers(publicGroups.map(group =>
+        group.coupons.filter(c => c.fundingSource === 'PLATFORM_FUNDED' && c.benefitType === 'SHIPPING'),
+      )));
       setLoadError([...new Set(errors)].join(' '));
       setLoadingCoupons(false);
     };
@@ -268,7 +265,7 @@ export function ScanmsCheckoutVoucherModal({
               <Ticket className="w-4 h-4" />
             </div>
             <h2 id="scanms-voucher-modal-title" className="text-base font-bold text-[#1A1612] truncate">
-              Chọn SCANMS Voucher
+              Mã độc quyền KOL
             </h2>
           </div>
           <button
@@ -289,7 +286,7 @@ export function ScanmsCheckoutVoucherModal({
                 type="text"
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
-                placeholder="Nhập mã giảm giá của Shop hoặc mã KOL..."
+                placeholder="Nhập mã độc quyền KOL..."
                 className="w-full pl-3.5 pr-3 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:bg-white focus:outline-none focus:border-[#C59B58] transition"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -345,7 +342,7 @@ export function ScanmsCheckoutVoucherModal({
               {/* ============================================================== */}
               {/* NHÓM 1: 🚚 MÃ MIỄN PHÍ VẬN CHUYỂN */}
               {/* ============================================================== */}
-              <div className="space-y-2.5">
+              {freeshipVouchers.length > 0 && <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Truck className="w-4 h-4 text-[#B88E4F]" />
@@ -401,7 +398,7 @@ export function ScanmsCheckoutVoucherModal({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs font-bold text-[#1A1612]">
-                                Giảm tối đa {formatMoney(Number(voucher.discountValue) || 0)}
+                                Giảm tối đa {formatMoney(Number(voucher.maximumDiscountAmount ?? voucher.discountValue) || 0)}
                               </span>
                               <span className="font-mono text-[10px] font-bold text-[#8A642C] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.2 rounded">
                                 {voucher.code}
@@ -449,12 +446,12 @@ export function ScanmsCheckoutVoucherModal({
                     );
                   })}
                 </div>
-              </div>
+              </div>}
 
               {/* ============================================================== */}
               {/* NHÓM 2: 🎟️ MÃ GIẢM GIÁ TOÀN SÀN */}
               {/* ============================================================== */}
-              <div className="space-y-2.5">
+              {platformGoodsVouchers.length > 0 && <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-[#B88E4F]" />
@@ -554,7 +551,7 @@ export function ScanmsCheckoutVoucherModal({
                     );
                   })}
                 </div>
-              </div>
+              </div>}
 
               {/* ============================================================== */}
               {/* NHÓM 3: Mã công khai đúng sản phẩm, mã đã lưu và mã đang áp dụng */}
@@ -564,7 +561,7 @@ export function ScanmsCheckoutVoucherModal({
                   <div className="flex items-center gap-1.5">
                     <Store className="w-4 h-4 text-[#C59B58]" />
                     <h3 className="text-sm font-bold text-[#1A1612]">
-                      Mã Giảm Giá Gian Hàng
+                      Mã độc quyền KOL
                     </h3>
                   </div>
                   <span className="text-[11px] text-[#7D715E]">Áp dụng ngay, không cần lưu</span>

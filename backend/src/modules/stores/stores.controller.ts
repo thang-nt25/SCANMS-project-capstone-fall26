@@ -4,8 +4,10 @@ import {
   Put,
   Post,
   Delete,
+  Patch,
   Body,
   Param,
+  Query,
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
@@ -111,8 +113,8 @@ export class StoresController {
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy toàn bộ cửa hàng trực thuộc để quản trị và phân quyền' })
-  async getAllStoresAdmin() {
-    return this.storesService.getAllStoresAdmin();
+  async getAllStoresAdmin(@Query('includeDeleted') includeDeleted?: string) {
+    return this.storesService.getAllStoresAdmin(includeDeleted === 'true');
   }
 
   @Get('marketplace')
@@ -134,5 +136,50 @@ export class StoresController {
   @ApiOperation({ summary: 'Lấy thông tin công khai của cửa hàng theo Slug' })
   async getStoreBySlug(@Param('slug') slug: string) {
     return this.storesService.getStoreBySlug(slug);
+  }
+
+  @Patch('admin/:id/toggle-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin bật/tắt trạng thái hoạt động của gian hàng' })
+  async toggleStoreStatus(
+    @Param('id', ParseUUIDPipe) storeId: string,
+    @Body('isActive') isActive?: boolean,
+  ) {
+    return this.storesService.toggleStoreStatus(storeId, isActive);
+  }
+
+  @Put('admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin cập nhật thông tin gian hàng và cấu hình kho GHN' })
+  async updateStoreByAdmin(
+    @Param('id', ParseUUIDPipe) storeId: string,
+    @Body() dto: any,
+  ) {
+    return this.storesService.updateStoreByAdmin(storeId, dto);
+  }
+
+  @Delete('admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin vô hiệu hóa / lưu trữ gian hàng' })
+  async deleteStoreByAdmin(
+    @Param('id', ParseUUIDPipe) storeId: string,
+  ) {
+    return this.storesService.deleteStoreByAdmin(storeId);
+  }
+  @Patch('admin/:id/restore')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Super Admin khôi phục gian hàng đã lưu trữ / xóa mềm' })
+  async restoreStoreByAdmin(
+    @Param('id', ParseUUIDPipe) storeId: string,
+  ) {
+    return this.storesService.restoreStoreByAdmin(storeId);
   }
 }

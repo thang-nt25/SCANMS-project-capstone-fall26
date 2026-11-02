@@ -7,7 +7,7 @@ describe('Saved expired voucher history', () => {
     id, displayCode: id.toUpperCase(), discountType: 'FIXED_AMOUNT', discountValue: 15000,
     minimumOrderAmount: 100000, maximumDiscountAmount: null, usageLimitTotal: 100, usageCount: 5,
     expiresAt, status: 'ACTIVE', deletedAt: null, scopeType: 'STORE_WIDE', fundingSource: 'SHOP_FUNDED', benefitType: 'GOODS',
-    store: { id: 'shop', name: 'Shop', slug: 'shop' }, ...extra,
+    store: { id: 'shop', name: 'Shop', slug: 'shop' }, collaborator: { role: 'COLLABORATOR' }, ...extra,
   });
   let prisma: any, service: CouponsService;
   beforeEach(() => {

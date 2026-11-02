@@ -36,6 +36,27 @@ export interface DashboardOverviewResponse {
 
     averageOrderValue: number;
     activeReferralLinks: number;
+    activeCollaboratorsCount?: number;
+  };
+  storesBreakdown?: Array<{
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    category: string | null;
+    managerName: string | null;
+    managerEmail: string | null;
+    revenue: number;
+    orders: number;
+    growth: string;
+    status: string;
+  }>;
+  operationsSummary?: {
+    activeStoresCount: number;
+    activeCollaboratorsCount: number;
+    pendingOrdersCount: number;
+    pendingPayoutsCount: number;
+    pendingDisputesCount: number;
+    unassignedStoresCount: number;
   };
 }
 

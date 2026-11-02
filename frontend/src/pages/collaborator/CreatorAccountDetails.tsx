@@ -294,11 +294,7 @@ export default function CreatorAccountDetails() {
             {uploadingAvatar ? <Loader2 className="animate-spin" size={24} /> : currentUser?.avatarUrl ? (
               <img src={currentUser.avatarUrl} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover rounded-full" />
             ) : <User size={36} />}
-            {!uploadingAvatar && (
-              <span className="absolute right-0.5 bottom-0.5 grid place-items-center w-6 h-6 border border-[#EEDFC6] rounded-full bg-[#FBF5EB] text-[#B88E4F] shadow-sm">
-                <Camera size={13} />
-              </span>
-            )}
+
           </button>
           <div className="flex flex-col items-center gap-1.5">
             <button

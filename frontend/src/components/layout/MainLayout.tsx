@@ -81,7 +81,7 @@ export default function MainLayout() {
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
             <Suspense
               fallback={
                 <div className="w-full py-20 flex flex-col items-center justify-center text-[#7D715E] gap-3 animate-in fade-in duration-200">

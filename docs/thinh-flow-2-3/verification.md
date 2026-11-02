@@ -105,3 +105,12 @@ Redis local hiện chưa chạy; runtime dùng fallback RAM sẵn có. Không tu
 - Tạo vận đơn TEST/LIVE và thao tác mô phỏng dùng quyền chủ Shop hoặc quản lý đang được phân công, truy vấn theo đúng Shop của đơn thay vì chọn Shop đầu tiên hoặc tin storeId trong JWT. Chặn quyền bị thu hồi, khác Shop, sai role và UUID/environment không hợp lệ trước khi gọi dịch vụ giao vận.
 - 95 test thuộc 5 suite giao vận PASS sau sửa quyền; có ca trùng với lượt 63 test nên không cộng hai lượt. Lint test PASS; lint controller PASS khi tắt riêng quy tắc Prettier để tránh định dạng lại toàn bộ file cũ. Backend watch biên dịch 0 lỗi và health báo UP/CONNECTED.
 - Kiểm tra read-only đúng đơn người dùng cung cấp xác nhận quản lý Aura có quyền qua staff assignment dù không phải owner. Không tạo vận đơn, thay trạng thái đơn hoặc gửi địa chỉ khách tới GHN thay người nghiệm thu.
+
+## Merge dev vào thinh — 02/11/2026
+
+- Đồng bộ `origin/dev` tại `2b2e0f3` vào nhánh `thinh` sau commit `baadcef`; xử lý 5 conflict trong order service/filter test và shipping controller/package/test. Các bản sửa quyền quản lý và barcode trùng mục đích được hợp nhất, giữ ca barcode chữ/số từ dev cùng kiểm tra checksum/số đo thiếu của thinh.
+- Giữ giao diện dashboard, tier governance 60%/ân hạn 30 ngày, cập nhật Flow 4 và các thay đổi nghiệp vụ mới từ dev. Điều chỉnh assertion giao diện theo contract hiện tại, không khôi phục bố cục cũ để ép test qua.
+- Regression phát hiện cache vẫn cho phép tái sử dụng số dư, payout, trạng thái đơn/chat và voucher; bổ sung loại trừ các endpoint động, bao gồm payout/bill lồng dưới Store. Catalogue vẫn được cache theo TTL hiện có.
+- Backend: build PASS; 149 suite PASS, 3 suite skip; 1.601 test PASS, 59 skip, không có test fail. Đây là lượt unit/HTTP fixture, không phải chạy integration trên DB nhóm.
+- Frontend: build PASS; 206 test PASS, 76 skip, không có test fail. Chạy riêng 8 browser fixture có cấu hình URL: 8/8 PASS. Không cộng các lượt này thành một số lượng ca độc lập vì có thể trùng coverage.
+- Oxlint file cache PASS; không tạo CSS riêng, reset/seed DB, đổi mật khẩu hoặc tự tạo vận đơn/thanh toán trong lượt merge. Cảnh báo whitespace từ các Markdown mới trên dev có chỗ là hard line break có chủ đích; không định dạng lại tài liệu của nhóm trong lượt này.

@@ -13,6 +13,8 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
     const granted = status !== 'PENDING';
     const productIndex = index % data.products.length;
     const product = data.products[productIndex];
+    const shopOwnerId = data.stores.find((store) => store.id === product.storeId)?.ownerId;
+    if (!shopOwnerId) throw new Error(`Missing shop owner for sample product ${product.id}`);
     const variant =
       data.variants.find((v) => v.productId === product.id) ||
       data.variants[productIndex * 4] ||
@@ -90,7 +92,7 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
       data.sampleEvents.push({
         id: seedId(`sample-shipped:${index}`),
         sampleRequestId: sampleId,
-        actorId: seedId(`shop-owner:${index % 15}`),
+        actorId: shopOwnerId,
         action: 'SHIPPED',
         details: {
           carrier: 'GHN',
@@ -127,7 +129,7 @@ export function buildSamples(data: SeedDataset, context: SeedContext): void {
       data.sampleEvents.push({
         id: seedId(`sample-completed:${index}`),
         sampleRequestId: sampleId,
-        actorId: seedId(`shop-owner:${index % 15}`),
+        actorId: shopOwnerId,
         action: 'COMPLETED',
         createdAt: daysFrom(context, -9),
       });

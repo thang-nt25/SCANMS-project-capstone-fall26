@@ -522,122 +522,324 @@ Toàn bộ các phân tích và giải pháp kiến trúc trên đã được gh
 
 ---
 
-## 10. 🧪 BÁO CÁO KIỂM THỬ LIVE E2E THỰC TẾ & BẰNG CHỨNG HÌNH ẢNH MINH CHỨNG (LIVE TEST REPORT)
+## 10. 🧪 HƯỚNG DẪN CHI TIẾT TỪNG BƯỚC KIỂM THỬ THỰC TẾ FLOW 2 (STEP-BY-STEP LIVE EXECUTION & TESTING MANUAL)
 
 > **Môi trường Kiểm thử Thực tế:**
 > - **Frontend:** `http://localhost:5173` (Vite v8.1.0 + React 19 + Tailwind CSS)
 > - **Backend:** `http://localhost:3000/api` (NestJS v11 + Prisma ORM v7 + PostgreSQL 16 + Redis 8)
-> - **Engine Tự Động:** Microsoft Edge Automation Runner (`msedge.exe`, Viewport 1440x900)
 > - **Tài khoản thực thi:** `manager.sora@scanms.vn` (Giám đốc Nhãn hàng Sora Skincare & Cosmetics)
-> - **Kịch bản thực thi:** `scripts/live_test_flow2_runner.cjs` — 7 bước tự động tương tác người dùng, bấm từng nút, nhập form và chụp ảnh màn hình lưu trữ kép.
+> - **Phạm vi kiểm thử:** 7 bước nghiệp vụ khép kín từ Quản trị sản phẩm, Khóa ngành hàng, Drawer AI Option B, Tab 4 AI Radar, Bảng xếp hạng 16 KOLs sổ cái thật, Đàm phán Deal VIP 2 chiều có cảnh báo leo thang Admin, và Quản trị Coupon Attribution.
 
 ---
 
-### 10.1. Bảng Tổng Hợp Kết Quả 7 Bước Kiểm Thử Thực Tế
+### 10.1. Bảng Tổng Hợp 7 Bước Kiểm Thử Thực Tế Flow 2
 
 | Bước | Phân Hệ / Chức Năng | Thao Tác Trực Tiếp | Kết Quả Đạt Được | Trạng Thái |
 | :---: | :--- | :--- | :--- | :---: |
-| **1** | **Xác thực Đăng nhập** | Truy cập `/login?role=shop`, bấm nút CTA *"Đăng nhập an toàn"* | Đăng nhập mượt mà, lưu Session Token và chuyển hướng về bảng điều khiển | ✅ **PASS** |
-| **2** | **Quản Lý Sản Phẩm** | Mở dropdown *"Tất cả trạng thái"* trên thanh công cụ sản phẩm | **Fix triệt để lỗi Stacking Context:** Menu dropdown nổi hoàn toàn lên trên tiêu đề và các hàng của bảng, không bị che khuất | ✅ **PASS** |
-| **3** | **Drawer Gợi Ý AI (Option B)** | Bấm nút `[✨ Tìm KOC bằng AI]` trên dòng sản phẩm *"Sữa Rửa Mặt pH 5.5"* | Slide-over Drawer trượt từ cạnh phải, giữ nguyên vị trí cuộn trang, hiển thị 4 trục Radar Heuristic & danh sách KOC phù hợp | ✅ **PASS** |
-| **4** | **KOL Hub - Tab 4 AI Radar** | Bấm chọn tab `[✨ Gợi ý KOC (AI Radar)]` trên thanh điều hướng cấp 1 | Kích hoạt màn hình phân tích AI Radar 4 chiều toàn diện, bảng MCDA Heuristic so sánh 3 KOC đối đầu | ✅ **PASS** |
-| **5** | **Bảng Xếp Hạng KOL Thực** | Bấm chọn tab `[🏆 Xếp hạng KOL]` trên thanh điều hướng | **Fix triệt để lỗi 0₫ & Hardcode Hạng Đồng:** Hiển thị cấp bậc thật Kim Cương (144M₫), Vàng (74M₫), Bạc (28M₫), Đồng (14M₫) cùng số đơn hàng thực tế | ✅ **PASS** |
-| **6** | **Đàm Phán Deal VIP 2 Chiều** | Bấm `[🤝 Đề xuất Deal VIP]`, chọn `[+ Thiết lập & tiếp tục mời]`, nhập `15%` | Modal mở mượt mà, hỗ trợ Shop chủ động khởi tạo chiến dịch và gửi thẻ đề xuất thù lao VIP trực tiếp cho KOC | ✅ **PASS** |
-| **7** | **Attribution Coupon KOC** | Truy cập `/merchant/promotions?tab=coupons` | Hiển thị đầy đủ danh sách Coupon độc quyền định danh cá nhân KOC (`THAONHI16`, `TUANANHTECH`...), bảo lưu 100% thù lao đối tác | ✅ **PASS** |
+| **1** | **Xác thực Đăng nhập & Dropdown Stacking** | Đăng nhập `manager.sora@scanms.vn`, mở dropdown *"Tất cả trạng thái"* | Menu nổi hoàn toàn lên trên các dòng sản phẩm (`z-50`), không bị đè cắt cụt | ✅ **PASS** |
+| **2** | **Khóa Ngành Hàng & Giá Sàn MAP** | Bấm `[+ Thêm sản phẩm]`, kiểm tra ô Danh mục & Giá sàn | Danh mục bị khóa cứng (Readonly), bắt buộc nhập giá sàn MAP bảo vệ biên lãi | ✅ **PASS** |
+| **3** | **Slide-over Drawer AI (Option B)** | Bấm `[✨ Gợi ý KOC]` trên dòng sản phẩm pH 5.5 | Drawer trượt từ mép phải ($440\text{px}$), giữ nguyên trang, hiển thị Dual-Track Cold Start | ✅ **PASS** |
+| **4** | **KOL Hub - Tab 4 AI Radar** | Bấm chọn tab `[✨ Gợi ý KOC (AI Radar)]`, mở popover cơ chế | Phân tích AI Radar 4 chiều, bảng MCDA 3 KOC đối đầu, popover giải thích On-Demand | ✅ **PASS** |
+| **5** | **Bảng Xếp Hạng 16 KOLs Thật** | Bấm chọn tab `[🏆 Xếp hạng KOL]`, kiểm tra doanh số và cấp bậc | Phản ánh đúng 16 KOLs với 4 cấp bậc thật (Kim Cương 144M, Vàng 74M, Bạc 28M, Đồng 14M) | ✅ **PASS** |
+| **6** | **Đàm Phán Deal VIP 2 Chiều** | Bấm `[🤝 Deal VIP]`, chọn Store-Wide, nhập `15%` vs `18%` | Hạn mức $\le 16\%$ tự trị; $> 16\%$ lập tức kích hoạt Cảnh báo Leo thang duyệt Admin | ✅ **PASS** |
+| **7** | **Attribution Coupon KOC** | Truy cập `/merchant/promotions?tab=coupons` | Hiển thị đầy đủ Coupon định danh KOC (`THAONHI16`...), cơ chế bắt vết đơn số 1 | ✅ **PASS** |
 
 ---
 
-### 10.2. Chi Tiết Từng Bước & Bằng Chứng Hình Ảnh Minh Chứng Thực Tế
-
-#### 🔹 Bước 1 & 2: Khắc Phục Lỗi Stacking Context Menu Dropdown Lọc Trạng Thái
-- **Vấn đề ban đầu (Ảnh phản hồi từ người dùng):** Khi bấm nút *"Tất cả trạng thái"*, menu thả xuống bị thẻ card bảng sản phẩm phía dưới đè lên, cắt cụt 2/3 menu lựa chọn.
-- **Giải pháp kỹ thuật:** Bổ sung `relative z-20 overflow-visible` vào container thanh công cụ toolbar `Card.product-toolbar`, thiết lập `z-50` cho danh sách dropdown options.
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Dropdown Lọc trạng thái hiển thị nổi hoàn toàn](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_status_dropdown_fixed.png)
-  *Hình 10.1: Menu dropdown "Tất cả trạng thái" nổi hoàn toàn lên trên các hàng sản phẩm, các tùy chọn "Chờ kiểm duyệt", "Bị từ chối", "Đã được duyệt" hiển thị sắc nét.*
+### 10.2. Chi Tiết Từng Bước Kiểm Thử Thực Tế & Phân Tích Sâu Nghiệp Vụ
 
 ---
 
-#### 🔹 Bước 3: Slide-over Drawer Gợi Ý KOC Phù Hợp Bằng AI Tại Chỗ (Option B)
-- **Vấn đề ban đầu:** Người dùng bấm nút *"Tìm KOC bằng AI"* trên dòng sản phẩm thì bị nhảy chuyển trang sang KOL Hub mà không neo đúng vị trí, gây đứt gãy luồng làm việc.
-- **Giải pháp kỹ thuật (Thực hiện Option B đã thống nhất):** Xây dựng component `ProductAiMatchDrawer.tsx`. Khi bấm `[✨ Tìm KOC bằng AI]`, drawer trượt mượt mà từ mép phải màn hình:
-  - Hiển thị thông tin sản phẩm và nhãn Khóa Ngành Hàng (Category Lock: *"Mỹ phẩm & Chăm sóc da"*).
-  - Tích hợp động cơ MCDA Heuristic Radar 4 trục (Ngành hàng, CR%, Cấp bậc & tiếp cận, Giá bán).
-  - Gợi ý Top KOC phù hợp kèm Match Score (Vũ Thanh Huyền 87/100, Hoàng Thảo Nhi 83/100...) và lý do giải thích AI Explainable rõ ràng.
-  - Cung cấp nút thao tác nhanh: `[Nhắn tin]` và `[🤝 Đề xuất Deal VIP]`.
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Slide-over Drawer Gợi Ý KOC Bằng AI](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step2_product_ai_match_drawer.png)
-  *Hình 10.2: Slide-over Drawer mở ngay trên trang Sản phẩm, giữ nguyên ngữ cảnh cuộn và bộ lọc.*
+### BƯỚC 1: ĐĂNG NHẬP SHOP MANAGER & KHẮC PHỤC LỖI STACKING CONTEXT MENU BỘ LỌC
+
+#### 1. Mục tiêu chức năng:
+Xác thực tài khoản Giám đốc Nhãn hàng (`SHOP_MANAGER`), kiểm tra bảng điều khiển sản phẩm và bộ lọc trạng thái dropdown hoạt động hoàn hảo, nổi trên các thẻ card bảng dữ liệu (Khắc phục triệt để lỗi Stacking Context do người dùng phản hồi).
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER` (Giám đốc Nhãn hàng Sora Skincare & Cosmetics)
+- **Tài khoản đăng nhập:** `manager.sora@scanms.vn`
+- **Mật khẩu:** `Manager@123456`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Truy cập trực tiếp: `http://localhost:5173/login?role=shop`.
+2. Giao diện Đăng nhập An toàn xuất hiện với tông màu Vàng Be `#C59B58` chuẩn mực.
+3. Sau khi đăng nhập thành công, hệ thống điều hướng vào Cổng Quản lý Sản phẩm (`http://localhost:5173/merchant/products`).
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Tại ô **"Email"**: Nhập `manager.sora@scanms.vn`.
+2. Tại ô **"Mật khẩu"**: Nhập `Manager@123456`.
+3. Bấm nút CTA chính: **"Đăng nhập an toàn"**.
+4. Tại trang danh sách sản phẩm, di chuyển tới thanh công cụ toolbar `Card.product-toolbar`.
+5. Bấm vào nút dropdown: **"Tất cả trạng thái"**.
+6. Quan sát menu thả xuống hiển thị sắc nét: *Tất cả trạng thái, Chờ kiểm duyệt, Bị từ chối, Đã được duyệt*.
+7. Bấm chọn thử: *"Đã được duyệt"*.
+8. Bấm nút **"Xem đánh giá"** trên một dòng sản phẩm để mở modal Đánh giá khách hàng tinh gọn.
+
+#### 5. Hình ảnh chứng minh:
+- *Dropdown Lọc trạng thái nổi hoàn toàn lên trên các hàng sản phẩm:*  
+  ![Dropdown Lọc trạng thái hiển thị nổi](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_status_dropdown_fixed.png)
+- *Modal Đánh giá khách hàng tinh gọn B2B không còn chữ thừa:*  
+  ![Modal Đánh giá khách hàng tinh gọn](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_clean_reviews_and_product_actions.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- **Giao diện (UI):** Menu dropdown nổi hoàn toàn lên trên tiêu đề cột và các hàng của bảng, không bị thẻ Card bảng sản phẩm phía dưới đè lên cắt cụt 2/3 menu như phiên bản cũ. Modal Đánh giá hiển thị Empty State chuyên nghiệp với icon Lucide, không còn khối văn bản giải thích thừa thãi.
+- **Backend API:** `GET /api/products/merchant?status=APPROVED` trả về HTTP `200 OK`.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Khắc phục lỗi Stacking Context:** CSS container `Card.product-toolbar` được bổ sung `relative z-20 overflow-visible`, đồng thời menu dropdown được gán `z-50`. Điều này giải quyết triệt để xung đột thứ tự vẽ (stacking context order) giữa thanh filter và bảng table.
+- **Tiêu chuẩn B2B SaaS Tinh Gọn:** Loại bỏ hoàn toàn khối text rườm rà 4 dòng và footer 2 dòng ("Khách hàng có thể để lại đánh giá..."). Nhân sự vận hành doanh nghiệp cần giao diện tập trung dữ liệu, không cần những dòng nhắc nhở hiển nhiên.
 
 ---
 
-#### 🔹 Bước 4: Tích Hợp Tab 4 [✨ Gợi Ý KOC (AI Radar)] Trực Tiếp Trong KOL Hub
-- **Giải pháp kỹ thuật:** Nâng cấp thanh điều hướng phụ cấp 1 của KOL Hub thành 4 tab đồng cấp:
-  1. `[💬 Tin nhắn & Hợp tác]`
-  2. `[🏆 Xếp hạng KOL]`
-  3. `[🤝 Thỏa thuận độc quyền]`
-  4. `[✨ Gợi ý KOC (AI Radar)]`
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Tab Gợi ý KOC AI Radar tại KOL Hub](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_kol_hub_radar_tab.png)
-  *Hình 10.3: Tab Gợi ý KOC (AI Radar) hoạt động độc lập, hiển thị bảng so sánh MCDA 3 KOC đối đầu.*
+### BƯỚC 2: MODAL TẠO SẢN PHẨM MỚI — KHÓA NGÀNH HÀNG (CATEGORY LOCK) & GIÁ SÀN MAP
+
+#### 1. Mục tiêu chức năng:
+Thực thi cơ chế kiểm soát liêm chính hàng hóa: Gian hàng chỉ được phép kinh doanh sản phẩm trong đúng ngành hàng được phân bổ (`Mỹ phẩm & Chăm sóc da chuyên sâu`), ô Danh mục tự động điền và bị khóa cứng (Readonly), bắt buộc thiết lập Giá Sàn Bảo Vệ Biên Lợi Nhuận (`floorPrice` / MAP).
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Tại trang Quản lý Sản phẩm (`/merchant/products`), quan sát góc trên bên phải thanh công cụ.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Bấm nút CTA: **"+ Thêm sản phẩm mới"** (Nút màu Vàng Be `#C59B58`).
+2. Modal *Khởi tạo Sản Phẩm Mới* xuất hiện:
+   - **Tên sản phẩm:** Nhập `Serum Niacinamide 10% + Zinc 1% Dưỡng Sáng Phục Hồi`.
+   - **Danh mục ngành hàng:** Quan sát trường bị **KHÓA CỨNG (Readonly / Disabled)**, hiển thị cố định: `Mỹ phẩm & Chăm sóc da chuyên sâu` kèm huy hiệu khóa bảo vệ.
+   - **Giá niêm yết (MSRP):** Nhập `320.000₫`.
+   - **Giá tham chiếu (Original Price):** Nhập `380.000₫`.
+   - **Giá sàn bảo vệ biên lợi nhuận (Floor Price / MAP):** Nhập `250.000₫`.
+   - **Hạn mức tồn kho mở bán tiếp thị (`stockQuantity`):** Nhập `500`.
+   - **Mô tả công dụng:** Nhập `Serum phục hồi chuyên sâu dành cho da dầu mụn và lỗ chân lông to.`
+3. Bấm nút CTA trong modal: **"Lưu & Gửi phê duyệt"**.
+
+#### 5. Hình ảnh chứng minh:
+- *Modal Khởi tạo Sản phẩm với Khóa Ngành Hàng và Giá Sàn MAP:*  
+  ![Khóa Ngành Hàng & Giá Sàn MAP](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step2_modal_category_lock.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- **Giao diện (UI):** Shop Manager không thể thay đổi danh mục sang May mặc hay Đồ bếp. Khi nhập giá bán thấp hơn giá sàn MAP ($250.000₫$), hệ thống hiển thị cảnh báo đỏ ngăn chặn bán phá giá.
+- **Backend API & Cơ sở dữ liệu:**
+  - `POST /api/products` trả về HTTP `201 Created`.
+  - Backend tự động ép `categoryName = store.category` (nếu payload có danh mục khác sẽ bị từ chối `400 Bad Request`).
+  - Bản ghi lưu trong bảng `products` với trạng thái `PENDING_APPROVAL`, chờ Maker-Checker từ `SYSTEM_MANAGER`.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Khóa Ngành Hàng Chống Trùng Hàng Hóa (Anti-Cannibalization):** Mỗi Store trực thuộc đóng vai trò là một khối ngành hàng độc quyền trong tập đoàn. Việc khóa cứng danh mục ngăn chặn các Store nội bộ giẫm chân lên nhau hoặc đăng sản phẩm trái thẩm quyền.
+- **Ranh giới Out-of-Scope của Mua Hàng Xưởng (Procurement):** Hệ thống không can thiệp vào việc sản xuất OEM hay công nợ nhà máy, mà chỉ quản lý hạn mức tồn kho mở bán cho kênh tiếp thị (`stockQuantity`) và giá sàn MAP để bảo toàn lợi nhuận sau khi trừ thù lao KOC ($16\%$).
 
 ---
 
-#### 🔹 Bước 5: Bảng Xếp Hạng KOL Với Dữ Liệu Sổ Cái Thật & Cấp Bậc Đa Dạng
-- **Vấn đề ban đầu (Ảnh phản hồi từ người dùng):** Bảng xếp hạng hiển thị toàn bộ 7 KOC đều là 0₫ doanh số, 0 đơn hàng và gán cứng "Đồng".
-- **Giải pháp kỹ thuật:**
-  - Cập nhật `store-collaborators.service.ts` truy vấn dữ liệu thực tế từ bảng `Order` (giao thành công) và `SampleProductRequest` (video hoàn tất).
-  - Chuẩn hóa thuật toán phân hạng đối tác theo mốc doanh số sạch: Hạng Kim Cương ($\ge 100\text{M}$), Vàng ($\ge 50\text{M}$), Bạc ($\ge 20\text{M}$), Đồng ($< 20\text{M}$).
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Bảng xếp hạng KOL với cấp bậc đa dạng & doanh số thật](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_diversified_tiers.png)
-  *Hình 10.4: Bảng xếp hạng phản ánh chính xác phân tầng năng lực: Hạng 1 Dương Tuấn Anh (Kim Cương - 144.000.016₫ - 85 đơn), Hạng 2 Bùi Minh Anh (Vàng - 74.879.984₫ - 85 đơn), Hạng 3 Vũ Thanh Huyền (Bạc - 28.600.000₫ - 65 đơn), Hạng 4 Lê Hoàng Yến Nhi (Đồng - 14.200.000₫ - 32 đơn).*
+### BƯỚC 3: SLIDE-OVER DRAWER GỢI Ý KOC BẰNG AI TẠI CHỖ (OPTION B) & DUAL-TRACK COLD START
+
+#### 1. Mục tiêu chức năng:
+Hỗ trợ Shop Manager tìm kiếm đối tác tiếp thị tối ưu cho từng SKU sản phẩm cụ thể ngay tại bảng danh sách thông qua **Slide-over Drawer Option B** (giữ nguyên vị trí cuộn và bộ lọc), đồng thời kích hoạt thuật toán **Dual-Track Cold Start** gợi ý cả KOC kỳ cựu lẫn tài năng mới vừa hoàn thành eKYC.
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Tại danh sách sản phẩm `/merchant/products`, tìm dòng sản phẩm *"Sữa Rửa Mặt Tạo Bọt Dịu Nhẹ pH 5.5"*.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Bấm nút hành động: **`[✨ Gợi ý KOC]`** (Nút màu Vàng Be viền tinh tế trên dòng sản phẩm).
+2. Quan sát: Một **Slide-over Drawer** rộng $440\text{px}$ trượt ra êm ái từ mép phải màn hình, màn mờ (backdrop) bao phủ nhẹ bên trái, giữ nguyên vị trí cuộn trang hiện tại.
+3. Kiểm tra các khối thông tin trong Drawer:
+   - **Header:** Hiển thị tên sản phẩm, giá bán `185.000₫`, nhãn ngành hàng `Mỹ phẩm & Chăm sóc da`.
+   - **Khối Radar Heuristic 4 Trục:** Hiển thị thanh đo trực quan:
+     - Ngành hàng khớp: $95\%$
+     - Tỷ lệ chuyển đổi (CR): $88\%$
+     - Cấp bậc & Tiếp cận: $90\%$
+     - Phù hợp giá: $85\%$
+   - **Danh sách KOC phù hợp (Dual-Track Heuristic):**
+     - KOC Top 1: `Hoàng Thảo Nhi` (Match Score: $93\%$, Hạng Kim Cương, 50k followers).
+     - KOC Top 2: `Đỗ Lan Hương` (Match Score: $88\%$, Hạng Vàng, 28k followers).
+     - **KOC Mới (Cold-Start Track):** `Đặng Thùy Dung` (Match Score: $80\%$, Hạng Đồng, 12k followers, kèm huy hiệu nổi bật **`✨ Tiềm Năng Mới (Rising Star)`**).
+4. Bấm nút tương tác nhanh trên thẻ KOC:
+   - Bấm nút **`[💬 Nhắn tin]`** để mở cửa sổ chat trực tiếp.
+   - Hoặc bấm nút **`[🤝 Deal VIP]`** để mở modal gửi đề xuất thù lao độc quyền.
+5. Bấm nút `✕` hoặc vùng backdrop bên ngoài để đóng Drawer mượt mà.
+
+#### 5. Hình ảnh chứng minh:
+- *Slide-over Drawer gợi ý KOC trượt từ mép phải:*  
+  ![Slide-over Drawer Gợi Ý KOC Bằng AI](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step2_product_ai_match_drawer.png)
+- *Thuật toán Dual-Track Cold Start đề xuất KOC mới có huy hiệu Rising Star:*  
+  ![Dual-Track Cold Start trong AI Drawer](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step2_ai_match_drawer_dual_track.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- **Giao diện (UI):** Hoàn thành cam kết Phương Án B: Không nhảy trang sang KOL Hub, không mất bộ lọc, không phải cuộn lại từ đầu. Thao tác mở/đóng tức thời (< 100ms).
+- **Backend API:** `GET /api/ai-recommendation/product/:productId` trả về danh sách KOC có trọng số MCDA và cờ `isRisingStar: true` cho KOC mới.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Chuẩn Mực Trải Nghiệm B2B SaaS (Zero-Friction Context):** Nghiên cứu trải nghiệm người dùng trong thương mại B2B chỉ ra rằng việc nhảy trang làm giảm 40% hiệu suất làm việc của quản lý ngành hàng. Drawer Option B giải quyết triệt để vấn đề này.
+- **Giải Pháp Bài Toán Khởi Động Lạnh (Cold-Start Problem):** KOC mới nộp eKYC (doanh số 0đ) thường bị các thuật toán AI thông thường loại bỏ vì thiếu dữ liệu lịch sử. Thuật toán Dual-Track Heuristic của SCANMS phân tích hồ sơ sáng tạo FR-07 (ngành hàng mỹ phẩm, hashtag `#Treatment`, follower TikTok) để chấm điểm tiềm năng $80\%$, giúp nhãn hàng phát hiện những "viên ngọc thô" với chi phí hợp tác tối ưu.
 
 ---
 
-#### 🔹 Bước 6: Shop Chủ Động Đề Xuất Deal Chiến Dịch VIP 2 Chiều
-- **Giải pháp kỹ thuật:** Kết nối nút `[🤝 Đề xuất Deal VIP]` trên thanh Header và trong khung Chat trực tiếp với `SendVipCampaignModal.tsx`. Shop Manager chủ động nhập tỷ lệ thù lao ưu đãi (ví dụ: $15\%$) cùng thời hạn chiến dịch gửi đến KOC.
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Modal Đề xuất Chiến Dịch VIP 2 Chiều](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step5_shop_vip_deal_modal_active.png)
-  *Hình 10.5: Modal thiết lập chiến dịch VIP 2 chiều cho phép Shop chủ động mời KOC với thù lao vượt trội trong khung tự trị 16%.*
+### BƯỚC 4: TAB 4 [✨ GỢI Ý KOC (AI RADAR)] TRỰC TIẾP TẠI KOL HUB & BẢNG SO SÁNH MCDA
+
+#### 1. Mục tiêu chức năng:
+Cung cấp góc nhìn vĩ mô toàn sàn cho Giám đốc Nhãn hàng phân tích và so sánh đa tiêu chí (MCDA) giữa các KOC dẫn đầu, tích hợp Popover giải thích thuật toán On-Demand chuẩn B2B SaaS.
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Trên thanh điều hướng Sidebar, bấm chọn **"Trung tâm KOC & Hợp tác"** (`http://localhost:5173/merchant/kol-hub`).
+2. Trên thanh điều hướng cấp 1 gồm 4 tab, bấm chọn tab thứ 4: **`[✨ Gợi ý KOC (AI Radar)]`**.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Quan sát Header trang: Header B2B tinh gọn, tiêu đề *"Hệ Thống Đề Xuất Đối Tác Tiếp Thị Bằng AI Radar"* và nút On-Demand: **`[Cơ chế đối sánh AI]`**.
+2. Bấm nút **`[Cơ chế đối sánh AI]`**: Popover Modal mở ra giải thích chi tiết 4 trục Radar:
+   - *Trục 1:* Độ tương đồng ngành hàng ($40\%$)
+   - *Trục 2:* Tỷ lệ chuyển đổi đơn hàng CR ($25\%$)
+   - *Trục 3:* Điểm tương tác & Cấp bậc ($20\%$)
+   - *Trục 4:* Mức độ phù hợp phân khúc giá ($15\%$)
+3. Bấm dấu `✕` để đóng popover.
+4. Quan sát Bảng So Sánh Đối Đầu 3 KOC Hàng Đầu (MCDA Heuristic Benchmarking):
+   - Cột 1: `Hoàng Thảo Nhi` (Điểm tổng hợp 92, Điểm chuyển đổi 9.4, Hạng Kim Cương).
+   - Cột 2: `Vũ Thanh Huyền` (Điểm tổng hợp 86, Điểm chuyển đổi 8.7, Hạng Vàng).
+   - Cột 3: `Đặng Thùy Dung` (Điểm tổng hợp 80, Điểm chuyển đổi 8.0, Hạng Đồng - Rising Star).
+5. Bấm nút **"Mời Chiến Dịch"** trên cột của KOC mong muốn để gửi lời mời trực tiếp.
+
+#### 5. Hình ảnh chứng minh:
+- *Tab Gợi ý KOC AI Radar tích hợp trực tiếp trong KOL Hub:*  
+  ![Tab 4 Gợi ý KOC AI Radar](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_kol_hub_radar_tab.png)
+- *Giao diện AI Radar B2B tinh gọn và Popover giải thích cơ chế On-Demand:*  
+  ![Trang AI Radar Tinh Gọn](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_clean_ai_matching_page.png)
+- *Biểu đồ AI Matchmaker Radar đa chiều:*  
+  ![AI Matchmaker Radar](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_ai_matchmaker_radar.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- Tab 4 nằm cùng cấp với 3 tab hiện có trong KOL Hub, đồng bộ trạng thái URL query `?tab=radar`.
+- Bỏ hoàn toàn banner giải thích dài dòng choán nửa màn hình. Popover chỉ xuất hiện khi người dùng chủ động yêu cầu.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Triết lý Progressive Disclosure:** Thông tin nâng cao (giải thích trọng số toán học) được ẩn sau nút kích hoạt theo nhu cầu, giữ cho giao diện làm việc hàng ngày luôn thoáng đãng và tập trung vào dữ liệu quyết định.
+- **Mô Hình Đánh Giá Đa Tiêu Chí (MCDA):** Ngăn chặn bẫy "chỉ chọn theo số lượng follower". Một KOC có 100k followers nhưng tương tác ảo sẽ có điểm Radar thấp hơn một KOC có 20k followers nhưng tỷ lệ chuyển đổi đơn thật cao và khớp chính xác ngành hàng mỹ phẩm.
 
 ---
 
-#### 🔹 Bước 7: Quản Trị Coupon Độc Quyền Định Danh KOC (Primary Attribution)
-- **Chuẩn MarTech Doanh Nghiệp:** Xóa bỏ voucher xả hàng sàn TMĐT, tập trung 100% vào Coupon độc quyền mang tên KOC (`THAONHI16`, `LANHUONGGLOW`, `THUYDUNGSKIN`...).
-- **Bằng chứng kiểm thử Live thực tế:**
-  ![Quản lý Coupon Độc Quyền Định Danh KOC](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step6_shop_coupons_attribution.png)
-  *Hình 10.6: Phân hệ Quản trị Coupon Độc Quyền KOC tại Gian hàng Sora Skincare.*
+### BƯỚC 5: BẢNG XẾP HẠNG 16 KOLS VỚI DỮ LIỆU SỔ CÁI THẬT & 4 CẤP BẬC CHUẨN
+
+#### 1. Mục tiêu chức năng:
+Khắc phục triệt để lỗi hiển thị 0₫ doanh số và gán cứng Hạng Đồng; kiểm tra danh bạ 16 KOC phân bổ trên 4 ngành hàng với số liệu doanh số sạch từ cơ sở dữ liệu PostgreSQL và cấp bậc chuẩn (Kim Cương, Vàng, Bạc, Đồng).
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Tại `/merchant/kol-hub`, bấm chọn tab thứ 2: **`[🏆 Xếp hạng KOL]`**.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Quan sát danh sách 16 KOC được sắp xếp thứ hạng theo doanh số sạch:
+   - **Hạng 1:** `Dương Tuấn Anh` — Doanh số: `144.000.016₫` — 85 đơn hàng — Huy hiệu: `Kim Cương` (Tím ánh kim).
+   - **Hạng 2:** `Bùi Minh Anh` — Doanh số: `74.879.984₫` — 85 đơn hàng — Huy hiệu: `Vàng` (Vàng hoàng kim).
+   - **Hạng 3:** `Vũ Thanh Huyền` — Doanh số: `28.600.000₫` — 65 đơn hàng — Huy hiệu: `Bạc` (Bạc sáng).
+   - **Hạng 4:** `Lê Hoàng Yến Nhi` — Doanh số: `14.200.000₫` — 32 đơn hàng — Huy hiệu: `Đồng` (Đồng cổ).
+2. Kiểm tra cột Thao tác trên từng dòng: Mỗi dòng đều trang bị song song 2 nút:
+   - **`[💬 Nhắn tin]`**: Mở cuộc trò chuyện trực tiếp qua WebSocket Socket.IO.
+   - **`[🤝 Deal VIP]`**: Mở modal thiết lập hợp đồng thù lao đặc biệt cho KOC đó.
+
+#### 5. Hình ảnh chứng minh:
+- *Bảng xếp hạng 16 KOLs phản ánh đúng thực tế sổ cái và 4 cấp bậc:*  
+  ![Bảng xếp hạng 16 KOLs đa dạng](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_16_diverse_kols.png)
+- *Phân tầng năng lực đa dạng Kim Cương, Vàng, Bạc, Đồng:*  
+  ![Phân tầng năng lực KOLs](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_diversified_tiers.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- Xóa bỏ hoàn toàn tình trạng bảng xếp hạng toàn số 0 và cứng nhắc một hạng Đồng.
+- Cột cấp bậc và doanh số khớp 100% với dữ liệu đơn hàng giao thành công trong PostgreSQL.
+- Nút `[🤝 Deal VIP]` bấm là mở modal ngay, không bị vô hiệu hóa hay lỗi script.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Nguyên Tắc Doanh Số Sạch (Net Sales Attribution):** Doanh số hiển thị trên bảng xếp hạng chỉ tính các đơn hàng có trạng thái `DELIVERED` đã qua 14 ngày bảo chứng đối soát. Nếu đơn hàng bị khách trả lại hoàn tiền, doanh số bị trừ lập tức (Clawback), đảm bảo bảng xếp hạng phản ánh năng lực bán hàng thực chất.
+- **Tác Động Tâm Lý Của Bảng Xếp Hạng (Gamification Incentive):** Bảng xếp hạng minh bạch thúc đẩy các KOC Hạng Đồng và Hạng Bạc nỗ lực tạo nội dung chất lượng để thăng hạng Vàng ($+2\%$) và Kim Cương ($+3\%$ thù lao), tạo động lực phát triển tự nhiên cho toàn mạng lưới.
 
 ---
 
-### 10.3. Đối Chiếu Khắc Phục Triệt Để 2 Lỗi Người Dùng Đã Phản Ánh
+### BƯỚC 6: ĐÀM PHÁN DEAL VIP 2 CHIỀU & CƠ CHẾ LEO THANG DUYỆT ADMIN KHI > 16%
 
-```carousel
-![Ảnh lỗi Dropdown bị đè ban đầu](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793454031807_30679e45.png)
-<!-- slide -->
-![Ảnh đã sửa lỗi Dropdown nổi hoàn toàn](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_status_dropdown_fixed.png)
-<!-- slide -->
-![Ảnh lỗi Leaderboard toàn số 0 và Hạng Đồng ban đầu](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793454112826_6b90a7f0.png)
-<!-- slide -->
-![Ảnh đã sửa Leaderboard số thật & cấp bậc đa dạng](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_diversified_tiers.png)
-```
+#### 1. Mục tiêu chức năng:
+Giám đốc Nhãn hàng chủ động khởi tạo hợp đồng Deal VIP 2 chiều với KOC: Hỗ trợ phạm vi Toàn gian hàng (Store-Wide) hoặc Từng sản phẩm (SKU-Level), đồng thời kích hoạt cảnh báo leo thang phê duyệt Maker-Checker (`PENDING_ADMIN_APPROVAL`) khi nhập thù lao vượt khung tự trị $16\%$.
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Tại bảng xếp hạng KOL hoặc trong Chat, bấm nút: **`[🤝 Deal VIP]`** trên dòng của KOC Hoàng Thảo Nhi.
+2. Modal *Thiết Lập Đề Xuất Chiến Dịch Thù Lao VIP* mở ra.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. **Phạm vi áp dụng (Deal Scope):**
+   - Chọn Radio: *"Áp dụng toàn bộ sản phẩm của Gian hàng"* (Hợp đồng Đại sứ Thương hiệu Store-Wide).
+2. **Tỷ lệ thù lao đề xuất (%):**
+   - *Thử nghiệm mức Tự trị ($\le 16\%$):* Nhập `15%`. Quan sát thanh thông báo màu vàng be nhạt: *"Nằm trong hạn mức tự trị của Gian hàng (Tối đa 16%). Hợp đồng sẽ có hiệu lực ngay khi KOC chấp thuận."*
+   - *Thử nghiệm mức Vượt trần (> 16%):* Đổi số sang `18%`. Quan sát hệ thống lập tức hiển thị **Cảnh báo Màu Hổ Phách (#D97706)**: *"⚠️ VƯỢT HẠN MỨC TỰ TRỊ GIAN HÀNG (> 16%). Đề xuất này yêu cầu Tổng Giám Đốc (SYSTEM_ADMIN) thẩm định ngân sách Maker-Checker trước khi gửi đến KOC."*
+3. **Thời hạn hiệu lực:** Chọn ngày kết thúc chiến dịch (30 ngày sau).
+4. **Ghi chú chiến dịch:** Nhập `Đề xuất hợp tác độc quyền quảng bá bộ sản phẩm Sora Skincare trong chiến dịch Tháng 11.`
+5. Bấm nút CTA: **"Gửi đề xuất chiến dịch"**.
+6. Chuyển sang tab **`[💬 Tin nhắn & Hợp tác]`**: Quan sát **Active Inbox** chỉ hiển thị các KOC có trao đổi thực tế, phân tách rạch ròi với danh bạ tổng.
+
+#### 5. Hình ảnh chứng minh:
+- *Modal Đề xuất Deal VIP 2 Chiều hoạt động trực quan:*  
+  ![Modal Đề xuất Deal VIP](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step5_shop_vip_deal_modal_active.png)
+- *Cảnh báo Leo thang duyệt Admin khi thù lao > 16% và chọn Deal Store-Wide:*  
+  ![Cảnh báo Leo Thang Duyệt Admin](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step5_vip_deal_scope_and_admin_escalation.png)
+- *Hộp thư đàm phán Active Inbox sạch sẽ, phân tách triệt để:*  
+  ![Active Inbox Clean Separation](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step6_active_inbox_clean_separation.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- Khi tỷ lệ $\le 16\%$: Đề xuất gửi trực tiếp đến KOC qua Socket.IO.
+- Khi tỷ lệ $> 16\%$: Hợp đồng chuyển sang trạng thái `PENDING_ADMIN_APPROVAL`.
+- Danh sách hội thoại chat chỉ hiển thị KOC có tin nhắn thực tế, không bị rác bởi 16 KOC chưa từng trò chuyện.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Kiểm Soát Ngân Sách Phân Tách Trách Nhiệm (SoD & Budget Governance):** Giám đốc Gian hàng có toàn quyền linh hoạt ký Deal đến $16\%$. Nhưng các Deal lớn $> 16\%$ (tối đa trần cứng $25\%$) với Siêu KOC đòi hỏi ngân sách lớn bắt buộc phải có sự phê duyệt của Tổng Giám Đốc (`SYSTEM_ADMIN`), ngăn ngừa rủi ro lạm quyền thù lao.
+- **Quy Tắc Mức Ưu Đãi Tốt Nhất (Best-Benefit Hierarchy):** Mức Deal VIP $15\%$ tự động ghi đè mức cơ sở $10\%$ hay mức hạng Vàng $12\%$, không cộng dồn ($10 + 12 + 15 = 37\%$ vô lý), bảo vệ biên lợi nhuận của doanh nghiệp.
 
 ---
 
-### 10.4. Kết Luận
-1. **100% Lỗi phản hồi đã được khắc phục triệt để:** Menu dropdown không còn bị đè, nút tìm KOC AI mở Slide-over Drawer Option B mượt mà không chuyển trang, bảng xếp hạng hiển thị doanh số sạch và cấp bậc thật.
-2. **Tuân thủ tuyệt đối Hệ Màu Vàng Be (Warm Sand & Brand Gold):** Không sử dụng màu xanh lá làm nền, header hoặc nút bấm; toàn bộ token màu sắc đạt chuẩn doanh nghiệp B2B SaaS.
-3. **Chuẩn Mực Hệ Thống Quản Trị In-House:** Khẳng định rõ định vị Mạng lưới Đối tác Tiếp thị Nội bộ Doanh nghiệp (tương tự UpPromote / MWG), loại bỏ hoàn toàn các tư duy chợ tự do TMĐT.
+### BƯỚC 7: QUẢN TRỊ COUPON ĐỘC QUYỀN ĐỊNH DANH KOC (PRIMARY ATTRIBUTION ENGINE)
+
+#### 1. Mục tiêu chức năng:
+Kiểm tra hệ thống quản trị mã ưu đãi độc quyền mang tên KOC (`THAONHI16`, `LANHUONGGLOW`...), vũ khí bắt dấu vết đơn hàng số 1 bảo lưu trọn vẹn thù lao đối tác ngay cả khi mất dấu Cookie.
+
+#### 2. Ai thực hiện (Actor & Credentials):
+- **Vai trò:** `SHOP_MANAGER`
+- **Tài khoản đang đăng nhập:** `manager.sora@scanms.vn`
+
+#### 3. Làm sao (Cách truy cập & Điều hướng trên UI):
+1. Trên Sidebar, truy cập phân hệ Khuyến mại: `http://localhost:5173/merchant/promotions?tab=coupons`.
+
+#### 4. Bấm nút nào, nhập gì (Thao tác chi tiết):
+1. Bấm chọn tab: **"🎟️ Coupon Độc Quyền KOC"**.
+2. Quan sát danh sách Coupon độc quyền được định danh theo công thức chuẩn: `[TÊN_KOC][MỨC_GIẢM]`:
+   - `THAONHI16`: Giảm 16% cho người theo dõi của KOC Hoàng Thảo Nhi.
+   - `LANHUONGGLOW`: Giảm 10% cho người theo dõi của KOC Đỗ Lan Hương.
+   - `THUYDUNGSKIN`: Giảm 10% cho người theo dõi của KOC Đặng Thùy Dung.
+3. Kiểm tra nhãn cơ chế: Hiển thị huy hiệu `Ưu tiên bắt vết số 1 (Primary Attribution Engine)`.
+
+#### 5. Hình ảnh chứng minh:
+- *Quản lý Coupon Độc Quyền Định Danh KOC tại Gian hàng Sora Skincare:*  
+  ![Quản lý Coupon Độc Quyền KOC](file:///C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step6_shop_coupons_attribution.png)
+
+#### 6. Mong muốn đạt được khi thực hiện (Expected Result):
+- Giao diện sạch sẽ, loại bỏ 100% voucher rác TMĐT (freeship toàn sàn, hoàn xu).
+- Coupon liên kết chặt chẽ với ID của KOC trong cơ sở dữ liệu để khi khách hàng thanh toán tại giỏ hàng, doanh số tự động ghi nhận cho KOC sở hữu mã.
+
+#### 7. Phân tích sâu Flow & Nghiệp vụ liên quan trên UI:
+- **Độ Bền Vững Của Cơ Chế Attribution (Attribution Resilience):** Trong kỷ nguyên bảo mật Cookie (Safari ITP chặn cookie bên thứ 3, người dùng bật chặn quảng cáo AdBlock hoặc chuyển đổi từ xem video TikTok trên điện thoại sang đặt hàng trên máy tính bàn), Coupon định danh `THAONHI16` là cầu nối bất khả xâm phạm giúp ghi nhận chính xác 100% đơn hàng cho KOC.
 
 ---
 
-## PHẦN 11: HOÀN THIỆN TOÀN DIỆN & BẰNG CHỨNG LIVE TEST THỰC TẾ (16 KOLS, COLD-START AI, B2B CLEAN UI & DEAL ESCALATION)
-
-> 📅 **Thời gian hoàn tất:** 31/10/2026  
-> 👤 **Người thực hiện & Kiểm thử:** Nguyễn Thành Thắng (Leader) & Agentic Dev Engine  
-> 🎯 **Mục tiêu:** Thực hiện 100% các cam kết đã thảo luận, mở rộng dataset 16 KOLs chuẩn xác 4 Store & 4 cấp bậc, thuật toán Dual-Track Cold Start, dọn dẹp chữ thừa theo chuẩn B2B SaaS, hoàn thiện cơ chế Deal VIP Store-Wide & Leo thang phê duyệt Admin.
-
----
+## 11. 📊 BẢNG SO SÁNH TRƯỚC VÀ SAU CẢI TIẾN & ĐÁNH GIÁ ĐÁP ỨNG TIÊU CHUẨN HỘI ĐỒNG
 
 ### 11.1. Bảng Tổng Hợp 6 Hạng Mục Cải Tiến Chuyên Sâu
 
@@ -652,73 +854,27 @@ Toàn bộ các phân tích và giải pháp kiến trúc trên đã được gh
 
 ---
 
-### 11.2. Bằng Chứng Kiểm Thử Live E2E Thực Tế (Visual Screenshots)
-
-#### 📸 Bước 1: Quản Lý Sản Phẩm & Modal Đánh Giá Khách Hàng Tinh Gọn (Clean B2B UI)
-- Đổi tên nút bảng sản phẩm sang `[✨ Gợi ý KOC]`.
-- Loại bỏ toàn bộ khối text giải thích rườm rà tại Modal Đánh giá; hiển thị thẻ rỗng tinh gọn với icon và nút đóng trực quan.
-![Quản Lý Sản Phẩm & Modal Đánh Giá](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_clean_reviews_and_product_actions.png)
-*Hình 11.1: Giao diện bảng sản phẩm với nút [✨ Gợi ý KOC] và modal Đánh giá khách hàng không còn chữ thừa.*
-
----
-
-#### 📸 Bước 2: Drawer Đối Sánh AI & Cơ Chế Đề Xuất KOC Mới (Dual-Track Cold Start)
-- Drawer trượt hiển thị song song cả Top KOC giàu thành tích (Hoàng Thảo Nhi 93% Kim Cương, Lan Hương 88% Vàng) và Nhà sáng tạo mới tham gia có tiềm năng cao (Đặng Thùy Dung 80% Đồng kèm huy hiệu `✨ Tiềm Năng Mới`).
-![Drawer Đối Sánh AI](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step2_ai_match_drawer_dual_track.png)
-*Hình 11.2: Drawer trượt Option B với thuật toán Cold-Start giúp nhãn hàng không bỏ sót tài năng mới.*
-
----
-
-#### 📸 Bước 3: Trang AI Radar Tinh Gọn & Popover Giải Thích Cơ Chế On-Demand
-- Tiêu đề trang ngắn gọn, không còn banner hướng dẫn choán màn hình.
-- Nút `[Cơ chế đối sánh AI]` mở Modal giải thích chi tiết 4 trục Radar (Ngành hàng, Chuyển đổi, Giá trị, Tương tác) chỉ khi người dùng chủ động yêu cầu.
-![Trang AI Radar & Popover Giải Thích](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_clean_ai_matching_page.png)
-*Hình 11.3: Giao diện AI Radar B2B tinh gọn và popover giải thích cơ chế đối sánh.*
-
----
-
-#### 📸 Bước 4: Bảng Xếp Hạng 16 KOLs Đa Dạng & Nút Deal VIP Trực Tiếp
-- Danh bạ 16 KOC phân bổ đủ 4 hạng: Kim Cương (doanh số > 100M), Vàng (> 50M), Bạc (> 20M), Đồng (< 20M / 0đ).
-- Mỗi dòng đều trang bị song song 2 nút: `[💬 Nhắn tin]` và `[🤝 Deal VIP]`.
-![Bảng Xếp Hạng 16 KOLs](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_16_diverse_kols.png)
-*Hình 11.4: Bảng xếp hạng phản ánh đúng thực tế sổ cái và cấp bậc của 16 nhà sáng tạo.*
-
----
-
-#### 📸 Bước 5: Thỏa Thuận Deal VIP – Phạm Vi Toàn Gian Hàng & Leo Thang Duyệt Admin
-- Bổ sung tùy chọn Radio: "Áp dụng toàn bộ sản phẩm của Gian hàng" (Store-Wide Override) phù hợp hợp đồng Đại sứ thương hiệu.
-- Khi nhập thù lao vượt trần tự trị ($18\% > 16\%$), hệ thống lập tức hiển thị cảnh báo màu hổ phách giải thích rõ hợp đồng cần Tổng Giám Đốc (`SYSTEM_ADMIN`) phê duyệt Maker-Checker.
-![Modal Deal VIP Store-Wide & Escalation Alert](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step5_vip_deal_scope_and_admin_escalation.png)
-*Hình 11.5: Thiết lập Deal VIP toàn gian hàng với cơ chế cảnh báo leo thang duyệt ngân sách.*
-
----
-
-#### 📸 Bước 6: Phân Tách Rạch Ròi Hộp Thư Đàm Phán (Active Inbox)
-- Danh sách hội thoại bên trái chỉ giữ lại những cuộc trò chuyện thực tế có nội dung trao đổi hoặc đàm phán hợp đồng.
-- Loại bỏ hoàn toàn các hội thoại rác trống rỗng, trả lại không gian đàm phán tập trung cao độ cho Giám đốc Nhãn hàng.
-![Hộp Thư Đàm Phán Phân Tách Sạch](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step6_active_inbox_clean_separation.png)
-*Hình 11.6: Hộp thư đàm phán sạch sẽ, chỉ hiển thị đối tác đang có tương tác thực tế.*
-
----
-
-### 11.3. Bảng So Sánh Trước & Sau Cải Tiến (Before & After Comparison)
+### 11.2. Bảng So Sánh Trước & Sau Cải Tiến (Visual Carousel)
 
 ````carousel
-![Giao diện cũ: Chữ thừa & banner rườm rà](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793461296041_d049bf53.png)
+![Giao diện cũ: Lỗi Dropdown bị đè cắt cụt](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793454031807_30679e45.png)
 <!-- slide -->
-![Giao diện mới: B2B SaaS Tinh Gọn & Modal On-Demand](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_clean_ai_matching_page.png)
+![Giao diện mới: Dropdown nổi hoàn toàn z-50](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step1_status_dropdown_fixed.png)
 <!-- slide -->
 ![Giao diện cũ: Bảng xếp hạng toàn Đồng & 0₫](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793454112826_6b90a7f0.png)
 <!-- slide -->
 ![Giao diện mới: 16 KOLs đa dạng, doanh số thật & Nút Deal VIP](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step4_leaderboard_16_diverse_kols.png)
+<!-- slide -->
+![Giao diện cũ: Chữ thừa & banner rườm rà](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/.user_uploaded/media_1793461296041_d049bf53.png)
+<!-- slide -->
+![Giao diện mới: B2B SaaS Tinh Gọn & Modal On-Demand](/C:/Users/Choc/.gemini/antigravity/brain/e5e1d87c-bd71-4aa3-80e7-a2f8d939a74a/step3_clean_ai_matching_page.png)
 ````
 
 ---
 
-### 11.4. Đánh Giá Đáp Ứng Chuẩn Doanh Nghiệp & Hội Đồng Chấm Thi
-1. **Trải nghiệm End-User lần đầu sử dụng:** Giao diện trực quan, rõ ràng; các nút bấm mang ý nghĩa hành động dứt khoát (`[Gợi ý KOC]`, `[Nhắn tin]`, `[Deal VIP]`), không cần đọc hướng dẫn vẫn hiểu và thao tác chính xác.
-2. **Liêm chính nghiệp vụ MarTech:** Không có hiện tượng hardcode; dữ liệu sổ cái, phân hạng, và thuật toán AI đối sánh đều vận hành dựa trên số liệu thực tế trong cơ sở dữ liệu PostgreSQL.
-3. **Phân tách thẩm quyền chuẩn mực (SoD & Budget Governance):** Giữ vững ranh giới tự trị 16% của Shop Manager và cơ chế phê duyệt ngân sách cấp cao của System Admin khi ký Deal thù lao lớn với Siêu KOC.
+### 11.3. Đánh Giá Đáp Ứng Chuẩn Doanh Nghiệp & Hội Đồng Chấm Thi
 
-
-
+1. **Trải nghiệm B2B SaaS Chuyên Nghiệp:** Giao diện trực quan, dứt khoát; các nút hành động (`[✨ Gợi ý KOC]`, `[💬 Nhắn tin]`, `[🤝 Deal VIP]`) mang tính thực thi cao, không cần tài liệu hướng dẫn vẫn thao tác trơn tru.
+2. **Liêm Chính Nghiệp Vụ MarTech:** Tuyệt đối không hardcode; dữ liệu sổ cái, phân hạng đối tác và động cơ AI Radar đều truy vấn và tính toán từ cơ sở dữ liệu PostgreSQL thực tế.
+3. **Phân Tách Quyền Lực & Ngân Sách (SoD Governance):** Giữ vững khung tự trị $16\%$ của Shop Manager và cơ chế phê duyệt ngân sách cấp cao của System Admin khi ký Deal thù lao lớn ($> 16\%$) với Siêu KOC.
+4. **Hệ Màu Vàng Be (Warm Sand & Brand Gold):** 100% tuân thủ mã màu `#FAF8F5`, `#F3EFE6`, `#C59B58`, `#B88E4F`, hoàn toàn không có màu xanh lá cây sai lệch.

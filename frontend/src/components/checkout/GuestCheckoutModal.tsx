@@ -4,11 +4,7 @@ import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutO
 import { CheckoutItemsSection } from './CheckoutItemsSection';
 import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
 import { ScanMSLogo } from '../common/ScanMSLogo';
-import {
-  ScanmsCheckoutVoucherModal,
-  type AppliedShopVoucher,
-  type AppliedPlatformVoucher,
-} from './ScanmsCheckoutVoucherModal';
+import type { AppliedShopVoucher, AppliedPlatformVoucher } from './ScanmsCheckoutVoucherModal';
 import {
   ArrowLeft,
   ChevronDown,
@@ -21,8 +17,8 @@ import {
   Save,
   Plus,
   Trash2,
-  Ticket,
-  ChevronRight,
+  Tag,
+  CheckCircle2,
 } from 'lucide-react';
 
 function normalizeVietnameseAddress(str: string): string {
@@ -398,10 +394,60 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [selectedVariantId] = useState<string | undefined>(initialVariantId);
 
   // SCANMS 3-Tier Vouchers
-  const [isScanmsVoucherModalOpen, setIsScanmsVoucherModalOpen] = useState(false);
+  // voucher modal streamlined into in-place KOC attribution card
   const [appliedShopCoupons, setAppliedShopCoupons] = useState<Record<string, AppliedShopVoucher>>({});
   const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<AppliedPlatformVoucher | null>(null);
   const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<AppliedPlatformVoucher | null>(null);
+  const [manualPartnerCode, setManualPartnerCode] = useState(initialCouponCode || '');
+
+  const handleApplyPartnerCode = async () => {
+    const code = manualPartnerCode.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponMessage(null);
+    try {
+      const response: any = await api.post('/coupons/validate', {
+        code,
+        storeId: targetVoucherStoreId,
+        customerPhone: customerPhone.trim() || undefined,
+        items: activeItems
+          .filter((item) => item.store.id === targetVoucherStoreId)
+          .map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
+        hasProductDiscount: false,
+        hasShopVoucher: false,
+        hasPlatformVoucher: false,
+      });
+      const data = response?.data || response;
+      setAppliedCoupon({
+        code: data.code || code,
+        discountAmount: Number(data.discountAmount) || 0,
+        discountType: data.discountType,
+      });
+      setCouponMessage({
+        type: 'success',
+        text: `Đã áp dụng mã ưu đãi ${data.code || code}, giảm ${formatMoney(Number(data.discountAmount) || 0)}.`,
+      });
+    } catch (error: any) {
+      setAppliedCoupon(null);
+      setCouponMessage({
+        type: 'error',
+        text: error?.response?.data?.message || 'Mã ưu đãi không hợp lệ hoặc đã hết hạn.',
+      });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemovePartnerCode = () => {
+    setAppliedCoupon(null);
+    setManualPartnerCode('');
+    setCouponMessage(null);
+  };
   const [, setCouponCode] = useState(initialCouponCode);
   const [extraVoucherDismissed, setExtraVoucherDismissed] = useState(false);
   const [extraVoucherBusy, setExtraVoucherBusy] = useState(false);
@@ -622,8 +668,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   }, [appliedShopCoupons]);
   const platformDiscount = appliedPlatformCoupon ? Number(appliedPlatformCoupon.discountAmount) || 0 : 0;
   const shippingDiscount = appliedShippingCoupon ? Number(appliedShippingCoupon.discountAmount) || 0 : 0;
-  const totalCombinedDiscount = totalShopDiscount + platformDiscount + shippingDiscount;
-  const appliedVoucherCount = Object.keys(appliedShopCoupons).length + (appliedPlatformCoupon ? 1 : 0) + (appliedShippingCoupon ? 1 : 0);
+  // totalCombinedDiscount & appliedVoucherCount replaced by single attribution card
 
   const appliedCoupon = useMemo(() => {
     const list = Object.values(appliedShopCoupons);
@@ -1891,85 +1936,92 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               onContinueShopping={() => { continueShoppingFromCheckout(activeItems); onClose(); navigate('/marketplace#catalog-section'); }}
             />
             {/* ========================================================================= */}
-            {/* BLOCK 2.5: SCANMS VOUCHER TRIGGER */}
+            {/* BLOCK 2.5: MÃ ƯU ĐÃI ĐỐI TÁC TIẾP THỊ (KOC ATTRIBUTION COUPON) */}
             {/* ========================================================================= */}
-            <div className="bg-white border border-[#EAE4D7] rounded-xl p-4 transition-all hover:border-[#C59B58]/60 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsScanmsVoucherModalOpen(true)}
-                className="w-full flex items-center justify-between gap-3 text-left group cursor-pointer"
-                id="open-scanms-voucher-modal-btn"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#C59B58] group-hover:scale-105 transition-transform">
-                    <Ticket className="w-4 h-4 text-[#C59B58]" />
+            <div className="bg-white border border-[#EAE4D7] rounded-xl p-4 sm:p-5 shadow-xs text-left">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F]">
+                  <Tag className="w-4 h-4 text-[#B88E4F]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#1A1612]">Mã Ưu Đãi Đối Tác Tiếp Thị</h3>
+                  <p className="text-[11px] text-[#7D715E]">Nhập mã giới thiệu của Nhà sáng tạo (KOC) để nhận giá ưu đãi</p>
+                </div>
+              </div>
+
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between gap-3 p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-xs text-[#8F682E] bg-white px-2 py-0.5 rounded border border-[#EEDFC6]">
+                          {appliedCoupon.code}
+                        </span>
+                        <span className="text-xs font-bold text-[#1A1612]">
+                          Giảm {formatMoney(appliedCoupon.discountAmount)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#7D715E] mt-0.5">
+                        Đơn hàng được ghi nhận ưu đãi cho Đối tác tiếp thị phụ trách.
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-sm font-bold text-[#1A1612]">SCANMS Voucher</span>
+                  <button
+                    type="button"
+                    onClick={handleRemovePartnerCode}
+                    className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-semibold text-[#7D715E] hover:text-[#DC2626] transition-colors shrink-0 cursor-pointer"
+                  >
+                    Hủy mã
+                  </button>
                 </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {appliedVoucherCount > 0 ? (
-                    <span className="inline-block px-2.5 py-1 bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] rounded-md text-xs font-bold">
-                      Đã áp dụng {appliedVoucherCount} mã (−{formatMoney(totalCombinedDiscount)})
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium text-[#7D715E] group-hover:text-[#C59B58] transition-colors">
-                      Chọn hoặc nhập mã
-                    </span>
-                  )}
-                  <ChevronRight className="w-4 h-4 text-[#7D715E] group-hover:text-[#C59B58] group-hover:translate-x-0.5 transition-all" />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={manualPartnerCode}
+                    onChange={(e) => setManualPartnerCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleApplyPartnerCode();
+                      }
+                    }}
+                    placeholder="Nhập mã ưu đãi (Ví dụ: THAONHI16)"
+                    className="flex-1 min-h-[42px] px-3.5 py-2 text-xs font-mono font-bold uppercase rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] placeholder:text-[#7D715E] placeholder:font-sans placeholder:normal-case focus:bg-white focus:border-[#C59B58] focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    disabled={couponLoading || !manualPartnerCode.trim()}
+                    onClick={() => void handleApplyPartnerCode()}
+                    className="min-h-[42px] px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    {couponLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span>Áp dụng</span>
+                    )}
+                  </button>
                 </div>
-              </button>
+              )}
 
-              {/* Thông báo coupon nếu có */}
               {couponMessage && (
-                <div className={`mt-2.5 text-xs font-medium px-2.5 py-1.5 rounded-md ${couponMessage.type === 'error' ? 'bg-red-50 text-[#DC2626] border border-red-200' : 'bg-amber-50 text-[#8A642C] border border-[#EEDFC6]'}`}>
-                  {couponMessage.text}
+                <div
+                  className={`mt-2.5 text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
+                    couponMessage.type === 'error'
+                      ? 'bg-red-50 text-[#DC2626] border border-red-200'
+                      : 'bg-[#FBF5EB] text-[#8C6B32] border border-[#EEDFC6]'
+                  }`}
+                >
+                  {couponMessage.type === 'error' ? (
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#059669]" />
+                  )}
+                  <span>{couponMessage.text}</span>
                 </div>
               )}
             </div>
-
-            {/* SCANMS Voucher Modal Component */}
-            <ScanmsCheckoutVoucherModal
-              isOpen={isScanmsVoucherModalOpen}
-              onClose={() => setIsScanmsVoucherModalOpen(false)}
-              onRequestSignIn={() => {
-                setIsScanmsVoucherModalOpen(false);
-                setShowPasswordLogin(true);
-                window.requestAnimationFrame(() => {
-                  const gate = document.getElementById('mandatory-auth-gate');
-                  gate?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  gate?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
-                });
-              }}
-              groups={itemsGroupedByShop}
-              shippingFeesByStore={shippingFeesByStore}
-              totalShippingFee={shippingFee || 0}
-              rawGoodsSubtotal={rawSubtotal}
-              customerPhone={customerPhone}
-              appliedShopCoupons={appliedShopCoupons}
-              appliedPlatformCoupon={appliedPlatformCoupon}
-              appliedShippingCoupon={appliedShippingCoupon}
-              onApplyShopCoupon={(storeId, v) => {
-                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
-                setAppliedShopCoupons((prev) => ({
-                  ...prev,
-                  [storeId]: { ...v, storeId },
-                }));
-              }}
-              onRemoveShopCoupon={(storeId) => {
-                setAppliedPlatformCoupon(previous => (previous?.storeId || targetVoucherStoreId) === storeId ? null : previous);
-                setAppliedShopCoupons((prev) => {
-                  const next = { ...prev };
-                  delete next[storeId];
-                  return next;
-                });
-              }}
-              onApplyPlatformCoupon={(v) => setAppliedPlatformCoupon(v)}
-              onRemovePlatformCoupon={() => setAppliedPlatformCoupon(null)}
-              onApplyShippingCoupon={(v) => setAppliedShippingCoupon(v)}
-              onRemoveShippingCoupon={() => setAppliedShippingCoupon(null)}
-            />
 
             <section className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left" aria-labelledby="checkout-payment-title">
               <CheckoutPaymentMethods method={paymentMethod} onChange={setPaymentMethod} balance={Number(wallet?.availableBalance || 0)} loading={walletLoading} total={finalTotal} payosAvailable={payosAvailable} />
@@ -1978,12 +2030,10 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 <div><dt>Phí vận chuyển GHN</dt><dd role="status">{shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}{shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}</dd></div>
                 {totalShopDiscount > 0 && (
                   <div className="checkout-total-discount">
-                    <dt>Voucher Gian hàng & KOL ({Object.values(appliedShopCoupons).map((c) => c.code).join(', ')})</dt>
+                    <dt>Mã ưu đãi đối tác ({appliedCoupon?.code})</dt>
                     <dd>−{formatMoney(totalShopDiscount)}</dd>
                   </div>
                 )}
-                {appliedPlatformCoupon && <div className="checkout-total-discount"><dt>Voucher SCANMS ({appliedPlatformCoupon.code})</dt><dd>−{formatMoney(appliedPlatformCoupon.discountAmount)}</dd></div>}
-                {appliedShippingCoupon && <div className="checkout-total-discount"><dt>Voucher vận chuyển ({appliedShippingCoupon.code})</dt><dd>−{formatMoney(appliedShippingCoupon.discountAmount)}</dd></div>}
                 <div className="checkout-total-final [&_dd]:text-[color:#1A1612]! [&_dd]:text-[26px] [&_dd]:font-[650] [&_dd]:tracking-[-.5px]! [&_dd]:leading-[1.35] [&_dd_>_span]:text-[color:#7D715E]! [&_dd_>_span]:text-[13px] [&_dd_>_span]:font-[500] [@media_(max-width:639px)]:[&_dd]:text-[24px]"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>
               </dl>
 

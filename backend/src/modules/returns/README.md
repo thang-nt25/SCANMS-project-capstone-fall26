@@ -88,6 +88,7 @@ migrations to that shared database until those files are restored.
 - `POST /returns/:id/confirmation` — customer confirms the result.
 - `POST /returns/:id/disputes` — customer opens a dispute after rejection, expiry, or refund failure.
 - `GET /admin/return-disputes` and `PATCH /admin/return-disputes/:id/resolve` — admin arbitration.
+- `POST /admin/return-disputes/active-returns/:id/refund/retry` — System Manager/Admin retries a pending wallet refund. It locks the refund row, verifies the remaining order amount, credits the customer wallet, reverses KOL income, and advances the return in one transaction. Repeating a successful request cannot credit twice.
 - `GET /admin/return-disputes/overdue-inspections` — admin queue for cases not inspected within 48 hours of Shop receipt.
 
 The existing `PATCH /orders/:orderId/return-request/respond` still approves or

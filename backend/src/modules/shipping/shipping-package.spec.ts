@@ -38,7 +38,7 @@ describe('Persisted product package and shipping snapshots', () => {
       ]),
     ).toEqual({ weight: 1600, length: 20, width: 30, height: 15 });
   });
-  it.each(['4006381333932', '', null, undefined])(
+  it.each(['4006381333932', 'SKIN-VTC15', '', null, undefined])(
     'quotes measured products independently of legacy barcode %p',
     (barcode) => {
       expect(

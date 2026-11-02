@@ -8,6 +8,7 @@ describe('product voucher suggestions use Apply eligibility without its side eff
       scopeType: 'STORE_WIDE', fundingSource: 'SHOP_FUNDED', benefitType: 'GOODS', discountType: 'PERCENTAGE', discountValue: 10,
       minimumOrderAmount: null, maximumDiscountAmount: null, usageLimitTotal: null, usageCount: 0,
       budgetTotal: null, budgetUsed: 0, usageLimitPerCustomer: 1, startsAt: null, expiresAt: null,
+      collaborator: { role: 'COLLABORATOR' },
       stackableWithProductDiscount: false, store: { id: 'shop', name: 'Shop', isDeleted: false },
       couponProducts: [], couponCategories: [], liveSession: null, ...extra };
   }
@@ -34,7 +35,7 @@ describe('product voucher suggestions use Apply eligibility without its side eff
     const { service, prisma, cache } = fixture(rows);
     expect((await service.getEligibleProductCoupons('shop', query, 'buyer')).map(row => row.code)).toEqual(['VALID']);
     expect(prisma.product.findFirst).toHaveBeenCalledTimes(1);
-    expect(prisma.couponRedemption.groupBy).toHaveBeenCalledTimes(1);
+    expect(prisma.couponRedemption.groupBy).not.toHaveBeenCalled();
     expect(prisma.notification.create).not.toHaveBeenCalled();
     expect(cache.set).not.toHaveBeenCalled();
     expect(cache.del).not.toHaveBeenCalled();
@@ -44,13 +45,13 @@ describe('product voucher suggestions use Apply eligibility without its side eff
     expect((await service.getEligibleProductCoupons('shop', query)).map(row => row.code)).toEqual(['STACKABLE']);
     expect((await service.getEligibleProductCoupons('shop', { ...query, quantity: 2 })).map(row => row.code)).toEqual(['MINIMUM', 'STACKABLE']);
     product.variants[0].price = 250000;
-    expect((await service.getEligibleProductCoupons('shop', { ...query, quantity: 2 })).map(row => row.code)).toEqual(['STACKABLE']);
+    expect((await service.getEligibleProductCoupons('shop', { ...query, quantity: 2 })).map(row => row.code)).toEqual(['MINIMUM', 'STACKABLE']);
   });
-  it('respects per-account usage and requires a valid in-stock variant', async () => {
+  it('keeps creator codes reusable for attribution and requires a valid in-stock variant', async () => {
     const { service, prisma } = fixture([coupon('USED')]);
     prisma.couponRedemption.groupBy.mockResolvedValue([{ couponId: 'USED', _count: { _all: 1 } }] as any);
-    expect(await service.getEligibleProductCoupons('shop', query, 'buyer')).toEqual([]);
-    expect(prisma.couponRedemption.groupBy.mock.calls[0][0].where.OR).toEqual([{ customerId: 'buyer' }, { customerPhone: '0901234567' }]);
+    expect((await service.getEligibleProductCoupons('shop', query, 'buyer')).map(row => row.code)).toEqual(['USED']);
+    expect(prisma.couponRedemption.groupBy).not.toHaveBeenCalled();
     expect(await service.getEligibleProductCoupons('shop', { productId, quantity: 1 })).toEqual([]);
     expect(await service.getEligibleProductCoupons('shop', { ...query, variantId: 'other' })).toEqual([]);
     expect(await service.getEligibleProductCoupons('shop', { ...query, quantity: 11 })).toEqual([]);

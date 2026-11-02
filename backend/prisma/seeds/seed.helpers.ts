@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { SeedContext } from './seed.types';
 
-export const DATASET_VERSION = 'scanms-capstone-2026-v3';
+export const DATASET_VERSION = 'scanms-capstone-2026-v4';
 // Keep identity stable between revisions. Do not create duplicate accounts or
 // bypass unique email/slug constraints by silently changing every fixture ID.
 const ID_NAMESPACE_VERSION = 'scanms-capstone-2026-v1';
@@ -37,8 +37,8 @@ export const amount = (
     value && typeof value === 'object' ? value.toFixed() : (value ?? 0),
   ).toNumber();
 
-export function commissionAmount(netSubtotal: number, rate: number): number {
-  return new Prisma.Decimal(netSubtotal)
+export function commissionAmount(remunerationBase: number, rate: number): number {
+  return new Prisma.Decimal(remunerationBase)
     .mul(rate)
     .div(100)
     .toDecimalPlaces(2)

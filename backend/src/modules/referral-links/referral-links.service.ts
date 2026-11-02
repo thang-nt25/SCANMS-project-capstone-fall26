@@ -2497,6 +2497,8 @@ export class ReferralLinksService {
       10 + campaignBonus,
       0,
     );
+    const dealRate = 10 + dealBonus;
+    const campaignRate = 10 + campaignBonus;
 
     const price = Number(link.product.price);
     const calculatedCommissionAmount = (price * commissionRate) / 100;
@@ -2507,8 +2509,8 @@ export class ReferralLinksService {
       referralLinkId: link.id,
       appliedCommissionRate: commissionRate,
       calculatedCommissionAmount,
-      campaignId: campaignBonus ? link.campaign?.id : undefined,
-      campaignBonus,
+      campaignId: campaignRate > Math.max(dealRate, 10 + tierBonus) ? link.campaign?.id : undefined,
+      campaignBonus: campaignRate > Math.max(dealRate, 10 + tierBonus) ? campaignBonus : 0,
     };
   }
 

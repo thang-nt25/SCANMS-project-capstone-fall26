@@ -26,6 +26,22 @@ export interface CreateStaffPayload {
   storeId?: string;
 }
 
+export interface AdminStoreWarehouse {
+  warehouseName?: string;
+  contactName?: string;
+  contactPhone?: string;
+  address?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
+  wardCode?: string;
+  wardName?: string;
+  detailAddress?: string;
+  ghnDistrictId?: number;
+  ghnWardCode?: string;
+}
+
 export interface AdminStoreOption {
   id: string;
   name: string;
@@ -36,15 +52,10 @@ export interface AdminStoreOption {
   ownerId: string;
   isVerified: boolean;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   defaultCommissionRate: number;
-  returnWarehouse?: {
-    warehouseName?: string;
-    contactName?: string;
-    contactPhone?: string;
-    address?: string;
-    ghnDistrictId?: number;
-    ghnWardCode?: string;
-  } | null;
+  returnWarehouse?: AdminStoreWarehouse | null;
   owner?: {
     id: string;
     fullName: string;
@@ -66,6 +77,13 @@ export interface CreateStorePayload {
   contactName?: string;
   contactPhone?: string;
   warehouseAddress?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
+  wardCode?: string;
+  wardName?: string;
+  detailAddress?: string;
   ghnDistrictId?: number;
   ghnWardCode?: string;
   ownerId?: string;
@@ -90,8 +108,10 @@ export const personnelService = {
     return res.data;
   },
 
-  async getAdminStores(): Promise<AdminStoreOption[]> {
-    const res = await api.get('/stores/all-admin');
+  async getAdminStores(includeDeleted = true): Promise<AdminStoreOption[]> {
+    const res = await api.get('/stores/all-admin', {
+      params: { includeDeleted },
+    });
     return res.data;
   },
 
@@ -99,5 +119,30 @@ export const personnelService = {
     const res = await api.post('/stores', payload);
     return res.data;
   },
-};
 
+  async toggleStoreStatus(
+    id: string,
+    isActive?: boolean,
+  ): Promise<{ id: string; name: string; isActive: boolean }> {
+    const res = await api.patch(`/stores/admin/${id}/toggle-status`, { isActive });
+    return res.data;
+  },
+
+  async updateStore(
+    id: string,
+    payload: Partial<CreateStorePayload>,
+  ): Promise<AdminStoreOption> {
+    const res = await api.put(`/stores/admin/${id}`, payload);
+    return res.data;
+  },
+
+  async deleteStore(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await api.delete(`/stores/admin/${id}`);
+    return res.data;
+  },
+
+  async restoreStore(id: string): Promise<{ id: string; name: string; isActive: boolean; isDeleted: boolean }> {
+    const res = await api.patch(`/stores/admin/${id}/restore`);
+    return res.data;
+  },
+};

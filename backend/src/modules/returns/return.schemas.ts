@@ -48,9 +48,15 @@ export const simulatePickupSchema = z
 export const inspectionSchema = z
   .object({
     resolution: z.enum(['REFUND', 'EXCHANGE', 'REJECT']),
+    liability: z.enum(['LOGISTICS_FAULT', 'SHOP_FAULT', 'CUSTOMER_REASON']),
     notes: text(10, 2000),
   })
   .strict();
+
+export const liabilityAssessmentSchema = z.object({
+  liability: z.enum(['LOGISTICS_FAULT', 'SHOP_FAULT', 'CUSTOMER_REASON']),
+  notes: text(10, 2000),
+}).strict();
 
 export const disputeSchema = z
   .object({
@@ -68,6 +74,7 @@ export const disputeSchema = z
 export const resolveDisputeSchema = z
   .object({
     ruling: z.enum(['APPROVE_REFUND', 'APPROVE_EXCHANGE', 'UPHOLD_SHOP']),
+    liability: z.enum(['LOGISTICS_FAULT', 'SHOP_FAULT', 'CUSTOMER_REASON']).optional(),
     notes: text(20, 3000),
   })
   .strict();
@@ -81,6 +88,7 @@ export const shopQueueSchema = z
 
 export type InstructionsInput = z.infer<typeof instructionsSchema>;
 export type ShipmentInput = z.infer<typeof shipmentSchema>;
+export type LiabilityAssessmentInput = z.infer<typeof liabilityAssessmentSchema>;
 export type WarehouseInput = z.infer<typeof warehouseSchema>;
 export type BookPickupInput = z.infer<typeof bookPickupSchema>;
 export type InspectionInput = z.infer<typeof inspectionSchema>;
