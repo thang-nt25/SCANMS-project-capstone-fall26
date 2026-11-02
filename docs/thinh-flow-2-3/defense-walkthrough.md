@@ -25,5 +25,9 @@ Các điểm kỹ thuật để giải thích:
 - Đối soát14 ngày trước xử lý thiếu KPI; KPI cũ targetRevenue null vẫn tương thích.
 - GET/API/DB là nguồn trạng thái, Socket.IO chỉ chuyển sự kiện sau commit.
 - Admin duyệt ngoại lệ độc lập, Shop không tự đặt MAP; KOC không tự ký đề nghị mình gửi.
+- Ảnh bìa vuông từ 800px được kiểm bằng bytes ở endpoint riêng; ảnh phụ giới hạn bốn, không âm thầm cắt.
+- Hồ sơ sản phẩm lưu creator/submitter; tự duyệt bị chặn. Khóa dòng và transaction bảo vệ quyết định đồng thời và nội dung/ảnh đang lưu.
+- AI Bio dùng cùng model local với cảnh báo tên; cold-start 70/30, đủ năm đơn 35/25/20/20. Trọng số API và radar khớp điểm tổng; mặc định giữ KOC khác ngành để so sánh.
+- KOC có thể gửi kế hoạch hợp tác ngay trên Marketplace hoặc trang Shop; không cần vào màn hình quản trị trước.
 
 Số test và giới hạn bằng chứng ở [verification](verification.md). Checklist UAT ở [acceptance-tests](acceptance-tests.md). Không dùng browser fixture hoặc đọc trang Admin để ký thay toàn bộ UAT DB nhóm.

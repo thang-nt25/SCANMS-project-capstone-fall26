@@ -10,6 +10,11 @@ async function main() {
     { id: 'unrelated', title: 'Áo khoác thể thao chống nắng' },
   ]);
   if (!result.items.some(item => item.id === 'related') || result.items.some(item => item.id === 'unrelated')) throw new Error('Semantic smoke test failed');
-  console.log(JSON.stringify({ modelPrepared: true, ...result }));
+  const profiles = await service.rank('Mỹ phẩm và chăm sóc da', [
+    { id: 'beauty', title: 'Chuyên review mỹ phẩm dưỡng da, serum vitamin C và kem chống nắng.' },
+    { id: 'tech', title: 'Đánh giá máy tính, bàn phím cơ và tai nghe Bluetooth.' },
+  ]);
+  if (profiles.items.length !== 2 || profiles.items[0].id !== 'beauty') throw new Error('Creator profile ranking smoke test failed');
+  console.log(JSON.stringify({ modelPrepared: true, ...result, profileRanking: profiles.items }));
 }
 void main().catch(() => { console.error('Could not prepare or validate the local semantic model.'); process.exitCode = 1; });

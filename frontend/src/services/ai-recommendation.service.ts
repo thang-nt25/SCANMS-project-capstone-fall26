@@ -26,6 +26,7 @@ export interface KolLifetimeStatsSummary {
 
 export interface KolMatchResult {
   scoringMode?: 'COLD_START' | 'PERFORMANCE';
+  scoringWeights?: { [K in keyof ScoreBreakdown]: number };
   isRisingStar?: boolean;
   collaboratorId: string;
   fullName: string;

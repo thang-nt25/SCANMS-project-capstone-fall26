@@ -9,13 +9,13 @@ Nguồn: Blueprint phần 8 phân công Flow 2 + nửa đầu Flow 3; chi tiết
 | 2 | Nhiều Manager/Store | Policy owner/staff đang được phân công; dùng chung các module liên quan |
 | 3 | SKU/barcode không trùng | Guard transaction + advisory lock, không tự xóa dữ liệu trùng cũ |
 | 4 | Tên gần nghĩa >80 | Embedding đa ngôn ngữ ONNX local thực, cosine >80, xác nhận dòng khác |
-| 5 | Form sản phẩm sáu khối | Tái sử dụng cấu trúc, ảnh và hồ sơ sẵn có |
-| 6 | Maker-checker sản phẩm | Workflow kiểm duyệt với lý do/audit/thông báo |
+| 5 | Form sản phẩm sáu khối | Ảnh bìa vuông ≥800px kiểm FE và endpoint upload riêng; tối đa bốn ảnh phụ đồng bộ DTO/service/FE |
+| 6 | Maker-checker sản phẩm | Ghi creator/submitter, cấm tự duyệt; khóa và đọc trạng thái trong transaction; nội dung/evidence/gallery lưu nguyên tử |
 | 7 | AI drawer theo productId | Top 5, radar, giải thích, mobile/error/empty |
-| 8 | Cold start 70/30 | Dưới 5 đơn dùng ngành/kênh; từ 5 đơn dùng hiệu suất/hồ sơ |
+| 8 | AI theo bằng chứng | Dưới 5 đơn: 70/30 ngành/kênh; từ 5 đơn: 35/25/20/20 ngành/CR/tier-kênh/giá. Cosine Bio/tags/kênh bằng model local; mặc định giữ mọi ngành để xếp hạng |
 | 9 | KOL Hub | Tin nhắn, xếp hạng, thỏa thuận, AI Radar |
 | 10 | Số liệu thực và tier | Bỏ GMV nhân 8/suy số đơn/suy tier FE; tổng theo Store/kỳ |
-| 11 | KOC xin hợp tác | Kế hoạch giới hạn đúng cột DB, Shop phản hồi |
+| 11 | KOC xin hợp tác | Form từ Marketplace/trang Shop và khu hợp tác; đúng Store, query trạng thái dùng chung, kế hoạch giới hạn đúng cột DB |
 | 12 | Shop mời KOC | KOC chấp thuận hoặc từ chối |
 | 13 | Không ghi ngược trạng thái | CAS và kiểm quyền hiện tại |
 | 14 | Media Hub | Route/tab, quyền trước cache, tải ZIP có manifest/nguồn |

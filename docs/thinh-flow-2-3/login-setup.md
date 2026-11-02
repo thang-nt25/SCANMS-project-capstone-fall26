@@ -19,12 +19,15 @@ Các giá trị máy hiện tại nằm trong `frontend/.env` và `backend/.env`
 | Khách mua | customer.an@scanms.vn | Đang hoạt động, mật khẩu cấu hình khớp |
 | KOL/KOC | kol.bronze@scanms.vn | Đang hoạt động, mật khẩu cấu hình khớp |
 | Chủ Shop | manager.sora@scanms.vn | Đang hoạt động; nhập mật khẩu hiện tại do nhóm cung cấp |
+| Quản lý Shop bổ sung | shop.aura.test@scanms.vn | Phân công cho Aura Activewear & Apparel; mật khẩu được giao riêng trong chat, không đổi tài khoản chủ Shop |
 | Vận hành | manager@scanms.vn | Đang hoạt động, mật khẩu cấu hình khớp |
 | Quản trị | admin@scanms.vn | Đang hoạt động, mật khẩu cấu hình khớp |
 
 Người dùng chọn giữ mật khẩu Shop trên DB. `VITE_DEMO_SHOP_PASSWORD` local được để trống để tránh tiếp tục điền một mật khẩu đã biết không khớp. Sau khi có mật khẩu đúng, có thể nhập trực tiếp trên web hoặc cập nhật riêng biến local này rồi restart Vite.
 
 Điền sẵn tài khoản không tạo user, không seed DB, không đổi quyền và không bỏ qua xác thực backend. Bài test browser kiểm tra form sử dụng dữ liệu giả ở biên API; kiểm tra mật khẩu DB được thực hiện riêng bằng truy vấn chỉ đọc.
+
+Tài khoản quản lý được phân công có thể không sở hữu Store nào trong `stores`. Ngữ cảnh đăng nhập và `/auth/me` ưu tiên `User.storeId`, sau đó mới fallback Store sở hữu. Frontend đồng bộ `current_store_id` theo phản hồi API, xóa giá trị cũ khi đổi vai trò hoặc mất phân công. API danh sách đơn dùng chung policy owner/staff hiện hành; không cần đổi owner để quản lý được phân công truy cập tổng quan và đơn hàng.
 
 ## Chạy khi chưa có tiến trình phục vụ
 

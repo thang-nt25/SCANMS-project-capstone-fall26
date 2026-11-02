@@ -1575,7 +1575,12 @@ export default function ChatBoxPage({
           const hasMessages = (conversation.chatMessages && conversation.chatMessages.length > 0) || ((conversation as any).messageCount && (conversation as any).messageCount > 0);
           return hasMessages;
         });
-        setConversations(list);
+        // A newly invited Shop has no server conversation yet. Keep the active
+        // local draft when refreshing summaries, so its composer stays usable.
+        setConversations((previous) => {
+          const draft = previous.find((conversation) => conversation.id === activeConvIdRef.current && conversation.id.startsWith('draft-'));
+          return draft ? [draft, ...list] : list;
+        });
         chatSessionCache.conversations = list;
         if (!immediateList || immediateList.length === 0) {
           setupContext(list);

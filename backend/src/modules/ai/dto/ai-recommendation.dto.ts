@@ -157,6 +157,8 @@ export class KolLifetimeStatsSummaryDto {
 }
 
 export class KolMatchResultDto {
+  @ApiPropertyOptional({ description: 'Trọng số áp dụng đúng các trục trong scoreBreakdown' })
+  scoringWeights?: { [K in keyof ScoreBreakdownDto]: number };
   @ApiPropertyOptional({ enum: ['COLD_START', 'PERFORMANCE'] })
   scoringMode?: 'COLD_START' | 'PERFORMANCE';
   @ApiProperty({

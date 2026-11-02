@@ -3803,11 +3803,11 @@ export class OrdersService {
       userRole !== UserRole.SYSTEM_ADMIN &&
       userRole !== UserRole.SYSTEM_MANAGER
     ) {
-      const ownedStore = await this.prisma.store.findFirst({
+      const managedStore = await this.prisma.store.findFirst({
         where: { id: targetStoreId, ...managedStoreWhere(userId) },
         select: { id: true },
       });
-      if (!ownedStore)
+      if (!managedStore)
         throw new ForbiddenException('Bạn không quản lý gian hàng này');
     }
     if (!targetStoreId) {

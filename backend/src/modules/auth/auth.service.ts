@@ -709,7 +709,7 @@ export class AuthService {
     return {
       ...safeUser,
       avatarUrl: user.avatarUrl || user.collaboratorProfile?.avatarUrl || null,
-      storeId: user.stores?.[0]?.id || null,
+      storeId: user.storeId || user.stores?.[0]?.id || null,
     };
   }
 

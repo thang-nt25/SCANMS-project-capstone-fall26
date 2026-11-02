@@ -22,14 +22,14 @@ const app = [
   ['ca', 'CacheService', 'cache adapter', ['+ get(key) / set(key, value, ttl)', '+ delPrefix(prefix)']],
   ['ppc', 'PricingController', 'controller', ['+ catalog() / list()', '+ floor() / create()', '+ review() / cancel()']],
   ['pps', 'PricingService', 'service', ['+ setFloor() / create() / review()', '+ reconcileDue()', '  MAP and promotion lifecycle']],
-  ['sem', 'ProductSemanticMatcher', 'service', ['+ compare(title, candidates)', '  Local multilingual ONNX q8', '  Cosine >80; bounded queue']],
+  ['sem', 'SemanticEmbeddingService', 'service', ['+ rank(text, candidates)', '+ compare(title, candidates)', '  One local model; bounded queue']],
   ['pi', 'product-identity.policy', 'module', ['+ assertProductIdentity(tx, input)', '+ productNameSimilarity(left, right)']],
   ['dp', 'DashboardService', 'service', ['+ getShopKolOrders(actor, role,', '    collaboratorId, query)', '  period totals across all pages']],
 ].map(([id, name, kind, lines], i) => ({ id, name, kind, lines, x: 40 + (i % 3) * 420, y: 110 + Math.floor(i / 3) * 250, w: 340, h: 175 }));
 const domain = [
   ['st', 'Store', ['id: UUID', 'ownerId: UUID', 'categoryName: string?', 'isActive / isDeleted: boolean']],
   ['us', 'User', ['id: UUID', 'role: UserRole', 'storeId: UUID?', 'isActive / isDeleted: boolean']],
-  ['pr', 'Product', ['id / storeId: UUID', 'categoryName: string?', 'price / listPrice / floorPrice: Decimal?', 'moderationStatus: enum']],
+  ['pr', 'Product', ['id / storeId: UUID', 'createdById / submittedById: UUID?', 'categoryName: string?', 'price / listPrice / floorPrice: Decimal?', 'moderationStatus: enum']],
   ['sc', 'StoreCollaborator', ['storeId / collaboratorId: UUID', 'status: PENDING | APPROVED | REJECTED', 'requestedByKol: boolean']],
   ['de', 'ExclusiveDealProposal', ['productId / collaboratorId: UUID', 'initiatedById: UUID?', 'offerTerms: JSON?', 'proposedCommissionRate: Decimal', 'targetRevenue: Decimal?', 'scopeType: Single | Selected | Store', 'status: pending / waiting admin / final', 'closedAt: DateTime?']],
   ['rl', 'ReferralLink', ['id: UUID', 'exclusiveDealId: UUID? (unique)', 'shortCode: string (unique)', 'customCouponCode: string?']],
@@ -75,21 +75,24 @@ function classPage(title, nodes, edges, file) {
     const value = '<div style="text-align:center;padding:6px">«'+esc(n.kind)+'»<br/><b>'+esc(n.name)+'</b></div><hr/>'+n.lines.map(esc).join('<br/>');
     cells += '<mxCell id="'+n.id+'" value="'+esc(value)+'" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#1A1612;fontColor=#1A1612;align=left;verticalAlign=top;spacing=9;fontFamily=Arial;fontSize=13;" vertex="1" parent="1"><mxGeometry x="'+n.x+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" as="geometry"/></mxCell>';
   }
-  svg += text(36,h-25,nodes===app?'Dashed arrows: source-code dependencies. Module denotes exported domain functions.':'Associations show foreign keys; ReferralLink.customCouponCode is a business reference, not a Coupon FK.',12) + '</svg>';
+  svg += text(36,h-25,nodes.some(node=>node.kind!=='entity')?'Dashed arrows: source-code dependencies. Module denotes exported domain functions.':'Associations show foreign keys; ReferralLink.customCouponCode is a business reference, not a Coupon FK.',12) + '</svg>';
   fs.writeFileSync(path.join(out,file+'.svg'),svg);
   return '<diagram name="'+esc(title)+'"><mxGraphModel page="1" pageWidth="'+w+'" pageHeight="'+h+'" background="#FFFFFF"><root>'+cells+'</root></mxGraphModel></diagram>';
 }
 const appEdges = [ ['pc','ps','delegates'],['ac','as','delegates'],['dc','ds','delegates'],['mc','ms','delegates'],['ds','da','atomic decision'],['da','rs','transaction-bound issuance'],['da','cg','after commit',[[1050,575],[630,575]]],['ps','db','persistence',[[410,448],[410,948]]],['as','db','persistence',[[850,448],[850,948]]],['ms','db','persistence'],['as','ca','private cache',[[410,448],[410,1197]]] ];
-appEdges.push(['ppc','pps','delegates'], ['pps','db','transaction'], ['ps','sem','semantic preflight']);
+appEdges.push(['ppc','pps','delegates'], ['pps','db','transaction']);
 const modelEdges = [ ['st','us','0..1 store / 0..* staff'],['st','pr','1 store / 0..* products',[[390,84],[1050,84]]],['st','sc','1 store / 0..* partnerships'],['us','de','1 creator / 0..* proposals'],['pr','de','1 product / 0..* proposals'],['de','rl','0..1 / 0..1 VIP link'],['co','cm','1 conversation / 0..* messages'],['st','co','1 store / 0..* conversations',[[20,215],[20,745]]],['pr','ma','0..1 product / 0..* media',[[1250,215],[1250,1010]]],['rl','cu','coupon code lookup (no FK)'] ];
 modelEdges.push(['de','ep','1 / 0..* resources'], ['pr','ep','1 / 0..* scopes'], ['pr','pv','1 / 0..* SKUs'], ['pr','pm','1 / 0..* promotions'], ['pm','pu','1 / 0..* usages'], ['od','pu','1 / 0..* budget records']);
 appEdges.push(['ps','pi','identity guard',[[20,448],[20,1080],[630,1080]]], ['dp','db','read snapshot',[[1050,1070],[630,1070]]]);
 const arrange = (ids, source, height = 210) => ids.map((id,i) => ({...source.find(node => node.id===id),x:40+(i%3)*420,y:110+Math.floor(i/3)*265,h:height}));
 const core = arrange(['st','us','pr','sc','de','rl','co','cm','cu','ma'],domain);
 core[9].x=460;
-const baseApp = arrange(['pc','ac','dc','ps','as','ds','mc','cg','da','ms','db','rs','ca','pi','dp'],app,175);
+const baseApp = arrange(['pc','ac','dc','ps','as','ds','mc','cg','da','ms','db','rs','ca','pi','dp','sem'],app,175);
+appEdges.push(['ps','sem','product embeddings',[[210,550],[1240,550],[1240,1330],[630,1330]]], ['as','sem','profile embeddings',[[850,448],[850,1330],[630,1330]]]);
+modelEdges.push(['us','pr','creator / submitter (0..1 each)']);
 // Preserve the original application page spacing used by its explicit edge gutters.
 baseApp.forEach((node,i)=>{node.y=110+Math.floor(i/3)*250;});
+baseApp.find(node=>node.id==='sem').x=460;
 const originalEdges = appEdges.filter(edge=>baseApp.some(n=>n.id===edge[0])&&baseApp.some(n=>n.id===edge[1]));
 const pricingApp=arrange(['ppc','sem','ps','pps','db','pi'],app,175);
 const contract=arrange(['st','de','ep','cu','rl','pr'],domain);
@@ -117,15 +120,15 @@ function sequence(title, participants, messages, file) {
   return '<diagram name="'+esc(title)+'"><mxGraphModel page="1" pageWidth="'+w+'" pageHeight="'+h+'" background="#FFFFFF"><root>'+cells+'</root></mxGraphModel></diagram>';
 }
 const sequences = [
-  ['Product Submission and Moderation',['Shop / Reviewer','Product UI','ProductsController','ProductsService','Prisma / PostgreSQL'],[
-    [0,1,'Submit product in assigned category'],[1,2,'GET /api/products/identity-check'],[2,3,'findSimilarProducts(actor, role, query)'],[3,4,'Own drafts + public approved catalogue'],[4,1,'Local ONNX cosine >80; user confirms',true],
+  ['Product Submission and Moderation',['Shop / Reviewer','Product UI','ProductsController','ProductsService','Prisma / PostgreSQL','UploadController'],[
+    [0,1,'Submit product in assigned category'],[1,5,'POST /api/upload/product-cover'],[5,1,'Square >=800px; reject invalid cover',true],[1,2,'GET /api/products/identity-check'],[2,3,'findSimilarProducts(actor, role, query)'],[3,4,'Own drafts + public approved catalogue'],[4,1,'Local ONNX cosine >80; user confirms',true],
     [1,2,'POST /api/products'],[2,3,'create(actorId, role, dto)'],[3,4,'Resolve owned or assigned store'],[4,3,'Store and fixed category',true],
-    [3,2,'[invalid category/evidence] reject 400',true],[3,4,'BEGIN; lock SKU/barcode; reject duplicates'],[3,4,'[valid] same transaction: product, variants, media'],[4,1,'COMMIT: DRAFT; not publicly approved',true],
-    [0,1,'System Manager reviews submission'],[1,2,'PATCH /api/products/:id/moderation'],[2,3,'moderateProduct(actorId, id, dto)'],[3,4,'Transaction: status + audit + notification'],[4,1,'APPROVED or REJECTED with reason',true],
+    [3,2,'[invalid category/evidence] reject 400',true],[3,4,'BEGIN; lock SKU/barcode; reject duplicates'],[3,4,'[valid] product + maker IDs + variants + media'],[4,1,'COMMIT: DRAFT; not publicly approved',true],
+    [0,1,'System Manager reviews submission'],[1,2,'PATCH /api/products/:id/moderation'],[2,3,'moderateProduct(actorId, id, dto)'],[3,4,'BEGIN; row lock; re-read current queue'],[3,2,'[own maker / already reviewed] 403 / 409',true],[3,4,'Decision + audit + notification; COMMIT'],[4,1,'APPROVED or REJECTED with reason',true],
   ],'sequence-product'],
-  ['KOC Recommendation and Private Cache',['Shop','AI Drawer','AI Controller','AI Service','Cache','Prisma / PostgreSQL'],[
+  ['KOC Recommendation and Private Cache',['Shop','AI Drawer','AI Controller','AI Service','Cache','Prisma / PostgreSQL','SemanticEmbeddingService'],[
     [0,1,'Open drawer without losing product context'],[1,2,'GET /api/ai/recommend-kols/:productId'],[2,3,'getRecommendedKols(query, actor)'],[3,5,'Read approved product; verify store access'],[5,3,'Product and current authorization',true],
-    [3,1,'[foreign store] 403; never read cache',true],[3,4,'[authorized] key: actor + ALL filters'],[4,3,'Cached result or miss',true],[3,5,'[miss] verified profiles, valid clicks, sales'],[5,3,'Measured facts; no fabricated fallback',true],[3,4,'Cache cold-start/performance scores'],[3,1,'Top KOCs, evidence and data confidence',true],
+    [3,1,'[foreign store] 403; never read cache',true],[3,4,'[authorized] key: actor + ALL filters'],[4,3,'Cached result or miss',true],[3,5,'[miss] verified profiles, valid clicks, sales'],[5,3,'Measured facts; no fabricated fallback',true],[3,6,'rank(category, public Bio/tags/channels)'],[6,3,'Local cosine scores for all profiles',true],[3,4,'Cache: cold70/30 or warm35/25/20/20'],[3,1,'Top KOCs, evidence and data confidence',true],
   ],'sequence-ai'],
   ['VIP Scopes and Independent Exception Approval',['Shop / KOC','VIP Form','DealsController','DealsService','Activation policy','PostgreSQL','Referral service','Socket.IO','Admin'],[
     [0,1,'Choose scope, revenue KPI, rate 10-25%'],[1,2,'POST /offers OR /proposals'],[2,3,'Validate Store, KYC and scope'],[3,5,'Lock Store/KOC; persist pending card'],[3,7,'After commit: new_message'],
