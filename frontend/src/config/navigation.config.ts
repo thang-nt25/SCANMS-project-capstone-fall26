@@ -99,7 +99,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/return-disputes', label: 'Khiếu nại đổi trả', icon: RotateCcw, section: 'KIỂM SOÁT VẬN HÀNH & KHIẾU NẠI' },
       { path: '/admin/affiliate-oversight', label: 'Giám sát tiếp thị', icon: Link2, section: 'KIỂM SOÁT VẬN HÀNH & KHIẾU NẠI' },
       { path: '/admin/fraud-sentinel', label: 'An ninh gian lận', icon: ShieldAlert, section: 'AN NINH & BẢO MẬT' },
-      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, section: 'AN NINH & BẢO MẬT' },,
+      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, section: 'AN NINH & BẢO MẬT' },
       ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, section: 'CÔNG CỤ NỘI BỘ' }] : [])
     ],
   },
@@ -118,7 +118,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
       { path: '/admin/return-disputes', label: 'Khiếu nại đổi trả', icon: RotateCcw, section: 'KIỂM SOÁT VẬN HÀNH' },
       { path: '/admin/affiliate-oversight', label: 'Giám sát tiếp thị', icon: Link2, section: 'GIÁM SÁT TIẾP THỊ' },
       { path: '/admin/fraud-sentinel', label: 'Cảnh báo gian lận', icon: ShieldAlert, section: 'AN NINH & TRA CỨU' },
-      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, section: 'AN NINH & TRA CỨU' },,
+      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, section: 'AN NINH & TRA CỨU' },
       ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, section: 'CÔNG CỤ NỘI BỘ' }] : [])
     ],
   },

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../services/api';
-import { Sparkles, Plus, Ticket, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
+import { Sparkles, Megaphone, Send, Search, UserPlus, Check, Loader2, X } from 'lucide-react';
 import type { Campaign } from '@/types/campaigns.types';
 import { CreateCampaignModal } from '../../components/common/CreateCampaignModal';
 
