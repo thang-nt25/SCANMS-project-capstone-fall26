@@ -14,7 +14,7 @@ Người demo: Nguyễn Phú Quý. Đối chiếu với `SCANMS_REALIGNMENT_BLUE
 | 4.6 Giao GHN | Báo giá, dữ liệu đóng gói, tạo tracking và cập nhật trạng thái; có chế độ mô phỏng | Dùng mock/staging; không nói có bưu tá thật nếu chỉ mô phỏng |
 | 4.7 Đổi/hoàn | Khách gửi bằng chứng, Shop duyệt, đặt lấy hàng trả, Manager xác định lỗi, Shop kiểm tra; đổi 1:1 trừ tồn kho và bảo lưu thu nhập; hoàn vào ví SCANMS thành công mới clawback, có retry khi `PENDING` | Chuẩn bị **hai đơn đã giao riêng biệt** cho nhánh đổi và nhánh hoàn |
 
-Kiểm tra kỹ thuật: build backend/frontend thành công; 152/152 unit tests backend trọng tâm (link/QR, self-referral, thù lao, GHN, lấy hàng trả, đổi/hoàn, đơn hàng) qua. Kiểm tra frontend liên quan: 28 qua, 2 browser tests bị skip theo cấu hình môi trường. API health trả `UP`, database `CONNECTED`; frontend trả HTTP 200. Đây chưa phải bằng chứng rằng toàn bộ thao tác nhiều tài khoản đã được chạy lại từ đầu đến cuối trên DB hiện tại.
+Kiểm tra kỹ thuật: build backend/frontend thành công; 152/152 unit tests backend trọng tâm (link/QR, self-referral, thù lao, GHN, lấy hàng trả, đổi/hoàn, đơn hàng) qua. Kiểm tra frontend liên quan: 28 unit tests và 2 Chrome headless browser tests qua (mua ngay/giỏ hàng/áp mã/đặt đơn; báo giá và retry phí ship). API health trả `UP`, database `CONNECTED`; frontend trả HTTP 200. Đây chưa phải bằng chứng rằng toàn bộ thao tác nhiều tài khoản đã được chạy lại từ đầu đến cuối trên DB hiện tại.
 
 ## Chặn demo số liệu theo blueprint
 
@@ -22,14 +22,25 @@ Kiểm tra kỹ thuật: build backend/frontend thành công; 152/152 unit tests
 
 Để có số minh họa v4: dùng một **database demo riêng**, chạy migration và seed v4 theo `backend/prisma/seeds/README.md`, rồi chạy `seed:check`. Không reset hoặc seed đè database nhóm `public`; nó đang có đơn, ví và dữ liệu tester. Nếu buổi review dùng DB hiện tại, trình bày số tiền thực tế trên màn hình, tính `giá gốc của đơn × tỷ lệ đã chọn`, và bỏ ví dụ cứng 450.000₫ → 72.000₫.
 
+### Đường demo đã kiểm tra trên DB hiện tại
+
+Người dùng chọn dùng DB hiện tại và trình bày số thực tế. Bốn tài khoản trong `frontend/.env` (`VITE_DEMO_CUSTOMER/KOL/SHOP/MANAGER_*`) đều đăng nhập API thành công. Không chép mật khẩu từ file này vào tài liệu hoặc slide.
+
+- KOL demo: **Lê Hoàng Yến Nhi** (`kol.bronze@scanms.vn`). Link serum đang `ACTIVE`: `http://localhost:5173/r/R_KOLBRONZE_DDC5`. Mã cùng KOL `YENNHISKIN` validate thành công với chính tài khoản Customer demo: **280.000₫ × 5% = 14.000₫ giảm**, còn **266.000₫ tiền hàng**. API GHN TEST báo cước **21.001₫** cho địa chỉ Customer đang lưu, nên tổng dự kiến **287.001₫**, nhưng phải đọc lại cước trên checkout lúc demo. Thu nhập của hai đơn đã giao bên dưới là **28.000₫/đơn (10% giá gốc)**. Khi tạo đơn mới, phải đọc lại tỷ lệ và số tiền trên chính đơn đó.
+- Customer demo: `customer.an@scanms.vn`. **Đơn A** `DH-2026-C58C204C` và **đơn B** `DH-2026-4EEB3F8E` đều là serum Sora, `DELIVERED`, chưa có hồ sơ đổi trả, mỗi đơn có thu nhập KOL `PENDING` **28.000₫**. Dùng A cho **đổi hàng** và B cho **hoàn vào ví + clawback**. Chúng được giao ngày 29/10 và 28/10/2026, còn trong hạn đổi trả tại ngày lập báo cáo.
+- Shop demo: `manager.sora@scanms.vn`, vào `/merchant/orders` rồi tìm chính xác mã đơn A/B. Manager demo: `manager@scanms.vn`, vào `/admin/return-disputes` để xác định bên chịu trách nhiệm. Cần cấu hình **kho nhận hàng trả của Shop** trên trang chi tiết yêu cầu trước khi Customer đặt lấy hàng; hiện kho chưa được cấu hình. Môi trường local đã bật mock lấy hàng trả và mô phỏng vận chuyển; không tạo chuyến vận chuyển thật.
+- Bằng chứng ảnh và video mở hộp là bắt buộc khi Customer gửi yêu cầu. Chuẩn bị file **có nhãn TEST** trước buổi review. Hai đơn đã giao vẫn chưa bị thay đổi bởi lần kiểm tra chỉ đọc này.
+
+`THAONHI16` vẫn validate được trên serum nhưng thuộc KOL **Hoàng Thảo Nhi**, khác tài khoản KOL demo. Nếu dùng `THAONHI16`, không mở ví của Yến Nhi để chứng minh thu nhập đơn đó. `SCANMSFREESHIP` hiện không xuất hiện trong danh sách mã công khai, nên bỏ phần freeship khỏi demo DB hiện tại.
+
 ## Thứ tự rehearsal trên UI
 
-1. Mở `http://localhost:5173`, đăng nhập KOL có `THAONHI16`, vào `/collaborator/marketing`. Chỉ link, QR và mã KOL; mở link trong cửa sổ Customer khác.
-2. Customer thêm serum vào giỏ, áp `THAONHI16`, chọn COD, đặt hàng. **Chỉ trên DB v4**, nếu kiểm tra freeship thì dùng một số điện thoại đủ điều kiện và kiểm tra `SCANMSFREESHIP` riêng; mã này không thay mã KOL.
+1. Mở `http://localhost:5173`, đăng nhập KOL Yến Nhi, vào `/collaborator/marketing`. Chỉ link, QR và mã `YENNHISKIN`; mở link trong cửa sổ Customer khác.
+2. Customer thêm serum vào giỏ, áp `YENNHISKIN`, chọn COD, đặt hàng nếu muốn chứng minh 4.1–4.5 bằng đơn mới. Trên DB hiện tại bỏ phần freeship. Để tiết kiệm thời gian cho 4.7, dùng hai đơn A/B đã giao ở trên.
 3. Shop vào `/merchant/orders`, mở đúng đơn để chỉ nguồn KOL, khoản thu nhập chờ xử lý; đóng gói và tạo vận đơn GHN trong mock/staging, cập nhật đến `DELIVERED`.
 4. Dùng chính tài khoản KOL mua qua link/mã của mình để chứng minh `SELF_REFERRAL_` và thu nhập bằng 0. Đây là **đơn khác** với đơn chứng minh thu nhập hợp lệ.
-5. Với **đơn đã giao A**, Customer gửi yêu cầu đổi kèm ảnh/video → Shop duyệt → Customer đặt lấy hàng trả → Shop mô phỏng/đồng bộ hàng về → Manager mở `/admin/return-disputes` xác định `LOGISTICS_FAULT` → Shop kiểm tra và gửi hàng thay thế → kiểm tra thu nhập KOL không bị đảo.
-6. Với **đơn đã giao B**, Customer yêu cầu hoàn → Shop nhận/kiểm tra và chọn hoàn vào ví. Chỉ sau `refund=SUCCEEDED` mới chỉ `order.refundedAmount`, `commission=REVERSED`, bút toán thu hồi. Nếu `PENDING`, Manager dùng nút **Thử hoàn tiền vào ví khách** trên chi tiết hồ sơ; chưa được nói đã clawback.
+5. Với **đơn A `DH-2026-C58C204C`**, Customer gửi yêu cầu đổi kèm ảnh/video → Shop duyệt và lưu kho trả → Customer đặt lấy hàng trả → Shop mô phỏng/đồng bộ hàng về → Manager mở `/admin/return-disputes` xác định `LOGISTICS_FAULT` → Shop kiểm tra và ghi vận đơn hàng thay thế → kiểm tra **28.000₫** thu nhập KOL không bị đảo.
+6. Với **đơn B `DH-2026-4EEB3F8E`**, Customer yêu cầu hoàn → Shop nhận/kiểm tra và chọn hoàn vào ví. Chỉ sau `refund=SUCCEEDED` mới chỉ `order.refundedAmount`, `commission=REVERSED`, bút toán thu hồi **28.000₫**. Nếu `PENDING`, Manager dùng nút **Thử hoàn tiền vào ví khách** trên chi tiết hồ sơ; chưa được nói đã clawback.
 
 Chuẩn bị sẵn hai đơn đã giao, tồn kho hàng bù, ảnh/video unboxing và bốn phiên đăng nhập riêng (KOL, Customer, Shop, Manager). Tại mỗi bước dùng mã đơn cụ thể trên màn hình để tránh mở nhầm hồ sơ.
 
