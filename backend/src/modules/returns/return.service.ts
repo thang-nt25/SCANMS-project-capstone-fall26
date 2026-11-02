@@ -1329,18 +1329,32 @@ export class ReturnService {
   async escalateShopRejection(userId: string, role: UserRole, id: string, input: ShopEscalationInput) {
     const detail = await this.scopedDetail(userId, role, id);
     this.requireShop(userId, role, detail);
-    if (detail.status !== ReturnRequestStatus.SHOP_REJECTED || detail.dispute) {
-      throw new ConflictException('Chỉ có thể chuyển hồ sơ đã bị Shop từ chối và chưa có khiếu nại');
-    }
+    const startDispute = detail.status === ReturnRequestStatus.SHOP_REJECTED && !detail.dispute;
+    const attachToDispute = detail.status === ReturnRequestStatus.DISPUTED && detail.dispute?.status === 'OPEN';
+    if (!startDispute && !attachToDispute)
+      throw new ConflictException('Hồ sơ không ở trạng thái có thể gửi bằng chứng cho Manager');
+    if (detail.events.some((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED'))
+      throw new ConflictException('Shop đã gửi bằng chứng cho hồ sơ này');
     await this.prisma.$transaction(async (tx) => {
-      await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
-      await tx.dispute.create({
-        data: {
-          returnRequestId: id,
-          reason: 'SHOP_REQUESTED_REVIEW',
-          details: input.details,
-        },
-      });
+      if (attachToDispute) {
+        const locked = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+        `;
+        if (locked.length !== 1) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+        const current = await tx.returnRequest.findUnique({
+          where: { id },
+          select: { status: true, dispute: { select: { status: true } },
+            events: { where: { type: 'SHOP_EVIDENCE_SUBMITTED' }, select: { id: true } } },
+        });
+        if (current?.status !== ReturnRequestStatus.DISPUTED || current.dispute?.status !== 'OPEN' || current.events.length)
+          throw new ConflictException('Hồ sơ đã được xử lý hoặc Shop đã gửi bằng chứng; hãy tải lại');
+      }
+      if (startDispute) {
+        await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
+        await tx.dispute.create({ data: {
+          returnRequestId: id, reason: 'SHOP_REQUESTED_REVIEW', details: input.details,
+        } });
+      }
       await tx.returnEvent.create({
         data: {
           returnRequestId: id,
@@ -1349,11 +1363,13 @@ export class ReturnService {
           data: { details: input.details, evidenceUrls: input.evidenceUrls },
         },
       });
-      const changed = await tx.order.updateMany({
-        where: { id: detail.orderId, status: detail.order.status },
-        data: { status: OrderStatus.DISPUTED },
-      });
-      if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      if (startDispute) {
+        const changed = await tx.order.updateMany({
+          where: { id: detail.orderId, status: detail.order.status },
+          data: { status: OrderStatus.DISPUTED },
+        });
+        if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      }
       await this.notify(tx, detail, detail.customerId, 'RETURN_DISPUTED',
         'Hồ sơ đổi trả được chuyển cho System Manager',
         `Đơn ${detail.order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager xem xét. Chưa có kết luận bên chịu trách nhiệm.`);
@@ -1476,6 +1492,45 @@ export class ReturnService {
       take: 100,
     });
     return rows.map((row) => this.present(row, true));
+  }
+
+  async listRejectedForReview(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xem hồ sơ Shop đã từ chối');
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { status: ReturnRequestStatus.SHOP_REJECTED, dispute: { is: null } },
+      include: detailInclude,
+      orderBy: { shopRespondedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async openRejectedReview(userId: string, role: UserRole, id: string) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được mở phân xử');
+    const detail = await this.scopedDetail(userId, role, id);
+    if (detail.status !== ReturnRequestStatus.SHOP_REJECTED || detail.dispute)
+      throw new ConflictException('Hồ sơ không còn ở trạng thái Shop đã từ chối');
+    await this.prisma.$transaction(async (tx) => {
+      await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
+      await tx.dispute.create({ data: {
+        returnRequestId: id,
+        reason: 'MANAGER_REVIEW_SHOP_REJECTION',
+        details: detail.shopResponse || 'Manager mở phân xử hồ sơ sau khi Shop từ chối yêu cầu đổi trả.',
+      } });
+      const changed = await tx.order.updateMany({
+        where: { id: detail.orderId, status: detail.order.status },
+        data: { status: OrderStatus.DISPUTED },
+      });
+      if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi; hãy tải lại');
+      for (const recipient of new Set([detail.customerId, detail.order.store.ownerId])) {
+        await this.notify(tx, detail, recipient, 'RETURN_DISPUTED',
+          'Manager đang xem xét quyết định đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: hồ sơ Shop từ chối đã được chuyển sang phân xử. Chưa có kết luận trách nhiệm.`);
+      }
+    });
+    return this.getOne(userId, role, id);
   }
 
   async updateGhnClaim(userId: string, role: UserRole, id: string, input: GhnClaimActionInput) {

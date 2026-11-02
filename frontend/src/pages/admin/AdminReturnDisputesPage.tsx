@@ -30,6 +30,11 @@ export default function AdminReturnDisputesPage() {
     queryFn: returnService.getActiveReturns,
     refetchInterval: 30_000,
   });
+  const rejectedReturns = useQuery({
+    queryKey: ['rejected-return-reviews'],
+    queryFn: returnService.getRejectedForReview,
+    refetchInterval: 30_000,
+  });
   const ghnClaims = useQuery({
     queryKey: ['ghn-claims'],
     queryFn: returnService.getGhnClaims,
@@ -47,6 +52,17 @@ export default function AdminReturnDisputesPage() {
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || err?.message || 'Không thể lưu quyết định. Vui lòng thử lại.');
     },
+  });
+  const openReview = useMutation({
+    mutationFn: returnService.openRejectedReview,
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['rejected-return-reviews'] }),
+        client.invalidateQueries({ queryKey: ['return-disputes'] }),
+      ]);
+      toast.success('Đã mở hồ sơ phân xử cho Manager.');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Không thể mở phân xử.'),
   });
   const rows = disputes.data ?? [];
   const selected: ReturnDisputeRecord | undefined = rows.find((item) => item.id === selectedId) ?? rows[0];
@@ -67,12 +83,33 @@ export default function AdminReturnDisputesPage() {
           <h1 className="mt-1 text-2xl font-black">Khiếu nại trả hàng đang mở</h1>
           <p className="mt-1 text-sm text-[#7D715E]">Đối chiếu lịch sử, bằng chứng và kết quả kiểm tra trước khi ra quyết định.</p>
         </div>
-        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); }}
+        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); void rejectedReturns.refetch(); }}
           disabled={disputes.isFetching || stalled.isFetching}
           className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm disabled:opacity-50">
           <RefreshCw className="h-4 w-4" /> Làm mới
         </button>
       </header>
+
+      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Shop đã từ chối đổi trả">
+        <h2 className="font-bold">Shop đã từ chối · Chờ Manager xem xét</h2>
+        <p className="mt-1 text-xs text-[#7D715E]">Bao gồm cả đơn bị từ chối trước khi có nút gửi bằng chứng. Manager xem hồ sơ rồi mở phân xử khi cần; việc mở phân xử chưa phải kết luận Shop hay GHN có lỗi.</p>
+        {rejectedReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải đơn Shop từ chối…</p>}
+        {rejectedReturns.error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">Không tải được đơn Shop từ chối.</p>}
+        {!rejectedReturns.isLoading && !rejectedReturns.error && rejectedReturns.data?.length === 0 && <p className="mt-3 text-sm text-[#7D715E]">Không có đơn Shop từ chối đang chờ xem xét.</p>}
+        {!!rejectedReturns.data?.length && <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {rejectedReturns.data.map((item) => <div key={item.id} className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+            <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
+            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName}</span>
+            {item.shopResponse && <p className="mt-2 line-clamp-2 text-xs">Shop: {item.shopResponse}</p>}
+            <p className="mt-2 text-xs text-[#7D715E]">Bằng chứng Shop: {item.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').flatMap((event) => event.data?.evidenceUrls || []).length} tệp</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link to={`/admin/returns/${item.id}`} className="rounded-lg border border-[#EEDFC6] px-3 py-2 text-xs font-semibold text-[#8A6736]">Xem hồ sơ</Link>
+              <button type="button" disabled={openReview.isPending} onClick={() => openReview.mutate(item.id)}
+                className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Mở phân xử</button>
+            </div>
+          </div>)}
+        </div>}
+      </section>
 
       <section className="rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
         <h2 className="font-bold">Hồ sơ đổi trả đang xử lý</h2>

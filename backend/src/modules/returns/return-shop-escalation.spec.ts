@@ -6,14 +6,16 @@ import { shopEscalationSchema } from './return.schemas';
 describe('Shop evidence escalation', () => {
   const detail = {
     id: 'return-1', orderId: 'order-1', customerId: 'customer-1',
-    status: ReturnRequestStatus.SHOP_REJECTED, dispute: null,
+    status: ReturnRequestStatus.SHOP_REJECTED, dispute: null, events: [],
     order: { status: OrderStatus.COMPLETED, externalOrderSn: 'DH-1', store: { ownerId: 'shop-1' } },
   };
   const input = { details: 'Kiện hàng còn nguyên khi bàn giao cho GHN, có ảnh niêm phong.', evidenceUrls: ['https://example.test/packing.jpg'] };
 
   function setup(overrides = {}) {
     const tx = {
-      returnRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      $queryRaw: jest.fn().mockResolvedValue([{ id: detail.id }]),
+      returnRequest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue({ ...detail, ...overrides }) },
       returnEvent: { create: jest.fn().mockResolvedValue({}) },
       dispute: { create: jest.fn().mockResolvedValue({}) },
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -58,5 +60,16 @@ describe('Shop evidence escalation', () => {
     const customer = setup();
     await expect(customer.service.escalateShopRejection('customer-1', UserRole.CUSTOMER, detail.id, input))
       .rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('lets Shop attach evidence after Manager has already opened the dispute', async () => {
+    const { service, tx } = setup({ status: ReturnRequestStatus.DISPUTED, dispute: { id: 'dispute-1', status: 'OPEN' } });
+    await service.escalateShopRejection('shop-1', UserRole.SHOP_MANAGER, detail.id, input);
+    expect(tx.returnRequest.updateMany).not.toHaveBeenCalled();
+    expect(tx.dispute.create).not.toHaveBeenCalled();
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
+    expect(tx.returnEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      type: 'SHOP_EVIDENCE_SUBMITTED', data: input,
+    }) });
   });
 });

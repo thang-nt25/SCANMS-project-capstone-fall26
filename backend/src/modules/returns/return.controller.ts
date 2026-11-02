@@ -249,6 +249,20 @@ export class ReturnDisputeAdminController {
     return this.returns.listGhnClaims(role);
   }
 
+  @Get('rejected')
+  listRejected(@CurrentUser('role') role: UserRole) {
+    return this.returns.listRejectedForReview(role);
+  }
+
+  @Post('rejected/:id/open-review')
+  openRejectedReview(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.openRejectedReview(userId, role, id);
+  }
+
   @Patch('ghn-claims/:id')
   updateGhnClaim(
     @CurrentUser('id') userId: string,

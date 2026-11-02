@@ -283,7 +283,9 @@ function ShopEscalation({ request }: { request: ReturnDetail }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const action = useReturnAction(request.id, returnService.escalateShopRejection);
-  if (request.status !== 'SHOP_REJECTED' || request.dispute) return null;
+  const canSend = (request.status === 'SHOP_REJECTED' && !request.dispute) ||
+    (request.status === 'DISPUTED' && request.dispute?.status === 'OPEN');
+  if (!canSend || request.events.some((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED')) return null;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -307,7 +309,7 @@ function ShopEscalation({ request }: { request: ReturnDetail }) {
     </label>
     {!!files.length && <p className="text-xs text-[#7D715E]">Đã chọn: {files.map((file) => file.name).join(', ')}</p>}
     <button type="submit" disabled={uploading || action.isPending || details.trim().length < 20 || files.length === 0} className={primary}>
-      {uploading || action.isPending ? 'Đang gửi hồ sơ…' : 'Chuyển bằng chứng cho Manager'}
+      {uploading || action.isPending ? 'Đang gửi hồ sơ…' : request.status === 'DISPUTED' ? 'Bổ sung bằng chứng cho Manager' : 'Chuyển bằng chứng cho Manager'}
     </button>
     <ErrorText error={error || action.error} />
   </form>;

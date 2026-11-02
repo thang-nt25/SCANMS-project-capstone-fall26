@@ -2280,10 +2280,10 @@ export default function OrdersManagementPage({
                   {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>}
                 </div>
                 {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response"><span>Phản hồi của gian hàng</span><p>{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
-                {selectedOrderDetails.returnRequest.status === 'SHOP_REJECTED' && <Link
+                {['SHOP_REJECTED', 'DISPUTED'].includes(selectedOrderDetails.returnRequest.status) && <Link
                   to={`/merchant/returns/${selectedOrderDetails.returnRequest.id}`}
                   className="inline-block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 font-semibold text-[#8A6736]">
-                  Gửi bằng chứng và chuyển Manager xem xét →
+                  Xem hồ sơ và gửi bằng chứng cho Manager →
                 </Link>}
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="space-y-2">

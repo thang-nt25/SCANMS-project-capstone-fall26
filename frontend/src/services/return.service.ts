@@ -166,6 +166,11 @@ export const returnService = {
   getGhnClaims: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/ghn-claims', {
     headers: { 'x-skip-cache': 'true' },
   })),
+  getRejectedForReview: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/rejected', {
+    headers: { 'x-skip-cache': 'true' },
+  })),
+  openRejectedReview: async (id: string) => unwrap<ReturnDetail>(
+    await api.post(`/admin/return-disputes/rejected/${id}/open-review`)),
   updateGhnClaim: async (id: string, data: {
     action: 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
     ghnReference?: string; claimedAmount?: number; approvedAmount?: number;
