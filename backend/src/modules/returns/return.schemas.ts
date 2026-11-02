@@ -71,6 +71,13 @@ export const disputeSchema = z
   })
   .strict();
 
+export const shopEscalationSchema = z.object({
+  details: text(20, 2000),
+  evidenceUrls: z.array(z.string().url().max(1000).refine((url) => url.startsWith('https://'))).min(1).max(5),
+}).strict();
+
+export type ShopEscalationInput = z.infer<typeof shopEscalationSchema>;
+
 export const resolveDisputeSchema = z
   .object({
     ruling: z.enum(['APPROVE_REFUND', 'APPROVE_EXCHANGE', 'UPHOLD_SHOP']),

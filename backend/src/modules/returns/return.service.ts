@@ -35,6 +35,7 @@ import type {
   LiabilityAssessmentInput,
   ResolveDisputeInput,
   ShipmentInput,
+  ShopEscalationInput,
   WarehouseInput,
 } from './return.schemas';
 
@@ -1295,6 +1296,50 @@ export class ReturnService {
         'Khách đã xác nhận hoàn tất đổi trả',
         `Đơn ${detail.order.externalOrderSn} đã hoàn tất.`,
       );
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async escalateShopRejection(userId: string, role: UserRole, id: string, input: ShopEscalationInput) {
+    const detail = await this.scopedDetail(userId, role, id);
+    this.requireShop(userId, role, detail);
+    if (detail.status !== ReturnRequestStatus.SHOP_REJECTED || detail.dispute) {
+      throw new ConflictException('Chỉ có thể chuyển hồ sơ đã bị Shop từ chối và chưa có khiếu nại');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
+      await tx.dispute.create({
+        data: {
+          returnRequestId: id,
+          reason: 'SHOP_REQUESTED_REVIEW',
+          details: input.details,
+        },
+      });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'SHOP_EVIDENCE_SUBMITTED',
+          data: { details: input.details, evidenceUrls: input.evidenceUrls },
+        },
+      });
+      const changed = await tx.order.updateMany({
+        where: { id: detail.orderId, status: detail.order.status },
+        data: { status: OrderStatus.DISPUTED },
+      });
+      if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      await this.notify(tx, detail, detail.customerId, 'RETURN_DISPUTED',
+        'Hồ sơ đổi trả được chuyển cho System Manager',
+        `Đơn ${detail.order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager xem xét. Chưa có kết luận bên chịu trách nhiệm.`);
+      const managers = await tx.user.findMany({
+        where: { role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] }, isActive: true, isDeleted: false },
+        select: { id: true },
+      });
+      for (const manager of managers) {
+        await this.notify(tx, detail, manager.id, 'RETURN_DISPUTED',
+          'Shop yêu cầu xác minh hồ sơ đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: kiểm tra bằng chứng Shop và khách trước khi kết luận lỗi vận chuyển hay hàng hóa.`);
+      }
     });
     return this.getOne(userId, role, id);
   }

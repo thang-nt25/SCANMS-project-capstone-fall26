@@ -89,7 +89,7 @@ export interface ReturnDetail {
     ruling?: string | null;
     resolutionNotes?: string | null;
   } | null;
-  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string; source?: string; originalTrackingNumber?: string; replacementTrackingNumber?: string; status?: string } | null }>;
+  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string; details?: string; evidenceUrls?: string[]; source?: string; originalTrackingNumber?: string; replacementTrackingNumber?: string; status?: string } | null }>;
 }
 
 export interface ReturnDisputeRecord {
@@ -143,6 +143,8 @@ export const returnService = {
   confirmCompletion: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/confirmation`)),
   openDispute: async (id: string, data: { reason: string; details: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/disputes`, data)),
+  escalateShopRejection: async (id: string, data: { details: string; evidenceUrls: string[] }) =>
+    unwrap<ReturnDetail>(await api.post(`/returns/${id}/shop-escalation`, data)),
   getAdminDisputes: async () => unwrap<ReturnDisputeRecord[]>(await api.get('/admin/return-disputes', {
     headers: { 'x-skip-cache': 'true' },
   })),

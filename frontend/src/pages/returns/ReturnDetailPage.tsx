@@ -9,6 +9,7 @@ import { PickupBookingForm } from '../../components/returns/PickupBookingForm';
 import { DisputeModal } from '../../components/returns/DisputeModal';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { carrierStatusLabel } from '@/utils/return-status.utils';
+import { uploadService } from '../../services/upload.service';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -269,6 +270,42 @@ function ShopActions({ request }: { request: ReturnDetail }) {
   </div>;
 }
 
+function ShopEscalation({ request }: { request: ReturnDetail }) {
+  const [details, setDetails] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const action = useReturnAction(request.id, returnService.escalateShopRejection);
+  if (request.status !== 'SHOP_REJECTED' || request.dispute) return null;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setUploading(true);
+    try {
+      const evidenceUrls = await Promise.all(files.map(async (file) =>
+        (await uploadService.uploadMedia(file, `scanms/returns/${request.id}/shop-evidence`)).url));
+      await action.mutateAsync({ details: details.trim(), evidenceUrls });
+    } catch (cause) { setError(cause); }
+    finally { setUploading(false); }
+  }
+  return <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+    <h2 className="font-bold">Gửi bằng chứng cho System Manager</h2>
+    <p className="text-sm text-[#7D715E]">Nếu Shop cho rằng hàng vỡ trong lúc GHN vận chuyển, gửi ảnh đóng gói, bàn giao, biên bản hoặc video. Manager sẽ đối chiếu bằng chứng của cả hai bên; Shop chưa được tự quy lỗi cho GHN.</p>
+    <p className="text-xs text-[#7D715E]">Vận đơn GHN gốc: {request.order.outboundGhnTrackingNumber || 'Chưa có; Manager cần xác minh trước khi kết luận lỗi GHN'}.</p>
+    <textarea required minLength={20} maxLength={2000} rows={4} value={details} onChange={(event) => setDetails(event.target.value)}
+      placeholder="Mô tả lúc đóng gói, bàn giao và căn cứ cho rằng lỗi thuộc bên vận chuyển" className={field} />
+    <label className="block text-sm font-semibold">Ảnh hoặc video bằng chứng (1–5 tệp)
+      <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple
+        onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 5))} className={`${field} font-normal`} />
+    </label>
+    {!!files.length && <p className="text-xs text-[#7D715E]">Đã chọn: {files.map((file) => file.name).join(', ')}</p>}
+    <button type="submit" disabled={uploading || action.isPending || details.trim().length < 20 || files.length === 0} className={primary}>
+      {uploading || action.isPending ? 'Đang gửi hồ sơ…' : 'Chuyển bằng chứng cho Manager'}
+    </button>
+    <ErrorText error={error || action.error} />
+  </form>;
+}
+
 function AdminActions({ request }: { request: ReturnDetail }) {
   const [liability, setLiability] = useState<'' | 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('');
   const [notes, setNotes] = useState('');
@@ -392,7 +429,16 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
                 className="text-sm font-medium text-[#B88E4F] underline">Video mở hộp</a>}
             </div>
           </section>
-          {mode === 'shop' ? <ShopActions request={detail.data} /> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
+          {detail.data.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').map((event) => <section key={event.id}
+            className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+            <h2 className="font-bold">Bằng chứng Shop gửi Manager</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm">{event.data?.details}</p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {event.data?.evidenceUrls?.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"
+                className="text-sm font-semibold text-[#8A6736] underline">Tệp bằng chứng {index + 1}</a>)}
+            </div>
+          </section>)}
+          {mode === 'shop' ? <><ShopEscalation request={detail.data} /><ShopActions request={detail.data} /></> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
             <><AdminRefundRetry request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>

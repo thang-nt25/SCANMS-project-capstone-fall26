@@ -125,6 +125,12 @@ export default function AdminReturnDisputesPage() {
               <h2 className="text-lg font-bold">Hồ sơ #{selected.returnRequest.order.externalOrderSn}</h2></div>
             <p className="mt-3 text-sm"><strong>Lý do khiếu nại:</strong> {selected.reason}</p>
             <p className="mt-1 whitespace-pre-wrap text-sm">{selected.details}</p>
+            {selected.reason === 'SHOP_REQUESTED_REVIEW' && <p className="mt-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm">Shop đề nghị Manager xác minh sau khi từ chối. Đây là ý kiến của Shop, chưa phải kết luận lỗi GHN.</p>}
+            {selected.returnRequest.shopResponse && <p className="mt-2 text-sm"><strong>Phản hồi Shop gửi khách:</strong> {selected.returnRequest.shopResponse}</p>}
+            {selected.returnRequest.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').map((event) => <div key={event.id} className="mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm">
+              <strong>Bằng chứng Shop:</strong> <span className="whitespace-pre-wrap">{event.data?.details}</span>
+              <div className="mt-2 flex flex-wrap gap-3">{event.data?.evidenceUrls?.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="font-semibold text-[#8A6736] underline">Tệp Shop {index + 1}</a>)}</div>
+            </div>)}
             {selected.returnRequest.inspectionNotes && <p className="mt-3 whitespace-pre-wrap rounded-xl bg-[#F3EFE6] p-3 text-sm">
               <strong>Kết quả kiểm tra của Shop:</strong> {selected.returnRequest.inspectionNotes}</p>}
             {selected.returnRequest.customerShipment && <p className="mt-3 text-sm">
