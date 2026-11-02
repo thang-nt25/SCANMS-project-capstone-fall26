@@ -18,7 +18,7 @@ Kiểm tra kỹ thuật: build backend/frontend thành công; 152/152 unit tests
 
 ## Chặn demo số liệu theo blueprint
 
-`npm.cmd run seed:check` kết luận database Supabase đang cấu hình **chưa có dataset `scanms-capstone-2026-v4`**. API thực tế trả serum `SKIN-VTC15` giá **280.000₫**, mã `THAONHI16` giảm **10%** và validate thành công cho serum; danh sách mã công khai hiện **không có `SCANMSFREESHIP`**. Seed v4 quy định serum **450.000₫**, mã giảm **5%**, deal **16%** tạo thu nhập **72.000₫** và có mã freeship. Không nói 72.000₫ hoặc freeship 3 lượt là kết quả đang chạy nếu chưa nạp v4 hoặc chưa nhìn thấy đúng trên UI.
+`npm.cmd run seed:check` kết luận database Supabase đang cấu hình **chưa có dataset `scanms-capstone-2026-v4`**. `seed:audit` thấy **713 đơn hàng** đang tồn tại và **7 migration đã ghi trong DB nhưng thiếu file ở nhánh hiện tại**. API thực tế trả serum `SKIN-VTC15` giá **280.000₫**, mã `THAONHI16` giảm **10%** và validate thành công cho serum; danh sách mã công khai hiện **không có `SCANMSFREESHIP`**. Seed v4 quy định serum **450.000₫**, mã giảm **5%**, deal **16%** tạo thu nhập **72.000₫** và có mã freeship. Không nói 72.000₫ hoặc freeship 3 lượt là kết quả đang chạy nếu chưa nạp v4 hoặc chưa nhìn thấy đúng trên UI.
 
 Để có số minh họa v4: dùng một **database demo riêng**, chạy migration và seed v4 theo `backend/prisma/seeds/README.md`, rồi chạy `seed:check`. Không reset hoặc seed đè database nhóm `public`; nó đang có đơn, ví và dữ liệu tester. Nếu buổi review dùng DB hiện tại, trình bày số tiền thực tế trên màn hình, tính `giá gốc của đơn × tỷ lệ đã chọn`, và bỏ ví dụ cứng 450.000₫ → 72.000₫.
 
