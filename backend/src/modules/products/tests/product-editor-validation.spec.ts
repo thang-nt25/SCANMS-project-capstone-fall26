@@ -21,7 +21,7 @@ describe('Product editor API validation', () => {
   it('requires a positive variant price when supplied, and allows product-price inheritance', () => {
     const dto = Object.assign(new ProductVariantInputDto(), { sku: 'SKU-1', name: '30 ml', stockQuantity: 0, price: 0 });
     expect(validateSync(dto).some(error => error.property === 'price')).toBe(true);
-    dto.price = undefined;
+    (dto as any).price = undefined;
     expect(validateSync(dto)).toHaveLength(0);
   });
 });

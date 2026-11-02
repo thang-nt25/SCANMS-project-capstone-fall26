@@ -38,11 +38,11 @@ describe('Shop Live creation and invitation', () => {
     const { prisma, dto, run } = setup();
     const session = await run();
     expect(session).toMatchObject({ title: 'Phiên thử', creatorId: 'kol', status: 'PENDING_CREATOR', inviteStatus: 'PENDING', products: { create: [{ productId: 'product', variantId: 'variant' }] } });
-    expect(Number(session.commissionRate)).toBe(3);
+    expect(Number(session!.commissionRate)).toBe(3);
     const coupon = prisma.coupon.create.mock.calls[0][0].data;
     expect(Number(coupon.minimumOrderAmount)).toBe(200000);
     expect(Number(coupon.maximumDiscountAmount)).toBe(50000);
-    expect(coupon).toMatchObject({ liveSessionId: session.id, usageLimitPerCustomer: 1, usageLimitTotal: 100,
+    expect(coupon).toMatchObject({ liveSessionId: session!.id, usageLimitPerCustomer: 1, usageLimitTotal: 100,
       couponProducts: { create: [{ productId: 'product' }] }, expiresAt: new Date(dto.endsAt) });
   });
 

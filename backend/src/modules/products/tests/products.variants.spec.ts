@@ -318,7 +318,7 @@ describe('Product variant images', () => {
     expect(result.product.stockQuantity).toBe(7);
     expect(result.product.barcode).toBeNull();
     expect(result.product.ingredients).toBeNull();
-    expect(result.product.variants).toBeUndefined();
+    expect((result.product as any).variants).toBeUndefined();
   });
 
   it('rejects a new product missing required evidence and details before persisting it', async () => {

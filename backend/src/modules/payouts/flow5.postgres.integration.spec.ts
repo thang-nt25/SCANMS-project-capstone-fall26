@@ -675,6 +675,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
     );
     await returns.inspect(owner.id, UserRole.SHOP_MANAGER, claim.id, {
       resolution: 'REFUND',
+      liability: 'SHOP_FAULT',
       notes: 'Sản phẩm lỗi đã được xác minh',
     });
     const after = await prisma.wallet.findUniqueOrThrow({

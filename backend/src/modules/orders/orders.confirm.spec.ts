@@ -2,7 +2,7 @@ import { OrdersService } from './orders.service';
 import { OrderStatus, UserRole } from '@prisma/client';
 
 describe('shop confirmation', () => {
-  const setup = (raw: any = {}, status = OrderStatus.PENDING) => {
+  const setup = (raw: any = {}, status: OrderStatus = OrderStatus.PENDING) => {
     const tx = {
       $queryRaw: jest.fn(),
       user: { findUnique: jest.fn().mockResolvedValue({ storeId: 'store' }) },
