@@ -183,7 +183,7 @@ export const orderService = {
     return response.data;
   },
 
-  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string }) {
+  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string; escalateToManager?: boolean; evidenceUrls?: string[] }) {
     const response = (await api.patch(`/orders/${orderId}/return-request/respond`, data)) as unknown as ApiEnvelope<{
       message: string;
       returnRequest: StoreReturnRequest;

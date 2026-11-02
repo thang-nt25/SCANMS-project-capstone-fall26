@@ -58,6 +58,7 @@ import { ShippingSimulationControls } from '../../components/shipping/ShippingSi
 import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
+import { uploadService } from '../../services/upload.service';
 import { StatCard } from '../../components/ui/StatCard';
 import ShopSampleManagementTab from './ShopSampleManagementTab';
 
@@ -305,6 +306,7 @@ export default function OrdersManagementPage({
   // Modals for order fulfillment & viewing
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
   const [returnResponse, setReturnResponse] = useState('');
+  const [returnEvidenceFiles, setReturnEvidenceFiles] = useState<File[]>([]);
   const [returnError, setReturnError] = useState('');
   const [respondingReturn, setRespondingReturn] = useState(false);
   const [shippingModalOrder, setShippingModalOrder] = useState<StoreOrderRecord | null>(null);
@@ -675,19 +677,27 @@ export default function OrdersManagementPage({
       });
       return;
     }
+    if (decision === 'REJECT' && (returnResponse.trim().length < 20 || returnEvidenceFiles.length < 1 || returnEvidenceFiles.length > 5)) {
+      setReturnError('Để từ chối và chuyển Manager, hãy ghi ít nhất 20 ký tự và tải 1–5 ảnh/video bằng chứng.');
+      return;
+    }
     setRespondingReturn(true);
     setReturnError('');
     try {
+      const evidenceUrls = decision === 'REJECT' ? await Promise.all(returnEvidenceFiles.map(async (file) =>
+        (await uploadService.uploadMedia(file, `scanms/returns/${selectedOrderDetails.returnRequest!.id}/shop-evidence`)).url)) : undefined;
       const result = await orderService.respondReturnRequest(selectedOrderDetails.id, {
         decision,
         response: returnResponse.trim(),
+        ...(decision === 'REJECT' ? { escalateToManager: true, evidenceUrls } : {}),
       });
-      toast.success(decision === 'APPROVE' ? 'Đã chấp thuận yêu cầu đổi trả' : 'Đã từ chối yêu cầu đổi trả', {
+      toast.success(decision === 'APPROVE' ? 'Đã chấp thuận yêu cầu đổi trả' : 'Đã gửi bằng chứng cho Manager', {
         description: result.message || 'Hệ thống đã cập nhật và gửi thông báo phản hồi tới người mua.',
       });
       setActionSuccessMsg(result.message);
       setSelectedOrderDetails(null);
       setReturnResponse('');
+      setReturnEvidenceFiles([]);
       setOrdersRefreshCount((count) => count + 1);
     } catch (error) {
       const errMsg = messageOf(error);
@@ -2281,11 +2291,22 @@ export default function OrdersManagementPage({
                       <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={1000} rows={3}
                         className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
                     </label>
+                    <label className="block font-bold">Bằng chứng khi Shop từ chối (ảnh/video, 1–5 tệp)
+                      <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files || []);
+                          if (files.length > 5) setReturnError('Chỉ chọn tối đa 5 tệp bằng chứng.');
+                          else { setReturnEvidenceFiles(files); setReturnError(''); }
+                        }}
+                        className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal" />
+                    </label>
+                    {returnEvidenceFiles.length > 0 && <p className="text-[#7D715E]">Đã chọn: {returnEvidenceFiles.map((file) => file.name).join(', ')}</p>}
+                    <p className="text-[#7D715E]">Nếu từ chối, ảnh/video và lời giải thích sẽ được chuyển ngay cho System Manager phân xử; khách cũng được thông báo.</p>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('APPROVE')}
                         className="rounded-xl bg-[#C59B58] px-4 py-2 font-bold text-white disabled:opacity-50">Duyệt yêu cầu</button>
-                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
-                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối</button>
+                      <button type="button" disabled={respondingReturn || returnResponse.trim().length < 20 || returnEvidenceFiles.length < 1} onClick={() => handleReturnDecision('REJECT')}
+                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối & chuyển Manager</button>
                     </div>
                     {returnError && <p role="alert" className="text-[#DC2626]">{returnError}</p>}
                     <p className="text-[#7D715E]">Duyệt yêu cầu không đồng nghĩa tiền đã được hoàn; cần đối soát thanh toán riêng.</p>

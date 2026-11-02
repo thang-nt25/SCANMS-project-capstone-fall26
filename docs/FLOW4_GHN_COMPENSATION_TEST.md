@@ -7,6 +7,7 @@ Ngày 02/11/2026, DB demo có đơn `DH-2026-1B58B512` của **Sora Skincare & C
 ## Kịch bản từ Shop đến Manager
 
 1. Đăng nhập Shop sở hữu đơn. Vào **Quản lý đơn hàng**, tìm `DH-2026-1B58B512`, mở chi tiết rồi chọn **Gửi bằng chứng và chuyển Manager xem xét**. Có thể mở trực tiếp `/merchant/returns/b21cb9e7-0c86-4a63-8661-a71f097e5aad` sau khi đã vào Shop.
+   Với yêu cầu đổi trả **mới** còn `REQUESTED`, Shop tải ảnh/video ngay trong form phản hồi rồi bấm **Từ chối & chuyển Manager**. Việc từ chối, lưu bằng chứng và mở tranh chấp được ghi trong cùng giao dịch; khách không phải tự khiếu nại lần nữa.
 2. Ghi diễn giải ít nhất 20 ký tự: tình trạng đóng gói, niêm phong, lúc bàn giao, lý do nghi ngờ vỡ trong vận chuyển. Tải 1–5 ảnh/video có nhãn **TEST**. Gửi. Hồ sơ chuyển `DISPUTED`; Shop không tự gán lỗi GHN. Khách và Manager nhận thông báo.
 3. Đăng nhập System Manager, vào **Khiếu nại đổi trả** (`/admin/return-disputes`). Mở đúng đơn; so sánh ảnh/video khách, bằng chứng Shop, vận đơn gốc và lịch sử GHN. Chọn **GHN / vận chuyển** chỉ khi chứng cứ đủ; chọn hoàn tiền hoặc đổi hàng, ghi căn cứ tối thiểu 20 ký tự. Nếu chứng cứ chưa đủ thì chưa kết luận.
 4. Sau quyết định, khu **Đối soát bồi hoàn GHN** xuất hiện ở trang Manager và danh sách riêng trên trang Khiếu nại đổi trả. Trạng thái đầu `DRAFT`; có vận đơn gốc và bộ chứng cứ.
