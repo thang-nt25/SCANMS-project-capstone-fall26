@@ -65,7 +65,7 @@ export interface ReturnDetail {
     status: 'NOT_POSTED' | 'PENDING' | 'AVAILABLE' | 'REVERSED';
     availableAt?: string | null;
   };
-  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null };
+  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
   items: Array<{
     id: string;
     quantity: number;

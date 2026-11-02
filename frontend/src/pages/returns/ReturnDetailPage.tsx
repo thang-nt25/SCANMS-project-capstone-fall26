@@ -270,7 +270,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
 }
 
 function AdminActions({ request }: { request: ReturnDetail }) {
-  const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('LOGISTICS_FAULT');
+  const [liability, setLiability] = useState<'' | 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>('');
   const [notes, setNotes] = useState('');
   const assessment = useReturnAction(request.id, returnService.assessLiability);
   const current = (assessment.data as ReturnDetail | undefined)?.id === request.id
@@ -289,11 +289,13 @@ function AdminActions({ request }: { request: ReturnDetail }) {
     Hồ sơ đã qua bước xác định trách nhiệm. Xem kết quả kiểm tra và thu nhập đối tác ở trên.
   </p>;
   return <form className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4"
-    onSubmit={(event) => { event.preventDefault(); void assessment.mutateAsync({ liability, notes: notes.trim() }).catch(() => undefined); }}>
+    onSubmit={(event) => { event.preventDefault(); if (liability) void assessment.mutateAsync({ liability, notes: notes.trim() }).catch(() => undefined); }}>
     <h2 className="font-bold">System Manager xác định bên chịu trách nhiệm</h2>
-    <p className="text-sm text-[#7D715E]">Đối chiếu ảnh, video mở hộp và tình trạng kiện hàng trước khi Shop quyết định đổi hoặc hoàn tiền.</p>
+    <p className="text-sm text-[#7D715E]">Đối chiếu ảnh, video mở hộp, biên bản đóng gói và lịch sử vận đơn trước khi kết luận. Nếu chưa đủ chứng cứ, giữ hồ sơ để xác minh thêm.</p>
+    <p className="text-sm text-[#7D715E]">Vận đơn GHN gốc: {request.order.outboundGhnTrackingNumber || 'Chưa có'}. Việc đổi hoặc hoàn cho khách không chờ GHN bồi hoàn cho Shop.</p>
     <select value={liability} onChange={(event) => setLiability(event.target.value as typeof liability)} className={field}>
-      <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+      <option value="">Chọn bên chịu trách nhiệm</option>
+      <option value="LOGISTICS_FAULT" disabled={!request.order.outboundGhnTrackingNumber}>GHN / vận chuyển</option>
       <option value="SHOP_FAULT">Shop / hàng hóa</option>
       <option value="CUSTOMER_REASON">Khách đổi ý</option>
     </select>
@@ -301,7 +303,7 @@ function AdminActions({ request }: { request: ReturnDetail }) {
       onChange={(event) => setNotes(event.target.value)} placeholder="Ghi rõ bằng chứng và căn cứ kết luận"
       className={field} />
     {notes.trim().length < 10 && <p className="text-xs text-[#7D715E]">Nhập ít nhất 10 ký tự để lưu kết luận ({notes.trim().length}/10).</p>}
-    <button type="submit" disabled={assessment.isPending || notes.trim().length < 10} className={primary}>
+    <button type="submit" disabled={assessment.isPending || !liability || notes.trim().length < 10} className={primary}>
       {assessment.isPending ? 'Đang lưu…' : 'Lưu kết luận trách nhiệm'}
     </button>
     <ErrorText error={assessment.error} />

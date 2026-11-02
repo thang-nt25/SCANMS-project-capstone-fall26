@@ -13,7 +13,7 @@ export default function AdminReturnDisputesPage() {
   const client = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ruling, setRuling] = useState<Ruling>('APPROVE_REFUND');
-  const [liability, setLiability] = useState<Liability>('LOGISTICS_FAULT');
+  const [liability, setLiability] = useState<Liability | ''>('');
   const [notes, setNotes] = useState('');
   const disputes = useQuery({
     queryKey: ['return-disputes'],
@@ -49,7 +49,8 @@ export default function AdminReturnDisputesPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)) return;
+    if (!selected || !liability || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop) ||
+      (liability === 'LOGISTICS_FAULT' && !selected.returnRequest.order.outboundGhnTrackingNumber)) return;
     resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
 
@@ -150,7 +151,8 @@ export default function AdminReturnDisputesPage() {
             <label className="block text-sm">Bên chịu trách nhiệm
               <select value={liability} onChange={(event) => setLiability(event.target.value as Liability)}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
-                <option value="LOGISTICS_FAULT">GHN / vận chuyển</option>
+                <option value="">Chọn bên chịu trách nhiệm</option>
+                <option value="LOGISTICS_FAULT" disabled={!selected.returnRequest.order.outboundGhnTrackingNumber}>GHN / vận chuyển</option>
                 <option value="SHOP_FAULT">Shop / hàng hóa</option>
                 <option value="CUSTOMER_REASON">Khách đổi ý</option>
               </select>
@@ -160,9 +162,12 @@ export default function AdminReturnDisputesPage() {
                 onChange={(event) => setNotes(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3" />
             </label>
+            <p className="text-xs text-[#7D715E]">Vận đơn GHN gốc: {selected.returnRequest.order.outboundGhnTrackingNumber || 'Chưa có'}. Nếu chưa đủ chứng cứ, tiếp tục xác minh trước khi phân xử. Việc hoàn cho khách không chờ GHN bồi hoàn cho Shop.</p>
             <p className="text-xs text-[#7D715E]">Nếu ví khách sẵn sàng, hoàn tiền và thu hồi thu nhập được ghi cùng giao dịch; nếu chưa, hồ sơ ở trạng thái chờ đối soát.</p>
             {!canUpholdShop && <p className="text-xs text-[#7D715E]">Shop đang giữ hàng khách trả; không thể đóng hồ sơ nếu chưa có phương án trả hàng hoặc bồi hoàn.</p>}
-            <button type="submit" disabled={resolve.isPending || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop)}
+            <button type="submit" disabled={resolve.isPending || !liability || notes.trim().length < 20 ||
+              (ruling === 'UPHOLD_SHOP' && !canUpholdShop) ||
+              (liability === 'LOGISTICS_FAULT' && !selected.returnRequest.order.outboundGhnTrackingNumber)}
               className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
               {resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
             {resolve.error && <p role="alert" className="text-sm text-[#DC2626]">Không thể lưu quyết định. Vui lòng thử lại.</p>}

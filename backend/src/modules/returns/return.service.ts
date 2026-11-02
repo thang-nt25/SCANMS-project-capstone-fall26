@@ -81,6 +81,12 @@ const SHIP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const INSPECTION_SLA_MS = 48 * 60 * 60 * 1000;
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
+function originalGhnTracking(rawPayload: Prisma.JsonValue | null): string | null {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) return null;
+  const code = (rawPayload as Record<string, unknown>).ghnOrderCode;
+  return typeof code === 'string' && code.trim() ? code.trim() : null;
+}
+
 @Injectable()
 export class ReturnService {
   private readonly logger = new Logger(ReturnService.name);
@@ -193,6 +199,7 @@ export class ReturnService {
 
   private present(item: Detail, showPartnerIncome = false) {
     const { order, shipments, ...rest } = item;
+    const outboundGhnTrackingNumber = originalGhnTracking(order.rawPayload);
     const commissions = order.commissions ?? [];
     const postedIncome = commissions.reduce(
       (sum, commission) => sum + Number(commission.commissionAmount), 0,
@@ -209,6 +216,7 @@ export class ReturnService {
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
+        outboundGhnTrackingNumber,
       },
       ...(showPartnerIncome ? { partnerIncome: {
         amount: Number(order.refundedAmount) > 0 ||
@@ -302,6 +310,8 @@ export class ReturnService {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       throw new ForbiddenException('Chỉ vận hành hệ thống được xác định trách nhiệm');
     const detail = await this.scopedDetail(userId, role, id);
+    if (input.liability === 'LOGISTICS_FAULT' && !originalGhnTracking(detail.order.rawPayload))
+      throw new ConflictException('Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác');
     const latestAssessment = [...detail.events].reverse().find((event) => {
       const data = event.data as Record<string, unknown> | null;
       return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
@@ -330,7 +340,13 @@ export class ReturnService {
         returnRequestId: id,
         actorId: userId,
         type: 'LIABILITY_ASSESSED',
-        data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' },
+        data: {
+          ...input,
+          source: 'SYSTEM_MANAGER_REVIEW',
+          ...(input.liability === 'LOGISTICS_FAULT' ? {
+            originalTrackingNumber: originalGhnTracking(detail.order.rawPayload),
+          } : {}),
+        },
       } });
     });
     return this.getOne(userId, role, id);
@@ -1209,14 +1225,14 @@ export class ReturnService {
         return event.type === 'LIABILITY_ASSESSED' &&
           data?.source === 'SYSTEM_MANAGER_REVIEW' && data.liability === 'LOGISTICS_FAULT';
       });
-      if (logisticsAssessment) {
-        const raw = detail.order.rawPayload as Record<string, unknown> | null;
+      const originalTrackingNumber = originalGhnTracking(detail.order.rawPayload);
+      if (logisticsAssessment && originalTrackingNumber) {
         await tx.returnEvent.create({ data: {
           returnRequestId: id,
           actorId: userId,
           type: 'GHN_COMPENSATION_CLAIM_OPENED',
           data: {
-            originalTrackingNumber: raw?.ghnOrderCode || raw?.trackingNumber || null,
+            originalTrackingNumber,
             replacementTrackingNumber: input.trackingNumber,
             status: 'PENDING_RECONCILIATION',
           },
@@ -1419,6 +1435,8 @@ export class ReturnService {
     if (!dispute || dispute.status !== 'OPEN')
       throw new NotFoundException('Không có khiếu nại đang mở');
     const detail = dispute.returnRequest;
+    if (input.liability === 'LOGISTICS_FAULT' && !originalGhnTracking(detail.order.rawPayload))
+      throw new ConflictException('Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác');
     if (
       input.ruling === 'UPHOLD_SHOP' &&
       detail.shipments.some(
@@ -1471,7 +1489,15 @@ export class ReturnService {
             returnRequestId: detail.id,
             actorId: adminId,
             type: 'LIABILITY_ASSESSED',
-            data: { liability: input.liability, ruling: input.ruling, notes: input.notes, source: 'SYSTEM_MANAGER_ARBITRATION' },
+            data: {
+              liability: input.liability,
+              ruling: input.ruling,
+              notes: input.notes,
+              source: 'SYSTEM_MANAGER_ARBITRATION',
+              ...(input.liability === 'LOGISTICS_FAULT' ? {
+                originalTrackingNumber: originalGhnTracking(detail.order.rawPayload),
+              } : {}),
+            },
           },
         });
       }
