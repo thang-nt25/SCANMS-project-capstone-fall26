@@ -48,10 +48,18 @@ describe('Word section 6 checkout margin protection', () => {
     await run();
     const data = tx.order.create.mock.calls[0][0].data;
     expect(data.orderItems.create).toEqual(expect.arrayContaining([
-      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 26000 }),
+      expect.objectContaining({ productId: 'a', appliedCommissionRate: 13, calculatedCommissionAmount: 32500 }),
       expect.objectContaining({ productId: 'b', appliedCommissionRate: 10, calculatedCommissionAmount: 25000 }),
     ]));
     expect(Number(data.finalAmount)).toBe(475000);
+  });
+
+  it('keeps a creator code valid at checkout when the product also has a direct discount', async () => {
+    const { coupons, params, tx, run } = fixture();
+    coupons.shop.stackableWithProductDiscount = false;
+    params.anyProductHasDirectDiscount = true;
+    await expect(run()).resolves.toBeDefined();
+    expect(tx.order.create.mock.calls[0][0].data.couponCodeSnapshot).toBe('KOL50');
   });
 
   it.each([undefined, null, -1, '25000', NaN])('rejects missing or invalid shipping before writing an order: %p', async (totalFee) => {

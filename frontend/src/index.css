@@ -131,6 +131,21 @@ body {
   @apply [font-feature-settings:"cv02",_"cv03",_"cv04",_"cv11"];
   @apply [scroll-behavior:smooth];
   @apply [overflow-x:clip];
+  @apply [scrollbar-gutter:stable];
+}
+
+/* ==========================================================================
+   SCROLLBAR GUTTER STABILITY: Chống giật trang / lệch layout (Zero Layout Shift)
+   Luôn chừa sẵn khoảng trống cho thanh cuộn dọc (scrollbar) ở mọi trang và tab,
+   giúp giao diện cố định 100% tọa độ khi chuyển giữa tab ngắn và tab dài.
+   ========================================================================== */
+.workspace-page-column,
+.collaboration-tab-scroll,
+.kol-coupon-page,
+.custom-scrollbar,
+[data-scroll-container],
+[role="dialog"] .overflow-y-auto {
+  scrollbar-gutter: stable;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {

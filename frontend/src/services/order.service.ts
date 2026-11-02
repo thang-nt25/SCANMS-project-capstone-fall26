@@ -137,6 +137,8 @@ export interface StoreOrderRecord {
     } | null;
   } | null;
   couponCode: string | null;
+  attributionFlag?: string | null;
+  incomeStatus?: 'SELF_REFERRAL_BLOCKED' | 'REVERSED' | 'PENDING' | 'AVAILABLE' | 'NOT_POSTED';
   totalCommission: number;
   items: StoreOrderItem[];
 }

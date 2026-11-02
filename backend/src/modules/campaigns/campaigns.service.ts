@@ -811,6 +811,125 @@ export class CampaignsService {
   }
 
   // ─── Helper: Ghi nhật ký kiểm toán hệ thống (AuditLog) ───────────────
+
+  // ─── KOL: Khám phá các chiến dịch mở toàn sàn ────────────────────────
+  async exploreCampaigns(userId: string) {
+    const now = new Date();
+    const campaigns = await this.prisma.campaign.findMany({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gt: now },
+        store: { isDeleted: false },
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+            categoryName: true,
+            defaultCommissionRate: true,
+          },
+        },
+        campaignProducts: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+        participants: {
+          where: { collaboratorId: userId },
+          select: { id: true, status: true, joinedAt: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return campaigns.map((c) => {
+      const budgetTotal = Number(c.bonusBudgetTotal || 0);
+      const budgetUsed = Number(c.bonusBudgetUsed || 0);
+      const budgetRemaining = Math.max(0, budgetTotal - budgetUsed);
+      const budgetProgressPct = budgetTotal > 0 ? Math.min(100, Math.round((budgetUsed / budgetTotal) * 100)) : 0;
+      const isBudgetExhausted = budgetTotal > 0 && budgetUsed >= budgetTotal;
+      const participant = c.participants[0] || null;
+      const isJoined = participant?.status === CampaignParticipantStatus.ACCEPTED;
+      const isInvited = participant?.status === CampaignParticipantStatus.INVITED;
+
+      return {
+        ...c,
+        bonusCommissionRate: Number(c.bonusCommissionRate),
+        bonusBudgetTotal: budgetTotal,
+        bonusBudgetUsed: budgetUsed,
+        budgetRemaining,
+        budgetProgressPct,
+        isBudgetExhausted,
+        isJoined,
+        isInvited,
+        participantId: participant?.id || null,
+      };
+    });
+  }
+
+  // ─── KOL: 1-Click Tham gia chiến dịch mở ─────────────────────────────
+  async joinCampaign(userId: string, campaignId: string) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: { store: true },
+    });
+
+    if (!campaign || !campaign.isActive) {
+      throw new NotFoundException('Chiến dịch không tồn tại hoặc đã ngừng hoạt động.');
+    }
+
+    const now = new Date();
+    if (campaign.endDate && new Date(campaign.endDate) <= now) {
+      throw new BadRequestException('Chiến dịch này đã hết thời hạn áp dụng.');
+    }
+
+    const budgetTotal = Number(campaign.bonusBudgetTotal || 0);
+    const budgetUsed = Number(campaign.bonusBudgetUsed || 0);
+    if (budgetTotal > 0 && budgetUsed >= budgetTotal) {
+      throw new BadRequestException('Ngân sách thưởng của chiến dịch đã được giải ngân hết.');
+    }
+
+    const participant = await this.prisma.campaignParticipant.upsert({
+      where: {
+        campaignId_collaboratorId: {
+          campaignId,
+          collaboratorId: userId,
+        },
+      },
+      create: {
+        campaignId,
+        collaboratorId: userId,
+        status: CampaignParticipantStatus.ACCEPTED,
+        joinedAt: new Date(),
+      },
+      update: {
+        status: CampaignParticipantStatus.ACCEPTED,
+        joinedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      participantId: participant.id,
+      campaignId: campaign.id,
+      storeId: campaign.storeId,
+      bonusCommissionRate: Number(campaign.bonusCommissionRate),
+      message: `Đã tham gia chiến dịch "${campaign.name}" thành công! Bạn có thể tạo link/QR tiếp thị ngay.`,
+    };
+  }
+
   private async _createAuditLog(userId: string, action: string, details: any) {
     try {
       await this.prisma.auditLog.create({

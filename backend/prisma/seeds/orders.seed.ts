@@ -219,6 +219,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         const itemId = seedId(`order-item:${key}:${itemIndex}`);
         const unitPrice = amount(product.price);
         const netItemSubtotal = linePricing[itemIndex].netGoods;
+        const remunerationBase = unitPrice * quantity;
         const breakdown = seedCommissionBreakdown(data, {
           collaboratorId,
           productId: product.id!,
@@ -228,18 +229,19 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
           at: createdAt,
         });
         const itemCommission = commissionAmount(
-          netItemSubtotal,
+          remunerationBase,
           breakdown.rate,
         );
         commissionBreakdown.push({
           productId: product.id!,
           netGoods: netItemSubtotal,
+          remunerationBase,
           ...breakdown,
           liveSessionId: historicalLive?.id ?? null,
         });
         if (breakdown.campaignId) {
           const reserved = commissionAmount(
-            netItemSubtotal,
+            remunerationBase,
             breakdown.campaign,
           );
           campaignBonusReservations[breakdown.campaignId] =
@@ -259,7 +261,7 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
             ? breakdown.rate - breakdown.live
             : null,
           regularCommissionAmount: breakdown.live
-            ? commissionAmount(netItemSubtotal, breakdown.rate - breakdown.live)
+            ? commissionAmount(remunerationBase, breakdown.rate - breakdown.live)
             : null,
           calculatedCommissionAmount: itemCommission,
           commissionSnapshotAt: createdAt,

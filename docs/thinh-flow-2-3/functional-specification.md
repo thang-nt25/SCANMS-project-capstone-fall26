@@ -16,6 +16,10 @@ GET /api/products/identity-check dùng sentence embedding đa ngôn ngữ Xenova
 
 Nguồn kỹ thuật: [model card](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2), [Transformers.js dtypes](https://huggingface.co/docs/transformers.js/guides/dtypes).
 
+Ảnh bìa mới từ form đi qua POST /api/upload/product-cover (Shop/reviewer đã đăng nhập). FE kiểm kích thước trước upload; BE đọc bytes thật, nhận JPG/PNG/WEBP tĩnh, tối đa 5MB, ảnh vuông ≥800×800px. Avatar/bill/chứng từ giữ chính sách riêng. Bốn ảnh phụ là giới hạn thống nhất ở FE, cả DTO tạo/cập nhật và service; vượt giới hạn trả lỗi trước khi ghi, không âm thầm cắt ảnh. Dữ liệu ảnh cũ và URL do client khác tự gửi không được coi là đã tái xác minh kích thước.
+
+Product ghi createdById khi tạo và submittedById cho phiên bản gửi kiểm duyệt. Người trùng một trong hai không được duyệt/từ chối (403). Quyết định khóa dòng sản phẩm, đọc lại hàng đợi trong transaction; quyết định thứ hai sau khi đã xử lý trả 409. Audit và thông báo cùng commit. Sửa nội dung/biến thể quan trọng bởi bất kỳ vai trò nào đều đưa về DRAFT, ẩn công khai và xóa dấu duyệt cũ. Nội dung, hạn mức mẫu, minh chứng và gallery khi cập nhật cùng transaction/khóa với việc kiểm duyệt; lỗi gallery rollback toàn bộ. Chỉnh tồn kho/chính sách mẫu đơn thuần giữ duyệt. Maker cũ NULL là chưa có lịch sử, không backfill bằng owner hoặc reviewer.
+
 ## Giá sàn và duyệt khuyến mãi
 
 Product/ProductVariant bổ sung listPrice và floorPrice. Migration backfill listPrice bằng giá hiện có; không tự bịa MAP cho dữ liệu cũ. Reviewer cấu hình MAP theo căn cứ kinh doanh.
@@ -36,13 +40,17 @@ Checkout giữ khóa dòng sản phẩm, kiểm giá hiện tại, MAP trên ti�
 
 Drawer giữ productId, Top 5, radar bốn chỉ số, giải thích và độ đủ dữ liệu. Số đơn/GMV/CR từ DB; tier từ hồ sơ lưu, không suy từ doanh thu hay tự sinh dữ liệu.
 
-Dưới 5 đơn: 70% ngành hàng + 30% quy mô kênh. Từ 5 đơn: 70% hiệu suất + 30% hồ sơ. Hiệu suất = 60% điểm CR + 40% phù hợp giá; hồ sơ = 70% ngành hàng + 30% quy mô kênh. Điểm kênh = min(100, round(log10(1+followers)/6*100)). Trả scoringMode, dữ liệu thực và độ tin cậy riêng. Điểm xếp hạng không phải xác suất chốt đơn.
+Dưới 5 đơn: 70% ngành hàng + 30% quy mô kênh. Từ 5 đơn: 35% ngành hàng + 25% CR + 20% cấp bậc/kênh + 20% phù hợp giá, theo công thức bốn trục Blueprint 4.2. Không tiếp tục dùng công thức warm 70% hiệu suất + 30% hồ sơ trong 4.3 vì mâu thuẫn với 4.2. Điểm kênh = min(100, round(log10(1+followers)/6*100)). API trả scoringMode và scoringWeights; tổng trọng số bằng 1. Với cold-start, trục cấp bậc/kênh hiển thị điểm kênh dùng thực tế; CR và giá chưa có bằng chứng hiển thị 0. Điểm xếp hạng không phải xác suất chốt đơn.
+
+SemanticEmbeddingService dùng chung một model local cho cảnh báo tên sản phẩm và cosine Bio/tags/tên kênh KOC với ngành hàng. Chỉ truyền các trường nội dung công khai, không truyền toàn bộ socialLinksJson. Tên sản phẩm vẫn cảnh báo khi >80; hồ sơ KOC giữ mọi điểm để xếp hạng tương đối, không dùng ngưỡng 80 của định danh hàng hóa. Chọn productId không tự loại KOC khác ngành. Khi người dùng chọn bộ lọc category rõ ràng, bằng chứng ngành hàng hoặc cosine từ 60 trở lên mới qua lọc; 60 là ngưỡng chính sách, không phải xác suất. Model lỗi trả 503, không giả kết quả bằng dữ liệu mẫu.
 
 Quyền được kiểm trước cache; key gồm actor, role, sản phẩm và mọi bộ lọc. Không dùng đội mẫu khi 403/rỗng/lỗi. Báo cáo Shop/KOC lấy tổng theo Store/kỳ trên tất cả các trang, phân biệt hoa hồng phát sinh và tiền đã trả.
 
 ## Hợp tác và Media Hub
 
-Hợp tác thường và VIP tách riêng. KOC gửi kế hoạch; Shop mời theo email; bên nhận chấp thuận/từ chối. CAS ngăn request/lời mời ghi ngược trạng thái vừa duyệt.
+Hợp tác thường và VIP tách riêng. KOC gửi kế hoạch; Shop mời theo email; bên nhận chấp thuận/từ chối. CAS ngăn request/lời mời ghi ngược trạng thái vừa duyệt. KOC có thể mở form từ card sản phẩm/gian hàng trên Marketplace hoặc phần hồ sơ trang Shop. Nút dùng chung một query trạng thái theo tài khoản; hiển thị chờ duyệt/đã hợp tác/lời mời, không gọi API riêng cho từng card. Các vai trò khác không có CTA này; API vẫn kiểm JWT/quyền độc lập.
+
+Trang `/collaborator/collaboration` gộp Shop từ hội thoại/deal và danh sách quan hệ `/store-collaborators/my-invitations`, theo Store ID. Lời mời không cần có hội thoại trước để xuất hiện. Bộ lọc Lời mời chỉ lấy PENDING do Shop gửi; yêu cầu KOC tự gửi được phân biệt là chờ Shop duyệt. Nút phản hồi xuất hiện khi chọn Shop tương ứng. Có làm mới thủ công, polling 15 giây và báo lỗi tải rõ ràng; không tự tạo chat/đánh dấu tin nhắn chưa đọc chỉ để hiển thị lời mời.
 
 Media Hub kiểm partnership hiện tại trước cache, chỉ trả tài nguyên có quyền. ZIP gồm file, kịch bản, manifest và đường dẫn nguồn streaming. File lỗi/nguồn streaming không bị giả thành video tải thành công.
 
@@ -78,6 +86,6 @@ Sau kỳ cam kết có 14 ngày đối soát. Chưa hết hạn không chế tà
 
 ## Migration và bằng chứng
 
-Migration thêm: 20261101000000_exclusive_deal_shop_offers; 20261101010000_enterprise_pricing_and_vip. Không reset/seed/đổi mật khẩu. Kết quả cuối trong verification. PostgreSQL/HTTP/JWT/Socket.IO dùng DB test riêng; browser tests dùng fixture; semantic có inference smoke thực.
+Migration thêm: 20261101000000_exclusive_deal_shop_offers; 20261101010000_enterprise_pricing_and_vip; 20261101020000_product_moderation_makers. Không reset/seed/đổi mật khẩu. Kết quả cuối trong verification. PostgreSQL/HTTP/JWT/Socket.IO dùng DB test riêng; browser tests dùng fixture; semantic có inference smoke thực.
 
 Phân công Thịnh: Flow 2 + nửa đầu Flow 3. eKYC, mẫu/SLA, GHN/đổi trả, escrow và tài chính thành viên khác giữ contract đang có. Kiểm thử phần này không thay chữ ký UAT của người dùng hoặc nghiệm thu cả hệ thống.

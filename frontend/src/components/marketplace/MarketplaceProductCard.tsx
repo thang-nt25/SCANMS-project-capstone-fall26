@@ -4,6 +4,7 @@ import { CircleAlert, Heart, ShoppingCart, Store } from 'lucide-react';
 import type { Product } from '@/types/marketplace.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { LiveSessionDealBadge } from '@/components/product/LiveSessionDealBadge';
+import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 
 interface Props {
   product: Product;
@@ -82,6 +83,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <Link to={product.storeId ? `/shops/${product.storeId}` : '/search'} className="mb-2 inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F]"><Store size={13} className="shrink-0" /><span className="truncate">{product.brand}</span></Link>
         <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm"><Link to={`/products/${product.sku || product.id}`} className="hover:text-[#B88E4F]">{product.name}</Link></h3>
+        {product.storeId && <StoreCooperationAction storeId={product.storeId} storeName={product.brand} className="mb-2 mt-2 w-full" />}
         <div className="mb-2 mt-1.5">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] text-[#7D715E]">
             <span>{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>

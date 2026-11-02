@@ -17,6 +17,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductVariantInputDto } from './sync-product-variants.dto';
 import { ProductPackageDto } from './product-package.dto';
+import { MAX_PRODUCT_GALLERY_IMAGES } from '../product-media.policy';
 
 export class CreateProductDto extends ProductPackageDto {
   @ApiProperty({
@@ -170,7 +171,7 @@ export class CreateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
-  @ArrayMaxSize(4, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
+  @ArrayMaxSize(MAX_PRODUCT_GALLERY_IMAGES, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
   @IsString({
     each: true,
     message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',

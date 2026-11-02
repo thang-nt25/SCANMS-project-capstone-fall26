@@ -13,6 +13,7 @@ describe('Shop return request workflow', () => {
   };
   const order = {
     id: orderId,
+    storeId: 'store-1',
     externalOrderSn: 'S-001',
     status: OrderStatus.RETURN_REQUESTED,
     store: { ownerId: 'owner-1' },
@@ -31,6 +32,7 @@ describe('Shop return request workflow', () => {
     };
     const prisma = {
       order: { findUnique: jest.fn().mockResolvedValue(order) },
+      store: { findFirst: jest.fn().mockResolvedValue(null) },
       $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
         callback(tx),
       ),

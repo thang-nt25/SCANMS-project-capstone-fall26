@@ -37,8 +37,8 @@ export const amount = (
     value && typeof value === 'object' ? value.toFixed() : (value ?? 0),
   ).toNumber();
 
-export function commissionAmount(netSubtotal: number, rate: number): number {
-  return new Prisma.Decimal(netSubtotal)
+export function commissionAmount(remunerationBase: number, rate: number): number {
+  return new Prisma.Decimal(remunerationBase)
     .mul(rate)
     .div(100)
     .toDecimalPlaces(2)

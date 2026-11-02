@@ -65,7 +65,7 @@ describe('CommissionsService', () => {
     };
   }
 
-  it('excludes shipping discounts from goods GMV when calculating an unsnapshotted order', async () => {
+  it('uses original goods value for unsnapshotted remuneration regardless of discounts', async () => {
     const { service, tx, getOrderItemUpdateInput } = createService();
     tx.order.findUnique.mockResolvedValue({ id: orderId, attributedCollaboratorId: collaboratorId,
       status: OrderStatus.DELIVERED, updatedAt: new Date('2026-10-01'),
@@ -77,7 +77,7 @@ describe('CommissionsService', () => {
       commissions: [],
     });
     await expect(service.createPendingCommission(orderId, new Date('2026-10-02'))).resolves.toBe(true);
-    expect(Number((getOrderItemUpdateInput() as any).data.calculatedCommissionAmount)).toBe(27600);
+    expect(Number((getOrderItemUpdateInput() as any).data.calculatedCommissionAmount)).toBe(30000);
   });
 
   it('creates one pending commission and credits the pending wallet atomically', async () => {

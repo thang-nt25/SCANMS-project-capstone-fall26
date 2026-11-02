@@ -21,6 +21,7 @@ import {
 import { ChatGateway } from '../chat/chat.gateway';
 import { ReferralLinksService } from '../referral-links/referral-links.service';
 import { CreateExclusiveDealDto } from './dto/create-exclusive-deal.dto';
+import { CreateShopDealOfferDto } from './dto/create-shop-deal-offer.dto';
 import { TerminateExclusiveDealDto } from './dto/terminate-exclusive-deal.dto';
 import { ApproveExclusiveDealDto } from './dto/approve-exclusive-deal.dto';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
@@ -87,7 +88,7 @@ export class AffiliateDealsService {
     )
       return evaluateDealKpi(deal, 0, 0);
     const where = dealOrderWhere(deal);
-    const [completed, pending] = await Promise.all([
+    const [completed, pending, completedOrdersData] = await Promise.all([
       db.order.count({
         where: {
           ...where,
@@ -114,8 +115,34 @@ export class AffiliateDealsService {
           },
         },
       }),
+      typeof db?.order?.findMany === 'function'
+        ? db.order.findMany({
+            where: {
+              ...where,
+              status: 'COMPLETED',
+              refundedAmount: 0,
+              completedAt: {
+                lte: new Date(
+                  Math.min(Date.now(), deal.settlementEndsAt.getTime()),
+                ),
+              },
+            },
+            select: {
+              orderItems: {
+                where: { productId: deal.productId },
+                select: { unitPrice: true, quantity: true },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
-    return evaluateDealKpi(deal, completed, pending);
+    let validSales = 0;
+    for (const order of completedOrdersData || []) {
+      for (const item of order.orderItems || []) {
+        validSales += Number(item.unitPrice || 0) * (item.quantity || 1);
+      }
+    }
+    return evaluateDealKpi(deal, completed, pending, new Date(), validSales);
   }
 
   async getProgress(id: string, userId: string, role: UserRole) {
@@ -524,6 +551,153 @@ export class AffiliateDealsService {
       cache: this.cache,
       voucherCode: (id: string, name: string, discount: number) =>
         this.vipVoucherCode(id, name, discount),
+    };
+  }
+
+  async createShopOffer(
+    shopOwnerId: string,
+    role: UserRole,
+    dto: CreateShopDealOfferDto,
+  ) {
+    const product = await this.prisma.product.findFirst({
+      where: { id: dto.productId, moderationStatus: 'APPROVED' },
+      include: { store: true },
+    });
+    if (
+      !product ||
+      product.deletedAt ||
+      !product.isActive ||
+      !product.isAffiliateEnabled ||
+      !product.store ||
+      product.store.deletedAt ||
+      !product.store.isActive
+    ) {
+      throw new BadRequestException('Sản phẩm hiện không nhận tiếp thị liên kết.');
+    }
+    await this.assertStoreAccess(product.storeId, shopOwnerId, role);
+
+    const collaborator = await this.prisma.user.findUnique({
+      where: { id: dto.collaboratorId },
+      include: { collaboratorProfile: true },
+    });
+    if (
+      !collaborator ||
+      !collaborator.isActive ||
+      collaborator.deletedAt ||
+      collaborator.role !== UserRole.COLLABORATOR
+    ) {
+      throw new ForbiddenException('Tài khoản đối tác không tồn tại hoặc không hợp lệ.');
+    }
+
+    const proposedRate = Number(dto.proposedCommissionRate);
+    if (!Number.isFinite(proposedRate) || proposedRate < 11 || proposedRate > 16) {
+      throw new BadRequestException('Mức thù lao độc quyền phải từ 11% đến 16%.');
+    }
+
+    const kpi = validateDealKpi(dto.targetOrders, dto.commitmentDays);
+    const salesCommitment = (dto.salesCommitment || '').trim();
+
+    let conversation = await this.prisma.conversation.findFirst({
+      where: { storeId: product.storeId, collaboratorId: dto.collaboratorId },
+      select: { id: true },
+    });
+    if (!conversation) {
+      conversation = await this.prisma.conversation.create({
+        data: { storeId: product.storeId, collaboratorId: dto.collaboratorId },
+        select: { id: true },
+      });
+    }
+
+    const card = {
+      type: 'EXCLUSIVE_DEAL_PROPOSAL',
+      proposalId: '',
+      productId: product.id,
+      productTitle: product.title,
+      productImage: product.imageUrl,
+      storeId: product.storeId,
+      storeName: product.store.name,
+      publicCommissionRate: 10,
+      proposedCommissionRate: proposedRate,
+      targetOrders: dto.targetOrders,
+      commitmentDays: dto.commitmentDays,
+      salesCommitment,
+      offeredBy: 'SHOP',
+      status: ExclusiveDealStatus.PENDING,
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.exclusiveDealProposal.findFirst({
+        where: {
+          collaboratorId: dto.collaboratorId,
+          productId: product.id,
+          status: ExclusiveDealStatus.PENDING,
+        },
+      });
+
+      let proposal;
+      if (existing) {
+        proposal = await tx.exclusiveDealProposal.update({
+          where: { id: existing.id },
+          data: {
+            proposedCommissionRate: new Prisma.Decimal(proposedRate),
+            salesCommitment,
+            conversationId: conversation.id,
+            ...kpi,
+            updatedAt: new Date(),
+          },
+          include: {
+            product: {
+              select: { id: true, title: true, imageUrl: true, price: true },
+            },
+            store: { select: { id: true, name: true } },
+          },
+        });
+      } else {
+        proposal = await tx.exclusiveDealProposal.create({
+          data: {
+            collaboratorId: dto.collaboratorId,
+            storeId: product.storeId,
+            productId: product.id,
+            conversationId: conversation.id,
+            proposedCommissionRate: new Prisma.Decimal(proposedRate),
+            salesCommitment,
+            ...kpi,
+          },
+          include: {
+            product: {
+              select: { id: true, title: true, imageUrl: true, price: true },
+            },
+            store: { select: { id: true, name: true } },
+          },
+        });
+      }
+      const chatMessage = await tx.chatMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: shopOwnerId,
+          messageText: JSON.stringify({ ...card, proposalId: proposal.id }),
+        },
+        include: {
+          sender: { select: { id: true, fullName: true, role: true } },
+        },
+      });
+      await tx.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageAt: new Date() },
+      });
+      return { proposal, chatMessage };
+    });
+
+    this.chatGateway.broadcastNewMessage(
+      conversation.id,
+      result.chatMessage,
+      dto.collaboratorId,
+    );
+    return {
+      ...result.proposal,
+      proposedCommissionRate: Number(result.proposal.proposedCommissionRate),
+      conversationId: conversation.id,
     };
   }
 

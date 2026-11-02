@@ -76,3 +76,15 @@ Issue cần sửa:
 | WEB-30 | Compare names with synonyms; stop local model | Real semantic warning >80; model unavailable is explicit503 | Pending manual UAT |
 
 These manual rows require evidence from the group test database. Automated results are recorded separately in verification.md.
+
+## Bổ sung sau rà soát 01/11
+
+| ID | Thao tác | Kết quả mong đợi | Trạng thái |
+|---|---|---|---|
+| WEB-31 | KOC mở Marketplace/trang Shop, gửi kế hoạch tới Shop A, xem lại card khác | Đúng Store; trạng thái chờ duyệt đồng bộ; Customer không thấy nút; lỗi tải có thử lại | Chờ UAT DB nhóm; browser fixture đã qua |
+| WEB-32 | Thử ảnh bìa 799px, không vuông, rồi ảnh vuông 800px; thêm bốn và năm ảnh phụ | Ảnh sai bị chặn trước upload; BE từ chối bytes sai; ảnh phụ thứ năm không upload/lưu | Chờ UAT DB nhóm; browser/HTTP/policy đã qua |
+| WEB-33 | Reviewer tạo/sửa hồ sơ rồi tự duyệt; reviewer khác duyệt; hai reviewer quyết định đồng thời | Tự duyệt 403, UI khóa; độc lập được duyệt; chỉ một quyết định commit, quyết định còn lại 409 | Chờ UAT DB nhóm; PG/HTTP/browser đã qua |
+| WEB-34 | So AI KOC dưới/từ năm đơn, KOC khác ngành, Bio gần nghĩa | Tổng điểm khớp trọng số trả về; không loại khác ngành nếu chưa bật lọc category; thiếu bằng chứng không bịa CR/giá | Chờ UAT DB nhóm; unit và inference đã qua |
+| WEB-35 | Shop mời KOC chưa có hội thoại; KOC mở Hợp tác → Lời mời → chọn Shop và phản hồi | Shop xuất hiện dù chưa có chat; có nút chấp nhận/từ chối; danh sách cập nhật sau quyết định, lỗi tải có thử lại | Đã xác nhận hiển thị trên DB nhóm; hai quyết định test bằng fixture; lời mời Aura thật giữ chờ người dùng |
+
+Giữ trạng thái chờ cho các ca trên cho tới khi có ID/ảnh/kết quả do người nghiệm thu thao tác trên DB nhóm. Không cộng số ca browser fixture vào số UAT đã ký.

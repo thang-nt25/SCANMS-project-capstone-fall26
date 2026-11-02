@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   PACKAGE_FIELDS,
   ProductPackageFields,
-  validateProductPackage,
+  validateProductPackageDimensions,
 } from '../products/product-package';
 
 export interface ShippingPackage {
@@ -28,11 +28,8 @@ export function buildShippingPackage(lines: ShippingLine[]): ShippingPackage {
       );
     if (!Number.isInteger(quantity) || quantity < 1)
       throw new BadRequestException('Số lượng kiện hàng không hợp lệ.');
-    // GHN quotes use mass and dimensions; a legacy catalogue barcode must not
-    // block checkout. Barcode validity is still enforced when Shop creates or
-    // edits the product through the product package DTO/service.
-    const { barcode: _legacyBarcode, ...packageFields } = product;
-    validateProductPackage(packageFields);
+    // Legacy catalog barcodes must not block shipping; product writes still validate EAN-13.
+    validateProductPackageDimensions(product);
     if (PACKAGE_FIELDS.some((key) => product[key] == null)) {
       throw new BadRequestException(
         `Shop cần cập nhật khối lượng và kích thước đóng gói của "${product.title || 'sản phẩm'}" trước khi tính cước.`,

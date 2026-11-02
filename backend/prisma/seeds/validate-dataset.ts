@@ -303,6 +303,7 @@ export function validateDataset(data: SeedDataset): void {
       );
       const rate = amount(item.appliedCommissionRate);
       const netSubtotal = pricing[itemIndex].netGoods;
+      const remunerationBase = amount(item.unitPrice) * item.quantity;
       const snapshots = payload.commissionBreakdown as Record<
         string,
         unknown
@@ -324,17 +325,18 @@ export function validateDataset(data: SeedDataset): void {
       assertSeed(
         rate === expected.rate &&
           snapshot?.rate === rate &&
-          equalMoney(Number(snapshot?.netGoods), netSubtotal),
-        'additive commission snapshot mismatch',
+          equalMoney(Number(snapshot?.netGoods), netSubtotal) &&
+          equalMoney(Number(snapshot?.remunerationBase), remunerationBase),
+        'remuneration snapshot mismatch',
       );
       assertSeed(
         rate >= 0 &&
           rate <= 25 &&
           equalMoney(
             amount(item.calculatedCommissionAmount),
-            commissionAmount(netSubtotal, rate),
+            commissionAmount(remunerationBase, rate),
           ),
-        'commission must use net merchandise value and respect cap',
+        'remuneration must use original merchandise value and respect cap',
       );
     }
     if (order.status === 'COMPLETED')
@@ -402,8 +404,8 @@ export function validateDataset(data: SeedDataset): void {
     assertSeed(
       !coupon.stackableWithShopVoucher ||
         (coupon.fundingSource === 'PLATFORM_FUNDED' &&
-          coupon.benefitType === 'GOODS'),
-      'two shop merchandise vouchers cannot stack',
+          (coupon.benefitType === 'GOODS' || coupon.benefitType === 'SHIPPING')),
+      'only platform-funded vouchers can stack with a shop coupon',
     );
     assertSeed(
       (coupon.usageCount ?? 0) === redemptions.length,

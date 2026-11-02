@@ -194,6 +194,33 @@ export class CampaignsController {
     return this.campaignsService.rejectInvitation(user.id, participantId);
   }
 
+
+  // ─── KOL: Khám phá các chiến dịch mở toàn sàn ────────────────────────
+  @Get('explore')
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({
+    summary: 'KOL: Khám phá danh sách chiến dịch mở (Broadcast Campaigns)',
+    description: 'Trả về các chiến dịch kích cầu đang mở toàn sàn có quỹ thưởng còn hiệu lực.',
+  })
+  exploreCampaigns(@CurrentUser() user: any) {
+    return this.campaignsService.exploreCampaigns(user.id);
+  }
+
+  // ─── KOL: 1-Click Tham gia chiến dịch mở ─────────────────────────────
+  @Post(':campaignId/join')
+  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'KOL: 1-Click Tham gia chiến dịch mở toàn sàn',
+    description: 'Đăng ký nhận thưởng chiến dịch và kích hoạt quyền lấy link/QR có campaignId.',
+  })
+  joinCampaign(
+    @CurrentUser() user: any,
+    @Param('campaignId', new ParseUUIDPipe()) campaignId: string,
+  ) {
+    return this.campaignsService.joinCampaign(user.id, campaignId);
+  }
+
   // ─── Public: Chi tiết chiến dịch ─────────────────────────────────────
   @Get(':campaignId')
   @ApiOperation({

@@ -345,6 +345,8 @@ model User {
   exceptionApprovedDeals    ExclusiveDealProposal[]     @relation("ExclusiveDealExceptionReviewer")
   requestedPricePromotions  ProductPricePromotion[]     @relation("PricePromotionRequester")
   reviewedPricePromotions   ProductPricePromotion[]     @relation("PricePromotionReviewer")
+  createdProducts           Product[]                  @relation("ProductCreator")
+  submittedProducts         Product[]                  @relation("ProductSubmitter")
   storeCollaborations       StoreCollaborator[]         @relation("CollaboratorStoreRelations")
   monthlyBonusResults       MonthlyBonusResult[]        @relation("CollaboratorMonthlyBonusResults")
   auditLogs                 AuditLog[]
@@ -598,6 +600,8 @@ model CollaboratorSocialChannel {
 
 model Product {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdById          String?   @map("created_by_id") @db.Uuid
+  submittedById        String?   @map("submitted_by_id") @db.Uuid
   storeId              String    @map("store_id") @db.Uuid
   sku                  String    @db.VarChar(100)
   title                String    @db.VarChar(255)
@@ -634,6 +638,8 @@ model Product {
 
   // Relations
   store                  Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy              User?                   @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  submittedBy            User?                   @relation("ProductSubmitter", fields: [submittedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
   mediaAssets            MediaAsset[]
   sampleProductRequests  SampleProductRequest[]
   referralLinks          ReferralLink[]
@@ -651,6 +657,8 @@ model Product {
 
   @@index([storeId], map: "idx_fk_products_store")
   @@index([moderationStatus, createdAt], map: "idx_products_moderation_status_created")
+  @@index([createdById], map: "idx_products_created_by")
+  @@index([submittedById], map: "idx_products_submitted_by")
   @@index([barcode], map: "idx_products_barcode")
   @@map("products")
 }

@@ -9,6 +9,7 @@ export interface UserProfile {
   phoneNumber?: string;
   avatarUrl?: string | null;
   stores?: any[];
+  storeId?: string | null;
   collaboratorProfile?: any;
   wallet?: any;
 }
@@ -19,6 +20,15 @@ export interface AvailableWorkspace {
   badge: string;
   route: string;
   description: string;
+}
+
+/** Assignment comes from the API; a previous login must never choose the Shop. */
+function syncCurrentStore(user: UserProfile) {
+  const storeId = user.role === 'SHOP_MANAGER'
+    ? user.storeId || user.stores?.[0]?.id
+    : null;
+  if (storeId) localStorage.setItem('current_store_id', storeId);
+  else localStorage.removeItem('current_store_id');
 }
 
 export const authService = {
@@ -70,11 +80,7 @@ export const authService = {
             : 'kol';
         localStorage.setItem('scanms-current-role', uiRole);
         localStorage.setItem('scanms-active-workspace', uiRole);
-        if (user.stores?.[0]?.id) {
-          localStorage.setItem('current_store_id', user.stores[0].id);
-        } else {
-          localStorage.removeItem('current_store_id');
-        }
+        syncCurrentStore(user);
         window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: user.id } }));
         window.dispatchEvent(new Event('auth-user-updated'));
       }
@@ -100,11 +106,7 @@ export const authService = {
             : 'kol';
         localStorage.setItem('scanms-current-role', uiRole);
         localStorage.setItem('scanms-active-workspace', uiRole);
-        if (user.stores?.[0]?.id) {
-          localStorage.setItem('current_store_id', user.stores[0].id);
-        } else {
-          localStorage.removeItem('current_store_id');
-        }
+        syncCurrentStore(user);
         window.dispatchEvent(new CustomEvent('scanms_auth_changed', { detail: { userId: user.id } }));
         window.dispatchEvent(new Event('auth-user-updated'));
       }
@@ -120,14 +122,10 @@ export const authService = {
     if (user && user.id) {
       const previousProfile = localStorage.getItem('user');
       const previousUserId = this.getCurrentUser()?.id;
-      const nextProfile = JSON.stringify(user);
+const nextProfile = JSON.stringify(user);
       localStorage.setItem('user', nextProfile);
-      if (user.stores?.[0]?.id) {
-        const selectedStoreId = localStorage.getItem('current_store_id');
-        const keepSelection = previousUserId === user.id && user.stores.some((store: { id: string }) => store.id === selectedStoreId);
-        localStorage.setItem('current_store_id', keepSelection ? selectedStoreId! : user.stores[0].id);
-      }
-      if (previousProfile !== nextProfile) window.dispatchEvent(new Event('auth-user-updated'));
+      syncCurrentStore(user);
+      if (previousUserId !== user.id || previousProfile !== nextProfile) window.dispatchEvent(new Event('auth-user-updated'));
     }
     return user;
   },

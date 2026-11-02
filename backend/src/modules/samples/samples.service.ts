@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
 import { normalizeSamplePhone, SAMPLE_PHONE_PATTERN, SAMPLE_PHONE_ERROR } from './sample-phone';
@@ -233,6 +234,19 @@ export class SamplesService {
       );
     }
 
+    const completedExisting = await this.prisma.sampleProductRequest.findFirst({
+      where: {
+        collaboratorId,
+        productId: dto.productId,
+        status: SampleRequestStatus.COMPLETED,
+      },
+    });
+    if (completedExisting) {
+      throw new ConflictException(
+        'Bạn đã từng nhận sản phẩm mẫu này và hoàn tất đánh giá. Mỗi Creator chỉ được tài trợ 1 suất mẫu cho mỗi dòng sản phẩm.',
+      );
+    }
+
     const request = await this.prisma.$transaction(async (tx) => {
       return tx.sampleProductRequest.create({
         data: {
@@ -331,7 +345,7 @@ export class SamplesService {
 
   async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: managedStoreWhere(shopOwnerId),
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
@@ -762,7 +776,7 @@ export class SamplesService {
 
   async getShopStats(shopOwnerId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: managedStoreWhere(shopOwnerId),
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');

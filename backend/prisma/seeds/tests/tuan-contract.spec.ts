@@ -70,11 +70,11 @@ describe('Tuan checkout contracts in seed v3', () => {
     ).toMatchObject({ deal: 0, campaign: 0, live: 0 });
   });
 
-  it('seeds only creator coupons and calculates remuneration after goods discount, before freight', () => {
+  it('seeds only creator coupons and calculates remuneration on original goods value, before freight', () => {
     const data = buildDataset(context);
     expect(data.coupons).toHaveLength(21);
     expect(data.stackedRedemptions).toHaveLength(0);
-    expect(data.coupons.filter((row) => row.benefitType === 'GOODS')).toHaveLength(20);
+    expect(data.coupons.filter((row) => row.benefitType !== 'SHIPPING')).toHaveLength(20);
     expect(data.coupons.find((row) => row.codeNormalized === 'SCANMSFREESHIP')).toMatchObject({
       benefitType: 'SHIPPING', fundingSource: 'PLATFORM_FUNDED', discountValue: 100,
     });
@@ -86,7 +86,7 @@ describe('Tuan checkout contracts in seed v3', () => {
     const netGoods =
       amount(order.subtotalAmount) - amount(order.couponDiscountAmount);
     expect(amount(item.calculatedCommissionAmount)).toBe(
-      commissionAmount(netGoods, amount(item.appliedCommissionRate)),
+      commissionAmount(amount(item.unitPrice) * item.quantity, amount(item.appliedCommissionRate)),
     );
     expect(amount(order.discountAmount)).toBe(amount(order.couponDiscountAmount));
     expect(amount(order.finalAmount)).toBe(
@@ -99,7 +99,7 @@ describe('Tuan checkout contracts in seed v3', () => {
     expect(amount(flow4.subtotalAmount)).toBe(450_000);
     expect(amount(flow4.couponDiscountAmount)).toBe(22_500);
     expect(amount(flow4Item.appliedCommissionRate)).toBe(16);
-    expect(amount(flow4Item.calculatedCommissionAmount)).toBe(68_400);
+    expect(amount(flow4Item.calculatedCommissionAmount)).toBe(72_000);
   });
 
   it('keeps synthetic freight distinct from actual zero-cost sandbox evidence', () => {

@@ -10,7 +10,6 @@ import {
 import {
   Send,
   Plus,
-  Camera,
   Globe,
   Building,
   X,
@@ -937,9 +936,7 @@ export function KolUpgradeForm({
                     {currentUser?.fullName?.[0] || 'K'}
                   </div>
                 )}
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-[#EAE4D7] flex items-center justify-center text-[#7D715E]">
-                  <Camera size={8} />
-                </div>
+
               </div>
 
               <div className="min-w-0 flex-1">

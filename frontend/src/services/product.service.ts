@@ -3,6 +3,8 @@ import api from './api';
 export interface Product {
   id: string;
   storeId?: string;
+  createdById?: string | null;
+  submittedById?: string | null;
   sku: string;
   title: string;
   categoryName?: string;

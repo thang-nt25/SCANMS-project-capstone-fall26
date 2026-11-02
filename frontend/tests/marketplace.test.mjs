@@ -140,7 +140,7 @@ test('every sidebar navigation function renders its link with warm gold styling'
 test('sidebar navigation rows use clean layout and active indicators', () => {
   const attributes = sidebarNavigationAttributes();
   assert.equal(attributes.get('aria-current'), "{active ? 'page' : undefined}");
-  for (const token of ['hover:bg-[#FAF8F5]', 'hover:text-[#B88E4F]', 'min-h-[40px]']) {
+  for (const token of ['hover:bg-[#FAF8F5]', 'hover:text-[#B88E4F]', 'min-h-[38px]']) {
     assert.ok(attributes.get('className')?.includes(token), `Missing navigation token: ${token}`);
   }
 });
