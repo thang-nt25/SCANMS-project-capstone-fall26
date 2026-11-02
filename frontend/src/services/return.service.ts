@@ -65,6 +65,18 @@ export interface ReturnDetail {
     status: 'NOT_POSTED' | 'PENDING' | 'AVAILABLE' | 'REVERSED';
     availableAt?: string | null;
   };
+  ghnClaim?: {
+    status: 'DRAFT' | 'SUBMITTED' | 'NEEDS_MORE_EVIDENCE' | 'ACCEPTED' | 'REJECTED' | 'PAID';
+    originalTrackingNumber: string;
+    replacementTrackingNumber?: string;
+    evidenceUrls: string[];
+    ghnReference?: string;
+    claimedAmount?: number;
+    approvedAmount?: number;
+    notes?: string;
+    proofUrl?: string;
+    updatedAt: string;
+  } | null;
   order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
   items: Array<{
     id: string;
@@ -151,6 +163,14 @@ export const returnService = {
   getActiveReturns: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/active-returns', {
     headers: { 'x-skip-cache': 'true' },
   })),
+  getGhnClaims: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/ghn-claims', {
+    headers: { 'x-skip-cache': 'true' },
+  })),
+  updateGhnClaim: async (id: string, data: {
+    action: 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
+    ghnReference?: string; claimedAmount?: number; approvedAmount?: number;
+    notes: string; proofUrl?: string;
+  }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/ghn-claims/${id}`, data)),
   assessLiability: async (id: string, data: {
     liability: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
   }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/active-returns/${id}/liability`, data)),

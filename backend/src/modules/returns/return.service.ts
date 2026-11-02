@@ -27,6 +27,7 @@ import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
 import { PickupGateway } from './pickup.gateway';
 import { configuredReturnWarehouse } from './return.schemas';
+import { advanceGhnClaim, latestGhnClaim, type GhnClaimSnapshot } from './ghn-compensation-claim';
 import type {
   BookPickupInput,
   DisputeInput,
@@ -36,6 +37,7 @@ import type {
   ResolveDisputeInput,
   ShipmentInput,
   ShopEscalationInput,
+  GhnClaimActionInput,
   WarehouseInput,
 } from './return.schemas';
 
@@ -198,6 +200,27 @@ export class ReturnService {
     });
   }
 
+  private async openGhnClaim(tx: Prisma.TransactionClient, detail: Detail, actorId: string,
+    replacementTrackingNumber?: string) {
+    const originalTrackingNumber = originalGhnTracking(detail.order.rawPayload);
+    if (!originalTrackingNumber || latestGhnClaim(detail.events)) return;
+    const shopEvidence = detail.events.flatMap((event) => {
+      if (event.type !== 'SHOP_EVIDENCE_SUBMITTED' || !event.data ||
+          typeof event.data !== 'object' || Array.isArray(event.data)) return [];
+      const urls = (event.data as Record<string, unknown>).evidenceUrls;
+      return Array.isArray(urls) ? urls.filter((url): url is string => typeof url === 'string') : [];
+    });
+    const snapshot: GhnClaimSnapshot = {
+      status: 'DRAFT', originalTrackingNumber, replacementTrackingNumber,
+      evidenceUrls: [...new Set([...(detail.imageUrls ?? []), detail.unboxingVideoUrl, ...shopEvidence].filter(Boolean))],
+      updatedAt: new Date().toISOString(),
+    };
+    await tx.returnEvent.create({ data: {
+      returnRequestId: detail.id, actorId, type: 'GHN_COMPENSATION_CLAIM_OPENED',
+      data: snapshot as unknown as Prisma.InputJsonValue,
+    } });
+  }
+
   private present(item: Detail, showPartnerIncome = false) {
     const { order, shipments, ...rest } = item;
     const outboundGhnTrackingNumber = originalGhnTracking(order.rawPayload);
@@ -234,6 +257,7 @@ export class ReturnService {
         availableAt: commissions.find((commission) => commission.status === CommissionStatus.PENDING)?.availableAt ?? null,
       } } : {}),
       returnWarehouse: configuredReturnWarehouse(order.store.returnWarehouse),
+      ...(showPartnerIncome ? { ghnClaim: latestGhnClaim(item.events) } : {}),
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -1083,6 +1107,9 @@ export class ReturnService {
           data: { liability: input.liability, resolution: input.resolution, notes: input.notes },
         },
       });
+      if (input.liability === 'LOGISTICS_FAULT' && target !== ReturnRequestStatus.INSPECTION_REJECTED) {
+        await this.openGhnClaim(tx, detail, userId);
+      }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         // Existing requests are order-wide. Amount is server-calculated, never accepted from the browser.
         const amount = detail.order.finalAmount.minus(
@@ -1224,20 +1251,19 @@ export class ReturnService {
       const logisticsAssessment = [...detail.events].reverse().find((event) => {
         const data = event.data as Record<string, unknown> | null;
         return event.type === 'LIABILITY_ASSESSED' &&
-          data?.source === 'SYSTEM_MANAGER_REVIEW' && data.liability === 'LOGISTICS_FAULT';
+          ['SYSTEM_MANAGER_REVIEW', 'SYSTEM_MANAGER_ARBITRATION'].includes(String(data?.source)) &&
+          data?.liability === 'LOGISTICS_FAULT';
       });
-      const originalTrackingNumber = originalGhnTracking(detail.order.rawPayload);
-      if (logisticsAssessment && originalTrackingNumber) {
+      const claim = latestGhnClaim(detail.events);
+      if (claim && !claim.replacementTrackingNumber) {
         await tx.returnEvent.create({ data: {
           returnRequestId: id,
           actorId: userId,
-          type: 'GHN_COMPENSATION_CLAIM_OPENED',
-          data: {
-            originalTrackingNumber,
-            replacementTrackingNumber: input.trackingNumber,
-            status: 'PENDING_RECONCILIATION',
-          },
+          type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+          data: { ...claim, replacementTrackingNumber: input.trackingNumber } as unknown as Prisma.InputJsonValue,
         } });
+      } else if (logisticsAssessment && !claim) {
+        await this.openGhnClaim(tx, detail, userId, input.trackingNumber);
       }
       await this.notify(
         tx,
@@ -1440,6 +1466,44 @@ export class ReturnService {
     }));
   }
 
+  async listGhnClaims(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xem yêu cầu bồi hoàn GHN');
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { events: { some: { type: 'GHN_COMPENSATION_CLAIM_OPENED' } } },
+      include: detailInclude,
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async updateGhnClaim(userId: string, role: UserRole, id: string, input: GhnClaimActionInput) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được đối soát bồi hoàn GHN');
+    await this.prisma.$transaction(async (tx) => {
+      // The claim is an event stream. Lock its parent row so two managers cannot advance it twice.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+      `;
+      if (locked.length !== 1) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const detail = await tx.returnRequest.findUnique({ where: { id }, include: detailInclude });
+      if (!detail) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const current = latestGhnClaim(detail.events);
+      if (!current) throw new ConflictException('Manager chưa kết luận lỗi GHN cho hồ sơ này');
+      const next = advanceGhnClaim(current, input);
+      await tx.returnEvent.create({ data: {
+        returnRequestId: id, actorId: userId, type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+        data: { ...next, action: input.action } as unknown as Prisma.InputJsonValue,
+      } });
+      await tx.returnRequest.update({ where: { id }, data: { updatedAt: new Date() } });
+      await this.notify(tx, detail, detail.order.store.ownerId, 'GHN_COMPENSATION_UPDATED',
+        'Cập nhật bồi hoàn GHN',
+        `Đơn ${detail.order.externalOrderSn}: yêu cầu GHN ${next.ghnReference || 'chưa gửi'} đang ở trạng thái ${next.status}.`);
+    });
+    return this.getOne(userId, role, id);
+  }
+
   async listStalledInspections(role: UserRole) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER) {
       throw new ForbiddenException(
@@ -1482,6 +1546,8 @@ export class ReturnService {
     const detail = dispute.returnRequest;
     if (input.liability === 'LOGISTICS_FAULT' && !originalGhnTracking(detail.order.rawPayload))
       throw new ConflictException('Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác');
+    if (input.liability === 'LOGISTICS_FAULT' && input.ruling === 'UPHOLD_SHOP')
+      throw new ConflictException('Đã xác định lỗi GHN thì cần chọn hoàn tiền hoặc đổi hàng cho khách');
     if (
       input.ruling === 'UPHOLD_SHOP' &&
       detail.shipments.some(
@@ -1545,6 +1611,9 @@ export class ReturnService {
             },
           },
         });
+      }
+      if (input.liability === 'LOGISTICS_FAULT' && input.ruling !== 'UPHOLD_SHOP') {
+        await this.openGhnClaim(tx, detail, adminId);
       }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         const amount = detail.order.finalAmount.minus(

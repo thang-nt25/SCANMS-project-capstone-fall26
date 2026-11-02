@@ -120,11 +120,11 @@ describe('Flow 4 replacement and liability', () => {
     await service.submitExchangeShipment(shopManagerId, UserRole.SHOP_MANAGER, requestId,
       { carrierName: 'GHN', trackingNumber: 'GHN-REPLACEMENT-1' });
     expect(tx.returnEvent.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ type: 'GHN_COMPENSATION_CLAIM_OPENED', data: {
+      data: expect.objectContaining({ type: 'GHN_COMPENSATION_CLAIM_OPENED', data: expect.objectContaining({
         originalTrackingNumber: 'GHN-ORIGINAL-1',
         replacementTrackingNumber: 'GHN-REPLACEMENT-1',
-        status: 'PENDING_RECONCILIATION',
-      } }),
+        status: 'DRAFT',
+      }) }),
     }));
   });
 

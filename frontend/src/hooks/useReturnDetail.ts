@@ -30,6 +30,8 @@ export function useReturnAction<T>(id: string, action: (id: string, data: T) => 
       await queryClient.invalidateQueries({ queryKey: ['return-detail', id] });
       await queryClient.invalidateQueries({ queryKey: ['shop-returns'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-return-disputes'] });
+      await queryClient.invalidateQueries({ queryKey: ['ghn-claims'] });
+      await queryClient.invalidateQueries({ queryKey: ['return-disputes'] });
     },
   });
 }

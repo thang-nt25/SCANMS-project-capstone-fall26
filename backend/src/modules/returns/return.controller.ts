@@ -32,6 +32,7 @@ import {
   simulatePickupSchema,
   shopQueueSchema,
   shopEscalationSchema,
+  ghnClaimActionSchema,
   warehouseSchema,
   type BookPickupInput,
   type DisputeInput,
@@ -42,6 +43,7 @@ import {
   type ShipmentInput,
   type WarehouseInput,
   type ShopEscalationInput,
+  type GhnClaimActionInput,
 } from './return.schemas';
 
 @ApiTags('Returns')
@@ -240,6 +242,21 @@ export class ReturnDisputeAdminController {
   @Get('active-returns')
   listActive(@CurrentUser('role') role: UserRole) {
     return this.returns.listForOversight(role);
+  }
+
+  @Get('ghn-claims')
+  listGhnClaims(@CurrentUser('role') role: UserRole) {
+    return this.returns.listGhnClaims(role);
+  }
+
+  @Patch('ghn-claims/:id')
+  updateGhnClaim(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(ghnClaimActionSchema)) body: GhnClaimActionInput,
+  ) {
+    return this.returns.updateGhnClaim(userId, role, id, body);
   }
 
   @Patch('active-returns/:id/liability')

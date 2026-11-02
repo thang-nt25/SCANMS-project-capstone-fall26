@@ -19,6 +19,11 @@ const liabilityLabels: Record<string, string> = {
 };
 const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
+const ghnClaimLabels: Record<string, string> = {
+  DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN, chờ phản hồi',
+  NEEDS_MORE_EVIDENCE: 'GHN yêu cầu bổ sung bằng chứng', ACCEPTED: 'GHN đã chấp thuận',
+  REJECTED: 'GHN từ chối bồi hoàn', PAID: 'Đã ghi nhận GHN thanh toán',
+};
 
 function ErrorText({ error }: { error: unknown }) {
   if (!error) return null;
@@ -137,7 +142,6 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 function ShopActions({ request }: { request: ReturnDetail }) {
   const managerAssessment = [...request.events].reverse().find((event) =>
     event.type === 'LIABILITY_ASSESSED' && event.data?.source === 'SYSTEM_MANAGER_REVIEW');
-  const compensationClaim = [...request.events].reverse().find((event) => event.type === 'GHN_COMPENSATION_CLAIM_OPENED');
   const [warehouse, setWarehouse] = useState<ReturnAddress>(request.returnWarehouse || {
     name: request.order.storeName, phone: '', address: '', wardName: '', provinceName: '', districtName: '',
   });
@@ -163,9 +167,12 @@ function ShopActions({ request }: { request: ReturnDetail }) {
   }
 
   return <div className="space-y-4">
-    {compensationClaim && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    {request.ghnClaim && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
       <h3 className="font-bold">Hồ sơ yêu cầu GHN bồi hoàn</h3>
-      <p className="mt-1 text-[#7D715E]">Đang chờ đối soát nội bộ với GHN. Vận đơn gốc: {compensationClaim.data?.originalTrackingNumber || 'chưa có mã'}; vận đơn bù: {compensationClaim.data?.replacementTrackingNumber || 'chưa có mã'}.</p>
+      <p className="mt-1">Trạng thái: <strong>{ghnClaimLabels[request.ghnClaim.status]}</strong></p>
+      <p className="mt-1 text-[#7D715E]">Vận đơn gốc: {request.ghnClaim.originalTrackingNumber}; mã yêu cầu GHN: {request.ghnClaim.ghnReference || 'chưa gửi'}.</p>
+      {request.ghnClaim.claimedAmount && <p className="mt-1">Yêu cầu: {money(request.ghnClaim.claimedAmount)} · GHN chấp thuận: {request.ghnClaim.approvedAmount ? money(request.ghnClaim.approvedAmount) : 'chưa có'}</p>}
+      {request.ghnClaim.notes && <p className="mt-1 text-[#7D715E]">Đối soát: {request.ghnClaim.notes}</p>}
     </section>}
     {request.inspectionEscalatedAt && ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
       <p role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm font-semibold text-[#8A6736]">
@@ -347,6 +354,77 @@ function AdminActions({ request }: { request: ReturnDetail }) {
   </form>;
 }
 
+type GhnClaimAction = 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
+function AdminGhnClaim({ request }: { request: ReturnDetail }) {
+  const claim = request.ghnClaim;
+  const [action, setAction] = useState<GhnClaimAction>('SUBMIT');
+  const [reference, setReference] = useState(claim?.ghnReference || '');
+  const [claimedAmount, setClaimedAmount] = useState(claim?.claimedAmount?.toString() || '');
+  const [approvedAmount, setApprovedAmount] = useState(claim?.approvedAmount?.toString() || '');
+  const [notes, setNotes] = useState('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofUrl, setProofUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const update = useReturnAction(request.id, returnService.updateGhnClaim);
+  if (!claim) return null;
+  const options: GhnClaimAction[] = claim.status === 'DRAFT' || claim.status === 'NEEDS_MORE_EVIDENCE'
+    ? ['SUBMIT'] : claim.status === 'SUBMITTED' ? ['REQUEST_MORE', 'ACCEPT', 'REJECT']
+      : claim.status === 'ACCEPTED' ? ['PAID'] : claim.status === 'REJECTED' ? ['APPEAL'] : [];
+  const selected = options.includes(action) ? action : options[0];
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setUploading(true);
+    try {
+      const uploaded = proofFile ? (await uploadService.uploadMedia(proofFile, `scanms/returns/${request.id}/ghn-claim`)).url : undefined;
+      await update.mutateAsync({
+        action: selected, ghnReference: reference.trim() || undefined,
+        claimedAmount: claimedAmount ? Number(claimedAmount) : undefined,
+        approvedAmount: approvedAmount ? Number(approvedAmount) : undefined,
+        notes: notes.trim(), proofUrl: uploaded || proofUrl.trim() || undefined,
+      });
+      setNotes(''); setProofFile(null); setProofUrl('');
+    } catch (cause) { setError(cause); }
+    finally { setUploading(false); }
+  }
+  return <section className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4">
+    <h2 className="font-bold">Đối soát bồi hoàn với GHN</h2>
+    <p className="text-sm">Trạng thái: <strong>{ghnClaimLabels[claim.status]}</strong> · Vận đơn gốc: <strong>{claim.originalTrackingNumber}</strong></p>
+    <p className="text-sm text-[#7D715E]">Hồ sơ này độc lập với việc hoàn tiền/đổi hàng cho khách. Các bước phản hồi và thanh toán GHN được Manager ghi nhận thủ công theo chứng từ.</p>
+    {claim.replacementTrackingNumber && <p className="text-sm">Vận đơn hàng đổi: {claim.replacementTrackingNumber}</p>}
+    {claim.ghnReference && <p className="text-sm">Mã yêu cầu GHN: {claim.ghnReference}</p>}
+    {claim.claimedAmount && <p className="text-sm">Yêu cầu: {money(claim.claimedAmount)} · Chấp thuận: {claim.approvedAmount ? money(claim.approvedAmount) : 'chưa có'}</p>}
+    {claim.notes && <p className="whitespace-pre-wrap text-sm">Ghi chú gần nhất: {claim.notes}</p>}
+    <div className="flex flex-wrap gap-3">{claim.evidenceUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#8A6736] underline">Bằng chứng {index + 1}</a>)}</div>
+    {options.length > 0 && <form onSubmit={(event) => void submit(event)} className="space-y-3 border-t border-[#EEDFC6] pt-3">
+      <label className="block text-sm">Bước đối soát
+        <select value={selected} onChange={(event) => setAction(event.target.value as GhnClaimAction)} className={field}>
+          {options.map((value) => <option key={value} value={value}>{({ SUBMIT: 'Ghi nhận đã gửi GHN', REQUEST_MORE: 'GHN yêu cầu bổ sung', ACCEPT: 'GHN chấp thuận', REJECT: 'GHN từ chối', APPEAL: 'Kháng nghị với GHN', PAID: 'Ghi nhận GHN đã thanh toán' } as Record<GhnClaimAction, string>)[value]}</option>)}
+        </select>
+      </label>
+      {selected === 'SUBMIT' && <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">Mã yêu cầu GHN<input required minLength={3} maxLength={100} value={reference} onChange={(event) => setReference(event.target.value)} className={field} /></label>
+        <label className="text-sm">Số tiền đề nghị bồi hoàn (₫)<input required type="number" min="1" max="1000000000" value={claimedAmount} onChange={(event) => setClaimedAmount(event.target.value)} className={field} /></label>
+      </div>}
+      {selected === 'APPEAL' && <label className="block text-sm">Mã yêu cầu GHN mới<input required minLength={3} maxLength={100} value={reference} onChange={(event) => setReference(event.target.value)} className={field} /></label>}
+      {(selected === 'ACCEPT' || selected === 'PAID') && <label className="block text-sm">Số tiền GHN chấp thuận (₫)
+        <input required type="number" min="1" max={claim.claimedAmount || 1000000000} value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} className={field} />
+      </label>}
+      <textarea required minLength={10} maxLength={2000} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ghi rõ nội dung liên hệ, phản hồi hoặc đối soát GHN" className={field} />
+      <label className="block text-sm">Chứng từ GHN {selected === 'SUBMIT' && claim.status === 'DRAFT' ? '(nếu cần bổ sung)' : '(bắt buộc)'}
+        <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" onChange={(event) => setProofFile(event.target.files?.[0] || null)} className={field} />
+      </label>
+      <input type="url" value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} placeholder="Hoặc dán URL HTTPS của chứng từ GHN" className={field} />
+      <button type="submit" disabled={uploading || update.isPending || notes.trim().length < 10 ||
+        ((selected !== 'SUBMIT' || claim.status === 'NEEDS_MORE_EVIDENCE') && !proofFile && !proofUrl.trim())} className={primary}>
+        {uploading || update.isPending ? 'Đang lưu đối soát…' : 'Lưu bước đối soát GHN'}
+      </button>
+      <ErrorText error={error || update.error} />
+    </form>}
+  </section>;
+}
+
 function AdminRefundRetry({ request }: { request: ReturnDetail }) {
   const retry = useReturnAction(request.id, returnService.retryPendingRefund);
   if (!['REFUND_PENDING', 'REFUND_FAILED'].includes(request.status) ||
@@ -439,7 +517,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             </div>
           </section>)}
           {mode === 'shop' ? <><ShopEscalation request={detail.data} /><ShopActions request={detail.data} /></> : mode === 'customer' ? <CustomerActions request={detail.data} /> :
-            <><AdminRefundRetry request={detail.data} /><AdminActions request={detail.data} /></>}
+            <><AdminRefundRetry request={detail.data} /><AdminGhnClaim request={detail.data} /><AdminActions request={detail.data} /></>}
         </>}
       </div>
     </main>

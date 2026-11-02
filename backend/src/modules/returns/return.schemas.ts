@@ -78,6 +78,17 @@ export const shopEscalationSchema = z.object({
 
 export type ShopEscalationInput = z.infer<typeof shopEscalationSchema>;
 
+export const ghnClaimActionSchema = z.object({
+  action: z.enum(['SUBMIT', 'REQUEST_MORE', 'ACCEPT', 'REJECT', 'APPEAL', 'PAID']),
+  ghnReference: text(3, 100).optional(),
+  claimedAmount: z.number().int().positive().max(1_000_000_000).optional(),
+  approvedAmount: z.number().int().positive().max(1_000_000_000).optional(),
+  notes: text(10, 2000),
+  proofUrl: z.string().url().max(1000).refine((url) => url.startsWith('https://')).optional(),
+}).strict();
+
+export type GhnClaimActionInput = z.infer<typeof ghnClaimActionSchema>;
+
 export const resolveDisputeSchema = z
   .object({
     ruling: z.enum(['APPROVE_REFUND', 'APPROVE_EXCHANGE', 'UPHOLD_SHOP']),

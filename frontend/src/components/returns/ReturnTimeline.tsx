@@ -22,6 +22,9 @@ const eventLabels: Record<string, string> = {
   EXCHANGE_SHIPPED_TO_COMPLETED: 'Khách xác nhận hoàn tất',
   AWAITING_CUSTOMER_CONFIRMATION_TO_COMPLETED: 'Khách xác nhận hoàn tất',
   SHIPMENT_DEADLINE_EXPIRED: 'Quá hạn gửi hàng trả',
+  SHOP_EVIDENCE_SUBMITTED: 'Shop đã gửi bằng chứng cho Manager',
+  GHN_COMPENSATION_CLAIM_OPENED: 'Đã mở hồ sơ bồi hoàn GHN',
+  GHN_COMPENSATION_CLAIM_UPDATED: 'Manager cập nhật đối soát GHN',
 };
 
 const steps = [
@@ -72,7 +75,7 @@ export function ReturnTimeline({ request }: { request: ReturnDetail }) {
         <summary className="cursor-pointer text-sm font-semibold text-[#8A6736]">Lịch sử xử lý ({request.events.length})</summary>
         <ol className="mt-3 space-y-2 text-sm">
           {request.events.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2">
-            <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}</span>
+            <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type === 'GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${event.data.status}` : ''}</span>
             <time className="text-[#7D715E]" dateTime={event.createdAt}>
               {new Date(event.createdAt).toLocaleString('vi-VN')}
             </time>

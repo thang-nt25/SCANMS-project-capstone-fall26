@@ -30,6 +30,11 @@ export default function AdminReturnDisputesPage() {
     queryFn: returnService.getActiveReturns,
     refetchInterval: 30_000,
   });
+  const ghnClaims = useQuery({
+    queryKey: ['ghn-claims'],
+    queryFn: returnService.getGhnClaims,
+    refetchInterval: 30_000,
+  });
   const resolve = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { ruling: Ruling; liability: Liability; notes: string } }) =>
       returnService.resolveDispute(id, data),
@@ -49,7 +54,7 @@ export default function AdminReturnDisputesPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || !liability || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && !canUpholdShop) ||
+    if (!selected || !liability || notes.trim().length < 20 || (ruling === 'UPHOLD_SHOP' && (!canUpholdShop || liability === 'LOGISTICS_FAULT')) ||
       (liability === 'LOGISTICS_FAULT' && !selected.returnRequest.order.outboundGhnTrackingNumber)) return;
     resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
@@ -62,7 +67,7 @@ export default function AdminReturnDisputesPage() {
           <h1 className="mt-1 text-2xl font-black">Khiếu nại trả hàng đang mở</h1>
           <p className="mt-1 text-sm text-[#7D715E]">Đối chiếu lịch sử, bằng chứng và kết quả kiểm tra trước khi ra quyết định.</p>
         </div>
-        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); }}
+        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); }}
           disabled={disputes.isFetching || stalled.isFetching}
           className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm disabled:opacity-50">
           <RefreshCw className="h-4 w-4" /> Làm mới
@@ -82,6 +87,22 @@ export default function AdminReturnDisputesPage() {
             <span className="block text-sm font-bold">#{item.order.externalOrderSn}</span>
             <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {item.status}</span>
             <span className="mt-1 block text-xs font-semibold text-[#8A6736]">Xem bằng chứng và xác định trách nhiệm →</span>
+          </Link>)}
+        </div>}
+      </section>
+
+      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Yêu cầu GHN bồi hoàn">
+        <h2 className="font-bold">Đối soát bồi hoàn GHN</h2>
+        <p className="mt-1 text-xs text-[#7D715E]">Theo dõi yêu cầu từ lúc gửi GHN đến khi có phản hồi và chứng từ thanh toán. Việc xử lý cho khách đi theo luồng riêng.</p>
+        {ghnClaims.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ GHN…</p>}
+        {ghnClaims.error && <p role="alert" className="mt-3 text-sm text-[#DC2626]">Không tải được hồ sơ GHN.</p>}
+        {!ghnClaims.isLoading && !ghnClaims.error && ghnClaims.data?.length === 0 && <p className="mt-3 text-sm text-[#7D715E]">Chưa có hồ sơ bồi hoàn GHN.</p>}
+        {!!ghnClaims.data?.length && <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {ghnClaims.data.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
+            className="rounded-xl border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]">
+            <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
+            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · Vận đơn {item.ghnClaim?.originalTrackingNumber}</span>
+            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">{item.ghnClaim?.status || 'Chờ đối soát'} → Mở hồ sơ</span>
           </Link>)}
         </div>}
       </section>
@@ -151,11 +172,11 @@ export default function AdminReturnDisputesPage() {
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
                 <option value="APPROVE_REFUND">Chấp thuận hoàn tiền</option>
                 <option value="APPROVE_EXCHANGE">Chấp thuận đổi hàng</option>
-                {canUpholdShop && <option value="UPHOLD_SHOP">Giữ quyết định của Shop</option>}
+                {canUpholdShop && <option value="UPHOLD_SHOP" disabled={liability === 'LOGISTICS_FAULT'}>Giữ quyết định của Shop</option>}
               </select>
             </label>
             <label className="block text-sm">Bên chịu trách nhiệm
-              <select value={liability} onChange={(event) => setLiability(event.target.value as Liability)}
+              <select value={liability} onChange={(event) => { const next = event.target.value as Liability; setLiability(next); if (next === 'LOGISTICS_FAULT' && ruling === 'UPHOLD_SHOP') setRuling('APPROVE_REFUND'); }}
                 className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3">
                 <option value="">Chọn bên chịu trách nhiệm</option>
                 <option value="LOGISTICS_FAULT" disabled={!selected.returnRequest.order.outboundGhnTrackingNumber}>GHN / vận chuyển</option>
@@ -172,7 +193,7 @@ export default function AdminReturnDisputesPage() {
             <p className="text-xs text-[#7D715E]">Nếu ví khách sẵn sàng, hoàn tiền và thu hồi thu nhập được ghi cùng giao dịch; nếu chưa, hồ sơ ở trạng thái chờ đối soát.</p>
             {!canUpholdShop && <p className="text-xs text-[#7D715E]">Shop đang giữ hàng khách trả; không thể đóng hồ sơ nếu chưa có phương án trả hàng hoặc bồi hoàn.</p>}
             <button type="submit" disabled={resolve.isPending || !liability || notes.trim().length < 20 ||
-              (ruling === 'UPHOLD_SHOP' && !canUpholdShop) ||
+              (ruling === 'UPHOLD_SHOP' && (!canUpholdShop || liability === 'LOGISTICS_FAULT')) ||
               (liability === 'LOGISTICS_FAULT' && !selected.returnRequest.order.outboundGhnTrackingNumber)}
               className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
               {resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
