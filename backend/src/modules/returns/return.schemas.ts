@@ -93,6 +93,21 @@ export type WarehouseInput = z.infer<typeof warehouseSchema>;
 export type BookPickupInput = z.infer<typeof bookPickupSchema>;
 export type InspectionInput = z.infer<typeof inspectionSchema>;
 export type DisputeInput = z.infer<typeof disputeSchema>;
+
+/** Shop Settings used contactName/contactPhone before the return flow added name/phone. */
+export function configuredReturnWarehouse(raw: unknown): WarehouseInput | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const parsed = warehouseSchema.safeParse({
+    name: value.name ?? value.contactName ?? value.warehouseName,
+    phone: value.phone ?? value.contactPhone,
+    address: value.address,
+    wardName: value.wardName,
+    provinceName: value.provinceName,
+    districtName: value.districtName,
+  });
+  return parsed.success ? parsed.data : null;
+}
 export type ResolveDisputeInput = z.infer<typeof resolveDisputeSchema>;
 
 @Injectable()

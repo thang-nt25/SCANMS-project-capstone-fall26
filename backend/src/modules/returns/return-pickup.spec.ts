@@ -192,6 +192,38 @@ describe('return pickup booking', () => {
     expect(present.present(detail).returnWarehouse).toEqual(warehouse);
   });
 
+  it('uses the existing Shop Settings warehouse without rewriting its GHN metadata', async () => {
+    const legacy = {
+      warehouseName: 'Kho Sora', contactName: 'Nguyễn Văn Minh', contactPhone: '0901234001',
+      address: '12 Tân Cảng, Phường 2, Quận Tân Bình, TP. Hồ Chí Minh',
+      wardName: 'Phường 2', districtName: 'Quận Tân Bình', provinceName: 'Hồ Chí Minh',
+      ghnWardCode: '20109', ghnDistrictId: 1442,
+    };
+    const detail = fixture();
+    detail.order.store.returnWarehouse = legacy as unknown as typeof warehouse;
+    prisma.returnRequest.findFirst.mockResolvedValue(detail);
+    const present = service as unknown as { present: (value: unknown) => { returnWarehouse: unknown } };
+    expect(present.present(detail).returnWarehouse).toEqual({
+      name: 'Nguyễn Văn Minh', phone: '0901234001', address: legacy.address,
+      wardName: legacy.wardName, districtName: legacy.districtName, provinceName: legacy.provinceName,
+    });
+    await service.bookPickup(customerId, UserRole.CUSTOMER, id, pickup);
+    expect(gateway.book).toHaveBeenCalledWith(expect.objectContaining({
+      warehouse: expect.objectContaining({ name: 'Nguyễn Văn Minh', phone: '0901234001' }),
+    }));
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to book when the Shop has no verified warehouse contact', async () => {
+    const detail = fixture();
+    detail.order.store.returnWarehouse = null as unknown as typeof warehouse;
+    prisma.returnRequest.findFirst.mockResolvedValue(detail);
+    await expect(service.bookPickup(customerId, UserRole.CUSTOMER, id, pickup))
+      .rejects.toThrow('Shop chưa cấu hình kho nhận hàng trả hợp lệ');
+    expect(gateway.book).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('never simulates an unknown or LIVE pickup provider even when test simulation is enabled', async () => {
     const oldFlag = process.env.RETURN_PICKUP_SIMULATION_ENABLED;
     process.env.RETURN_PICKUP_SIMULATION_ENABLED = 'true';

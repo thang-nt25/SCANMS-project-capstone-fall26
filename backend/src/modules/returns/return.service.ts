@@ -26,7 +26,7 @@ import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
 import { PickupGateway } from './pickup.gateway';
-import { warehouseSchema } from './return.schemas';
+import { configuredReturnWarehouse } from './return.schemas';
 import type {
   BookPickupInput,
   DisputeInput,
@@ -224,10 +224,7 @@ export class ReturnService {
           : 'NOT_POSTED',
         availableAt: commissions.find((commission) => commission.status === CommissionStatus.PENDING)?.availableAt ?? null,
       } } : {}),
-      returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
-        .success
-        ? order.store.returnWarehouse
-        : null,
+      returnWarehouse: configuredReturnWarehouse(order.store.returnWarehouse),
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -459,39 +456,9 @@ export class ReturnService {
     this.requireCustomer(userId, detail);
     if (detail.status === ReturnRequestStatus.PICKUP_BOOKED)
       return this.present(detail);
-    let warehouse = warehouseSchema.safeParse(
-      detail.order.store.returnWarehouse,
-    );
-    if (!warehouse.success) {
-      const ob = ((detail.order.store as any).onboardingData || {}) as Record<string, any>;
-      const fallbackAddress = ob.warehouseAddress || ob.businessAddress || 'Kho hoàn trả hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
-      const cleanPhone = String(ob.contactPhone || '0901234567').replace(/[^0-9+]/g, '');
-      const fallbackRaw = {
-        name: (detail.order.store.name || 'Gian hàng SCANMS').slice(0, 150),
-        phone: cleanPhone.length >= 9 && cleanPhone.length <= 15 ? cleanPhone : '0901234567',
-        address: fallbackAddress.length >= 10 ? fallbackAddress.slice(0, 500) : `${fallbackAddress}, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh`,
-        wardName: ob.wardName || 'Bến Nghé',
-        provinceName: ob.provinceName || 'Hồ Chí Minh',
-        districtName: ob.districtName || 'Quận 1',
-      };
-      warehouse = warehouseSchema.safeParse(fallbackRaw);
-      if (warehouse.success) {
-        await this.prisma.store.update({
-          where: { id: detail.order.store.id },
-          data: { returnWarehouse: warehouse.data },
-        }).catch(() => null);
-      }
-    }
-    const effectiveWarehouse: WarehouseInput = warehouse.success
-      ? warehouse.data
-      : {
-          name: (detail.order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
-          phone: '0901234567',
-          address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          wardName: 'Bến Nghé',
-          provinceName: 'Hồ Chí Minh',
-          districtName: 'Quận 1',
-        };
+    const effectiveWarehouse = configuredReturnWarehouse(detail.order.store.returnWarehouse);
+    if (!effectiveWarehouse)
+      throw new ConflictException('Shop chưa cấu hình kho nhận hàng trả hợp lệ');
     if (
       detail.status !== ReturnRequestStatus.SHOP_APPROVED ||
       !detail.shipByAt
@@ -884,7 +851,7 @@ export class ReturnService {
       );
     }
     if (
-      warehouseSchema.safeParse(initial.order.store.returnWarehouse).success
+      configuredReturnWarehouse(initial.order.store.returnWarehouse)
     ) {
       throw new ConflictException(
         'Hồ sơ này sử dụng lấy hàng tận nơi; vui lòng đặt lịch lấy hàng',
