@@ -1,4 +1,7 @@
 import { ProductSemanticMatcher } from '../../products/product-semantic-matcher.service';
+import { OrdersService } from '../../orders/orders.service';
+import { UploadController } from '../../../core/cloudinary/upload.controller';
+import sharp from 'sharp';
 import { PricingController } from '../../pricing/pricing.controller';
 import { PricingService } from '../../pricing/pricing.service';
 import { activeDealMap } from '../deal-scope.policy';
@@ -98,6 +101,7 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
         StoreCollaboratorsController,
         ProductsController,
         PricingController,
+        UploadController,
       ],
       providers: [
         AffiliateDealsService,
@@ -122,7 +126,7 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: ConfigService, useValue: config },
         { provide: CacheService, useValue: NOOP_CACHE_SERVICE },
-        { provide: CloudinaryService, useValue: {} },
+        { provide: CloudinaryService, useValue: { uploadImage: async () => ({ secureUrl: 'https://example.test/cover.png' }) } },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -191,6 +195,12 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
       });
   });
   beforeEach(async () => {
+    // Each case gets a fresh rate-limit window; preserve lifetime caps and the
+    // real limiter within a case instead of letting earlier fixtures consume it.
+    await prisma.referralLink.updateMany({
+      where: { storeId: store.id },
+      data: { createdAt: new Date(Date.now() - 120_000) },
+    });
     product = await prisma.product.create({
       data: {
         storeId: store.id,
@@ -237,6 +247,95 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
     videoReviewCommitment: true,
     salesCommitment: 'Video review thực tế và kế hoạch bán trong 30 ngày.',
     couponTerms: { discountPercent: 7, budgetTotal: 2000000 },
+  });
+
+  it('scopes merchant orders to current ownership or an active staff assignment and revokes access immediately', async () => {
+    const orders = Object.assign(Object.create(OrdersService.prototype), { prisma }) as OrdersService;
+    const order = await prisma.order.create({ data: {
+      storeId: store.id, externalOrderSn: randomUUID(), subtotalAmount: 100000, finalAmount: 100000,
+    } });
+    try {
+      for (const query of [{ storeId: store.id }, {}]) {
+        const result = await orders.getMyStoreOrders(staff.id, UserRole.SHOP_MANAGER, query);
+        expect(result.items.some(item => item.id === order.id)).toBe(true);
+        expect(result.items.every(item => item.store.id === store.id)).toBe(true);
+      }
+      await expect(orders.getMyStoreOrders(intruder.id, UserRole.SHOP_MANAGER, { storeId: store.id })).rejects.toThrow('Bạn không quản lý gian hàng này');
+      for (const data of [{ storeId: null }, { storeId: store.id, isActive: false }, { isActive: true, isDeleted: true }]) {
+        await prisma.user.update({ where: { id: staff.id }, data });
+        await expect(orders.getMyStoreOrders(staff.id, UserRole.SHOP_MANAGER, { storeId: store.id })).rejects.toThrow('Bạn không quản lý gian hàng này');
+        expect((await orders.getMyStoreOrders(staff.id, UserRole.SHOP_MANAGER, {})).items).toEqual([]);
+      }
+    } finally {
+      await prisma.user.update({ where: { id: staff.id }, data: { storeId: store.id, isActive: true, isDeleted: false } });
+      await prisma.order.delete({ where: { id: order.id } });
+    }
+  });
+
+  it('rolls back submitted content and sample quota when saving the gallery fails', async () => {
+    const pending = await prisma.product.create({ data: {
+      storeId: store.id, sku: randomUUID(), title: 'Atomic submission',
+      description: 'Original description', price: 100000, sampleQuota: 5,
+      createdById: owner.id, submittedById: owner.id,
+      moderationStatus: 'APPROVED', isActive: true,
+    } });
+    const transact = prisma.$transaction.bind(prisma);
+    // Inject a storage fault inside a real PostgreSQL transaction, after the product write.
+    const fault = jest.spyOn(prisma, '$transaction').mockImplementationOnce(((callback: any) =>
+      transact(async (tx) => callback(new Proxy(tx, {
+        get(target, key) {
+          if (key === 'mediaAsset') return new Proxy(target.mediaAsset, {
+            get(model, method) {
+              if (method === 'create') return async () => { throw new Error('Gallery storage failed'); };
+              return Reflect.get(model, method);
+            },
+          });
+          return Reflect.get(target, key);
+        },
+      })))) as any);
+    try {
+      await expect(app.get(ProductsService).update(owner.id, UserRole.SHOP_MANAGER, pending.id, {
+        description: 'Changed description', sampleQuota: 8,
+        subImages: ['https://example.test/detail.png'],
+      })).rejects.toThrow('Gallery storage failed');
+    } finally {
+      fault.mockRestore();
+    }
+    expect(await prisma.product.findUniqueOrThrow({ where: { id: pending.id } })).toMatchObject({
+      description: 'Original description', sampleQuota: 5,
+      moderationStatus: 'APPROVED', isActive: true,
+    });
+    expect(await prisma.mediaAsset.count({ where: { productId: pending.id } })).toBe(0);
+  });
+
+  it('checks cover upload role and real dimensions before calling media storage', async () => {
+    const image = (width: number) => sharp({ create: { width, height: width, channels: 3, background: 'white' } }).png().toBuffer();
+    const upload = async (actor: any, width: number) => request(app.getHttpServer())
+      .post('/api/upload/product-cover').auth(tokens.get(actor.id)!, { type: 'bearer' })
+      .attach('file', await image(width), 'cover.png');
+    expect((await upload(kol, 800)).status).toBe(403);
+    expect((await upload(owner, 799)).status).toBe(400);
+    expect((await upload(owner, 800)).status).toBe(201);
+  });
+
+  it('blocks product self-review and serializes conflicting reviewer decisions in PostgreSQL', async () => {
+    const pending = await prisma.product.create({ data: {
+      storeId: store.id, sku: randomUUID(), title: 'Independent product review', price: 200000,
+      createdById: admin.id, submittedById: admin.id, moderationStatus: 'DRAFT', isActive: false,
+    } });
+    const decide = (actor: any, status: 'APPROVED' | 'REJECTED') => request(app.getHttpServer())
+      .patch(`/api/products/${pending.id}/moderation`).auth(tokens.get(actor.id)!, { type: 'bearer' })
+      .send({ status, reason: 'Independent compliance decision' });
+    await decide(admin, 'APPROVED').expect(403);
+    expect((await prisma.product.findUniqueOrThrow({ where: { id: pending.id } })).moderationStatus).toBe('DRAFT');
+    const decisions = await Promise.all([decide(manager, 'APPROVED'), decide(manager, 'REJECTED')]);
+    expect(decisions.map(result => result.status).sort()).toEqual([200, 409]);
+    const approved = decisions[0].status === 200;
+    const saved = await prisma.product.findUniqueOrThrow({ where: { id: pending.id } });
+    expect(saved.moderationStatus).toBe(approved ? 'APPROVED' : 'REJECTED');
+    expect(saved.isActive).toBe(approved);
+    const audits = await prisma.auditLog.findMany({ where: { details: { path: ['productId'], equals: pending.id }, action: { startsWith: 'PRODUCT_MODERATION_' } } });
+    expect(audits).toHaveLength(1);
   });
   const postOffer = (actor = staff) =>
     request(app.getHttpServer())
@@ -919,14 +1018,17 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
 
   it('delivers real Socket.IO decisions and excludes a manager whose membership was revoked after joining', async () => {
     const sockets: any[] = [];
+    const timers = new Set<ReturnType<typeof setTimeout>>();
     const wait = (socket: any, event: string) =>
       new Promise<any>((resolve, reject) => {
         const timer = setTimeout(
           () => reject(new Error('Socket timeout: ' + event)),
           5000,
         );
+        timers.add(timer);
         socket.once(event, (payload: any) => {
           clearTimeout(timer);
+          timers.delete(timer);
           resolve(payload);
         });
       });
@@ -969,6 +1071,7 @@ describe('Flow 2–3: real PostgreSQL, HTTP, JWT and Socket.IO', () => {
       expect(JSON.parse((await decision).messageText).status).toBe('APPROVED');
       expect(leakedMessages).toBe(0);
     } finally {
+      timers.forEach(clearTimeout);
       await prisma.user.update({
         where: { id: staff.id },
         data: { storeId: store.id },

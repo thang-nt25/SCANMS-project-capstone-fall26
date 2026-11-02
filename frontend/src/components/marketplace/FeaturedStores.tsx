@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Star, Store } from 'lucide-react';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { useLoopingStoreRail } from './useLoopingStoreRail';
+import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 
 export function StoreLogo({ store, className = 'h-16 w-16' }: { store: MarketplaceStore; className?: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
                 </div>
                 <p className="mb-4 mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-[#7D715E]">{store.description || 'Khám phá danh mục sản phẩm và thông tin trực tiếp từ gian hàng.'}</p>
                 <Link to={`/shops/${store.id}`} tabIndex={duplicate ? -1 : undefined} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-bold text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6]">Ghé thăm gian hàng<ArrowRight size={15} /></Link>
+                <StoreCooperationAction storeId={store.id} storeName={store.name} tabIndex={duplicate ? -1 : undefined} className="mt-2 w-full" />
               </article>
             );})}
             </div>)}

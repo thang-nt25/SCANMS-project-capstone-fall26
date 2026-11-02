@@ -16,6 +16,7 @@ import { randomUUID } from 'crypto';
 import { exclusiveDealBonus } from './exclusive-deal-bonus';
 import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
@@ -3788,11 +3789,11 @@ export class OrdersService {
       userRole !== UserRole.SYSTEM_ADMIN &&
       userRole !== UserRole.SYSTEM_MANAGER
     ) {
-      const ownedStore = await this.prisma.store.findFirst({
-        where: { id: targetStoreId, ownerId: userId, isDeleted: false },
+      const managedStore = await this.prisma.store.findFirst({
+        where: { id: targetStoreId, ...managedStoreWhere(userId) },
         select: { id: true },
       });
-      if (!ownedStore)
+      if (!managedStore)
         throw new ForbiddenException('Bạn không quản lý gian hàng này');
     }
     if (!targetStoreId) {
@@ -3803,7 +3804,7 @@ export class OrdersService {
         // Admin xem toàn bộ hoặc storeId truyền vào
       } else {
         const userStore = await this.prisma.store.findFirst({
-          where: { ownerId: userId, isDeleted: false },
+          where: managedStoreWhere(userId),
         });
         if (!userStore) {
           return {

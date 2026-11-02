@@ -38,6 +38,38 @@ describe('Persisted product package and shipping snapshots', () => {
       ]),
     ).toEqual({ weight: 1600, length: 20, width: 30, height: 15 });
   });
+  it.each(['4006381333932', '', null, undefined])(
+    'quotes measured products independently of legacy barcode %p',
+    (barcode) => {
+      expect(
+        buildShippingPackage([
+          { product: { ...product, barcode }, quantity: 1 },
+        ]),
+      ).toEqual({ weight: 700, length: 20, width: 15, height: 5 });
+    },
+  );
+  it('still rejects invalid measurements when the legacy barcode is invalid', () => {
+    expect(() =>
+      buildShippingPackage([
+        {
+          product: { ...product, barcode: '4006381333932', packageWeight: 0 },
+          quantity: 1,
+        },
+      ]),
+    ).toThrow('packageWeight');
+    expect(() =>
+      buildShippingPackage([
+        {
+          product: {
+            ...product,
+            barcode: '4006381333932',
+            packageHeight: null,
+          },
+          quantity: 1,
+        },
+      ]),
+    ).toThrow('Shop cần cập nhật');
+  });
   it.each([0, -1, 1.5, NaN])('rejects invalid quantity %p', (quantity) => {
     expect(() => buildShippingPackage([{ product, quantity }])).toThrow();
   });

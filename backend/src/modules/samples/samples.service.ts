@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
 import { normalizeSamplePhone, SAMPLE_PHONE_PATTERN, SAMPLE_PHONE_ERROR } from './sample-phone';
@@ -331,7 +332,7 @@ export class SamplesService {
 
   async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: managedStoreWhere(shopOwnerId),
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
@@ -762,7 +763,7 @@ export class SamplesService {
 
   async getShopStats(shopOwnerId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: managedStoreWhere(shopOwnerId),
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');

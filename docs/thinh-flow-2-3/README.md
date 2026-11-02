@@ -19,6 +19,7 @@ Cập nhật 01/11/2026. Người dùng đã chọn **“Áp dụng đầy đủ
 VIP mới 10–25%; đến 16% đối tác chấp thuận, trên 16% chờ Admin độc lập. Chỉ cấp link/coupon và bắt đầu KPI sau quyết định cuối. Có phạm vi một sản phẩm, nhóm đã chọn, toàn gian hàng gồm sản phẩm mới. Đơn mới dùng min(25, max(VIP, Campaign, Tier, 10) + Live); giữ snapshot đơn cũ.
 
 Tài liệu báo cáo:
+- [Bổ sung sau rà soát bảy thiếu sót](gap-completion-2026-11-01.md)
 - [Đặc tả và API thực tế](functional-specification.md)
 - [Đối chiếu nhiệm vụ hai MD](task-audit.md)
 - [Checklist nghiệm thu](acceptance-tests.md)
@@ -31,3 +32,5 @@ Chạy máy khác: tại backend lần lượt npm.cmd ci → npx.cmd prisma gen
 Mô hình semantic tải một lần, chạy CPU local, không cần API key AI. Có thể cấu hình SEMANTIC_MODEL_CACHE_DIR bằng đường dẫn tuyệt đối. Không commit model cache hoặc .env. Hướng dẫn tài khoản: [login-setup.md](login-setup.md); giữ nguyên mật khẩu Shop.
 
 Không reset/seed để thử chức năng. UAT dùng dữ liệu mới nhập trên web và lưu DB nhóm; kiểm thử tự động bằng fixture/DB cô lập ghi riêng.
+
+Đợt bổ sung 01/11: semantic Bio/kênh KOC dùng chung model local; xếp hạng tương đối mọi ngành; cold-start 70/30, đủ năm đơn dùng 35/25/20/20; CTA hợp tác tại Marketplace/Shop; ảnh bìa vuông tối thiểu 800px; tối đa bốn ảnh phụ; maker/checker độc lập và khóa duyệt đồng thời. Migration bổ sung `20261101020000_product_moderation_makers` đã deploy DB phát triển nhóm, không reset/seed. Hồ sơ cũ thiếu maker giữ NULL, không suy đoán người tạo.

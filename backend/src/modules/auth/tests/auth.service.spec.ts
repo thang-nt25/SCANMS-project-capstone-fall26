@@ -291,6 +291,18 @@ describe('AuthService', () => {
     expect(result.email).toBe('shop@techstore.vn');
   });
 
+  it('preserves the assigned Shop when a manager owns no stores', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: 'assigned-shop', stores: [] });
+    expect((await authService.getMe('user-1')).storeId).toBe('assigned-shop');
+  });
+
+  it('keeps owner fallback and removes a revoked assignment from profile refresh', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: null, stores: [{ id: 'owned-shop' }] });
+    expect((await authService.getMe('user-1')).storeId).toBe('owned-shop');
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: null, stores: [] });
+    expect((await authService.getMe('user-1')).storeId).toBeNull();
+  });
+
   it('should throw UnauthorizedException from getMe if user is inactive or deleted', async () => {
     mockPrismaService.user.findUnique.mockResolvedValueOnce({
       ...mockUser,

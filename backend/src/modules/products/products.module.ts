@@ -3,12 +3,12 @@ import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import { PublicProductsController } from './public-products.controller';
 import { PrismaModule } from '../../core/database/prisma.module';
-import { ProductSemanticMatcher } from './product-semantic-matcher.service';
+import { SemanticModule } from '../../core/semantic/semantic.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, SemanticModule],
   controllers: [ProductsController, PublicProductsController],
-  providers: [ProductsService, ProductSemanticMatcher],
+  providers: [ProductsService],
   exports: [ProductsService],
 })
 export class ProductsModule {}

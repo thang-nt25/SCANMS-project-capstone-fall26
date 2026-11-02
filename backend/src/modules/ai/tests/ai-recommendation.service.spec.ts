@@ -23,6 +23,11 @@ describe('KOL recommendations from real attribution records', () => {
   });
   let prisma: any;
   let service: AiRecommendationService;
+  const semantic: any = { rank: jest.fn(async (category: string, candidates: Array<{ id: string; title: string }>) => ({
+    items: candidates.map(candidate => ({ ...candidate, similarity:
+      (/công nghệ/i.test(category) ? /công nghệ|tai nghe/i.test(candidate.title) : /beauty|skincare|mỹ phẩm/i.test(candidate.title)) ? 88 : 5,
+    })),
+  })) };
   beforeEach(() => {
     prisma = {
       product: {
@@ -42,7 +47,7 @@ describe('KOL recommendations from real attribution records', () => {
       order: { findMany: jest.fn().mockResolvedValue([]) },
       clickTrafficLog: { groupBy: jest.fn().mockResolvedValue([]) },
     };
-    service = new AiRecommendationService(prisma);
+    service = new AiRecommendationService(prisma, undefined, semantic);
   });
 
   it('requires active, undeleted, verified creators and valid unique traffic', async () => {
@@ -96,7 +101,7 @@ describe('KOL recommendations from real attribution records', () => {
     expect(kol.scoreBreakdown).toMatchObject({
       categoryScore: 88,
       conversionRateScore: 0,
-      priceFitScore: 78,
+      priceFitScore: 0,
     });
     expect(kol.isRisingStar).toBe(true);
     expect(kol.matchLevel).toBe('✨ Tiềm Năng Mới (Rising Star)');
@@ -112,7 +117,7 @@ describe('KOL recommendations from real attribution records', () => {
     expect(kol.aiReasoning).toContain('chưa có đơn hoàn tất trong ngành này');
   });
 
-  it('excludes an unrelated tech seller even with high tier and conversion', async () => {
+  it('ranks all eligible creators relatively instead of silently excluding another industry', async () => {
     const tech = creator('tech', 'Kim cương');
     tech.collaboratorProfile.bio = 'Chuyên review công nghệ và tai nghe';
     prisma.user.findMany.mockResolvedValue([tech, creator('beauty')]);
@@ -136,6 +141,7 @@ describe('KOL recommendations from real attribution records', () => {
     );
     expect(result.recommendedKols.map((k) => k.collaboratorId)).toEqual([
       'beauty',
+      'tech',
     ]);
   });
 
@@ -172,7 +178,7 @@ describe('KOL recommendations from real attribution records', () => {
     expect(result.recommendedKols).toEqual([]);
   });
 
-  it('does not fall back to unrelated creators when none have category evidence', async () => {
+  it('shows a zero category score without inventing profile evidence', async () => {
     const unknown = creator('unknown');
     unknown.collaboratorProfile.bio = '';
     prisma.user.findMany.mockResolvedValue([unknown]);
@@ -181,7 +187,8 @@ describe('KOL recommendations from real attribution records', () => {
       'owner',
       UserRole.SHOP_MANAGER,
     );
-    expect(result.recommendedKols).toEqual([]);
+    expect(result.recommendedKols).toHaveLength(1);
+    expect(result.recommendedKols[0]).toMatchObject({ matchScore: 0, categoryMatchSource: 'NONE' });
   });
 
   it('requires a category for an uncategorized product instead of ranking all creators', async () => {
@@ -317,9 +324,9 @@ describe('KOL recommendations from real attribution records', () => {
     expect(result.recommendedKols[0].socialChannels[0].followerCount).toBe(
       60000,
     );
-    // Dev now gives cold-start profiles with 50k+ followers a prior score of 75.
+    // The cold-start radar exposes the same deduplicated social score used in the total.
     expect(result.recommendedKols[0].scoreBreakdown.tierAndSocialScore).toBe(
-      75,
+      Math.round(Math.log10(1 + 60000) / 6 * 100),
     );
   });
 
@@ -380,7 +387,7 @@ describe('KOL recommendations from real attribution records', () => {
           values.set(key, value);
         }),
       };
-      service = new AiRecommendationService(prisma, cache as any);
+      service = new AiRecommendationService(prisma, cache as any, semantic);
     });
 
     it('rejects a foreign shop even after an authorized caller warmed the cache', async () => {

@@ -1,9 +1,15 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProductModerationStatus } from '@prisma/client';
 import { ProductsService } from '../products.service';
 
 describe('Product moderation workflow', () => {
   const prisma: any = {
+    $queryRaw: jest.fn().mockResolvedValue([]),
     product: {
       findFirst: jest.fn(),
       update: jest.fn(),
@@ -84,7 +90,7 @@ describe('Product moderation workflow', () => {
         status: 'REJECTED',
         reason: 'Thiếu nhãn',
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(ConflictException);
     expect(prisma.product.update).not.toHaveBeenCalled();
   });
 
@@ -93,5 +99,42 @@ describe('Product moderation workflow', () => {
     await expect(
       service.moderateProduct('manager-1', 'missing', { status: 'APPROVED' }),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it.each(['createdById', 'submittedById'])(
+    'blocks the %s actor from reviewing their own version',
+    async (field) => {
+      prisma.product.findFirst.mockResolvedValueOnce({
+        id: 'product-1',
+        moderationStatus: 'DRAFT',
+        [field]: 'maker',
+        store: { id: 'store-1', ownerId: 'owner-1' },
+      });
+      await expect(
+        service.moderateProduct('maker', 'product-1', { status: 'APPROVED' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.product.update).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads the current queue state after obtaining the row lock', async () => {
+    const calls: string[] = [];
+    prisma.$queryRaw.mockImplementationOnce(async () => {
+      calls.push('locked');
+    });
+    prisma.product.findFirst.mockImplementationOnce(async () => {
+      calls.push('read-current');
+      return {
+        id: 'product-1',
+        moderationStatus: 'REJECTED',
+        store: { id: 'store-1', ownerId: 'owner-1' },
+      };
+    });
+    await expect(
+      service.moderateProduct('checker', 'product-1', { status: 'APPROVED' }),
+    ).rejects.toThrow(ConflictException);
+    expect(calls).toEqual(['locked', 'read-current']);
+    expect(prisma.product.update).not.toHaveBeenCalled();
   });
 });

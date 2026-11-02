@@ -40,6 +40,7 @@ export function StoreCooperationPanel({ mode, storeId }: { mode: 'shop' | 'kol';
       await api.patch(`/store-collaborators/${id}/${mode === 'shop' ? accept ? 'shop-approve' : 'shop-reject' : accept ? 'accept' : 'reject'}`, {});
       toast.success(accept ? 'Đã xác nhận hợp tác. KOL có thể được chọn khi tạo phiên Live.' : 'Đã từ chối hợp tác.');
       await refresh();
+      window.dispatchEvent(new Event('scanms_cooperation_changed'));
     } catch (e: any) { toast.error(e.response?.data?.message || e.message || 'Không xử lý được yêu cầu'); }
     finally { actionLocked.current = false; setBusy(null); }
   };

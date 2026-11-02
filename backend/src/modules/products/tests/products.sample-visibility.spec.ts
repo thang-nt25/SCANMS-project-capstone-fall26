@@ -10,6 +10,7 @@ describe('sample policy and product approval visibility', () => {
       moderationStatus: ProductModerationStatus.APPROVED, isActive: true, sampleGrantedCount: 0, mediaAssets: [],
       store: { id: storeId, ownerId: 'shop-owner', isVerified: true, onboardingStatus: 'VERIFIED' } };
     const prisma: any = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       product: { findUnique: jest.fn().mockResolvedValue(product), count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }), update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ ...product, ...data })) },
       mediaAsset: { findMany: jest.fn().mockResolvedValue([]) },

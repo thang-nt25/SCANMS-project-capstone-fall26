@@ -27,6 +27,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @ApiTags('Shipping & GHN Logistics')
 @Controller('shipping/ghn')
@@ -59,20 +60,11 @@ export class ShippingController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @Post('create-order/:orderId')
   async createGhnOrder(
-    @Param('orderId') orderId: string,
+    @Param('orderId', new ParseUUIDPipe()) orderId: string,
     @Body() dto: CreateGhnOrderDto,
     @Req() req: any,
   ) {
-    const userId = req.user?.id || req.user?.sub;
-    let storeId: string | undefined;
-    if (req.user?.role === UserRole.SHOP_MANAGER) {
-      const store = await this.prisma.store.findFirst({
-        where: { ownerId: userId, deletedAt: null },
-        select: { id: true },
-      });
-      if (!store) throw new ForbiddenException('Tài khoản không quản lý gian hàng.');
-      storeId = store.id;
-    }
+    const storeId = await this.managedOrderStoreId(req, orderId);
     return this.ghnService.createShippingOrder(orderId, dto, storeId);
   }
 
@@ -81,7 +73,7 @@ export class ShippingController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @Post('simulation/:orderId/start')
   async startCustomerSimulation(@Param('orderId', new ParseUUIDPipe()) orderId: string, @Req() req: any) {
-    const storeId = await this.simulationStoreId(req);
+    const storeId = await this.managedOrderStoreId(req, orderId);
     return this.ghnService.startCustomerSimulation(orderId, storeId);
   }
 
@@ -90,16 +82,20 @@ export class ShippingController {
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @Post('simulation/:orderId/complete')
   async completeCustomerSimulation(@Param('orderId', new ParseUUIDPipe()) orderId: string, @Req() req: any) {
-    const storeId = await this.simulationStoreId(req);
+    const storeId = await this.managedOrderStoreId(req, orderId);
     return this.ghnService.completeCustomerSimulation(orderId, req.user?.id || req.user?.sub, storeId);
   }
 
-  private async simulationStoreId(req: any): Promise<string | undefined> {
+  private async managedOrderStoreId(req: any, orderId: string): Promise<string | undefined> {
     if (req.user?.role !== UserRole.SHOP_MANAGER) return undefined;
+    const userId = req.user?.id || req.user?.sub;
+    if (!userId) throw new ForbiddenException('Không xác định được tài khoản quản lý.');
+    // Resolve the order's Shop against the current owner/staff assignment, never a cached storeId.
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: req.user?.id || req.user?.sub, deletedAt: null }, select: { id: true },
+      where: { ...managedStoreWhere(userId), orders: { some: { id: orderId } } },
+      select: { id: true },
     });
-    if (!store) throw new ForbiddenException('Tài khoản không quản lý gian hàng.');
+    if (!store) throw new ForbiddenException('Bạn không có quyền quản lý gian hàng của đơn hàng này.');
     return store.id;
   }
 
