@@ -198,7 +198,7 @@ export async function decideExclusiveDeal(
                 );
           const terms = couponTerms(
             exceptionReview || proposal.initiatedById
-              ? proposal.offerTerms
+              ? proposal.offerTerms ?? {}
               : requestedTerms,
           );
           if (rate > 16 && !exceptionReview) {
