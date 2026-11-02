@@ -44,7 +44,7 @@ export function DealProductPicker({ storeId, storeName, onSelect, onClose }: {
     void api.get('/products', { params: { storeId, page, limit: 50 }, signal: controller.signal, headers: { 'x-skip-cache': '1' } })
       .then((response: any) => {
         if (controller.signal.aborted) return;
-        const payload = response?.data ?? response;
+        const payload = response?.data?.data ?? response?.data ?? response;
         const list = Array.isArray(payload) ? payload : payload?.items;
         if (!Array.isArray(list)) throw new Error('Invalid product response');
         const eligible = list.filter((product: DealProduct) => product.isAffiliateEnabled !== false && (!product.storeId || product.storeId === storeId));
