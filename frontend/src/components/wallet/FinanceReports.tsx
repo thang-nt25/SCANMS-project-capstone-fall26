@@ -367,6 +367,7 @@ function ReferralReview({ orderId, signals, onReviewed }: { orderId: string; sig
 }
 
 interface Statement {
+  transferProvider?: string | null;
   id: string;
   amount: string;
   taxAmount: string;
@@ -433,13 +434,14 @@ export function PartnerTaxStatements() {
         }
       >(await api.get(`/wallets/tax-invoices/${id}`));
       const doc = popup.document;
-      doc.title = "SCANMS - Bảng kê chi trả";
+      const sandbox = data.transferProvider === 'BIDV_SANDBOX';
+      doc.title = sandbox ? 'SCANMS - Bảng kê Sandbox' : 'SCANMS - Bảng kê chi trả';
       const style = doc.createElement("style");
       style.textContent =
         "body{font:16px Arial;color:#1A1612;margin:48px}h1{color:#B88E4F}td{padding:12px;border-bottom:1px solid #EAE4D7}table{width:100%;border-collapse:collapse}button{padding:12px;background:#C59B58;border:0;color:white}@media print{button{display:none}}";
       doc.head.append(style);
       const title = doc.createElement("h1");
-      title.textContent = "SCANMS · Bảng kê chi trả thu nhập";
+      title.textContent = sandbox ? 'SCANMS · Bảng kê chi trả thử nghiệm Sandbox' : 'SCANMS · Bảng kê chi trả thu nhập';
       doc.body.append(title);
       const table = doc.createElement("table");
       for (const [label, value] of [
@@ -459,7 +461,7 @@ export function PartnerTaxStatements() {
         ["Thu nhập trước thuế", money(data.amount)],
         ["Thuế khấu trừ", money(data.taxAmount)],
         ["Thực nhận", money(data.netAmount)],
-        ["Mã ngân hàng", data.bankRefCode ?? "—"],
+        [sandbox ? 'Mã Sandbox SCANMS' : 'Mã ngân hàng', data.bankRefCode ?? '—'],
       ]) {
         const row = doc.createElement("tr");
         for (const text of [label, value]) {
@@ -471,8 +473,9 @@ export function PartnerTaxStatements() {
       }
       doc.body.append(table);
       const note = doc.createElement("p");
-      note.textContent =
-        "Bảng kê đối soát nội bộ SCANMS. Chứng từ khấu trừ thuế được tải riêng khi kế toán cung cấp bản đã phát hành.";
+      note.textContent = sandbox
+        ? 'BIDV Sandbox: hoàn tất yêu cầu rút tiền thử nghiệm trong SCANMS. Không chuyển tiền ngoài đời. Đây không phải chứng từ ngân hàng hoặc chứng từ thuế.'
+        : 'Bảng kê đối soát nội bộ SCANMS. Chứng từ khấu trừ thuế được tải riêng khi kế toán cung cấp bản đã phát hành.';
       doc.body.append(note);
       const print = doc.createElement("button");
       print.textContent = "In / Lưu PDF";
@@ -523,6 +526,7 @@ export function PartnerTaxStatements() {
                       {item.processedAt
                         ? new Date(item.processedAt).toLocaleDateString("vi-VN")
                         : "—"}
+                      {item.transferProvider === 'BIDV_SANDBOX' && <span className="block text-xs text-[#7D715E]">BIDV Sandbox</span>}
                     </td>
                     <td className="p-2">{money(item.amount)}</td>
                     <td className="p-2">{money(item.taxAmount)}</td>
@@ -535,7 +539,7 @@ export function PartnerTaxStatements() {
                         >
                           In / Lưu PDF
                         </button>
-                        {Number(item.taxAmount) > 0 && (
+                        {Number(item.taxAmount) > 0 && item.transferProvider !== 'BIDV_SANDBOX' && (
                           <button
                             className={button}
                             onClick={() => void downloadCertificate(item.id)}

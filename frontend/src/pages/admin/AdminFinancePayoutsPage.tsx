@@ -1,6 +1,9 @@
 import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { PayoutApprovalDialog, type ManualPayoutProof } from '../../components/wallet/PayoutApprovalDialog';
+import { PayoutSimulationDialog } from '../../components/wallet/PayoutSimulationDialog';
+import { BidvSandboxDialog } from '../../components/wallet/BidvSandboxDialog';
 import {
   Search,
   Eye,
@@ -30,6 +33,7 @@ interface PayoutItem {
   bankAccountNumber: string;
   bankAccountName: string;
   bankRefCode?: string | null;
+  transferProvider?: string | null;
   hasBill: boolean;
   rejectedReason?: string | null;
   createdAt: string;
@@ -56,7 +60,7 @@ const formatMoney = (val: string | number) =>
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   PENDING: { label: 'Chờ duyệt', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  PROCESSING: { label: 'Chờ chuyển khoản', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  PROCESSING: { label: 'Chờ đối soát', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   APPROVED: { label: 'Đã giải ngân', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   REJECTED: { label: 'Đã từ chối', className: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
@@ -72,16 +76,15 @@ export default function AdminFinancePayoutsPage() {
   const [total, setTotal] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [gatewayEnabled, setGatewayEnabled] = useState(false);
+  const [gatewayProvider, setGatewayProvider] = useState('GATEWAY');
   const [gatewayMessage, setGatewayMessage] = useState('Đang kiểm tra cấu hình cổng chi trả…');
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
   const [riskItem, setRiskItem] = useState<PayoutItem | null>(null);
-  const [approvalTab, setApprovalTab] = useState<'information' | 'documents'>('information');
-  useEffect(() => { setApprovalTab('information'); }, [approvingItem?.id]);
-  const [billFile, setBillFile] = useState<File | null>(null);
-  const [bankRefCode, setBankRefCode] = useState('');
-  const [note, setNote] = useState('');
+  const [simulating, setSimulating] = useState(false);
+  const [bidvSandboxOpen, setBidvSandboxOpen] = useState(false);
+  const approvalInFlight = useRef(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
   // Rejection modal state
@@ -94,7 +97,7 @@ export default function AdminFinancePayoutsPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await api.get('/admin/payouts/stats');
+      const res = await api.get('/admin/payouts/stats', { headers: { 'x-skip-cache': 'true' } });
       setStats(res.data?.data || res.data);
     } catch {
       setStats(null);
@@ -108,7 +111,7 @@ export default function AdminFinancePayoutsPage() {
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) params.search = search.trim();
 
-      const res = await api.get('/admin/payouts', { params });
+      const res = await api.get('/admin/payouts', { params, headers: { 'x-skip-cache': 'true' } });
       const data = res.data?.data || res.data;
       setPayouts(data.requests || []);
       setTotal(data.total || 0);
@@ -127,38 +130,42 @@ export default function AdminFinancePayoutsPage() {
   }, [fetchStats, fetchPayouts]);
 
   useEffect(() => {
-    api.get('/admin/payouts/gateway').then((res: any) => {
+    api.get('/admin/payouts/gateway', { headers: { 'x-skip-cache': 'true' } }).then((res: any) => {
       const gateway = res.data?.data ?? res.data ?? res;
       setGatewayEnabled(Boolean(gateway.configured));
+      setGatewayProvider(gateway.provider || 'GATEWAY');
       setGatewayMessage(gateway.message || (gateway.configured ? 'Đã có cấu hình cổng chi trả; cần kiểm chứng kết nối ngân hàng.' : 'Chưa cấu hình cổng chi trả ngân hàng. Xác nhận UNC không tự chuyển tiền.'));
     }).catch(() => { setGatewayEnabled(false); setGatewayMessage('Chưa kiểm tra được cổng chi trả. Không thể xác nhận kết nối ngân hàng.'); });
   }, []);
 
   const handleBankTransfer = async () => {
-    if (!approvingItem || submittingApproval) return;
+    if (!approvingItem || approvalInFlight.current || !gatewayEnabled || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')) return;
+    approvalInFlight.current = true;
     setSubmittingApproval(true);
     try {
       const action = approvingItem.status === 'PROCESSING' ? 'reconcile' : 'approve';
-      const response: any = await api.post(`/payouts/${approvingItem.id}/${action}`, {}, { timeout: 25000 });
+      const response: any = await api.post(`/payouts/${approvingItem.id}/${action}`, {}, { timeout: gatewayProvider === 'BIDV_SANDBOX' ? 50000 : 25000 });
       const result = response.data ?? response;
-      if (result.status === 'APPROVED') toast.success('Ngân hàng xác nhận chuyển khoản thành công');
+      if (result.status === 'APPROVED') toast.success(result.provider === 'BIDV_SANDBOX' ? 'Đã hoàn tất rút tiền qua BIDV Sandbox và cập nhật lịch sử KOL trong SCANMS' : 'Ngân hàng xác nhận chuyển khoản thành công');
       else toast.info('Ngân hàng đang xử lý. Tiền tiếp tục được giữ để đối soát.');
-      setApprovingItem(null); fetchStats(); fetchPayouts();
-    } catch (error: any) { toast.error(error.message || 'Cần đối soát trạng thái ngân hàng'); fetchPayouts(); }
-    finally { setSubmittingApproval(false); }
+    } catch (error: any) { toast.error(error.message || 'Cần đối soát trạng thái ngân hàng'); }
+    finally {
+      // Reload after uncertain results as well: a timed-out POST may already be PROCESSING.
+      setApprovingItem(null);
+      await Promise.allSettled([fetchStats(), fetchPayouts()]);
+      approvalInFlight.current = false;
+      setSubmittingApproval(false);
+    }
   };
 
-  const handleApproveSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!approvingItem || !billFile) {
-      toast.error('Vui lòng đính kèm chứng từ ủy nhiệm chi (ảnh hoặc PDF)');
-      return;
-    }
+  const handleApproveSubmit = async ({ bill, bankRefCode, note }: ManualPayoutProof) => {
+    if (!approvingItem || approvalInFlight.current || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')) return;
+    approvalInFlight.current = true;
     setSubmittingApproval(true);
     try {
       const formData = new FormData();
-      formData.append('bill', billFile);
-      if (bankRefCode.trim()) formData.append('bankRefCode', bankRefCode.trim());
+      formData.append('bill', bill);
+      formData.append('bankRefCode', bankRefCode);
       if (note.trim()) formData.append('note', note.trim());
 
       await api.patch(`/admin/payouts/${approvingItem.id}/approve`, formData, {
@@ -166,14 +173,12 @@ export default function AdminFinancePayoutsPage() {
       });
       toast.success(`Đã xác nhận giải ngân cho ${approvingItem.collaboratorName}`);
       setApprovingItem(null);
-      setBillFile(null);
-      setBankRefCode('');
-      setNote('');
       fetchStats();
       fetchPayouts();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Không thể duyệt yêu cầu');
     } finally {
+      approvalInFlight.current = false;
       setSubmittingApproval(false);
     }
   };
@@ -217,6 +222,7 @@ export default function AdminFinancePayoutsPage() {
 
   return (
     <div className="w-full min-w-0 space-y-4 pb-12" id="admin-finance-payouts-page">
+      {import.meta.env.DEV && <div className="payout-review-actions"><button type="button" className="payout-secondary" onClick={() => setBidvSandboxOpen(true)}>BIDV Sandbox · lịch sử thử nghiệm</button></div>}
       {/* 2. Top Tabs */}
       <div className="finance-main-tabs">
         <button
@@ -294,13 +300,13 @@ export default function AdminFinancePayoutsPage() {
 
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider mb-1">
-                Chờ chuyển khoản Napas
+                Chờ đối soát ngân hàng
               </div>
               <div className="text-2xl font-bold font-mono tabular-nums text-blue-700">
                 {stats?.processingCount ?? 0}
               </div>
               <div className="text-[11px] text-[#7D715E] mt-1">
-                Lệnh chi Napas 24/7 đang xử lý
+                Lệnh chi đang chờ kết quả
               </div>
             </div>
           </div>
@@ -337,7 +343,10 @@ export default function AdminFinancePayoutsPage() {
           </div>
 
           {/* Table */}
-          <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">{gatewayMessage}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
+            <p role="status" className="min-w-0 flex-1">{gatewayMessage}</p>
+            {import.meta.env.DEV && <button type="button" className="payout-secondary" onClick={() => setSimulating(true)}>Thử quy trình chi trả</button>}
+          </div>
           <div className="finance-payout-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -407,8 +416,10 @@ export default function AdminFinancePayoutsPage() {
 
                           <td className="p-3.5 text-center">
                             <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.className}`}>
-                              {badge.label}
+                              {item.transferProvider === 'BIDV_SANDBOX' && item.status === 'APPROVED' ? 'Hoàn tất · Sandbox' : badge.label}
                             </span>
+                            {item.transferProvider === 'BIDV_SANDBOX' && item.status === 'PROCESSING' && <div className="mt-1 text-[11px] text-[#7D715E]">BIDV Sandbox</div>}
+                            {item.bankRefCode && <div className="mt-2 break-all text-[11px] text-[#7D715E]">{item.transferProvider === 'BIDV_SANDBOX' ? 'Mã Sandbox' : 'Mã ngân hàng'}: {item.bankRefCode}</div>}
                           </td>
 
                           <td className="p-3.5 text-center">
@@ -416,11 +427,12 @@ export default function AdminFinancePayoutsPage() {
                               <div className="payout-actions flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
+                                  disabled={submittingApproval}
                                   onClick={() => setApprovingItem(item)}
                                   className="px-2.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[11px] font-bold transition cursor-pointer"
-                                  title="Duyệt chi trả & tải ủy nhiệm chi"
+                                  title={item.status === 'PROCESSING' ? 'Đối soát lệnh đã gửi' : 'Chọn cách duyệt chi trả'}
                                 >
-                                  Duyệt & Tải UNC
+                                  {item.status === 'PROCESSING' ? 'Đối soát chi trả' : 'Duyệt chi trả'}
                                 </button>
                                 <button
                                   type="button"
@@ -474,120 +486,18 @@ export default function AdminFinancePayoutsPage() {
           <p className="border-t border-[#EAE4D7] pt-3 text-xs leading-relaxed text-[#7D715E]">{riskItem.risk.disclaimer}</p>
         </section>
       </div>}
-      {approvingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div role="dialog" aria-modal="true" aria-label="Xác nhận chi trả" className="payout-approval-dialog bg-white border border-[#EAE4D7] rounded-2xl w-full shadow-xl animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7] mb-3">
-              <h3 className="text-sm font-bold text-[#1A1612]">Xác nhận chi trả & chứng từ ngân hàng</h3>
-              <button
-                type="button"
-                onClick={() => setApprovingItem(null)}
-                aria-label="Đóng hộp xác nhận"
-                className="text-[#7D715E] hover:text-[#1A1612] text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="payout-approval-tabs" role="tablist" aria-label="Các bước xác nhận chi trả">
-              <button type="button" role="tab" aria-selected={approvalTab === 'information'} onClick={() => setApprovalTab('information')}><span>1</span>Thông tin chi trả</button>
-              <button type="button" role="tab" aria-selected={approvalTab === 'documents'} onClick={() => setApprovalTab('documents')}><span>2</span>Chứng từ ngân hàng</button>
-            </div>
-            <form onSubmit={event => { if (approvalTab === 'information') { event.preventDefault(); setApprovalTab('documents'); } else { void handleApproveSubmit(event); } }} className="space-y-3">
-              <div hidden={approvalTab !== 'information'} className="payout-approval-panel">
-              <p className="text-xs text-[#7D715E]">{gatewayMessage}</p>
-              {gatewayEnabled && <button type="button" onClick={() => void handleBankTransfer()} disabled={submittingApproval || (approvingItem.status === 'PENDING' && approvingItem.risk?.status === 'BLOCKED')} className="w-full rounded-xl bg-[#C59B58] p-3 text-white disabled:opacity-50">{approvingItem.status === 'PROCESSING' ? 'Đối soát kết quả ngân hàng' : 'Duyệt chuyển khoản qua ngân hàng'}</button>}
-              <div className="payout-recipient p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#7D715E]">Đối tác:</span>
-                  <span className="font-bold text-[#1A1612]">{approvingItem.collaboratorName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#7D715E]">Ngân hàng:</span>
-                  <span className="font-semibold text-[#1A1612]">{approvingItem.bankName}</span>
-                </div>
-                <div><span className="text-[#7D715E]">Số tài khoản:</span><span className="font-semibold">{approvingItem.bankAccountNumber}</span></div>
-                <div><span className="text-[#7D715E]">Chủ tài khoản:</span><span className="font-semibold">{approvingItem.bankAccountName}</span></div>
-                <div className="flex justify-between pt-1 border-t border-[#EEDFC6]">
-                  <span className="text-[#7D715E]">Số tiền thực chuyển:</span>
-                  <span className="text-sm font-black text-[#B88E4F]">{formatMoney(approvingItem.netAmount)}</span>
-                </div>
-              </div>
-              </div>
-              <fieldset hidden={approvalTab !== 'documents'} disabled={approvalTab !== 'documents'} className="payout-approval-panel">
-              <div>
-                <label htmlFor="payout-bank-document" className="block text-[11px] font-bold text-[#7D715E] mb-1">Chứng từ chuyển khoản (UNC / biên nhận) *</label>
-                <div className="payout-document-upload">
-                  <label htmlFor="payout-bank-document" className="payout-document-picker">Chọn tệp</label>
-                  <span>{billFile?.name || 'Chưa chọn chứng từ'}</span>
-                <input
-                  id="payout-bank-document"
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf"
-                  required
-                  onChange={(e) => setBillFile(e.target.files?.[0] || null)}
-                  className="sr-only"
-                />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-[#7D715E] mb-1">
-                  Mã tham chiếu ngân hàng (FT / Ref Code)
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: FT26298103984"
-                  required
-                  maxLength={100}
-                  value={bankRefCode}
-                  onChange={(e) => setBankRefCode(e.target.value)}
-                  className="w-full h-9 px-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs outline-none focus:border-[#B88E4F] font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-[#7D715E] mb-1">
-                  Ghi chú nội bộ
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: Đã chuyển khoản qua Napas247"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="w-full h-9 px-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs outline-none focus:border-[#B88E4F]"
-                />
-              </div>
-
-              </fieldset>
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE4D7]">
-                {approvalTab === 'information' ? <button type="button" onClick={() => setApprovalTab('documents')} className="payout-continue">Tiếp tục →</button> : <button
-                  type="button"
-                  onClick={() => setApprovingItem(null)}
-                  className="px-4 py-2 rounded-xl border border-[#EAE4D7] text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5] cursor-pointer"
-                >
-                  Hủy
-                </button>}
-                <button
-                  type="submit"
-                  hidden={approvalTab !== 'documents'}
-                  disabled={submittingApproval}
-                  className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {submittingApproval ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Đang lưu...</span>
-                    </>
-                  ) : (
-                    <span>Xác nhận giải ngân</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {approvingItem && <PayoutApprovalDialog
+        key={approvingItem.id}
+        item={approvingItem}
+        gatewayEnabled={gatewayEnabled}
+        sandbox={(approvingItem.transferProvider || gatewayProvider) === 'BIDV_SANDBOX'}
+        busy={submittingApproval}
+        onClose={() => setApprovingItem(null)}
+        onBankTransfer={handleBankTransfer}
+        onManualApprove={handleApproveSubmit}
+      />}
+      {import.meta.env.DEV && simulating && <PayoutSimulationDialog onClose={() => setSimulating(false)} />}
+      {import.meta.env.DEV && bidvSandboxOpen && <BidvSandboxDialog onClose={() => setBidvSandboxOpen(false)} />}
 
       {/* Modal: Từ chối yêu cầu */}
       {rejectingItem && (

@@ -57,12 +57,13 @@ export class MailService {
       tax: string;
       net: string;
       bankRef: string;
+      sandbox?: boolean;
     },
   ) {
-    const text = `SCANMS - Bảng kê chi trả ${statement.id}\nThu nhập trước thuế: ${statement.gross} VND\nThuế khấu trừ: ${statement.tax} VND\nThực nhận: ${statement.net} VND\nMã ngân hàng: ${statement.bankRef}\nXem bảng kê tại Ví đối tác SCANMS.`;
+    const text = `${statement.sandbox ? 'BIDV SANDBOX - Kết quả thử nghiệm trong SCANMS, không chuyển tiền ngoài đời.\n' : ''}SCANMS - Bảng kê chi trả ${statement.id}\nThu nhập trước thuế: ${statement.gross} VND\nThuế khấu trừ: ${statement.tax} VND\n${statement.sandbox ? 'Thực chi thử nghiệm' : 'Thực nhận'}: ${statement.net} VND\n${statement.sandbox ? 'Mã thử nghiệm SCANMS' : 'Mã ngân hàng'}: ${statement.bankRef}\nXem bảng kê tại Ví đối tác SCANMS.`;
     return this.sendMail(
       email,
-      '[SCANMS] Đã chi trả thu nhập đối tác',
+      statement.sandbox ? '[SCANMS · Sandbox] Đã duyệt yêu cầu rút tiền thử nghiệm' : '[SCANMS] Đã chi trả thu nhập đối tác',
       `<div style="font-family:Arial;color:#1A1612"><h2 style="color:#B88E4F">SCANMS · Thu nhập đối tác</h2><pre style="white-space:pre-wrap">${this.escapeHtml(text)}</pre></div>`,
       text,
       true,

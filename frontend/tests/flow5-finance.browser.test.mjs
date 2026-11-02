@@ -14,6 +14,7 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
   let escrowPage = 0;
   let failReport = false;
   let referralReviewed = false;
+  let sandboxStatement = false;
   async function open(view = '') {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 1000 });
@@ -47,6 +48,10 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
         } else if (url.pathname.endsWith('/tax-invoices')) data = { items: [{ id, amount: '2072000', taxAmount: '207200', netAmount: '1864800', bankRefCode: 'FT-TEST', processedAt: '2026-10-31T00:00:00Z' }] };
         else if (url.pathname.includes('/tax-invoices/')) data = { id, amount: '2072000', taxAmount: '207200', netAmount: '1864800', bankRefCode: 'FT-TEST', processedAt: '2026-10-31T00:00:00Z', collaborator: { fullName: '<script>unsafe</script>', collaboratorProfile: { taxCode: 'TEST' } }, bankAccountNumber: '••••1234' };
         else return request.respond({ status: 400, headers, body: JSON.stringify({ message: 'Unexpected test API' }) });
+        if (sandboxStatement && url.pathname.includes('/tax-invoices')) {
+          const rows = data.items || [data];
+          rows.forEach(item => { item.transferProvider = 'BIDV_SANDBOX'; item.bankRefCode = `SBX-${id}`; });
+        }
         return request.respond({ status: 200, headers, body: JSON.stringify({ success: true, data }) });
       }
       if (url.origin !== origin && !url.protocol.startsWith('data')) return request.abort();
@@ -72,9 +77,11 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
     await clickText(admin, 'Chứng từ thuế');
     assert.ok(await admin.$eval('input[type="file"]', input => !input.closest('form').hidden));
     await clickText(admin, 'Yêu cầu chi trả');
-    await clickText(admin, 'Duyệt & Tải UNC');
-    assert.ok(await admin.$('input[required][maxlength="100"]'));
+    await clickText(admin, 'Duyệt chi trả');
+    assert.equal(await admin.$('input[type="file"]'), null);
     assert.ok((await admin.$eval('body', element => element.innerText)).includes('Duyệt chuyển khoản qua ngân hàng'));
+    await admin.click('input[name="payout-method"]:not(:checked)');
+    assert.ok(await admin.$('input[required][maxlength="100"]'));
     await admin.screenshot({ path: '../artifacts/flow5/payout-review.png', fullPage: true });
     await clickText(admin, 'Hủy');
     await clickText(admin, 'Escrow');
@@ -107,6 +114,16 @@ test('Flow 5: real report rendering, empty/error states, escrow pagination, appr
     assert.equal(await popup.$('script'), null);
     assert.ok((await popup.$eval('body', element => element.innerText)).includes('<script>unsafe</script>'));
     await popup.screenshot({ path: '../artifacts/flow5/statement.png', fullPage: true });
+    sandboxStatement = true;
+    const sandboxPartner = await open('partner');
+    assert.equal(await sandboxPartner.$eval('body', node => node.innerText.includes('BIDV Sandbox')), true);
+    assert.equal(await sandboxPartner.$eval('body', node => node.innerText.includes('Tải chứng từ thuế')), false);
+    const sandboxPopupPromise = new Promise(resolve => sandboxPartner.once('popup', resolve));
+    await clickText(sandboxPartner, 'In / Lưu PDF');
+    const sandboxPopup = await sandboxPopupPromise;
+    await sandboxPopup.waitForFunction(() => document.body.innerText.includes('Không chuyển tiền ngoài đời'));
+    assert.equal(await sandboxPopup.$eval('body', node => node.innerText.includes('Mã Sandbox SCANMS')), true);
+    await sandboxPopup.screenshot({ path: '../artifacts/flow5/statement-sandbox.png', fullPage: true });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

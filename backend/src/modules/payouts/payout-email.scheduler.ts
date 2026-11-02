@@ -51,6 +51,7 @@ export class PayoutEmailScheduler {
               tax: payout.taxAmount.toFixed(2),
               net: payout.netAmount.toFixed(2),
               bankRef: payout.bankRefCode,
+              ...(payout.transferProvider === 'BIDV_SANDBOX' ? { sandbox: true } : {}),
             });
             if (accepted !== true) throw new Error('Payout statement was not accepted by the mail provider');
             await tx.notification.update({

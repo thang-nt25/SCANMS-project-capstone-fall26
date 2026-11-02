@@ -16,6 +16,7 @@ import { CommissionsService } from '../commissions/commissions.service';
 import { CommissionCalculatorService } from '../commissions/commission-calculator.service';
 import { ReturnService } from '../returns/return.service';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
+import { BidvPayoutAdapter } from './bidv-payout.adapter';
 
 const url = process.env.WITHDRAWAL_TEST_DATABASE_URL;
 if (url) {
@@ -43,6 +44,16 @@ suite('Flow 5 real PostgreSQL transactions', () => {
       new ConfigService({ DATABASE_URL: url, DB_POOL_MAX: '8' }),
     );
     await prisma.onModuleInit();
+    // db push omits SQL CHECK constraints. This suite must exercise the deployed
+    // migration schema, otherwise the API payout can pass tests but fail in use.
+    const constraints = await prisma.$queryRaw<{ conname: string }[]>`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'payout_requests'::regclass AND contype = 'c'
+    `;
+    expect(constraints.map((row) => row.conname)).toEqual(expect.arrayContaining([
+      'payouts_processing_source_check', 'payouts_approval_proof_check',
+    ]));
+    expect(constraints.map((row) => row.conname)).not.toContain('payouts_processing_batch_check');
     wallets = new WalletsService(new FinancialLedgerService());
     payouts = new PayoutsService(
       prisma,
@@ -60,13 +71,10 @@ suite('Flow 5 real PostgreSQL transactions', () => {
         },
       })
     ).id;
-    // Exercise the migration's append-only rule on this isolated database only.
-    await prisma.$executeRawUnsafe(
-      `CREATE OR REPLACE FUNCTION reject_finance_posting_mutation() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'Finance postings are append-only'; END; $$ LANGUAGE plpgsql`,
-    );
-    await prisma.$executeRawUnsafe(
-      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'finance_postings_immutable') THEN CREATE TRIGGER finance_postings_immutable BEFORE UPDATE OR DELETE ON finance_postings FOR EACH ROW EXECUTE FUNCTION reject_finance_posting_mutation(); END IF; END $$`,
-    );
+    const triggers = await prisma.$queryRaw<{ tgname: string }[]>`
+      SELECT tgname FROM pg_trigger WHERE tgrelid = 'finance_postings'::regclass
+    `;
+    expect(triggers.map((row) => row.tgname)).toContain('finance_postings_immutable');
   });
   afterAll(async () => {
     global.fetch = originalFetch;
@@ -228,6 +236,12 @@ suite('Flow 5 real PostgreSQL transactions', () => {
     const request = await payouts.createWithdrawal(user.id, {
       amount: '2072000',
     });
+    const allocations = await prisma.financialLedger.findMany({ where: { referenceId: request.request.id } });
+    expect(allocations).toHaveLength(2);
+    // Splitting by store must not permit the same store allocation twice.
+    for (const { id: _id, createdAt: _createdAt, ...entry } of allocations) {
+      await expect(prisma.financialLedger.create({ data: entry })).rejects.toThrow();
+    }
     const after = await prisma.storeWallet.aggregate({
       where: { wallet: { collaboratorId: user.id } },
       _sum: { availableBalance: true },
@@ -314,7 +328,112 @@ suite('Flow 5 real PostgreSQL transactions', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('settles a closed month once, credits FR-09 once, excludes shipping, and assigns Gold at 52m cumulative revenue', async () => {
+  function sandboxTransfer(client: any) {
+    return new PayoutTransferService(prisma, new ConfigService({
+      NODE_ENV: 'test', PAYOUT_PROVIDER: 'BIDV_SANDBOX',
+    }), new BidvPayoutAdapter(prisma, client));
+  }
+
+  it.each([
+    ['200000', '200000', '0'],
+    ['2072000', '1864800', '207200'],
+  ])('approves a %s Sandbox withdrawal without a batch or bill and never debits the wallet twice', async (gross, net, tax) => {
+    const user = await creator();
+    const { request } = await payouts.createWithdrawal(user.id, { amount: gross });
+    const reservedWallet = await prisma.wallet.findUniqueOrThrow({ where: { collaboratorId: user.id } });
+    const client = {
+      availability: () => ({ configured: true }),
+      call: jest.fn().mockImplementation(async () => {
+        const processing = await prisma.payoutRequest.findUniqueOrThrow({ where: { id: request.id } });
+        expect(processing).toMatchObject({ status: 'PROCESSING', batchId: null,
+          proofImagePublicId: null, transferProvider: 'BIDV_SANDBOX', approvedById: actorId });
+        return { httpStatus: 200, errorCode: '000', errorDesc: 'Success', listValid: false, transactions: [] };
+      }),
+    };
+    const transfer = sandboxTransfer(client);
+    const attempts = await Promise.allSettled([
+      transfer.transfer(request.id, actorId), transfer.transfer(request.id, actorId),
+    ]);
+    expect(attempts.some((result) => result.status === 'fulfilled')).toBe(true);
+    expect(client.call).toHaveBeenCalledTimes(1);
+    expect(client.call).toHaveBeenCalledWith('transfer', expect.objectContaining({
+      amount: net, credit: '001234', beneficiaryName: 'FLOW FIVE', bankCode: '970422',
+    }), expect.objectContaining({ idempotencyKey: request.id }));
+    const paid = await prisma.payoutRequest.findUniqueOrThrow({ where: { id: request.id } });
+    expect(paid).toMatchObject({ status: 'APPROVED', transferProvider: 'BIDV_SANDBOX',
+      batchId: null, proofImagePublicId: null, bankRefCode: `SBX-${request.id}`,
+      approvedById: actorId, transferLeaseId: null, transferLeaseUntil: null });
+    expect(paid.processedAt).toBeInstanceOf(Date);
+    const entries = await prisma.financePosting.findMany({ where: {
+      referenceId: request.id, debitAccount: 'PAYOUT_RESERVED',
+    } });
+    expect(entries.find((row) => row.creditAccount === 'BIDV_SANDBOX_BANK')?.amount.equals(net)).toBe(true);
+    if (tax !== '0') expect(entries.find((row) => row.creditAccount === 'SANDBOX_PIT_PAYABLE')?.amount.equals(tax)).toBe(true);
+    expect(entries.reduce((sum, row) => sum.plus(row.amount), new Prisma.Decimal(0)).equals(gross)).toBe(true);
+    expect(entries.every((row) => row.referenceType === 'PAYOUT_SANDBOX')).toBe(true);
+    expect(await prisma.auditLog.count({ where: { action: 'BANK_PAYOUT_COMPLETED', details: { path: ['payoutId'], equals: request.id } } })).toBe(1);
+    expect(await prisma.notification.count({ where: { userId: user.id, type: 'PAYOUT_COMPLETED' } })).toBe(1);
+    await transfer.transfer(request.id, actorId);
+    expect(client.call).toHaveBeenCalledTimes(1);
+    expect(await prisma.financePosting.count({ where: { referenceId: request.id } })).toBe(tax === '0' ? 2 : 3);
+    expect(await prisma.financialLedger.count({ where: { referenceId: request.id } })).toBe(1);
+    const after = await prisma.wallet.findUniqueOrThrow({ where: { collaboratorId: user.id } });
+    expect(after.availableBalance.equals(reservedWallet.availableBalance)).toBe(true);
+    expect(after.shoppingBalance.equals(reservedWallet.shoppingBalance)).toBe(true);
+  });
+
+  it('keeps a timed-out Sandbox payout PROCESSING without a batch, then reconciles without resending', async () => {
+    const user = await creator();
+    const { request } = await payouts.createWithdrawal(user.id, { amount: '200000' });
+    const response = { httpStatus: 200, errorCode: '000', errorDesc: 'Success', listValid: true,
+      transactions: [{ rootRequestId: 'unrelated-fixture', amount: '200000', detailCode: '000', accountingDate: '261102', bidvId: 'test' }] };
+    const client = { availability: () => ({ configured: true }), call: jest.fn()
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce(response)
+      .mockResolvedValueOnce({ ...response, transactions: [{ ...response.transactions[0], rootRequestId: request.id }] }) };
+    const transfer = sandboxTransfer(client);
+    await expect(transfer.transfer(request.id, actorId)).rejects.toThrow('Chưa xác định');
+    expect(await prisma.payoutRequest.findUniqueOrThrow({ where: { id: request.id } })).toMatchObject({
+      status: 'PROCESSING', batchId: null, transferLeaseId: null, transferProvider: 'BIDV_SANDBOX',
+    });
+    expect(await transfer.transfer(request.id, actorId, true)).toMatchObject({ status: 'PROCESSING' });
+    expect(await prisma.financePosting.count({ where: { referenceId: request.id } })).toBe(1);
+    expect(await transfer.transfer(request.id, actorId, true)).toMatchObject({ status: 'APPROVED' });
+    expect(client.call.mock.calls.map((call: any[]) => call[0])).toEqual(['transfer', 'inquiry', 'inquiry']);
+    expect(await prisma.financePosting.count({ where: { referenceId: request.id } })).toBe(2);
+  });
+
+  it('enforces API evidence and preserves manual bill and batch constraints in PostgreSQL', async () => {
+    const user = await creator();
+    const { request } = await payouts.createWithdrawal(user.id, { amount: '200000' });
+    const store = await prisma.store.create({ data: { ownerId: actorId, name: 'Constraint test', slug: randomUUID() } });
+    const batch = await prisma.payoutBatch.create({ data: { storeId: store.id, createdById: actorId, fileData: Buffer.from('test') } });
+    const update = (data: Prisma.PayoutRequestUncheckedUpdateInput) => prisma.payoutRequest.update({ where: { id: request.id }, data });
+    for (const data of [
+      { status: 'PROCESSING' as const },
+      { status: 'PROCESSING' as const, transferProvider: 'BIDV_SANDBOX' },
+      { status: 'PROCESSING' as const, transferProvider: 'UNKNOWN', approvedById: actorId },
+      { status: 'PROCESSING' as const, transferProvider: 'BIDV_SANDBOX', approvedById: actorId, batchId: batch.id },
+    ]) await expect(update(data)).rejects.toThrow('payouts_processing_source_check');
+
+    const apiEvidence = { status: 'APPROVED' as const, transferProvider: 'BIDV_SANDBOX',
+      approvedById: actorId, processedAt: new Date(), bankRefCode: `SBX-${request.id}` };
+    for (const missing of [
+      { transferProvider: null }, { transferProvider: 'UNKNOWN' }, { approvedById: null },
+      { processedAt: null }, { bankRefCode: null }, { bankRefCode: '   ' }, { batchId: batch.id },
+    ]) await expect(update({ ...apiEvidence, ...missing })).rejects.toThrow('payouts_approval_proof_check');
+
+    await expect(update({ status: 'PROCESSING', batchId: batch.id, storeId: store.id })).resolves.toMatchObject({ status: 'PROCESSING', transferProvider: null });
+    await expect(update({ status: 'APPROVED', approvedById: actorId, processedAt: new Date() })).rejects.toThrow('payouts_approval_proof_check');
+    await expect(update({ status: 'APPROVED', approvedById: actorId, processedAt: new Date(),
+      proofImagePublicId: 'test-bill', proofImageFormat: 'png', proofImageSha256: 'a'.repeat(64),
+    })).resolves.toMatchObject({ status: 'APPROVED', bankRefCode: null, transferProvider: null });
+    for (const missing of [{ storeId: null }, { approvedById: null }, { processedAt: null },
+      { proofImagePublicId: null }, { proofImageFormat: null }, { proofImageSha256: null },
+    ]) await expect(update(missing)).rejects.toThrow('payouts_approval_proof_check');
+  });
+
+  it('settles a closed month once, credits FR-09 once, excludes shipping, and assigns Gold for the evaluated 52m month', async () => {
     const user = await creator('0');
     const owner = await prisma.user.create({
       data: {
@@ -352,6 +471,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
         subtotalAmount: '52000000',
         shippingFee: '30000',
         finalAmount: '52030000',
+        createdAt: new Date('2026-09-15T00:00:00+07:00'),
         completedAt: new Date('2026-09-15T00:00:00+07:00'),
       },
     });
@@ -405,7 +525,15 @@ suite('Flow 5 real PostgreSQL transactions', () => {
         },
       ],
     });
-    const status = await new TiersService(prisma).getMyTierStatus(user.id);
+    const bronze = await prisma.collaboratorTier.findFirstOrThrow({ where: { name: 'Bronze' } });
+    await prisma.collaboratorProfile.update({ where: { userId: user.id }, data: { tierId: bronze.id } });
+    const tiers = new TiersService(prisma);
+    // Evaluate the fixture month, independently of when the suite runs.
+    jest.spyOn(tiers as any, 'previousMonthWindow').mockReturnValue({
+      gte: new Date('2026-09-01T00:00:00+07:00'),
+      lt: new Date('2026-10-01T00:00:00+07:00'),
+    });
+    const status = await tiers.getMyTierStatus(user.id);
     expect(status.currentTier.name).toBe('Gold');
     expect(status.currentRevenue).toBe(52000000);
   });
@@ -534,6 +662,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
         status: 'INSPECTING',
         originalOrderStatus: 'COMPLETED',
         deadlineAt: new Date('2026-11-01'),
+        imageUrls: ['https://example.test/return-evidence.png'],
         unboxingVideoUrl: 'https://example.test/video',
       },
     });

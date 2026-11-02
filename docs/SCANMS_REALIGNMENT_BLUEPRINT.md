@@ -698,8 +698,10 @@ flowchart TD
     * *Khấu trừ thuế TNCN (10%):* **$207.200₫$**
     * *Số tiền thực chi:* **$1.864.800₫$**
     * *Chỉ số an toàn gian lận:* **100% An toàn (Xanh)**
-  * Kế toán bấm nút **"Duyệt giải ngân Napas 24/7"** (`POST /api/v1/payouts/:id/approve`).
-  * Hệ thống chuyển lệnh sang trạng thái `APPROVED`, ghi bút toán kép vào Sổ cái kế toán `FinancialLedger` và nhật ký kiểm toán `AuditLog`. KOC nhận được thông báo ting ting tiền về tài khoản ngân hàng kèm email sao kê chi tiết.
+  * Kế toán mở **"Duyệt chi trả"**, chọn **"Qua API ngân hàng" → "Duyệt qua BIDV Sandbox"** (`POST /api/payouts/:id/approve`), không phải nhập bill hoặc mã chuyển khoản. Cấu hình `PAYOUT_PROVIDER=BIDV_SANDBOX` gửi đúng người nhận và số tiền thực chi của yêu cầu đang chọn tới BIDV Sandbox.
+  * Lệnh chuyển `PENDING → PROCESSING`. Trong chế độ Sandbox, phản hồi trực tiếp HTTP 2xx và `errorCode=000` được dùng làm kết quả thành công thử nghiệm trong SCANMS: chuyển `APPROVED`, ghi bút toán kép qua `FinancePosting`, ghi `AuditLog`, tạo thông báo và đưa email sao kê vào hàng đợi cho đúng KOL. Đây là quy ước kiểm thử, không xác nhận tiền đã về tài khoản ngân hàng ngoài đời.
+  * Ví KOL đã giữ/trừ số tiền yêu cầu một lần khi tạo lệnh, có `FinancialLedger` tương ứng; lúc duyệt không trừ thêm và không cộng ngược vào số dư khả dụng. Lịch sử rút tiền và bảng kê hiển thị **Hoàn tất · Sandbox**, mã tham chiếu nội bộ `SBX-…`.
+  * Timeout, phản hồi lỗi/chưa xác định hoặc vấn tin không khớp mã yêu cầu và số tiền giữ `PROCESSING` để đối soát, không tự gửi lại. **BIDV Sandbox · lịch sử thử nghiệm → Gửi giao dịch mẫu** vẫn là công cụ chẩn đoán độc lập, không phải nút duyệt yêu cầu KOL. Xem [hướng dẫn BIDV Sandbox](BIDV_SANDBOX.md).
 * **Bước 5.6 (`SYSTEM_ADMIN` - Giám đốc Theo Dõi Executive Dashboard & Giám Sát Kiểm Toán):**
   * Tổng Giám Đốc mở trang Executive Financial Dashboard ([`/admin/analytics`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminAnalyticsHubPage.tsx)):
     * Thấy chỉ số **GMV toàn tập đoàn** tăng trưởng thực tế.

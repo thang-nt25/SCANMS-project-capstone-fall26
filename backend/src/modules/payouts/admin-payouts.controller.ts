@@ -245,6 +245,8 @@ export class AdminPayoutsController {
     if (!request) {
       throw new NotFoundException('Yêu cầu chi trả không tồn tại');
     }
+    if (request.transferProvider === 'BIDV_SANDBOX')
+      throw new BadRequestException('Lệnh BIDV Sandbox cần đối soát qua API Sandbox, không xác nhận bằng chứng từ chuyển tiền thật.');
     if (
       request.status !== PayoutStatus.PENDING &&
       request.status !== PayoutStatus.PROCESSING
@@ -262,6 +264,8 @@ export class AdminPayoutsController {
           where: { id: payoutId },
         });
         if (!locked) throw new NotFoundException('Payout không tồn tại');
+        if (locked.transferProvider === 'BIDV_SANDBOX')
+          throw new BadRequestException('Lệnh BIDV Sandbox cần đối soát qua API Sandbox.');
         if (
           locked.status !== PayoutStatus.PENDING &&
           locked.status !== PayoutStatus.PROCESSING

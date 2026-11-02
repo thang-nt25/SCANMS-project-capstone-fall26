@@ -33,6 +33,13 @@ describe('payout statement delivery evidence', () => {
     tx.notification.findUniqueOrThrow.mockResolvedValue({ userId: 'creator', data: { payoutId: 'payout', emailSentAt: '2026-11-01T00:00:00Z' } });
     await service.deliver(); expect(mail.sendPayoutStatement).not.toHaveBeenCalled();
   });
+  it('labels the Sandbox statement before passing it to mail delivery', async () => {
+    const { service, tx, mail } = setup(true);
+    const payout = await tx.payoutRequest.findFirst();
+    tx.payoutRequest.findFirst.mockResolvedValue({ ...payout, transferProvider: 'BIDV_SANDBOX' });
+    await service.deliver();
+    expect(mail.sendPayoutStatement).toHaveBeenCalledWith('fixture@example.test', expect.objectContaining({ sandbox: true }));
+  });
   it('does not send without a paid payout with bank reference', async () => {
     const { service, tx, mail } = setup(true); tx.payoutRequest.findFirst.mockResolvedValue(null);
     await service.deliver(); expect(mail.sendPayoutStatement).not.toHaveBeenCalled();

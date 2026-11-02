@@ -23,6 +23,7 @@ const PAYOUT_SUMMARY_SELECT = {
   storeId: true,
   batchId: true,
   bankRefCode: true,
+  transferProvider: true,
   store: { select: { name: true } },
   amount: true,
   taxAmount: true,

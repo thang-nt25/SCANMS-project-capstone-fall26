@@ -380,6 +380,7 @@ export class MerchantPayoutsService {
       bankAccountNumber: request.bankAccountNumber,
       bankAccountName: request.bankAccountName,
       bankRefCode: request.bankRefCode,
+      transferProvider: request.transferProvider,
       hasBill: Boolean(request.proofImagePublicId),
       batchId: request.batchId,
       approvedById: request.approvedById,
@@ -403,6 +404,8 @@ export class MerchantPayoutsService {
   }
 
   private assertApprovable(request: PayoutRequest) {
+    if (request.transferProvider === 'BIDV_SANDBOX')
+      throw new ConflictException('Lệnh BIDV Sandbox cần đối soát qua API Sandbox, không xác nhận bằng chứng từ chuyển tiền thật.');
     if (
       request.status !== PayoutStatus.PENDING &&
       request.status !== PayoutStatus.PROCESSING

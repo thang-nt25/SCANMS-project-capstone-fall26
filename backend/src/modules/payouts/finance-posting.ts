@@ -34,21 +34,24 @@ export async function postFinance(
 export async function postPayoutCompletion(
   tx: Prisma.TransactionClient,
   payout: { id: string; netAmount: Prisma.Decimal; taxAmount: Prisma.Decimal },
+  sandbox = false,
 ) {
   await postFinance(
     tx,
     payout.id,
     'PAYOUT_BANK',
     'PAYOUT_RESERVED',
-    'CORPORATE_BANK',
+    sandbox ? 'BIDV_SANDBOX_BANK' : 'CORPORATE_BANK',
     payout.netAmount,
+    sandbox ? 'PAYOUT_SANDBOX' : undefined,
   );
   await postFinance(
     tx,
     payout.id,
     'PAYOUT_TAX',
     'PAYOUT_RESERVED',
-    'PIT_TAX_PAYABLE',
+    sandbox ? 'SANDBOX_PIT_PAYABLE' : 'PIT_TAX_PAYABLE',
     payout.taxAmount,
+    sandbox ? 'PAYOUT_SANDBOX' : undefined,
   );
 }

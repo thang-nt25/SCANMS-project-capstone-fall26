@@ -33,6 +33,8 @@ Trạng thái sau sửa audit: [MAIN_FLOW_5_COMPLETION.md](MAIN_FLOW_5_COMPLETIO
 
 Các migration mới: `20261031090000_flow5_finance_postings`, `20261031100000_flow5_integrity`, `20261031101000_flow5_shopping_bucket`, `20261031102000_flow5_opening_balances`, `20261031103000_flow5_finance_documents`.
 
+Bản duyệt API/Sandbox cần thêm `20261102110000_payout_transfer_provider`, `20261102130000_payout_api_constraints` và `20261102131000_payout_allocation_uniqueness`. Hai migration cuối thay yêu cầu mã lô/bill bằng bằng chứng API phù hợp và cho phép phân bổ một yêu cầu rút tiền về nhiều Shop. Vẫn chặn thiếu người duyệt/mã giao dịch/thời điểm hoàn tất, giữ ràng buộc bill cho chi thủ công và chống trùng từng nguồn tiền. Không sửa dữ liệu payout/số dư đã có.
+
 Trong backend, sau khi kiểm tra đúng DATABASE_URL:
 
 ```powershell
@@ -46,6 +48,16 @@ npm.cmd run build
 Không sửa lịch sử tiền/thuế cũ. Cutover thêm các bút toán phân loại số dư và số dư mở đầu, không giả lập lại lịch sử doanh thu. SHOPPING dành cho nạp/mua/hoàn tiền; AVAILABLE/PENDING dành cho thu nhập. `earningsReviewRequired` giữ các số dư cũ chưa chắc nguồn để đối soát, không cho rút.
 
 ## Cổng chi trả ngân hàng
+
+Để chạy trọn Main Flow 5 bằng BIDV Sandbox với chính yêu cầu rút tiền của KOL,
+đặt `PAYOUT_PROVIDER=BIDV_SANDBOX`, `BIDV_SANDBOX_ENABLED=true` và cấu hình khóa.
+Áp dụng migration `20261102110000_payout_transfer_provider`. Xem
+[luồng duyệt Sandbox tích hợp](BIDV_SANDBOX.md). Lệnh được đánh dấu Sandbox xuyên
+suốt lịch sử, sổ cái, thông báo và bảng kê; không chuyển tiền ngoài đời. Số gross
+đã trừ lúc tạo yêu cầu không bị trừ lần nữa khi duyệt. Phản hồi chưa xác định giữ
+`PROCESSING`. Không dùng chế độ này trong production.
+
+Với `PAYOUT_PROVIDER=GATEWAY` (mặc định), hợp đồng chi trả dưới đây giữ nguyên:
 
 Repo không có SDK/hợp đồng giải ngân trực tiếp MB/Napas. Adapter cần một cổng chi trả doanh nghiệp thực sự triển khai hợp đồng dưới đây; không thể chỉ nhập endpoint PayOS thu tiền rồi coi là giải ngân.
 
@@ -82,7 +94,7 @@ SMTP dùng GMAIL_USER/GMAIL_PASS hoặc SMTP_USER/SMTP_PASS theo MailService hi�
 
 ## Kiểm thử
 
-Kết quả xác minh sau audit được cập nhật trong MAIN_FLOW_5_COMPLETION.md. PostgreSQL local riêng có 7 bài tích hợp; browser Customer và Flow 5 desktop/mobile, bảng kê đã chạy đạt. API browser được giả lập. Ảnh QA nằm trong artifacts/flow5 (không đưa vào Git). Không dùng kết quả kiểm thử để khẳng định tích hợp ngân hàng thật đã hoạt động.
+Kết quả xác minh sau audit được cập nhật trong MAIN_FLOW_5_COMPLETION.md. Bộ PostgreSQL có 12 bài tích hợp, gồm duyệt API/Sandbox không bill, timeout/vấn tin, chống gửi/trừ trùng, ràng buộc chứng từ và phân bổ nhiều Shop. Phản hồi ngân hàng trong kiểm thử được giả lập; PostgreSQL chạy thật trên database local riêng. API browser cũng được giả lập. Ảnh QA nằm trong artifacts/flow5 (không đưa vào Git). Không dùng kết quả kiểm thử để khẳng định tích hợp ngân hàng thật đã hoạt động.
 
 - Unit: thuế ở hai phía ngưỡng, Decimal, snapshot, giữ tiền, bank timeout, phản hồi sai, idempotency, phân quyền, scheduler, cấp bậc và Escrow.
 - PostgreSQL riêng: rút đồng thời, rollback khi bút toán lỗi, từ chối đồng thời, nguồn nhiều Store, chi ngân hàng đồng thời, trigger sổ bất biến, FR-09 cộng một lần và hạng Vàng tại 52 triệu.
@@ -91,9 +103,13 @@ Kết quả xác minh sau audit được cập nhật trong MAIN_FLOW_5_COMPLETI
 ```powershell
 # Trong backend, chỉ dùng database local riêng có tên kết thúc _test:
 $env:WITHDRAWAL_TEST_DATABASE_URL='postgresql://USER@127.0.0.1:PORT/scanms_flow5_test'
-node node_modules/jest/bin/jest.js --runInBand --runTestsByPath src/modules/payouts/flow5.postgres.integration.spec.ts
+$env:DATABASE_URL=$env:WITHDRAWAL_TEST_DATABASE_URL
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/jest/bin/jest.js --config test/jest-flow5.integration.config.cjs --runInBand
 
 # Trong frontend, chạy Vite local trước:
 $env:FLOW5_UI_TEST_URL='http://127.0.0.1:5179'
 node --test tests/flow5-finance.browser.test.mjs
 ```
+
+Database test phải có schema khớp Prisma và các CHECK/index/trigger từ migration. Chỉ `db push` trên database rỗng sẽ bỏ sót các ràng buộc SQL. Khi dựng từ toàn bộ migration của repo ngày 02/11, còn lệch schema cũ ngoài payout (ví dụ `users.store_id`, `stores.category_name`); đối chiếu `prisma migrate diff` và đồng bộ trên database test riêng trước khi chạy. Không áp dụng phần đồng bộ test vào database dự án.

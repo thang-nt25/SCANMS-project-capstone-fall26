@@ -1,4 +1,101 @@
 @reference "../../index.css";
+#admin-finance-payouts-page .bidv-tracking { display: grid; gap: 10px; padding: 14px; background: #FAF8F5; border-radius: 8px; }
+#admin-finance-payouts-page .bidv-tracking > div { display: grid; grid-template-columns: 155px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+#admin-finance-payouts-page .bidv-tracking dd { min-width: 0; }
+#admin-finance-payouts-page .bidv-tracking code { overflow-wrap: anywhere; font-size: 11px; color: #514737; user-select: all; }
+#admin-finance-payouts-page .payout-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; background: #C59B58; color: #1A1612; border: 1px solid #C59B58; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+#admin-finance-payouts-page .payout-primary:hover:not(:disabled) { background: #B88E4F; }
+#admin-finance-payouts-page .payout-secondary { background: #FBF5EB; color: #715126; border: 1px solid #EEDFC6; border-radius: 10px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
+#admin-finance-payouts-page .payout-primary:disabled, #admin-finance-payouts-page .payout-secondary:disabled { opacity: .5; cursor: not-allowed; }
+#admin-finance-payouts-page .payout-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+#admin-finance-payouts-page .payout-review-input { width: 100%; min-width: 0; border: 1px solid #EAE4D7; border-radius: 10px; padding: 10px 12px; background: #fff; color: #1A1612; font-weight: 400; }
+#admin-finance-payouts-page .payout-review-dialog :is(button, input, select, summary):focus-visible { outline: 2px solid #B88E4F; outline-offset: 3px; }
+#admin-finance-payouts-page .payout-methods > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#admin-finance-payouts-page .payout-methods label { display: flex; align-items: center; gap: 9px; border: 1px solid #EAE4D7; border-radius: 10px; padding: 12px; font-size: 14px; cursor: pointer; }
+#admin-finance-payouts-page .payout-methods label[data-selected=true] { background: #FBF5EB; border-color: #C59B58; }
+#admin-finance-payouts-page .payout-methods input { accent-color: #B88E4F; }
+@media(max-width:600px) { #admin-finance-payouts-page .payout-methods > div { grid-template-columns: 1fr; } #admin-finance-payouts-page .payout-review-actions > button { width: 100%; } }
+#admin-finance-payouts-page .payout-review-content { display: grid; min-width: 0; gap: 18px; }
+#admin-finance-payouts-page .payout-review-dialog .modal-header { border-color: #EAE4D7; }
+#admin-finance-payouts-page .payout-review-dialog .modal-header p { color: #7D715E; }
+#admin-finance-payouts-page .payout-review-dialog .modal-footer { background: #FAF8F5; }
+#admin-finance-payouts-page .payout-review-dialog .payout-secondary { min-height: 44px; background: #fff; color: #514737; border-color: #EAE4D7; }
+#admin-finance-payouts-page .payout-review-dialog .payout-secondary:hover:not(:disabled) { background: #F3EFE6; }
+#admin-finance-payouts-page .payout-text-button { min-height: 44px; padding: 8px 0; color: #715126; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+#admin-finance-payouts-page .payout-text-button:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 4px; }
+#admin-finance-payouts-page .payout-text-button:disabled { opacity: .5; cursor: not-allowed; }
+#admin-finance-payouts-page .payout-connection-status { padding: 16px; background: #FAF8F5; border-left: 3px solid #C59B58; font-size: 14px; line-height: 1.6; }
+#admin-finance-payouts-page .payout-connection-status p { color: #7D715E; margin-top: 6px; }
+#admin-finance-payouts-page .payout-disclosure { min-width: 0; border-top: 1px solid #EAE4D7; }
+#admin-finance-payouts-page .payout-disclosure > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 12px 0; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: #514737; }
+#admin-finance-payouts-page .payout-disclosure > summary::-webkit-details-marker { display: none; }
+#admin-finance-payouts-page .payout-disclosure > summary > svg { margin-left: auto; flex-shrink: 0; color: #7D715E; }
+#admin-finance-payouts-page .payout-disclosure[open] > summary > svg { transform: rotate(180deg); }
+#admin-finance-payouts-page .payout-disclosure-body { padding: 0 0 16px; }
+#admin-finance-payouts-page .bidv-caption { color: #7D715E; font-size: 13px; line-height: 1.65; margin: 0; }
+#admin-finance-payouts-page .bidv-payment-summary { background: #FAF8F5; border: 1px solid #EEDFC6; border-radius: 12px; padding: 20px; }
+#admin-finance-payouts-page .bidv-amount { display: grid; gap: 3px; }
+#admin-finance-payouts-page .bidv-amount > span { color: #7D715E; font-size: 13px; }
+#admin-finance-payouts-page .bidv-amount > strong { color: #1A1612; font-size: clamp(26px, 4vw, 32px); line-height: 1.4; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#admin-finance-payouts-page .bidv-calculation { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 10px 0 0; font-size: 12px; color: #7D715E; }
+#admin-finance-payouts-page .bidv-calculation > div { display: flex; flex-wrap: wrap; gap: 6px; }
+#admin-finance-payouts-page .bidv-calculation dd { color: #514737; font-variant-numeric: tabular-nums; }
+#admin-finance-payouts-page .bidv-beneficiary { display: grid; gap: 8px; border-top: 1px solid #EAE4D7; margin-top: 16px; padding-top: 14px; font-size: 13px; }
+#admin-finance-payouts-page .bidv-beneficiary > div { display: flex; justify-content: space-between; gap: 16px; }
+#admin-finance-payouts-page .bidv-beneficiary dt { color: #7D715E; }
+#admin-finance-payouts-page .bidv-beneficiary dd { text-align: right; font-weight: 500; overflow-wrap: anywhere; min-width: 0; }
+#admin-finance-payouts-page .bidv-result { display: flex; gap: 12px; align-items: flex-start; border-left: 3px solid #C59B58; padding: 2px 0 2px 14px; }
+#admin-finance-payouts-page .bidv-result > svg { flex-shrink: 0; color: #715126; margin-top: 2px; }
+#admin-finance-payouts-page .bidv-result > div { min-width: 0; }
+#admin-finance-payouts-page .bidv-result h4 { font-size: 15px; font-weight: 650; margin: 0; }
+#admin-finance-payouts-page .bidv-result p { font-size: 13px; line-height: 1.65; color: #7D715E; margin-top: 5px; overflow-wrap: anywhere; }
+#admin-finance-payouts-page .bidv-result .bidv-response { color: #514737; }
+#admin-finance-payouts-page .bidv-details-group + .payout-disclosure { margin-top: -18px; }
+#admin-finance-payouts-page .bidv-count { border-radius: 5px; background: #F3EFE6; padding: 1px 6px; font-size: 11px; font-weight: 500; color: #7D715E; }
+#admin-finance-payouts-page .bidv-timeline { display: grid; gap: 20px; padding-top: 4px; font-size: 12px; }
+#admin-finance-payouts-page .bidv-operation { min-width: 0; }
+#admin-finance-payouts-page .bidv-operation-heading { display: flex; align-items: flex-start; gap: 10px; }
+#admin-finance-payouts-page .bidv-operation-icon { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; background: #F3EFE6; color: #715126; }
+#admin-finance-payouts-page .bidv-operation-heading > div { display: grid; gap: 3px; }
+#admin-finance-payouts-page .bidv-operation-heading strong { font-weight: 600; font-size: 13px; }
+#admin-finance-payouts-page .bidv-operation-heading time { color: #7D715E; font-size: 11px; font-variant-numeric: tabular-nums; }
+#admin-finance-payouts-page .bidv-operation-status { margin-left: auto; padding: 3px 7px; border-radius: 5px; background: #FBF5EB; color: #715126; font-size: 11px; white-space: nowrap; }
+#admin-finance-payouts-page .bidv-operation-content { display: grid; gap: 10px; margin: 10px 0 0 14px; padding-left: 25px; border-left: 1px solid #EAE4D7; }
+#admin-finance-payouts-page .bidv-operation-response { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: #514737; line-height: 1.5; }
+#admin-finance-payouts-page .bidv-operation-response > span:first-child { color: #7D715E; }
+#admin-finance-payouts-page .bidv-operation-response small { margin-left: auto; font-size: 11px; color: #7D715E; }
+#admin-finance-payouts-page .bidv-match-note { color: #715126; font-size: 12px; }
+#admin-finance-payouts-page .bidv-transaction { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 12px; border-radius: 8px; background: #FAF8F5; }
+#admin-finance-payouts-page .bidv-transaction > div { display: grid; gap: 3px; min-width: 0; }
+#admin-finance-payouts-page .bidv-transaction dt { color: #7D715E; font-size: 11px; }
+#admin-finance-payouts-page .bidv-transaction dd { color: #514737; font-weight: 500; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+#admin-finance-payouts-page .bidv-transaction-root { grid-column: 1 / -1; }
+#admin-finance-payouts-page .bidv-event-log { min-width: 0; font-size: 12px; color: #7D715E; }
+#admin-finance-payouts-page .bidv-event-log > summary { display: flex; align-items: center; gap: 6px; min-height: 36px; cursor: pointer; list-style: none; width: fit-content; }
+#admin-finance-payouts-page .bidv-event-log > summary::-webkit-details-marker { display: none; }
+#admin-finance-payouts-page .bidv-event-log[open] > summary > svg { transform: rotate(180deg); }
+#admin-finance-payouts-page .bidv-event-log > div { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 8px; padding: 5px 0; line-height: 1.6; overflow-wrap: anywhere; }
+#admin-finance-payouts-page .bidv-event-log > p { padding: 4px 0 8px; line-height: 1.6; }
+#admin-finance-payouts-page .bidv-event-log time { font-variant-numeric: tabular-nums; }
+#admin-finance-payouts-page .bidv-inquiry { display: grid; gap: 12px; }
+#admin-finance-payouts-page .bidv-inquiry-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+#admin-finance-payouts-page .bidv-tracking dt { font-size: 12px; color: #7D715E; }
+#admin-finance-payouts-page .bidv-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
+#admin-finance-payouts-page .bidv-footer .payout-review-actions { margin-left: auto; }
+@media(max-width:600px) {
+  #admin-finance-payouts-page .payout-review-dialog .modal-scroll-body { padding: 18px; }
+  #admin-finance-payouts-page .payout-review-dialog .modal-header { padding: 16px 18px; }
+  #admin-finance-payouts-page .payout-review-dialog .modal-footer { padding: 12px 18px; }
+  #admin-finance-payouts-page .payout-review-dialog .modal-footer .payout-review-actions { width: 100%; flex-direction: column-reverse; gap: 8px; }
+  #admin-finance-payouts-page .bidv-footer { flex-direction: column-reverse; align-items: stretch; }
+  #admin-finance-payouts-page .bidv-footer > .payout-text-button { text-align: center; }
+  #admin-finance-payouts-page .bidv-payment-summary { padding: 16px; }
+  #admin-finance-payouts-page .bidv-calculation { display: grid; }
+  #admin-finance-payouts-page .bidv-tracking > div { grid-template-columns: 1fr; gap: 2px; }
+  #admin-finance-payouts-page .bidv-inquiry-controls { grid-template-columns: 1fr; }
+  #admin-finance-payouts-page .bidv-operation-content { padding-left: 12px; }
+  #admin-finance-payouts-page .bidv-operation-status { font-size: 10px; padding: 3px 5px; }
+}
 #admin-finance-payouts-page { @apply [min-width:0]; @apply [max-width:100%]; @apply [color:#1A1612]; }
 #admin-finance-payouts-page *, #admin-finance-payouts-page *::before { @apply box-border; }
 #admin-finance-payouts-page > *, #admin-finance-payouts-page form, #admin-finance-payouts-page label { @apply [min-width:0]; }

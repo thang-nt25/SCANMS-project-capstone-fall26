@@ -43,6 +43,7 @@ export interface WalletSummary {
 }
 
 export interface WithdrawalRequest {
+  transferProvider?: string | null;
   storeId: string | null;
   store: { name: string } | null;
   batchId: string | null;

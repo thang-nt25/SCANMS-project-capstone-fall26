@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PayoutTransferService } from './payout-transfer.service';
+import { BidvPayoutAdapter } from './bidv-payout.adapter';
 import { FinanceReportController } from './finance-report.controller';
 import { FinanceReportService } from './finance-report.service';
 import { postFinance, postPayoutCompletion } from './finance-posting';
@@ -240,6 +241,109 @@ describe('Flow 5 bank settlement invariants', () => {
     );
     expect(state.status).toBe('PENDING');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not enable bank payouts just because BIDV OAuth credentials exist', async () => {
+    const bidvOnly = new PayoutTransferService(tx, new ConfigService({
+      BIDV_CLIENT_ID: 'test-client',
+      BIDV_CLIENT_SECRET: 'test-secret',
+    }));
+    expect(bidvOnly.availability()).toMatchObject({ configured: false, connectionVerified: false });
+    expect(bidvOnly.availability().message).toContain('Chưa kết nối chi trả thật');
+    await expect(bidvOnly.transfer(payoutId, 'a')).rejects.toThrow('Chưa cấu hình');
+    expect(tx.$transaction).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  function sandboxService() {
+    const audits: any[] = [];
+    tx.auditLog.create.mockImplementation(async ({ data }: any) => { audits.push(data); return data; });
+    tx.auditLog.findFirst = jest.fn(async ({ where }: any) => [...audits].reverse().find(row => row.action === where.action && row.details.payoutId === where.details.equals));
+    const client: any = {
+      availability: () => ({ configured: true }),
+      call: jest.fn().mockResolvedValue({ httpStatus: 200, errorCode: '000', errorDesc: 'Thành công', transactions: [], listValid: false }),
+    };
+    const adapter = new BidvPayoutAdapter(tx, client);
+    const config = new ConfigService({ PAYOUT_PROVIDER: 'BIDV_SANDBOX', NODE_ENV: 'test' });
+    return { service: new PayoutTransferService(tx, config, adapter), adapter, client, audits };
+  }
+
+  it('completes the selected KOL payout via Sandbox exactly once, with NET and separate test accounting', async () => {
+    const sandbox = sandboxService();
+    expect(sandbox.service.availability()).toMatchObject({ configured: true, provider: 'BIDV_SANDBOX', environment: 'SANDBOX' });
+    const results = await Promise.allSettled([sandbox.service.transfer(payoutId, 'a'), sandbox.service.transfer(payoutId, 'b')]);
+    expect(results.some(result => result.status === 'fulfilled')).toBe(true);
+    expect(sandbox.client.call).toHaveBeenCalledTimes(1);
+    expect(sandbox.client.call).toHaveBeenCalledWith('transfer', expect.objectContaining({ credit: '001234', beneficiaryName: 'TEST CREATOR', bankCode: '970422', amount: '1864800' }), expect.objectContaining({ idempotencyKey: payoutId }));
+    expect(state).toMatchObject({ status: 'APPROVED', transferProvider: 'BIDV_SANDBOX', bankRefCode: `SBX-${payoutId}` });
+    expect(tx.financePosting.create.mock.calls.map(([arg]: any) => [arg.data.debitAccount, arg.data.creditAccount, arg.data.amount.toFixed(2), arg.data.referenceType])).toEqual([
+      ['PAYOUT_RESERVED', 'BIDV_SANDBOX_BANK', '1864800.00', 'PAYOUT_SANDBOX'],
+      ['PAYOUT_RESERVED', 'SANDBOX_PIT_PAYABLE', '207200.00', 'PAYOUT_SANDBOX'],
+    ]);
+    expect(tx.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'creator', type: 'PAYOUT_COMPLETED', title: expect.stringContaining('Sandbox'), data: expect.objectContaining({ environment: 'SANDBOX' }) }) });
+    await sandbox.service.transfer(payoutId, 'a');
+    expect(sandbox.client.call).toHaveBeenCalledTimes(1);
+    expect(tx.financePosting.create).toHaveBeenCalledTimes(2);
+    expect(tx.notification.create).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    // This mock has no wallet mutation method: completion uses only the existing reserve.
+  });
+
+  it.each(['001', '999', null])('keeps unknown Sandbox code %s reserved without accounting or notifications', async errorCode => {
+    const sandbox = sandboxService();
+    sandbox.client.call.mockResolvedValue({ httpStatus: 200, errorCode, transactions: [], listValid: false });
+    await expect(sandbox.service.transfer(payoutId, 'a')).resolves.toMatchObject({ status: 'PROCESSING' });
+    expect(tx.financePosting.create).not.toHaveBeenCalled();
+    expect(tx.notification.create).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a timeout without resending; a canned unrelated inquiry cannot complete the KOL request', async () => {
+    const sandbox = sandboxService();
+    sandbox.client.call.mockRejectedValueOnce(new Error('timeout'));
+    await expect(sandbox.service.transfer(payoutId, 'a')).rejects.toThrow('Chưa xác định');
+    await expect(sandbox.service.transfer(payoutId, 'a')).rejects.toThrow('Trạng thái');
+    sandbox.client.call.mockResolvedValue({ httpStatus: 200, errorCode: '000', listValid: true, transactions: [{ rootRequestId: 'REQ123456789', amount: '1000000', detailCode: '000' }] });
+    await expect(sandbox.service.transfer(payoutId, 'a', true)).resolves.toMatchObject({ status: 'PROCESSING' });
+    expect(sandbox.client.call.mock.calls.map(([operation]: any) => operation)).toEqual(['transfer', 'inquiry']);
+    expect(sandbox.client.call.mock.calls[1][1]).toMatchObject({ rootRequestId: payoutId, rootRequestDate: sandbox.audits[0].details.sandbox.request.transDate });
+    expect(tx.financePosting.create).not.toHaveBeenCalled();
+  });
+
+  it('finishes a matching inquiry and recovers a saved acceptance without a second transfer', async () => {
+    const sandbox = sandboxService();
+    const snapshot = sandbox.adapter.prepare(state);
+    sandbox.audits.push({ action: 'START_BANK_PAYOUT', details: { payoutId, sandbox: snapshot } });
+    sandbox.client.call.mockResolvedValue({ httpStatus: 200, errorCode: '000', listValid: true, transactions: [{ rootRequestId: payoutId, amount: '1864800', detailCode: '000' }] });
+    await expect(sandbox.adapter.execute(state, 'a', true)).resolves.toMatchObject({ status: 'SUCCEEDED' });
+    await expect(sandbox.adapter.execute(state, 'a', true)).resolves.toMatchObject({ status: 'SUCCEEDED' });
+    expect(sandbox.client.call).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects unknown bank BINs and Sandbox use in production before reserving a transfer', async () => {
+    const sandbox = sandboxService();
+    state.bankName = 'Unknown Bank';
+    await expect(sandbox.service.transfer(payoutId, 'a')).rejects.toThrow();
+    expect(state.status).toBe('PENDING');
+    const production = new PayoutTransferService(tx, new ConfigService({ PAYOUT_PROVIDER: 'BIDV_SANDBOX', NODE_ENV: 'production' }), sandbox.adapter);
+    await expect(production.transfer(payoutId, 'a')).rejects.toThrow('production');
+    expect(sandbox.client.call).not.toHaveBeenCalled();
+  });
+
+  it('uses the selected 200,000 VND Vietcombank request without substituting the demo beneficiary', async () => {
+    const sandbox = sandboxService();
+    Object.assign(state, { bankName: 'Vietcombank (Ngân hàng TMCP Ngoại Thương Việt Nam)', netAmount: new Prisma.Decimal(200000) });
+    expect(sandbox.adapter.prepare(state).request).toMatchObject({ bankCode: '970436', amount: '200000', credit: '001234', beneficiaryName: 'TEST CREATOR' });
+    const changed = sandbox.adapter.prepare(state);
+    changed.request.credit = 'another-account';
+    await expect(sandbox.adapter.execute(state, 'a', false, changed)).rejects.toThrow('Không khớp');
+    expect(sandbox.client.call).not.toHaveBeenCalled();
+  });
+
+  it.each(['GATEWAY', null])('does not reconcile a prior %s transfer through Sandbox', async transferProvider => {
+    const sandbox = sandboxService();
+    Object.assign(state, { status: 'PROCESSING', transferProvider });
+    await expect(sandbox.service.transfer(payoutId, 'a', true)).rejects.toThrow('đúng dịch vụ');
+    expect(sandbox.client.call).not.toHaveBeenCalled();
   });
 });
 

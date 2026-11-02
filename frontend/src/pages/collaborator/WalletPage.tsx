@@ -1171,7 +1171,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                       {isApproved && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] shadow-2xs">
                           <CheckCircle2 className="w-2.5 h-2.5 text-[#059669]" />
-                          <span>{STATUS_LABELS.APPROVED}</span>
+                          <span>{request.transferProvider === 'BIDV_SANDBOX' ? 'Hoàn tất · Sandbox' : STATUS_LABELS.APPROVED}</span>
                         </span>
                       )}
                       {isRejected && (
@@ -1180,6 +1180,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                           <span>{STATUS_LABELS.REJECTED}</span>
                         </span>
                       )}
+                      {request.transferProvider === 'BIDV_SANDBOX' && <p className="mt-1 text-[10px] text-[#7D715E]">Thử nghiệm · Không chuyển tiền ngoài đời</p>}
                     </td>
                   </tr>
                 );

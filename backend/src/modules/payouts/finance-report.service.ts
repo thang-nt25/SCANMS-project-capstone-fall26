@@ -299,6 +299,7 @@ export class FinanceReportService {
         taxAmount: true,
         netAmount: true,
         bankRefCode: true,
+        transferProvider: true,
         processedAt: true,
         collaborator: {
           select: {
@@ -451,6 +452,7 @@ export class FinanceReportService {
         taxAmount: true,
         netAmount: true,
         bankRefCode: true,
+        transferProvider: true,
         processedAt: true,
       },
       orderBy: [{ processedAt: 'desc' }, { id: 'desc' }],
@@ -467,6 +469,7 @@ export class FinanceReportService {
         taxAmount: true,
         netAmount: true,
         bankRefCode: true,
+        transferProvider: true,
         processedAt: true,
         bankAccountNumber: true,
         collaborator: {
@@ -482,7 +485,8 @@ export class FinanceReportService {
     return {
       ...payout,
       bankAccountNumber: `••••${payout.bankAccountNumber?.slice(-4) ?? ''}`,
-      documentType: 'PAYOUT_STATEMENT',
+      documentType: payout.transferProvider === 'BIDV_SANDBOX' ? 'SANDBOX_PAYOUT_STATEMENT' : 'PAYOUT_STATEMENT',
+      environment: payout.transferProvider === 'BIDV_SANDBOX' ? 'SANDBOX' : 'LIVE',
       legalTaxCertificate: false,
     };
   }

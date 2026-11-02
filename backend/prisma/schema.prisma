@@ -1784,6 +1784,7 @@ model PayoutRequest {
   processedAt        DateTime?    @map("processed_at") @db.Timestamptz(6)
   transferLeaseId    String?      @map("transfer_lease_id") @db.Uuid
   transferLeaseUntil DateTime?    @map("transfer_lease_until") @db.Timestamptz(6)
+  transferProvider   String?      @map("transfer_provider") @db.VarChar(30)
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations

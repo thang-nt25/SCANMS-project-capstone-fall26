@@ -19,6 +19,10 @@ import { FinanceReportService } from './finance-report.service';
 import { PayoutTransferService } from './payout-transfer.service';
 import { PayoutEmailScheduler } from './payout-email.scheduler';
 import { AuthModule } from '../auth/auth.module';
+import { BidvSandboxController } from './bidv-sandbox.controller';
+import { BidvSandboxClient } from './bidv-sandbox.client';
+import { BidvSandboxService } from './bidv-sandbox.service';
+import { BidvPayoutAdapter } from './bidv-payout.adapter';
 
 @Module({
   imports: [ConfigModule],
@@ -48,12 +52,16 @@ class PayoutSettingsModule {}
     }),
   ],
   controllers: [
+    BidvSandboxController,
     PayoutsController,
     MerchantPayoutsController,
     AdminPayoutsController,
     FinanceReportController,
   ],
   providers: [
+    BidvSandboxClient,
+    BidvPayoutAdapter,
+    BidvSandboxService,
     PayoutsService,
     FinanceReportService,
     PayoutTransferService,
