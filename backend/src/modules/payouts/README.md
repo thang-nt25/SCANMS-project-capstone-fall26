@@ -1,5 +1,7 @@
 # FR-22 / FR-23 / FR-24: shop-scoped payouts, immutable ledger and VietQR batches
 
+> Flow 5 update: see [MAIN_FLOW_5_IMPLEMENTATION.md](../../../../docs/MAIN_FLOW_5_IMPLEMENTATION.md) for the current architecture, required migration and gateway contract. The older merchant workflow below is retained for historical context; write/approve/export routes now require SYSTEM_MANAGER or SYSTEM_ADMIN.
+
 All routes require JWT authentication and the COLLABORATOR role:
 
 - GET /api/wallets/me: balances, minimum withdrawal, tax policy, KYC and masked bank account.
@@ -11,12 +13,12 @@ Money is a decimal string, not a JavaScript floating-point number. Client-provid
 
 ## Tax: assignment business rule, not legal advice
 
-PayoutTaxService withholds 10% from every new withdrawal, regardless of amount. This project business rule replaces the former 2,000,000 VND threshold. Tax is rounded to two decimals using Decimal ROUND_HALF_UP; net equals gross minus tax. The wallet-summary API keeps its compatible threshold field at `0.00` and rate at `0.10`.
+PayoutTaxService follows the Flow 5 blueprint: no withholding below 2,000,000 VND, 10% at or above that threshold. Tax is rounded to two decimals using Decimal ROUND_HALF_UP; net equals gross minus tax. The wallet-summary API returns threshold `2000000.00` and rate `0.10`. This is the project specification, not a verified current legal policy.
 
 | Gross        | Tax        | Net          |
 | ------------ | ---------- | ------------ |
-| 1,000,000.00 | 100,000.00 | 900,000.00   |
-| 1,999,999.99 | 200,000.00 | 1,799,999.99 |
+| 1,000,000.00 | 0.00 | 1,000,000.00   |
+| 1,999,999.99 | 0.00 | 1,999,999.99 |
 | 2,000,000.00 | 200,000.00 | 1,800,000.00 |
 | 2,000,000.05 | 200,000.01 | 1,800,000.04 |
 

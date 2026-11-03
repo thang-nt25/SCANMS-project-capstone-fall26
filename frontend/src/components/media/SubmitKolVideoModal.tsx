@@ -1,3 +1,4 @@
+import './SubmitKolVideoModal.css';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
@@ -17,6 +18,24 @@ import { Button } from '../ui/Button';
 import { mediaService } from '../../services/media.service';
 import { referralLinksService, type EligibleProduct } from '../../services/referral-links.service';
 import api from '../../services/api';
+import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
+
+function ProductThumbnail({ product }: { product?: EligibleProduct }) {
+  return (
+    <img
+      src={getSafeProductImageUrl(product?.imageUrl)}
+      alt={product?.title || 'Ảnh sản phẩm'}
+      className="w-10 h-10 shrink-0 rounded-lg border border-[#EAE4D7] bg-white object-contain p-1"
+      onError={(event) => {
+        const image = event.currentTarget;
+        if (!image.dataset.fallback) {
+          image.dataset.fallback = 'true';
+          image.src = '/assets/product-placeholder.svg';
+        }
+      }}
+    />
+  );
+}
 
 const ALLOWED_DOMAINS = [
   'scanms.vn',
@@ -83,6 +102,10 @@ export function SubmitKolVideoModal({
 
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [isProductSearchCompact, setIsProductSearchCompact] = useState(false);
+  useEffect(() => {
+    if (!isProductDropdownOpen) setIsProductSearchCompact(false);
+  }, [isProductDropdownOpen]);
   const productDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -268,6 +291,7 @@ export function SubmitKolVideoModal({
   useEffect(() => {
     if (!isOpen) return;
 
+
     if (initialProductId) {
       setSelectedProductId(initialProductId);
     }
@@ -402,9 +426,12 @@ export function SubmitKolVideoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
-
+    <div className="kol-video-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
+      <div className="kol-video-dialog bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
+        <button type="button" onClick={onClose} className="kol-video-close" aria-label="Đóng">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="kol-video-scroll">
         <header className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-xs">
@@ -412,25 +439,14 @@ export function SubmitKolVideoModal({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-[#1A1612] m-0">
-                Nộp Video Review Sản Phẩm
+                {sandboxOrderCode ? 'Nộp video kiểm thử' : 'Nộp video review sản phẩm'}
               </h2>
-              <p className="text-xs text-[#7D715E] mt-0.5 m-0">
-                {sandboxOrderCode ? `Đơn GHN sandbox ${sandboxOrderCode} · Video gửi Shop duyệt, không đăng công khai` : 'Video được Shop phê duyệt sẽ tự động xuất hiện trên Landing Page sàn SCANMS'}
-              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-[#F3EFE6] text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </header>
 
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto py-4 space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="kol-video-form overflow-y-auto py-4 space-y-4 flex-1">
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
@@ -454,7 +470,7 @@ export function SubmitKolVideoModal({
             {initialProductTitle && initialProductId ? (
               <div className="p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Package className="w-4 h-4 text-[#B88E4F] shrink-0" />
+                  <ProductThumbnail key={selectedProduct?.id || initialProductId} product={selectedProduct} />
                   <span className="font-semibold text-[#1A1612] truncate">
                     {initialProductTitle}
                   </span>
@@ -475,7 +491,7 @@ export function SubmitKolVideoModal({
                   } ${loadingProducts || products.length === 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <Package className="w-4 h-4 text-[#B88E4F] shrink-0" />
+                    {selectedProduct ? <ProductThumbnail key={selectedProduct.id} product={selectedProduct} /> : <Package className="w-4 h-4 text-[#B88E4F] shrink-0" />}
                     {loadingProducts ? (
                       <span className="text-[#7D715E]">Đang tải danh sách sản phẩm...</span>
                     ) : products.length === 0 ? (
@@ -516,8 +532,8 @@ export function SubmitKolVideoModal({
                 {isProductDropdownOpen && products.length > 0 && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 flex flex-col max-h-72 w-full max-w-full">
                     {/* Ô tìm kiếm nhanh */}
-                    <div className="p-2 border-b border-[#EAE4D7] bg-[#FAF8F5]">
-                      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-[#EAE4D7]">
+                    <div className={`kol-video-search-bar p-2 bg-[#FAF8F5] ${isProductSearchCompact ? 'is-compact' : ''}`}>
+                      <div className="kol-video-product-search flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-[#EAE4D7]">
                         <Search className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
                         <input
                           type="text"
@@ -540,7 +556,14 @@ export function SubmitKolVideoModal({
                     </div>
 
                     {/* Danh sách sản phẩm cuộn gọn gàng */}
-                    <div className="overflow-y-auto divide-y divide-[#EAE4D7]/50 max-h-56 p-1">
+                    <div
+                      className="overflow-y-auto divide-y divide-[#EAE4D7]/50 max-h-56 p-1"
+                      onScroll={(event) => {
+                        const scrollTop = event.currentTarget.scrollTop;
+                        if (scrollTop > 24) setIsProductSearchCompact(true);
+                        else if (scrollTop <= 2) setIsProductSearchCompact(false);
+                      }}
+                    >
                       {filteredProducts.length === 0 ? (
                         <div className="p-4 text-center text-xs text-[#7D715E]">
                           Không tìm thấy sản phẩm phù hợp với từ khóa "{productSearchQuery}"
@@ -562,9 +585,7 @@ export function SubmitKolVideoModal({
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <div className="w-8 h-8 rounded-lg bg-[#F3EFE6] border border-[#EAE4D7] flex items-center justify-center shrink-0">
-                                  <Package className="w-4 h-4 text-[#B88E4F]" />
-                                </div>
+                                <ProductThumbnail product={p} />
                                 <div className="min-w-0 flex-1">
                                   <div className="text-xs font-bold text-[#1A1612] truncate" title={p.title}>
                                     {p.title}
@@ -598,11 +619,15 @@ export function SubmitKolVideoModal({
                 )}
               </div>
             )}
-            <p className="text-[11px] text-[#7D715E] mt-1 m-0">
-              {sampleRequestId
-                ? 'Video sẽ được gắn trực tiếp với yêu cầu nhận mẫu thử này để Shop kiểm duyệt.'
-                : 'Chỉ hiển thị các sản phẩm thuộc Gian hàng đối tác bạn đã được phê duyệt liên kết tiếp thị.'}
-            </p>
+            {sampleRequestId ? (
+              <p className="text-[11px] text-[#7D715E] mt-1 m-0">
+                {sandboxOrderCode ? 'Video chỉ được lưu cho vận đơn sandbox này, không gửi Shop duyệt.' : 'Video sẽ được gắn trực tiếp với yêu cầu nhận mẫu thử này để Shop kiểm duyệt.'}
+              </p>
+            ) : (
+              <p className="text-[11px] text-[#7D715E] mt-1 m-0">
+                Chỉ hiển thị các sản phẩm thuộc Gian hàng đối tác bạn đã được phê duyệt liên kết tiếp thị.
+              </p>
+            )}
           </div>
 
 
@@ -784,7 +809,7 @@ export function SubmitKolVideoModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-[#1A1612]">
-                Ảnh bìa Poster <span className="text-[#7D715E] font-normal">(Tải từ máy tính - Tùy chọn)</span>
+                Ảnh bìa Poster
               </label>
               {posterPreview && (
                 <button
@@ -822,10 +847,7 @@ export function SubmitKolVideoModal({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[#1A1612] m-0 truncate">
-                    Bấm để chọn ảnh từ máy tính <span className="text-[#7D715E] font-normal text-[11px]">hoặc kéo thả vào đây</span>
-                  </p>
-                  <p className="text-[10.5px] text-[#7D715E] mt-0.5 m-0 truncate">
-                    Hỗ trợ: JPG, PNG, WEBP (tối đa 5 MB) • Khuyên dùng 9:16 hoặc 16:9
+                    Bấm để chọn ảnh từ máy tính
                   </p>
                 </div>
                 <span className="px-2.5 py-1 text-[11px] font-bold text-[#B88E4F] bg-white border border-[#EEDFC6] rounded-lg shrink-0 hover:bg-[#FAF8F5]">
@@ -890,12 +912,12 @@ export function SubmitKolVideoModal({
 
           <div>
             <label className="text-xs font-bold text-[#1A1612] block mb-1">
-              Mô tả hoặc kịch bản review <span className="text-[#7D715E] font-normal">(Tùy chọn)</span>
+              Mô tả hoặc kịch bản review
             </label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Tóm tắt cảm nhận thực tế, điểm nổi bật của sản phẩm để gian hàng tham khảo khi kiểm duyệt..."
+              placeholder="Ví dụ: Tóm tắt cảm nhận thực tế, điểm nổi bật của sản phẩm để gian hàng tham khảo khi kiểm duyệt..."
               rows={3}
               className="w-full p-3 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] transition resize-none"
             />
@@ -938,7 +960,7 @@ export function SubmitKolVideoModal({
           <div className="p-3 bg-[#FBF5EB] border border-[#EAE4D7] rounded-xl text-xs text-[#7D715E] flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
             <span>
-              Video sau khi nộp sẽ ở trạng thái <strong>Chờ duyệt (PENDING)</strong>. Khi được Shop chấp thuận, video sẽ tự động hiển thị trên Landing Page công khai của sản phẩm và ưu tiên hiển thị cho khách mua hàng qua link tiếp thị của bạn!
+              {sandboxOrderCode ? 'Đây là thao tác kiểm thử. Video không được gửi kiểm duyệt hoặc đăng công khai.' : <>Video sau khi nộp sẽ ở trạng thái <strong>Chờ duyệt (PENDING)</strong>. Khi được Shop chấp thuận, video sẽ tự động hiển thị trên Landing Page công khai của sản phẩm và ưu tiên hiển thị cho khách mua hàng qua link tiếp thị của bạn!</>}
             </span>
           </div>
 
@@ -951,7 +973,7 @@ export function SubmitKolVideoModal({
                 </span>
               ) : (
                 <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Đã có video - Có thể gửi duyệt
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {sandboxOrderCode ? 'Đã có video kiểm thử' : 'Đã có video - Có thể gửi duyệt'}
                 </span>
               )}
             </span>
@@ -972,11 +994,12 @@ export function SubmitKolVideoModal({
                   ? 'Đang tải video...'
                   : !videoUrl.trim()
                   ? 'Cần video để gửi'
-                  : 'Gửi video cho Shop duyệt'}
+                  : sandboxOrderCode ? 'Lưu video kiểm thử' : sampleRequestId ? 'Gửi link video cho Shop duyệt' : 'Gửi video cho Shop duyệt'}
               </Button>
             </div>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

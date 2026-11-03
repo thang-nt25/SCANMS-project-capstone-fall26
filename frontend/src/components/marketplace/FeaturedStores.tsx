@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, BadgeCheck, Star, Store } from 'lucide-react';
 import type { MarketplaceStore } from '@/types/marketplace-home.types';
 import { useLoopingStoreRail } from './useLoopingStoreRail';
+import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 
 export function StoreLogo({ store, className = 'h-16 w-16' }: { store: MarketplaceStore; className?: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -23,12 +24,12 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
 
   return (
     <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-5 text-left sm:py-7">
-      <div className="mx-auto max-w-[1200px] px-3 sm:px-4 lg:px-6">
+      <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
         <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7" {...interactionProps}>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">HỆ THỐNG PHÂN PHỐI DOANH NGHIỆP</p>
-            <h2 id="featured-stores-title" className="m-0 text-xl font-black tracking-tight sm:text-2xl">Nhãn Hàng & Thương Hiệu Trực Thuộc</h2>
+            <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">THƯƠNG HIỆU TRÊN SCANMS</p>
+            <h2 id="featured-stores-title" className="m-0 text-lg font-black tracking-tight sm:text-xl">Gian hàng đối tác tiêu biểu</h2>
           </div>
           <div className="ml-auto flex shrink-0 gap-1">
             <button type="button" onClick={() => scroll(-1)} aria-label="Gian hàng trước" className="rounded-full border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]"><ArrowLeft size={16} /></button>
@@ -63,6 +64,7 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
                 </div>
                 <p className="mb-4 mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-[#7D715E]">{store.description || 'Khám phá danh mục sản phẩm và thông tin trực tiếp từ gian hàng.'}</p>
                 <Link to={`/shops/${store.id}`} tabIndex={duplicate ? -1 : undefined} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-bold text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6]">Ghé thăm gian hàng<ArrowRight size={15} /></Link>
+                <StoreCooperationAction storeId={store.id} storeName={store.name} tabIndex={duplicate ? -1 : undefined} className="mt-2 w-full" />
               </article>
             );})}
             </div>)}

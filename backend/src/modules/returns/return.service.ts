@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { WalletsService } from '../wallets/wallets.service';
+import { CommissionRulesService } from '../commission-rules/commission-rules.service';
 import { timingSafeEqual } from 'crypto';
 import {
   CommissionStatus,
@@ -92,6 +93,8 @@ export class ReturnService {
     private readonly pickupGateway: PickupGateway = new PickupGateway(),
     @Optional() private readonly walletsService?: WalletsService,
     @Optional() private readonly cacheService?: CacheService,
+private readonly commissionRulesService?: CommissionRulesService,
+
   ) {}
 
   /** A confirmed internal-wallet refund and its income clawback share one DB transaction. */
@@ -305,6 +308,8 @@ export class ReturnService {
         ReturnRequestStatus.INSPECTING,
         ReturnRequestStatus.EXCHANGE_PENDING,
         ReturnRequestStatus.REFUND_PENDING,
+        // Failed refunds remain actionable for operations even without a customer dispute.
+        ReturnRequestStatus.REFUND_FAILED,
       ] } },
       include: detailInclude,
       orderBy: { updatedAt: 'desc' },
@@ -1126,7 +1131,9 @@ export class ReturnService {
           detail.customerId || (detail.order as any).customerId;
         let refundSucceeded = false;
         if (refundTargetUser && this.walletsService) {
-          try {
+          if (!this.commissionRulesService) throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
+          await this.commissionRulesService.handleRefundAdjustment(detail.order.store.id, detail.orderId,
+            amount.toFixed(2), input.notes, userId, undefined, tx, `return:${id}`);
             await this.walletsService.refundToWallet(
               tx,
               refundTargetUser,
@@ -1134,9 +1141,6 @@ export class ReturnService {
               detail.orderId,
             );
             refundSucceeded = true;
-          } catch (err) {
-            this.logger.error(`Lỗi hoàn tiền ví điện tử SCANMS: ${err}`);
-          }
         }
 
         await tx.refund.create({
@@ -1158,6 +1162,7 @@ export class ReturnService {
             where: { id: detail.orderId },
             data: { refundedAmount: { increment: amount } },
           });
+
 
           await this.move(
             tx,
@@ -1530,7 +1535,9 @@ export class ReturnService {
           detail.customerId || (detail.order as any).customerId;
         let refundSucceeded = false;
         if (refundTargetUser && this.walletsService) {
-          try {
+          if (!this.commissionRulesService) throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
+          await this.commissionRulesService.handleRefundAdjustment(detail.order.store.id, detail.orderId,
+            amount.toFixed(2), input.notes, adminId, undefined, tx, `return:${detail.id}`);
             await this.walletsService.refundToWallet(
               tx,
               refundTargetUser,
@@ -1538,9 +1545,6 @@ export class ReturnService {
               detail.orderId,
             );
             refundSucceeded = true;
-          } catch (err) {
-            this.logger.error(`Lỗi hoàn tiền ví từ tranh chấp: ${err}`);
-          }
         }
 
         await tx.refund.upsert({
@@ -1568,6 +1572,7 @@ export class ReturnService {
             where: { id: detail.orderId },
             data: { refundedAmount: { increment: amount } },
           });
+
 
           await this.move(
             tx,

@@ -16,7 +16,6 @@ import {
   X,
   History,
   Play,
-  Pause,
   StopCircle,
   Package,
   Crown,
@@ -30,22 +29,11 @@ import { DateTimePicker } from '../../components/common/DateTimePicker';
 import { Select } from '../../components/ui/Select';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
+import './LiveSessionsPage.css';
 
-const getFallbackAvatar = (id: string, name: string) => {
-  const avatars = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
-  ];
-  let sum = 0;
-  for (let i = 0; i < (id || name || '').length; i++) {
-    sum += (id || name).charCodeAt(i);
-  }
-  return avatars[sum % avatars.length];
+const getFallbackAvatar = (_id: string, name: string) => {
+  const initials = name.trim().split(/\s+/).slice(-2).map(part => Array.from(part)[0] || '').join('').toUpperCase().replace(/[^\p{L}\p{N}]/gu, '') || 'K';
+  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#F3EFE6"/><text x="40" y="42" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif" font-size="26" fill="#7D715E">${initials}</text></svg>`)}`;
 };
 
 type LiveProduct = {
@@ -205,6 +193,7 @@ export default function LiveSessionsPage({
   const [loadError, setLoadError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'SCHEDULED' | 'ENDED'>('ALL');
   const [detailModalSession, setDetailModalSession] = useState<LiveSessionItem | null>(null);
@@ -231,7 +220,6 @@ export default function LiveSessionsPage({
     coverImageUrl: '',
     customMessage: '',
     liveBoost: 2,
-    acceptedHighRisk: false,
   });
 
   const [kolSearch, setKolSearch] = useState('');
@@ -272,15 +260,17 @@ export default function LiveSessionsPage({
         setLoadError('');
         const meRes: any = await api.get('/auth/me');
         const user = meRes?.data || meRes;
-        const myStore = user?.stores?.[0] || user?.ownedStores?.[0] || user?.store;
-        const sId = myStore?.id || localStorage.getItem('current_store_id') || '';
+        const ownedStores = [...(user?.stores || []), ...(user?.ownedStores || []), ...(user?.store ? [user.store] : [])];
+        const savedStoreId = localStorage.getItem('current_store_id');
+        const myStore = ownedStores.find((store: { id: string }) => store.id === savedStoreId) || ownedStores[0];
+        const sId = myStore?.id || '';
         if (!active) return;
         setStoreId(sId);
         setCurrentStoreName(myStore?.name || '');
         if (!sId) {
-          setLoading(false);
-          return;
+          throw new Error('Tài khoản chưa có gian hàng để tạo phiên Live.');
         }
+        localStorage.setItem('current_store_id', sId);
 
         const [catRes, loadedSessions] = await Promise.all([
           api.get('/live-sessions/shop/catalog', { params: { storeId: sId }, headers: { 'x-skip-cache': '1' } }),
@@ -295,7 +285,7 @@ export default function LiveSessionsPage({
           commissionRate: String(cat.defaultCommissionRate || 10),
         }));
       } catch (err: any) {
-        if (active) setLoadError(err?.response?.data?.message || 'Mất kết nối máy chủ hoặc không tải được dữ liệu phiên Live. Vui lòng thử lại.');
+        if (active) setLoadError(err?.response?.data?.message || err?.message || 'Mất kết nối máy chủ hoặc không tải được dữ liệu phiên Live. Vui lòng thử lại.');
         if (active) toast.error(err?.response?.data?.message || err?.message || 'Không khởi tạo được dữ liệu.');
       } finally {
         if (active) setLoading(false);
@@ -315,7 +305,10 @@ export default function LiveSessionsPage({
   }, [loadError]);
 
   useEffect(() => {
-    if (!storeId || !form.creatorId || isShortScanmsLiveUrl(form.scanmsLiveUrl)) return;
+    if (activeTab !== 'create' || form.platform !== 'SCANMS' || !storeId || !form.creatorId || isShortScanmsLiveUrl(form.scanmsLiveUrl)) {
+      setLinkLoading(false);
+      return;
+    }
     let active = true;
     setLinkLoading(true);
     setLinkError('');
@@ -341,7 +334,7 @@ export default function LiveSessionsPage({
     return () => {
       active = false;
     };
-  }, [storeId, form.creatorId, form.scanmsLiveUrl, linkRetry]);
+  }, [activeTab, form.platform, storeId, form.creatorId, form.scanmsLiveUrl, linkRetry]);
 
   useEffect(() => {
     if (refreshKey === lastRefreshKey.current) return;
@@ -363,7 +356,13 @@ export default function LiveSessionsPage({
 
   const setField = (field: string, value: any) => {
     if (field === 'creatorId') {
+      setLinkError('');
       setForm((prev) => ({ ...prev, creatorId: value, scanmsLiveUrl: '' }));
+      return;
+    }
+    if (field === 'platform') setLinkError('');
+    if (field === 'discountType') {
+      setForm(prev => ({ ...prev, discountType: value, discountValue: '', maximumDiscountAmount: '' }));
       return;
     }
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -470,7 +469,7 @@ export default function LiveSessionsPage({
     return Math.min(25, preLiveRate + liveBoostRate);
   }, [preLiveRate, liveBoostRate]);
 
-  const financialAlertTier = useMemo<'SAFE' | 'WARNING' | 'DANGER' | 'EXCEEDED'>(() => {
+  const financialAlertTier = useMemo<'SAFE' | 'WARNING' | 'EXCEEDED'>(() => {
     if (preLiveRate + liveBoostRate > 25) return 'EXCEEDED';
     if (totalCommissionRate >= 20) return 'WARNING';
     return 'SAFE';
@@ -490,11 +489,12 @@ export default function LiveSessionsPage({
       list = list.filter((p) => form.productIds.includes(p.id));
     }
     if (productSearchQuery.trim()) {
-      const q = productSearchQuery.trim().toLowerCase();
+      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+      const q = normalize(productSearchQuery.trim());
       list = list.filter(
         (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.variants.some((v) => v.name.toLowerCase().includes(q) || v.sku.toLowerCase().includes(q))
+          normalize(p.title).includes(q) ||
+          p.variants.some((v) => normalize(v.name).includes(q) || normalize(v.sku).includes(q))
       );
     }
     return list;
@@ -518,8 +518,10 @@ export default function LiveSessionsPage({
 
   const createSession = async (event: FormEvent) => {
     event.preventDefault();
+    if (savingRef.current) return;
     if (!storeId) { toast.error('Chưa tải được gian hàng. Vui lòng làm mới trang.'); return; }
-    if (!form.creatorId) { toast.error('Vui lòng chọn KOL phát sóng.'); return; }
+    if (!form.title.trim()) { toast.error('Vui lòng nhập tên phiên Live.'); return; }
+    if (!selectedCreator) { toast.error('Vui lòng chọn KOL phát sóng.'); return; }
     if (form.productIds.length === 0) {
       setShowProductError(true);
       setProductFilterTab('ALL');
@@ -541,6 +543,19 @@ export default function LiveSessionsPage({
       toast.error('Nhập mức giảm, tổng lượt dùng và lượt dùng mỗi khách.');
       return;
     }
+    if (!Number.isFinite(Number(form.discountValue)) || Number(form.discountValue) <= 0 ||
+      (form.discountType === 'PERCENTAGE' && Number(form.discountValue) > 100) ||
+      !Number.isSafeInteger(Number(form.usageLimitTotal)) || Number(form.usageLimitTotal) < 1 ||
+      !Number.isSafeInteger(Number(form.usageLimitPerCustomer)) || Number(form.usageLimitPerCustomer) < 1 || Number(form.usageLimitPerCustomer) > 100) {
+      toast.error('Kiểm tra mức giảm và số lượt dùng. Mỗi khách được dùng từ 1 đến 100 lượt.');
+      return;
+    }
+    if ((form.minimumOrderAmount !== '' && (!Number.isFinite(Number(form.minimumOrderAmount)) || Number(form.minimumOrderAmount) < 0)) ||
+      (form.discountType === 'PERCENTAGE' && form.maximumDiscountAmount !== '' && (!Number.isFinite(Number(form.maximumDiscountAmount)) || Number(form.maximumDiscountAmount) <= 0))) {
+      toast.error('Đơn tối thiểu không được âm; mức giảm tối đa phải lớn hơn 0.');
+      return;
+    }
+    if (financialAlertTier === 'EXCEEDED') { toast.error('Tổng hoa hồng vượt trần 25%. Vui lòng kiểm tra lại cấu hình.'); return; }
     const finalRate = Number(form.liveBoost);
     if (![2, 3].includes(finalRate)) {
       toast.error('Thưởng Live chỉ được chọn +2% hoặc +3%.');
@@ -571,11 +586,12 @@ export default function LiveSessionsPage({
     const finalLiveUrl = form.platform === 'SCANMS' ? form.scanmsLiveUrl : externalChannels[0].channelUrl;
 
     try {
+      savingRef.current = true;
       setSaving(true);
       const res: any = await api.post('/live-sessions/shop', {
         storeId,
         creatorId: form.creatorId,
-        title: form.title,
+        title: form.title.trim(),
         platform: form.platform,
         liveUrl: finalLiveUrl,
         externalChannels,
@@ -586,7 +602,7 @@ export default function LiveSessionsPage({
         discountType: form.discountType,
         discountValue: Number(form.discountValue),
         minimumOrderAmount: form.minimumOrderAmount ? Number(form.minimumOrderAmount) : undefined,
-        maximumDiscountAmount: form.maximumDiscountAmount ? Number(form.maximumDiscountAmount) : undefined,
+        maximumDiscountAmount: form.discountType === 'PERCENTAGE' && form.maximumDiscountAmount ? Number(form.maximumDiscountAmount) : undefined,
         usageLimitTotal: Number(form.usageLimitTotal),
         usageLimitPerCustomer: Number(form.usageLimitPerCustomer),
         commissionRate: finalRate,
@@ -597,6 +613,7 @@ export default function LiveSessionsPage({
 
       toast.success('Đã tạo phiên live và gửi lời mời đến KOL.');
       setShowProductError(false);
+      setActiveTab('history');
       setForm((prev) => ({
         ...prev,
         title: '',
@@ -611,17 +628,16 @@ export default function LiveSessionsPage({
         usageLimitPerCustomer: '1',
         customMessage: '',
         liveBoost: 2,
-        acceptedHighRisk: false,
         externalChannels: [{ channelUrl: '', followerCount: '' }],
       }));
       setIsChangingKol(false);
       const refreshedSessions = await loadSessions(storeId);
-      setActiveTab('history');
       const createdItem = (res?.data || res) as LiveSessionItem;
       if (createdItem?.id) setDetailModalSession(refreshedSessions?.find(item => item.id === createdItem.id) || createdItem);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'Không tạo được phiên livestream.');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -726,7 +742,7 @@ export default function LiveSessionsPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] space-y-4 pb-10 text-[#1A1612]">
+    <div className="merchant-live-workspace mx-auto w-full max-w-[1560px] space-y-4 pb-10 text-[#1A1612]">
       {/* Top Navigation Tabs */}
       <HubTabs
         tabs={hubTabsList}
@@ -736,13 +752,14 @@ export default function LiveSessionsPage({
         stretchTabColumns={2}
         tone="white"
         compact
+        className="live-hub-tabs mb-0"
       />
 
       {/* TAB 1: HISTORY & SESSION LIST */}
       {activeTab === 'history' && (
         <div className="space-y-4">
           {/* Top Performance Metric Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="live-metrics grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3.5 shadow-2xs">
               <span className="text-[11px] font-semibold text-[#7D715E]">Tổng phiên live</span>
               <p className="mt-1 text-xl font-black text-[#1A1612]">{sessions.length}</p>
@@ -765,7 +782,7 @@ export default function LiveSessionsPage({
           </div>
 
           {/* Search, Filter & Quick Actions */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
+          <div className="live-list-toolbar flex flex-col gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
             <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
               <div className="relative min-w-[240px] flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7D715E]" />
@@ -782,7 +799,7 @@ export default function LiveSessionsPage({
               <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
                 {[
                   { key: 'ALL', label: 'Tất cả', count: sessions.length },
-                  { key: 'LIVE', label: '🔴 Live', count: liveCount },
+                  { key: 'LIVE', label: 'Đang live', count: liveCount },
                   { key: 'SCHEDULED', label: 'Sắp tới', count: scheduledCount },
                   { key: 'ENDED', label: 'Đã xong', count: endedCount },
                 ].map((tab) => (
@@ -790,6 +807,7 @@ export default function LiveSessionsPage({
                     key={tab.key}
                     type="button"
                     onClick={() => setStatusFilter(tab.key as any)}
+                    aria-pressed={statusFilter === tab.key}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                       statusFilter === tab.key
                         ? 'bg-white text-[#B88E4F] shadow-2xs border border-[#EEDFC6]'
@@ -814,10 +832,10 @@ export default function LiveSessionsPage({
 
           {/* Sessions Grid */}
           {filteredSessions.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-[#EAE4D7] bg-white p-12 text-center">
+            <div className="live-empty rounded-3xl border border-dashed border-[#EAE4D7] bg-white p-12 text-center">
               <CalendarClock className="mx-auto mb-3 h-8 w-8 text-[#C59B58]/60" />
-              <h3 className="text-sm font-bold text-[#1A1612]">Chưa có phiên livestream nào</h3>
-              <p className="mt-1 text-xs text-[#7D715E]">Tạo phiên mới để gắn voucher độc quyền và mời KOL phát sóng.</p>
+              <h3 className="text-sm font-bold text-[#1A1612]">{sessions.length ? 'Không tìm thấy phiên phù hợp' : 'Chưa có phiên livestream nào'}</h3>
+              <p className="mt-1 text-xs text-[#7D715E]">{sessions.length ? 'Thử từ khóa khác hoặc chọn lại trạng thái phiên.' : 'Tạo phiên mới, chọn KOL hợp tác và thiết lập voucher cho buổi phát sóng.'}</p>
               <button
                 type="button"
                 onClick={() => setActiveTab('create')}
@@ -827,7 +845,7 @@ export default function LiveSessionsPage({
               </button>
             </div>
           ) : (
-            <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="live-session-grid grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
               {filteredSessions.map((session) => {
                 const conf = statusConfig[session.status] || {
                   label: session.status,
@@ -968,28 +986,18 @@ export default function LiveSessionsPage({
       {activeTab === 'create' && (
         <form
           onSubmit={createSession}
-          className="space-y-4 rounded-3xl border border-[#EAE4D7] bg-white p-5 sm:p-6 lg:p-7 shadow-xs"
+          className="live-create-form space-y-4 rounded-3xl border border-[#EAE4D7] bg-white p-5 sm:p-6 lg:p-7 shadow-xs"
         >
-          {/* Header */}
-          <div className="flex flex-col gap-2 border-b border-[#EAE4D7] pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-extrabold sm:text-lg">Tạo phiên livestream & Voucher độc quyền</h2>
-            </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 py-1.5 text-xs font-semibold text-[#7D715E]">
-              <Users className="h-3.5 w-3.5 text-[#B88E4F]" /> {catalog.creators.length} KOL đối tác sẵn sàng
-            </div>
-          </div>
-
           {/* Block 1: Thông tin phiên live & Lựa chọn KOL đối tác */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 space-y-4">
-            <div className="flex items-center justify-between">
+          <section className="live-form-section rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-[#B88E4F] shadow-2xs">1</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]/50 text-xs font-semibold text-[#B88E4F]">1</span>
                 <h3 className="text-xs font-extrabold uppercase tracking-wide text-[#1A1612]">Thông tin phiên & KOL hợp tác</h3>
               </div>
-              <span className="text-[11px] font-semibold text-[#7D715E]">
-                {catalog.creators.length} KOL đối tác sẵn sàng ({vipCreatorsCount} VIP)
-              </span>
+              <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]/40 px-3 py-1.5 text-xs font-medium text-[#7D715E]">
+                <Users className="h-3.5 w-3.5 text-[#B88E4F]" /> {catalog.creators.length} KOL đã hợp tác
+              </div>
             </div>
 
             {/* Row 1: Session Title, Platform & Room URL */}
@@ -1104,9 +1112,6 @@ export default function LiveSessionsPage({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <span className="text-xs font-bold text-[#1A1612]">Chọn KOL hợp tác phát sóng *</span>
-                  <p className="text-[11px] text-[#7D715E]">
-                    Ưu tiên hiển thị Đối tác VIP đã chốt Deal độc quyền hoặc đang trong Chiến dịch.
-                  </p>
                 </div>
                 {selectedCreator && !isChangingKol && (
                   <button
@@ -1121,62 +1126,34 @@ export default function LiveSessionsPage({
 
               {/* If a KOL is selected and not in changing mode */}
               {selectedCreator && !isChangingKol ? (
-                <div className="rounded-2xl border-2 border-[#C59B58] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FBF5EB] p-3.5 shadow-2xs">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative shrink-0">
-                        <img
-                          src={selectedCreator.avatarUrl || getFallbackAvatar(selectedCreator.id, selectedCreator.fullName)}
-                          alt={selectedCreator.fullName}
-                          className="h-13 w-13 rounded-full border-2 border-[#C59B58] object-cover bg-white shadow-2xs"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = getFallbackAvatar(selectedCreator.id, selectedCreator.fullName);
-                          }}
-                        />
-                        {selectedCreator.isExclusiveVip && (
-                          <div className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#C59B58] text-white shadow-xs" title="Đối tác VIP có Deal riêng">
-                            <Crown className="h-3 w-3 fill-current" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="text-sm font-extrabold text-[#1A1612] truncate">{selectedCreator.fullName}</h4>
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            <CheckCircle2 className="h-3 w-3" /> Đã duyệt hợp tác
-                          </span>
-                          {selectedCreator.isExclusiveVip && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-extrabold text-[#B88E4F]">
-                              <Crown className="h-3 w-3 text-[#B88E4F]" /> Deal riêng {selectedCreator.exclusiveDealRate}%
-                            </span>
-                          )}
-                          {(selectedCreator.campaignBonusRate || 0) > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                              <Sparkles className="h-3 w-3 text-amber-600" /> Thưởng chiến dịch +{selectedCreator.campaignBonusRate}%
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-xs text-[#7D715E]">
-                          {(selectedCreator.collaboratorProfile?.totalFollowers || 0).toLocaleString('vi-VN')} người theo dõi
-                          {selectedCreator.socialChannels?.length > 0 && ` · Kênh: ${selectedCreator.socialChannels.map((ch) => ch.platformName).join(', ')}`}
-                        </p>
-                      </div>
+                <div className="live-creator-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="flex h-[148px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-[#C59B58] bg-[#FBF5EB]/40 px-3 py-2 text-center ring-1 ring-[#C59B58]/20" aria-label={`Đã chọn KOL ${selectedCreator.fullName}`}>
+                    <div className="relative shrink-0">
+                      <img
+                        src={selectedCreator.avatarUrl || getFallbackAvatar(selectedCreator.id, selectedCreator.fullName)}
+                        alt={selectedCreator.fullName}
+                        className="h-10 w-10 rounded-full border border-[#EEDFC6] bg-white object-cover shadow-2xs"
+                        onError={(e) => { (e.target as HTMLImageElement).src = getFallbackAvatar(selectedCreator.id, selectedCreator.fullName); }}
+                      />
+                      {selectedCreator.isExclusiveVip && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#C59B58] text-white" title="Đối tác VIP"><Crown className="h-2.5 w-2.5 fill-current" /></span>}
                     </div>
-
-                    <div className="rounded-xl border border-[#EEDFC6] bg-white px-3 py-2 text-right shrink-0 shadow-2xs">
-                      <span className="text-[10px] font-semibold text-[#7D715E] block">Hoa hồng trước phiên</span>
-                      <span className="text-sm font-black text-[#B88E4F]">
-                        {preLiveRate}%
-                      </span>
-                      <span className="text-[10px] text-[#7D715E] block">
-                        (Gốc {creatorBaseRate}%{creatorCampaignBonus > 0 ? ` + ${creatorCampaignBonus}%` : ''})
-                      </span>
+                    <div className="w-full min-w-0">
+                      <p className="m-0 truncate text-xs font-bold text-[#1A1612]" title={selectedCreator.fullName}>{selectedCreator.fullName}</p>
+                      {selectedCreator.isExclusiveVip && <span className="inline-block rounded border border-[#EEDFC6] bg-[#FBF5EB] px-1 text-[9px] font-extrabold text-[#B88E4F]">VIP {selectedCreator.exclusiveDealRate}%</span>}
+                      <p className="m-0 text-[10px] text-[#7D715E]">
+                        {(selectedCreator.collaboratorProfile?.totalFollowers || 0).toLocaleString('vi-VN')} flw
+                        {creatorCampaignBonus > 0 && <span className="font-semibold text-amber-700"> · +{creatorCampaignBonus}% Cam</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="rounded-lg border border-[#EAE4D7] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#B88E4F]" title="Hoa hồng trước phiên">{preLiveRate}%</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#B88E4F]"><CheckCircle2 className="h-3 w-3" />Đã chọn</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 /* Open Search & Filter Grid */
-                <div className="space-y-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-2xs">
+                <div className="space-y-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-3">
                   {/* Search bar & filter pills */}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="relative flex-1">
@@ -1186,12 +1163,12 @@ export default function LiveSessionsPage({
                         value={kolSearch}
                         onChange={(e) => setKolSearch(e.target.value)}
                         placeholder="Tìm theo tên KOL, kênh TikTok, YouTube..."
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] pl-9 pr-3 text-xs outline-none focus:border-[#C59B58] focus:bg-white"
+                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white pl-9 pr-3 text-xs outline-none focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/10"
                       />
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-1">
+                      <div className="flex items-center gap-1 rounded-xl border border-[#EAE4D7] bg-white p-1">
                         <button
                           type="button"
                           onClick={() => setKolFilterTab('ALL')}
@@ -1243,18 +1220,13 @@ export default function LiveSessionsPage({
                     </div>
                   </div>
 
-                  <p role="status" className="text-[11px] leading-5 text-[#7D715E]">
-                    Hiển thị {filteredCreators.length}/{catalog.creators.length} KOL
-                    {kolSortByFollowers ? ' · Follower từ cao xuống thấp' : ' · Ưu tiên đối tác VIP'}
-                    {kolFilterTab === 'VIP' && vipCreatorsCount === catalog.creators.length && catalog.creators.length > 0 && ' · Tất cả KOL hiện có đều là VIP'}
-                  </p>
                   {/* KOL Cards List */}
                   {filteredCreators.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-[#EAE4D7] p-6 text-center text-xs text-[#7D715E]">
                       Không tìm thấy KOL đối tác nào khớp với tìm kiếm.
                     </div>
                   ) : (
-                    <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 pr-1">
+                    <div className="live-creator-grid grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       {filteredCreators.map((c) => {
                         const isSelected = form.creatorId === c.id;
                         const avatarSrc = c.avatarUrl || getFallbackAvatar(c.id, c.fullName);
@@ -1269,13 +1241,13 @@ export default function LiveSessionsPage({
                               setField('creatorId', c.id);
                               setIsChangingKol(false);
                             }}
-                            className={`flex w-full min-w-0 items-center justify-between rounded-xl border p-2.5 text-left transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${
+                            className={`flex h-[148px] w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-center transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] ${
                               isSelected
-                                ? 'border-[#C59B58] bg-[#FBF5EB] ring-1 ring-[#C59B58]/30 shadow-2xs'
-                                : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]/70 hover:bg-[#FAF8F5]/80'
+                                ? 'border-[#C59B58] bg-[#FBF5EB]/40 ring-1 ring-[#C59B58]/20'
+                                : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]/50 hover:bg-[#FBF5EB]/25'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
                               <div className="relative shrink-0">
                                 <img
                                   src={avatarSrc}
@@ -1291,9 +1263,9 @@ export default function LiveSessionsPage({
                                   </div>
                                 )}
                               </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1">
-                                  <p className="truncate text-xs font-bold text-[#1A1612]">{c.fullName}</p>
+                              <div className="w-full min-w-0">
+                                <div className="flex flex-col items-center gap-1">
+                                  <p className="m-0 w-full truncate text-xs font-bold text-[#1A1612]" title={c.fullName}>{c.fullName}</p>
                                   {c.isExclusiveVip && (
                                     <span className="shrink-0 rounded bg-[#FBF5EB] px-1 text-[9px] font-extrabold text-[#B88E4F] border border-[#EEDFC6]">
                                       VIP {c.exclusiveDealRate}%
@@ -1307,7 +1279,7 @@ export default function LiveSessionsPage({
                               </div>
                             </div>
 
-                            <div className="text-right shrink-0 pl-2">
+                            <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
                               <span className="rounded-lg bg-[#FAF8F5] px-1.5 py-0.5 text-[10px] font-bold text-[#B88E4F] border border-[#EAE4D7] block">
                                 {effectiveRate}%
                               </span>
@@ -1324,7 +1296,7 @@ export default function LiveSessionsPage({
           </section>
 
           {/* Block 2: Schedule */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
+          <section className="live-form-section rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#FBF5EB] text-xs font-extrabold text-[#B88E4F]">2</span>
               <h3 className="text-xs font-extrabold uppercase tracking-wide text-[#1A1612]">Lịch phát sóng</h3>
@@ -1386,7 +1358,7 @@ export default function LiveSessionsPage({
           </section>
 
           {/* Block 3: Products */}
-          <section id="live-products-section" className="scroll-mt-28 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 space-y-3">
+          <section id="live-products-section" className="live-form-section live-products-section scroll-mt-28 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white text-xs font-extrabold text-[#B88E4F] shadow-2xs">3</span>
@@ -1394,6 +1366,7 @@ export default function LiveSessionsPage({
                   Sản phẩm ghim trong live ({form.productIds.length}/{catalog.products.length})
                 </h3>
               </div>
+            </div>
 
               {/* Quick actions & tabs */}
               <div className="flex flex-wrap items-center gap-2">
@@ -1427,7 +1400,7 @@ export default function LiveSessionsPage({
                   onClick={selectAllVisibleProducts}
                   className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1 text-[11px] font-bold text-[#B88E4F] hover:bg-[#F3EFE6] cursor-pointer"
                 >
-                  Chọn tất cả
+                  Chọn đang hiển thị
                 </button>
                 {form.productIds.length > 0 && (
                   <button
@@ -1439,7 +1412,6 @@ export default function LiveSessionsPage({
                   </button>
                 )}
               </div>
-            </div>
 
             {/* Instant Search Bar */}
             {showProductError && form.productIds.length === 0 && <p role="alert" className="rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/5 px-3 py-2 text-xs text-[#DC2626]">Chưa chọn sản phẩm. Tích ô bên cạnh tên sản phẩm hoặc bấm “Chọn tất cả”.</p>}
@@ -1553,7 +1525,7 @@ export default function LiveSessionsPage({
           </section>
 
           {/* Block 4: Live Voucher Rules */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
+          <section className="live-form-section rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#FBF5EB] text-xs font-extrabold text-[#B88E4F]">4</span>
               <h3 className="text-xs font-extrabold uppercase tracking-wide text-[#1A1612]">Voucher Live độc quyền</h3>
@@ -1581,7 +1553,7 @@ export default function LiveSessionsPage({
                   step="any"
                   value={form.discountValue}
                   onChange={(e) => setField('discountValue', e.target.value)}
-                  placeholder={form.discountType === 'PERCENTAGE' ? '15%' : '50.000'}
+                  placeholder={form.discountType === 'PERCENTAGE' ? 'VD: 15%' : 'VD: 50.000đ'}
                   className="h-10 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs outline-none focus:border-[#C59B58]"
                 />
               </label>
@@ -1600,32 +1572,45 @@ export default function LiveSessionsPage({
               </label>
 
               <label className="grid gap-1 text-xs font-bold text-[#5F5547]">
-                Lượt dùng mỗi khách
+                  Lượt dùng mỗi khách *
                 <input
+                  required
                   type="number"
                   min="1"
+                  max="100"
                   value={form.usageLimitPerCustomer}
                   onChange={(e) => setField('usageLimitPerCustomer', e.target.value)}
+                  placeholder="VD: 1"
                   className="h-10 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs outline-none focus:border-[#C59B58]"
                 />
               </label>
+              <label className="grid gap-1 text-xs font-bold text-[#5F5547]">
+                Đơn tối thiểu (₫)
+                <input type="number" min="0" step="1" value={form.minimumOrderAmount}
+                  onChange={event => setField('minimumOrderAmount', event.target.value)} placeholder="VD: 200.000"
+                  className="h-10 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs outline-none focus:border-[#C59B58]" />
+              </label>
+              {form.discountType === 'PERCENTAGE' && <label className="grid gap-1 text-xs font-bold text-[#5F5547]">
+                Giảm tối đa (₫)
+                <input type="number" min="1" step="1" value={form.maximumDiscountAmount}
+                  onChange={event => setField('maximumDiscountAmount', event.target.value)} placeholder="VD: 50.000"
+                  className="h-10 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs outline-none focus:border-[#C59B58]" />
+              </label>}
             </div>
+            <p className="text-[11px] text-[#7D715E]">Voucher chỉ dùng khi KOL đã nhận lời và phiên đang phát sóng. Để trống đơn tối thiểu hoặc giảm tối đa nếu không giới hạn.</p>
           </section>
 
           {/* Block 5: Thiết lập hoa hồng phiên Live & Cảnh báo tài chính */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-4">
+          <section className="live-form-section rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#FBF5EB] text-xs font-extrabold text-[#B88E4F]">5</span>
                 <h3 className="text-xs font-extrabold uppercase tracking-wide text-[#1A1612]">Cộng dồn hoa hồng phiên Live & Cảnh báo tài chính</h3>
               </div>
-              <span className="text-[11px] font-semibold text-[#7D715E]">
-                Tự động hoàn nguyên khi kết thúc phiên live
-              </span>
             </div>
 
             {/* Formula Visualizer Card */}
-            <div className="rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-white to-[#FBF5EB] p-4 shadow-2xs space-y-3">
+            <div className="live-commission-summary rounded-2xl border border-[#EEDFC6] bg-white p-4 shadow-2xs space-y-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
                   <Sparkles className="h-4 w-4 text-[#B88E4F]" />
@@ -1648,7 +1633,7 @@ export default function LiveSessionsPage({
 
                 <div className="rounded-xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
                   <span className="text-[10px] font-semibold text-[#7D715E] block">
-                    🎁 Thưởng chiến dịch VIP
+                    Thưởng chiến dịch VIP
                   </span>
                   <span className="text-base font-extrabold text-amber-700">
                     +{creatorCampaignBonus}%
@@ -1657,7 +1642,7 @@ export default function LiveSessionsPage({
 
                 <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 shadow-2xs">
                   <span className="text-[10px] font-semibold text-[#B88E4F] block">
-                    🔴 Thưởng phiên Live
+                    Thưởng phiên Live
                   </span>
                   <span className="text-base font-extrabold text-[#B88E4F]">
                     +{liveBoostRate}%
@@ -1666,11 +1651,9 @@ export default function LiveSessionsPage({
 
                 <div className={`rounded-xl border p-2.5 shadow-2xs ${
                   financialAlertTier === 'SAFE'
-                    ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
+                    ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                     : financialAlertTier === 'WARNING'
                     ? 'border-amber-200 bg-amber-50/70 text-amber-900'
-                    : financialAlertTier === 'DANGER'
-                    ? 'border-rose-200 bg-rose-50 text-rose-900'
                     : 'border-red-400 bg-red-100 text-red-900'
                 }`}>
                   <span className="text-[10px] font-extrabold block uppercase tracking-wide">
@@ -1717,10 +1700,11 @@ export default function LiveSessionsPage({
             <p className="text-xs leading-relaxed text-[#7D715E]">
               Nền 10% + cấp bậc (0–3%) + Deal (1–3%) + chiến dịch (1–2%) + Live (2–3%). Trần an toàn 25%.
             </p>
+            {financialAlertTier === 'EXCEEDED' && <p role="alert" className="text-xs text-[#DC2626]">Tổng hoa hồng vượt trần 25%. Không thể tạo phiên với cấu hình này.</p>}
           </section>
 
           {/* Block 6: Lời nhắn riêng gửi KOL qua Chat */}
-          <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
+          <section className="live-form-section rounded-2xl border border-[#EAE4D7] bg-white p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#FBF5EB] text-xs font-extrabold text-[#B88E4F]">6</span>
@@ -1744,17 +1728,13 @@ export default function LiveSessionsPage({
                   <span>{form.customMessage.length}/1000 ký tự</span>
                 </div>
               </div>
-              <p className="text-[11px] text-[#7D715E] flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-[#B88E4F] shrink-0" />
-                <span>💡 Nếu để trống, hệ thống sẽ tự động tạo mẫu thư mời trang trọng gồm lịch live, hoa hồng và danh sách sản phẩm gửi thẳng vào Chat.</span>
-              </p>
             </div>
           </section>
 
           {/* Form Actions */}
-          <div className="flex flex-col gap-2 border-t border-[#EAE4D7] pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="live-form-actions flex flex-col gap-2 border-t border-[#EAE4D7] pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-[#7D715E]">
-              Hoa hồng phiên Live: <strong className="text-[#1A1612]">{totalCommissionRate}%</strong>
+              Hoa hồng ước tính tối đa: <strong className="text-[#1A1612]">{totalCommissionRate}%</strong>
               {selectedCreator && ` · KOL: ${selectedCreator.fullName}`}
             </div>
 
@@ -1764,15 +1744,15 @@ export default function LiveSessionsPage({
                 onClick={() => setActiveTab('history')}
                 className="h-10 rounded-xl border border-[#EAE4D7] px-4 text-xs font-bold text-[#7D715E] hover:bg-[#FAF8F5] cursor-pointer"
               >
-                Hủy
+                Quay lại
               </button>
               <button
                 type="submit"
-                disabled={saving || financialAlertTier === 'EXCEEDED' || (financialAlertTier === 'DANGER' && !form.acceptedHighRisk)}
+                disabled={saving || financialAlertTier === 'EXCEEDED'}
                 className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#C59B58] px-5 text-xs font-bold text-white transition hover:bg-[#B88E4F] disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {saving ? 'Đang tạo…' : 'Tạo phiên & Kích hoạt Voucher'}
+                {saving ? 'Đang tạo…' : 'Tạo phiên & gửi lời mời'}
               </button>
             </div>
           </div>
@@ -1781,7 +1761,7 @@ export default function LiveSessionsPage({
 
       {/* DETAIL MODAL (Opens when clicking "Chi tiết" from any card in Tab 1) */}
       {detailModalSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="live-detail-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl border border-[#EAE4D7] bg-white shadow-xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#EAE4D7] p-5">
@@ -1799,6 +1779,7 @@ export default function LiveSessionsPage({
                   <p className="text-xs text-[#7D715E]">
                     KOL: <strong>{detailModalSession.creator.fullName}</strong> · {localDateTime(detailModalSession.startsAt)}
                   </p>
+                  <p className="mt-1 text-xs text-[#B88E4F]">{statusConfig[detailModalSession.status]?.label || detailModalSession.status} · {inviteConfig[detailModalSession.inviteStatus]?.label || detailModalSession.inviteStatus}</p>
                 </div>
               </div>
               <button
@@ -1944,13 +1925,6 @@ export default function LiveSessionsPage({
 
                 {detailModalSession.status === 'LIVE' && (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => void changeState(detailModalSession, 'PAUSED')}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 text-xs font-bold text-amber-800 hover:bg-amber-100"
-                    >
-                      <Pause className="h-3.5 w-3.5" /> Tạm dừng
-                    </button>
                     <button
                       type="button"
                       onClick={() => setEndingSessionId(detailModalSession.id)}

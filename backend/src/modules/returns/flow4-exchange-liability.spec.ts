@@ -6,7 +6,7 @@ const requestId = '6c73103a-2550-482b-9f18-e9f5c5ba1ad5';
 const shopManagerId = '23acc500-c9d8-4732-8543-79f6267e8680';
 const systemManagerId = '540fda3d-49df-41c9-8ffc-4bcfa13858ac';
 
-function setup(status = ReturnRequestStatus.EXCHANGE_PENDING) {
+function setup(status: ReturnRequestStatus = ReturnRequestStatus.EXCHANGE_PENDING) {
   const detail: any = {
     id: requestId,
     orderId: '94e900ec-d6dd-4d97-9f55-792d816a5387',

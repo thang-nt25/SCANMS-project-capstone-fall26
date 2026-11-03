@@ -33,7 +33,7 @@ describe('public checkout UUID validation', () => {
 
   it.each([seedId, v4Id])('loads vouchers for an existing UUID version: %s', async id => {
     await request(app.getHttpServer()).get(`/coupons/stores/${id}/available`).expect(200);
-    expect(service.getPublicStoreCoupons).toHaveBeenCalledWith(id);
+    expect(service.getPublicStoreCoupons).toHaveBeenCalledWith(id, undefined);
   });
   it('rejects malformed store IDs before querying vouchers', async () => {
     await request(app.getHttpServer()).get('/coupons/stores/not-a-uuid/available').expect(400);

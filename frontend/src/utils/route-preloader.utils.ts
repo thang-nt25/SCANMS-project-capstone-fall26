@@ -7,6 +7,9 @@
  */
 
 import api from '../services/api';
+import { kycService } from '../services/kyc.service';
+import { auditService } from '../services/audit.service';
+import { productService } from '../services/product.service';
 
 type ComponentLoader = () => Promise<any>;
 
@@ -52,10 +55,10 @@ const ROUTE_DATA_PREFETCH: Record<string, () => Promise<any>> = {
   '/collaborator/marketing': () => api.get('/referral-links'),
   '/collaborator/collaboration': () => api.get('/campaigns/my-invitations'),
   '/collaborator/wallet': () => api.get('/wallets/me'),
-  '/admin/users': () => api.get('/kyc/pending'),
-  '/admin/audit-logs': () => api.get('/audit'),
-  '/admin/fraud-sentinel': () => api.get('/audit/fraud-alerts'),
-  '/admin/product-moderation': () => api.get('/products', { params: { status: 'PENDING_APPROVAL' } }),
+  '/admin/users': () => kycService.getUpgradeApplications(),
+  '/admin/audit-logs': () => auditService.getAuditLogs({ page: 1, limit: 20 }),
+  // Fraud scans persist incidents; only the page should trigger a scan.
+  '/admin/product-moderation': () => productService.getModerationProducts('DRAFT'),
   '/customer/orders': () => api.get('/customer/orders'),
   '/marketplace': () => api.get('/public/products', { params: { limit: 48, sortBy: 'newest' } }),
 };

@@ -13,9 +13,13 @@ interface UploadedAttachment {
 export function ChatAttachmentButton({
   conversationId,
   connected,
+  replyToId,
+  onSent,
 }: {
   conversationId: string;
   connected: boolean;
+  replyToId?: string;
+  onSent?: () => void;
 }) {
   const picker = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -84,6 +88,7 @@ export function ChatAttachmentButton({
               ...payload,
               messageText: '',
               messageId: messageId.current,
+              replyToId,
             },
             (
               timeout: Error | null,
@@ -103,6 +108,7 @@ export function ChatAttachmentButton({
       dialog.current?.close();
       setFile(null);
       setUploaded(null);
+      onSent?.();
     } catch (cause) {
       const failure = cause as {
         response?: { data?: { message?: string } };
@@ -163,7 +169,7 @@ export function ChatAttachmentButton({
             event.preventDefault();
             close();
           }}
-          className="fixed inset-0 m-auto w-[calc(100%-32px)] max-w-md rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612] shadow-2xl backdrop:bg-[#231D15]/50"
+          className="fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-md max-h-[calc(100dvh_-_32px)] overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612] shadow-2xl backdrop:bg-[#231D15]/50"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 id="attachment-title" className="m-0 text-base font-bold">

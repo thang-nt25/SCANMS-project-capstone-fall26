@@ -143,7 +143,7 @@ describe('CommissionsService', () => {
       collaboratorId,
       status: CommissionStatus.PENDING,
       eligibleAt,
-      availableAt: new Date('2026-01-15T00:00:00.000Z'),
+      availableAt: new Date('2026-01-08T00:00:00.000Z'),
     });
     expect(create.data.commissionAmount.toString()).toBe('24000');
     expect(wallets.creditPendingBalance).toHaveBeenCalledTimes(1);
@@ -173,6 +173,23 @@ describe('CommissionsService', () => {
       where: { id: commissionId },
       data: { status: CommissionStatus.APPROVED, approvedAt: now },
     });
+  });
+
+  it.each([
+    ['REQUESTED', null, false],
+    ['REFUND_PROCESSING', 'REFUND', false],
+    ['REFUNDED', 'REFUND', false],
+    ['COMPLETED', 'EXCHANGE', true],
+    ['CLOSED', null, true],
+  ])('guards mature escrow with return status %s', async (status, resolution, released) => {
+    const { service, tx, wallets } = createService();
+    tx.commission.findUnique.mockResolvedValueOnce({ orderId }).mockResolvedValueOnce({
+      id: commissionId, orderId, collaboratorId, commissionAmount: new Prisma.Decimal('72000'),
+      status: CommissionStatus.PENDING, availableAt: new Date('2026-01-01'),
+      order: { status: OrderStatus.COMPLETED, returnRequest: { status, resolution, dispute: null } },
+    });
+    expect(await service.approveMatureCommission(commissionId, new Date('2026-02-01'))).toBe(released);
+    expect(wallets.releasePendingBalance).toHaveBeenCalledTimes(released ? 1 : 0);
   });
 
   it('claws an approved commission back from the available wallet', async () => {

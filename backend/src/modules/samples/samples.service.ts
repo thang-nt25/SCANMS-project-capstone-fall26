@@ -10,6 +10,7 @@ import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { Optional } from '@nestjs/common';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
 import { normalizeSamplePhone, SAMPLE_PHONE_PATTERN, SAMPLE_PHONE_ERROR } from './sample-phone';
@@ -345,15 +346,14 @@ export class SamplesService {
     });
   }
 
-  async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus) {
-    const cacheKey = `samples:shop:${shopOwnerId}:${status || 'ALL'}`;
+  async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus, storeId?: string) {
+    const cacheKey = `samples:shop:${shopOwnerId}:${storeId || 'default'}:${status || 'ALL'}`;
     if (this.cacheService) {
       const cached = await this.cacheService.get(cacheKey);
       if (cached) return cached;
     }
-
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: { ...managedStoreWhere(shopOwnerId), ...(storeId ? { id: storeId } : {}) },
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
@@ -788,7 +788,7 @@ export class SamplesService {
 
   async getShopStats(shopOwnerId: string) {
     const store = await this.prisma.store.findFirst({
-      where: { ownerId: shopOwnerId, isDeleted: false },
+      where: managedStoreWhere(shopOwnerId),
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
@@ -1639,7 +1639,12 @@ export class SamplesService {
       },
     });
     if (!req) throw new NotFoundException('Không tìm thấy yêu cầu xin mẫu');
-    if (req.product.store.ownerId !== shopOwnerId) {
+    // Revalidate live owner/staff assignment for commands as well as inbox reads.
+    const store = await this.prisma.store.findFirst({
+      where: { ...managedStoreWhere(shopOwnerId), id: req.product.storeId },
+      select: { id: true },
+    });
+    if (!store) {
       throw new ForbiddenException('Yêu cầu này không thuộc cửa hàng của bạn');
     }
     return req;

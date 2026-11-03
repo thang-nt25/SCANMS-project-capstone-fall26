@@ -36,36 +36,12 @@ export default function MarketingToolkitPage() {
       label: 'Mã giảm giá độc quyền',
       icon: Tag,
     },
-    { id: 'media', label: 'Media Hub', icon: FolderOpen },
+    { id: 'media', label: 'Thư viện nội dung', icon: FolderOpen },
   ];
 
   const renderContextualActions = () => {
     if (activeTab === 'media') return null;
-    if (activeTab === 'links') {
-      return (
-        <div className="flex items-center gap-2 xl:col-span-2 justify-start sm:justify-end flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsSubmitVideoOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-xs font-semibold hover:bg-[#FAF8F5] hover:border-[#C59B58] transition-colors cursor-pointer"
-            title="Nộp video review sản phẩm"
-          >
-            <Video className="w-4 h-4 text-[#B88E4F]" />
-            <span>Nộp video review</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('scanms_open_create_link'))}
-            className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs hover:shadow cursor-pointer"
-            title="Tạo link tiếp thị mới"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Tạo link tiếp thị</span>
-          </button>
-        </div>
-      );
-    }
+    if (activeTab === 'links') return null;
 
     if (activeTab === 'samples') {
       return (
@@ -111,8 +87,8 @@ export default function MarketingToolkitPage() {
 
   return (
     <div id="marketing-toolkit-hub" data-active-tab={activeTab} role="region" aria-label="Công cụ tiếp thị" className="flex flex-col gap-4 w-full min-w-0 text-[#1A1612] pb-16 md:pb-0">
-      <div className="mb-1 grid w-full min-w-0 grid-cols-1 gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 xl:grid-cols-5 items-center shadow-2xs">
-        <div role="tablist" aria-label="Công cụ tiếp thị" className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-4 xl:col-span-3">
+      <div className="mb-1 w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
+        <div role="tablist" aria-label="Công cụ tiếp thị" className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
@@ -136,8 +112,8 @@ export default function MarketingToolkitPage() {
             );
           })}
         </div>
-        {renderContextualActions()}
       </div>
+      {renderContextualActions()}
 
       {/* Container giữ DOM: Chuyển tab 0ms mượt mà, không giật lag, không reload ngầm */}
       <div className="w-full min-w-0 min-h-[500px]">

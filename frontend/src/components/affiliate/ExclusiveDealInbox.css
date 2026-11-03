@@ -1,0 +1,54 @@
+@reference "../../index.css";
+.exclusive-deal-inbox { @apply [padding:16px]; box-shadow: none; @apply [background:#fffdfa]; }
+.exclusive-deal-inbox .exclusive-deal-card {
+  @apply [padding:16px];
+  @apply [border-radius:12px];
+  @apply [background:#fffdfa];
+  @apply [border-color:#eae4d7];
+}
+.exclusive-deal-card > div:first-child { @apply [padding-bottom:12px]; @apply [border-bottom:1px_solid_#eae4d7]; }
+.exclusive-deal-card > div:first-child > div > div:first-child {
+  @apply whitespace-normal;
+  @apply [font-size:14px];
+  @apply [line-height:1.5];
+  @apply [font-weight:600];
+}
+.exclusive-deal-card > div:first-child > div > div:last-child { @apply [margin-top:3px]; }
+.exclusive-deal-card .exclusive-deal-facts {
+  @apply grid;
+  @apply [grid-template-columns:minmax(0,_1fr)_minmax(0,_1fr)_minmax(0,_2fr)];
+  @apply items-stretch;
+  @apply [gap:10px];
+  @apply [margin-top:12px];
+}
+.exclusive-deal-facts > span:not(.ml-auto) {
+  @apply flex;
+  @apply items-center;
+  @apply flex-wrap;
+  @apply [gap:4px];
+  @apply [min-height:44px];
+  @apply [padding:10px_12px];
+  @apply [border:1px_solid_#eae4d7];
+  @apply [border-radius:10px];
+  @apply [background:#fffdfa];
+  @apply [line-height:1.5];
+  @apply [overflow-wrap:anywhere];
+}
+.exclusive-deal-facts > span:nth-child(2) { @apply [background:#fbf5eb]; @apply [border-color:#eedfc6]; }
+.exclusive-deal-facts > .exclusive-deal-commitment { @apply block; }
+.exclusive-deal-facts > .ml-auto,
+.exclusive-deal-facts > div { @apply [grid-column:1_/_-1]; }
+.exclusive-deal-facts > .ml-auto { @apply justify-end; @apply flex-wrap; @apply [width:100%]; @apply [gap:8px]; }
+.exclusive-deal-facts button { @apply [min-height:34px]; @apply [border-radius:8px]; }
+.exclusive-deal-card > .overflow-hidden {
+  @apply [margin-top:12px];
+  @apply [margin-bottom:0];
+  @apply [background:#faf8f5];
+  @apply [border-radius:10px];
+}
+.exclusive-deal-card > .overflow-hidden > button { @apply [min-height:44px]; }
+@media (max-width: 700px) {
+  .exclusive-deal-card .exclusive-deal-facts { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+  .exclusive-deal-facts > .exclusive-deal-commitment { @apply [grid-column:1_/_-1]; }
+  .exclusive-deal-card > div:first-child { @apply items-start; @apply flex-wrap; }
+}

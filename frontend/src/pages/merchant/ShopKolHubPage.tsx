@@ -1,3 +1,4 @@
+import './ShopKolHubPage.css';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';

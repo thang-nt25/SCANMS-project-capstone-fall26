@@ -2,6 +2,7 @@ const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage
 const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
+const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
 
 /**
  * Tự động retry dynamic import module nếu gặp lỗi kết nối hoặc Vite HMR reload
@@ -42,6 +43,7 @@ const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboar
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
+const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopRevenueWalletPage'));
 
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
@@ -163,6 +165,7 @@ function AppRoutes() {
         <Route path="/customer" element={<CustomerPortalPage />} />
         <Route path="/customer/portal" element={<CustomerPortalPage />} />
         <Route path="/customer/orders" element={<CustomerPortalPage />} />
+        <Route path="/customer/orders/:orderId" element={<CustomerPortalPage />} />
         <Route path="/customer/profile" element={<CustomerPortalPage />} />
         <Route path="/customer/identity" element={<CustomerPortalPage />} />
         <Route path="/customer/addresses" element={<CustomerPortalPage />} />
@@ -196,11 +199,11 @@ function AppRoutes() {
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
-              <Route path="merchant/payouts" element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="merchant/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
               <Route path="merchant/campaigns-manage" element={<Navigate to="/merchant/promotions" replace />} />
-              <Route path="merchant/wallet" element={<Navigate to="/merchant/dashboard" replace />} />
-              <Route path="shop/wallet" element={<Navigate to="/merchant/dashboard" replace />} />
-              <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
+              <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
+              <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
               <Route path="merchant/settings" element={<ShopSettingsPage />} />
               <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
 
@@ -280,12 +283,14 @@ function AppRoutes() {
               <Route path="admin/affiliate-oversight" element={<AdminOversightHubPage />} />
               <Route path="admin/payouts" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/finance" element={<AdminFinancePayoutsPage />} />
+              <Route path="admin/finance/payouts" element={<AdminFinancePayoutsPage />} />
               <Route path="admin/personnel" element={<AdminPersonnelPage />} />
               <Route path="admin/internal-staff" element={<AdminPersonnelPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
               <Route path="admin/kyc" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+              <Route path="admin/internal-traffic-test" element={<InternalTrafficTestPage />} />
               <Route path="admin/audit" element={<AuditLogsPage />} />
               <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
               <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />

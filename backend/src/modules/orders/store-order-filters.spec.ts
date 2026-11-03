@@ -2,6 +2,7 @@ import { OrderStatus, UserRole } from '@prisma/client';
 import { validateSync } from 'class-validator';
 import { QueryStoreOrdersDto } from './dto/fulfillment-order.dto';
 import { OrdersService } from './orders.service';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 describe('merchant order filters preserve shop, customer and return scope', () => {
   const storeId = '2f67001b-09a5-5958-85fd-5f401831c871';
@@ -30,17 +31,33 @@ describe('merchant order filters preserve shop, customer and return scope', () =
     const { service, prisma } = makeService();
     await service.getMyStoreOrders('owner', UserRole.SHOP_MANAGER, { storeId, customerId });
     expect(prisma.order.count).toHaveBeenCalledWith({ where: { storeId, customerId } });
-    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      id: storeId,
-      OR: expect.arrayContaining([
-        { owner: { is: expect.objectContaining({ id: 'owner' }) } },
-        { staffMembers: { some: expect.objectContaining({ id: 'owner' }) } },
-      ]),
-    }) }));
+    expect(prisma.store.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: storeId, ...managedStoreWhere('owner') } }));
+  });
+  it('accepts an assigned manager through the same active membership policy as pricing', async () => {
+    const { service, prisma } = makeService();
+    await service.getMyStoreOrders('staff', UserRole.SHOP_MANAGER, { storeId });
+    expect(prisma.store.findFirst).toHaveBeenCalledWith({
+      where: { id: storeId, ...managedStoreWhere('staff') }, select: { id: true },
+    });
+    expect(prisma.order.count).toHaveBeenCalledWith({ where: { storeId } });
+  });
+  it('resolves the assigned Shop when a manager omits storeId', async () => {
+    const { service, prisma } = makeService();
+    await service.getMyStoreOrders('staff', UserRole.SHOP_MANAGER, {});
+    expect(prisma.store.findFirst).toHaveBeenCalledWith({ where: managedStoreWhere('staff') });
+    expect(prisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { storeId } }));
+  });
+  it('does not read any orders if a manager has neither ownership nor an active assignment', async () => {
+    const { service, prisma } = makeService();
+    prisma.store.findFirst.mockResolvedValueOnce(null);
+    const result = await service.getMyStoreOrders('revoked', UserRole.SHOP_MANAGER, {});
+    expect(result.items).toEqual([]);
+    expect(prisma.order.count).not.toHaveBeenCalled();
+    expect(prisma.order.findMany).not.toHaveBeenCalled();
   });
   it('still refuses another merchant store even when a customer ID is supplied', async () => {
     const { service, prisma } = makeService();
-    prisma.store.findFirst.mockResolvedValueOnce(null as never);
+    prisma.store.findFirst.mockResolvedValueOnce(null);
     await expect(service.getMyStoreOrders('intruder', UserRole.SHOP_MANAGER, { storeId, customerId })).rejects.toThrow('Bạn không quản lý gian hàng này');
     expect(prisma.order.count).not.toHaveBeenCalled();
   });

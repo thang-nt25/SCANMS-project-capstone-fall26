@@ -24,8 +24,10 @@ export const getChatSocket = (): Socket => {
   socket = io(`${SOCKET_URL}/chat`, {
     auth: { token },
     transports: ['websocket', 'polling'],
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    randomizationFactor: 0.5,
   });
 
   (socket as any)._currentToken = token;
@@ -37,12 +39,17 @@ export const getChatSocket = (): Socket => {
   currentSocket.on('disconnect', () => authenticatedUsers.delete(currentSocket));
   currentSocket.on('connect_error', () => authenticatedUsers.delete(currentSocket));
 
+  let connectionWarningShown = false;
   socket.on('connect', () => {
-    console.log('✅ Chat socket connected:', socket?.id);
+    connectionWarningShown = false;
+    if (import.meta.env.DEV) console.log('✅ Chat socket connected:', currentSocket.id);
   });
 
   socket.on('connect_error', (err) => {
-    console.error('❌ Chat socket error:', err.message);
+    if (!connectionWarningShown && import.meta.env.DEV) {
+      console.warn('Chat đang chờ kết nối lại máy chủ:', err.message);
+      connectionWarningShown = true;
+    }
   });
 
   return socket;

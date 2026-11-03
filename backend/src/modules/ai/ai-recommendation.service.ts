@@ -3,6 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ServiceUnavailableException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
@@ -21,12 +23,15 @@ import { OrderStatus, UserRole } from '@prisma/client';
 import { textMatchesCategory } from './category-match.utils';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { matchingScore } from './matching-score.policy';
+import { SemanticEmbeddingService } from '../../core/semantic/semantic-embedding.service';
+import { creatorProfileText } from './creator-profile.policy';
 
 @Injectable()
 export class AiRecommendationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
+    @Optional() private readonly semanticMatcher?: SemanticEmbeddingService,
   ) {}
 
   // ─── 1. GỢI Ý TOP KOLS PHÙ HỢP CHO SẢN PHẨM HOẶC BỘ LỌC ───────────────
@@ -89,7 +94,7 @@ export class AiRecommendationService {
 
     // Authorization and product eligibility must run even when the result is cached.
     // Include every filter and the caller to prevent cross-shop/filter cache reuse.
-    const cacheKey = `ai:recommend:kols:v3:${JSON.stringify([
+    const cacheKey = `ai:recommend:kols:v4:${JSON.stringify([
       currentUserId,
       currentUserRole,
       query.productId ?? null,
@@ -120,6 +125,18 @@ export class AiRecommendationService {
         socialChannels: true,
       },
     });
+
+    const profileCandidates = collaborators.map(creator => ({ id: creator.id, title: creatorProfileText(creator) }))
+      .filter(candidate => candidate.title.trim());
+    const scoreProfiles = async (category?: string) => {
+      if (!category || !profileCandidates.length) return new Map<string, number>();
+      if (!this.semanticMatcher) throw new ServiceUnavailableException('Bộ đối sánh hồ sơ KOC chưa sẵn sàng.');
+      const result = await this.semanticMatcher.rank(category, profileCandidates);
+      return new Map(result.items.map(item => [item.id, Math.round(item.similarity)]));
+    };
+    const profileScores = await scoreProfiles(targetCategory);
+    const categoryFilterScores = query.category?.trim() && query.category.trim() !== targetCategory
+      ? await scoreProfiles(query.category.trim()) : profileScores;
 
     // 3. Lấy dữ liệu lịch sử đơn hàng, click traffic và hoa hồng của các KOLs
     const [allOrders, allClicks] = await Promise.all([
@@ -239,18 +256,14 @@ export class AiRecommendationService {
       let primaryCategory = 'Chưa có lịch sử bán hàng';
       let maxCatCount = 0;
       let categoryMatchSource: 'SALES' | 'PROFILE' | 'NONE' = 'NONE';
-      const profileText = [
-        c.collaboratorProfile?.bio,
-        ...socialChannels.map((channel) => channel.channelName),
-      ]
-        .filter(Boolean)
-        .join(' ');
+      const profileText = creatorProfileText(c);
       const hasCategoryEvidence = (category: string) =>
         [...stats.categoryOrderCounts.keys()].some((cat) =>
           textMatchesCategory(cat, category),
         ) || textMatchesCategory(profileText, category);
-      if (targetCategory && !hasCategoryEvidence(targetCategory)) continue;
-      if (query.category?.trim() && !hasCategoryEvidence(query.category.trim()))
+      // A product selects the scoring target, not an implicit exclusion filter.
+      // An explicit category filter still narrows the result by evidence.
+      if (query.category?.trim() && !hasCategoryEvidence(query.category.trim()) && (categoryFilterScores.get(c.id) ?? 0) < 60)
         continue;
 
       for (const [cat, count] of stats.categoryOrderCounts.entries()) {
@@ -272,10 +285,9 @@ export class AiRecommendationService {
         else if (directMatchOrders >= 20) categoryScore = 92;
         else if (directMatchOrders >= 5) categoryScore = 85;
         else if (directMatchOrders > 0) categoryScore = 75;
-        else if (textMatchesCategory(profileText, targetCategory)) {
-          categoryScore = stats.totalOrders === 0 ? 88 : 45;
-        }
-        categoryMatchSource = directMatchOrders > 0 ? 'SALES' : 'PROFILE';
+        else categoryScore = profileScores.get(c.id) ?? 0;
+        categoryMatchSource = directMatchOrders > 0 ? 'SALES'
+          : hasCategoryEvidence(targetCategory) || categoryScore >= 60 ? 'PROFILE' : 'NONE';
       } else if (stats.totalOrders > 0) {
         categoryScore = Math.min(
           100,
@@ -293,9 +305,7 @@ export class AiRecommendationService {
 
       const isColdStart = stats.totalOrders < 5;
       let conversionRateScore = 0;
-      if (isColdStart) {
-        conversionRateScore = 75;
-      } else if (conversionRate >= 8.0) conversionRateScore = 98;
+      if (conversionRate >= 8.0) conversionRateScore = 98;
       else if (conversionRate >= 6.0) conversionRateScore = 92;
       else if (conversionRate >= 4.0) conversionRateScore = 84;
       else if (conversionRate >= 2.0) conversionRateScore = 74;
@@ -374,8 +384,6 @@ export class AiRecommendationService {
           Math.min(targetPrice, avgOrderValue) /
           Math.max(targetPrice, avgOrderValue);
         priceFitScore = Math.round(60 + ratio * 38);
-      } else if (isColdStart) {
-        priceFitScore = 78;
       }
 
       // Lọc điều kiện PriceRangeFilter
@@ -406,7 +414,7 @@ export class AiRecommendationService {
 
       // 5. TỔNG HỢP MATCH SCORE (Công thức ma trận trọng số)
       // Profile evidence drives cold start; after five orders performance dominates.
-      const weighting = matchingScore(stats.totalOrders, totalFollowers, categoryScore, conversionRateScore, priceFitScore);
+      const weighting = matchingScore(stats.totalOrders, totalFollowers, categoryScore, conversionRateScore, priceFitScore, tierAndSocialScore);
       const finalMatchScore = weighting.score;
 
       // Đánh giá mức độ
@@ -441,7 +449,7 @@ export class AiRecommendationService {
       const scoreBreakdown: ScoreBreakdownDto = {
         categoryScore,
         conversionRateScore,
-        tierAndSocialScore,
+        tierAndSocialScore: isColdStart ? weighting.socialScore : tierAndSocialScore,
         priceFitScore,
       };
 
@@ -457,6 +465,7 @@ export class AiRecommendationService {
         categoryMatchSource,
         isRisingStar,
         scoringMode: weighting.mode,
+        scoringWeights: weighting.weights,
         matchedCategory: targetCategory,
         scoreBreakdown,
         aiReasoning,

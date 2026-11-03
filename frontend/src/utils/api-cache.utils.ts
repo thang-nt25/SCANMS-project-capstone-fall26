@@ -65,6 +65,9 @@ export const apiCache = {
    */
   isCacheable(url?: string): boolean {
     if (!url) return false;
+    // Balances, delivery state, conversations and voucher quotas change outside this tab.
+    // Also covers nested endpoints such as /stores/:id/payouts and signed bill URLs.
+    if (/\/(?:wallets|payouts|orders|chat|coupons)(?:\/|\?|$)/.test(url)) return false;
     // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||

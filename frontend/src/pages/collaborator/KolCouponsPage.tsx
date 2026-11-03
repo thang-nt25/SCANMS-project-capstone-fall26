@@ -29,6 +29,7 @@ import {
 } from '../../services/coupon.service';
 import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
+import './KolCouponsPage.css';
 
 interface EligibleStore {
   id?: string;
@@ -121,6 +122,7 @@ export const KolCouponsPage: React.FC = () => {
     activeCoupons: number;
   }>({ totalSales: 0, totalCommission: 0, totalOrders: 0, activeCoupons: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -291,6 +293,7 @@ export const KolCouponsPage: React.FC = () => {
         ? res.data
         : (Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res) ? res : []));
       setCoupons(list);
+      setLoadError('');
       const sum = res?.summary || res?.data?.summary;
       if (sum) {
         setSummary(sum);
@@ -300,6 +303,7 @@ export const KolCouponsPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Lỗi khi tải danh sách coupon của KOL:', err);
+      setLoadError('Không tải được danh sách mã giảm giá. Vui lòng thử lại.');
       if (retryCount < 2) {
         setTimeout(() => fetchCoupons(retryCount + 1), 400);
       }
@@ -328,11 +332,15 @@ export const KolCouponsPage: React.FC = () => {
   };
   fetchApprovedStoresRef.current = fetchApprovedStores;
 
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    sonnerToast.success('Đã sao chép mã giảm giá!');
-    setTimeout(() => setCopiedCode(null), 2500);
+  const handleCopy = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      sonnerToast.success('Đã sao chép mã giảm giá!');
+      setTimeout(() => setCopiedCode(null), 2500);
+    } catch {
+      sonnerToast.error('Không thể sao chép mã giảm giá. Vui lòng thử lại.');
+    }
   };
 
   const handleTogglePause = async (coupon: CouponItem) => {
@@ -470,10 +478,10 @@ export const KolCouponsPage: React.FC = () => {
   );
 
   return (
-    <div className="kol-coupon-page min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
+    <div className="kol-coupon-page text-[#1A1612]">
 
-      <div className="kol-coupon-content max-w-[1520px] mx-auto mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="kol-coupon-content">
+        <div className="kol-coupon-summary grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
@@ -527,7 +535,7 @@ export const KolCouponsPage: React.FC = () => {
         </div>
 
 
-        <div className="kol-coupon-toolbar bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6">
+        <div className="kol-coupon-toolbar bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
           <div className="kol-coupon-search relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
             <input
@@ -566,7 +574,9 @@ export const KolCouponsPage: React.FC = () => {
         </div>
 
 
-        {loading ? (
+        {loadError ? (
+          <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-xs text-[#7D715E]">{loadError}<button type="button" onClick={() => void fetchCoupons()} className="ml-2 text-[#B88E4F] underline">Thử lại</button></div>
+        ) : loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F] mx-auto mb-3" />
             <p className="text-sm text-[#7D715E]">
@@ -593,7 +603,7 @@ export const KolCouponsPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="kol-coupon-grid">
             {filteredCoupons.map((coupon) => {
               const statusCfg =
                 STATUS_LABELS[coupon.status] || STATUS_LABELS.PENDING_APPROVAL;
@@ -604,7 +614,8 @@ export const KolCouponsPage: React.FC = () => {
               return (
                 <div
                   key={coupon.id}
-                  className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs hover:border-[#C59B58] hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+
+                  className="kol-coupon-card bg-white rounded-2xl border border-[#EAE4D7] shadow-xs hover:border-[#C59B58] hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
                 >
                   {/* Top Ticket Header */}
                   <div className="bg-gradient-to-br from-[#FAF8F5] via-[#FBF5EB] to-[#F3EFE6] p-4 pb-4 border-b border-dashed border-[#EEDFC6] relative">
@@ -623,8 +634,9 @@ export const KolCouponsPage: React.FC = () => {
                       </span>
                     </div>
 
+
                     {/* Voucher Code Box */}
-                    <div className="flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
+                    <div className="kol-coupon-code flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
                       <div className="min-w-0 flex-1">
                         <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#7D715E] block">
                           MÃ VOUCHER ĐỘC QUYỀN
@@ -658,8 +670,9 @@ export const KolCouponsPage: React.FC = () => {
                     <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-[#FAF8F5] rounded-full border border-[#EAE4D7]" />
                   </div>
 
+
                   {/* Bottom Ticket Body */}
-                  <div className="p-4 pt-3 flex flex-col justify-between flex-1">
+                  <div className="kol-coupon-details p-4 pt-3 flex flex-col justify-between flex-1">
                     <div className="space-y-2 mb-4 text-xs text-[#7D715E]">
                       {coupon.status === 'PENDING_APPROVAL' ? (
                         <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80 flex items-start gap-2">
@@ -746,7 +759,8 @@ export const KolCouponsPage: React.FC = () => {
                     </div>
 
                     {(coupon.status === 'ACTIVE' || coupon.status === 'PAUSED') && (
-                      <div className="mb-4 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
+
+                      <div className="kol-coupon-earnings mb-4 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[#7D715E]">Doanh số tạo ra:</span>
                           <span className="font-bold text-[#1A1612]">
@@ -814,8 +828,9 @@ export const KolCouponsPage: React.FC = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col text-left">
-            <div className="px-5 py-4 border-b border-[#EAE4D7] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
+
+          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="kol-coupon-proposal bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col text-left">
+            <div className="kol-coupon-proposal-heading px-5 py-4 border-b border-[#EAE4D7] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]" aria-hidden="true">
                   <Ticket className="w-4 h-4" />
@@ -839,7 +854,8 @@ export const KolCouponsPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleProposeSubmit} className="overflow-y-auto p-5 space-y-4">
+
+            <form onSubmit={handleProposeSubmit} className="kol-coupon-proposal-form overflow-y-auto p-5 space-y-4">
               {modalError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -936,13 +952,11 @@ export const KolCouponsPage: React.FC = () => {
                   </div>
                 )}
 
-                <span className="text-[11px] text-[#7D715E] mt-1 block">
-                  Chỉ hiển thị gian hàng đã duyệt hợp tác với bạn.
-                </span>
               </div>
 
 
-              <div className="space-y-4">
+
+              <div className="kol-coupon-proposal-code space-y-4">
                 {/* 1. Nhập mã voucher */}
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -951,6 +965,7 @@ export const KolCouponsPage: React.FC = () => {
                     </label>
                     <span className="text-[11px] font-medium text-[#7D715E]">
                       {proposeCode.length}/20 ký tự
+
                     </span>
                   </div>
 
@@ -1069,6 +1084,7 @@ export const KolCouponsPage: React.FC = () => {
                           ))}
                         </div>
                       </div>
+
 
                       <div>
                         <label className="block text-xs font-semibold text-[#1A1612] mb-1">
@@ -1286,7 +1302,8 @@ export const KolCouponsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+              <div className="kol-coupon-proposal-footer pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

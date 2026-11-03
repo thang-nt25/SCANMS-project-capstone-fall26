@@ -39,8 +39,8 @@ export function ShippingSimulationControls({ orderId, tracking, onStarted, onCom
     <section className="mt-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm text-[#231D15]" aria-label="Kiểm thử giao vận">
       <p className="font-semibold">Chỉ kiểm thử đơn GHN TEST</p>
       <p className="mt-1 text-xs text-[#7D715E]">
-        Không điều phối shipper hoặc xác nhận thanh toán thật. Mỗi mốc cách nhau 1 phút.
-        Khi timeline đã giao thử (sau 4 phút), bấm đồng bộ để khách kiểm thử nhận hàng/đổi trả.
+        Không điều phối shipper hoặc xác nhận thanh toán thật. Mỗi mốc cách nhau 15 giây, tổng hành trình 1 phút.
+        Khi timeline đã giao thử (sau 1 phút), bấm đồng bộ để khách kiểm thử nhận hàng/đổi trả.
       </p>
       {error && <p role="alert" className="mt-2 text-xs text-[#DC2626]">{error}</p>}
       <button type="button" disabled={busy} onClick={() => void submit()}

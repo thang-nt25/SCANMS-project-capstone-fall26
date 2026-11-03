@@ -1,9 +1,13 @@
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
+import './ShopCollaborationPage.css';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AddressLocationPicker, type AddressLocationResult } from '../../components/customer/AddressLocationPicker';
 import { StoreCooperationPanel } from '../../components/affiliate/StoreCooperationPanel';
+import { useStoreCooperations } from '../../hooks/useStoreCooperations';
+import { mergeCooperationStores, type PartnerStore } from '../../utils/cooperation-stores';
+import { authService } from '../../services/auth.service';
 import { format, isToday, isYesterday } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeline';
@@ -27,7 +31,6 @@ import {
   ShieldAlert,
   Copy,
   AlertTriangle,
-  Handshake,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -66,25 +69,7 @@ const sampleVideoStatusLabels: Record<string, string> = {
   REJECTED: 'Cần chỉnh sửa',
 };
 
-export interface PartnerStore {
-  id: string;
-  conversationId?: string;
-  name: string;
-  slug?: string;
-  logoUrl?: string;
-  ownerAvatarUrl?: string;
-  ownerName?: string;
-  category?: string;
-  defaultCommissionRate?: number;
-  rating?: number;
-  location?: string;
-  totalProducts?: number;
-  unreadCount?: number;
-  messageCount?: number;
-  pendingSamplesCount?: number;
-  lastMessageText?: string;
-  lastMessageAt?: string;
-}
+export type { PartnerStore } from '../../utils/cooperation-stores';
 
 const getShopLogoUrl = (logoUrl?: string | null) => {
   const normalized = logoUrl?.trim();
@@ -181,6 +166,8 @@ let cachedLastSelectedStoreId: string = '';
 let cachedRawConversations: any[] = [];
 
 export default function ShopCollaborationPage() {
+  const viewer = authService.getCurrentUser();
+  const { data: cooperations = [], isPending: loadingCooperations, isError: cooperationError, refetch: reloadCooperations } = useStoreCooperations(viewer?.id, viewer?.role === 'COLLABORATOR');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const shopParam = searchParams.get('shop') || searchParams.get('storeId');
@@ -208,7 +195,8 @@ export default function ShopCollaborationPage() {
     };
   }, [productId, productTitle, productImage, productPrice, productSku, commissionRate, productVariantId]);
 
-  const [stores, setStores] = useState<PartnerStore[]>(() => cachedPartnerStores);
+  const [conversationStores, setStores] = useState<PartnerStore[]>(() => cachedPartnerStores);
+  const stores = useMemo(() => mergeCooperationStores(conversationStores, cooperations), [conversationStores, cooperations]);
   const [activeTargetStore, setActiveTargetStore] = useState<PartnerStore | null>(() => cachedTargetNewStore);
   const [selectedStoreId, setSelectedStoreId] = useState<string>(() => {
     if (shopParam) return shopParam;
@@ -222,7 +210,7 @@ export default function ShopCollaborationPage() {
   activeTabRef.current = activeTab;
 
   const [searchShopQuery, setSearchShopQuery] = useState('');
-  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
+  const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'INVITATIONS' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
 
   // KOL verification profile & channels (Business Guard)
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
@@ -1058,6 +1046,7 @@ setActiveTab('samples');
       if (!matchesSearch) return false;
 
       if (shopFilter === 'CHAT') return Boolean(s.unreadCount);
+      if (shopFilter === 'INVITATIONS') return s.cooperationStatus === 'PENDING' && !s.requestedByKol;
       if (shopFilter === 'SAMPLES') return Boolean(s.pendingSamplesCount);
       if (shopFilter === 'HIGH_COMM')
         return Number(s.defaultCommissionRate || 0) >= 15;
@@ -1079,6 +1068,10 @@ setActiveTab('samples');
       className="w-full flex flex-col gap-3 max-w-[1600px] mx-auto h-[calc(100dvh-110px)] min-h-[480px] max-h-[900px] [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:flex-1! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:h-[auto]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:min-h-[0]! [@media(min-width:1024px)]:[&#partner-collaboration-workspace]:max-h-[none]!"
       id="partner-collaboration-workspace"
     >
+      {cooperationError && <div role="alert" className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3 text-sm text-[#1A1612]">
+        <span>Chưa tải được lời mời hợp tác. Danh sách bên dưới có thể chưa đầy đủ.</span>
+        <button type="button" onClick={() => void reloadCooperations()} className="shrink-0 rounded-lg border border-[#EEDFC6] px-3 py-1.5 font-semibold hover:bg-[#F3EFE6]">Thử lại</button>
+      </div>}
       {/* Top Warning Banner nếu KOL chưa xác minh */}
       {!loadingKyc && !canRequestSample && (
         <div className="shrink-0 bg-[#FBF5EB] border border-[#EAE4D7] px-4 py-2 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -1100,7 +1093,7 @@ setActiveTab('samples');
       )}
 
       {/* Main Unified Workspace */}
-      <div className="flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
+      <div className="collaboration-split-layout flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
         {/* LEFT COLUMN: Danh Sách Gian Hàng Tinh Gọn (Có thể thu nhỏ chỉ hiện icon) */}
         <div
           data-collapsed={isSidebarCollapsed}
@@ -1136,7 +1129,7 @@ setActiveTab('samples');
               </div>
 
               {/* Stores List: Chỉ hiển thị icon avatar gian hàng */}
-              <div className="flex-1 overflow-x-auto md:overflow-y-auto py-2 flex flex-row md:flex-col items-center gap-2 no-scrollbar" role="list">
+              <div className="flex-1 overflow-x-auto md:overflow-y-auto py-2 flex flex-row md:flex-col items-center gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list">
                 {filteredStores.map((st) => {
                   const isSelected = selectedStore ? st.id === selectedStore.id : false;
                   return (
@@ -1203,6 +1196,7 @@ setActiveTab('samples');
                   {[
                     { id: 'ALL', label: 'Tất cả' },
                     { id: 'CHAT', label: 'Tin mới' },
+                    { id: 'INVITATIONS', label: `Lời mời (${stores.filter(store => store.cooperationStatus === 'PENDING' && !store.requestedByKol).length})` },
                     { id: 'SAMPLES', label: 'Mẫu thử' },
                   ].map((f) => (
                     <button
@@ -1222,6 +1216,7 @@ setActiveTab('samples');
                 </div>
 
                 {/* Nút khám phá gian hàng như bố cục cũ */}
+                <button type="button" disabled={loadingCooperations} onClick={() => void reloadCooperations()} className="min-h-7 text-right text-[11px] font-semibold text-[#B88E4F] hover:underline disabled:opacity-60">{loadingCooperations ? 'Đang tải lời mời…' : 'Làm mới lời mời'}</button>
                 <button
                   id="btn-discover-stores"
                   type="button"
@@ -1244,7 +1239,7 @@ setActiveTab('samples');
                     <div className="w-10 h-10 mx-auto rounded-full bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F]">
                       <MessageSquare className="w-5 h-5 stroke-1" />
                     </div>
-                    <p className="font-semibold text-[#1A1612]">Chưa có cuộc trò chuyện nào</p>
+                    <p className="font-semibold text-[#1A1612]">{loadingCooperations ? 'Đang tải lời mời hợp tác…' : shopFilter === 'INVITATIONS' ? 'Chưa có lời mời hợp tác đang chờ' : 'Chưa có cuộc trò chuyện nào'}</p>
                     <p className="text-[11px] text-[#7D715E] leading-relaxed max-w-[200px] mx-auto">
                       Khám phá các gian hàng đối tác để bắt đầu trao đổi & nhận mẫu thử.
                     </p>
@@ -1314,6 +1309,8 @@ setActiveTab('samples');
                             )}
                           </div>
 
+                          {st.cooperationStatus === 'PENDING' && <span className="mt-1 inline-flex rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 py-0.5 text-[10px] font-semibold text-[#8C6226]">{st.requestedByKol ? 'Chờ Shop duyệt' : 'Lời mời hợp tác'}</span>}
+
                           <div className="flex items-center justify-between gap-1 mt-0.5">
                             <span
                               className={`text-[11px] truncate leading-tight flex-1 min-w-0 ${
@@ -1364,7 +1361,7 @@ setActiveTab('samples');
             <>
               {/* Shop Context Header Bar - Cố định ổn định, không co rút giật layout */}
               <div className="shrink-0 bg-white border-b border-[#EAE4D7] z-20">
-                <div className="px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="collaboration-shop-heading px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
@@ -1395,11 +1392,17 @@ setActiveTab('samples');
                           <span>Đã xác minh</span>
                         </span>
                       </div>
+                      <div className="collaboration-cooperation-inline">
+                        <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
+                      </div>
                     </div>
                   </div>
 
                   {/* Nút Xem Trang Gian Hàng Trên Sàn */}
                   <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
+                      <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
+                    </button>
                     <a
                       href={selectedStore.slug
                         ? `/shop/${encodeURIComponent(selectedStore.slug)}`
@@ -1416,14 +1419,9 @@ setActiveTab('samples');
                   </div>
                 </div>
 
-                {/* Thanh trạng thái liên kết hợp tác */}
-                <div className="collaboration-context-cooperation">
-                  <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
-                </div>
-
-                {/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
+{/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
                 <div
-                  className="px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
+                  className="collaboration-compact-tabs px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
                   role="tablist"
                   aria-label="Nội dung hợp tác với gian hàng"
                 >
@@ -1431,9 +1429,8 @@ setActiveTab('samples');
                     { id: 'messages', label: 'Tin nhắn', icon: MessageSquare },
                     { id: 'products', label: 'Sản phẩm', icon: Package },
                     { id: 'samples', label: 'Hàng mẫu', icon: Truck },
-                  ].map((tab) => {
+                  ].map((tab, index) => {
                     const isActive = activeTab === tab.id;
-                    const Icon = tab.icon;
                     const count = tabCounts.storeId === selectedStore.id
                         ? tabCounts[tab.id as 'messages' | 'products' | 'samples'] : null;
                     return (
@@ -1454,7 +1451,7 @@ setActiveTab('samples');
                             : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#EEDFC6]'
                         }`}
                       >
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                        <span className="collaboration-compact-step" aria-hidden="true">{index + 1}</span>
                         <span>{tab.label}</span>
                         <span
                           className="inline-flex min-w-[22px] h-5.5 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
@@ -1472,21 +1469,7 @@ setActiveTab('samples');
           <div data-collaboration-content className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
             {/* 1. CHAT TAB - Mounted persistently to retain conversation state, socket listeners, and scroll */}
             <div className={`h-full w-full overflow-hidden flex flex-col ${activeTab === 'messages' ? 'flex' : 'hidden'}`}>
-              {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP */}
-              <div className="bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
-                <div className="flex items-center gap-2 text-[#B88E4F]">
-                  <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                  <strong className="text-xs font-bold text-[#1A1612]">Đàm phán deal VIP</strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDealPickerStoreId(selectedStore.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
-                >
-                  <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
+              <div className="collaboration-chat-section flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ChatBoxPage
                   embedded
                   targetStoreId={selectedStore.id}
@@ -1847,7 +1830,7 @@ setActiveTab('samples');
                           {samples.length}
                         </strong>
                       </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" role="tablist" aria-label="Lọc trạng thái yêu cầu mẫu">
+                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5" role="tablist" aria-label="Lọc trạng thái yêu cầu mẫu">
                         {SAMPLE_FILTER_GROUPS.map((group) => {
                           const isActive = sampleStatusFilter === group.id;
                           const count = groupCounts[group.id] || 0;

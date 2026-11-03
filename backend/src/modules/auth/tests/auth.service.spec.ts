@@ -102,6 +102,25 @@ describe('AuthService', () => {
     ).rejects.toThrow(ServiceUnavailableException);
   });
 
+  it.each(['COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_ADMIN'])('creates a new Google user as CUSTOMER even when login submits %s', async role => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ email: 'new-google@example.test', email_verified: true, name: 'Buyer' }) } as Response);
+    jest.spyOn(authService as any, 'hashPassword').mockResolvedValue('test-hash');
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ ...mockUser, id: 'new-user', email: 'new-google@example.test', role: 'CUSTOMER' });
+    mockPrismaService.user.create.mockResolvedValueOnce({ id: 'new-user' });
+    const result = await authService.googleLogin({ idToken: 'ya29.valid', role });
+    expect(mockPrismaService.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ role: UserRole.CUSTOMER }) }));
+    expect(result.user.role).toBe('CUSTOMER');
+    expect(mockPrismaService.store.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps an existing customer role when the Google login screen submits KOC', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ email: mockUser.email, email_verified: true }) } as Response);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, role: 'CUSTOMER' });
+    const result = await authService.googleLogin({ idToken: 'ya29.valid', role: 'COLLABORATOR' });
+    expect(result.user.role).toBe('CUSTOMER');
+    expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+  });
+
   it('returns 401 only when Google rejects the access token', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: false,
@@ -289,6 +308,18 @@ describe('AuthService', () => {
     expect(result.id).toBe('user-1');
     expect(result.role).toBe('SHOP_MANAGER');
     expect(result.email).toBe('shop@techstore.vn');
+  });
+
+  it('preserves the assigned Shop when a manager owns no stores', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: 'assigned-shop', stores: [] });
+    expect((await authService.getMe('user-1')).storeId).toBe('assigned-shop');
+  });
+
+  it('keeps owner fallback and removes a revoked assignment from profile refresh', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: null, stores: [{ id: 'owned-shop' }] });
+    expect((await authService.getMe('user-1')).storeId).toBe('owned-shop');
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({ ...mockUser, storeId: null, stores: [] });
+    expect((await authService.getMe('user-1')).storeId).toBeNull();
   });
 
   it('should throw UnauthorizedException from getMe if user is inactive or deleted', async () => {

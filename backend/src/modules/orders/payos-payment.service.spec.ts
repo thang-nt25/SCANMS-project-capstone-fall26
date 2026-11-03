@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
 import { PayosPaymentService } from './payos-payment.service';
 
 const mockCreate = jest.fn();
@@ -37,6 +38,58 @@ const config = {
 } as ConfigService;
 
 describe('PayOS checkout', () => {
+  it('scopes manual payment access to the owning shop and rejects other roles', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const service = new PayosPaymentService({ order: { findFirst } } as any, config);
+    const manager = { id: 'shop-owner', role: UserRole.SHOP_MANAGER };
+    await expect(service.getStatus(orderId, manager.id, manager)).rejects.toBeInstanceOf(NotFoundException);
+    expect(findFirst).toHaveBeenCalledWith({ where: { id: orderId, store: { ownerId: manager.id }, sourcePlatform: 'INTERNAL' } });
+    findFirst.mockClear();
+    await expect(service.getStatus(orderId, 'buyer', { id: 'buyer', role: UserRole.CUSTOMER })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+
+  it('does not allow a merchant payment endpoint to convert a regular checkout order', async () => {
+    const prisma = { order: { findFirst: jest.fn().mockResolvedValue({ rawPayload: { paymentMethod: 'PAYOS' } }) } };
+    const manager = { id: 'shop-owner', role: UserRole.SHOP_MANAGER };
+    await expect(new PayosPaymentService(prisma as any, config).getStatus(orderId, manager.id, manager)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does not reset an already paid manual order when the state changes before locking', async () => {
+    const raw = { requestFingerprint: 'manual-request', paymentMethod: 'MANUAL', paymentStatus: 'UNPAID' };
+    const update = jest.fn();
+    const prisma = {
+      order: { findFirst: jest.fn().mockResolvedValue({ id: orderId, status: 'PENDING', finalAmount: 125000, rawPayload: raw }) },
+      $transaction: jest.fn(async callback => callback({ $queryRaw: jest.fn().mockResolvedValue([{ status: 'PENDING', raw_payload: { ...raw, paymentStatus: 'PAID' } }]), order: { update } })),
+    };
+    const manager = { id: 'shop-owner', role: UserRole.SHOP_MANAGER };
+    await expect(new PayosPaymentService(prisma as any, config).createLink(orderId, manager.id, manager)).rejects.toBeInstanceOf(ConflictException);
+    expect(update).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('converts an unpaid manual order under lock, charges the saved amount and reuses its QR', async () => {
+    let raw: any = { requestFingerprint: 'manual-request', paymentMethod: 'MANUAL', paymentStatus: 'UNPAID' };
+    const order: any = { id: orderId, externalOrderSn: publicCode, status: 'PENDING', finalAmount: 125000 };
+    const update = jest.fn(async ({ data }) => { raw = data.rawPayload; return { ...order, rawPayload: raw }; });
+    const prisma: any = {
+      order: { findFirst: jest.fn(async () => ({ ...order, rawPayload: raw })), update },
+      $transaction: jest.fn(async callback => callback({ $queryRaw: jest.fn(async () => [{ raw_payload: raw, status: order.status, final_amount: order.finalAmount }]), order: { update } })),
+    };
+    const code = Number.parseInt(orderId.replace(/-/g, '').slice(0, 12), 16) + 1;
+    mockCreate.mockResolvedValue({ orderCode: code, amount: 125000, paymentLinkId: 'manual-link', qrCode: '000201', checkoutUrl: 'https://pay.payos.vn/web/manual-link' });
+    const manager = { id: 'shop-owner', role: UserRole.SHOP_MANAGER };
+    const service = new PayosPaymentService(prisma, config);
+    const link = await service.createLink(orderId, manager.id, manager);
+    expect(link.amount).toBe(125000);
+    expect(raw.paymentMethod).toBe('PAYOS');
+    expect(raw.paymentStatus).toBe('WAITING_PAYMENT');
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 125000, returnUrl: `https://scanms.example/payment/payos-return?order=${publicCode}&manual=1` }));
+    mockGet.mockResolvedValue({ orderCode: code, id: 'manual-link', amount: 125000, amountPaid: 0, amountRemaining: 125000, status: 'PENDING' });
+    expect((await service.createLink(orderId, manager.id, manager)).checkoutUrl).toBe(link.checkoutUrl);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreate.mockReset();

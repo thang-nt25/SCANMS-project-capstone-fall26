@@ -57,6 +57,7 @@ export interface ReturnDetail {
   pickupSimulationEnabled?: boolean;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
+  inspectionCompletedAt?: string | null;
   inspectionNotes?: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
   partnerIncome?: {
