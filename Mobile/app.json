@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "SCANMS",
+    "slug": "scanms-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/scanms-logo-badge.png",
+    "scheme": "scanms",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "vn.scanms.mobile",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF8F5",
+        "foregroundImage": "./assets/scanms-logo-badge.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/scanms-logo-badge.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép SCANMS chọn ảnh sản phẩm để gửi duyệt.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "./plugins/with-android-demo.cjs",
+      "expo-sharing"
+    ]
+  }
+}

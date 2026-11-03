@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-11-03T04:16:15.651Z",
+  "reportDate": "2026-11-03",
+  "timezone": "Asia/Bangkok",
+  "mobileUnitContract": {
+    "passed": 46,
+    "failed": 0
+  },
+  "backendSelectedTests": {
+    "suites": 5,
+    "passed": 71,
+    "failed": 0
+  },
+  "mobileTypecheck": "PASS",
+  "mobileLint": "PASS",
+  "androidJsExport": "PASS",
+  "backendBuild": "PASS",
+  "nativeApk": {
+    "builtFor": "Android Emulator x86_64",
+    "variant": "debug",
+    "applicationId": "vn.scanms.mobile",
+    "version": "1.0.0",
+    "versionCode": 1,
+    "bytes": 76500842,
+    "sha256": "FDC2D40D41F6BB392158B26921391329B70C75B23A13B1EA363ACC062A2D3D8C",
+    "requiresMetro": true,
+    "installed": true,
+    "signatureVerification": "PASS",
+    "packageInspection": "PASS",
+    "verifiedAt": "2026-11-03T04:16:15.649Z",
+    "sdk": {
+      "compile": 37,
+      "target": 36,
+      "min": 24
+    },
+    "nativeModulesAdded": [
+      "expo-document-picker",
+      "expo-file-system",
+      "expo-sharing"
+    ],
+    "note": "Debug shell loads current JS from Metro. Not a standalone or ARM acceptance build."
+  },
+  "publicApiContracts": {
+    "passed": 4,
+    "mode": "READ_ONLY",
+    "source": "scripts/check-public-contracts.ts"
+  },
+  "emulatorObserved": {
+    "role": "SYSTEM_MANAGER",
+    "screens": [
+      "Workspace",
+      "Dashboard",
+      "KYC"
+    ],
+    "mutationsPerformed": false
+  },
+  "allRoleMutationE2E": "NOT_RUN",
+  "standaloneArm": "NOT_RUN",
+  "deferred": [
+    "mobile checkout/payment",
+    "livestream",
+    "background push",
+    "native App Links attribution"
+  ],
+  "sharedDatabaseReset": false,
+  "seedRun": false,
+  "passwordsChanged": false
+}

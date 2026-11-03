@@ -41,6 +41,7 @@ describe('SamplesService', () => {
 
   beforeEach(() => {
     prisma = {
+      store: { findFirst: jest.fn().mockResolvedValue({ id: 'store-1' }) },
       user: {
         findUnique: jest.fn().mockResolvedValue({ isActive: true }),
         findMany: jest.fn().mockResolvedValue([{ id: 'admin-1' }]),
