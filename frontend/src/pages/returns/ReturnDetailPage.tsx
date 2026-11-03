@@ -492,6 +492,18 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
           </section>}
           {detail.data.shopResponse && <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
             Phản hồi của Shop: {detail.data.shopResponse}</p>}
+          {mode !== 'customer' && detail.data.dispute?.resolutionNotes && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+            <h2 className="font-bold">Quyết định của System Manager</h2>
+            <p className="mt-2 whitespace-pre-wrap">{detail.data.dispute.resolutionNotes}</p>
+          </section>}
+          {mode !== 'customer' && detail.data.refund && <section role="status" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+            <h2 className="font-bold">Khoản hoàn cho khách: {money(detail.data.refund.amount)}</h2>
+            <p className="mt-2">{detail.data.refund.status === 'SUCCEEDED'
+              ? 'Đã hoàn vào ví khách thành công. Shop không hoàn thêm lần nữa.'
+              : 'Chưa hoàn thành. System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.'}</p>
+            {detail.data.refund.status === 'SUCCEEDED' && detail.data.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
+              <p className="mt-1 text-[#7D715E]">Khách cần mở hồ sơ đổi trả và xác nhận đã nhận kết quả để đóng đơn.</p>}
+          </section>}
           <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">

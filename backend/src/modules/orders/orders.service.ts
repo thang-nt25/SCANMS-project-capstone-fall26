@@ -3919,7 +3919,7 @@ export class OrdersService {
           commissions: {
             select: { id: true, commissionAmount: true, status: true },
           },
-          returnRequest: true,
+          returnRequest: { include: { refund: true, dispute: true } },
         },
       }),
     ]);

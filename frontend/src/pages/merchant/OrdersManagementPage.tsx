@@ -1402,13 +1402,18 @@ export default function OrdersManagementPage({
                         },
                       };
 
-                      const badge = statusBadgeConfig[order.status] || {
+                      const baseBadge = statusBadgeConfig[order.status] || {
                         label: order.status,
                         bg: "bg-gray-50",
                         text: "text-gray-700",
                         border: "border-gray-200",
                         dot: "bg-gray-400",
                       };
+                      const refundSucceeded = order.returnRequest?.resolution === 'REFUND' && order.returnRequest.refund?.status === 'SUCCEEDED';
+                      const badge = refundSucceeded ? {
+                        label: order.returnRequest?.status === 'COMPLETED' ? 'Đã hoàn tiền' : 'Đã hoàn ví · chờ khách xác nhận',
+                        bg: 'bg-[#FBF5EB]', text: 'text-[#8A642C]', border: 'border-[#EEDFC6]', dot: 'bg-[#B88E4F]',
+                      } : baseBadge;
 
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
@@ -1606,7 +1611,7 @@ export default function OrdersManagementPage({
                                   title="Xem yêu cầu khiếu nại / hoàn tiền"
                                 >
                                   <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
-                                  <span>Xử lý đổi trả</span>
+                                  <span>{refundSucceeded ? 'Xem tiền đã hoàn' : order.returnRequest?.status === 'REQUESTED' ? 'Xử lý đổi trả' : 'Xem hồ sơ đổi trả'}</span>
                                 </button>
                               )}
 
@@ -2270,6 +2275,18 @@ export default function OrdersManagementPage({
               <section className="order-detail-return order-detail-section space-y-3 text-xs">
                 <h4><RefreshCw size={16} /> Hồ sơ đổi trả / hoàn tiền</h4>
                 <span className="order-detail-return-status">{returnStatusLabel(selectedOrderDetails.returnRequest.status)}</span>
+                {selectedOrderDetails.returnRequest.dispute?.resolutionNotes && <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Quyết định của System Manager</strong>
+                  <p className="mt-1 whitespace-pre-wrap">{selectedOrderDetails.returnRequest.dispute.resolutionNotes}</p>
+                </div>}
+                {selectedOrderDetails.returnRequest.refund?.status === 'SUCCEEDED' && <div role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Đã hoàn {Number(selectedOrderDetails.returnRequest.refund.amount).toLocaleString('vi-VN')} ₫ vào ví khách</strong>
+                  <p className="mt-1">Hệ thống đã hoàn tiền thành công. Shop không cần hoàn thêm. {selectedOrderDetails.returnRequest.status === 'AWAITING_CUSTOMER_CONFIRMATION' ? 'Đang chờ khách xác nhận hoàn tất để đóng đơn.' : 'Khách đã xác nhận hoàn tất.'}</p>
+                </div>}
+                {selectedOrderDetails.returnRequest.refund && selectedOrderDetails.returnRequest.refund.status !== 'SUCCEEDED' && <div role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Khoản hoàn {Number(selectedOrderDetails.returnRequest.refund.amount).toLocaleString('vi-VN')} ₫ đang chờ xử lý</strong>
+                  <p className="mt-1">System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.</p>
+                </div>}
                 <p className="order-detail-submitted">Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
                 <p>Lý do: <strong>{({ DAMAGED: 'Sản phẩm hư hỏng', WRONG_ITEM: 'Giao sai sản phẩm', EXPIRED: 'Sản phẩm hết hạn', OTHER: 'Lý do khác' } as Record<string, string>)[selectedOrderDetails.returnRequest.reason] || selectedOrderDetails.returnRequest.reason}</strong></p>
                 {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
@@ -2280,10 +2297,10 @@ export default function OrdersManagementPage({
                   {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>}
                 </div>
                 {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response"><span>Phản hồi của gian hàng</span><p>{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
-                {['SHOP_REJECTED', 'DISPUTED'].includes(selectedOrderDetails.returnRequest.status) && <Link
+                {selectedOrderDetails.returnRequest && <Link
                   to={`/merchant/returns/${selectedOrderDetails.returnRequest.id}`}
                   className="inline-block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 font-semibold text-[#8A6736]">
-                  Xem hồ sơ và gửi bằng chứng cho Manager →
+                  Xem toàn bộ hồ sơ, bằng chứng và đối soát GHN →
                 </Link>}
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="space-y-2">

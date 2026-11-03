@@ -22,6 +22,7 @@ Ngày 02/11/2026, DB demo có đơn `DH-2026-1B58B512` của **Sora Skincare & C
 ## Kiểm tra tiền và hàng cho khách
 
 - Quyết định **hoàn tiền**: kiểm tra ví khách và trạng thái refund. Chỉ khi refund `SUCCEEDED` mới khẳng định tiền đã về ví và thu nhập KOL đã bị thu hồi. Nếu `PENDING`, Manager dùng nút thử hoàn lại. Bồi hoàn GHN đi riêng, không chặn quyền lợi khách.
+- Khi Manager phán xử **hoàn tiền** và ví ghi `SUCCEEDED`, hệ thống đã hoàn cho khách ngay trong giao dịch phán xử. Trang Shop phải hiện số tiền đã hoàn và **không có nút hoàn lần hai**. Khách mở chi tiết hồ sơ đổi trả, bấm **Tôi đã nhận kết quả · Hoàn tất**; lúc đó đơn chuyển sang `RETURNED`. Nếu refund còn `PENDING`, Manager xử lý tiếp, Shop chỉ theo dõi.
 - Quyết định **đổi hàng**: Shop ghi vận đơn thay thế và trừ tồn kho; thu nhập KOL giữ nguyên. Hồ sơ GHN có thêm mã vận đơn thay thế.
 - Trạng thái `PAID` của bồi hoàn GHN là **ghi nhận thủ công kèm chứng từ**, không tự chuyển tiền vào ví hay xác minh sao kê ngân hàng bằng API. Không tuyên bố GHN thật đã bồi thường khi chỉ sử dụng dữ liệu TEST.
 
