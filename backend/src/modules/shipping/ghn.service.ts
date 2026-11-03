@@ -395,9 +395,6 @@ export class GhnService {
     }
     const ghnEnvironment = customOptions?.environment || GhnEnvironment.LIVE;
     const existingRawPayload = (order.rawPayload as Record<string, any>) || {};
-    if (order.status === OrderStatus.PENDING && !existingRawPayload.shopConfirmedAt) {
-      throw new BadRequestException('Shop cần xác nhận đơn trước khi tạo vận đơn GHN');
-    }
     const canReplaceInternalTestWaybill =
       order.status === OrderStatus.SHIPPING &&
       !existingRawPayload.ghnOrderCode &&
@@ -587,7 +584,6 @@ export class GhnService {
       ghnEnvironment,
       ghnRawResponse: ghnResponseData,
       ghnShippedAt: new Date().toISOString(),
-      shopConfirmedAt: rawPayload.shopConfirmedAt || new Date().toISOString(),
       ...(ghnEnvironment === GhnEnvironment.TEST && this.simulationEnabled()
         ? { ghnSimulation: createCustomerGhnSimulation(orderCode) } : {}),
     };
@@ -1060,7 +1056,7 @@ export class GhnService {
         throw new BadRequestException('Chỉ đồng bộ giao thử cho đơn đang giao.');
       }
       if (simulated.status !== 'delivered') {
-        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Mỗi mốc cách nhau 30 giây, tổng thời gian 2 phút từ khi bắt đầu.');
+        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 1 phút từ khi bắt đầu.');
       }
       const completedAt = new Date();
       await tx.order.update({

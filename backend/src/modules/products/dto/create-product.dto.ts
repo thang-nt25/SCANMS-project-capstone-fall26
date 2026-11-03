@@ -33,7 +33,7 @@ export class CreateProductDto extends ProductPackageDto {
     description: 'Cửa hàng nhận sản phẩm khi Chủ Shop quản lý nhiều gian hàng',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'Mã cửa hàng không hợp lệ' })
+  @IsUUID('all', { message: 'Mã cửa hàng không hợp lệ' })
   storeId?: string;
 
   @ApiProperty({
@@ -171,7 +171,9 @@ export class CreateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
-  @ArrayMaxSize(MAX_PRODUCT_GALLERY_IMAGES, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
+  @ArrayMaxSize(MAX_PRODUCT_GALLERY_IMAGES, {
+    message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ',
+  })
   @IsString({
     each: true,
     message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',

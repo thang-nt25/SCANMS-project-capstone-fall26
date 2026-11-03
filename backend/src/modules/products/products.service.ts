@@ -32,6 +32,7 @@ import {
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { validateProductPackage } from './product-package';
+import { productVariantFields } from './product-variant-fields';
 import * as crypto from 'crypto';
 import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
 import { catalogCountQuery, catalogSuggestionsQuery, type CatalogSuggestionRow } from './utils/catalog-query';
@@ -230,43 +231,7 @@ export class ProductsService {
 
     const variants = dto.variants || [];
 
-    const categoryFields: Record<string, Array<[string, string]>> = {
-      'Mỹ phẩm & Chăm sóc da': [
-        ['volume', 'Dung tích / khối lượng'],
-        ['formula', 'Dạng / công thức'],
-        ['package', 'Quy cách'],
-      ],
-      'Trang điểm & Làm đẹp': [
-        ['shade', 'Màu / tông'],
-        ['finish', 'Chất / hiệu ứng'],
-        ['volume', 'Dung tích / khối lượng'],
-      ],
-      'Chăm sóc cơ thể & Tóc': [
-        ['volume', 'Dung tích / khối lượng'],
-        ['scent', 'Mùi hương'],
-        ['formula', 'Dạng sản phẩm'],
-      ],
-      'Thực phẩm chức năng & Sức khỏe': [
-        ['weight', 'Khối lượng / số lượng'],
-        ['flavor', 'Vị / hương'],
-        ['package', 'Quy cách đóng gói'],
-      ],
-      'Thiết bị điện tử & Phụ kiện': [
-        ['model', 'Mẫu / phiên bản'],
-        ['color', 'Màu sắc'],
-        ['capacity', 'Cấu hình / dung lượng'],
-      ],
-      'Thời trang & Phụ kiện': [
-        ['color', 'Màu sắc'],
-        ['size', 'Size'],
-        ['style', 'Kiểu / mẫu'],
-      ],
-    };
-    const expectedFields = categoryFields[dto.categoryName?.trim()] || [
-      ['type', 'Loại / mẫu'],
-      ['specification', 'Kích thước / quy cách'],
-      ['color', 'Màu / phiên bản'],
-    ];
+    const expectedFields = productVariantFields(dto.categoryName);
     for (const [index, variant] of variants.entries()) {
       if (!expectedFields.some(([key]) => variant.attributes?.[key]?.trim())) {
         issues.push(`Phân loại ${index + 1}: nhập ít nhất một thuộc tính phù hợp danh mục`);

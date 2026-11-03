@@ -77,6 +77,9 @@ describe('customer purchase GHN simulation', () => {
   });
   it('advances through five milestones on the saved clock, without inventing future events', () => {
     const saved = raw();
+    const initial = customerGhnSimulationDetail(saved, 'TEST-ORDER', start)!;
+    expect(initial.expectedDeliveryTime).toBe(new Date(start + 60_000).toISOString());
+    expect(initial.nextEventAt).toBe(new Date(start + 15_000).toISOString());
     const states = [
       'ready_to_pick',
       'picked',
@@ -88,7 +91,7 @@ describe('customer purchase GHN simulation', () => {
       const detail = customerGhnSimulationDetail(
         saved,
         'TEST-ORDER',
-        start + index * 30000,
+        start + index * 15000,
       )!;
       expect(detail.status).toBe(states[index]);
       expect(detail.timeline.map((event) => event.status)).toEqual(
@@ -101,13 +104,13 @@ describe('customer purchase GHN simulation', () => {
       expect(detail.shipperCanCall).toBe(false);
     }
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 29999)?.status,
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 14999)?.status,
     ).toBe('ready_to_pick');
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 119999)?.status,
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 59999)?.status,
     ).toBe('delivering');
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 120000)
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 60000)
         ?.nextEventAt,
     ).toBeNull();
   });
@@ -116,13 +119,13 @@ describe('customer purchase GHN simulation', () => {
     const detail = customerGhnSimulationDetail(
       saved,
       'TEST-ORDER',
-      start + 180000,
+      start + 45000,
     );
     expect(
       customerGhnSimulationDetail(
         JSON.parse(JSON.stringify(saved)),
         'TEST-ORDER',
-        start + 180000,
+        start + 45000,
       ),
     ).toEqual(detail);
     expect(detail?.shipperPhoneDisplay).toBe('09xx xxx xxx');

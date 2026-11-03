@@ -11,7 +11,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 export class CreateInternalStaffDto {
-  @ApiProperty({ description: 'Email nhân sự công ty', example: 'brand.sora@scanms.vn' })
+  @ApiProperty({
+    description: 'Email nhân sự công ty',
+    example: 'brand.sora@scanms.vn',
+  })
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
@@ -42,17 +45,20 @@ export class CreateInternalStaffDto {
   role: UserRole;
 
   @ApiPropertyOptional({
-    description: 'ID Cửa hàng trực thuộc phụ trách (áp dụng khi role là SHOP_MANAGER)',
+    description:
+      'ID Cửa hàng trực thuộc phụ trách (áp dụng khi role là SHOP_MANAGER)',
     example: '4aa15e5b-8741-5190-b01f-102c902f4d69',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'ID Cửa hàng phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'ID Cửa hàng phải là UUID hợp lệ' })
   storeId?: string;
 }
 
 export class ToggleUserStatusDto {
-  @ApiPropertyOptional({ description: 'Trạng thái kích hoạt tài khoản', example: true })
+  @ApiPropertyOptional({
+    description: 'Trạng thái kích hoạt tài khoản',
+    example: true,
+  })
   @IsOptional()
   isActive?: boolean;
 }
-

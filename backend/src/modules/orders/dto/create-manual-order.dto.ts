@@ -25,7 +25,7 @@ import { MAX_ORDER_AMOUNT, MAX_ORDER_ITEMS } from '../order-input.utils';
 export class ManualOrderItemDto {
   @ApiPropertyOptional({ description: 'ID sản phẩm nội bộ' })
   @IsOptional()
-  @IsUUID('4', { message: 'productId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'productId phải là UUID hợp lệ' })
   productId?: string;
 
   @ApiPropertyOptional({ example: 'SERUM-B5', description: 'SKU sản phẩm' })
@@ -150,7 +150,7 @@ export class CreateManualOrderDto {
       'ID cửa hàng; Shop Manager có thể bỏ trống để dùng cửa hàng của mình',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 
   @ApiPropertyOptional({

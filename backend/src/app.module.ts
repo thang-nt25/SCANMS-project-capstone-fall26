@@ -41,6 +41,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReturnModule } from './modules/returns/return.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
+import { MobileModule } from './modules/mobile/mobile.module';
 
 import { validateEnv } from './core/config/env.validation';
 
@@ -72,6 +73,7 @@ import { validateEnv } from './core/config/env.validation';
       },
     }),
     PrismaModule,
+    MobileModule,
     CloudinaryModule,
     UsersModule,
     AuthModule,

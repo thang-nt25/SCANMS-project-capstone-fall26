@@ -135,6 +135,13 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
     : refreshCountdown !== null
       ? <>Kiểm tra GHN sau <strong>{refreshCountdown}</strong> giây</>
       : <>{tracking?.isSimulation ? 'Đã hoàn tất' : 'GHN đã kết thúc hành trình'}</>;
+  const trackingNote = !tracking
+    ? ''
+    : tracking.isStale || error
+      ? 'Dữ liệu có thể chưa cập nhật'
+      : tracking.isSimulation && tracking.status !== 'delivered'
+        ? 'Mỗi mốc cách nhau 15 giây; hoàn tất hành trình sau 1 phút'
+        : '';
   return (
     <section className="ghn-journey min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-[18px] text-[12px] text-[#1A1612] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-[3px] [&_button:focus-visible]:outline-[#B88E4F] [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-[3px] [&_a:focus-visible]:outline-[#B88E4F] [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-offset-[3px] [&_summary:focus-visible]:outline-[#B88E4F] [&_button:disabled]:text-[#7D715E] [&_button:disabled]:opacity-60 [&_button:disabled]:cursor-default [@media(max-width:480px)]:p-3.5 [.ghn-tracking-dialog_&]:rounded-none [.ghn-tracking-dialog_&]:border-0 [.ghn-tracking-dialog_&]:p-0" aria-label={`Hành trình GHN ${orderCode}`}>
       <div className="ghn-journey__header flex items-center gap-[11px]">

@@ -295,6 +295,8 @@ export class ReturnService {
         ReturnRequestStatus.INSPECTING,
         ReturnRequestStatus.EXCHANGE_PENDING,
         ReturnRequestStatus.REFUND_PENDING,
+        // Failed refunds remain actionable for operations even without a customer dispute.
+        ReturnRequestStatus.REFUND_FAILED,
       ] } },
       include: detailInclude,
       orderBy: { updatedAt: 'desc' },
