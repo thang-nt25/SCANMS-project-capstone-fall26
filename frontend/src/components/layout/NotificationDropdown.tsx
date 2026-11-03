@@ -354,11 +354,11 @@ export const NotificationDropdown: React.FC = () => {
       if (userRole === 'COLLABORATOR') {
         navigate(payoutId ? `/collaborator/wallet?payoutId=${encodeURIComponent(payoutId)}` : '/collaborator/wallet');
       } else if (userRole === 'SHOP_MANAGER') {
-        navigate(payoutId ? `/merchant/payouts?payoutId=${encodeURIComponent(payoutId)}` : '/merchant/payouts');
+        navigate('/merchant/dashboard');
       }
     } else if (notif.type.startsWith('KYC_')) {
-      if (userRole === 'SYSTEM_ADMIN' || userRole === 'SHOP_MANAGER') {
-        navigate('/merchant/kyc-approval');
+      if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') {
+        navigate('/admin/users');
       } else {
         navigate('/collaborator/profile?tab=kyc');
       }

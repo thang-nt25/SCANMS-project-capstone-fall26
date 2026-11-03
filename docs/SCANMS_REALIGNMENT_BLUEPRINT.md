@@ -478,8 +478,8 @@ flowchart TD
 
 ---
 
-## 🔹 MAIN FLOW 3: Thiết Lập Chiến Dịch, Đàm Phán Hợp Đồng VIP Qua Chat Realtime & Tài Trợ Hàng Mẫu SLA 14 Ngày
-*(Campaign Setup, VIP Deal Negotiation via WebSocket & Sample Sponsorship SLA)*
+## 🔹 MAIN FLOW 3: Đàm Phán Hợp Đồng Tiếp Thị VIP Qua Chat Realtime (Socket.IO), Kích Hoạt Coupon Độc Quyền & Tài Trợ Hàng Mẫu SLA 14 Ngày
+*(Exclusive VIP Deal Negotiation via WebSocket, Attribution Coupon Issuance & Sample Sponsorship SLA)*
 
 * **Thời lượng demo chuẩn:** 10 – 12 phút.
 * **Các Role & Màn hình tham gia:**
@@ -810,7 +810,7 @@ Livestream không phải là 1 trong 5 Main Flows bắt buộc để chấm đi�
 | Thành viên | Main Flow Phụ trách Trình bày & Demo | Trọng tâm Bảo vệ Kỹ thuật & Code (Defense Focus) |
 | :--- | :--- | :--- |
 | **1. Nguyễn Thành Thắng** *(Leader)* | **Main Flow 1** *(Onboarding Nhân Sự, eKYC Đối Tác & Liên Kết MXH FR-07)* + **Nửa sau Main Flow 5** *(Executive Financial Dashboard, Phân tách SoD, Thuế TNCN 10% & Sổ cái)* | Kiến trúc RBAC 5 Roles, Cấp tài khoản nội bộ vs Đăng ký ngoài, Quy trình thẩm định eKYC & Kênh MXH, Phân tách trách nhiệm (SoD) giữa Admin chiến lược và Manager kế toán, Khóa dòng `SELECT ... FOR UPDATE` chống race-condition rút tiền, Thuật toán tính Thuế TNCN 10% & Sổ cái tài chính bất biến. |
-| **2. Phan Xuân Thịnh** | **Main Flow 2** *(Khóa Ngành Hàng, Hợp Tác 2 Chiều & AI Matchmaker)* + **Nửa đầu Main Flow 3** *(Chat Realtime & Thỏa thuận VIP)* | Thuật toán AI Ma trận Trọng số 4 Trục trong `ai-recommendation.service.ts`, Thị trường hợp tác 2 chiều (Shop mời Top KOC & KOC xin hợp tác), Kiến trúc WebSocket Socket.IO đàm phán gửi Thẻ mời chiến dịch VIP realtime. |
+| **2. Phan Xuân Thịnh** | **Main Flow 2** *(Khóa Ngành Hàng, Hợp Tác 2 Chiều & AI Matchmaker)* + **Nửa đầu Main Flow 3** *(Chat Realtime & Thỏa thuận VIP)* | Thuật toán AI Ma trận Trọng số 4 Trục trong `ai-recommendation.service.ts`, Thị trường hợp tác 2 chiều (Shop mời Top KOC & KOC xin hợp tác), Kiến trúc WebSocket Socket.IO đàm phán gửi Thẻ Đề xuất Hợp đồng Tiếp thị VIP realtime. |
 | **3. Nguyễn Đình Tuấn** | **Nửa sau Main Flow 3** *(Tài Trợ Hàng Mẫu SLA 14 Ngày)* + **Nửa đầu Main Flow 4** *(Attribution, Link/QR, Coupon Định Danh & Chống Tự Mua)* | Quản trị hàng mẫu và đồng hồ SLA 14 ngày `deal-kpi.policy.ts`, Bộ sinh Smart Link / Dynamic QR, Coupon Attribution `THAONHI16`, Động cơ AI Fraud Sentinel phát hiện gian lận tự mua (Self-referral). |
 | **4. Nguyễn Phú Quý** | **Nửa sau Main Flow 4** *(Giao Nhận GHN & Xử Lý Đổi Trả / Bù Hàng Mới / Clawback)* + **Nửa đầu Main Flow 5** *(Bảo Chứng Escrow & Thưởng Mốc Doanh Số FR-09)* | Tích hợp vận đơn GHN, Xử lý đổi trả: Bù hàng mới 1-1 giữ nguyên hoa hồng vs Hoàn tiền kích hoạt Clawback Engine, Cơ chế Tạm giữ Bảo chứng Escrow 7-14 ngày, Thuật toán quyết toán thưởng mốc tháng FR-09 & thăng hạng KOC. |
 

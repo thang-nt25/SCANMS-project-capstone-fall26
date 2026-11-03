@@ -3,15 +3,30 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { StoreCollaboratorStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class StoreCollaboratorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
+
+  private async invalidateStoreTeamCache(storeId: string) {
+    if (this.cacheService) {
+      try {
+        await this.cacheService.del(`store:team:${storeId}`);
+      } catch {
+        // Safe fallback
+      }
+    }
+  }
 
   async requestCooperation(
     collaboratorId: string,
@@ -53,6 +68,7 @@ export class StoreCollaboratorsService {
       });
     }
     try {
+      await this.invalidateStoreTeamCache(storeId);
       return await this.prisma.storeCollaborator.create({
         data: {
           storeId,
@@ -121,6 +137,11 @@ export class StoreCollaboratorsService {
 
   async getShopTeam(ownerId: string, storeId?: string) {
     const store = await this.getOwnedStore(ownerId, storeId);
+    const cacheKey = `store:team:${store.id}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
     const [members, pendingMembers] = await Promise.all([
       this.prisma.storeCollaborator.findMany({
         where: { storeId: store.id, status: StoreCollaboratorStatus.APPROVED },
@@ -263,12 +284,16 @@ export class StoreCollaboratorsService {
       };
     });
 
-    return {
+    const teamResult = {
       store: { id: store.id, name: store.name },
       members: enrichedMembers,
       pendingRequests: pendingMembers,
       pendingCount: pendingMembers.length,
     };
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, teamResult, 60);
+    }
+    return teamResult;
   }
 
   async invite(ownerId: string, dto: InviteStoreCollaboratorDto) {

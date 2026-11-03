@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useControlledTab } from "../../hooks/useControlledTab";
+
+const WALLET_TABS = ["wallet", "kyc", "social"] as const;
+type WalletTab = (typeof WALLET_TABS)[number];
 import {
   Clock3,
   RefreshCw,
@@ -84,8 +87,10 @@ function toMinorUnits(amount: string): bigint {
 }
 
 export default function WalletPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'wallet';
+  const { activeTab, setActiveTab } = useControlledTab<WalletTab>({
+    defaultTab: 'wallet',
+    validTabs: WALLET_TABS,
+  });
   const [kycData, setKycData] = useState<{ profile: KycProfile; channels: SocialChannel[] } | null>(null);
   const [socialData, setSocialData] = useState<SocialChannel[] | null>(null);
 
@@ -165,7 +170,7 @@ export default function WalletPage() {
       const p = await kycService.getMyKyc();
       if (!p?.idCardNumber || !p.socialLinksJson?.frontCardUrl || !p.socialLinksJson?.backCardUrl) {
         toast.error('Vui lòng hoàn thiện CCCD và ảnh hai mặt trong Hồ sơ KYC trước khi liên kết ngân hàng.');
-        setSearchParams({ tab: 'kyc' });
+        setActiveTab('kyc');
         return;
       }
       await walletService.updateBankAccount({
@@ -369,7 +374,7 @@ export default function WalletPage() {
         <nav className="grid grid-cols-2 lg:grid-cols-4 items-stretch gap-2 w-full" aria-label="Ví và hồ sơ">
             <button
               type="button"
-              onClick={() => setSearchParams({ tab: 'wallet' })}
+              onClick={() => setActiveTab('wallet')}
               className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'wallet'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
@@ -384,7 +389,7 @@ export default function WalletPage() {
 
             <button
               type="button"
-              onClick={() => setSearchParams({ tab: 'kyc' })}
+              onClick={() => setActiveTab('kyc')}
               className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'kyc'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
@@ -399,7 +404,7 @@ export default function WalletPage() {
 
             <button
               type="button"
-              onClick={() => setSearchParams({ tab: 'social' })}
+              onClick={() => setActiveTab('social')}
               className={`flex min-h-[44px] items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none ${
                 activeTab === 'social'
                   ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#1A1612]'
@@ -917,7 +922,7 @@ export default function WalletPage() {
                   <div className="text-[#D97706] font-medium flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#B88E4F]" />
                     <span>Hồ sơ định danh KYC cần được thẩm định trước khi rút.</span>
-                    <button type="button" onClick={() => setSearchParams({ tab: 'kyc' })} className="underline text-[#B88E4F] ml-1 cursor-pointer">Mở hồ sơ KYC</button>
+                    <button type="button" onClick={() => setActiveTab('kyc')} className="underline text-[#B88E4F] ml-1 cursor-pointer">Mở hồ sơ KYC</button>
                   </div>
                 )}
                 {selectedStore && Number(selectedStore.availableBalance) < Number(wallet.minimumWithdrawalAmount) && (

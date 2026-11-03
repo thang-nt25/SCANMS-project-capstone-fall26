@@ -12,6 +12,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { ProductsService } from '../products/products.service';
 import {
+  BatchCreatePricePromotionDto,
   CreatePricePromotionDto,
   ReviewPricePromotionDto,
   SetFloorPriceDto,
@@ -83,9 +84,9 @@ export class PricingService {
     return this.prisma.productPricePromotion.findMany({
       where: this.reviewer(role) ? {} : { store: managedStoreWhere(actorId) },
       include: {
-        product: { select: { title: true, floorPrice: true, listPrice: true } },
-        variant: { select: { name: true } },
-        store: { select: { name: true } },
+        product: { select: { id: true, title: true, sku: true, imageUrl: true, floorPrice: true, listPrice: true, price: true } },
+        variant: { select: { id: true, name: true, sku: true, imageUrl: true, floorPrice: true, listPrice: true, price: true } },
+        store: { select: { id: true, name: true, slug: true, logoUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -230,6 +231,76 @@ export class PricingService {
           `Giá khuyến mãi SKU ${variant.sku} phải thấp hơn giá niêm yết.`,
         );
     }
+  }
+
+  async batchCreate(actorId: string, role: UserRole, dto: BatchCreatePricePromotionDto) {
+    if (role !== UserRole.SHOP_MANAGER)
+      throw new ForbiddenException('Shop Manager gửi yêu cầu, bộ phận vận hành phê duyệt.');
+    if (!dto.items || dto.items.length === 0)
+      throw new BadRequestException('Danh sách sản phẩm giảm giá không được rỗng.');
+    const now = new Date();
+    if (
+      dto.endsAt <= dto.startsAt ||
+      dto.endsAt <= now ||
+      dto.startsAt.getTime() < now.getTime() - 60000 ||
+      dto.endsAt.getTime() - dto.startsAt.getTime() > 366 * 86400000
+    )
+      throw new BadRequestException('Thời gian khuyến mãi không hợp lệ hoặc quá 366 ngày.');
+
+    const uniqueProductIds: string[] = Array.from(new Set(dto.items.map((i) => i.productId)));
+    const budgetPerItem = Math.max(1, Math.round(Number(dto.budgetTotal) / dto.items.length));
+
+    return this.prisma.$transaction(async (tx) => {
+      await lockPricingProducts(tx, uniqueProductIds);
+      const createdPromotions: any[] = [];
+
+      for (const item of dto.items) {
+        const product = await this.access(tx, actorId, role, item.productId);
+        if (product.moderationStatus !== 'APPROVED' || !product.isActive)
+          throw new BadRequestException(`Sản phẩm "${product.title}" chưa được duyệt hoặc đang ngừng bán.`);
+
+        this.validatePrice(product, {
+          variantId: item.variantId,
+          proposedPrice: item.proposedPrice,
+        });
+
+        const promotion = await tx.productPricePromotion.create({
+          data: {
+            storeId: product.storeId,
+            productId: item.productId,
+            variantId: item.variantId || null,
+            requestedById: actorId,
+            proposedPrice: item.proposedPrice,
+            startsAt: dto.startsAt,
+            endsAt: dto.endsAt,
+            budgetTotal: budgetPerItem,
+            reason: dto.reason,
+            status: 'PENDING',
+          },
+        });
+        createdPromotions.push(promotion);
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: actorId,
+          action: 'BATCH_PRICE_PROMOTIONS_REQUESTED',
+          details: {
+            itemCount: dto.items.length,
+            productIds: uniqueProductIds.join(','),
+            budgetTotal: dto.budgetTotal,
+            startsAt: dto.startsAt,
+            endsAt: dto.endsAt,
+            reason: dto.reason,
+          },
+        },
+      });
+
+      return {
+        count: createdPromotions.length,
+        promotions: createdPromotions,
+      };
+    });
   }
 
   async create(actorId: string, role: UserRole, dto: CreatePricePromotionDto) {

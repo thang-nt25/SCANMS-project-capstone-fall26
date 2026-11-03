@@ -97,7 +97,9 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
         packageHeight: 10,
         imageUrl,
         price: template.price,
+        listPrice: template.price,
         originalPrice: template.price + 50_000,
+        floorPrice: Math.round((template.price * 0.70) / 1000) * 1000,
         customCommissionRate: 10,
         stockQuantity: currentStock,
         isActive: true,
@@ -117,18 +119,21 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
       for (let variant = 0; variant < 4; variant++) {
         const size = variant < 2 ? template.size : template.largeSize;
         const pack = variant % 2 === 0 ? 'Tiêu chuẩn' : 'Hộp quà cao cấp';
-        data.variants.push({
-          id: seedId(`variant:${index}:${variant}`),
-          productId: id,
-          sku: `${sku}-V${variant + 1}`,
-          name: `${size} / ${pack}`,
-          attributes: { [attrName]: size, 'Đóng gói': pack },
-          imageUrl,
-          price:
+          const variantPrice =
             template.price +
             (variant >= 2 ? 50_000 : 0) +
-            (variant % 2 === 1 ? 20_000 : 0),
-          stockQuantity: 50 + (index % 20),
+            (variant % 2 === 1 ? 20_000 : 0);
+          data.variants.push({
+            id: seedId(`variant:${index}:${variant}`),
+            productId: id,
+            sku: `${sku}-V${variant + 1}`,
+            name: `${size} / ${pack}`,
+            attributes: { [attrName]: size, 'Đóng gói': pack },
+            imageUrl,
+            price: variantPrice,
+            listPrice: variantPrice,
+            floorPrice: Math.round((variantPrice * 0.70) / 1000) * 1000,
+            stockQuantity: 50 + (index % 20),
           isActive: true,
           sampleEnabled: variant === 0,
           sampleQuota: variant === 0 ? quota : 0,

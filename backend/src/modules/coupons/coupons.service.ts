@@ -1312,7 +1312,7 @@ export class CouponsService {
       const created = await tx.coupon.create({
         data: {
           storeId,
-          collaboratorId: userId,
+          collaboratorId: dto.collaboratorId || userId,
           codeNormalized,
           displayCode: dto.code.trim().toUpperCase(),
           status: CouponStatus.ACTIVE,

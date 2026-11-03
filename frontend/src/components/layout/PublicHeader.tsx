@@ -206,8 +206,7 @@ export function PublicHeader({
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <span className="sm:hidden"><ScanMSLogo size="sm" showSubtitle={false} className="scanms-header-logo" /></span>
-            <span className="hidden sm:inline-flex"><ScanMSLogo size="md" className="scanms-header-logo" /></span>
+            <ScanMSLogo size="md" className="scanms-header-logo [&_.scanms-logo-subtitle]:hidden sm:[&_.scanms-logo-subtitle]:block" />
           </Link>
         </div>
 

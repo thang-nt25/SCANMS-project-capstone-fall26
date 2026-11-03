@@ -1,22 +1,22 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Link2, Tag, Radio, Store } from 'lucide-react';
 import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
+import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
 import AdminCouponsPage from './AdminCouponsPage';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 
-export default function AdminOversightHubPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'links';
-  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => ({ [activeTab]: true }));
+const ADMIN_OVERSIGHT_TABS = ['sponsorship', 'links', 'coupons', 'live-sessions'] as const;
+type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];
 
-  useEffect(() => {
-    setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
-  }, [activeTab]);
+export default function AdminOversightHubPage() {
+  const { activeTab, setActiveTab, visitedTabs } = useControlledTab<AdminOversightTab>({
+    defaultTab: 'links',
+    validTabs: ADMIN_OVERSIGHT_TABS,
+  });
 
   const user = authService.getCurrentUser();
   if (user && user.role === 'SHOP_MANAGER') {
@@ -31,10 +31,6 @@ export default function AdminOversightHubPage() {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-
-  const handleTabChange = (tabId: string) => {
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
 
   const tabs: HubTabItem[] = [
     { id: 'sponsorship', label: 'Gian hàng tài trợ', icon: Store },
@@ -69,7 +65,7 @@ export default function AdminOversightHubPage() {
         compact
         tabs={tabs}
         activeTab={activeTab}
-        onChange={handleTabChange}
+        onChange={(id) => setActiveTab(id as AdminOversightTab)}
         stretchTabs
         stretchTabColumns={4}
         tone="white"

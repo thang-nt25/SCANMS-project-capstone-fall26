@@ -1,26 +1,33 @@
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { User, ShieldCheck, Share2, Award } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
+import { useControlledTab } from '../../hooks/useControlledTab';
 import CreatorAccountDetails from './CreatorAccountDetails';
 import KycSubmissionPage from './KycSubmissionPage';
 import SocialChannelsPage from './SocialChannelsPage';
 import KolTierStatusPage from './KolTierStatusPage';
 
+const CREATOR_PROFILE_TABS = ['profile', 'kyc', 'social', 'tiers'] as const;
+type CreatorProfileTab = (typeof CREATOR_PROFILE_TABS)[number];
+
 export default function CreatorProfilePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const isLeaderboard = pathname === '/collaborator/leaderboard';
   const isBonusProgress = pathname === '/collaborator/bonus-progress';
   const isTierPage = isLeaderboard || isBonusProgress;
-  const activeTab = isTierPage ? 'tiers' : searchParams.get('tab') || 'profile';
+
+  const { activeTab, setActiveTab } = useControlledTab<CreatorProfileTab>({
+    defaultTab: isTierPage ? 'tiers' : 'profile',
+    validTabs: CREATOR_PROFILE_TABS,
+  });
 
   const handleTabChange = (tabId: string) => {
     if (isTierPage) {
       navigate(`/collaborator/profile?tab=${tabId}`);
       return;
     }
-    setSearchParams({ tab: tabId }, { replace: true });
+    setActiveTab(tabId as CreatorProfileTab);
   };
 
   const tabs: HubTabItem[] = [

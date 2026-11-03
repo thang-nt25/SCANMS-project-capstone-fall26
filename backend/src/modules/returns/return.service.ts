@@ -22,6 +22,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
@@ -90,6 +91,7 @@ export class ReturnService {
     private readonly cloudinary: CloudinaryService,
     private readonly pickupGateway: PickupGateway = new PickupGateway(),
     @Optional() private readonly walletsService?: WalletsService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   /** A confirmed internal-wallet refund and its income clawback share one DB transaction. */
@@ -259,6 +261,12 @@ export class ReturnService {
     ) {
       throw new BadRequestException('Trạng thái không hợp lệ');
     }
+    const cacheKey = `returns:shop:${userId}:${status || 'ALL'}:${page}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
+
     const where: Prisma.ReturnRequestWhereInput = {
       order: { store: managedStoreWhere(userId) },
       ...(status ? { status: status as ReturnRequestStatus } : {}),
@@ -273,11 +281,15 @@ export class ReturnService {
         take: 20,
       }),
     ]);
-    return {
+    const returnQueueResult = {
       total,
       page,
       items: records.map((record) => this.present(record, true)),
     };
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, returnQueueResult, 30);
+    }
+    return returnQueueResult;
   }
 
   async listForOversight(role: UserRole) {

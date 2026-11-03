@@ -507,11 +507,11 @@ export class AuthService {
     });
 
     // Nếu người dùng chưa tồn tại -> Tự động khởi tạo tài khoản mới (Mặc định: CUSTOMER)
+    // Rule bất biến: Shop Manager là nhân sự nội bộ chỉ do SYSTEM_ADMIN bổ nhiệm tại /admin/personnel.
+    // Người dùng đăng ký ngoài hoặc qua Google mặc định 100% là CUSTOMER.
     if (!user) {
-      const requestedShopRole = dto.role === 'SHOP_MANAGER';
-      const desiredRole = requestedShopRole
-        ? UserRole.SHOP_MANAGER
-        : dto.role === 'COLLABORATOR'
+      const desiredRole =
+        dto.role === 'COLLABORATOR'
           ? UserRole.COLLABORATOR
           : UserRole.CUSTOMER;
 
@@ -560,37 +560,7 @@ export class AuthService {
             availableBalance: 0,
             pendingBalance: 0,
           },
-        });
-      } else if (requestedShopRole) {
-        // Nếu là Shop: Tạo store mặc định
-        const storeName =
-          dto.storeName?.trim() || `${createdUser.fullName} Store`;
-        const slug =
-          storeName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '') +
-          '-' +
-          Date.now().toString().slice(-4);
-
-        const logoUrl =
-          payload.picture ||
-          'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80';
-
-        await this.prisma.store.create({
-          data: {
-            ownerId: createdUser.id,
-            name: storeName,
-            slug,
-            logoUrl,
-            defaultCommissionRate: 10.0,
-            attributionWindowDays: 30,
-            isActive: false,
-            isVerified: false,
-            onboardingStatus: 'DRAFT',
-          },
-        });
-      }
+        });      }
 
       // Nếu là Customer: Khởi tạo địa chỉ mặc định
       if (desiredRole === UserRole.CUSTOMER) {

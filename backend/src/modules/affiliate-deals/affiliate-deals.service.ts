@@ -264,7 +264,7 @@ export class AffiliateDealsService {
         productId: proposal.productId,
       })),
     );
-    return proposals.map((proposal) => ({
+    const result = proposals.map((proposal) => ({
       ...proposal,
       vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
@@ -286,9 +286,14 @@ export class AffiliateDealsService {
                 .approvedCommissionRate,
             ),
     }));
+    return result;
   }
 
   async getShopProposals(userId: string, role: UserRole) {
+    const cacheKey = `deals:shop:${userId}:${role}`;
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const proposals = await this.prisma.exclusiveDealProposal.findMany({
       where: {
         store: this.isSystemReviewer(role)
@@ -337,7 +342,7 @@ export class AffiliateDealsService {
         productId: proposal.productId,
       })),
     );
-    return proposals.map((proposal) => ({
+    const shopProposalsResult = proposals.map((proposal) => ({
       ...proposal,
       vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
@@ -357,6 +362,10 @@ export class AffiliateDealsService {
               ).approvedCommissionRate,
             ),
     }));
+    if (this.cache?.set) {
+      await this.cache.set(cacheKey, shopProposalsResult, 30);
+    }
+    return shopProposalsResult;
   }
 
   async getShopActivePartners(userId: string, role: UserRole) {

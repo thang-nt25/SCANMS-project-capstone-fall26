@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Handshake,
-  Megaphone,
   Tag,
   ShoppingBag,
   FileText,
@@ -37,7 +36,6 @@ import { useConversationDraft } from '@/hooks/useConversationDraft';
 import { getChatSocket } from '../../services/chat-socket.service';
 import api from '../../services/api';
 import type { ChatMessage, Conversation } from '@/types/chat.types';
-import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { PartnerRemunerationSummary } from '../../components/chat/PartnerRemunerationSummary';
@@ -1451,7 +1449,6 @@ export default function ChatBoxPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
-  const [showVipModal, setShowVipModal] = useState(false);
   const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
   const [showExclusiveOffer, setShowExclusiveOffer] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
@@ -1986,7 +1983,6 @@ export default function ChatBoxPage({
 
   useEffect(() => {
     setShowExclusiveOffer(false);
-    setShowVipModal(false);
   }, [activeConvId]);
 
   useEffect(() => {
@@ -2009,11 +2005,6 @@ export default function ChatBoxPage({
     }
   }, [showCustomerToolsMenu]);
 
-  const openVipInvite = () => {
-    if (isCollaboratorChat) {
-      setShowExclusiveOffer(true);
-    }
-  };
 
   const sendCouponVoucher = async (coupon: any) => {
     let targetConvId = activeConvId;
@@ -2195,17 +2186,6 @@ export default function ChatBoxPage({
         <Handshake className="w-3.5 h-3.5 text-[#C59B58]" />
         <span className="hidden sm:inline">Đề xuất Thỏa thuận Độc quyền</span>
         <span className="sm:hidden">Thỏa thuận</span>
-      </button>
-
-      <button
-        id="btn-open-campaign-invite"
-        type="button"
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] transition hover:border-[#C59B58] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-2xs"
-        onClick={openVipInvite}
-        title="Mời đối tác tham gia chiến dịch kích cầu sự kiện"
-      >
-        <Megaphone className="w-3.5 h-3.5 text-[#B88E4F]" />
-        <span className="hidden sm:inline">Mời vào Chiến dịch</span>
       </button>
     </div>
 
@@ -2962,15 +2942,6 @@ export default function ChatBoxPage({
                       >
                         <Handshake className="w-5 h-5 stroke-[1.75]" />
                       </button>
-                      <button
-                        type="button"
-                        id="btn-composer-campaign-invite"
-                        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 active:scale-[0.96]"
-                        title="Mời đối tác vào Chiến dịch Kích cầu Sự kiện"
-                        onClick={openVipInvite}
-                      >
-                        <Megaphone className="w-5 h-5 stroke-[1.75]" />
-                      </button>
                     </>
                   ) : isCustomerChat ? (
                     <>
@@ -3091,23 +3062,7 @@ export default function ChatBoxPage({
         />
       )}
 
-      {showVipModal && isShop && isCollaboratorChat && (
-        <SendVipCampaignModal
-          conversationId={activeConv?.collaboratorId && !activeConv.customerId ? activeConv.id : undefined}
-          collaboratorName={activeConv?.collaboratorId && !activeConv.customerId ? getOtherParty(activeConv) : undefined}
-          onClose={() => setShowVipModal(false)}
-          onSuccess={newMsg => {
-            if (newMsg?.conversationId === activeConvId) {
-              setMessages(prev => {
-                if (prev.some(m => m.id === newMsg.id)) return prev;
-                return [...prev, newMsg];
-              });
-              setTimeout(() => scrollToBottom(true), 100);
-            }
-            showSuccessToast('Đã gửi Thẻ Mời chiến dịch kích cầu tới đối tác thành công!');
-          }}
-        />
-      )}
+      
 
       {showExclusiveDealModal && activeConv && (
         <CreateExclusiveDealModal

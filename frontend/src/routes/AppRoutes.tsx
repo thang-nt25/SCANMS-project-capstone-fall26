@@ -39,12 +39,9 @@ const CartPage = lazyRetry(() => import('../pages/public/CartPage'));
 
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
-const ShopCampaignsPage = lazyRetry(() => import('../pages/merchant/ShopCampaignsPage'));
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
-const PayoutApprovalPage = lazyRetry(() => import('../pages/merchant/PayoutApprovalPage'));
-const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopRevenueWalletPage'));
 
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
@@ -57,7 +54,6 @@ const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPa
 
 // Consolidated Hub Pages (Tối ưu trải nghiệm gộp Menu)
 const ShopCollaborationPage = lazy(() => import('../pages/collaborator/ShopCollaborationPage'));
-const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingToolkitPage'));
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
@@ -196,15 +192,15 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="shop" />}>
             <Route element={<RouteContent />}>
               <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
-              <Route path="merchant/pricing" element={<ProductPricingPage />} />
+              <Route path="merchant/pricing" element={<Navigate to="/merchant/promotions?tab=price-promotions" replace />} />
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
-              <Route path="merchant/payouts" element={<PayoutApprovalPage />} />
-              <Route path="merchant/campaigns-manage" element={<ShopCampaignsPage />} />
-              <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
-              <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
-              <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
+              <Route path="merchant/payouts" element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="merchant/campaigns-manage" element={<Navigate to="/merchant/promotions" replace />} />
+              <Route path="merchant/wallet" element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="shop/wallet" element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/dashboard" replace />} />
               <Route path="merchant/settings" element={<ShopSettingsPage />} />
               <Route path="merchant/kyc-approval" element={<KycApprovalPage />} />
 
@@ -229,7 +225,7 @@ function AppRoutes() {
               <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
-              <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions?tab=campaigns" replace />} />
+              <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions" replace />} />
               <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -264,7 +260,7 @@ function AppRoutes() {
               <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
-              <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
+              <Route path="collaborator/campaigns" element={<Navigate to="/marketplace" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />

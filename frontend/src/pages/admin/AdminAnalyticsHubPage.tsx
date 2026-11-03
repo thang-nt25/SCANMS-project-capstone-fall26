@@ -1,16 +1,17 @@
-import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, Trophy } from 'lucide-react';
 import type { HubTabItem } from '../../components/common/HubTabs';
+import { useControlledTab } from '../../hooks/useControlledTab';
 import RealtimeAnalyticsPage from '../dashboard/RealtimeAnalyticsPage';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 
-export default function AdminAnalyticsHubPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'realtime';
+const ADMIN_ANALYTICS_TABS = ['realtime', 'leaderboard'] as const;
+type AdminAnalyticsTab = (typeof ADMIN_ANALYTICS_TABS)[number];
 
-  const handleTabChange = (tabId: string) => {
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
+export default function AdminAnalyticsHubPage() {
+  const { activeTab, setActiveTab } = useControlledTab<AdminAnalyticsTab>({
+    defaultTab: 'realtime',
+    validTabs: ADMIN_ANALYTICS_TABS,
+  });
 
   const tabs: HubTabItem[] = [
     {
@@ -33,12 +34,11 @@ export default function AdminAnalyticsHubPage() {
         return (
           <button
             key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              isActive
+            onClick={() => setActiveTab(tab.id as AdminAnalyticsTab)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${isActive
                 ? 'bg-[#C59B58] text-[#231D15] font-bold shadow-xs'
                 : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#EAE4D7]'
-            }`}
+              }`}
           >
             <Icon className="w-3.5 h-3.5" />
             <span>{tab.label}</span>
