@@ -12,12 +12,12 @@ describe('Sandbox order delivery reconciliation', () => {
       findMany: jest.fn().mockResolvedValue([{ id: 'order', rawPayload: snapshot }]),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     } };
-    expect(await syncCustomerGhnSimulations(prisma, { customerId: 'customer' }, start + 239999)).toBe(0);
+    expect(await syncCustomerGhnSimulations(prisma, { customerId: 'customer' }, start + 119999)).toBe(0);
     expect(prisma.order.updateMany).not.toHaveBeenCalled();
-    expect(await syncCustomerGhnSimulations(prisma, { customerId: 'customer' }, start + 240000)).toBe(1);
+    expect(await syncCustomerGhnSimulations(prisma, { customerId: 'customer' }, start + 120000)).toBe(1);
     expect(prisma.order.updateMany).toHaveBeenCalledWith({
       where: { id: 'order', status: 'SHIPPING', rawPayload: { equals: snapshot } },
-      data: { status: 'DELIVERED', deliveredAt: new Date(start + 240000) },
+      data: { status: 'DELIVERED', deliveredAt: new Date(start + 120000) },
     });
     prisma.order.updateMany.mockResolvedValue({ count: 0 });
     expect(await syncCustomerGhnSimulations(prisma, {}, start + 300000)).toBe(0);

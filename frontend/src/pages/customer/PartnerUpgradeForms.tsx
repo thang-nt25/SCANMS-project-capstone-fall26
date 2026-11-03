@@ -17,7 +17,6 @@ import {
   Clock,
   ArrowRight,
   ChevronLeft,
-  User,
   Check,
   ShieldCheck,
   Coins,
@@ -364,7 +363,7 @@ export function KolUpgradeForm({
   return (
     <form
       id="partner-upgrade-form"
-      className="w-full text-[#1A1612] space-y-6"
+      className="w-full text-[#1A1612] space-y-4"
       autoComplete="off"
       onSubmit={onSubmit}
     >
@@ -381,33 +380,31 @@ export function KolUpgradeForm({
       {/* ============================================================ */}
       {/* THANH HEADER ĐIỀU HƯỚNG TỔNG THỂ UNIFIED (TITLE + STEPPER)  */}
       {/* ============================================================ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EAE4D7]">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] m-0">
-            Đăng ký Đối tác Tiếp thị
-          </h1>
+      <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
+        <div className="flex items-center gap-2.5 pb-3 mb-3 border-b border-[#EAE4D7]">
           <ApplicationBadge status={status} />
         </div>
 
         {/* Thanh Stepper điều hướng 2 bước đặt gọn gàng, tinh tế bên phải */}
-        <div className="flex items-center gap-2 sm:gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] shadow-2xs self-start sm:self-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="group" aria-label="Các bước đăng ký đối tác">
           <button
             type="button"
             onClick={() => setCurrentStep(1)}
-            className={`flex items-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+            aria-pressed={currentStep === 1}
+            className={`flex min-h-12 items-center justify-center gap-2.5 rounded-xl border px-3 py-2 text-sm font-medium transition cursor-pointer ${
               currentStep === 1
-                ? 'text-[#B88E4F]'
+                ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#79592C]'
                 : step1Complete
-                  ? 'text-[#059669]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
+                  ? 'border-[#EAE4D7] bg-white text-[#1A1612]'
+                  : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'
             }`}
           >
             <span
-              className={`flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold transition ${
+              className={`flex shrink-0 items-center justify-center w-7 h-7 rounded-full border text-xs font-medium transition ${
                 currentStep === 1
-                  ? 'bg-[#C59B58] text-white shadow-2xs'
+                  ? 'border-[#C59B58] bg-[#FBF5EB] text-[#79592C]'
                   : step1Complete
-                    ? 'bg-[#059669] text-white'
+                    ? 'border-[#EEDFC6] bg-white text-[#B88E4F]'
                     : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
               }`}
             >
@@ -417,7 +414,7 @@ export function KolUpgradeForm({
           </button>
 
           <div
-            className={`h-[2px] w-8 sm:w-12 rounded-full transition-colors ${
+            className={`hidden ${
               currentStep === 2 || step1Complete ? 'bg-[#C59B58]' : 'bg-[#EAE4D7]'
             }`}
           />
@@ -428,20 +425,21 @@ export function KolUpgradeForm({
               if (step1Complete) setCurrentStep(2);
               else handleNextStep();
             }}
-            className={`flex items-center gap-1.5 text-xs font-bold transition cursor-pointer ${
+            aria-pressed={currentStep === 2}
+            className={`flex min-h-12 items-center justify-center gap-2.5 rounded-xl border px-3 py-2 text-sm font-medium transition cursor-pointer ${
               currentStep === 2
-                ? 'text-[#B88E4F]'
+                ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#79592C]'
                 : step2Ready
-                  ? 'text-[#059669]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
+                  ? 'border-[#EAE4D7] bg-white text-[#1A1612]'
+                  : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'
             }`}
           >
             <span
-              className={`flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-bold transition ${
+              className={`flex shrink-0 items-center justify-center w-7 h-7 rounded-full border text-xs font-medium transition ${
                 currentStep === 2
-                  ? 'bg-[#C59B58] text-white shadow-2xs'
+                  ? 'border-[#C59B58] bg-[#FBF5EB] text-[#79592C]'
                   : step2Ready
-                    ? 'bg-[#059669] text-white'
+                    ? 'border-[#EEDFC6] bg-white text-[#B88E4F]'
                     : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
               }`}
             >
@@ -455,36 +453,23 @@ export function KolUpgradeForm({
       {/* ============================================================ */}
       {/* BỐ CỤC 2 CỘT: CỘT CHÍNH (TRÁI) & SIDEBAR TỔNG QUAN (PHẢI)    */}
       {/* ============================================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
         {/* ========================================================== */}
         {/* CỘT CHÍNH (8 / 12 COLS): FORM NHẬP LIỆU GỌN GÀNG, KHÔNG THỪA*/}
         {/* ========================================================== */}
-        <div className="lg:col-span-8 flex flex-col justify-between">
+        <div className="min-w-0 xl:col-span-8 flex flex-col">
           {/* -------------------------------------------------------- */}
           {/* BƯỚC 1: HỒ SƠ SÁNG TẠO                                   */}
           {/* -------------------------------------------------------- */}
           {currentStep === 1 && (
-            <div className="h-full flex flex-col justify-between p-5 sm:p-6 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
-              <div className="space-y-4">
-                {/* Header Card Bước 1 */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
-                  <div className="flex items-center gap-2.5">
-                    <Globe size={18} className="text-[#B88E4F]" />
-                    <h2 className="text-sm sm:text-base font-bold text-[#1A1612] m-0">
-                      Thông tin kênh & lĩnh vực
-                    </h2>
-                  </div>
-                  <span className="text-[11px] font-bold text-[#7D715E] bg-[#FAF8F5] px-2.5 py-0.5 rounded-full border border-[#EAE4D7]">
-                    Bước 1/2
-                  </span>
-                </div>
-
+            <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
+              <div className="space-y-3.5">
               {/* 1. Nền tảng chính đại diện */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[#1A1612]">
                   Nền tảng chính đại diện <span className="text-[#B88E4F]">*</span>
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                   {['TIKTOK', 'YOUTUBE', 'INSTAGRAM', 'FACEBOOK', 'OTHER'].map((platformKey) => {
                     const cfg = PLATFORM_CONFIG[platformKey] || { label: platformKey, icon: Globe };
                     const IconComp = cfg.icon;
@@ -494,7 +479,7 @@ export function KolUpgradeForm({
                         key={platformKey}
                         type="button"
                         onClick={() => updatePrimary({ platform: platformKey as any })}
-                        className={`flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                        className={`flex min-w-0 items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-medium transition cursor-pointer border ${
                           isSelected
                             ? 'bg-[#FBF5EB] text-[#B88E4F] border-[#C59B58] shadow-xs'
                             : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:border-[#C59B58] hover:text-[#1A1612]'
@@ -538,7 +523,7 @@ export function KolUpgradeForm({
               </div>
 
               {/* 3. Ghép Đường dẫn URL (Trái) & Ảnh minh chứng (Phải) vào cùng 1 hàng để không bị rộng loãng */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                 <div className="space-y-2">
                   <TextField
                     label="Đường dẫn kênh (URL)"
@@ -549,60 +534,13 @@ export function KolUpgradeForm({
                     placeholder="https://tiktok.com/@thaonhi.skincare"
                   />
 
-                  {/* Kênh mạng xã hội bổ sung dạng chip nhỏ gọn, không làm dài form */}
-                  <div className="pt-1 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-[#7D715E]">
-                        Kênh bổ sung ({secondaryChannels.length})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddChannel(true)}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#8F682E] transition cursor-pointer"
-                      >
-                        <Plus size={12} /> Thêm kênh
-                      </button>
-                    </div>
 
-                    {/* Danh sách chip các kênh phụ */}
-                    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-                      {secondaryChannels.length === 0 ? (
-                        <span className="text-[11px] text-[#A39783] italic">
-                          Chưa có kênh phụ
-                        </span>
-                      ) : (
-                        secondaryChannels.map((sec, secIdx) => {
-                          const cfg = PLATFORM_CONFIG[sec.platform] || { label: sec.platform, icon: Globe };
-                          const IconComp = cfg.icon;
-                          return (
-                            <span
-                              key={secIdx}
-                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-medium text-[#1A1612]"
-                            >
-                              <IconComp className="w-3 h-3 text-[#B88E4F]" />
-                              <span>{sec.channelName}</span>
-                              <span className="text-[10px] text-[#7D715E]">
-                                ({Number(sec.followerCount).toLocaleString('vi-VN')})
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeSecondaryChannel(secIdx)}
-                                className="text-[#DC2626] hover:text-[#B91C1C] cursor-pointer ml-0.5"
-                                title="Xóa kênh"
-                              >
-                                <X size={11} />
-                              </button>
-                            </span>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Dropzone Ảnh quản trị đặt bên phải để lấp đầy tự nhiên */}
                 <ImageUploadDropzone
-                  variant="document"
+                  variant="compact"
+                  className="min-w-0 space-y-1.5 [&>div:not(:first-child)]:h-10 [&>div:not(:first-child)]:min-h-10 [&>div:not(:first-child)]:py-0 [&>div:first-child]:min-h-[16px] [&>div:first-child>label]:font-semibold [&>div:first-child>span]:hidden"
                   label="Ảnh chụp trang quản trị kênh"
                   value={primaryChannel.channelProofUrl}
                   onChange={(value) => updatePrimary({ channelProofUrl: value })}
@@ -610,6 +548,52 @@ export function KolUpgradeForm({
                   folder="scanms/kyc/proofs"
                   required
                 />
+              </div>
+
+              {/* Kênh mạng xã hội bổ sung dạng chip nhỏ gọn, không làm dài form */}
+              <div className={`rounded-xl border border-[#EAE4D7] bg-white px-3 ${secondaryChannels.length ? 'space-y-2 py-2.5' : 'flex h-10 items-center'}`}>
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[#7D715E]">
+                    Kênh bổ sung ({secondaryChannels.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddChannel(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B88E4F] hover:text-[#8F682E] transition cursor-pointer"
+                  >
+                    <Plus size={12} /> Thêm kênh
+                  </button>
+                </div>
+
+                {/* Danh sách chip các kênh phụ */}
+                {secondaryChannels.length > 0 && <div className="flex flex-wrap gap-1.5">
+                  {(
+                    secondaryChannels.map((sec, secIdx) => {
+                      const cfg = PLATFORM_CONFIG[sec.platform] || { label: sec.platform, icon: Globe };
+                      const IconComp = cfg.icon;
+                      return (
+                        <span
+                          key={secIdx}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-medium text-[#1A1612]"
+                        >
+                          <IconComp className="w-3 h-3 text-[#B88E4F]" />
+                          <span>{sec.channelName}</span>
+                          <span className="text-[10px] text-[#7D715E]">
+                            ({Number(sec.followerCount).toLocaleString('vi-VN')})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeSecondaryChannel(secIdx)}
+                            className="text-[#DC2626] hover:text-[#B91C1C] cursor-pointer ml-0.5"
+                            title="Xóa kênh"
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>}
               </div>
 
               {/* 4. Ngành hàng thế mạnh */}
@@ -654,9 +638,9 @@ export function KolUpgradeForm({
                 </div>
                 <textarea
                   id="kol-bio"
-                  rows={5}
+                  rows={3}
                   maxLength={500}
-                  className="w-full min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#A39783] focus:border-[#C59B58] focus:shadow-[0_0_0_3px_#FBF5EB] resize-y min-h-[135px] leading-relaxed"
+                  className="w-full min-w-0 p-3 border border-[#EAE4D7] rounded-xl bg-white text-xs text-[#1A1612] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#A39783] focus:border-[#C59B58] focus:shadow-[0_0_0_3px_#FBF5EB] resize-y min-h-[100px] leading-relaxed"
                   value={form.bio || ''}
                   onChange={(event) => patch('bio', event.target.value)}
                   placeholder="Mô tả phong cách sáng tạo, thế mạnh nội dung và tệp khán giả mục tiêu..."
@@ -689,7 +673,7 @@ export function KolUpgradeForm({
           {/* BƯỚC 2: ĐỊNH DANH eKYC & THANH TOÁN                      */}
           {/* -------------------------------------------------------- */}
           {currentStep === 2 && (
-            <div className="h-full flex flex-col justify-between p-5 sm:p-6 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs">
+            <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
               <div className="space-y-4">
                 {/* Header Card Bước 2 */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
@@ -893,252 +877,67 @@ export function KolUpgradeForm({
         {/* ========================================================== */}
         {/* CỘT PHẢI (4 / 12 COLS): HỒ SƠ & QUYỀN LỢI ĐỐI TÁC CÓ ĐIỂM NHẤN*/}
         {/* ========================================================== */}
-        <aside className="lg:col-span-4 flex flex-col justify-between gap-4">
-          {/* Card 1: Hồ sơ của bạn */}
-          <div className="shrink-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                  <User size={13} />
-                </div>
-                <h3 className="text-xs font-bold text-[#1A1612] m-0 uppercase tracking-wider">
-                  Hồ sơ của bạn
-                </h3>
-              </div>
-              <div className="text-[11px]">
-                {currentStep === 1 ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-[#FAF8F5] border border-[#EAE4D7] text-[#8F682E]">
-                    <Clock size={11} /> Đang hoàn thiện
-                  </span>
-                ) : step2Ready ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-[#FBF5EB] border border-[#EEDFC6] text-[#059669]">
-                    <CheckCircle2 size={11} /> Sẵn sàng nộp
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
-                    <Clock size={11} /> Định danh eKYC
-                  </span>
-                )}
-              </div>
+        <aside className="min-w-0 xl:col-span-4 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-base font-semibold text-[#B88E4F]">
+              <span>{currentUser?.fullName?.[0] || 'K'}</span>
+              {currentUser?.avatarUrl && <img src={currentUser.avatarUrl} alt="" className="absolute inset-0 h-full w-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}
             </div>
-
-            {/* Avatar & Tên */}
-            <div className="flex items-center gap-3">
-              <div className="relative shrink-0">
-                {currentUser?.avatarUrl ? (
-                  <img
-                    src={currentUser.avatarUrl}
-                    alt={currentUser.fullName || 'User'}
-                    className="w-10 h-10 rounded-full object-cover border border-[#EEDFC6]"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] font-bold text-sm">
-                    {currentUser?.fullName?.[0] || 'K'}
-                  </div>
-                )}
-
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-[#1A1612] m-0 truncate">
-                  {currentUser?.fullName || 'Nhà Sáng Tạo'}
-                </h4>
-                <p className="text-[11px] text-[#7D715E] m-0 truncate">{currentUser?.email || ''}</p>
-              </div>
-            </div>
-
-            {/* Checklist tiến độ */}
-            <div className="space-y-1.5 pt-1.5 border-t border-[#EAE4D7]">
-              {currentStep === 1 ? (
-                <>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                        hasChannel
-                          ? 'bg-[#059669] text-white'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
-                      }`}
-                    >
-                      {hasChannel ? <Check size={10} /> : '1'}
-                    </span>
-                    <span className={hasChannel ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}>
-                      Kênh truyền thông
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                        hasCategory
-                          ? 'bg-[#059669] text-white'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
-                      }`}
-                    >
-                      {hasCategory ? <Check size={10} /> : '2'}
-                    </span>
-                    <span className={hasCategory ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}>
-                      Lĩnh vực hợp tác
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                        hasBio
-                          ? 'bg-[#059669] text-white'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
-                      }`}
-                    >
-                      {hasBio ? <Check size={10} /> : '3'}
-                    </span>
-                    <span className={hasBio ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}>
-                      Giới thiệu bản thân
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="flex items-center justify-center w-4 h-4 rounded-full bg-[#059669] text-white text-[10px] font-bold shrink-0">
-                      <Check size={10} />
-                    </span>
-                    <span className="font-semibold text-[#1A1612]">
-                      Hồ sơ sáng tạo (Đã xong)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                        hasIdCard && hasPhotos
-                          ? 'bg-[#059669] text-white'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
-                      }`}
-                    >
-                      {hasIdCard && hasPhotos ? <Check size={10} /> : '2'}
-                    </span>
-                    <span
-                      className={
-                        hasIdCard && hasPhotos
-                          ? 'font-semibold text-[#1A1612]'
-                          : 'text-[#7D715E]'
-                      }
-                    >
-                      Căn cước công dân gắn chip 2 mặt
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <span
-                      className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0 ${
-                        hasBank
-                          ? 'bg-[#059669] text-white'
-                          : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]'
-                      }`}
-                    >
-                      {hasBank ? <Check size={10} /> : '3'}
-                    </span>
-                    <span className={hasBank ? 'font-semibold text-[#1A1612]' : 'text-[#7D715E]'}>
-                      Tài khoản ngân hàng (Tùy chọn)
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Card 2: ĐẶC QUYỀN ĐỐI TÁC TIẾP THỊ CÓ ĐIỂM NHẤN MÀU SẮC & THẺ VIP (KHÓA CHIỀU CAO ĐỐI XỨNG 1:1) */}
-          <div className="flex-1 flex flex-col justify-between rounded-2xl border border-[#EEDFC6] bg-gradient-to-b from-[#FBF5EB]/80 via-white to-[#FAF8F5] p-4 sm:p-5 shadow-xs">
-            <div className="flex-1 flex flex-col justify-between">
-              {/* Header Đặc Quyền */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#EEDFC6]">
-                <div className="flex items-center gap-2">
-                  <Award size={16} className="text-[#B88E4F]" />
-                  <h3 className="text-xs font-bold text-[#1A1612] m-0 uppercase tracking-wider">
-                    Đặc quyền đối tác
-                  </h3>
-                </div>
-                <span className="text-[10px] font-black text-white bg-gradient-to-r from-[#C59B58] to-[#B88E4F] px-2 py-0.5 rounded-md shadow-2xs">
-                  Khởi điểm: Đồng 10%
-                </span>
-              </div>
-
-              {/* 4 Khối Đặc Quyền Nổi Bật (Tự động kéo dãn đều theo chiều cao) */}
-              <div className="flex-1 flex flex-col justify-between gap-2.5 py-3">
-                {/* Đặc quyền 1: Hoa hồng */}
-                <div className="p-2.5 rounded-xl border border-[#EEDFC6] bg-white shadow-2xs hover:border-[#C59B58] transition">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
-                      <Coins size={14} className="text-[#B88E4F]" />
-                      <span>Hoa hồng cơ sở</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#C59B58] text-white">
-                      10% → 13%
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed">
-                    Tự động thăng hạng Bạc (11%), Vàng (12%), Kim Cương (13%) theo doanh số sạch.
-                  </p>
-                </div>
-
-                {/* Đặc quyền 2: Hàng mẫu 0đ */}
-                <div className="p-2.5 rounded-xl border border-[#EEDFC6] bg-white shadow-2xs hover:border-[#C59B58] transition">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
-                      <PackageCheck size={14} className="text-[#B88E4F]" />
-                      <span>Tài trợ hàng mẫu</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#231D15] text-[#FAF8F5]">
-                      0₫ Miễn phí
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed">
-                    Mượn sản phẩm thực tế từ 4 nhãn hàng trực thuộc công ty phục vụ video review.
-                  </p>
-                </div>
-
-                {/* Đặc quyền 3: Quyết toán Napas 24/7 */}
-                <div className="p-2.5 rounded-xl border border-[#EEDFC6] bg-white shadow-2xs hover:border-[#C59B58] transition">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
-                      <CreditCard size={14} className="text-[#B88E4F]" />
-                      <span>Rút tiền Napas 24/7</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
-                      14 ngày đối soát
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed">
-                    Quyết toán tự động chuyển số dư khả dụng sau 14 ngày bảo chứng đơn hàng.
-                  </p>
-                </div>
-
-                {/* Đặc quyền 4: Coupon định danh & Media Hub */}
-                <div className="p-2.5 rounded-xl border border-[#EEDFC6] bg-white shadow-2xs hover:border-[#C59B58] transition">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1612]">
-                      <Award size={14} className="text-[#B88E4F]" />
-                      <span>Coupon định danh</span>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#C59B58]/15 text-[#8F682E] border border-[#EEDFC6]">
-                      Mã độc quyền
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] m-0 leading-relaxed">
-                    Sở hữu mã giảm giá riêng (như THAONHI16) và quyền tải ảnh, video HD từ Media Hub.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Footnote Cam kết pháp lý */}
-            <div className="pt-2.5 mt-2 border-t border-[#EEDFC6] shrink-0">
-              <span className="text-[11px] text-[#7D715E] flex items-center gap-1.5 leading-relaxed">
-                <ShieldCheck size={13} className="text-[#B88E4F] shrink-0" />
-                <span>Bảo mật dữ liệu và khấu trừ 10% thuế TNCN tại nguồn theo quy định.</span>
+            <div className="min-w-0 flex-1">
+              <p className="m-0 truncate text-sm font-semibold text-[#1A1612]">{currentUser?.fullName || 'Nhà sáng tạo'}</p>
+              <p className="m-0 break-all text-xs leading-5 text-[#7D715E]">{currentUser?.email || ''}</p>
+              <span className="mt-1 inline-flex items-center gap-1 text-xs text-[#8F682E]">
+                {currentStep === 2 && step2Ready ? <CheckCircle2 size={12} className="text-[#059669]" /> : <Clock size={12} />}
+                {currentStep === 1 ? 'Đang hoàn thiện' : step2Ready ? 'Sẵn sàng nộp' : 'Đang định danh'}
               </span>
             </div>
           </div>
+
+          <div className="mt-4 border-t border-[#EAE4D7] pt-3">
+            <p className="mb-2 text-xs font-medium text-[#7D715E]">Tiến độ hồ sơ</p>
+            <ul className="m-0 list-none space-y-2 p-0">
+              {(currentStep === 1 ? [
+                { label: 'Kênh truyền thông', done: hasChannel && hasProof },
+                { label: 'Lĩnh vực hợp tác', done: hasCategory },
+                { label: 'Giới thiệu bản thân', done: hasBio },
+              ] : [
+                { label: 'Hồ sơ sáng tạo', done: step1Complete },
+                { label: 'Định danh CCCD', done: hasIdCard && hasPhotos },
+                { label: 'Ngân hàng (tùy chọn)', done: hasBank },
+              ]).map((item, index) => (
+                <li key={item.label} className="flex items-center gap-2 text-xs leading-5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[10px] text-[#7D715E]">
+                    {item.done ? <Check size={12} className="text-[#059669]" /> : index + 1}
+                  </span>
+                  <span className={item.done ? 'text-[#1A1612]' : 'text-[#7D715E]'}>{item.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <details className="group mt-4 border-t border-[#EAE4D7] pt-3">
+            <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 text-sm font-medium text-[#1A1612] [&::-webkit-details-marker]:hidden">
+              <Award size={16} className="shrink-0 text-[#B88E4F]" />
+              Quyền lợi đối tác
+              <span aria-hidden="true" className="ml-auto text-[#7D715E] transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <ul className="mb-0 mt-3 list-none space-y-3 p-0">
+              {[
+                { icon: Coins, title: 'Hoa hồng theo cấp bậc', description: 'Đồng 10% · Bạc 11% · Vàng 12% · Kim Cương 13%.' },
+                { icon: PackageCheck, title: 'Nhận mẫu trải nghiệm', description: 'Đăng ký mẫu và làm review theo chính sách từng gian hàng.' },
+                { icon: CreditCard, title: 'Rút thu nhập', description: 'Gửi yêu cầu rút từ số dư khả dụng về ngân hàng đã xác thực.' },
+                { icon: Award, title: 'Mã ưu đãi riêng', description: 'Hợp tác với shop để nhận coupon dành cho kênh của bạn.' },
+              ].map(({ icon: Icon, title, description }) => (
+                <li key={title} className="flex items-start gap-2">
+                  <Icon size={14} className="mt-0.5 shrink-0 text-[#B88E4F]" />
+                  <div>
+                    <p className="m-0 text-xs font-medium leading-5 text-[#1A1612]">{title}</p>
+                    <p className="m-0 text-xs leading-5 text-[#7D715E]">{description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </details>
         </aside>
       </div>
 

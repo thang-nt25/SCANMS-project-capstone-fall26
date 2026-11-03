@@ -72,8 +72,8 @@ export function PayoutApprovalDialog({ item, gatewayEnabled, sandbox = false, bu
       {method === 'bank' ? (
         <section className="space-y-3" aria-label="Chi trả qua API ngân hàng">
           {gatewayEnabled && sandbox && <div className="payout-connection-status" role="status">
-            <strong>BIDV Sandbox · Chi trả thử nghiệm</strong>
-            <p>Duyệt đúng yêu cầu và số tiền ở trên. Khi thành công, lịch sử rút tiền và bảng kê của KOL được cập nhật trong SCANMS. Không chuyển tiền ngoài đời.</p>
+            <strong>BIDV Sandbox</strong>
+            <p>Khi thành công, lịch sử rút tiền và bảng kê của KOL được cập nhật trong SCANMS. Không chuyển tiền ngoài đời.</p>
           </div>}
           {!gatewayEnabled && <div role="status" className="payout-connection-status">
             <strong>Chưa thể chuyển tiền qua API</strong>

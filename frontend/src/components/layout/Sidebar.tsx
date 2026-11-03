@@ -23,6 +23,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
 
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState('');
   const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -349,16 +350,12 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
           >
             {uploading ? (
               <Loader2 className="w-4 h-4 text-[#B88E4F] animate-spin" />
-            ) : currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')) ? (
+            ) : (currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'))) && failedAvatar !== `${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}` ? (
               <img
                 src={currentUser?.avatarUrl || (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')}
-                alt="Avatar"
+                alt={`Ảnh đại diện ${currentUser?.fullName || 'tài khoản'}`}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  if (role === 'SHOP_MANAGER') {
-                    e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
-                  }
-                }}
+                onError={() => setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`)}
               />
             ) : (
               <span>

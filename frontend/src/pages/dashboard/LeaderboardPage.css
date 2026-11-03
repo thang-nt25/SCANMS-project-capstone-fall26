@@ -13,11 +13,11 @@
 .leaderboard-filter-row { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply items-center; @apply [gap:18px]; @apply [margin-top:0]; }
 .leaderboard-filter-row [role=group] { @apply [gap:10px]; @apply [padding:0]; @apply [border:0]; @apply [border-radius:0]; @apply [background:#FFFFFF]; }
 .leaderboard-filter-row [role=group] > button { @apply [height:44px]; @apply [min-height:44px]; @apply [padding:8px_10px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; @apply [font-size:11px]; @apply [font-weight:500]; box-shadow: none; }
-.leaderboard-filter-step { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:24px]; @apply [height:24px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-size:10px]; @apply [font-weight:400]; }
-.leaderboard-filter-row button[aria-pressed=true] .leaderboard-filter-step { @apply [border-color:#c59b58]; @apply [color:#9a7135]; }
 .leaderboard-filter-row [role=group] > button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-weight:600]; }
 .leaderboard-filter-row label { @apply [font-size:11px]; }
-.leaderboard-filter-row select { @apply [width:150px]; @apply [height:38px]; @apply [min-height:38px]; @apply [font-size:12px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [background-image:none]; }
+.leaderboard-filter-row select { @apply [width:auto]; @apply [min-width:130px]; @apply [height:44px]; @apply [min-height:44px]; @apply [font-size:13px]; @apply [border-radius:10px]; @apply [background:#FFFFFF]; }
+.leaderboard-filter-row select.leaderboard-centered-select { @apply flex items-center justify-center w-full min-w-0 h-11 min-h-11 appearance-none px-7 py-0 text-center leading-normal bg-white bg-none; text-align-last: center; }
+.leaderboard-filter-row select.leaderboard-centered-select::picker-icon { display: none; }
 .leaderboard-controls > details { @apply [margin-top:12px]; @apply [font-size:11px]; }
 .leaderboard-controls > details > summary { @apply [width:fit-content]; @apply [font-size:11px]; }
 .leaderboard-controls > details > p { @apply [max-width:1000px]; @apply [margin-top:9px]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; @apply [font-size:11px]; @apply [line-height:20px]; }

@@ -331,11 +331,22 @@ describe('Flow 5 bank settlement invariants', () => {
 
   it('uses the selected 200,000 VND Vietcombank request without substituting the demo beneficiary', async () => {
     const sandbox = sandboxService();
-    Object.assign(state, { bankName: 'Vietcombank (Ngân hàng TMCP Ngoại Thương Việt Nam)', netAmount: new Prisma.Decimal(200000) });
+    Object.assign(state, { bankName: 'Vietcombank (Ngân hàng TMCP Ngoại Thương Việt Nam)', amount: new Prisma.Decimal(200000), taxAmount: new Prisma.Decimal(0), netAmount: new Prisma.Decimal(200000) });
     expect(sandbox.adapter.prepare(state).request).toMatchObject({ bankCode: '970436', amount: '200000', credit: '001234', beneficiaryName: 'TEST CREATOR' });
     const changed = sandbox.adapter.prepare(state);
     changed.request.credit = 'another-account';
     await expect(sandbox.adapter.execute(state, 'a', false, changed)).rejects.toThrow('Không khớp');
+    expect(sandbox.client.call).not.toHaveBeenCalled();
+  });
+
+  it('takes different beneficiaries from each selected payout and rejects inconsistent NET', () => {
+    const sandbox = sandboxService();
+    const first = sandbox.adapter.prepare(state);
+    const second = sandbox.adapter.prepare({ ...state, bankAccountNumber: '009876543210', bankAccountName: 'SECOND CREATOR', bankName: 'Vietcombank', amount: new Prisma.Decimal(2000000), taxAmount: new Prisma.Decimal(200000), netAmount: new Prisma.Decimal(1800000) });
+    expect(first.request).toMatchObject({ credit: '001234', beneficiaryName: 'TEST CREATOR', amount: '1864800' });
+    expect(second.request).toMatchObject({ credit: '009876543210', beneficiaryName: 'SECOND CREATOR', bankCode: '970436', amount: '1800000' });
+    expect(() => sandbox.adapter.prepare({ ...state, bankAccountNumber: '' })).toThrow();
+    expect(() => sandbox.adapter.prepare({ ...state, netAmount: new Prisma.Decimal(1) })).toThrow();
     expect(sandbox.client.call).not.toHaveBeenCalled();
   });
 

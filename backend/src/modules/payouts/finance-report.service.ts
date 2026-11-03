@@ -139,18 +139,23 @@ export class FinanceReportService {
     };
   }
 
-  async executive() {
+  async executive(yearMonth?: string) {
+    if (yearMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) throw new BadRequestException('Kỳ báo cáo phải có dạng YYYY-MM');
+    const [year, month] = (yearMonth ?? '').split('-').map(Number);
+    const period = yearMonth ? { gte: new Date(Date.UTC(year, month - 1, 1, -7)), lt: new Date(Date.UTC(year, month, 1, -7)) } : undefined;
+    const completedOrder = { status: 'COMPLETED' as const, ...(period ? { completedAt: period } : {}) };
+    const sandboxFilter: Prisma.PayoutRequestWhereInput = { OR: [{ transferProvider: 'BIDV_SANDBOX' }, { bankRefCode: { startsWith: 'SBX-' } }] };
     return this.prisma.$transaction(
       async (tx) => {
-        const [orders, commissions, bonuses, wallets, payouts, bonusClawbacks, unrecognizedCommissions] =
+        const [orders, commissions, bonuses, wallets, payouts, bonusClawbacks, unrecognizedCommissions, sandboxPayouts] =
           await Promise.all([
-            tx.order.findMany({ where: { status: 'COMPLETED' } }),
+            tx.order.findMany({ where: completedOrder }),
             tx.commission.aggregate({
-              where: { status: { not: 'REVERSED' }, order: { status: 'COMPLETED' } },
+              where: { status: { not: 'REVERSED' }, order: completedOrder },
               _sum: { commissionAmount: true },
             }),
             tx.monthlyBonusResult.aggregate({
-              where: { status: 'PAID' },
+              where: { status: 'PAID', ...(yearMonth ? { yearMonth } : {}) },
               _sum: { bonusAmount: true },
             }),
             tx.wallet.aggregate({
@@ -158,7 +163,10 @@ export class FinanceReportService {
               _sum: { pendingBalance: true, availableBalance: true },
             }),
             tx.payoutRequest.aggregate({
-              where: { status: 'APPROVED' },
+              where: { status: 'APPROVED', ...(period ? { processedAt: period } : {}), AND: [
+                { OR: [{ transferProvider: null }, { transferProvider: { not: 'BIDV_SANDBOX' } }] },
+                { OR: [{ bankRefCode: null }, { bankRefCode: { not: { startsWith: 'SBX-' } } }] },
+              ] },
               _sum: { amount: true, taxAmount: true, netAmount: true },
               _count: true,
             }),
@@ -166,13 +174,15 @@ export class FinanceReportService {
               where: {
                 status: 'APPLIED',
                 originalSettlement: { status: 'PAID' },
+                ...(yearMonth ? { targetYearMonth: yearMonth } : {}),
               },
               _sum: { adjustmentAmount: true },
             }),
             tx.commission.aggregate({
-              where: { status: { not: 'REVERSED' }, order: { status: { not: 'COMPLETED' } } },
+              where: { status: { not: 'REVERSED' }, order: { status: { not: 'COMPLETED' }, ...(period ? { createdAt: period } : {}) } },
               _sum: { commissionAmount: true },
             }),
+            tx.payoutRequest.aggregate({ where: { status: 'APPROVED', ...(period ? { processedAt: period } : {}), ...sandboxFilter }, _sum: { netAmount: true, taxAmount: true }, _count: true }),
           ]);
         const gmv = orders.reduce(
           (sum, order) => sum.plus(order.subtotalAmount),
@@ -189,7 +199,12 @@ export class FinanceReportService {
           .plus(bonusClawbacks._sum.adjustmentAmount ?? 0);
         return {
           asOf: new Date().toISOString(),
-          scope: 'ALL_TIME',
+          scope: yearMonth ? 'MONTH' : 'ALL_TIME',
+          yearMonth: yearMonth ?? null,
+          walletScope: 'CURRENT_BALANCE',
+          sandboxNetPaid: (sandboxPayouts._sum.netAmount ?? new Prisma.Decimal(0)).toFixed(2),
+          sandboxTaxWithheld: (sandboxPayouts._sum.taxAmount ?? new Prisma.Decimal(0)).toFixed(2),
+          sandboxPaidCount: sandboxPayouts._count,
           recognitionBasis: 'COMPLETED_ORDERS',
           unrecognizedCommissions: (unrecognizedCommissions._sum.commissionAmount ?? new Prisma.Decimal(0)).toFixed(2),
           holdDays: COMMISSION_HOLD_DAYS,
@@ -310,23 +325,27 @@ export class FinanceReportService {
       },
       orderBy: [{ processedAt: 'asc' }, { id: 'asc' }],
     });
-    const total = (key: 'amount' | 'taxAmount' | 'netAmount') =>
-      items
+    const realItems = items.filter(row => row.transferProvider !== 'BIDV_SANDBOX' && !row.bankRefCode?.startsWith('SBX-'));
+    const sandboxItems = items.filter(row => !realItems.includes(row));
+    const total = (rows: typeof items, key: 'amount' | 'taxAmount' | 'netAmount') =>
+      rows
         .reduce((sum, row) => sum.plus(row[key]), new Prisma.Decimal(0))
         .toFixed(2);
     return {
       yearMonth,
-      items,
-      gross: total('amount'),
-      tax: total('taxAmount'),
-      net: total('netAmount'),
-      missingTaxCodes: items
+      items: realItems,
+      gross: total(realItems, 'amount'),
+      tax: total(realItems, 'taxAmount'),
+      net: total(realItems, 'netAmount'),
+      sandbox: { count: sandboxItems.length, gross: total(sandboxItems, 'amount'), tax: total(sandboxItems, 'taxAmount'), net: total(sandboxItems, 'netAmount') },
+      missingTaxCodes: realItems
         .filter((row) => !row.collaborator.collaboratorProfile?.taxCode)
         .map((row) => row.collaboratorId),
     };
   }
 
-  async reconcileLedger() {
+  async reconcileLedger(yearMonth?: string) {
+    if (yearMonth) return this.reconcileMonth(yearMonth);
     return this.prisma.$transaction(
       async (tx) => {
         const [wallets, reserved, debits, credits] = await Promise.all([
@@ -384,6 +403,38 @@ export class FinanceReportService {
     );
   }
 
+  private async reconcileMonth(yearMonth: string) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth))
+      throw new BadRequestException('Kỳ đối soát phải có dạng YYYY-MM');
+    const [year, month] = yearMonth.split('-').map(Number);
+    const start = new Date(Date.UTC(year, month - 1, 1, -7));
+    const end = new Date(Date.UTC(year, month, 1, -7));
+    return this.prisma.$transaction(async tx => {
+      const [ledgers, postings, created, completed, paid] = await Promise.all([
+        tx.financialLedger.groupBy({ by: ['balanceBucket'], where: { createdAt: { gte: start, lt: end } }, _sum: { amount: true } }),
+        tx.financePosting.findMany({ where: { createdAt: { gte: start, lt: end } }, select: { debitAccount: true, creditAccount: true, amount: true } }),
+        tx.payoutRequest.aggregate({ where: { createdAt: { gte: start, lt: end } }, _sum: { amount: true } }),
+        tx.payoutRequest.aggregate({ where: { status: { in: ['APPROVED', 'REJECTED'] }, processedAt: { gte: start, lt: end } }, _sum: { amount: true } }),
+        tx.payoutRequest.findMany({ where: { status: 'APPROVED', processedAt: { gte: start, lt: end } }, select: { transferProvider: true, bankRefCode: true, netAmount: true, taxAmount: true } }),
+      ]);
+      const book = (account: string) => postings.reduce((sum, row) => sum.plus(row.creditAccount === account ? row.amount : 0).minus(row.debitAccount === account ? row.amount : 0), new Prisma.Decimal(0));
+      const movement = (bucket: string) => new Prisma.Decimal(ledgers.find(row => row.balanceBucket === bucket)?._sum.amount ?? 0);
+      const paidTotal = (sandbox: boolean, key: 'netAmount' | 'taxAmount') => paid.filter(row => (row.transferProvider === 'BIDV_SANDBOX' || !!row.bankRefCode?.startsWith('SBX-')) === sandbox).reduce((sum, row) => sum.plus(row[key]), new Prisma.Decimal(0));
+      const values = [
+        ['PARTNER_EARNINGS_PAYABLE', movement('AVAILABLE')],
+        ['AFFILIATE_ESCROW', movement('PENDING')],
+        ['CUSTOMER_FUNDS', movement('SHOPPING')],
+        ['PAYOUT_RESERVED', new Prisma.Decimal(created._sum.amount ?? 0).minus(completed._sum.amount ?? 0)],
+        ['CORPORATE_BANK', paidTotal(false, 'netAmount')],
+        ['PIT_TAX_PAYABLE', paidTotal(false, 'taxAmount')],
+        ['BIDV_SANDBOX_BANK', paidTotal(true, 'netAmount')],
+        ['SANDBOX_PIT_PAYABLE', paidTotal(true, 'taxAmount')],
+      ] as const;
+      const items = values.map(([account, expected]) => ({ account, walletAmount: expected.toFixed(2), bookAmount: book(account).toFixed(2), difference: book(account).minus(expected).toFixed(2) }));
+      return { yearMonth, basis: 'MONTHLY_MOVEMENT', start, end, asOf: new Date().toISOString(), balanced: items.every(row => row.difference === '0.00'), items };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  }
+
   async escrow(page = 1) {
     if (!Number.isInteger(page) || page < 1)
       throw new BadRequestException('Trang không hợp lệ');
@@ -403,6 +454,11 @@ export class FinanceReportService {
               id: true,
               externalOrderSn: true,
               status: true,
+              createdAt: true,
+              completedAt: true,
+              clickedAt: true,
+              referralLink: { select: { createdAt: true, shortCode: true } },
+              attributedCollaborator: { select: { fullName: true } },
                 finalAmount: true,
                 deliveredAt: true,
                 orderItems: { select: { quantity: true, unitPrice: true, appliedCommissionRate: true, product: { select: { title: true, imageUrl: true } }, variant: { select: { name: true } } } },
@@ -427,6 +483,8 @@ export class FinanceReportService {
           ...item,
           order: {
             ...order,
+            shopConfirmedAt: typeof risk?.shopConfirmedAt === 'string' ? risk.shopConfirmedAt : null,
+            handedToShippingAt: typeof risk?.ghnShippedAt === 'string' ? risk.ghnShippedAt : null,
             referralReviewRequired: risk?.selfReferralReviewRequired === true,
               testFixture: risk?.testFixture === true,
             referralRiskSignals: Array.isArray(risk?.selfReferralRiskSignals)

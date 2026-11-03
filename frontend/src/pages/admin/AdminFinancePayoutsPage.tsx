@@ -2,12 +2,12 @@ import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PayoutApprovalDialog, type ManualPayoutProof } from '../../components/wallet/PayoutApprovalDialog';
-import { PayoutSimulationDialog } from '../../components/wallet/PayoutSimulationDialog';
-import { BidvSandboxDialog } from '../../components/wallet/BidvSandboxDialog';
 import {
   Search,
   Eye,
   Loader2,
+  CheckCircle2,
+  Copy,
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
@@ -77,13 +77,10 @@ export default function AdminFinancePayoutsPage() {
   const [loadError, setLoadError] = useState('');
   const [gatewayEnabled, setGatewayEnabled] = useState(false);
   const [gatewayProvider, setGatewayProvider] = useState('GATEWAY');
-  const [gatewayMessage, setGatewayMessage] = useState('Đang kiểm tra cấu hình cổng chi trả…');
 
   // Approval modal state
   const [approvingItem, setApprovingItem] = useState<PayoutItem | null>(null);
   const [riskItem, setRiskItem] = useState<PayoutItem | null>(null);
-  const [simulating, setSimulating] = useState(false);
-  const [bidvSandboxOpen, setBidvSandboxOpen] = useState(false);
   const approvalInFlight = useRef(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
@@ -134,8 +131,7 @@ export default function AdminFinancePayoutsPage() {
       const gateway = res.data?.data ?? res.data ?? res;
       setGatewayEnabled(Boolean(gateway.configured));
       setGatewayProvider(gateway.provider || 'GATEWAY');
-      setGatewayMessage(gateway.message || (gateway.configured ? 'Đã có cấu hình cổng chi trả; cần kiểm chứng kết nối ngân hàng.' : 'Chưa cấu hình cổng chi trả ngân hàng. Xác nhận UNC không tự chuyển tiền.'));
-    }).catch(() => { setGatewayEnabled(false); setGatewayMessage('Chưa kiểm tra được cổng chi trả. Không thể xác nhận kết nối ngân hàng.'); });
+    }).catch(() => { setGatewayEnabled(false); });
   }, []);
 
   const handleBankTransfer = async () => {
@@ -222,7 +218,6 @@ export default function AdminFinancePayoutsPage() {
 
   return (
     <div className="w-full min-w-0 space-y-4 pb-12" id="admin-finance-payouts-page">
-      {import.meta.env.DEV && <div className="payout-review-actions"><button type="button" className="payout-secondary" onClick={() => setBidvSandboxOpen(true)}>BIDV Sandbox · lịch sử thử nghiệm</button></div>}
       {/* 2. Top Tabs */}
       <div className="finance-main-tabs">
         <button
@@ -343,10 +338,6 @@ export default function AdminFinancePayoutsPage() {
           </div>
 
           {/* Table */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">
-            <p role="status" className="min-w-0 flex-1">{gatewayMessage}</p>
-            {import.meta.env.DEV && <button type="button" className="payout-secondary" onClick={() => setSimulating(true)}>Thử quy trình chi trả</button>}
-          </div>
           <div className="finance-payout-table bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -415,11 +406,26 @@ export default function AdminFinancePayoutsPage() {
                           </td>
 
                           <td className="p-3.5 text-center">
-                            <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.className}`}>
-                              {item.transferProvider === 'BIDV_SANDBOX' && item.status === 'APPROVED' ? 'Hoàn tất · Sandbox' : badge.label}
-                            </span>
+                            {item.status === 'APPROVED' ? (
+                              <div className="flex flex-col items-center gap-1.5">
+                                <span className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-semibold text-[#715126]">
+                                  <CheckCircle2 size={14} className="shrink-0 text-[#059669]" aria-hidden="true" />
+                                  Hoàn tất
+                                </span>
+                                {item.transferProvider === 'BIDV_SANDBOX' && <span className="text-[10px] font-medium tracking-wide text-[#7D715E]">BIDV Sandbox</span>}
+                              </div>
+                            ) : <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${badge.className}`}>{badge.label}</span>}
                             {item.transferProvider === 'BIDV_SANDBOX' && item.status === 'PROCESSING' && <div className="mt-1 text-[11px] text-[#7D715E]">BIDV Sandbox</div>}
-                            {item.bankRefCode && <div className="mt-2 break-all text-[11px] text-[#7D715E]">{item.transferProvider === 'BIDV_SANDBOX' ? 'Mã Sandbox' : 'Mã ngân hàng'}: {item.bankRefCode}</div>}
+                            {item.bankRefCode && <button
+                              type="button"
+                              title={`Sao chép mã ${item.transferProvider === 'BIDV_SANDBOX' ? 'Sandbox' : 'ngân hàng'}: ${item.bankRefCode}`}
+                              aria-label={`Sao chép mã tham chiếu ${item.bankRefCode}`}
+                              onClick={async () => {
+                                try { await navigator.clipboard.writeText(item.bankRefCode!); toast.success('Đã sao chép mã tham chiếu'); }
+                                catch { toast.error('Không thể sao chép mã tham chiếu'); }
+                              }}
+                              className="mx-auto mt-2 inline-flex max-w-full cursor-pointer items-center gap-1 rounded-md px-1 py-1 text-[10px] text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#715126] focus-visible:outline-2 focus-visible:outline-[#C59B58]"
+                            ><span className="min-w-0 truncate font-mono">{item.bankRefCode.length > 16 ? `${item.bankRefCode.slice(0, 8)}…${item.bankRefCode.slice(-4)}` : item.bankRefCode}</span><Copy size={12} className="shrink-0" aria-hidden="true" /></button>}
                           </td>
 
                           <td className="p-3.5 text-center">
@@ -453,7 +459,7 @@ export default function AdminFinancePayoutsPage() {
                                 <span>Xem UNC</span>
                               </button>
                             ) : (
-                              <span className="text-[11px] text-[#7D715E] italic">Hoàn tất</span>
+                              <span className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-[11px] text-[#7D715E]"><CheckCircle2 size={13} aria-hidden="true" />Đã xử lý</span>
                             )}
                           </td>
                         </tr>
@@ -496,8 +502,6 @@ export default function AdminFinancePayoutsPage() {
         onBankTransfer={handleBankTransfer}
         onManualApprove={handleApproveSubmit}
       />}
-      {import.meta.env.DEV && simulating && <PayoutSimulationDialog onClose={() => setSimulating(false)} />}
-      {import.meta.env.DEV && bidvSandboxOpen && <BidvSandboxDialog onClose={() => setBidvSandboxOpen(false)} />}
 
       {/* Modal: Từ chối yêu cầu */}
       {rejectingItem && (

@@ -4,7 +4,7 @@
 .kol-links-filter button[aria-haspopup="listbox"] { @apply [height:36px]; @apply [min-height:36px]; @apply [padding:7px_10px]; @apply [font-size:11px]; @apply [border-radius:8px]; box-shadow: none; }
 .kol-links-filter button[type="submit"] { @apply [height:36px]; @apply [min-height:36px]; @apply [padding:7px_16px]; @apply [border-radius:8px]; @apply [background:#fbf5eb]; @apply [font-size:12px]; @apply [font-weight:600]; box-shadow: none; }
 .kol-link-table { @apply [border-radius:14px]; @apply [box-shadow:0_3px_14px_rgb(35_29_21_/_4%)]; }
-.kol-link-table table thead tr { @apply [background:#FAF8F5]!; }
+.kol-link-table table thead, .kol-link-table table thead tr, .kol-link-table table thead th { @apply bg-white!; }
 .kol-link-table table th { @apply [padding:11px_12px]; @apply [color:#7D715E]; @apply [text-transform:none]; @apply [letter-spacing:0]; @apply [font-size:11px]; @apply [line-height:16px]; @apply [font-weight:650]; @apply [border-bottom:1px_solid_#EAE4D7]; }
 .kol-link-table table td { @apply [padding:10px_12px]; @apply [font-size:12px]; @apply [line-height:18px]; @apply [border-bottom-color:#F0EBE2]; }
 .kol-link-table tbody tr { @apply [background:#fff]; @apply [transition:background-color_140ms_ease]; }
@@ -79,7 +79,7 @@
   .kol-qr-dialog, .kol-analytics-dialog { @apply [padding:14px]; }
 }
 
-.kol-deal-grid { @apply grid; @apply [grid-template-columns:repeat(4,_minmax(0,_1fr))]; @apply [gap:12px]; }
+.kol-deal-grid { @apply grid items-start; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; @apply [gap:14px]; }
 .kol-deal-card .kol-deal-chat { @apply [width:100%]; @apply [margin-bottom:6px]; @apply [border:1px_solid_#eedfc6]; @apply [background:#fffaf3]; @apply [color:#b88e4f]; }
 .kol-deal-more { @apply relative; @apply [margin-left:auto]; }
 .kol-deal-more > summary { @apply grid; @apply place-items-center; @apply [width:30px]; @apply [height:28px]; @apply [list-style:none]; @apply cursor-pointer; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:6px]; @apply [background:#fff]; @apply [font-size:18px]; }
@@ -87,12 +87,12 @@
 .kol-deal-more > div { @apply absolute; @apply [z-index:10]; @apply [right:0]; @apply [bottom:calc(100%_+_5px)]; @apply [min-width:130px]; @apply [padding:5px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:8px]; @apply [background:#fff]; @apply [box-shadow:0_6px_20px_#231d151a]; }
 .kol-deal-more > div > button { @apply [width:100%]; @apply justify-start; }
 .kol-deal-more > div { @apply [animation:none]; @apply [transition:none]; @apply [transform:none]; }
-.kol-deal-grid .kol-deal-card { @apply [aspect-ratio:1]; @apply [min-width:0]; @apply [min-height:0]; @apply [padding:12px]; @apply [border-radius:12px]; box-shadow: none; @apply [gap:10px]; @apply overflow-hidden; }
-.kol-deal-card > div:first-child { @apply [min-height:0]; @apply [flex:1]; @apply overflow-y-auto; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#eedfc6_transparent]; }
+.kol-deal-grid .kol-deal-card { @apply [aspect-ratio:auto]; @apply [min-width:0]; @apply [min-height:280px]; @apply [padding:16px]; @apply [border-radius:14px]; @apply [background:#FFFFFF]; box-shadow: none; @apply [gap:14px]; }
+.kol-deal-card > div:first-child { @apply [min-height:0]; @apply [flex:1]; @apply overflow-visible; }
 .kol-deal-card > div:first-child > section { @apply [margin:0_0_10px]; @apply [padding:8px_10px]; @apply [border-radius:8px]; @apply [background:#fffaf3]; }
 .kol-deal-card > div:first-child > section > button { @apply [font-size:10px]; @apply [line-height:16px]; @apply [font-weight:550]; }
 .kol-deal-card .kol-deal-card-heading { @apply flex-col; @apply [gap:6px]; }
-.kol-deal-card .kol-deal-product { @apply [margin:0]; @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:600]; @apply [display:-webkit-box]; @apply [-webkit-line-clamp:2]; @apply [-webkit-box-orient:vertical]; @apply overflow-hidden; }
+.kol-deal-card .kol-deal-product { @apply [margin:0]; @apply [min-height:40px]; @apply [font-size:13px]; @apply [line-height:20px]; @apply [font-weight:600]; @apply [display:-webkit-box]; @apply [-webkit-line-clamp:2]; @apply [-webkit-box-orient:vertical]; @apply overflow-hidden; }
 .kol-deal-card-heading > div:first-child > div { @apply [font-size:10px]; @apply [line-height:16px]; }
 .kol-deal-card-heading > div:last-child > span { @apply [padding:1px_6px]; @apply [font-size:9px]; @apply [line-height:16px]; @apply [font-weight:500]; }
 .kol-deal-card .kol-deal-rates { @apply [margin-top:8px]; @apply [gap:5px]; }

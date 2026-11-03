@@ -287,6 +287,7 @@ export default function CustomerPortalPage() {
   // Avatar Upload State & Handler
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [failedProfileAvatar, setFailedProfileAvatar] = useState('');
 
   const handleAvatarFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -758,6 +759,7 @@ export default function CustomerPortalPage() {
       await customerService.confirmReceipt(order.id);
       const updatedOrder = await customerService.getOrderDetails(order.id);
       setSelectedOrderDetails(current => current?.id === updatedOrder.id ? updatedOrder : current);
+      setDetailRefreshVersion(value => value + 1);
       toast.success('Đơn hàng đã hoàn tất. Bạn có thể gửi đánh giá đã xác minh.');
       if (getCustomerOrderActions(updatedOrder).review) {
         setSelectedOrderDetails(null);
@@ -1060,6 +1062,7 @@ export default function CustomerPortalPage() {
               onChat={handleOpenChat} onReorder={handleReorder}
               onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
               onCancel={order => setCancellingOrderId(order.id)}
+              onConfirmReceipt={handleConfirmReceipt} confirmingOrderId={confirmingOrderId}
             />}
             {currentTab === 'orders' && !detailOrderId && (
               <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
@@ -1351,7 +1354,7 @@ export default function CustomerPortalPage() {
                                   aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
                                 >Xem chi tiết</Link> : !completedActions && <button
                                   type="button"
-                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
+                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isDelivered ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
                                   className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                 >
                                   {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
@@ -1591,8 +1594,8 @@ export default function CustomerPortalPage() {
                         className="hidden"
                       />
                       <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="relative grid place-items-center w-[88px] h-[88px] @max-[719px]:w-[64px] @max-[719px]:h-[64px] @max-[719px]:col-start-1 @max-[719px]:row-span-2 p-0 border border-[#EEDFC6] rounded-full bg-[#FAF8F5] text-[#B88E4F] cursor-pointer overflow-hidden" aria-label="Chọn ảnh đại diện mới">
-                        {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : profileData?.user.avatarUrl || currentUser?.avatarUrl ? (
-                          <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" />
+                        {uploadingAvatar ? <Loader2 size={24} className="animate-spin" /> : (profileData?.user.avatarUrl || currentUser?.avatarUrl) && failedProfileAvatar !== (profileData?.user.avatarUrl || currentUser?.avatarUrl) ? (
+                          <img src={profileData?.user.avatarUrl || currentUser?.avatarUrl || ''} alt="Ảnh đại diện của bạn" className="w-full h-full object-cover" onError={() => setFailedProfileAvatar(profileData?.user.avatarUrl || currentUser?.avatarUrl || '')} />
                         ) : <User size={32} aria-hidden="true" />}
                         
                       </button>

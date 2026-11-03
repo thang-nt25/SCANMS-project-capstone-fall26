@@ -21,18 +21,18 @@ export function customerGhnSimulationDetail(raw: Record<string, any>, orderCode:
   if (raw.ghnEnvironment !== 'TEST' || raw.ghnOrderCode !== orderCode || saved?.version !== 1 || saved.orderCode !== orderCode ||
       !saved.shipperName || !Number.isFinite(Date.parse(saved.startedAt))) return null;
   const start = Date.parse(saved.startedAt);
-  const index = Math.min(4, Math.max(0, Math.floor((now - start) / 60_000)));
+  const index = Math.min(4, Math.max(0, Math.floor((now - start) / 30_000)));
   const status = stages[index];
   return {
     orderCode, carrier: 'Giao Hàng Nhanh (GHN Express)', environment: GhnEnvironment.TEST,
     isSimulation: true, simulationStartedAt: saved.startedAt,
-    nextEventAt: index < 4 ? new Date(start + (index + 1) * 60_000).toISOString() : null,
+    nextEventAt: index < 4 ? new Date(start + (index + 1) * 30_000).toISOString() : null,
     status, statusText: GHN_STATUS_LABELS[status], trackingError: null, trackingUrl: null,
-    expectedDeliveryTime: new Date(start + 240_000).toISOString(),
+    expectedDeliveryTime: new Date(start + 120_000).toISOString(),
     shipperName: index >= 3 ? saved.shipperName : null,
     shipperPhone: null, shipperPhoneDisplay: index >= 3 ? '09xx xxx xxx' : null, shipperCanCall: false,
     timeline: stages.slice(0, index + 1).map((eventStatus, i) => ({
-      status: eventStatus, title: GHN_STATUS_LABELS[eventStatus], time: new Date(start + i * 60_000).toISOString(), completed: true,
+      status: eventStatus, title: GHN_STATUS_LABELS[eventStatus], time: new Date(start + i * 30_000).toISOString(), completed: true,
       warehouse: eventStatus === 'storing' ? 'Kho trung chuyển mô phỏng' : null,
       shipperName: i === 3 ? saved.shipperName : null, shipperPhone: null,
     })),

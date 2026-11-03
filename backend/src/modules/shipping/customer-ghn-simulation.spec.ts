@@ -88,7 +88,7 @@ describe('customer purchase GHN simulation', () => {
       const detail = customerGhnSimulationDetail(
         saved,
         'TEST-ORDER',
-        start + index * 60000,
+        start + index * 30000,
       )!;
       expect(detail.status).toBe(states[index]);
       expect(detail.timeline.map((event) => event.status)).toEqual(
@@ -101,13 +101,13 @@ describe('customer purchase GHN simulation', () => {
       expect(detail.shipperCanCall).toBe(false);
     }
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 59999)?.status,
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 29999)?.status,
     ).toBe('ready_to_pick');
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 239999)?.status,
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 119999)?.status,
     ).toBe('delivering');
     expect(
-      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 240000)
+      customerGhnSimulationDetail(saved, 'TEST-ORDER', start + 120000)
         ?.nextEventAt,
     ).toBeNull();
   });

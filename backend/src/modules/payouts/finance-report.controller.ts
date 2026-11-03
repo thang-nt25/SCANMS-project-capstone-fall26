@@ -44,8 +44,8 @@ export class FinanceReportController {
   }
   @Get('analytics/executive-summary')
   @Roles(UserRole.SYSTEM_ADMIN)
-  executive() {
-    return this.reports.executive();
+  executive(@Query('yearMonth') month?: string) {
+    return this.reports.executive(month);
   }
   @Post('stores/:storeId/finance-costs')
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
@@ -69,8 +69,8 @@ export class FinanceReportController {
   }
   @Get('admin/payouts/ledger-reconciliation')
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
-  reconcileLedger() {
-    return this.reports.reconcileLedger();
+  reconcileLedger(@Query('yearMonth') month?: string) {
+    return this.reports.reconcileLedger(month);
   }
 
   @Post('admin/payouts/:id/tax-certificate')

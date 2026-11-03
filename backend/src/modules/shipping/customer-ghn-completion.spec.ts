@@ -48,7 +48,7 @@ describe('explicit GHN TEST delivery completion', () => {
   beforeEach(() => {
     process.env.SHIPPING_SIMULATION_ENABLED = 'true';
     process.env.NODE_ENV = 'test';
-    jest.spyOn(Date, 'now').mockReturnValue(startedAt + 240_000);
+    jest.spyOn(Date, 'now').mockReturnValue(startedAt + 120_000);
   });
   afterEach(() => {
     if (previousFlag === undefined)
@@ -104,12 +104,12 @@ describe('explicit GHN TEST delivery completion', () => {
     expect(tx.order.update).not.toHaveBeenCalled();
   });
 
-  it('requires all four minutes to elapse', async () => {
-    jest.spyOn(Date, 'now').mockReturnValue(startedAt + 239_999);
+  it('requires all two minutes to elapse', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(startedAt + 119_999);
     const { service, tx } = fixture();
     await expect(
       service.completeCustomerSimulation('order', 'actor', 'shop'),
-    ).rejects.toThrow('chờ đủ 4 phút');
+    ).rejects.toThrow('tổng thời gian 2 phút');
     expect(tx.order.update).not.toHaveBeenCalled();
   });
 
@@ -185,7 +185,7 @@ describe('explicit GHN TEST delivery completion', () => {
     ).resolves.toMatchObject({ isSimulation: true, simulationAvailable: true });
     expect(db.order.updateMany).toHaveBeenCalledTimes(1);
     expect(db.order.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: { status: 'DELIVERED', deliveredAt: new Date(startedAt + 240_000) },
+      data: { status: 'DELIVERED', deliveredAt: new Date(startedAt + 120_000) },
     }));
     expect(order.status).toBe('DELIVERED');
     expect(order.rawPayload.paymentStatus).toBe('UNPAID');

@@ -262,7 +262,7 @@ export default function KolDashboardPage() {
                 <option value="90">90 ngày gần nhất</option>
               </Select>
             </div>
-          <div className="grid min-w-0 grid-cols-2 gap-3 sm:flex sm:items-center">
+          <div className="grid w-full min-w-0 grid-cols-2 items-stretch gap-3 sm:w-[380px] sm:shrink-0">
             <button
               type="button"
               className="inline-flex h-[42px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-[#EAE4D7] bg-white px-4 text-xs font-semibold text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"

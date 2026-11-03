@@ -18,10 +18,23 @@ export class BidvPayoutAdapter {
   availability() { return this.client.availability(); }
 
   prepare(payout: PayoutRequest): BidvPayoutSnapshot {
-    if (!payout.netAmount.isInteger()) throw new BadRequestException('BIDV yêu cầu số tiền VND nguyên đồng.');
+    if (!payout.bankAccountNumber?.trim() || !payout.bankAccountName?.trim() || !payout.bankName?.trim())
+      throw new BadRequestException('Yêu cầu rút thiếu thông tin người thụ hưởng đã lưu.');
+    if (!payout.netAmount.isInteger() || payout.netAmount.lte(0) || !payout.netAmount.plus(payout.taxAmount).equals(payout.amount))
+      throw new BadRequestException('Số tiền thực chi phải là VND nguyên đồng, lớn hơn 0 và khớp tiền yêu cầu trừ thuế.');
     return {
-      request: { ...BIDV_TRANSFER_FIXTURE, credit: payout.bankAccountNumber!, beneficiaryName: payout.bankAccountName!,
-        bankCode: payoutBankCode(payout.bankName!), amount: payout.netAmount.toFixed(0),
+      // Only sandbox merchant/protocol fields come from the provider fixture.
+      // Beneficiary and NET must always come from this persisted payout.
+      request: {
+        serviceId: BIDV_TRANSFER_FIXTURE.serviceId,
+        merchantId: BIDV_TRANSFER_FIXTURE.merchantId,
+        merchantName: BIDV_TRANSFER_FIXTURE.merchantName,
+        payerId: BIDV_TRANSFER_FIXTURE.payerId,
+        channelId: BIDV_TRANSFER_FIXTURE.channelId,
+        creditType: BIDV_TRANSFER_FIXTURE.creditType,
+        extraInfo1: '', extraInfo2: '', extraInfo3: '', extraInfo4: '', extraInfo5: '',
+        credit: payout.bankAccountNumber, beneficiaryName: payout.bankAccountName,
+        bankCode: payoutBankCode(payout.bankName), amount: payout.netAmount.toFixed(0),
         transDesc: `SCANMS ${payout.id}`, transDate: bidvRequestDate() },
       correlation: { ...newBidvCorrelation(), idempotencyKey: payout.id },
     };

@@ -26,6 +26,7 @@ type TaxReport = {
   net: string;
   items: TaxRow[];
   missingTaxCodes: string[];
+  sandbox?: { count: number; gross: string; tax: string; net: string };
 };
 type CostReport = {
   ordersMissingCost: { id: string; code: string }[];
@@ -53,6 +54,7 @@ export function FinanceOperations() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [ledger, setLedger] = useState<{
+    yearMonth?: string;
     balanced: boolean;
     items: {
       account: string;
@@ -61,6 +63,7 @@ export function FinanceOperations() {
       difference: string;
     }[];
   } | null>(null);
+  useEffect(() => { setReport(null); setLedger(null); setPayoutId(''); setMessage(''); }, [month]);
   useEffect(() => {
     api
       .get("/stores/all-admin")
@@ -151,13 +154,13 @@ export function FinanceOperations() {
         <label className="grid gap-1 text-sm">
           Kỳ chi trả
           <span className="finance-vietnamese-period">
-            <select aria-label="Tháng chi trả" className={input} value={month.slice(5, 7)} onChange={(e) => setMonth(`${month.slice(0, 4)}-${e.target.value}`)}>
+            <select aria-label="Tháng chi trả" disabled={busy} className={input} value={month.slice(5, 7)} onChange={(e) => setMonth(`${month.slice(0, 4)}-${e.target.value}`)}>
               {Array.from({ length: 12 }, (_, index) => {
                 const value = String(index + 1).padStart(2, '0');
                 return <option key={value} value={value}>Tháng {index + 1}</option>;
               })}
             </select>
-            <select aria-label="Năm chi trả" className={input} value={month.slice(0, 4)} onChange={(e) => setMonth(`${e.target.value}-${month.slice(5, 7)}`)}>
+            <select aria-label="Năm chi trả" disabled={busy} className={input} value={month.slice(0, 4)} onChange={(e) => setMonth(`${e.target.value}-${month.slice(5, 7)}`)}>
               {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}
             </select>
           </span>
@@ -191,6 +194,7 @@ export function FinanceOperations() {
               setLedger(
                 data(
                   await api.get("/admin/payouts/ledger-reconciliation", {
+                    params: { yearMonth: month },
                     headers: { "x-skip-cache": "true" },
                   }),
                 ),
@@ -205,16 +209,16 @@ export function FinanceOperations() {
         <div className="overflow-x-auto text-sm">
           <p className="mb-2 font-semibold">
             {ledger.balanced
-              ? "Sổ cái khớp số dư ví và khoản giữ chi trả"
-              : "Có chênh lệch cần kế toán đối soát"}
+              ? `Biến động tháng ${ledger.yearMonth} khớp sổ cái`
+              : `Biến động tháng ${ledger.yearMonth} có chênh lệch cần đối soát`}
           </p>
           <table className="w-full text-left">
             <thead>
               <tr>
                 {[
                   "Tài khoản",
-                  "Số dư nghiệp vụ",
-                  "Số dư sổ cái",
+                  "Biến động nghiệp vụ",
+                  "Biến động sổ cái",
                   "Chênh lệch",
                 ].map((label) => (
                   <th className="p-2" key={label}>
@@ -233,6 +237,10 @@ export function FinanceOperations() {
                         AFFILIATE_ESCROW: "Thu nhập bảo chứng",
                         CUSTOMER_FUNDS: "Tiền mua hàng",
                         PAYOUT_RESERVED: "Tiền giữ chi trả",
+                        CORPORATE_BANK: "Thực chi ngân hàng",
+                        PIT_TAX_PAYABLE: "Thuế TNCN phải nộp",
+                        BIDV_SANDBOX_BANK: "Chi trả Sandbox",
+                        SANDBOX_PIT_PAYABLE: "Thuế mô phỏng Sandbox",
                       } as Record<string, string>
                     )[row.account] ?? row.account}
                   </td>
@@ -249,6 +257,8 @@ export function FinanceOperations() {
               ))}
             </tbody>
           </table>
+          <p className="mt-2 text-xs text-[#7D715E]">Đối chiếu phát sinh trong tháng theo giờ Việt Nam, gồm giao dịch thử nghiệm. Không phải số dư hiện tại; chênh lệch lịch sử ngoài kỳ không được xóa hoặc bù tự động.</p>
+          {!ledger.balanced && <p className="mt-2 text-xs text-[#8F682E]">Bút toán ghi khác tháng với thời điểm xử lý nghiệp vụ sẽ tạo chênh lệch kỳ. Cần kiểm tra ngày ghi sổ và chứng từ trước khi điều chỉnh.</p>}
         </div>
       )}
       {section === 'tax' && report && (
@@ -270,9 +280,10 @@ export function FinanceOperations() {
             </p>
           )}
           <p className="finance-tax-caption">
-            {report.items.length} khoản chi đã xác nhận trong kỳ. Báo cáo này hỗ
+            {report.items.length} khoản chi thực tế đã xác nhận trong kỳ. Báo cáo này hỗ
             trợ đối soát nội bộ.
           </p>
+          {!!report.sandbox?.count && <p className="mt-3 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm text-[#7D715E]">Sandbox riêng: {report.sandbox.count} khoản · Trước thuế {Number(report.sandbox.gross).toLocaleString('vi-VN')} ₫ · Thuế {Number(report.sandbox.tax).toLocaleString('vi-VN')} ₫ · Thực nhận mô phỏng {Number(report.sandbox.net).toLocaleString('vi-VN')} ₫. Không cộng vào báo cáo thuế thực tế hoặc CSV.</p>}
         </div>
       )}
       <form

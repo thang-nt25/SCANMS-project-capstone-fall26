@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
+import { Modal } from "../ui/Modal";
+import { Clock3, History } from "lucide-react";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import type { ReturnStatus } from '../../services/return.service';
 
@@ -91,6 +93,9 @@ export function StoreFinanceReport({ storeId }: { storeId: string }) {
 }
 
 interface Executive {
+  yearMonth?: string | null;
+  sandboxNetPaid?: string;
+  sandboxTaxWithheld?: string;
   unrecognizedCommissions?: string;
   asOf: string;
   gmv: string;
@@ -106,16 +111,19 @@ interface Executive {
   holdDays: number;
 }
 export function ExecutiveFinanceReport() {
+  const [month, setMonth] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7));
   const [data, setData] = useState<Executive | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
+    setData(null);
     setError("");
     try {
       setData(
         unwrap<Executive>(
           await api.get("/analytics/executive-summary", {
+            params: { yearMonth: month },
             headers: { "x-skip-cache": "true" },
           }),
         ),
@@ -128,26 +136,22 @@ export function ExecutiveFinanceReport() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [month]);
   useEffect(() => {
     void load();
   }, [load]);
   return (
     <section className={panel} aria-busy={loading}>
-      <div className="flex flex-wrap justify-between gap-3">
-        <div>
-          <h2 className="font-semibold text-lg">Tài chính doanh nghiệp</h2>
-          <p className="text-sm text-[#7D715E]">
-            Lũy kế toàn hệ thống · Báo cáo thu nhập tiếp thị và nghĩa vụ chi trả
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Tháng báo cáo tài chính" value={month.slice(5)} disabled={loading} onChange={e => setMonth(`${month.slice(0, 4)}-${e.target.value}`)} className={button}>
+            {Array.from({ length: 12 }, (_, index) => <option key={index} value={String(index + 1).padStart(2, '0')}>Tháng {index + 1}</option>)}
+          </select>
+          <select aria-label="Năm báo cáo tài chính" value={month.slice(0, 4)} disabled={loading} onChange={e => setMonth(`${e.target.value}-${month.slice(5)}`)} className={button}>
+            {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index).map(year => <option key={year} value={year}>{year}</option>)}
+          </select>
+
         </div>
-        <button
-          className={button}
-          onClick={() => void load()}
-          disabled={loading}
-        >
-          Làm mới
-        </button>
       </div>
       {error && (
         <p role="alert" className="mt-4 text-[#DC2626]">
@@ -161,40 +165,54 @@ export function ExecutiveFinanceReport() {
       )}
       {data && (
         <>
-          <dl className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 my-6">
+          <dl className="my-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Object.entries({
               "GMV đơn đã hoàn tất": data.gmv,
               "Doanh thu sau hoàn trả": data.netRevenue,
               "Chi phí thu nhập tiếp thị": data.affiliateExpense,
-              "Hoa hồng đơn chưa hoàn tất (ngoài tỷ lệ)": data.unrecognizedCommissions,
-              "Thu nhập đang bảo chứng": data.escrowPending,
-              "Thu nhập khả dụng": data.availableEarnings,
-              "Thực chuyển ngân hàng": data.netPaid,
-              "Thuế đã khấu trừ": data.taxWithheld,
+              "Hoa hồng chưa ghi nhận": data.unrecognizedCommissions,
+              "Bảo chứng hiện tại": data.escrowPending,
+              "Khả dụng hiện tại": data.availableEarnings,
+              "Chi trả ngoài Sandbox trong tháng": data.netPaid,
+              "Thuế ngoài Sandbox trong tháng": data.taxWithheld,
+              "Chi trả Sandbox trong tháng": data.sandboxNetPaid,
+              "Thuế mô phỏng Sandbox": data.sandboxTaxWithheld,
             }).map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0 rounded-xl border border-[#EAE4D7] bg-[#FFFDFA] px-4 py-3.5">
                 <dt className="text-sm text-[#7D715E]">{label}</dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums">
+                <dd className="m-0 mt-2 text-xl font-semibold leading-tight tabular-nums text-[#1A1612]">
                   {value == null ? 'Chưa có dữ liệu' : money(value)}
                 </dd>
               </div>
             ))}
-            <div>
+            <div className="min-w-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-3.5">
               <dt className="text-sm text-[#7D715E]">
                 Chi phí tiếp thị / doanh thu
               </dt>
-              <dd className="mt-1 text-xl font-semibold">
+              <dd className="m-0 mt-2 text-xl font-semibold leading-tight text-[#8F682E]">
                 {data.affiliateExpenseRatio === null
                   ? "Chưa có doanh thu"
                   : `${data.affiliateExpenseRatio}%`}
               </dd>
             </div>
           </dl>
-          <p className="text-xs text-[#7D715E]">
-            {data.ordersCount} đơn hoàn tất · Tỷ lệ chỉ đối chiếu doanh thu và hoa hồng của đơn hoàn tất, cộng thưởng tháng đã chi. Hoa hồng đơn chưa hoàn tất được theo dõi riêng. Escrow cơ sở {data.holdDays} ngày ·
-            Cập nhật {new Date(data.asOf).toLocaleString("vi-VN")}. Số dư ngân
-            hàng thực tế cần đối soát với ngân hàng.
-          </p>
+          <div className="border-t border-[#EAE4D7] pt-3">
+            <details className="group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2 font-medium text-[#1A1612]"><span className="text-[#B88E4F] transition-transform group-open:rotate-90" aria-hidden="true">›</span>Cách tính báo cáo</span>
+                <span className="text-xs text-[#7D715E]">{data.ordersCount} đơn · Kỳ {data.yearMonth ? `${data.yearMonth.slice(5)}/${data.yearMonth.slice(0, 4)}` : 'toàn thời gian'}</span>
+              </summary>
+              <dl className="m-0 grid gap-3 border-t border-[#EAE4D7] bg-white p-4 sm:grid-cols-2">
+                {[
+                  { title: 'Doanh thu trong kỳ', text: 'Theo ngày hoàn tất đơn, giờ Việt Nam. Doanh thu trừ giảm giá và hoàn trả, không gồm phí giao hàng. Đơn thiếu ngày hoàn tất không tự gán tháng.' },
+                  { title: 'Tỷ lệ chi phí', text: '(Hoa hồng đơn hoàn tất trong kỳ + thưởng đã chi thuộc kỳ + điều chỉnh thưởng) ÷ doanh thu sau hoàn trả × 100%. Không có doanh thu thì không tính tỷ lệ.' },
+                  { title: 'Chi trả & thuế', text: 'Theo ngày hoàn tất yêu cầu rút. Sandbox tách riêng; trạng thái hoàn tất của dữ liệu cũ chưa đủ xác nhận tiền thật đã chuyển.' },
+                  { title: 'Số dư ví hiện tại', text: `Khả dụng và bảo chứng là số dư lúc tải, không phải cuối tháng. Escrow cơ sở ${data.holdDays} ngày từ giao thành công; tiếp tục giữ khi có khiếu nại hoặc thẩm định.` },
+                ].map(item => <div key={item.title} className="min-w-0"><dt className="font-medium text-[#1A1612]">{item.title}</dt><dd className="m-0 mt-1 text-xs leading-relaxed text-[#7D715E]">{item.text}</dd></div>)}
+              </dl>
+            </details>
+            <p className="mb-0 mt-2 text-right text-[11px] text-[#7D715E]">Cập nhật {new Date(data.asOf).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · Giờ Việt Nam</p>
+          </div>
         </>
       )}
     </section>
@@ -217,6 +235,13 @@ interface Escrow {
       status: string;
       finalAmount?: string;
       deliveredAt?: string | null;
+      createdAt?: string | null;
+      completedAt?: string | null;
+      clickedAt?: string | null;
+      shopConfirmedAt?: string | null;
+      handedToShippingAt?: string | null;
+      referralLink?: { createdAt: string; shortCode: string } | null;
+      attributedCollaborator?: { fullName: string } | null;
       orderItems?: { quantity: number; unitPrice: string; appliedCommissionRate: string | null; product: { title: string; imageUrl?: string | null }; variant?: { name: string } | null }[];
       store: { name: string };
       returnRequest: { status: string } | null;
@@ -227,6 +252,14 @@ interface Escrow {
   }>;
 }
 export function EscrowFinanceReport() {
+  const [historyItem, setHistoryItem] = useState<Escrow["items"][number] | null>(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const timestamp = (value?: string | null) => value && Number.isFinite(Date.parse(value))
+    ? new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hourCycle: 'h23' }) : 'Chưa ghi nhận';
   const [data, setData] = useState<Escrow | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
@@ -258,8 +291,7 @@ export function EscrowFinanceReport() {
     };
   }, [page, refresh]);
   return (
-    <section className={`${panel} finance-escrow`} aria-busy={loading}>
-      <h2 className="text-lg font-semibold">Thu nhập đang bảo chứng</h2>
+    <section className={`${panel} finance-escrow`} aria-label="Các khoản hoa hồng đang bảo chứng" aria-busy={loading}>
       {error && (
         <p role="alert" className="text-[#DC2626]">
           {error}
@@ -268,23 +300,27 @@ export function EscrowFinanceReport() {
       {loading && <p role="status">Đang tải…</p>}
       {data && (
         <>
-          <p className="my-3 text-[#7D715E]">
-            <strong className="font-semibold text-[#1A1612]">{money(data.pendingAmount)}</strong> · {data.total} khoản đang tạm giữ
-            {data.total > 0 && <> · Bảo chứng {data.holdDays} ngày lịch từ giao thành công; khoản có khiếu nại hoặc cần thẩm định tiếp tục được giữ.</>}
-          </p>
           <div className="overflow-x-auto" hidden={!data.items.length}>
-            <table className="w-full text-sm text-left">
+            <table className="w-full table-fixed text-left text-sm [&_td]:align-top [&_th]:whitespace-nowrap">
+              <colgroup>
+                <col className="w-[17%]" />
+                <col className="w-[31%]" />
+                <col className="w-[11%]" />
+                <col className="w-[13%]" />
+                <col className="w-[19%]" />
+                <col className="w-[9%]" />
+              </colgroup>
               <thead className="bg-[#F3EFE6]">
                 <tr>
                   {[
                     "Đơn hàng",
                     "Sản phẩm / Gian hàng",
                     "Đơn giá",
-                    "Thu nhập tạm giữ",
-                    "Dự kiến giải tỏa",
+                    "Hoa hồng giữ",
+                    "Giải tỏa / Ngày giao",
                     "Đổi trả",
-                  ].map((label) => (
-                    <th className="p-3" key={label}>
+                  ].map((label, index) => (
+                    <th className={`px-3 py-4 font-medium text-[#7D715E] ${index === 2 || index === 3 ? 'text-right' : index === 5 ? 'text-center' : ''}`} key={label}>
                       {label}
                     </th>
                   ))}
@@ -294,23 +330,38 @@ export function EscrowFinanceReport() {
                 {data.items.map((item) => (
                   <tr className="border-b border-[#EAE4D7]" key={item.id}>
                     <td className="p-3">
-                      <strong className="block font-semibold">{item.order.externalOrderSn || item.order.id.slice(0, 8)}</strong>
+                      <strong className="block font-semibold leading-6">{item.order.externalOrderSn || item.order.id.slice(0, 8)}</strong>
                       {item.order.testFixture && <small className="text-[#8F682E]">Đơn kiểm thử Escrow</small>}
+                      {item.order.attributedCollaborator && <small className="mt-1 block text-[#7D715E]">KOL: {item.order.attributedCollaborator.fullName}</small>}
+                      <button type="button" onClick={() => setHistoryItem(item)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 py-1.5 text-xs font-medium text-[#8F682E] transition hover:border-[#C59B58] hover:bg-[#FBF5EB]" aria-label={`Xem lịch sử đơn ${item.order.externalOrderSn || item.order.id}`}>
+                        <History size={14} /> Lịch sử
+                      </button>
                     </td>
                     <td className="p-3">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-product">
                       {line.product.imageUrl && <img src={line.product.imageUrl} alt="" />}
-                      <div><strong>{line.product.title}</strong><small>{line.variant?.name || 'Không có biến thể'} · SL: {line.quantity}</small></div>
+                      <div className="min-w-0"><strong className="block leading-6">{line.product.title}</strong><small>{line.variant?.name || 'Không có biến thể'} · SL: {line.quantity}</small></div>
                     </div>)}<small className="escrow-store-name">{item.order.store.name}</small></td>
-                    <td className="p-3">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price">{money(line.unitPrice)}</div>)}</td>
-                    <td className="p-3 tabular-nums">
-                      <strong>{money(item.commissionAmount)}</strong>
+                    <td className="p-3 text-right whitespace-nowrap">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price leading-6">{money(line.unitPrice)}</div>)}</td>
+                    <td className="p-3 text-right whitespace-nowrap tabular-nums">
+                      <strong className="block leading-6">{money(item.commissionAmount)}</strong>
                       {item.order.orderItems?.length === 1 && <small className="block text-[#7D715E]">{Number(item.order.orderItems[0].appliedCommissionRate)}% hoa hồng</small>}
                     </td>
                     <td className="p-3">
-                      {new Date(item.availableAt).toLocaleString("vi-VN")}
+                      <strong className="block font-semibold leading-6 tabular-nums" title="Hạn giải tỏa">{timestamp(item.availableAt)}</strong>
+                      <span className="mt-1 block text-xs text-[#7D715E]">Giao: {item.order.deliveredAt ? timestamp(item.order.deliveredAt) : 'Chưa có ngày giao'}</span>
+                      <small className="mt-2 block font-medium text-[#8F682E]">{(() => {
+                        const remaining = Date.parse(item.availableAt) - now;
+                        if (!Number.isFinite(remaining)) return 'Chưa xác định thời hạn';
+                        if (remaining <= 0) return 'Đến hạn · chờ đối soát';
+                        const minutes = Math.ceil(remaining / 60_000);
+                        const days = Math.floor(minutes / 1440);
+                        const hours = Math.floor(minutes % 1440 / 60);
+                        return days > 0 ? `Còn ${days} ngày ${hours} giờ` : hours > 0 ? `Còn ${hours} giờ ${minutes % 60} phút` : `Còn ${minutes} phút`;
+                      })()}</small>
+                      {(item.order.referralReviewRequired || (item.order.returnRequest && !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(item.order.returnRequest.status))) && <small className="mt-1 block text-[#DC2626]">Tiếp tục giữ khi hồ sơ đổi trả/thẩm định chưa được giải quyết.</small>}
                     </td>
-                    <td className="p-3">
-                      {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : 'Không có yêu cầu đổi trả'}
+                    <td className="p-3 text-center">
+                      {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : <span className="inline-flex whitespace-nowrap rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-xs text-[#7D715E]">Không đổi trả</span>}
                       {item.order.referralReviewRequired && <ReferralReview orderId={item.order.id} signals={item.order.referralRiskSignals ?? []} onReviewed={() => setRefresh(value => value + 1)} />}
                     </td>
                   </tr>
@@ -343,6 +394,26 @@ export function EscrowFinanceReport() {
           </div>
         </>
       )}
+      <Modal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} title="Lịch sử đơn hàng" subtitle={historyItem?.order.externalOrderSn || historyItem?.order.id} icon={<Clock3 size={18} />} maxWidth="lg">
+        {historyItem && <>
+          <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+            <div><span className="text-xs text-[#7D715E]">Hoa hồng tạm giữ</span><strong className="mt-1 block text-lg text-[#1A1612]">{money(historyItem.commissionAmount)}</strong></div>
+            <div><span className="text-xs text-[#7D715E]">Hạn giải tỏa</span><strong className="mt-1 block text-sm text-[#8F682E]">{timestamp(historyItem.availableAt)}</strong></div>
+          </div>
+          <dl className="m-0 divide-y divide-[#EAE4D7]">
+            {([
+              ['Tạo link', historyItem.order.referralLink?.createdAt],
+              ['Khách mở link', historyItem.order.clickedAt],
+              ['Đặt hàng', historyItem.order.createdAt],
+              ['Shop xác nhận', historyItem.order.shopConfirmedAt],
+              ['Tạo vận đơn', historyItem.order.handedToShippingAt],
+              ['Giao thành công', historyItem.order.deliveredAt],
+              ['Khách xác nhận hoàn tất', historyItem.order.completedAt],
+            ] as const).filter(([, value]) => value && Number.isFinite(Date.parse(value))).map(([label, value]) => <div key={label} className="flex flex-wrap items-center justify-between gap-2 py-3"><dt className="text-sm text-[#7D715E]">{label}</dt><dd className="m-0 text-sm font-medium tabular-nums text-[#1A1612]">{timestamp(value)}</dd></div>)}
+          </dl>
+          <p className="m-0 text-xs text-[#7D715E]">Chỉ hiện mốc đã ghi nhận · Giờ Việt Nam. Ngày tạo link không phải ngày chia sẻ.</p>
+        </>}
+      </Modal>
     </section>
   );
 }

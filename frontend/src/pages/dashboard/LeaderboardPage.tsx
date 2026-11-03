@@ -4,13 +4,13 @@ import { Link } from 'react-router-dom';
 import {
   Trophy,
   Crown,
-  Shield,
   TrendingUp,
   TrendingDown,
   Minus,
   Award,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
   Filter,
   X,
   Check,
@@ -155,7 +155,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
   };
 
   const metricLabels: Record<LeaderboardMetric, string> = {
-    REVENUE: 'Doanh thu',
+    REVENUE: 'Doanh số GMV',
     ORDERS: 'Đơn hàng',
     CONVERSION_RATE: 'Tỷ lệ chốt',
     COMMISSION: 'Hoa hồng đã duyệt',
@@ -204,7 +204,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         <div className="leaderboard-filter-row">
           <div className="min-w-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Khoảng thời gian xếp hạng">
-              {timeOptions.map((option, index) => (
+              {timeOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -216,32 +216,37 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                       : 'border border-transparent text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
                   }`}
                 >
-                  <span className="leaderboard-filter-step" aria-hidden="true">{index + 1}</span>{option.label}
+                  {option.label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center flex-wrap gap-2.5">
             <label className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E] whitespace-nowrap" htmlFor="lb-metric-select"><Filter aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Xếp hạng theo</label>
-            <div className="relative shrink-0">
-              <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)} className="w-full sm:w-[150px] min-h-[38px] appearance-none pl-3 pr-8 py-2 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs sm:text-[13px] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
+            <div className="relative w-[180px] shrink-0">
+              <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)} className="leaderboard-centered-select border border-[#EAE4D7] text-[#1A1612] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
                 {Object.entries(metricLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
+              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
             </div>
-          </div>
-        </div>
-        {canChangeScope && (
-          <div className="flex items-center flex-wrap gap-2 mt-3 pt-3 border-t border-[#EAE4D7]">
-            <button type="button" aria-pressed={scope === 'STORE'} onClick={() => setScope(scope === 'GLOBAL' ? 'STORE' : 'GLOBAL')} className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] text-xs font-medium hover:bg-[#FBF5EB] cursor-pointer">
-              <Shield aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /><span>{scope === 'GLOBAL' ? 'Toàn sàn SCANMS' : isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</span>
-            </button>
-            {scope === 'STORE' && isAdmin && (
-              <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={event => setSelectedStoreId(event.target.value)} disabled={!stores.length} className="min-h-[34px] max-w-[240px] px-2.5 py-1.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-xs">
-                {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>}
-              </select>
+            {canChangeScope && (
+              <>
+                <div className="relative w-[180px] shrink-0">
+                <select aria-label="Phạm vi xếp hạng" value={scope} onChange={event => setScope(event.target.value as LeaderboardScope)} className="leaderboard-centered-select border border-[#EAE4D7] text-[#1A1612] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
+                  <option value="GLOBAL">Toàn sàn</option>
+                  <option value="STORE">{isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</option>
+                </select>
+                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
+                </div>
+                {scope === 'STORE' && isAdmin && (
+                  <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={event => setSelectedStoreId(event.target.value)} disabled={!stores.length} className="min-h-11 max-w-[200px] rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs text-[#1A1612]">
+                    {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>}
+                  </select>
+                )}
+              </>
             )}
           </div>
-        )}
+        </div>
         {loading && <span className="sr-only" role="status" aria-live="polite">Đang cập nhật bảng xếp hạng…</span>}
       </section>
 

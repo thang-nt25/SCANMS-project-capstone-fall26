@@ -16,7 +16,7 @@ const dateLabel = (value?: string | null) => value && Number.isFinite(Date.parse
 const statusLabels: Record<string, string> = { PENDING: 'Chờ Shop xác nhận', SHIPPING: 'Đang vận chuyển', DELIVERED: 'Đã giao hàng', COMPLETED: 'Đơn hàng đã hoàn thành', CANCELLED: 'Đơn hàng đã hủy', RETURN_REQUESTED: 'Đang xử lý đổi trả', DISPUTED: 'Đang khiếu nại', RETURNED: 'Đã trả hàng' };
 const paymentLabels: Record<string, string> = { WALLET: 'Ví SCANMS', E_WALLET: 'Ví SCANMS', PAYOS: 'Chuyển khoản qua PayOS', COD: 'Thanh toán khi nhận hàng', BANK_TRANSFER: 'Chuyển khoản ngân hàng' };
 
-export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onChat, onReorder, onReview, onViewReviews, onReturn, onCancel }: {
+export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onChat, onReorder, onReview, onViewReviews, onReturn, onCancel, onConfirmReceipt, confirmingOrderId }: {
   orderId: string;
   refreshVersion?: number;
   onChat: (order: CustomerOrder, item?: CustomerOrderItem) => void;
@@ -25,6 +25,8 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
   onViewReviews: (order: CustomerOrder) => void;
   onReturn: (order: CustomerOrder) => void;
   onCancel: (order: CustomerOrder) => void;
+  onConfirmReceipt?: (order: CustomerOrder) => void;
+  confirmingOrderId?: string | null;
 }) {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [error, setError] = useState('');
@@ -128,6 +130,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
       <div>
         {awaitingPayment && <Link className="purchase-primary" to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`}>Thanh toán bằng QR</Link>}
         {actions.reorder && <button type="button" className="purchase-primary" onClick={() => onReorder(order)}><RotateCcw size={15} /> Mua lại</button>}
+        {actions.confirmReceipt && onConfirmReceipt && <button type="button" className="purchase-primary" disabled={confirmingOrderId === order.id} onClick={() => onConfirmReceipt(order)}><PackageCheck size={15} />{confirmingOrderId === order.id ? 'Đang xác nhận…' : 'Đã nhận hàng'}</button>}
         <button type="button" onClick={() => onChat(order)}><MessageCircle size={15} /> Liên hệ người bán</button>
         {actions.cancel && <button type="button" className="purchase-cancel-action" onClick={() => onCancel(order)}>Hủy đơn</button>}
         {actions.review ? <button type="button" onClick={() => onReview(order)}><Star size={15} /> Đánh giá sản phẩm</button> : savedReviews && <button type="button" onClick={() => onViewReviews(order)}><Star size={15} /> Xem đánh giá</button>}

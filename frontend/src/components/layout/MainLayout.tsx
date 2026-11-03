@@ -99,7 +99,7 @@ export default function MainLayout() {
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div ref={pageColumnRef} className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
             <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={
