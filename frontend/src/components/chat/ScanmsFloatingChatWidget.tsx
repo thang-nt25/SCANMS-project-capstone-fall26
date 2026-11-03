@@ -1,3 +1,5 @@
+import { replyHighlightClass } from './chat-reply.styles';
+import { chatVoucherDiscount, chatVoucherHint } from '../../utils/chat-voucher';
 import { lazy, Suspense, useState, useRef, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { Categories as EmojiCategory, PickerProps } from 'emoji-picker-react';
@@ -20,14 +22,22 @@ import {
   GripVertical,
   MessageSquare,
 } from 'lucide-react';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { useScanmsChat, isUnsafeShopLogo, parseExclusiveDealMessage, type ChatCouponVoucher, type ChatExclusiveDeal } from '../../context/ScanmsChatContext';
 import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { couponService, type PublicStoreCoupon } from '../../services/coupon.service';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import type { ChatAttachmentType } from '@/types/chat.types';
+import type { ChatAttachmentType, ChatReply, ChatMessageItem } from '@/types/chat.types';
 import { ExclusiveDealCardBubble } from './ExclusiveDealCardBubble';
+import { CampaignCardBubble } from './CampaignCardBubble';
+import { parseCampaignCard } from '@/utils/chat-explorer';
+import { useChatReply } from '@/hooks/useChatReply';
+import { useChatCapabilities } from '@/hooks/useChatCapabilities';
+import { ChatReplyQuote } from './ChatReplyQuote';
+import { ChatReplyFrame } from './ChatReplyFrame';
+import { ChatOriginalMessage } from './ChatOriginalMessage';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 const emojiCategories: NonNullable<PickerProps['categories']> = [
@@ -248,9 +258,52 @@ export function ScanmsFloatingChatWidget() {
     shareCouponVoucher,
     clearActiveProduct,
     openChat,
+    deleteConversation,
+    clearConversationMessages,
+    clearAllConversations,
   } = useScanmsChat();
 
   const [inputText, setInputText] = useState('');
+
+  const [replyTarget, setReplyTarget] = useChatReply(currentUser?.id, activeConversation?.id);
+  const { messageReplies } = useChatCapabilities();
+  const [originalMessage, setOriginalMessage] = useState<ChatReply | null>(null);
+  const [sendingText, setSendingText] = useState(false);
+  const sendingTextRef = useRef(false);
+  const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+  const [isClearMessagesModalOpen, setIsClearMessagesModalOpen] = useState(false);
+  const [isClearingMessages, setIsClearingMessages] = useState(false);
+  const [isClearAllConversationsModalOpen, setIsClearAllConversationsModalOpen] = useState(false);
+
+  const handleConfirmDeleteConversation = async () => {
+    if (!conversationToDelete) return;
+    setIsDeletingConversation(true);
+    try {
+      await deleteConversation(conversationToDelete.id);
+      setConversationToDelete(null);
+    } finally {
+      setIsDeletingConversation(false);
+    }
+  };
+
+  const handleConfirmClearMessages = async () => {
+    if (!activeConversation) return;
+    setIsClearingMessages(true);
+    try {
+      await clearConversationMessages(activeConversation.id);
+      setIsClearMessagesModalOpen(false);
+    } finally {
+      setIsClearingMessages(false);
+    }
+  };
+
+  const handleConfirmClearAll = () => {
+    clearAllConversations();
+    setIsClearAllConversationsModalOpen(false);
+  };
+
+
   useEffect(() => {
     if (isOpen && (isAuthRoute || !isAuthenticated)) {
       closeChat();
@@ -311,18 +364,25 @@ export function ScanmsFloatingChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConversation?.messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
+    if (sendingTextRef.current) return;
     const text = inputText.trim();
     if (!text && !activeProduct) return;
 
-    if (activeProduct) {
+    if (activeProduct && !replyTarget) {
       sendProductsInquiry([activeProduct]);
       clearActiveProduct();
     }
 
     if (text) {
-      sendMessage(text);
-      setInputText('');
+      sendingTextRef.current = true;
+      setSendingText(true);
+      try {
+        if (await sendMessage(text, replyTarget?.id)) {
+          setInputText(current => current.trim() === text ? '' : current);
+          setReplyTarget(null);
+        }
+      } finally { sendingTextRef.current = false; setSendingText(false); }
     }
   };
 
@@ -335,6 +395,32 @@ export function ScanmsFloatingChatWidget() {
   const handleQuickSuggestion = (suggestion: string) => {
     setInputText(suggestion);
     textareaRef.current?.focus();
+  };
+
+  const chooseReply = (message: ChatMessageItem) => {
+    if (!activeConversation || sendingTextRef.current || !messageReplies) return;
+    const senderId = message.senderId || (message.sender === 'user' ? currentUser?.id || '' : 'shop');
+    setReplyTarget({
+      id: message.id, conversationId: activeConversation.id, senderId,
+      sender: { id: senderId, fullName: message.senderName || (message.sender === 'user' ? currentUser?.fullName || 'Bạn' : activeConversation.store.name), role: message.sender === 'user' ? currentUser?.role || 'CUSTOMER' : 'SHOP_MANAGER' },
+      messageText: message.content, mediaType: message.mediaType, mediaName: message.mediaName,
+      createdAt: new Date().toISOString(),
+    });
+    textareaRef.current?.focus();
+  };
+
+  const locateReply = async (message: ChatReply) => {
+    const element = document.getElementById(`floating-chat-message-${message.id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add(...replyHighlightClass.split(' '));
+      setTimeout(() => element.classList.remove(...replyHighlightClass.split(' ')), 2200);
+    } else if (activeConversation) {
+      try {
+        const response: any = await api.get(`/chat/conversations/${activeConversation.id}/messages/${message.id}`, { headers: { 'x-skip-cache': '1' } });
+        setOriginalMessage(response.data ?? response);
+      } catch { toast.error('Không mở được tin nhắn gốc. Tin nhắn có thể đã bị xóa.'); }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -414,8 +500,9 @@ export function ScanmsFloatingChatWidget() {
 
     setIsUploadingAttachment(true);
     try {
-      await sendAttachment(file, type, inputText);
+      await sendAttachment(file, type, inputText, replyTarget?.id);
       setInputText('');
+      setReplyTarget(null);
       toast.success('Đã gửi tệp vào cuộc trò chuyện.');
     } catch (error: any) {
       toast.error(error?.message || 'Không thể gửi tệp. Vui lòng thử lại.');
@@ -434,12 +521,11 @@ export function ScanmsFloatingChatWidget() {
       : messages.filter((message) => !parseExclusiveDealMessage(message.content));
   }, [activeConversation?.messages, canSeeAffiliateDeals]);
 
-  // Filter conversations in left list: chỉ hiện các shop đã có tin nhắn ít nhất 1 lần
-  const filteredConversations = conversations.filter((conversation) => {
-    const hasMessages =
-      (conversation.messages && conversation.messages.length > 0) ||
-      Boolean(conversation.lastMessage && conversation.lastMessage !== 'Bắt đầu cuộc trò chuyện' && conversation.lastMessage !== '');
-    if (!hasMessages) return false;
+  // Keep the shop just opened visible, even before the first message is sent.
+  const visibleConversations = activeConversation && !conversations.some(conversation => conversation.id === activeConversation.id)
+    ? [activeConversation, ...conversations]
+    : conversations;
+  const filteredConversations = visibleConversations.filter((conversation) => {
     const matchesName = conversation.store.name.toLocaleLowerCase('vi').includes(searchLeftQuery.trim().toLocaleLowerCase('vi'));
     const unread = (conversation.unreadCount || 0) > 0;
     return matchesName && (conversationFilter === 'ALL' || (conversationFilter === 'UNREAD' ? unread : !unread));
@@ -728,9 +814,7 @@ export function ScanmsFloatingChatWidget() {
                         <div className="min-w-0">
                           <div className="font-mono text-sm font-extrabold tracking-wide text-[#B88E4F]">{coupon.code}</div>
                           <div className="mt-0.5 text-sm font-bold text-[#1A1612]">
-                            Giảm {coupon.discountType === 'PERCENTAGE'
-                              ? `${coupon.discountValue}%`
-                              : `${coupon.discountValue.toLocaleString('vi-VN')}₫`}
+                            {chatVoucherDiscount(coupon)}
                             {coupon.discountType === 'PERCENTAGE' && coupon.maximumDiscountAmount
                               ? ` · tối đa ${coupon.maximumDiscountAmount.toLocaleString('vi-VN')}₫`
                               : ''}
@@ -1151,6 +1235,19 @@ export function ScanmsFloatingChatWidget() {
             const isUser = msg.sender === 'user';
             const hasProducts = msg.products && msg.products.length > 0;
             const exclusiveDeal = parseExclusiveDealMessage(msg.content);
+            const campaignCard = parseCampaignCard(msg.content);
+            const renderMessage = () => {
+
+            if (campaignCard) {
+              return (
+                <div className={`my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div className="max-w-[90%]">
+                    <CampaignCardBubble card={campaignCard} isMine={isUser} canRespond={!isUser && currentUser?.role === 'COLLABORATOR'} />
+                    <div className={`mt-1 text-[10px] text-[#7D715E] ${isUser ? 'text-right' : 'text-left'}`}>{msg.timestamp}</div>
+                  </div>
+                </div>
+              );
+            }
 
             if (exclusiveDeal) {
               return (
@@ -1166,9 +1263,7 @@ export function ScanmsFloatingChatWidget() {
 
             if (msg.coupon) {
               const coupon = msg.coupon;
-              const discount = coupon.discountType === 'PERCENTAGE'
-                ? `Giảm ${coupon.discountValue}%`
-                : `Giảm ${coupon.discountValue.toLocaleString('vi-VN')}₫`;
+              const discount = chatVoucherDiscount(coupon);
               return (
                 <div key={msg.id} className={`my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                   <article className="w-full max-w-[340px] rounded-2xl border border-[#EEDFC6] bg-white p-3.5 text-[#1A1612] shadow-sm">
@@ -1183,6 +1278,7 @@ export function ScanmsFloatingChatWidget() {
                       </button>
                     </div>
                     <div className="mt-2 text-sm font-extrabold">{discount}</div>
+                    <p className="mt-2 text-[11px] font-medium text-[#8F682E]">{chatVoucherHint(coupon)}</p>
                     {coupon.minimumOrderAmount && <div className="mt-1 text-[11px] text-[#7D715E]">Đơn tối thiểu {coupon.minimumOrderAmount.toLocaleString('vi-VN')}₫</div>}
                     {coupon.maximumDiscountAmount && coupon.discountType === 'PERCENTAGE' && <div className="text-[11px] text-[#7D715E]">Giảm tối đa {coupon.maximumDiscountAmount.toLocaleString('vi-VN')}₫</div>}
                     {coupon.scopeType === 'PRODUCTS' && <div className="mt-1 text-[11px] text-[#7D715E]">Áp dụng cho {coupon.products?.length || 0} sản phẩm trong danh sách Shop.</div>}
@@ -1311,6 +1407,9 @@ export function ScanmsFloatingChatWidget() {
                 </div>
               </div>
             );
+            };
+            return <ChatReplyFrame key={msg.id} id={msg.id} mine={isUser} quote={msg.replyTo} currentUserId={currentUser?.id} enabled={messageReplies}
+              onReply={() => chooseReply(msg)} onLocate={message => void locateReply(message)}>{renderMessage()}</ChatReplyFrame>;
           })}
           <div ref={messagesEndRef} />
         </div>
@@ -1418,6 +1517,7 @@ export function ScanmsFloatingChatWidget() {
         {/* KHUNG NHẬP NỘI DUNG & ICON DƯỚI (CHUẨN 100% ẢNH 1 & ẢNH 2 CỦA BẠN GỬI) */}
         {/* ========================================================================= */}
         <div className="border-t border-[#EAE4D7] bg-white p-2.5 shrink-0">
+          {replyTarget && <ChatReplyQuote message={replyTarget} currentUserId={currentUser?.id} onCancel={() => setReplyTarget(null)} />}
           <input ref={imageInputRef} type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" className="hidden" onChange={(event) => void handleAttachmentChange(event, 'IMAGE')} />
           <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" className="hidden" onChange={(event) => void handleAttachmentChange(event, 'VIDEO')} />
           <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" className="hidden" onChange={(event) => void handleAttachmentChange(event, 'DOCUMENT')} />
@@ -1529,7 +1629,7 @@ export function ScanmsFloatingChatWidget() {
             <button
               type="button"
               onClick={handleSend}
-              disabled={(!inputText.trim() && !activeProduct) || isUploadingAttachment}
+              disabled={(!inputText.trim() && (!activeProduct || Boolean(replyTarget))) || isUploadingAttachment || sendingText}
               className={`p-1 transition active:scale-95 cursor-pointer ${
                 inputText.trim() || activeProduct
                   ? 'text-[#C59B58] hover:text-[#B88E4F]'
@@ -1542,8 +1642,46 @@ export function ScanmsFloatingChatWidget() {
           </div>
         </div>
       </div>
+      {/* Modal xác nhận xóa 1 cuộc trò chuyện */}
+      <ConfirmModal
+        isOpen={Boolean(conversationToDelete)}
+        onClose={() => setConversationToDelete(null)}
+        onConfirm={handleConfirmDeleteConversation}
+        title="Xóa cuộc trò chuyện?"
+        message={`Bạn có chắc muốn xóa cuộc trò chuyện với "${conversationToDelete?.store?.name || 'gian hàng'}"? Toàn bộ lịch sử tin nhắn của cuộc trò chuyện này sẽ bị xóa khỏi danh sách.`}
+        confirmText="Xóa cuộc trò chuyện"
+        cancelText="Hủy"
+        variant="danger"
+        isLoading={isDeletingConversation}
+      />
+
+      {/* Modal xác nhận xóa lịch sử tin nhắn cuộc trò chuyện hiện tại */}
+      <ConfirmModal
+        isOpen={isClearMessagesModalOpen}
+        onClose={() => setIsClearMessagesModalOpen(false)}
+        onConfirm={handleConfirmClearMessages}
+        title="Xóa lịch sử tin nhắn?"
+        message={`Bạn có chắc muốn xóa toàn bộ lịch sử tin nhắn trong cuộc trò chuyện với "${activeConversation?.store?.name || 'Shop'}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa sạch tin nhắn"
+        cancelText="Hủy"
+        variant="danger"
+        isLoading={isClearingMessages}
+      />
+
+      {/* Modal xác nhận xóa tất cả các cuộc trò chuyện */}
+      <ConfirmModal
+        isOpen={isClearAllConversationsModalOpen}
+        onClose={() => setIsClearAllConversationsModalOpen(false)}
+        onConfirm={handleConfirmClearAll}
+        title="Xóa toàn bộ lịch sử chat?"
+        message="Bạn có chắc muốn xóa tất cả các cuộc trò chuyện và lịch sử chat trên thiết bị này? Hành động này sẽ dọn sạch danh sách tin nhắn."
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        variant="danger"
+      />
 
     </div>
+    {originalMessage && <ChatOriginalMessage message={originalMessage} onClose={() => setOriginalMessage(null)} />}
   </>
 );
 }

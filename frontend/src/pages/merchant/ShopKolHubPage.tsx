@@ -1,3 +1,4 @@
+import './ShopKolHubPage.css';
 import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';

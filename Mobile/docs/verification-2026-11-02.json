@@ -1,0 +1,44 @@
+{
+  "verifiedAt": "2026-11-02T16:14:49.512Z",
+  "branch": "thinh",
+  "scope": "native source and Android bundle; no device/APK acceptance yet",
+  "checks": {
+    "mobileTypecheck": "PASS",
+    "mobileLint": "PASS",
+    "mobileTests": {
+      "passed": 26,
+      "failed": 0
+    },
+    "backendRelatedTests": {
+      "passed": 80,
+      "suites": 7
+    },
+    "backendBuild": "PASS",
+    "expoDoctor": {
+      "passed": 20,
+      "total": 20
+    },
+    "expoVersionCheck": "PASS",
+    "readOnlyApiContracts": {
+      "passed": 23,
+      "failed": 0
+    },
+    "androidPrebuild": "PASS",
+    "androidBundle": "PASS"
+  },
+  "bundles": [
+    {
+      "path": "Mobile/dist/_expo/static/js/android/entry-443788c408d9bd356e8c9e83446c8e66.hbc",
+      "bytes": 3584132,
+      "sha256": "34106b67139646c06e502b3a2cd3861345393b147f4a37d6fef265f555522f74"
+    }
+  ],
+  "apk": {
+    "status": "BLOCKED",
+    "reason": "Android SDK not configured; build-demo preflight stopped",
+    "path": null,
+    "installed": false
+  },
+  "nativeUiTest": "NOT_RUN",
+  "sharedDatabaseMutationsFromMobileAcceptance": "NOT_RUN"
+}

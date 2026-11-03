@@ -123,6 +123,8 @@ describe('ManualOrdersService', () => {
         address: 'Road',
         province: 'Hà Nội',
         district: 'Cầu Giấy',
+        latitude: 10.8,
+        longitude: 106.7,
       },
       paymentMethod: 'COD',
       shippingFee: 30000,
@@ -131,10 +133,17 @@ describe('ManualOrdersService', () => {
     expect(
       await validate(plainToInstance(CreateManualOrderDto, valid)),
     ).toHaveLength(0);
+    expect(await validate(plainToInstance(CreateManualOrderDto, {
+      ...valid, customer: { ...valid.customer, latitude: undefined, longitude: undefined },
+    }))).toHaveLength(0);
     for (const change of [
       { shippingFee: undefined },
       { paymentMethod: 'CASH' },
       { customer: { ...valid.customer, district: '', email: 'bad' } },
+      { customer: { ...valid.customer, latitude: 91 } },
+      { customer: { ...valid.customer, longitude: -181 } },
+      { customer: { ...valid.customer, longitude: undefined } },
+      { customer: { ...valid.customer, latitude: '10.8' } },
       { items: [{ productId: product.id, quantity: 1, unitPrice: 0 }] },
     ])
       expect(
@@ -170,7 +179,7 @@ describe('ManualOrdersService', () => {
     const payload = {
       ...dto,
       shippingFee: 30000,
-      paymentMethod: ManualPaymentMethod.COD,
+      paymentMethod: ManualPaymentMethod.MANUAL,
       customer: {
         name: 'QA',
         phone: '+84 902233445',
@@ -179,6 +188,8 @@ describe('ManualOrdersService', () => {
         province: 'Hà Nội',
         district: 'Cầu Giấy',
         ward: 'Dịch Vọng',
+        latitude: 10.8,
+        longitude: 106.7,
       },
       totalAmount: 320000,
     };
@@ -198,8 +209,9 @@ describe('ManualOrdersService', () => {
     expect(data.customerPhone).toBe('0902233445');
     expect(data.shippingAddress).toBe('Road, Dịch Vọng, Cầu Giấy, Hà Nội');
     expect(data.rawPayload).toMatchObject({
-      paymentMethod: 'COD',
-      customer: { email: 'qa@example.test' },
+      paymentMethod: 'MANUAL',
+      paymentStatus: 'UNPAID',
+      customer: { email: 'qa@example.test', latitude: 10.8, longitude: 106.7 },
     });
     create.mockClear();
     await expect(

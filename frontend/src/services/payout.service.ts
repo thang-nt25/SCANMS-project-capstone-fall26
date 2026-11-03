@@ -2,6 +2,7 @@ import api from "./api";
 import type { PayoutStatus } from "./wallet.service";
 
 export interface MerchantPayout {
+  transferProvider?: string | null;
   id: string;
   collaboratorId: string;
   collaboratorName: string;

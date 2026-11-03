@@ -11,7 +11,6 @@ import {
   IsUUID,
   IsInt,
   ArrayMaxSize,
-  ArrayMinSize,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -22,10 +21,10 @@ import { MAX_PRODUCT_GALLERY_IMAGES } from '../product-media.policy';
 
 export class CreateProductDto extends ProductPackageDto {
   @ApiProperty({
-    description: 'Ít nhất một SKU phân loại được tạo cùng sản phẩm',
+    description: 'Danh sách phân loại; để trống nếu sản phẩm chỉ có một loại',
   })
+  @IsOptional()
   @IsArray()
-  @ArrayMinSize(1, { message: 'Sản phẩm cần có ít nhất một phân loại SKU' })
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => ProductVariantInputDto)
@@ -34,7 +33,7 @@ export class CreateProductDto extends ProductPackageDto {
     description: 'Cửa hàng nhận sản phẩm khi Chủ Shop quản lý nhiều gian hàng',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'Mã cửa hàng không hợp lệ' })
+  @IsUUID('all', { message: 'Mã cửa hàng không hợp lệ' })
   storeId?: string;
 
   @ApiProperty({
@@ -69,10 +68,10 @@ export class CreateProductDto extends ProductPackageDto {
   @IsNotEmpty({ message: 'Mô tả chi tiết sản phẩm không được để trống' })
   description: string;
 
-  @ApiProperty({ description: 'Thành phần sản phẩm hoặc mỹ phẩm' })
+  @ApiPropertyOptional({ description: 'Thành phần: bắt buộc với mỹ phẩm, chăm sóc và sức khỏe; tùy chọn với ngành hàng khác' })
   @IsString()
-  @IsNotEmpty({ message: 'Thành phần sản phẩm không được để trống' })
-  ingredients: string;
+  @IsOptional()
+  ingredients?: string;
 
   @ApiProperty({ description: 'Quốc gia hoặc nơi sản xuất/xuất xứ' })
   @IsString()
@@ -172,7 +171,9 @@ export class CreateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsArray({ message: 'Danh sách ảnh phụ phải là một mảng' })
-  @ArrayMaxSize(MAX_PRODUCT_GALLERY_IMAGES, { message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ' })
+  @ArrayMaxSize(MAX_PRODUCT_GALLERY_IMAGES, {
+    message: 'Sản phẩm chỉ được có tối đa 4 ảnh phụ',
+  })
   @IsString({
     each: true,
     message: 'Mỗi đường dẫn ảnh phụ phải là chuỗi hợp lệ',

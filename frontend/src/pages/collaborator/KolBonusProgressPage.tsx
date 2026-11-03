@@ -21,6 +21,7 @@ import { commissionRulesService } from '../../services/commission-rules.service'
 import api from '../../services/api';
 import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
 import { Select } from '../../components/ui/Select';
+import './KolBonusProgressPage.css';
 
 interface MilestoneItem {
   id: string;
@@ -94,6 +95,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
   const [selectedMonth, setSelectedMonth] = useState<string>(currentVnMonth);
   const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
+  const [storesError, setStoresError] = useState<string | null>(null);
   const [storeInvitations, setStoreInvitations] = useState<any[]>([]);
   const [invitationLoading, setInvitationLoading] = useState<string | null>(null);
 
@@ -125,6 +127,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
     let isMounted = true;
     async function loadStores() {
       setStoresLoading(true);
+      setStoresError(null);
       try {
         const res = await commissionRulesService.getCollaboratorStores(false);
         if (isMounted) {
@@ -140,6 +143,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
         if (isMounted) {
           setStores([]);
           setSelectedStoreId('');
+          setStoresError('Không thể tải danh sách gian hàng. Vui lòng thử lại.');
         }
       } finally {
         if (isMounted) {
@@ -429,25 +433,26 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
   return (
     <div
       id="kol-bonus-root"
-      className={`min-w-0 text-[#1A1612] ${
+      className={`creator-bonus-page min-w-0 text-[#1A1612] ${
         embedded ? '' : 'min-h-screen bg-[#FAF8F5] p-4 sm:p-6 pb-20'
       }`}
     >
       <div className="flex flex-col gap-3.5 w-full min-w-0 mx-auto">
         {storeInvitations.map((invitation) => (
-          <div key={invitation.id} className="flex justify-between items-center gap-3 p-3 sm:px-4.5 bg-[#FFF7E7] border border-[#DEBE85] rounded-xl flex-wrap">
-            <div>
+          <div key={invitation.id} className="bonus-invitation">
+            <span className="bonus-invitation-icon"><Store size={19} aria-hidden="true" /></span>
+            <div className="bonus-invitation-copy">
               <strong className="text-sm sm:text-base font-bold text-[#1A1612]">{invitation.store?.name} mời bạn vào đội ngũ CTV</strong>
               <div className="mt-0.5 text-xs text-[#7D715E]">Chấp nhận để xem mốc thưởng và tạo link tiếp thị cho Shop này.</div>
             </div>
-            <div className="flex gap-2">
+            <div className="bonus-invitation-actions">
               <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, false)} className="px-3 py-1.5 rounded-lg border border-[#D8C6A8] bg-white font-semibold text-xs text-[#1A1612] hover:bg-[#FAF8F5] cursor-pointer">Từ chối</button>
               <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, true)} className="px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] cursor-pointer">{invitationLoading === invitation.id ? 'Đang xử lý…' : 'Chấp nhận'}</button>
             </div>
           </div>
         ))}
 
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 p-3.5 sm:p-4 border border-[#EAE4D7] rounded-2xl bg-white shadow-sm">
+        <div className="bonus-toolbar">
           <header className="w-full flex items-center justify-between gap-2.5 pb-3 border-b border-[#EAE4D7]">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] shrink-0">
@@ -493,7 +498,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
               Lịch sử nhận thưởng
             </button>
           </div>
-          <div className="flex items-center flex-wrap gap-2 min-w-0 sm:ml-auto">
+          <div className="bonus-period-filters">
             <Select
               aria-label="Gian hàng tính thưởng"
               value={selectedStoreId}
@@ -548,16 +553,21 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
             <Loader2 className="animate-spin text-[#B88E4F]" size={18} aria-hidden="true" />
             Đang tải {activeTab === 'progress' ? 'tiến độ thưởng' : 'lịch sử nhận thưởng'}…
           </section>
+        ) : storesError ? (
+          <section className="p-6 border border-[#EAE4D7] rounded-2xl bg-white text-center" role="alert">
+            <p className="text-sm text-[#7D715E]">{storesError}</p>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm text-[#B88E4F]">Thử lại</button>
+          </section>
         ) : !storesLoading && stores.length === 0 ? (
-          <div className="p-8 border border-[#EAE4D7] rounded-2xl bg-white text-center shadow-sm">
+          <div className="bonus-empty-state">
             <div className="grid place-items-center w-12 h-12 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] mx-auto mb-3">
               <Store size={22} />
             </div>
             <h3 className="text-base font-bold text-[#1A1612] mb-1.5">
-              Bạn chưa tham gia Shop nào có chính sách thưởng doanh số.
+              Chưa có gian hàng liên kết
             </h3>
             <p className="text-xs text-[#7D715E] max-w-lg mx-auto leading-relaxed">
-              Khi bạn liên kết với các Cửa hàng có áp dụng chương trình thưởng doanh số tháng hoặc tạo ra đơn hàng tiếp thị hợp lệ, tiến độ tích lũy và mức thưởng dự kiến sẽ tự động hiển thị tại đây.
+              Liên kết hợp tác với gian hàng để theo dõi doanh số, mốc thưởng và lịch sử nhận thưởng tại đây.
             </p>
           </div>
         ) : errorMessage && !data ? (

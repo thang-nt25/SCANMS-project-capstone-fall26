@@ -33,7 +33,7 @@ test('checkout map fills nationwide address, requotes shipping, saves coordinate
         localStorage.setItem('token', 'qa-map-no-server-access');
         localStorage.setItem('user', JSON.stringify({ id: 'qa-customer', fullName: 'Khách kiểm thử', role: 'CUSTOMER' }));
       } else localStorage.clear();
-      Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition(success) { success({ coords: { latitude: 21.033, longitude: 105.85 } }); } } });
+      Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition(success) { if (window.__holdGps) window.__pendingGps = success; else success({ coords: { latitude: 21.033, longitude: 105.85 } }); } } });
     });
     await page.setRequestInterception(true);
     page.on('request', request => {
@@ -105,6 +105,13 @@ test('checkout map fills nationwide address, requotes shipping, saves coordinate
 
     mapMode = 'partial';
     await page.$eval('.address-location-locate', el => el.click());
+    await page.waitForSelector('[data-device-location-suggestion]');
+    assert.match(await page.$eval('#checkout-ward', el => el.textContent), /Phường Hàng Bạc/);
+    await page.$eval('[data-device-location-suggestion] button:last-child', button => button.click());
+    assert.match(await page.$eval('#checkout-ward', el => el.textContent), /Phường Hàng Bạc/);
+    await page.$eval('.address-location-locate', el => el.click());
+    await page.waitForSelector('[data-device-location-suggestion]');
+    await page.click('[data-device-location-suggestion] button');
     await page.waitForFunction(() => document.body.innerText.includes('Một số địa danh chưa khớp'));
     assert.doesNotMatch(await page.$eval('#checkout-ward', el => el.textContent), /Phường Hàng Bạc/);
     assert.match(await page.$eval('.checkout-totals', el => el.textContent), /Chờ tính phí ship/);
@@ -130,6 +137,8 @@ test('checkout map fills nationwide address, requotes shipping, saves coordinate
     await page.waitForSelector('.address-location-locate');
     mapMode = 'match';
     await page.$eval('.address-location-locate', el => el.click());
+    await page.waitForSelector('[data-device-location-suggestion]');
+    await page.click('[data-device-location-suggestion] button');
     await page.waitForFunction(() => document.querySelector('#checkout-province')?.textContent.includes('Hà Nội')).catch(async error => { throw new Error(`${error.message}: ${errors.join('; ')} ${await page.$eval('.checkout-address', el => el.innerText)}`); });
     assert.equal(await page.$eval('#checkout-shipping-address', el => el.value), '15, Hàng Bạc');
     const beforePick = reverseRequests;
@@ -145,6 +154,17 @@ test('checkout map fills nationwide address, requotes shipping, saves coordinate
     await page.mouse.up();
     await page.waitForNetworkIdle({ idleTime: 1200 });
     assert.ok(reverseRequests > beforeDrag, 'dragging the marker reverse geocodes its new position');
+    await page.evaluate(() => { window.__holdGps = true; });
+    await page.$eval('.address-location-locate', el => el.click());
+    await page.waitForFunction(() => Boolean(window.__pendingGps));
+    await page.type('#checkout-shipping-address', ' địa chỉ khác ưu tiên');
+    const editedAddress = await page.$eval('#checkout-shipping-address', el => el.value);
+    const requestsBeforeGps = reverseRequests;
+    await page.evaluate(() => window.__pendingGps({ coords: { latitude: 10.8, longitude: 106.7 } }));
+    await page.waitForNetworkIdle({ idleTime: 300 });
+    assert.equal(await page.$eval('#checkout-shipping-address', el => el.value), editedAddress);
+    assert.equal(reverseRequests, requestsBeforeGps, 'late device location is ignored after editing the destination');
+    assert.equal(await page.$('[data-device-location-suggestion]'), null);
     await page.setViewport({ width: 1440, height: 1000 });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await page.$eval('.address-location-picker', el => el.scrollIntoView({ block: 'center' }));

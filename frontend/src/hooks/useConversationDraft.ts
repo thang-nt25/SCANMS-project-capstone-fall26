@@ -3,10 +3,11 @@ import { useCallback, useRef, useState, type SetStateAction } from 'react';
 export function useConversationDraft(
   userId?: string,
   conversationId?: string | null,
+  field: 'draft' | 'reply' = 'draft',
 ) {
   const key =
     userId && conversationId
-      ? `scanms:chat:draft:${userId}:${conversationId}`
+      ? `scanms:chat:${field}:${userId}:${conversationId}`
       : '';
   const cache = useRef(new Map<string, string>());
   const [, refresh] = useState(0);

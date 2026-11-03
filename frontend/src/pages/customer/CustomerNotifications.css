@@ -1,0 +1,67 @@
+@reference "../../index.css";
+.customer-notifications { @apply [container:customer-notifications_/_inline-size]; }
+.customer-notifications-toolbar { @apply flex; @apply flex-wrap; @apply items-center; @apply [gap:12px]; @apply [min-height:58px]; @apply [padding:10px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF]; }
+.customer-notifications-toolbar nav { @apply flex; @apply [flex:1_1_400px]; @apply [gap:8px]; @apply [min-width:0]; }
+.customer-notifications-toolbar nav button { @apply [flex:1]; @apply [min-height:36px]; @apply [padding:8px]; @apply [border:1px_solid_transparent]; @apply [border-radius:7px]; @apply [background:transparent]; @apply [font-size:12px]; }
+.customer-notifications-toolbar nav button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8F682E]; }
+.customer-notifications-toolbar > button { @apply [min-height:36px]; @apply [margin-left:auto]; @apply [margin-bottom:0]; @apply [padding:7px_10px]; @apply [border-color:#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FAF8F5]; @apply [font-size:12px]; @apply [color:#7D715E]; }
+.customer-notification-list { @apply grid; @apply [min-width:0]; @apply [container:notification-list_/_inline-size]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply overflow-hidden; @apply [background:#FFFFFF]; }
+.customer-notification-card { @apply [min-width:0]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [background:#FFFFFF]; @apply [transition:background_150ms]; }
+.customer-notification-card:last-child { @apply [border-bottom:0]; }
+.customer-notification-card[data-read=false] { @apply [background:#FFFDFA]; }
+.customer-notification-card:hover { @apply [background:#FAF8F5]; }
+.customer-notification-main { @apply grid; @apply [grid-template-columns:60px_minmax(0,_1fr)]; @apply [align-items:start]; @apply [gap:16px]; @apply [padding:16px_18px_6px]; }
+.customer-notification-product-image, .customer-notification-icon { @apply grid; @apply place-items-center; @apply [width:60px]; @apply [height:60px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:6px]; @apply overflow-hidden; @apply [background:#FFFFFF]; }
+.customer-notification-product-image img { @apply block; @apply [width:100%]; @apply [height:100%]; @apply [padding:4px]; @apply object-contain; }
+.customer-notification-icon { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.customer-notification-card[data-read=true] .customer-notification-icon { @apply [border-color:#EAE4D7]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; }
+.customer-notification-content { @apply [min-width:0]; }
+.customer-notification-meta { @apply flex; @apply items-center; @apply flex-wrap; @apply [gap:8px_12px]; @apply [min-height:18px]; @apply [margin-bottom:4px]; @apply [font-size:11px]; @apply [line-height:1.5]; }
+.customer-notification-category { @apply [color:#7D715E]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.customer-notification-unread, .customer-notification-read { @apply inline-flex; @apply items-center; @apply [gap:5px]; @apply [color:#8F682E]; @apply [font-size:10px]; }
+.customer-notification-unread i { @apply [width:4px]; @apply [height:4px]; @apply [border-radius:50%]; @apply [background:#C59B58]; }
+.customer-notification-read { @apply [color:#7D715E]; }
+.customer-notification-card h3 { @apply [margin:0]; @apply [font-family:inherit]; @apply [font-size:14px]; @apply [font-weight:650]; @apply [line-height:1.55]; @apply [color:#1A1612]; }
+.customer-notification-card[data-read=true] h3 { @apply [font-weight:500]; }
+.customer-notification-card h3 button { @apply block; @apply [max-width:100%]; @apply [margin:0]; @apply [padding:0]; @apply [border:0]; @apply [border-radius:0]; @apply [background:transparent]; @apply [color:inherit]; @apply [font:inherit]; @apply [line-height:inherit]; @apply text-left; @apply [overflow-wrap:anywhere]; @apply cursor-pointer; }
+.customer-notification-card h3 button:hover { @apply [color:#8F682E]; }
+.customer-notification-message { @apply [margin:5px_0_0]; @apply [color:#7D715E]; @apply [font-size:12px]; @apply [line-height:1.65]; @apply [white-space:pre-line]; @apply [overflow-wrap:anywhere]; }
+.customer-notification-references { @apply flex; @apply flex-wrap; @apply [gap:5px_12px]; @apply [margin-top:7px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:1.6]; }
+.customer-notification-references > span { @apply [min-width:0]; @apply [max-width:100%]; @apply [overflow-wrap:anywhere]; }
+.customer-notification-references strong { @apply [font-weight:500]; @apply [color:#4A3F33]; }
+.customer-notification-footer { @apply flex; @apply flex-wrap; @apply items-center; @apply justify-between; @apply [gap:8px_16px]; @apply [margin:0_18px_0_94px]; @apply [padding:3px_0_13px]; }
+.customer-notification-time { @apply inline-flex; @apply items-center; @apply flex-wrap; @apply [gap:5px]; @apply [min-width:0]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:1.5]; font-variant-numeric: tabular-nums; }
+.customer-notification-time svg { @apply [flex-shrink:0]; }
+.customer-notification-actions { @apply flex; @apply items-center; @apply justify-end; @apply [gap:8px]; @apply [margin-left:auto]; }
+.customer-notification-actions button { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:32px]; @apply [margin:0]; @apply [padding:6px_10px]; @apply [border:1px_solid_transparent]; @apply [border-radius:5px]; @apply [background:transparent]; @apply [font-family:inherit]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [line-height:1.5]; @apply whitespace-nowrap; @apply cursor-pointer; }
+.customer-notification-actions svg { @apply [flex-shrink:0]; @apply [color:#B88E4F]; }
+.customer-notification-actions .customer-notification-mark { @apply [color:#7D715E]; }
+.customer-notification-actions .customer-notification-mark:hover { @apply [border-color:#EAE4D7]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; }
+.customer-notification-actions .customer-notification-open { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#1A1612]; }
+.customer-notification-actions .customer-notification-open:hover { @apply [border-color:#C59B58]; @apply [background:#F3EFE6]; }
+.customer-notification-actions button:disabled { @apply [opacity:.55]; @apply [cursor:wait]; }
+.customer-notification-card button:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+.customer-notification-spinner { @apply [animation:customer-notification-spin_.8s_linear_infinite]; }
+@keyframes customer-notification-spin { to { transform: rotate(360deg); } }
+@container notification-list (max-width: 620px) {
+  .customer-notification-main { @apply [grid-template-columns:48px_minmax(0,_1fr)]; @apply [gap:12px]; @apply [padding:14px_12px_6px]; }
+  .customer-notification-product-image, .customer-notification-icon { @apply [width:48px]; @apply [height:48px]; }
+  .customer-notification-footer { @apply [margin:0_12px_0_72px]; }
+  .customer-notification-actions button { @apply [min-height:40px]; }
+  .customer-notification-mark span { @apply absolute; @apply [width:1px]; @apply [height:1px]; @apply [padding:0]; @apply [margin:-1px]; @apply overflow-hidden; @apply [clip-path:inset(50%)]; @apply whitespace-nowrap; }
+  .customer-notification-actions .customer-notification-mark { @apply [width:40px]; @apply [padding:8px]; @apply [border-color:#EAE4D7]; }
+}
+@container notification-list (max-width: 400px) {
+  .customer-notification-footer { @apply [margin-left:12px]; }
+  .customer-notification-time { @apply [flex-basis:100%]; }
+  .customer-notification-actions { @apply [width:100%]; }
+  .customer-notification-actions .customer-notification-open { @apply [flex:1]; }
+}
+@container customer-notifications (max-width: 479px) {
+  .customer-notifications-toolbar nav { @apply [gap:0]; }
+  .customer-notifications-toolbar nav button { @apply [padding:10px_4px]; @apply [font-size:11px]; @apply [gap:4px]; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .customer-notification-card { @apply [transition:none]; }
+  .customer-notification-spinner { @apply [animation:none]; }
+}

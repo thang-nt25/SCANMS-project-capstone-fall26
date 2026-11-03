@@ -269,6 +269,7 @@ export class ManualOrdersService {
               customerPhone,
               rawPayload: {
                 requestFingerprint: fingerprint,
+                paymentStatus: 'UNPAID',
                 ...(dto.customer ? { customer: { ...dto.customer } } : {}),
                 ...(dto.paymentMethod
                   ? { paymentMethod: dto.paymentMethod }

@@ -196,11 +196,6 @@ export const PartnerUpgradeTab: React.FC = () => {
       {/* Header chỉ hiển thị khi đã được kích hoạt hoặc đang chờ duyệt */}
       {(isVerified || isPending) && (
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612] m-0">
-              Đăng ký Đối tác Tiếp thị
-            </h1>
-          </div>
           <div className="flex items-center gap-2.5">
             <ApplicationBadge status={kolApp?.status} />
           </div>

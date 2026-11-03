@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
 import {
   Gift,
   Calendar,
@@ -226,12 +225,7 @@ export default function KolCampaignsPage() {
   const acceptedCount = invitations.filter((i) => i.status === 'ACCEPTED').length;
 
   return (
-    <div className="max-w-[1520px] mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6" id="kol-campaigns-page">
-      <WorkspaceHero
-        eyebrow="SCANMS / CHIẾN DỊCH KÍCH CẦU DOANH SỐ"
-        title="Chiến dịch kích cầu & Cơ hội thù lao"
-        description="Tham gia các chiến dịch kích cầu toàn sàn của các nhãn hàng đối tác để nhận thêm +1% đến +2% thù lao trên mỗi đơn hàng hoàn tất. Không áp lực KPI, bán bao nhiêu hưởng thưởng bấy nhiêu."
-      />
+    <div className="w-full min-w-0 flex flex-col gap-4 text-[#1A1612]" id="kol-campaigns-page">
 
       {toast && (
         <div
@@ -252,18 +246,18 @@ export default function KolCampaignsPage() {
       )}
 
       {/* Top Main Mode Navigation Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1.5 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
-        <div className="flex items-center gap-1.5">
+      <div className="grid w-full min-w-0 grid-cols-1 items-center gap-2.5 p-2.5 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs xl:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid min-w-0 grid-cols-2 items-stretch gap-2.5">
           <button
             type="button"
             onClick={() => {
               setPageMode('EXPLORE');
               setSearchParams({ tab: 'explore' });
             }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex min-h-[42px] items-center justify-center gap-2 border px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               pageMode === 'EXPLORE'
-                ? 'bg-[#C59B58] text-white shadow-xs'
-                : 'bg-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
+                ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612]'
+                : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
             }`}
           >
             <Flame className="w-4 h-4" />
@@ -276,10 +270,10 @@ export default function KolCampaignsPage() {
               setPageMode('TARGETED');
               setSearchParams({ tab: 'targeted' });
             }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex min-h-[42px] items-center justify-center gap-2 border px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               pageMode === 'TARGETED'
-                ? 'bg-[#C59B58] text-white shadow-xs'
-                : 'bg-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
+                ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612]'
+                : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
             }`}
           >
             <Gift className="w-4 h-4" />
@@ -293,15 +287,15 @@ export default function KolCampaignsPage() {
         </div>
 
         {/* Search input */}
-        <div className="flex items-center gap-2 pr-1.5">
-          <div className="relative min-w-[220px]">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="relative min-w-0 flex-1 xl:w-[240px]">
             <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               aria-label="Tìm chiến dịch hoặc nhãn hàng"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm chiến dịch, nhãn hàng…"
-              className="w-full bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl pl-9 pr-3.5 py-2 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
+              className="h-[42px] w-full bg-white border border-[#EAE4D7] rounded-xl pl-9 pr-3.5 py-2 text-xs text-[#1A1612] outline-none focus:border-[#C59B58]"
             />
           </div>
           <button
@@ -310,7 +304,7 @@ export default function KolCampaignsPage() {
               if (pageMode === 'EXPLORE') loadExplore();
               else loadInvitations();
             }}
-            className="px-3.5 py-2 border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-bold rounded-xl transition-colors cursor-pointer shrink-0"
+            className="h-[42px] px-3.5 py-2 border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-bold rounded-xl transition-colors cursor-pointer shrink-0"
           >
             Làm mới
           </button>
@@ -321,7 +315,7 @@ export default function KolCampaignsPage() {
           TAB 1: KHÁM PHÁ CHIẾN DỊCH SỰ KIỆN (1-TO-MANY BROADCAST)
       ───────────────────────────────────────────────────────────── */}
       {pageMode === 'EXPLORE' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Top Metric Highlights */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white border border-[#EAE4D7] rounded-2xl p-5 shadow-xs flex items-center justify-between">
@@ -418,7 +412,7 @@ export default function KolCampaignsPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {filteredExplore.map((campaign) => {
                 const isJoined = Boolean(campaign.isJoined);
                 const hasProducts = Boolean(campaign.campaignProducts && campaign.campaignProducts.length > 0);

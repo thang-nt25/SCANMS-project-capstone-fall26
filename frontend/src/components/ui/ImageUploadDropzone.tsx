@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   UploadCloud,
+  CheckCircle2,
   Camera,
   CreditCard,
   FileText,
@@ -89,18 +90,19 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
   if (variant === 'document') {
     return (
-      <div className={`space-y-1.5 text-left ${className}`}>
-        <div className="flex items-center justify-between text-xs">
-          <label className="font-semibold text-[#1A1612]">
+      <div className={`space-y-1.5 min-w-0 ${className}`}>
+        <div className="flex items-center justify-between text-xs font-semibold text-[#1A1612]">
+          <span>
             {label}
-            {required && <span className="text-[#B88E4F]"> *</span>}
-          </label>
+            {required && <span className="text-[#C59B58]"> *</span>}
+          </span>
           {value && (
-            <span className="text-[10px] font-semibold text-[#059669] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6]">
-              Đã đính kèm
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#059669] bg-[#F0FDF4] px-2 py-0.5 rounded-full border border-[#DCFCE7]">
+              <CheckCircle2 size={11} /> Đã đính kèm
             </span>
           )}
         </div>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -109,53 +111,58 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           className="hidden"
           aria-label={label}
         />
+
         <div
-          className={`flex items-center justify-between gap-3 p-3 rounded-xl border bg-white transition ${
-            value ? 'border-[#C59B58]/60 bg-[#FAF8F5]' : 'border-[#EAE4D7] hover:border-[#C59B58]'
+          onClick={() => !value && fileInputRef.current?.click()}
+          className={`flex items-center gap-3.5 min-h-[72px] p-3 rounded-xl transition-all duration-200 ${
+            value
+              ? 'bg-white border border-[#EAE4D7] shadow-2xs'
+              : 'border-2 border-dashed border-[#EEDFC6] bg-[#FAF8F5]/80 hover:bg-[#FBF5EB]/50 hover:border-[#C59B58] cursor-pointer'
           }`}
         >
-          <div className="flex items-center gap-3 min-w-0">
-            {value ? (
-              <button
-                type="button"
-                className="w-10 h-10 rounded-lg overflow-hidden border border-[#EAE4D7] shrink-0 cursor-pointer hover:opacity-80 transition"
-                onClick={() =>
-                  window.open(value, '_blank', 'noopener,noreferrer')
-                }
-                aria-label={`Xem ${label}`}
-              >
-                <img src={value} alt={label} className="w-full h-full object-cover" />
-              </button>
-            ) : (
-              <span className="w-10 h-10 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                {uploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  renderIcon()
-                )}
-              </span>
-            )}
-            <div className="flex flex-col min-w-0 text-left">
-              <strong className="text-xs font-semibold text-[#1A1612] truncate">
-                {uploading
-                  ? 'Đang tải ảnh…'
-                  : value
-                    ? 'Đã tải ảnh'
-                    : 'Tải ảnh lên'}
-              </strong>
-              <span className="text-[11px] text-[#7D715E] truncate">
-                {value
-                  ? 'Bấm ảnh để xem chi tiết'
-                  : 'PNG, JPG, WEBP · ≤ 5 MB'}
-              </span>
+          {value ? (
+            <button
+              type="button"
+              className="shrink-0 w-14 h-12 p-0.5 overflow-hidden rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] cursor-pointer hover:opacity-90 transition group relative"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(value, '_blank', 'noopener,noreferrer');
+              }}
+              title="Bấm để xem ảnh phóng to"
+            >
+              <img src={value} alt={label} className="w-full h-full object-cover rounded-md" />
+            </button>
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-white border border-[#EEDFC6] flex items-center justify-center shrink-0 text-[#B88E4F] shadow-2xs">
+              {uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-[#C59B58]" />
+              ) : (
+                renderIcon()
+              )}
             </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-[#1A1612] truncate">
+              {uploading
+                ? 'Đang tải ảnh lên…'
+                : value
+                  ? 'Đã tải ảnh lên'
+                  : 'Tải ảnh lên'}
+            </p>
+            <p className="text-[11px] text-[#7D715E] mt-0.5">
+              {value
+                ? 'Bấm vào ảnh để xem kích thước đầy đủ'
+                : 'PNG, JPG, WEBP · Tối đa 5 MB'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+
+          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-xs font-semibold text-[#1A1612] transition cursor-pointer"
+              className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#EEDFC6] bg-white hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[#8F682E] transition shadow-2xs disabled:opacity-50 cursor-pointer"
             >
               {value ? 'Đổi ảnh' : 'Chọn ảnh'}
             </button>
@@ -165,14 +172,20 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
                 disabled={uploading}
                 onClick={() => onChange('')}
                 aria-label={`Xóa ${label}`}
-                className="p-1.5 rounded-lg text-[#DC2626] hover:bg-rose-50 transition cursor-pointer"
+                title="Xóa ảnh này"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FEF2F2] hover:border-[#FCA5A5] text-[#7D715E] hover:text-[#DC2626] transition shadow-2xs cursor-pointer"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 size={14} />
               </button>
             )}
           </div>
         </div>
-        {helperText && <p className="text-[11px] text-[#7D715E] leading-relaxed m-0">{helperText}</p>}
+
+        {helperText && (
+          <p className="text-[11px] text-[#7D715E] leading-relaxed mt-1">
+            {helperText}
+          </p>
+        )}
       </div>
     );
   }

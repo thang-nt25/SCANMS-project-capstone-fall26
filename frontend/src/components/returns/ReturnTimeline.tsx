@@ -45,6 +45,11 @@ function currentStep(status: ReturnStatus): number {
 export function ReturnTimeline({ request }: { request: ReturnDetail }) {
   const active = currentStep(request.status);
   const interrupted = ['SHOP_REJECTED', 'EXPIRED', 'INSPECTION_REJECTED', 'REFUND_FAILED', 'DISPUTED', 'CLOSED'].includes(request.status);
+  const events = [...request.events];
+  if (!events.some(event => event.type === 'REQUEST_CREATED') && Number.isFinite(Date.parse(request.submittedAt))) {
+    events.push({ id: `${request.id}-submitted`, type: 'REQUEST_CREATED', createdAt: request.submittedAt });
+  }
+  events.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
   return (
     <section aria-label="Tiến trình đổi trả" className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5">
@@ -68,17 +73,17 @@ export function ReturnTimeline({ request }: { request: ReturnDetail }) {
         ))}
       </ol>
       {interrupted && <p className="mt-3 text-sm text-[#7D715E]">Quy trình đang tạm dừng; xem lý do và hướng xử lý bên dưới.</p>}
-      {request.events.length > 0 && <details className="mt-4 border-t border-[#EAE4D7] pt-3">
-        <summary className="cursor-pointer text-sm font-semibold text-[#8A6736]">Lịch sử xử lý ({request.events.length})</summary>
+      {events.length > 0 && <section aria-label="Lịch sử xử lý" className="return-processing-history mt-4 border-t border-[#EAE4D7] pt-3">
+        <header className="flex items-center justify-between gap-3 text-sm text-[#8A6736]"><h3 className="font-semibold">Lịch sử xử lý</h3><span className="text-xs">{events.length} mốc xử lý</span></header>
         <ol className="mt-3 space-y-2 text-sm">
-          {request.events.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2">
+          {events.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2">
             <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}</span>
             <time className="text-[#7D715E]" dateTime={event.createdAt}>
-              {new Date(event.createdAt).toLocaleString('vi-VN')}
+              {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
             </time>
           </li>)}
         </ol>
-      </details>}
+      </section>}
     </section>
   );
 }

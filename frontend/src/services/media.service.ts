@@ -6,6 +6,7 @@ export interface MediaAsset {
   storeId: string;
   productId?: string;
   collaboratorId?: string | null;
+  sampleRequestId?: string | null;
   title: string;
   assetType: 'IMAGE' | 'VIDEO' | 'COPYWRITE_TEXT';
   urlOrContent: string;

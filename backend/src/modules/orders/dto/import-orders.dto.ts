@@ -7,6 +7,6 @@ export class ImportOrdersDto {
       'ID cửa hàng; Shop Manager có thể bỏ trống để dùng cửa hàng của mình',
   })
   @IsOptional()
-  @IsUUID('4', { message: 'storeId phải là UUID hợp lệ' })
+  @IsUUID('all', { message: 'storeId phải là UUID hợp lệ' })
   storeId?: string;
 }
