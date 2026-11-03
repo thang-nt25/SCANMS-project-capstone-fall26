@@ -188,6 +188,7 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
         </details> : <p className="ghn-journey__empty my-3 text-[11px] leading-[1.6] text-[#7D715E]">GHN chưa gửi thêm lịch sử. Các mốc phía dưới chỉ đổi khi GHN xác nhận trạng thái mới.</p>}
         </div>
         <p className="ghn-journey__updated flex flex-wrap items-center justify-between gap-2 border-t border-[#EAE4D7] pt-2.5 text-[9px] leading-[1.7] text-[#7D715E]">
+          <span>{formatTime(tracking.lastCheckedAt) ? `Cập nhật: ${formatTime(tracking.lastCheckedAt)}` : ''}{trackingNote ? `${formatTime(tracking.lastCheckedAt) ? ' · ' : ''}${trackingNote}` : ''}</span>
           <span className="ghn-journey__countdown inline-flex items-center gap-1 whitespace-nowrap rounded-[999px] border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-[3px] text-[10px] text-[#795A2D] [&_strong]:min-w-[17px] [&_strong]:text-center [&_strong]:text-[11px] [&_strong]:text-[#231D15] [&_strong]:tabular-nums" role="timer">{refreshLabel}</span>
         </p>
       </div>}
