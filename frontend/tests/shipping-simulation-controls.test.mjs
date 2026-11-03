@@ -37,6 +37,7 @@ test('an opted-in TEST purchase offers start with an explicit non-physical/non-p
 test('a running TEST simulation offers the explicit delivery synchronization step', () => {
   const html = render({ environment: 'TEST', simulationAvailable: true, isSimulation: true });
   assert.match(html, /Đồng bộ kết quả giao thử/);
-  assert.match(html, /sau 4 phút/);
+  assert.match(html, /Mỗi mốc cách nhau 15 giây/);
+  assert.match(html, /sau 1 phút/);
   assert.doesNotMatch(html, /Bắt đầu mô phỏng giao hàng/);
 });

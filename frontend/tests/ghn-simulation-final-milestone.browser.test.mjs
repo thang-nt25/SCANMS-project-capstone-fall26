@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 
 const base = process.env.GHN_UI_TEST_URL;
-const executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const executablePath = process.env.GHN_UI_BROWSER_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 test('simulation ticks the final milestone only after API confirmation, using server time', { skip: !base || !existsSync(executablePath), timeout: 30000 }, async () => {
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
@@ -40,7 +40,7 @@ test('simulation ticks the final milestone only after API confirmation, using se
           status: confirmed ? 'delivered' : 'delivering', statusText: confirmed ? 'Giao hàng thành công' : 'Shipper đang đi giao',
           expectedDeliveryTime: new Date(due).toISOString(), nextEventAt: confirmed ? null : new Date(due).toISOString(),
           lastCheckedAt: new Date(now).toISOString(), shipperName: 'Shipper thử nghiệm', shipperPhone: null,
-          timeline: statuses.slice(0, confirmed ? 5 : 4).map((status, index) => ({ status, title: status, time: new Date(due - (4 - index) * 60000).toISOString() })) };
+          timeline: statuses.slice(0, confirmed ? 5 : 4).map((status, index) => ({ status, title: status, time: new Date(due - (4 - index) * 15000).toISOString() })) };
         return request.respond({ status: 200, headers, body: JSON.stringify({ success: true, data }) });
       }
       if (url.origin !== origin && !['data:', 'blob:'].includes(url.protocol)) return request.abort();

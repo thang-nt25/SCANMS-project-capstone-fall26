@@ -1056,7 +1056,7 @@ export class GhnService {
         throw new BadRequestException('Chỉ đồng bộ giao thử cho đơn đang giao.');
       }
       if (simulated.status !== 'delivered') {
-        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 4 phút từ khi bắt đầu.');
+        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 1 phút từ khi bắt đầu.');
       }
       const completedAt = new Date();
       await tx.order.update({
