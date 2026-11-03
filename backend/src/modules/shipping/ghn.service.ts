@@ -413,6 +413,10 @@ export class GhnService {
       );
     }
 
+    if (!existingRawPayload.shopConfirmedAt) {
+      throw new BadRequestException('Shop cần xác nhận đơn hàng trước khi tạo vận đơn GHN.');
+    }
+
     if (!order.customerPhone || !order.shippingAddress || order.orderItems.length === 0) {
       throw new BadRequestException('Đơn hàng thiếu số điện thoại, địa chỉ nhận hoặc sản phẩm để gửi GHN.');
     }
