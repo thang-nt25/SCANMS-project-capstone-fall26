@@ -35,8 +35,16 @@ import { IdentityScreen } from "../customer/IdentityScreen";
 import { BonusesScreen } from "../commissions/BonusesScreen";
 import { ShopFinanceScreen } from "../shop/ShopFinanceScreen";
 import { ReferralOversightScreen } from "../marketing/ReferralOversightScreen";
+import { useEffect } from "react";
+import { useNavigation } from "expo-router";
+import { modules } from "./policy";
 export function BusinessScreen({ route }: ScreenProps<"Business">) {
   const { user, store } = useActor();
+  const stack = useNavigation();
+  useEffect(() => {
+    if (canOpenModule(user.role, route.params.feature))
+      stack.setOptions({ title: modules[route.params.feature].title });
+  }, [stack, user.role, route.params.feature]);
   if (!canOpenModule(user.role, route.params.feature))
     return (
       <Screen scroll>

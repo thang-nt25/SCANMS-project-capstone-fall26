@@ -19,10 +19,16 @@ export default function PrivateLayout() {
             screenOptions={{
               headerStyle: { backgroundColor: colors.white },
               headerTintColor: colors.ink,
+              headerShadowVisible: false,
+              headerTitleStyle: { fontSize: 17, fontWeight: "600" },
               contentStyle: { backgroundColor: colors.canvas },
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="account-settings"
+              options={{ title: "Thiết lập tài khoản" }}
+            />
             <Stack.Screen
               name="business"
               options={{ title: "Nghiệp vụ SCANMS" }}

@@ -1,0 +1,47 @@
+{
+  "reportDate": "2026-11-04",
+  "timeZone": "Asia/Bangkok",
+  "scope": "Marketplace UI redesign, preserving role and API business rules",
+  "mobileTypecheck": "PASS",
+  "mobileLint": "PASS",
+  "mobileUnitContract": { "passed": 50, "failed": 0 },
+  "backendRegression": { "suite": "products.public-stores.spec", "passed": 3, "failed": 0 },
+  "backendBuild": "PASS",
+  "androidJsExport": "PASS",
+  "debugNativeBuild": "PASS",
+  "debugApkInstalled": true,
+  "debugApkRequiresMetro": true,
+  "apkSha256": "8E7EAD337BB69D1BC0B3F6916262961C669CB96FB1A6A92E3E9C93447328F396",
+  "publicApiContracts": { "passed": 5, "mode": "READ_ONLY", "storeListingsObserved": 4 },
+  "nativeVisualInspection": {
+    "role": "CUSTOMER",
+    "screens": ["Home", "Catalog", "Product detail", "SKU bottom sheet", "Cart", "Storefront", "Account", "Account settings", "Order status filters and empty state"],
+    "otherRoleNativeInspection": "NOT_RUN",
+    "loginLogoutExecution": "NOT_RUN",
+    "financialOrCartMutations": "NOT_RUN"
+  },
+  "databaseReset": false,
+  "seedRun": false,
+  "passwordChanges": false,
+  "cssFilesAdded": false,
+  "userScreenshotRefinement": {
+    "home": "Gold search header, wallet/coupon strip, horizontal shortcuts and real coupon offers",
+    "account": "Identity header, purchase status links and four shopping utilities",
+    "settings": "Separate authenticated route with role-gated feature links and logout confirmation",
+    "sku": "Thumbnail strip opens the sheet with the selected Brown Switch SKU; stock and price displayed",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "mobileTests": "50/50 PASS",
+    "androidJsExport": "PASS",
+    "bundle": "entry-607aa2d455402b082b219d8bbba38f00.hbc",
+    "runtimeErrorsObserved": false,
+    "cartOrFinancialWrites": false,
+    "checkout": "DEFERRED as previously agreed"
+  },
+  "deferred": ["mobile checkout/payment", "livestream", "standalone ARM release acceptance"],
+  "notes": [
+    "Private account/cart/order screenshots remain in ignored .dev-runtime.",
+    "Bundled image sources exactly follow the existing public web URL mappings.",
+    "Build and visual inspection do not certify all-role E2E workflows."
+  ]
+}

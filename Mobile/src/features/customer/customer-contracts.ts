@@ -28,6 +28,7 @@ export const CartItemSchema = z.object({
   variantId: z.string().uuid().nullish(),
   variantName: z.string().nullish(),
   title: z.string(),
+  imageUrl: z.string().nullish(),
   price: amount,
   quantity: z.number().int(),
   stockQuantity: z.number(),

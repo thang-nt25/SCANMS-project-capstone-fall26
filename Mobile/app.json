@@ -39,7 +39,8 @@
         }
       ],
       "./plugins/with-android-demo.cjs",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ]
   }
 }
