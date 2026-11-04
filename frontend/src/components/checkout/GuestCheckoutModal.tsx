@@ -523,7 +523,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [payosAvailable, setPayosAvailable] = useState<boolean | null>(null);
 
   // Normalize active items to order
-  const activeItems = useMemo<CartItem[]>(() => {
+  const computedActiveItems = useMemo<CartItem[]>(() => {
     if (checkoutItems && checkoutItems.length > 0) {
       return checkoutItems.map((item) => ({
         ...item,
@@ -568,6 +568,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     return [];
   }, [checkoutItems, product, store, selectedVariantId, singleQuantity]);
+  // The product page passes fresh product/store objects on unrelated renders.
+  // Preserve the cart reference until its actual contents change, so an in-flight
+  // GHN quote is not cancelled and restarted continuously.
+  const activeItemsSnapshot = JSON.stringify(computedActiveItems);
+  const activeItemsRef = useRef({ snapshot: '', items: computedActiveItems });
+  if (activeItemsRef.current.snapshot !== activeItemsSnapshot) {
+    activeItemsRef.current = { snapshot: activeItemsSnapshot, items: computedActiveItems };
+  }
+  const activeItems = activeItemsRef.current.items;
 
   // Group active items by Shop
   const itemsGroupedByShop = useMemo(() => {
