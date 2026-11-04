@@ -1,0 +1,48 @@
+{
+  "builtFor": "Android Emulator x86_64",
+  "variant": "debug",
+  "applicationId": "vn.scanms.mobile",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "bytes": 75139293,
+  "sha256": "331af05b103d923c5c8448d6a8a7f4633bf564e2b12ba0b10379fc02e925d592",
+  "requiresMetro": true,
+  "installed": true,
+  "verifiedAt": "2026-11-02T20:31:18.137Z",
+  "reportDate": "2026-11-03",
+  "timeZone": "Asia/Bangkok",
+  "signatureVerification": "PASS",
+  "packageInspection": "PASS",
+  "emulator": {
+    "name": "Medium_Phone_API_37.0",
+    "api": 37,
+    "abi": "x86_64",
+    "renderer": "software",
+    "cpuCores": 2,
+    "ramMb": 2048
+  },
+  "nativeStartup": {
+    "loginScreen": "PASS",
+    "emptyFormValidation": "PASS",
+    "keyboardShown": "PASS",
+    "coldStartWithMetro": "PASS",
+    "authenticatedRoleFlows": "NOT_RUN",
+    "independentOfMetro": false
+  },
+  "services": {
+    "backendHostHealth": 200,
+    "metroStatus": "running",
+    "backendBaseUrl": "http://10.0.2.2:3000/api"
+  },
+  "windowsFix": {
+    "cmakeObjectPathMax": 240,
+    "observedObjectPathLength": 234,
+    "gradleWorkers": 2,
+    "heapMb": 1536,
+    "metaspaceMb": 1024
+  },
+  "evidence": [
+    "docs/evidence/2026-11-03-android-login.png",
+    "docs/evidence/2026-11-03-android-login-validation.png"
+  ]
+}

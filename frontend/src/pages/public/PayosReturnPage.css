@@ -1,0 +1,72 @@
+@reference "../../index.css";
+.payos-return-page { @apply [min-height:100dvh]; @apply [padding:36px_24px]; @apply [background:#FAF8F5]; @apply [color:#1A1612]; }
+.payos-return-card { @apply [width:min(880px,_100%)]; @apply [margin:0_auto]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:18px]; @apply [background:#FFFFFF]; @apply [box-shadow:0_8px_30px_rgb(35_29_21_/_4%)]; @apply overflow-hidden; }
+.payos-return-heading { @apply flex; @apply items-center; @apply [gap:16px]; @apply [padding:24px_28px]; @apply [border-bottom:1px_solid_#EAE4D7]; }
+.payos-return-icon { @apply grid; @apply [flex-shrink:0]; @apply place-items-center; @apply [width:50px]; @apply [height:50px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:14px]; @apply [background:#FFFFFF]; }
+.payos-return-icon svg { @apply [width:27px]; @apply [height:27px]; }
+.payos-return-heading h1 { @apply [margin:0]; @apply [font-size:23px]; @apply [font-weight:650]; @apply [line-height:1.35]; }
+.payos-return-heading p { @apply [max-width:620px]; @apply [margin:7px_0_0]; @apply [color:#7D715E]; @apply [font-size:13px]; @apply [line-height:1.7]; }
+.payos-return-payment { @apply [padding:22px_28px_0]; }
+.payos-return-payment .payos-order-payment { @apply [padding:0]; @apply [border:0]; @apply [border-radius:0]; }
+.payos-return-payment .payos-order-payment > div:first-child { @apply [padding-bottom:14px]; }
+.payos-return-payment .payos-order-payment h3 { @apply [font-size:15px]; }
+.payos-return-payment .payos-payment-columns { @apply [grid-template-columns:minmax(260px,_1fr)_minmax(0,_1fr)]; @apply [gap:28px]; @apply [padding-top:20px]; }
+.payos-return-payment .payos-payment-columns > div:first-child { @apply [padding:6px_16px]; }
+.payos-return-payment .payos-payment-columns img { @apply [width:236px]; @apply [height:236px]; }
+.payos-return-payment .payos-payment-columns > div:first-child > span { @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply [letter-spacing:.06em]; }
+.payos-return-payment .payos-payment-amount { @apply [padding:14px_16px]; @apply [border:1px_solid_#EEDFC6]; @apply [background:#FFFFFF]; }
+.payos-return-payment .payos-payment-amount strong { @apply [font-size:29px]; @apply [color:#1A1612]; }
+.payos-return-payment .payos-payment-columns dl { @apply [margin:15px_0]; @apply [padding-bottom:15px]; @apply [gap:10px]; }
+.payos-return-payment .payos-payment-columns dl > div { @apply grid; @apply [grid-template-columns:108px_minmax(0,_1fr)]; @apply [gap:12px]; @apply [font-size:12px]; }
+.payos-return-payment .payos-payment-columns dd { @apply [word-break:normal]; @apply [overflow-wrap:anywhere]; @apply [font-weight:500]; }
+.payos-return-payment .payos-payment-columns ol { @apply [gap:9px]; @apply [margin-bottom:16px]; }
+.payos-return-payment .payos-order-payment :is(a, button) { @apply [background:#FFFFFF]; @apply [border-color:#EEDFC6]; @apply [color:#795A2D]; @apply [border-radius:8px]; }
+.payos-return-payment .payos-order-payment :is(a, button):hover { @apply [background:#FAF8F5]; }
+.payos-return-payment .payos-order-payment > p:last-child { @apply [margin-bottom:0]; @apply [border:1px_solid_#EAE4D7]; @apply [background:#FFFFFF]; }
+.payos-return-footer { @apply flex; @apply flex-wrap; @apply justify-end; @apply [gap:10px]; @apply [padding:20px_28px]; @apply [margin-top:20px]; @apply [border-top:1px_solid_#EAE4D7]; }
+.payos-return-footer a { @apply inline-flex; @apply items-center; @apply justify-center; @apply [min-height:40px]; @apply [padding:9px_20px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#795A2D]; @apply [font-size:13px]; @apply [font-weight:500]; @apply [text-decoration:none]; }
+.payos-return-footer a:hover { @apply [background:#FAF8F5]; }
+.payos-return-card :is(button, a):focus-visible { @apply [outline:2px_solid_#B88E4F]; @apply [outline-offset:3px]; }
+@media (max-width: 640px) {
+  .payos-return-page { @apply [padding:16px_12px]; }
+  .payos-return-card { @apply [border-radius:14px]; }
+  .payos-return-heading { @apply [padding:20px_18px]; @apply items-start; @apply [gap:12px]; }
+  .payos-return-heading h1 { @apply [font-size:19px]; }
+  .payos-return-icon { @apply [width:40px]; @apply [height:40px]; @apply [border-radius:10px]; }
+  .payos-return-heading p { @apply [font-size:12px]; }
+  .payos-return-payment { @apply [padding:18px_18px_0]; }
+  .payos-return-payment .payos-payment-columns { @apply [grid-template-columns:minmax(0,_1fr)]; @apply [gap:20px]; }
+  .payos-return-payment .payos-payment-columns img { @apply [width:224px]; @apply [height:224px]; }
+  .payos-return-footer { @apply [padding:16px_18px]; }
+  .payos-return-footer a { @apply [flex:1]; }
+}
+.payos-buyer-layout { @apply [min-height:100dvh]; @apply [background:#FAF8F5]; }
+.payos-buyer-workspace { @apply grid; @apply [grid-template-columns:250px_minmax(0,_1fr)]; @apply [align-items:start]; @apply [gap:20px]; @apply [max-width:1248px]; @apply [margin:0_auto]; @apply [padding:0_24px_24px]; }
+.payos-buyer-sidebar { @apply [min-width:0]; }
+.payos-buyer-workspace .payos-return-page { @apply [min-height:0]; @apply [padding:20px_0_0]; }
+.payos-buyer-workspace .payos-return-card { @apply [width:100%]; @apply [border-radius:6px]; box-shadow: none; }
+.payos-return-top { @apply flex; @apply items-center; @apply justify-between; @apply [gap:16px]; @apply [padding:16px_20px]; @apply [border-bottom:1px_solid_#EAE4D7]; @apply [font-size:14px]; @apply [line-height:1.5]; }
+.payos-return-top :is(a, span, strong) { @apply [font-size:inherit]; @apply [font-weight:500]; }
+.payos-return-top a svg { @apply [width:18px]; @apply [height:18px]; }
+.payos-return-top a { @apply inline-flex; @apply items-center; @apply [gap:6px]; @apply [color:#7D715E]; @apply [text-decoration:none]; @apply whitespace-nowrap; }
+.payos-return-top span { @apply text-right; @apply [overflow-wrap:anywhere]; }
+.payos-return-top strong { @apply [font-weight:500]; }
+.payos-buyer-workspace .payos-return-heading { @apply [padding:16px_20px]; @apply [gap:12px]; }
+.payos-buyer-workspace .payos-return-heading h1 { @apply [font-size:20px]; }
+.payos-buyer-workspace .payos-return-heading p { @apply [font-size:12px]; @apply [margin-top:4px]; }
+.payos-buyer-workspace .payos-return-icon { @apply [width:40px]; @apply [height:40px]; }
+.payos-buyer-workspace .payos-return-payment { @apply [padding:16px_20px_20px]; }
+.payos-buyer-workspace .payos-payment-columns { @apply [grid-template-columns:minmax(220px,_.9fr)_minmax(0,_1.1fr)]; @apply [gap:20px]; @apply [padding-top:14px]; }
+.payos-buyer-workspace .payos-payment-columns img { @apply [width:212px]; @apply [height:212px]; }
+.payos-buyer-workspace .payos-payment-columns ol { @apply [gap:6px]; @apply [margin-bottom:12px]; }
+.payos-buyer-workspace .payos-payment-amount { @apply [padding:10px_14px]; }
+.payos-buyer-workspace .payos-payment-amount strong { @apply [font-size:26px]; }
+.payos-buyer-workspace .payos-return-footer { @apply [padding:14px_20px]; @apply [margin-top:14px]; }
+@media (max-width: 1023px) {
+  .payos-buyer-workspace { @apply [grid-template-columns:minmax(0,_1fr)]; @apply [padding:0_16px_20px]; }
+  .payos-buyer-sidebar { @apply hidden; }
+}
+@media (max-width: 640px) {
+  .payos-buyer-workspace .payos-payment-columns { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .payos-return-top { @apply items-center; @apply [padding:14px_16px]; }
+}

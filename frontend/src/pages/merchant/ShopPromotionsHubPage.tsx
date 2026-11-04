@@ -7,6 +7,7 @@ import ShopCampaignsPage from './ShopCampaignsPage';
 import { ExclusiveDealInbox } from '../../components/affiliate/ExclusiveDealInbox';
 import { CommissionRulesPage } from './CommissionRulesPage';
 import StoreReferralLinksPage from './StoreReferralLinksPage';
+import './ShopPromotionsHubPage.css';
 
 export default function ShopPromotionsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();

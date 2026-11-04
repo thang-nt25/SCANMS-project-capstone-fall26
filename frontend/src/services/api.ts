@@ -79,6 +79,9 @@ api.interceptors.response.use(
     }
     const message =
       error.response?.data?.message ||
+      (!error.response && error.code === 'ERR_NETWORK'
+        ? 'Không kết nối được máy chủ SCANMS. Vui lòng thử lại khi máy chủ hoạt động.'
+        : null) ||
       error.message ||
       'Something went wrong';
     const customErr: any = new Error(message);

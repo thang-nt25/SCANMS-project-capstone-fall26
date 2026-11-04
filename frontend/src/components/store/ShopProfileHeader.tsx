@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StoreActivityStatus } from './StoreActivityStatus';
 import type { PublicShop } from '../../types/storefront.types';
+import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
 
 function ShopFact({
   icon: Icon,
@@ -136,6 +137,7 @@ export function ShopProfileHeader({
               Chat ngay
             </button>
           </div>
+          <StoreCooperationAction storeId={shop.id} storeName={shop.name} className="mt-3 w-full" />
         </div>
         <dl className="grid min-w-0 grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-6 lg:gap-x-8">
           <ShopFact icon={Package} label="Sản phẩm">

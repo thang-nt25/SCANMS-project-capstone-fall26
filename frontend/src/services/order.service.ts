@@ -17,6 +17,9 @@ export interface StoreReturnRequest {
   submittedAt: string;
   shopResponse: string | null;
   shopRespondedAt: string | null;
+  resolution?: 'REFUND' | 'EXCHANGE' | null;
+  refund?: { amount: number | string; method: string; status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'; processedAt?: string | null } | null;
+  dispute?: { status: 'OPEN' | 'RESOLVED'; ruling?: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP' | null; resolutionNotes?: string | null } | null;
 }
 
 export interface ManualOrderItemInput {
@@ -41,8 +44,10 @@ export interface ManualOrderInput {
     province: string;
     district: string;
     ward?: string;
+    latitude?: number;
+    longitude?: number;
   };
-  paymentMethod?: "COD" | "BANK_TRANSFER" | "E_WALLET";
+  paymentMethod?: "MANUAL" | "COD" | "BANK_TRANSFER" | "E_WALLET";
   shippingFee?: number;
   discountCode?: string;
   note?: string;
@@ -99,6 +104,10 @@ export interface StoreOrderItem {
 }
 
 export interface StoreOrderRecord {
+  shopConfirmedAt?: string | null;
+  isManualOrder?: boolean;
+  deliveryLocation?: { latitude: number; longitude: number } | null;
+  note?: string | null;
   id: string;
   externalOrderSn: string;
   createdAt: string;
@@ -148,8 +157,12 @@ export interface StoreOrdersResponse {
 }
 
 export const orderService = {
+  async confirmOrder(id: string) {
+    return api.post(`/orders/${id}/confirm`);
+  },
   async getMyStoreOrders(params?: {
     customerId?: string;
+    searchField?: 'ALL' | 'ORDER_SN' | 'CUSTOMER_NAME' | 'PHONE' | 'TRACKING' | 'PRODUCT';
     status?: string;
     paymentStatus?: string;
     search?: string;
@@ -183,7 +196,7 @@ export const orderService = {
     return response.data;
   },
 
-  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string }) {
+  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string; rejectionReason?: 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER'; escalateToManager?: boolean; evidenceUrls?: string[] }) {
     const response = (await api.patch(`/orders/${orderId}/return-request/respond`, data)) as unknown as ApiEnvelope<{
       message: string;
       returnRequest: StoreReturnRequest;

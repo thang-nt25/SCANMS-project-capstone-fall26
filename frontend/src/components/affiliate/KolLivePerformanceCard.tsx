@@ -34,23 +34,6 @@ export default function KolLivePerformanceCard({ sessions, totals, loading }: Pr
 
   return (
     <div className="rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-[#EAE4D7] bg-[#FAF8F5]/60 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
-            <Radio className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-[#1A1612] m-0">Doanh số & Hoa hồng Livestream</h3>
-              <span className="px-2 py-0.5 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8A642C]">
-                +2% thưởng Live
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 3 Quick Metrics Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#EAE4D7] border-b border-[#EAE4D7] bg-white">
         <div className="p-4 flex items-center gap-3">

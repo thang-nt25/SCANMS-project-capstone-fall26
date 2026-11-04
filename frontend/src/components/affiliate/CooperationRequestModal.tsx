@@ -2,8 +2,8 @@ import { useRef, useState, type FormEvent } from 'react';
 import api from '../../services/api';
 import { Modal } from '../ui/Modal';
 
-export function CooperationRequestModal({ storeId, onClose, onSuccess }: {
-  storeId: string; onClose: () => void; onSuccess: () => void;
+export function CooperationRequestModal({ storeId, storeName, onClose, onSuccess }: {
+  storeId: string; storeName?: string; onClose: () => void; onSuccess: () => void;
 }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,7 @@ export function CooperationRequestModal({ storeId, onClose, onSuccess }: {
       setError(Array.isArray(message) ? message.join('. ') : message || 'Không gửi được đề xuất. Vui lòng thử lại.');
     } finally { locked.current = false; setBusy(false); }
   }
-  return <Modal isOpen title="Đề xuất hợp tác với gian hàng" subtitle="Shop sẽ xem hồ sơ KOC và phản hồi đề xuất của bạn." onClose={() => { if (!busy) onClose(); }} maxWidth="lg">
+  return <Modal isOpen title={storeName ? `Đề xuất hợp tác với ${storeName}` : 'Đề xuất hợp tác với gian hàng'} subtitle="Shop sẽ xem hồ sơ KOC và phản hồi đề xuất của bạn." onClose={() => { if (!busy) onClose(); }} maxWidth="lg">
     <form onSubmit={submit} className="space-y-4 text-sm text-[#1A1612]" aria-busy={busy}>
       <label className="block">Kế hoạch nội dung và cam kết hợp tác
         <textarea aria-label="Kế hoạch hợp tác với gian hàng" value={note} onChange={event => setNote(event.target.value)} maxLength={255} rows={4} disabled={busy} placeholder="Ví dụ: Kênh chuyên chăm sóc da, dự kiến thực hiện 2 video review mỗi tháng…" className="mt-2 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 focus:border-[#C59B58] focus:outline-none" />

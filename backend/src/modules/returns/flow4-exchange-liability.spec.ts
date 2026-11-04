@@ -6,7 +6,7 @@ const requestId = '6c73103a-2550-482b-9f18-e9f5c5ba1ad5';
 const shopManagerId = '23acc500-c9d8-4732-8543-79f6267e8680';
 const systemManagerId = '540fda3d-49df-41c9-8ffc-4bcfa13858ac';
 
-function setup(status = ReturnRequestStatus.EXCHANGE_PENDING) {
+function setup(status: ReturnRequestStatus = ReturnRequestStatus.EXCHANGE_PENDING) {
   const detail: any = {
     id: requestId,
     orderId: '94e900ec-d6dd-4d97-9f55-792d816a5387',
@@ -70,7 +70,8 @@ describe('Flow 4 replacement and liability', () => {
   });
 
   it('records a System Manager assessment for the Shop to follow', async () => {
-    const { tx, service } = setup(ReturnRequestStatus.SHOP_APPROVED);
+    const { detail, tx, service } = setup(ReturnRequestStatus.SHOP_APPROVED);
+    detail.order.rawPayload = { ghnOrderCode: 'GHN-ORIGINAL-1' };
     await service.assessLiability(systemManagerId, UserRole.SYSTEM_MANAGER, requestId,
       { liability: 'LOGISTICS_FAULT', notes: 'Video cho thấy thùng móp, tem niêm phong còn nguyên.' });
     expect(tx.returnEvent.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -78,6 +79,27 @@ describe('Flow 4 replacement and liability', () => {
         liability: 'LOGISTICS_FAULT', source: 'SYSTEM_MANAGER_REVIEW',
       }) }),
     }));
+  });
+
+  it('rejects a GHN fault conclusion without an original GHN waybill', async () => {
+    const { detail, tx, service } = setup(ReturnRequestStatus.SHOP_APPROVED);
+    detail.order.rawPayload = { trackingNumber: 'OTHER-CARRIER-1' };
+    await expect(service.assessLiability(systemManagerId, UserRole.SYSTEM_MANAGER, requestId,
+      { liability: 'LOGISTICS_FAULT', notes: 'Cần đối chiếu kiện hàng và lịch sử GHN.' }))
+      .rejects.toThrow(ConflictException);
+    expect(tx.returnEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects arbitration that attributes an untracked order to GHN', async () => {
+    const { detail, prisma, service } = setup(ReturnRequestStatus.DISPUTED);
+    (prisma as any).dispute = { findUnique: jest.fn().mockResolvedValue({
+      id: 'dispute-1', status: 'OPEN', returnRequest: detail,
+    }) };
+    await expect(service.resolveDispute(systemManagerId, UserRole.SYSTEM_MANAGER, 'dispute-1', {
+      ruling: 'APPROVE_EXCHANGE', liability: 'LOGISTICS_FAULT',
+      notes: 'Chưa có chứng cứ về bàn giao hay quét mã GHN.',
+    })).rejects.toThrow(ConflictException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('does not append another event when the same liability conclusion is saved again', async () => {
@@ -98,11 +120,23 @@ describe('Flow 4 replacement and liability', () => {
     await service.submitExchangeShipment(shopManagerId, UserRole.SHOP_MANAGER, requestId,
       { carrierName: 'GHN', trackingNumber: 'GHN-REPLACEMENT-1' });
     expect(tx.returnEvent.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ type: 'GHN_COMPENSATION_CLAIM_OPENED', data: {
+      data: expect.objectContaining({ type: 'GHN_COMPENSATION_CLAIM_OPENED', data: expect.objectContaining({
         originalTrackingNumber: 'GHN-ORIGINAL-1',
         replacementTrackingNumber: 'GHN-REPLACEMENT-1',
-        status: 'PENDING_RECONCILIATION',
-      } }),
+        status: 'DRAFT',
+      }) }),
+    }));
+  });
+
+  it('does not open a GHN reimbursement case for an old assessment with no original waybill', async () => {
+    const { detail, tx, service } = setup();
+    detail.events.push({ type: 'LIABILITY_ASSESSED', data: {
+      source: 'SYSTEM_MANAGER_REVIEW', liability: 'LOGISTICS_FAULT',
+    } });
+    await service.submitExchangeShipment(shopManagerId, UserRole.SHOP_MANAGER, requestId,
+      { carrierName: 'GHN', trackingNumber: 'GHN-REPLACEMENT-1' });
+    expect(tx.returnEvent.create).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ type: 'GHN_COMPENSATION_CLAIM_OPENED' }),
     }));
   });
 });

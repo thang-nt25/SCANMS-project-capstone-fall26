@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateProductEditorDto } from './dto/update-product-editor.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { ModerateProductReviewDto } from './dto/moderate-product-review.dto';
 import { UpdateVariantSamplePolicyDto } from './dto/update-variant-sample-policy.dto';
@@ -31,6 +32,7 @@ import {
 import { verifyOpaqueVisitorToken } from '../referral-links/utils/short-code.generator';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { validateProductPackage } from './product-package';
+import { productVariantFields } from './product-variant-fields';
 import * as crypto from 'crypto';
 import { catalogRankingQuery, type CatalogRankingRow } from './utils/catalog-ranking.query';
 import { catalogCountQuery, catalogSuggestionsQuery, type CatalogSuggestionRow } from './utils/catalog-query';
@@ -40,6 +42,7 @@ import { assertProductIdentity } from './product-identity.policy';
 import { ProductSemanticMatcher } from './product-semantic-matcher.service';
 import { QueryProductIdentityDto } from './dto/query-product-identity.dto';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { assertProductGalleryLimit } from './product-media.policy';
 
 @Injectable()
 export class ProductsService {
@@ -178,6 +181,7 @@ export class ProductsService {
   }
 
   private assertProductSubmissionComplete(dto: CreateProductDto): void {
+    assertProductGalleryLimit(dto.subImages);
     validateProductPackage(dto);
     const issues: string[] = [];
     const requiredText: Array<[string | undefined, string]> = [
@@ -186,12 +190,14 @@ export class ProductsService {
       [dto.categoryName, 'Danh mục sản phẩm'],
       [dto.imageUrl, 'Ảnh chính sản phẩm'],
       [dto.description, 'Mô tả chi tiết sản phẩm'],
-      [dto.ingredients, 'Thành phần sản phẩm'],
       [dto.origin, 'Xuất xứ sản phẩm'],
       [dto.labelInfo, 'Thông tin nhãn mác, cảnh báo và hướng dẫn sử dụng'],
     ];
     for (const [value, label] of requiredText) {
       if (typeof value !== 'string' || !value.trim()) issues.push(label);
+    }
+    if (['Mỹ phẩm & Chăm sóc da', 'Trang điểm & Làm đẹp', 'Chăm sóc cơ thể & Tóc', 'Thực phẩm chức năng & Sức khỏe'].includes(dto.categoryName?.trim()) && !dto.ingredients?.trim()) {
+      issues.push('Thành phần sản phẩm');
     }
 
     if (!Number.isFinite(dto.price) || dto.price <= 0) {
@@ -224,55 +230,11 @@ export class ProductsService {
       issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
 
     const variants = dto.variants || [];
-    if (!variants.length) {
-      issues.push('Thêm ít nhất một phân loại SKU cho sản phẩm');
-    }
 
-    const categoryFields: Record<string, Array<[string, string]>> = {
-      'Mỹ phẩm & Chăm sóc da': [
-        ['volume', 'Dung tích / khối lượng'],
-        ['formula', 'Dạng / công thức'],
-        ['package', 'Quy cách'],
-      ],
-      'Trang điểm & Làm đẹp': [
-        ['shade', 'Màu / tông'],
-        ['finish', 'Chất / hiệu ứng'],
-        ['volume', 'Dung tích / khối lượng'],
-      ],
-      'Chăm sóc cơ thể & Tóc': [
-        ['volume', 'Dung tích / khối lượng'],
-        ['scent', 'Mùi hương'],
-        ['formula', 'Dạng sản phẩm'],
-      ],
-      'Thực phẩm chức năng & Sức khỏe': [
-        ['weight', 'Khối lượng / số lượng'],
-        ['flavor', 'Vị / hương'],
-        ['package', 'Quy cách đóng gói'],
-      ],
-      'Thiết bị điện tử & Phụ kiện': [
-        ['model', 'Mẫu / phiên bản'],
-        ['color', 'Màu sắc'],
-        ['capacity', 'Cấu hình / dung lượng'],
-      ],
-      'Thời trang & Phụ kiện': [
-        ['color', 'Màu sắc'],
-        ['size', 'Size'],
-        ['style', 'Kiểu / mẫu'],
-      ],
-    };
-    const expectedFields = categoryFields[dto.categoryName?.trim()] || [
-      ['type', 'Loại / mẫu'],
-      ['specification', 'Kích thước / quy cách'],
-      ['color', 'Màu / phiên bản'],
-    ];
+    const expectedFields = productVariantFields(dto.categoryName);
     for (const [index, variant] of variants.entries()) {
-      const missingAttributes = expectedFields
-        .filter(([key]) => !variant.attributes?.[key]?.trim())
-        .map(([, label]) => label);
-      if (missingAttributes.length) {
-        issues.push(
-          `Phân loại ${index + 1}: thiếu ${missingAttributes.join(', ')}`,
-        );
+      if (!expectedFields.some(([key]) => variant.attributes?.[key]?.trim())) {
+        issues.push(`Phân loại ${index + 1}: nhập ít nhất một thuộc tính phù hợp danh mục`);
       }
       if (!variant.name?.trim())
         issues.push(`Phân loại ${index + 1}: thiếu tên hiển thị`);
@@ -321,13 +283,13 @@ export class ProductsService {
     };
   }
 
-  private async loadProductEvidence(productIds: string[]) {
+  private async loadProductEvidence(productIds: string[], db?: Prisma.TransactionClient) {
     const byProduct = new Map<
       string,
       Array<{ caption: string | null; urlOrContent: string }>
     >();
     if (!productIds.length) return byProduct;
-    const rows = await this.prisma.mediaAsset.findMany({
+    const rows = await (db || this.prisma).mediaAsset.findMany({
       where: {
         productId: { in: productIds },
         assetType: 'COPYWRITE_TEXT',
@@ -410,6 +372,11 @@ export class ProductsService {
         isVerified: true,
         onboardingStatus: 'VERIFIED',
       };
+    }
+
+    if (query.scope === 'chat-share') {
+      where.isActive = true;
+      where.moderationStatus = ProductModerationStatus.APPROVED;
     }
 
     if (query.category) {
@@ -887,8 +854,16 @@ export class ProductsService {
       details: { path: ['reviewId'], equals: reviewId } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1 });
     if (history[0]?.action === 'PRODUCT_REVIEW_REPORTED') throw new BadRequestException('Báo cáo trước đang chờ sàn xử lý');
     // A report never changes status/isApproved or the product rating.
-    await this.prisma.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORTED',
-      details: { reviewId, productId: review.productId, reason: dto.reason, details: dto.details, evidence: dto.evidence || [] } } });
+    await this.prisma.$transaction(async tx => {
+      const report = await tx.auditLog.create({ data: { userId, action: 'PRODUCT_REVIEW_REPORTED',
+        details: { reviewId, productId: review.productId, reason: dto.reason, details: dto.details, evidence: dto.evidence || [], images: dto.images || [], videos: dto.videos || [] } } });
+      const staff = await tx.user.findMany({ where: { role: { in: [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER] }, isActive: true, isDeleted: false }, select: { id: true } });
+      if (staff.length) await tx.notification.createMany({ data: staff.map(person => ({
+        userId: person.id, type: 'PRODUCT_REVIEW_REPORTED', title: 'Báo cáo đánh giá cần xử lý',
+        message: `Shop đã báo cáo một đánh giá về sản phẩm “${review.product.title}”. Mở để xem nội dung và bằng chứng.`,
+        data: { reviewId, productId: review.productId, reportId: report.id },
+      })) });
+    });
     return { message: 'Đã gửi báo cáo tới sàn. Đánh giá vẫn hiển thị trong khi chờ xử lý.' };
   }
 
@@ -1051,27 +1026,33 @@ export class ProductsService {
     productId: string,
     dto: { status: 'APPROVED' | 'REJECTED'; reason?: string },
   ) {
-    const product = await this.prisma.product.findFirst({
-      where: { id: productId, isDeleted: false },
-      include: {
-        store: { select: { id: true, name: true, ownerId: true } },
-      },
-    });
-    if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
-    if (product.moderationStatus !== ProductModerationStatus.DRAFT) {
-      throw new BadRequestException(
-        'Chỉ sản phẩm đang chờ kiểm duyệt mới được xử lý.',
-      );
-    }
-    const reason = dto.reason?.trim() || null;
-    if (dto.status === 'REJECTED' && (!reason || reason.length < 3)) {
-      throw new BadRequestException(
-        'Vui lòng ghi rõ lý do từ chối (ít nhất 3 ký tự).',
-      );
-    }
-
-    const reviewedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      await lockPricingProducts(tx, [productId]);
+      const product = await tx.product.findFirst({
+        where: { id: productId, isDeleted: false },
+        include: {
+          store: { select: { id: true, name: true, ownerId: true } },
+        },
+      });
+      if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
+      if (product.createdById === userId || product.submittedById === userId) {
+        throw new ForbiddenException(
+          'Người tạo hoặc gửi hồ sơ không được tự duyệt sản phẩm. Vui lòng chuyển cho người kiểm duyệt độc lập.',
+        );
+      }
+      if (product.moderationStatus !== ProductModerationStatus.DRAFT) {
+        throw new ConflictException(
+          'Chỉ sản phẩm đang chờ kiểm duyệt mới được xử lý.',
+        );
+      }
+      const reason = dto.reason?.trim() || null;
+      if (dto.status === 'REJECTED' && (!reason || reason.length < 3)) {
+        throw new BadRequestException(
+          'Vui lòng ghi rõ lý do từ chối (ít nhất 3 ký tự).',
+        );
+      }
+
+      const reviewedAt = new Date();
       const result = await tx.product.update({
         where: { id: productId },
         data: {
@@ -1310,6 +1291,8 @@ export class ProductsService {
       const created = await tx.product.create({
         data: {
           storeId: store.id,
+          createdById: userId,
+          submittedById: userId,
           sku: dto.sku.trim().toUpperCase(),
           title: dto.title.trim(),
           categoryName: dto.categoryName?.trim() || null,
@@ -1384,13 +1367,29 @@ export class ProductsService {
   /**
    * Cập nhật thông tin & % hoa hồng sản phẩm
    */
+  async updateEditor(userId: string, userRole: UserRole, id: string, dto: UpdateProductEditorDto) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await this.update(userId, userRole, id, dto, tx);
+      const variants = await this.syncProductVariants(userId, userRole, id, { variants: dto.variants }, tx);
+      const requiresModeration = updated.requiresModeration || variants.requiresModeration;
+      return { ...updated, requiresModeration,
+        message: requiresModeration ? 'Đã lưu toàn bộ thay đổi và chuyển về hàng đợi kiểm duyệt.' : updated.message,
+        product: await tx.product.findUnique({ where: { id } }), variants: variants.variants };
+    }, { maxWait: 5000, timeout: 20000 });
+    await this.invalidateLandingCache(id);
+    return result;
+  }
+
   async update(
     userId: string,
     userRole: UserRole,
     id: string,
     dto: UpdateProductDto,
+    db?: Prisma.TransactionClient,
   ) {
-    const product = await this.prisma.product.findUnique({
+    assertProductGalleryLimit(dto.subImages);
+    const prisma = db || this.prisma;
+    const product = await prisma.product.findUnique({
       where: { id },
       include: {
         store: true,
@@ -1454,10 +1453,9 @@ export class ProductsService {
     }
 
     const isResubmission =
-      userRole === UserRole.SHOP_MANAGER &&
       product.moderationStatus === ProductModerationStatus.REJECTED;
     validateProductPackage(dto);
-    const evidenceByProduct = await this.loadProductEvidence([id]);
+    const evidenceByProduct = await this.loadProductEvidence([id], db);
     const existingEvidenceRows = evidenceByProduct.get(id) || [];
 
     const textChanged = (
@@ -1492,9 +1490,7 @@ export class ProductsService {
     const subImagesChanged =
       requestedImages !== undefined &&
       JSON.stringify(requestedImages) !== JSON.stringify(existingImages);
-    const approvedShopContentChanged =
-      userRole === UserRole.SHOP_MANAGER &&
-      product.moderationStatus === ProductModerationStatus.APPROVED &&
+    const materialContentChanged =
       (textChanged(dto.sku, product.sku) ||
         textChanged(dto.barcode, product.barcode) ||
         textChanged(dto.title, product.title) ||
@@ -1523,7 +1519,9 @@ export class ProductsService {
         numberChanged(dto.price, product.price) ||
         numberChanged(dto.originalPrice, product.originalPrice) ||
         subImagesChanged);
-    const requiresModeration = isResubmission || approvedShopContentChanged;
+    const approvedShopContentChanged = product.moderationStatus === ProductModerationStatus.APPROVED && materialContentChanged;
+    // Pending edits explicitly write DRAFT, so a concurrent approval cannot publish later edits.
+    const requiresModeration = isResubmission || materialContentChanged;
     const evidenceKindsToReplace = [
       dto.originProofLinks !== undefined ? 'ORIGIN_LINK' : null,
       dto.originProofImages !== undefined ? 'ORIGIN_IMAGE' : null,
@@ -1538,7 +1536,7 @@ export class ProductsService {
     );
 
     // Validate inventory before any other update (including the sample quota guard).
-    const activeVariants = dto.stockQuantity !== undefined
+    const activeVariants = !db && dto.stockQuantity !== undefined && this.prisma?.productVariant
       ? await this.prisma.productVariant.findMany({
           where: { productId: id, isActive: true },
           select: { stockQuantity: true },
@@ -1561,22 +1559,13 @@ export class ProductsService {
         `Hạn mức mẫu không thể thấp hơn số mẫu Shop đã duyệt (${product.sampleGrantedCount}).`,
       );
     }
-    if (dto.sampleQuota !== undefined) {
-      const quotaGuard = await this.prisma.product.updateMany({
-        where: { id, sampleGrantedCount: { lte: dto.sampleQuota } },
-        data: { sampleQuota: dto.sampleQuota },
-      });
-      if (!quotaGuard.count) {
-        throw new BadRequestException(
-          'Hạn mức vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.',
-        );
-      }
-    }
+
 
     // A parent-only zero-stock edit also clears every active SKU atomically.
-    const updateProduct = (db: typeof this.prisma) => db.product.update({
+    const updateProduct = (client: any) => client.product.update({
       where: { id },
       data: {
+        ...((requiresModeration || product.moderationStatus === ProductModerationStatus.DRAFT) && { submittedById: userId }),
         ...(dto.sku && { sku: dto.sku.trim().toUpperCase() }),
         ...(dto.title && { title: dto.title.trim() }),
         ...(dto.categoryName !== undefined && {
@@ -1629,63 +1618,78 @@ export class ProductsService {
       },
     });
     const identityChanged = (dto.barcode !== undefined && dto.barcode !== product.barcode) || (dto.sku !== undefined && dto.sku !== product.sku);
-    const updated = identityChanged || dto.price !== undefined || (activeVariants.length && dto.stockQuantity === 0)
-      ? await this.prisma.$transaction(async (tx) => {
-          if (dto.price !== undefined) await assertCataloguePriceEdit(tx, id, dto.price);
-          if (identityChanged) await assertProductIdentity(tx, { id, storeId: product.storeId, sku: dto.sku ?? product.sku, barcode: dto.barcode !== undefined ? dto.barcode : product.barcode });
-          const result = await updateProduct(tx as typeof this.prisma);
-          if (activeVariants.length && dto.stockQuantity === 0) await tx.productVariant.updateMany({
-            where: { productId: id, isActive: true },
-            data: { stockQuantity: 0 },
-          });
-          return result;
-        })
-      : await updateProduct(this.prisma);
-
-    if (evidenceKindsToReplace.length > 0) {
-      await this.prisma.mediaAsset.updateMany({
-        where: {
-          productId: id,
-          assetType: 'COPYWRITE_TEXT',
-          caption: {
-            in: evidenceKindsToReplace.map(
-              (kind) => `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`,
-            ),
-          },
-          isDeleted: false,
-        },
-        data: { isDeleted: true, deletedAt: new Date() },
-      });
-      if (updatedEvidenceRows.length > 0) {
-        await this.prisma.mediaAsset.createMany({ data: updatedEvidenceRows });
-      }
-    }
-
-    if (dto.subImages !== undefined && Array.isArray(dto.subImages)) {
-      await this.prisma.mediaAsset.deleteMany({
-        where: {
-          productId: id,
-          assetType: 'IMAGE',
-        },
-      });
-
-      for (const imgUrl of dto.subImages.slice(0, 4)) {
-        if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
-          await this.prisma.mediaAsset.create({
-            data: {
-              storeId: product.storeId,
-              productId: id,
-              assetType: 'IMAGE',
-              urlOrContent: imgUrl.trim(),
-              title: `${dto.title || product.title} - Ảnh chi tiết`,
-              status: 'APPROVED',
-            },
-          });
+    const runInTransaction = async (tx: Prisma.TransactionClient) => {
+      // Keep the submitted content, evidence and gallery atomic with the review lock.
+      await lockPricingProducts(tx, [id]);
+      if (dto.sampleQuota !== undefined) {
+        const quotaGuard = await tx.product.updateMany({
+          where: { id, sampleGrantedCount: { lte: dto.sampleQuota } },
+          data: { sampleQuota: dto.sampleQuota },
+        });
+        if (!quotaGuard.count) {
+          throw new BadRequestException(
+            'Hạn mức vừa thay đổi do Shop duyệt mẫu đồng thời. Tải lại sản phẩm rồi thử lại.',
+          );
         }
       }
-    }
 
-    await this.invalidateLandingCache(id);
+      if (dto.price !== undefined) await assertCataloguePriceEdit(tx, id, dto.price);
+      if (identityChanged) await assertProductIdentity(tx, { id, storeId: product.storeId, sku: dto.sku ?? product.sku, barcode: dto.barcode !== undefined ? dto.barcode : product.barcode });
+      const result = await updateProduct(tx as typeof this.prisma);
+      if (activeVariants.length && dto.stockQuantity === 0) await tx.productVariant.updateMany({
+        where: { productId: id, isActive: true },
+        data: { stockQuantity: 0 },
+      });
+
+      if (evidenceKindsToReplace.length > 0) {
+        await tx.mediaAsset.updateMany({
+          where: {
+            productId: id,
+            assetType: 'COPYWRITE_TEXT',
+            caption: {
+              in: evidenceKindsToReplace.map(
+                (kind) => `${ProductsService.PRODUCT_EVIDENCE_MARKER}${kind}`,
+              ),
+            },
+            isDeleted: false,
+          },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+        if (updatedEvidenceRows.length > 0) {
+          await tx.mediaAsset.createMany({ data: updatedEvidenceRows });
+        }
+      }
+
+      if (dto.subImages !== undefined && Array.isArray(dto.subImages)) {
+        await tx.mediaAsset.deleteMany({
+          where: {
+            productId: id,
+            assetType: 'IMAGE',
+          },
+        });
+
+        for (const imgUrl of dto.subImages) {
+          if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+            await tx.mediaAsset.create({
+              data: {
+                storeId: product.storeId,
+                productId: id,
+                assetType: 'IMAGE',
+                urlOrContent: imgUrl.trim(),
+                title: `${dto.title || product.title} - Ảnh chi tiết`,
+                status: 'APPROVED',
+              },
+            });
+          }
+        }
+      }
+
+      return result;
+    };
+
+    const updated = db ? await runInTransaction(db) : await this.prisma.$transaction(runInTransaction);
+
+    if (!db) await this.invalidateLandingCache(id);
 
     return {
       message: requiresModeration
@@ -1780,8 +1784,10 @@ export class ProductsService {
     userRole: UserRole,
     productId: string,
     dto: SyncProductVariantsDto,
+    db?: Prisma.TransactionClient,
   ) {
-    const product = await this.prisma.product.findFirst({
+    const prisma = db || this.prisma;
+    const product = await prisma.product.findFirst({
       where: { id: productId, isDeleted: false },
       include: {
         store: true,
@@ -1915,12 +1921,9 @@ export class ProductsService {
           (current.imageUrl || null) !== (variant.imageUrl?.trim() || null)
         );
       });
-    const requiresModeration =
-      userRole === UserRole.SHOP_MANAGER &&
-      product.moderationStatus === ProductModerationStatus.APPROVED &&
-      variantsChanged;
+    const requiresModeration = variantsChanged;
 
-    const conflictingVariants = await this.prisma.productVariant.findMany({
+    const conflictingVariants = await prisma.productVariant.findMany({
       where: {
         sku: { in: normalizedSkus },
         ...(submittedIds.length ? { id: { notIn: submittedIds } } : {}),
@@ -1933,7 +1936,7 @@ export class ProductsService {
       );
     }
 
-    const savedVariants = await this.prisma.$transaction(async (tx) => {
+    const persistVariants = async (tx: Prisma.TransactionClient) => {
       await lockPricingProducts(tx, [productId]);
       const currentPricing = await tx.product.findUniqueOrThrow({ where: { id: productId } });
       if (variantsChanged && await tx.productPricePromotion.count({ where: { productId, status: { in: ['APPROVED', 'ACTIVE'] } } })) throw new ConflictException('Hủy khuyến mãi đã duyệt trước khi thay đổi cấu trúc SKU.');
@@ -1943,6 +1946,7 @@ export class ProductsService {
           where: { id: productId },
           data: {
             moderationStatus: ProductModerationStatus.DRAFT,
+            submittedById: userId,
             moderationReason: null,
             moderatedAt: null,
             moderatedById: null,
@@ -1977,7 +1981,7 @@ export class ProductsService {
         where: {
           productId,
           isActive: true,
-          ...(submittedIds.length ? { id: { notIn: submittedIds } } : {}),
+          id: { notIn: saved.map((variant) => variant.id) },
         },
         data: { isActive: false },
       });
@@ -1985,6 +1989,7 @@ export class ProductsService {
         await tx.product.update({
           where: { id: productId },
           data: {
+            ...(variantsChanged && { submittedById: userId }),
             stockQuantity: saved.reduce(
               (sum, variant) => sum + variant.stockQuantity,
               0,
@@ -1993,9 +1998,10 @@ export class ProductsService {
         });
       }
       return saved;
-    });
+    };
+    const savedVariants = db ? await persistVariants(db) : await this.prisma.$transaction(persistVariants);
 
-    await this.invalidateLandingCache(productId);
+    if (!db) await this.invalidateLandingCache(productId);
     return {
       message: requiresModeration
         ? 'Đã cập nhật phân loại. Sản phẩm tạm ẩn và chuyển về hàng đợi kiểm duyệt.'

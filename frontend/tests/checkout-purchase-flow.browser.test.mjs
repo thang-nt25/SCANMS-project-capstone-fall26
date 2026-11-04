@@ -140,7 +140,8 @@ test('buy-now and selected cart use one checkout with real shop totals, vouchers
       await page.waitForSelector('.checkout-flow-form');
       assert.equal(await page.$('.scanms-cart-dialog[open]'), null, 'buy-now and checkout do not show another basket step');
       await page.waitForFunction(() => document.querySelector('.checkout-total-final dd')?.textContent.includes('49.001') || document.querySelector('.checkout-total-final dd')?.textContent.includes('29.001'));
-      assert.deepEqual(await page.$$eval('.checkout-flow-form > .checkout-section', els => els.map(el => el.classList[1])), ['checkout-address', 'checkout-products', 'checkout-vouchers', 'checkout-payment']);
+      assert.deepEqual(await page.$$eval('.checkout-flow-form > .checkout-section', els => els.map(el => el.classList[1])), ['checkout-address', 'checkout-products', 'checkout-payment']);
+      assert.match(await page.$eval('.checkout-flow-form', el => el.innerText), /Mã Ưu Đãi Đối Tác Tiếp Thị/, 'KOL attribution code remains available in checkout');
       assert.equal(await page.$$('.checkout-shop').then(els => els.length), expectedShops);
       assert.equal(await page.$$('input#checkout-policy-agreement').then(els => els.length), 1);
       assert.equal(await page.$$('.checkout-flow-form button[type="submit"]').then(els => els.length), 1);
@@ -155,9 +156,9 @@ test('buy-now and selected cart use one checkout with real shop totals, vouchers
         }
       }
       await page.setViewport({ width: 1440, height: 1100 });
-      await page.type('#checkout-voucher-shop', 'SHOP15');
-      await page.$eval('#checkout-voucher-shop', el => el.parentElement.querySelector('button').click());
-      await page.waitForFunction(() => document.querySelector('.checkout-voucher-message')?.textContent.includes('15.000'));
+      await page.type('input[placeholder*="Nhập mã ưu đãi"]', 'KOL15');
+      await page.$eval('input[placeholder*="Nhập mã ưu đãi"]', el => el.parentElement.querySelector('button').click());
+      await page.waitForFunction(() => document.querySelector('.checkout-flow-form')?.textContent.includes('Đã áp dụng mã ưu đãi KOL15, giảm 15.000'));
       assert.equal(couponRequests.at(-1).storeId, id(21));
       assert.ok(couponRequests.at(-1).items.every(item => item.productId === id(1)));
       const totals = await page.$eval('.checkout-totals', el => el.textContent);
@@ -196,7 +197,7 @@ test('buy-now and selected cart use one checkout with real shop totals, vouchers
       assert.equal(placed.at(-1).items.length, expectedShops);
       assert.equal(placed.at(-1).items[0].quantity, 2);
       assert.equal(placed.at(-1).items[0].variantId, id(11));
-      assert.equal(placed.at(-1).couponsByStore[id(21)], 'SHOP15');
+      assert.equal(placed.at(-1).couponsByStore[id(21)], 'KOL15');
       if (mode === 'direct') assert.equal(placed[0].idempotencyKey, failedKey, 'a retry keeps the original idempotency key');
       assert.equal(await page.$$eval('[data-order-code]', els => els.length), expectedShops);
       if (mode === 'direct') {

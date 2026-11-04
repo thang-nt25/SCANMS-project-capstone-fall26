@@ -30,6 +30,13 @@ export function validateProductPackage(input: ProductPackageFields): void {
       'Barcode EAN-13 phải có 13 chữ số và đúng số kiểm tra.',
     );
   }
+  validateProductPackageDimensions(input);
+}
+
+/** Carrier quotes depend on physical measurements, independently of catalog identifiers. */
+export function validateProductPackageDimensions(
+  input: Pick<ProductPackageFields, (typeof PACKAGE_FIELDS)[number]>,
+): void {
   for (const field of PACKAGE_FIELDS) {
     const value = input[field];
     const max = field === 'packageWeight' ? 30000 : 150;

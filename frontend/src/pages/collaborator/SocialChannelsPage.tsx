@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import './SocialChannelsPage.css';
+import { useNavigate } from 'react-router-dom';
 import {
   Share2,
   Users,
   Star,
   Search,
   Plus,
-  RotateCcw,
   ExternalLink,
   Trash2,
   CheckCircle2,
@@ -23,9 +24,11 @@ import { toast } from '../../utils/toast';
 interface SocialChannelsPageProps {
   loadedData?: SocialChannel[];
   isRefreshing?: boolean;
+  onCreateLink?: () => void;
 }
 
-const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialChannelsPageProps>(function SocialChannelsPage({ loadedData, isRefreshing = false }, ref) {
+const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialChannelsPageProps>(function SocialChannelsPage({ loadedData, isRefreshing = false, onCreateLink }, ref) {
+  const navigate = useNavigate();
 
   const [channels, setChannels] = useState<SocialChannel[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -34,11 +37,9 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [channelToDelete, setChannelToDelete] = useState<SocialChannel | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [hasLoaded, setHasLoaded] = useState(false);
-  const refreshInFlight = useRef(false);
   const loadSequence = useRef(0);
 
   const [platformName, setPlatformName] = useState('TIKTOK');
@@ -48,6 +49,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
   const [isPrimary, setIsPrimary] = useState(false);
 
   useEffect(() => {
+    const sequenceRef = loadSequence;
     if (loadedData) {
       setChannels(loadedData);
       setHasLoaded(true);
@@ -58,7 +60,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
     void loadChannels().catch((err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Không thể tải các kênh xã hội.');
     });
-    return () => { loadSequence.current++; };
+    return () => { sequenceRef.current++; };
   }, [loadedData]);
 
   const loadChannels = async (forceRefresh = false) => {
@@ -81,19 +83,6 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
     }
   };
 
-  const refreshChannels = async () => {
-    if (loading || isRefreshing || refreshInFlight.current) return;
-    refreshInFlight.current = true;
-    setRefreshing(true);
-    try {
-      await loadChannels(true);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Không thể tải lại kênh xã hội.');
-    } finally {
-      refreshInFlight.current = false;
-      setRefreshing(false);
-    }
-  };
 
   useImperativeHandle(ref, () => ({ refresh: () => loadChannels(true) }));
 
@@ -152,7 +141,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
 
   const totalFollowers = channels.reduce((sum, c) => sum + (c.followerCount || 0), 0);
   const verifiedChannelsCount = channels.filter((c: any) => c.verifiedAt).length;
-  const primaryChannel = channels.find((c) => c.isPrimary) || channels[0];
+  const primaryChannel = channels.find((c) => c.isPrimary);
 
   const getPlatformBadge = (plat: string) => {
     const labels: Record<string, string> = { TIKTOK: 'TikTok', FACEBOOK: 'Facebook', YOUTUBE: 'YouTube', INSTAGRAM: 'Instagram', THREADS: 'Threads', ZALO: 'Zalo' };
@@ -173,7 +162,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
   }
 
   return (
-    <div className="flex flex-col gap-3 text-left min-w-0" aria-busy={loading || isRefreshing}>
+    <div className="social-channels-page flex flex-col gap-3 text-left min-w-0" aria-busy={loading || isRefreshing}>
       {loading && (
         <section className="flex items-center gap-2 p-3 sm:px-3.5 border border-[#EAE4D7] rounded-xl bg-white text-[#7D715E] text-xs" role="status">
           <Loader2 size={16} className="animate-spin text-[#B88E4F] shrink-0" aria-hidden="true" />
@@ -188,7 +177,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.25fr] border border-[#EAE4D7] rounded-xl bg-white overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[#EAE4D7]" aria-label="Tổng quan kênh mạng xã hội">
+      <section className="social-overview" aria-label="Tổng quan kênh mạng xã hội">
         <div className="flex items-center gap-3 p-3.5 sm:p-4 min-w-0">
           <span className="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Share2 size={17} /></span>
           <div className="min-w-0">
@@ -215,7 +204,8 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_auto] gap-2.5 items-center p-2.5 border border-[#EAE4D7] rounded-xl bg-white">
+      <div className="social-navigation-card">
+      <div className="social-toolbar">
         <div className="relative min-w-0">
           <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -228,48 +218,36 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
           />
         </div>
 
-        <div className="flex items-center gap-2 min-w-0">
-          <label htmlFor="social-platform-filter" className="text-[11px] font-medium text-[#7D715E] whitespace-nowrap">Nền tảng:</label>
-          <Select
-            id="social-platform-filter"
-            value={filterPlatform}
-            onChange={(e) => setFilterPlatform(e.target.value)}
-            className="w-full sm:w-44 h-9 text-xs font-medium"
-          >
-            <option value="ALL">Tất cả nền tảng</option>
-            <option value="TIKTOK">TikTok</option>
-            <option value="FACEBOOK">Facebook</option>
-            <option value="YOUTUBE">YouTube</option>
-            <option value="INSTAGRAM">Instagram</option>
-          </Select>
-        </div>
 
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            icon={<RotateCcw className="w-3.5 h-3.5 text-[#B88E4F]" />}
-            loading={refreshing || loading || isRefreshing}
-            onClick={() => void refreshChannels()}
-            className="h-9 text-xs font-medium"
-          >
-            Làm mới
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             icon={<Plus className="w-3.5 h-3.5 text-[#B88E4F]" />}
             onClick={() => setShowModal(true)}
-            className="h-9 text-xs font-semibold bg-[#FBF5EB] border-[#EEDFC6] text-[#1A1612] hover:bg-[#F3EFE6]"
+            className="social-add-button"
           >
             Thêm kênh mới
           </Button>
         </div>
       </div>
 
-      <section className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden" aria-label="Danh sách kênh mạng xã hội">
+      <div className="social-platform-tabs" role="group" aria-label="Lọc kênh theo nền tảng" style={{ gridTemplateColumns: `repeat(${new Set(channels.map(channel => channel.platformName)).size + 1}, minmax(140px, 1fr))` }}>
+        {['ALL', ...new Set(channels.map(channel => channel.platformName))].map((platform, index) => (
+          <button key={platform} type="button" aria-pressed={filterPlatform === platform} onClick={() => setFilterPlatform(platform)}>
+            <span aria-hidden="true">{index + 1}</span>
+            {platform === 'ALL' ? 'Tất cả kênh' : ({ TIKTOK: 'TikTok', YOUTUBE: 'YouTube', FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', THREADS: 'Threads', ZALO: 'Zalo' } as Record<string, string>)[platform] || platform}
+            <small>{platform === 'ALL' ? channels.length : channels.filter(channel => channel.platformName === platform).length}</small>
+          </button>
+        ))}
+      </div>
+      </div>
+
+      <section className="social-channel-list" aria-label="Danh sách kênh mạng xã hội">
+        <div className="social-list-heading">
+          <h2>Kênh đã liên kết <span>{filtered.length}</span></h2>
+        </div>
         {!loading && filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
             <span className="grid place-items-center w-[34px] h-[34px] rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Share2 size={20} /></span>
@@ -285,7 +263,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
             </Button>
           </div>
         ) : filtered.map((c, idx) => (
-          <article key={c.id || idx} className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(120px,.5fr)_minmax(115px,.5fr)_auto] items-center gap-4 p-4 border-b last:border-b-0 border-[#EAE4D7] hover:bg-[#FAF8F5]/50 transition-colors">
+          <article key={c.id || idx} className="social-channel-row">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F]"><Video size={17} /></span>
               <div className="min-w-0 flex-1">
@@ -303,18 +281,18 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 </div>
               </div>
             </div>
-            <div>
+            <div className="social-channel-metric">
               <span className="block text-[10px] text-[#7D715E]">Người theo dõi</span>
               <strong className="block mt-1 text-sm font-semibold text-[#1A1612] tabular-nums">{(c.followerCount || 0).toLocaleString('vi-VN')}</strong>
             </div>
-            <div>
+            <div className="social-channel-verification">
               <span className="block text-[10px] text-[#7D715E]">Xác minh kênh</span>
               {(c as any).verifiedAt ? (
                 <strong className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#059669] text-[10px] font-medium whitespace-nowrap"><CheckCircle2 size={12} /> Đã xác minh</strong>
               ) : <strong className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] text-[10px] font-medium whitespace-nowrap">Tự khai báo</strong>}
             </div>
-            <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-[#EAE4D7]">
-              <Button variant="outline" size="sm" icon={<Link2 size={13} className="text-[#B88E4F]" />} onClick={() => window.location.href = '/collaborator/referral-links'} className="h-8 text-[11px]">Tạo link</Button>
+            <div className="social-channel-actions">
+              <Button variant="outline" size="sm" icon={<Link2 size={13} className="text-[#B88E4F]" />} onClick={() => onCreateLink ? onCreateLink() : navigate('/collaborator/marketing?tab=links&action=create')} className="h-8 text-[11px]">Tạo link</Button>
               <a href={c.channelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 h-8 px-2.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-[11px] font-medium hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors"><span>Xem kênh</span><ExternalLink size={13} className="text-[#B88E4F]" /></a>
               {c.id && (
                 <button type="button" onClick={() => setChannelToDelete(c)} title="Ngắt kết nối kênh" aria-label={`Ngắt kết nối ${c.channelName || c.platformName}`} className="inline-flex items-center justify-center w-8 h-8 border border-[#EAE4D7] rounded-lg bg-white text-[#7D715E] hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors ml-auto md:ml-0">
@@ -327,9 +305,9 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
       </section>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/30 backdrop-blur-sm">
-          <div className="w-full max-w-[460px] max-h-[calc(100vh-32px)] overflow-y-auto p-5 border border-[#EAE4D7] rounded-2xl bg-white text-[#1A1612] shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="add-social-channel-title">
-            <div className="flex items-center gap-3 pb-4 mb-4 border-b border-[#EAE4D7]">
+        <div className="social-modal-backdrop fixed inset-0 z-50">
+          <div className="social-add-dialog" role="dialog" aria-modal="true" aria-labelledby="add-social-channel-title">
+            <div className="social-dialog-heading">
               <span className="grid place-items-center w-[38px] h-[38px] shrink-0 rounded-xl bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Share2 size={19} /></span>
               <div className="flex-1 min-w-0">
                 <h3 id="add-social-channel-title" className="text-base sm:text-lg font-semibold text-[#1A1612] tracking-tight">Thêm kênh mạng xã hội</h3>
@@ -345,30 +323,33 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
               </button>
             </div>
 
-            <form onSubmit={handleAdd} className="flex flex-col gap-3.5">
+            <form onSubmit={handleAdd} className="social-add-form">
               <div>
-                <label className="text-xs font-medium text-[#7D715E] mb-1.5 block">
-                  Nền tảng truyền thông
+                <label htmlFor="add-social-platform" className="text-xs font-medium text-[#7D715E] mb-1.5 block">
+                  Nền tảng
                 </label>
                 <Select
+                  id="add-social-platform"
+                  aria-label="Nền tảng của kênh mới"
                   value={platformName}
                   onChange={(e) => setPlatformName(e.target.value)}
                   className="w-full h-10 text-xs font-semibold"
                 >
-                  <option value="TIKTOK">TikTok (Khuyên dùng cho video ngắn)</option>
-                  <option value="FACEBOOK">Facebook (Fanpage / Group)</option>
-                  <option value="YOUTUBE">YouTube (Shorts &amp; Video dài)</option>
-                  <option value="INSTAGRAM">Instagram (Reels / Story)</option>
+                  <option value="TIKTOK">TikTok</option>
+                  <option value="FACEBOOK">Facebook</option>
+                  <option value="YOUTUBE">YouTube</option>
+                  <option value="INSTAGRAM">Instagram</option>
                   <option value="THREADS">Threads</option>
                   <option value="ZALO">Zalo Official Account</option>
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-[#7D715E] mb-1.5 block">
+                <label htmlFor="add-social-name" className="text-xs font-medium text-[#7D715E] mb-1.5 block">
                   Tên hiển thị kênh
                 </label>
                 <input
+                  id="add-social-name"
                   type="text"
                   placeholder="VD: Tuấn Review Skincare"
                   value={channelName}
@@ -379,10 +360,11 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
               </div>
 
               <div>
-                <label className="text-xs font-medium text-[#7D715E] mb-1.5 block">
+                <label htmlFor="add-social-url" className="text-xs font-medium text-[#7D715E] mb-1.5 block">
                   Đường dẫn kênh (URL)
                 </label>
                 <input
+                  id="add-social-url"
                   type="url"
                   placeholder="https://tiktok.com/@tuanaffiliate"
                   value={channelUrl}
@@ -393,10 +375,11 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
               </div>
 
               <div>
-                <label className="text-xs font-medium text-[#7D715E] mb-1.5 block">
+                <label htmlFor="add-social-followers" className="text-xs font-medium text-[#7D715E] mb-1.5 block">
                   Số người theo dõi
                 </label>
                 <input
+                  id="add-social-followers"
                   type="number"
                   placeholder="VD: 10000"
                   value={followerCount}
@@ -406,7 +389,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 />
               </div>
 
-              <label className="flex items-center gap-2 p-2.5 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] cursor-pointer">
+              <label className="social-primary-option">
                 <input
                   type="checkbox"
                   checked={isPrimary}
@@ -416,9 +399,10 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 <span className="text-xs font-medium text-[#1A1612]">
                   Đặt làm kênh chính
                 </span>
+                <Star size={15} aria-hidden="true" />
               </label>
 
-              <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-[#EAE4D7]">
+              <div className="social-dialog-actions">
                 <Button
                   type="button"
                   variant="outline"

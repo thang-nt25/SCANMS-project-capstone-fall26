@@ -237,6 +237,7 @@ export class LiveSessionsService {
     }
     const store = await this.assertStoreOwner(userId, dto.storeId);
     this.assertLiveAllowed(store);
+    if (!dto.title?.trim()) throw new BadRequestException('Tên phiên Live không được để trống.');
     const creator = await this.prisma.storeCollaborator.findFirst({
       where: {
         storeId: dto.storeId,
@@ -418,7 +419,7 @@ export class LiveSessionsService {
           `🔴 LỜI MỜI LIVESTREAM TỪ GIAN HÀNG ${store.name}\n` +
           `Chào ${kolName}, Shop trân trọng gửi lời mời bạn tham gia phiên phát sóng "${dto.title.trim()}".\n\n` +
           `⏰ Lịch phát sóng: ${startsAtVn} – ${endsAtVn}\n` +
-          `💰 Hoa hồng phiên Live: ${dto.commissionRate}%\n` +
+          `💰 Thưởng thêm phiên Live: +${dto.commissionRate}% (cộng vào hoa hồng đủ điều kiện của từng sản phẩm)\n` +
           `🎁 Voucher độc quyền: ${discountText} (Tổng ${dto.usageLimitTotal ?? 'không giới hạn'} lượt)\n` +
           `📦 Sản phẩm ghim: ${productIds.length} sản phẩm chiến lược\n\n` +
           `👉 Bạn vui lòng kiểm tra và xác nhận tham gia phiên live nhé!`;
@@ -428,6 +429,7 @@ export class LiveSessionsService {
           : defaultInviteText;
 
         await tx.chatMessage.create({
+          select: { id: true },
           data: {
             conversationId: conversation.id,
             senderId: userId,

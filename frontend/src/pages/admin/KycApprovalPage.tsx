@@ -404,6 +404,7 @@ export default function KycApprovalPage() {
 
         <Select
           aria-label="Lọc trạng thái thẩm định"
+          portal
           className="w-full"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as any)}

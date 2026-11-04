@@ -39,6 +39,8 @@ import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
 import { storeService } from '../../services/store.service';
 import { productPackageInput } from '../../utils/product-package.utils';
+import { isOwnProductSubmission } from '../../utils/product-moderation.policy';
+import { MAX_PRODUCT_GALLERY_IMAGES, validateProductCoverFile, validateProductCoverUrl } from '../../utils/product-image.policy';
 import { authService } from '../../services/auth.service';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -376,6 +378,9 @@ export default function ProductManagementPage() {
   }, [products]);
 
   const handleApproveProduct = async (product: any) => {
+    if (isOwnProductSubmission(product, currentUser?.id)) {
+      toast.error('Hồ sơ do bạn tạo hoặc gửi. Cần người kiểm duyệt độc lập.'); return;
+    }
     setModerationSubmitting(true);
     try {
       await productService.moderateProduct(product.id, 'APPROVED');
@@ -403,6 +408,9 @@ export default function ProductManagementPage() {
 
   const handleRejectProduct = async () => {
     if (!moderatingProduct) return;
+    if (isOwnProductSubmission(moderatingProduct, currentUser?.id)) {
+      toast.error('Hồ sơ do bạn tạo hoặc gửi. Cần người kiểm duyệt độc lập.'); return;
+    }
     if (!moderationReason.trim() || moderationReason.trim().length < 3) {
       toast.warning('Vui lòng nhập lý do từ chối kiểm duyệt (tối thiểu 3 ký tự).');
       return;
@@ -878,6 +886,7 @@ export default function ProductManagementPage() {
 
   const openCreateModal = () => {
     setSaveError(null);
+
     setEditingProduct(null);
     setFormSku('PROD-' + Math.random().toString(36).substring(2, 7).toUpperCase());
     setFormTitle('');
@@ -1035,6 +1044,9 @@ export default function ProductManagementPage() {
 
   const handleUploadSingleImage = async (file: File, isMain: boolean, subIndex?: number) => {
     if (!file) return;
+    if (!isMain && subIndex === undefined && formSubImages.length >= MAX_PRODUCT_GALLERY_IMAGES) {
+      showToast('Sản phẩm có tối đa 4 ảnh phụ. Hãy xóa hoặc thay ảnh hiện có.'); return;
+    }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       showToast('Chỉ chấp nhận ảnh định dạng JPG, PNG hoặc WEBP');
       return;
@@ -1050,9 +1062,10 @@ export default function ProductManagementPage() {
     setUploadingImage(true);
     setUploadingSlot(isMain ? 'main' : subIndex !== undefined ? `sub-${subIndex}` : 'sub-new');
     try {
+      if (isMain) await validateProductCoverFile(file);
       const body = new FormData();
       body.append('file', file);
-      const res: any = await api.post('/upload/image?folder=scanms/products', body, {
+      const res: any = await api.post(isMain ? '/upload/product-cover' : '/upload/image?folder=scanms/products', body, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const result = res?.data || res;
@@ -1132,12 +1145,19 @@ export default function ProductManagementPage() {
   const handleBulkUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const fileList = Array.from(files);
+    const capacity = MAX_PRODUCT_GALLERY_IMAGES - formSubImages.length + (formImage ? 0 : 1);
+    if (fileList.length > capacity) {
+      showToast(`Chỉ có thể thêm ${Math.max(0, capacity)} ảnh nữa (1 ảnh bìa và tối đa 4 ảnh phụ).`); return;
+    }
     setUploadingImage(true);
     setUploadingSlot('bulk');
     showToast(`Đang tải lên ${fileList.length} ảnh lên hệ thống...`);
     try {
       let mainImg = formImage;
       const subs = [...formSubImages];
+      if (fileList.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024))
+        throw new Error('Chọn ảnh JPG, PNG hoặc WEBP, mỗi ảnh tối đa 5 MB.');
+      if (!mainImg) await validateProductCoverFile(fileList[0]);
 
       for (const file of fileList) {
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) continue;
@@ -1145,7 +1165,7 @@ export default function ProductManagementPage() {
 
         const body = new FormData();
         body.append('file', file);
-        const res: any = await api.post('/upload/image?folder=scanms/products', body, {
+        const res: any = await api.post(!mainImg ? '/upload/product-cover' : '/upload/image?folder=scanms/products', body, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         const result = res?.data || res;
@@ -1170,9 +1190,11 @@ export default function ProductManagementPage() {
     }
   };
 
-  const handleSetAsMain = (subIndex: number) => {
+  const handleSetAsMain = async (subIndex: number) => {
     const targetSub = formSubImages[subIndex];
     if (!targetSub) return;
+    try { await validateProductCoverUrl(targetSub); }
+    catch (error) { showToast(error instanceof Error ? error.message : 'Ảnh chưa đạt chuẩn ảnh bìa.'); return; }
     const nextSubs = [...formSubImages];
     if (formImage) {
       nextSubs[subIndex] = formImage;
@@ -1225,6 +1247,9 @@ export default function ProductManagementPage() {
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (savingProduct || saveLocked.current) return;
+    if (formSubImages.length > MAX_PRODUCT_GALLERY_IMAGES) {
+      setSaveError('Sản phẩm có tối đa 4 ảnh phụ. Vui lòng xóa ảnh vượt giới hạn trước khi lưu.'); return;
+    }
     submittedForm.current = e.currentTarget as HTMLFormElement;
     setSaveError(null);
 
@@ -1858,7 +1883,7 @@ export default function ProductManagementPage() {
                                     setModeratingProduct(p);
                                     setModeratingAction('APPROVED');
                                   }}
-                                  disabled={moderationSubmitting}
+                                  disabled={moderationSubmitting || isOwnProductSubmission(moderatingProduct, currentUser?.id)}
                                   className="h-8 px-2.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                   title="Phê duyệt sản phẩm lên sàn ngay"
                                 >
@@ -1872,7 +1897,7 @@ export default function ProductManagementPage() {
                                     setModeratingAction('REJECTED');
                                     setModerationReason('');
                                   }}
-                                  disabled={moderationSubmitting}
+                                  disabled={moderationSubmitting || isOwnProductSubmission(moderatingProduct, currentUser?.id)}
                                   className="h-8 px-2 rounded-lg border border-[#DC2626] text-[#DC2626] hover:bg-[#FEF2F2] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer active:scale-95 disabled:opacity-50"
                                   title="Từ chối duyệt và ghi lý do vi phạm"
                                 >
@@ -2047,7 +2072,7 @@ export default function ProductManagementPage() {
             </div>
           )}
           {/* Quick anchor navigation */}
-          <div className="product-editor-navigation mb-2 bg-[#FAF8F5] px-3 py-2 rounded-xl border border-[#EAE4D7] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0" aria-label="Các phần thông tin sản phẩm">
+          <div className="product-editor-navigation mb-2 bg-[#FAF8F5] px-3 py-2 rounded-xl border border-[#EAE4D7] flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0" aria-label="Các phần thông tin sản phẩm">
             {[
               { id: 'product-section-basic', label: '1. Thông tin cơ bản' },
               { id: 'product-section-media', label: '2. Hình ảnh' },
@@ -2299,7 +2324,7 @@ export default function ProductManagementPage() {
                         <span className="text-xs font-bold">
                           {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Bấm để tải Ảnh bìa chính'}
                         </span>
-                        <span className="text-[10.5px] text-[#7D715E]">Định dạng JPG, PNG, WEBP (Tối đa 5MB)</span>
+                        <span className="text-[10.5px] text-[#7D715E]">Ảnh vuông ≥ 800 × 800 px · JPG, PNG, WEBP · Tối đa 5MB</span>
                       </button>
                     )}
                   </div>
@@ -2311,7 +2336,7 @@ export default function ProductManagementPage() {
                     <label className="text-xs font-semibold text-[#1A1612]">
                       Thư viện ảnh phụ ({formSubImages.length})
                     </label>
-                    <span className="text-[10.5px] text-[#7D715E]">Không giới hạn số lượng</span>
+                    <span className="text-[10.5px] text-[#7D715E]">Tối đa {MAX_PRODUCT_GALLERY_IMAGES} ảnh phụ</span>
                   </div>
 
                   <div className="flex flex-wrap gap-2.5 items-center">
@@ -2353,7 +2378,7 @@ export default function ProductManagementPage() {
                     />
                     <button
                       type="button"
-                      disabled={uploadingImage}
+                      disabled={uploadingImage || formSubImages.length >= MAX_PRODUCT_GALLERY_IMAGES}
                       onClick={() => document.getElementById('sub-image-new-input')?.click()}
                       className="w-16 h-16 rounded-xl border-2 border-dashed border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-[#FBF5EB] flex flex-col items-center justify-center gap-1 text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer shrink-0"
                     >
@@ -3321,9 +3346,9 @@ export default function ProductManagementPage() {
               </button>
               <button
                 type="button"
-                disabled={moderationSubmitting}
+                disabled={moderationSubmitting || isOwnProductSubmission(moderatingProduct, currentUser?.id)}
                 onClick={() => handleApproveProduct(moderatingProduct)}
-                className="px-5 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
               >
                 {moderationSubmitting ? (
                   <>
@@ -3408,7 +3433,7 @@ export default function ProductManagementPage() {
               </button>
               <button
                 type="button"
-                disabled={moderationSubmitting || moderationReason.trim().length < 3}
+                disabled={moderationSubmitting || moderationReason.trim().length < 3 || isOwnProductSubmission(moderatingProduct, currentUser?.id)}
                 onClick={handleRejectProduct}
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
               >

@@ -7,8 +7,9 @@ import {
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { authService } from "../../services/auth.service";
-import { ClipboardList, Megaphone, RefreshCw } from 'lucide-react';
+import { ClipboardList, Megaphone } from 'lucide-react';
 import { SponsoredBookingForm, sponsorshipMoney } from './SponsoredBookingForm';
+import { Select } from '../ui/Select';
 
 const labels = {
   REQUESTED: "Chờ duyệt",
@@ -164,11 +165,11 @@ export function SponsoredPlacementsPanel({
   }
   const error = clientError || mutation.error?.message || query.error?.message || pricing.error?.message;
   return (
-    <Card className="sp-workspace mt-5 p-4 sm:p-6 text-[#1A1612]">
-      <div className="sp-heading flex items-center gap-[12px] mb-[20px] [&_h2]:m-0 [&_h2]:text-[20px] [&_h2]:leading-[1.4] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[13px] [&_p]:text-[#7D715E] [@media(max-width:520px)]:[&_h2]:text-[17px]">
-        <span className="sp-heading-icon grid place-items-center w-[44px] h-[44px] border border-[#EEDFC6] rounded-[12px] bg-[#FBF5EB] text-[#B88E4F] shrink-0"><Megaphone size={21} /></span>
+    <Card className="sp-workspace mt-5 bg-white p-4 text-[#1A1612] shadow-none sm:p-5">
+      <div className="sp-heading mb-4 flex items-center gap-2.5 border-b border-[#EAE4D7] pb-3 [&_h2]:m-0 [&_h2]:text-sm [&_h2]:font-semibold [&_p]:m-0 [&_p]:mt-1 [&_p]:text-xs [&_p]:text-[#7D715E]">
+        <span className="sp-heading-icon grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]"><Megaphone size={21} /></span>
         <div><h2>Quảng bá gian hàng</h2>
-        <p>{admin ? 'Đối soát thanh toán và duyệt lịch quảng cáo trên trang chủ.' : 'Đưa thương hiệu đến gần khách mua sắm trên SCANMS.'}</p></div>
+        {admin && <p>Đối soát thanh toán và duyệt lịch quảng cáo trên trang chủ.</p>}</div>
       </div>
       {successMessage && <p role="status" className="mb-4 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm text-[#1A1612]">{successMessage}</p>}
       {error && (
@@ -182,19 +183,20 @@ export function SponsoredPlacementsPanel({
       {!admin && <div ref={bookingSection}><SponsoredBookingForm key={renewal?.id ?? 'new'} pricing={pricing.data} pending={mutation.isPending}
         renewal={renewal ? { headline: renewal.headline, startsAt: renewal.formStartsAt, endsAt: renewal.formEndsAt } : null}
         onCancelRenewal={() => setRenewal(null)} onSubmit={(event) => submit(event, "request")} /></div>}
-      <div className="sp-history-toolbar flex items-center justify-between gap-[16px] mt-[22px] mb-[12px] mx-0 pt-[18px] border-t border-t-[#EAE4D7] [@media(max-width:640px)]:flex-wrap [@media(max-width:640px)]:gap-[12px]">
-        <div className="sp-history-heading flex items-center gap-[8px] min-w-0 [&>svg]:text-[#B88E4F] [&>svg]:shrink-0 [&_h3]:m-0 [&_h3]:text-[15px] [&_h3]:font-bold">
+      <div className="sp-history-toolbar mt-5 flex flex-wrap items-center justify-between gap-3 rounded-t-xl border border-[#EAE4D7] bg-white px-4 py-3">
+        <div className="sp-history-heading flex min-w-0 items-center gap-2 [&>svg]:shrink-0 [&>svg]:text-[#B88E4F] [&_h3]:m-0 [&_h3]:text-sm [&_h3]:font-semibold">
           <ClipboardList size={18} aria-hidden="true" />
           <h3>{admin ? 'Đăng ký cần xử lý' : 'Lịch sử đăng ký'}</h3>
-          {query.data && <span className="sp-history-count grid place-items-center min-w-[23px] h-[23px] py-0 px-[6px] bg-[#F3EFE6] rounded-[6px] text-[#7D715E] text-[11px] font-semibold">{query.data.total}</span>}
+          {query.data && <span className="sp-history-count rounded-full border border-[#EEDFC6] bg-[#FBF5EB]/50 px-2 py-0.5 text-[10px] tabular-nums text-[#7D715E]">{query.data.total}</span>}
         </div>
-        <div className="sp-history-controls flex items-center gap-[8px] [&_label]:flex [&_label]:items-center [&_label]:gap-[9px] [&_label]:text-[#7D715E] [&_label]:text-[12px] [&_label>span]:flex [&_label>span]:items-center [&_label>span]:min-h-[36px] [&_label>span]:leading-[20px] [&_.sp-history-refresh]:h-[36px] [&_.sp-history-refresh]:rounded-[9px] [&_.sp-history-refresh]:shadow-none [&_.sp-history-refresh]:whitespace-nowrap [@media(max-width:640px)]:w-full [@media(max-width:640px)]:[&_label]:flex-1 [@media(max-width:640px)]:[&_label]:justify-between">
+        <div className="sp-history-controls flex flex-wrap items-center gap-2 [&_label]:flex [&_label]:items-center [&_label]:gap-2 [&_label]:text-xs [&_label]:text-[#7D715E]">
         <label>
           <span>Trạng thái</span>
-          <select
+          <Select
+            portal
             aria-label="Lọc trạng thái tài trợ"
             value={status}
-            className="sp-history-filter [&:is(select)]:inline-flex [&:is(select)]:items-center [&:is(select)]:justify-between [&:is(select)]:gap-[12px] [&:is(select)]:box-border [&:is(select)]:h-[36px] [&:is(select)]:min-h-[36px] [&:is(select)]:max-w-full [&:is(select)]:border [&:is(select)]:border-[#EAE4D7] [&:is(select)]:rounded-[9px] [&:is(select)]:py-0 [&:is(select)]:px-[11px] [&:is(select)]:leading-[20px] [&:is(select)]:bg-white [&:is(select)]:text-[#1A1612] [&:is(select)]:text-[12px] [&:is(select)]:scheme-light [&:is(select)]:cursor-pointer [&::picker-icon]:self-center focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#C59B58] focus-visible:outline-offset-[2px]"
+            className="sp-history-filter h-9 min-w-[120px] rounded-lg bg-white text-xs shadow-none"
             onChange={(event) => {
               setStatus(event.target.value);
               setPage(1);
@@ -206,53 +208,43 @@ export function SponsoredPlacementsPanel({
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="sp-history-refresh"
-          icon={<RefreshCw size={14} className={query.isFetching ? 'animate-spin' : ''} />}
-          onClick={() => void query.refetch()}
-          disabled={query.isFetching}
-        >
-          Tải lại
-        </Button>
         </div>
       </div>
       {query.isLoading && <p className="sp-history-loading m-0 p-[18px] text-[#7D715E] text-[12px]" role="status">Đang tải đăng ký…</p>}
       {!query.isLoading && query.data?.items.length === 0 && (
-        <div className="sp-history-empty flex items-center justify-center gap-[12px] p-[18px] border border-dashed border-[#EAE4D7] rounded-[12px] bg-[#FAF8F5] [&_strong]:block [&_strong]:text-[13px] [&_strong]:font-semibold [&_strong]:text-[#1A1612] [&_p]:mt-[3px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:leading-[1.5] [@media(max-width:640px)]:justify-start [@media(max-width:640px)]:p-[14px]" role="status">
-          <span className="sp-history-empty-icon grid place-items-center w-[38px] h-[38px] shrink-0 border border-[#EEDFC6] rounded-[10px] bg-white text-[#B88E4F]"><ClipboardList size={21} aria-hidden="true" /></span>
+        <div className="sp-history-empty flex items-center justify-center gap-3 rounded-b-xl border border-t-0 border-[#EAE4D7] bg-white px-4 py-6 [&_strong]:block [&_strong]:text-xs [&_strong]:font-semibold [&_strong]:text-[#1A1612] [&_p]:m-0 [&_p]:mt-1 [&_p]:text-xs [&_p]:text-[#7D715E]" role="status">
+          <span className="sp-history-empty-icon grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#FBF5EB]/50 text-[#B88E4F]"><ClipboardList size={21} aria-hidden="true" /></span>
           <div><strong>Chưa có đăng ký phù hợp</strong>
           <p>{status ? 'Thử chọn trạng thái khác để xem các đăng ký.' : 'Các đăng ký quảng cáo sẽ xuất hiện tại đây.'}</p></div>
         </div>
       )}
-      <div className="space-y-3">
+      <div className="divide-y divide-[#EAE4D7] rounded-b-xl border-x border-[#EAE4D7] bg-white">
         {query.data?.items.map((row) => (
           <article
             key={row.id}
-            className="rounded-xl border border-[#EAE4D7] p-4"
+            className="border-b border-[#EAE4D7] p-4 text-xs last:rounded-b-xl"
           >
             <div className="flex flex-wrap justify-between gap-2">
-              <strong>{row.store.name}</strong>
-              <span className="rounded-full bg-[#FBF5EB] px-3 text-sm text-[#7D715E]">
+              <strong className="text-xs font-semibold">{row.store.name}</strong>
+              <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB]/50 px-2 py-0.5 text-[10px] text-[#7D715E]">
                 {labels[row.status]}
               </span>
             </div>
-            <p className="mt-2 break-words">{row.headline}</p>
+            <p className="mt-2 break-words text-[13px] font-medium leading-relaxed">{row.headline}</p>
             <p className="mt-1 text-xs text-[#7D715E]">
               {when(row.startsAt)} → {when(row.endsAt)}
             </p>
             {row.fundingType && (
-              <p className="mt-2 text-sm">
+              <p className="mt-2 text-xs">
                 {row.fundingType === "PLATFORM_GRANT"
                   ? "Gói miễn phí cũ — không đủ điều kiện hiển thị quảng cáo"
                   : `${row.paymentReference ? 'Đã đối soát' : 'Phí đăng ký'}: ${sponsorshipMoney(Number(row.amount))}${row.paymentReference ? ` · ${row.paymentReference}` : ''}`}
               </p>
             )}
             {row.reviewNote && (
-              <p className="mt-2 break-words text-sm">
+              <p className="mt-2 break-words text-xs leading-relaxed text-[#7D715E]">
                 Phản hồi: {row.reviewNote}
               </p>
             )}
@@ -293,7 +285,7 @@ export function SponsoredPlacementsPanel({
         ))}
       </div>
       {!!query.data?.total && (
-        <div className="mt-4 flex items-center justify-end gap-3 text-sm">
+        <div className="mt-3 flex items-center justify-end gap-2 text-xs [&_button]:min-h-8 [&_button]:rounded-lg [&_button]:text-xs">
           <Button
             variant="outline"
             disabled={page <= 1 || query.isFetching}

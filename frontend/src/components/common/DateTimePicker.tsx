@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar,
@@ -26,6 +26,7 @@ export interface DateTimePickerProps {
   compact?: boolean;
   popoverTitle?: string;
   inlinePopoverRef?: RefObject<HTMLDivElement | null>;
+  popoverPortalRef?: RefObject<HTMLElement | null>;
 }
 
 const DAYS_OF_WEEK = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -40,22 +41,30 @@ function padZero(num: number): string {
 }
 
 /**
- * Phân tích chuỗi ngày giờ an toàn theo giờ Local, tránh lệch múi giờ UTC
+ * Chuỗi có múi giờ là một thời điểm tuyệt đối; chuỗi không có múi giờ dùng giờ máy.
  */
 function parseSafeDate(val?: string | null): Date | null {
   if (!val) return null;
   const trimmed = val.trim();
   if (!trimmed) return null;
 
-  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+  if (/[T\s].*(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) {
+    const instant = new Date(trimmed);
+    return Number.isNaN(instant.getTime()) ? null : instant;
+  }
+
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/);
   if (match) {
     const year = parseInt(match[1], 10);
     const month = parseInt(match[2], 10) - 1;
     const day = parseInt(match[3], 10);
     const hour = match[4] ? parseInt(match[4], 10) : 0;
     const min = match[5] ? parseInt(match[5], 10) : 0;
-    const d = new Date(year, month, day, hour, min, 0);
-    return isNaN(d.getTime()) ? null : d;
+    const second = match[6] ? Number(match[6]) : 0;
+    const ms = match[7] ? Number(match[7].padEnd(3, '0')) : 0;
+    const d = new Date(year, month, day, hour, min, second, ms);
+    return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day &&
+      d.getHours() === hour && d.getMinutes() === min && d.getSeconds() === second ? d : null;
   }
 
   const d = new Date(trimmed);
@@ -78,6 +87,7 @@ export function DateTimePicker({
   compact = false,
   popoverTitle,
   inlinePopoverRef,
+  popoverPortalRef,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'calendar' | 'time'>('calendar');
@@ -86,6 +96,31 @@ export function DateTimePicker({
   const minuteScrollRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const calculatePopoverPosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const width = Math.min(mode === 'datetime' ? 480 : 310, window.innerWidth - 16);
+    const estimatedHeight = mode === 'datetime' ? 450 : 360;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow >= estimatedHeight + 8
+      ? rect.bottom + 8
+      : Math.max(8, rect.top - estimatedHeight - 8);
+    const requestedLeft = popoverAlign === 'end' ? rect.right - width : rect.left;
+    const left = Math.max(8, Math.min(requestedLeft, window.innerWidth - width - 8));
+    return { top, left, width };
+  }, [mode, popoverAlign]);
+
+  const togglePicker = () => {
+    if (disabled) return;
+    const nextOpen = !isOpen;
+    if (nextOpen && popoverPortalRef?.current) {
+      setPopoverPosition(calculatePopoverPosition());
+    }
+    setIsOpen(nextOpen);
+  };
 
   useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
 
@@ -138,6 +173,26 @@ export function DateTimePicker({
     const frame = requestAnimationFrame(() => popoverRef.current?.scrollIntoView({ block: 'nearest' }));
     return () => cancelAnimationFrame(frame);
   }, [isOpen, inlinePopoverRef]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !popoverPortalRef?.current) {
+      setPopoverPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const position = calculatePopoverPosition();
+      if (position) setPopoverPosition(position);
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, calculatePopoverPosition, popoverPortalRef]);
 
   // Tự động cuộn đến giờ & phút đã chọn khi mở popup
   useEffect(() => {
@@ -225,6 +280,10 @@ export function DateTimePicker({
     }
 
     emitChange(newDate, nextH, nextM);
+    if (mode === 'date') {
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    }
     if (mode === 'datetime' && window.innerWidth < 640) {
       setActiveTab('time');
     }
@@ -313,7 +372,11 @@ export function DateTimePicker({
     return `${compact ? '' : `${dayOfWeekName}, `}${d}/${m}/${y} • ${h}:${min}`;
   }, [selectedDate, selectedHour, selectedMinute, mode, compact]);
 
-  const renderPopover = (node: React.ReactNode) => inlinePopoverRef?.current ? createPortal(node, inlinePopoverRef.current) : node;
+  const renderPopover = (node: React.ReactNode) => {
+    if (inlinePopoverRef?.current) return createPortal(node, inlinePopoverRef.current);
+    if (popoverPortalRef?.current) return createPortal(node, popoverPortalRef.current);
+    return node;
+  };
 
   return (
     <div ref={containerRef} className={`relative inline-block w-full ${className || ''}`}>
@@ -334,10 +397,10 @@ export function DateTimePicker({
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
-            setIsOpen((prev) => !prev);
+            togglePicker();
           }
         }}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={togglePicker}
         className={`group w-full ${
           compact ? 'h-[42px] px-2.5 py-2 gap-1.5 rounded-[10px] border-[#EAE4D7]' : 'rounded-xl border-[#EEDFC6] px-3.5 py-2.5 gap-2.5'
         } bg-white text-left ${compact ? 'text-[11px]' : 'text-xs sm:text-sm'} font-normal text-[#1A1612] outline-none transition-all flex items-center justify-between cursor-pointer select-none border ${
@@ -403,14 +466,21 @@ export function DateTimePicker({
           aria-label={popoverTitle || 'Chọn ngày giờ'}
           onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus(); } }}
           className={`${
-            inlinePopoverRef ? 'relative inset-auto w-full max-w-full mt-2.5 shadow-none' : 'absolute top-[calc(100%+6px)]'
-          } ${popoverAlign === 'end' ? 'right-0' : 'left-0'} z-50 ${
+            inlinePopoverRef ? 'relative inset-auto w-full max-w-full mt-2.5 shadow-none' : popoverPortalRef ? 'fixed' : 'absolute top-[calc(100%+6px)]'
+          } ${!inlinePopoverRef && !popoverPortalRef ? (popoverAlign === 'end' ? 'right-0' : 'left-0') : ''} ${popoverPortalRef ? 'z-[100]' : 'z-50'} ${
             compact ? 'p-3.5 rounded-[14px] border border-[#EEDFC6] shadow-none' : 'rounded-2xl border border-[#EEDFC6] p-4 shadow-2xl shadow-[#C59B58]/10'
-          } bg-white ring-1 ring-[#C59B58]/15 transition-all animate-in fade-in zoom-in-95 duration-150 ${
+          } bg-white ring-1 ring-[#C59B58]/15 ${popoverPortalRef ? '' : 'transition-all animate-in fade-in zoom-in-95 duration-150'} ${
             mode === 'datetime'
               ? 'w-[320px] sm:w-[480px] max-w-[calc(100vw-2rem)]'
               : 'w-[280px] sm:w-[310px]'
           }`}
+          style={popoverPortalRef ? {
+            top: popoverPosition?.top ?? 8,
+            left: popoverPosition?.left ?? 8,
+            width: popoverPosition?.width ?? 310,
+            maxHeight: 'calc(100vh - 16px)',
+            overflowY: 'auto',
+          } : undefined}
         >
           {/* Header Preview */}
           <div className="mb-3.5 pb-2.5 border-b border-[#F3EFE6] flex items-center justify-between gap-2">

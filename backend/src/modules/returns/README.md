@@ -143,13 +143,14 @@ is still holding the customer's returned item.
 
 ## Financial boundary
 
-`Refund` is a **payment instruction**, not a successful transfer. Inspection or
-admin arbitration creates `PENDING` only. This repository currently contains
-PayOS checkout verification, but no verified outbound refund integration.
-Consequently this module does not claim a refund succeeded, write `OrderRefund`,
-or mark the order `RETURNED` until an authorized settlement adapter is added.
-The adapter must verify provider evidence, enforce an idempotency key, and call
-the existing commission/bonus adjustment path atomically with the ledger write.
+The current return flow refunds into the customer's **internal SCANMS wallet**.
+When that wallet credit succeeds, the same database transaction marks the refund
+`SUCCEEDED`, increases `order.refundedAmount`, and reverses the KOL income. If
+the wallet credit cannot be completed, the refund stays `PENDING` and income
+is not reversed. System Manager/Admin can retry it through the locked,
+idempotent endpoint above. This is not a verified PayOS or bank transfer back
+to the customer's original payment method; the UI and demo must say "hoàn vào
+ví SCANMS". No outbound refund provider adapter is implemented here.
 
 The deadline job closes only the *return request* when the pickup booking
 deadline (`shipByAt`) is exceeded;

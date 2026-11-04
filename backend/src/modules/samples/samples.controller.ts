@@ -141,9 +141,10 @@ export class SamplesController {
   getShopRequests(
     @Request() req: any,
     @Query('status') status?: SampleRequestStatus,
+    @Query('storeId') storeId?: string,
   ) {
     const userId = req.user?.id || req.user?.sub;
-    return this.samplesService.getRequestsForShop(userId, status);
+    return this.samplesService.getRequestsForShop(userId, status, storeId);
   }
 
   @Get('shop/stats')

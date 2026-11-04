@@ -16,7 +16,7 @@ export class ProductPackageDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d{13}$/, { message: 'EAN-13 phải gồm đúng 13 chữ số' })
-  barcode?: string;
+  barcode?: string | null;
 
   @ApiPropertyOptional({
     description: 'Khối lượng một sản phẩm sau đóng gói, gram',

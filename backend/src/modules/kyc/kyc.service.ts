@@ -62,116 +62,126 @@ export class KycService {
    * KOL nộp hồ sơ KYC (CCCD, Ngân hàng)
    */
   async submitKyc(userId: string, dto: SubmitKycDto) {
+    const platform = dto.platform?.trim().toUpperCase();
+    if (platform && !Object.values(SocialPlatform).includes(platform as SocialPlatform)) {
+      throw new BadRequestException('Nền tảng mạng xã hội không hợp lệ.');
+    }
+    const followers = dto.followerCount === undefined ? undefined : Number(dto.followerCount);
+    if (followers !== undefined && (!Number.isInteger(followers) || followers < 0 || followers > 2147483647)) {
+      throw new BadRequestException('Số người theo dõi phải là số nguyên không âm hợp lệ.');
+    }
+    dto = { ...dto, platform, followerCount: followers };
     if (!dto.frontCardUrl?.trim() || !dto.backCardUrl?.trim()) {
       throw new BadRequestException('Vui lòng tải lên đầy đủ ảnh CCCD mặt trước và mặt sau.');
     }
 
-    let profile = await this.prisma.collaboratorProfile.findUnique({
-      where: { userId },
-    });
-
-    const existingMeta = (profile?.socialLinksJson as any) || {};
-    const updatedMeta = {
-      ...existingMeta,
-      ...(dto.frontCardUrl ? { frontCardUrl: dto.frontCardUrl } : {}),
-      ...(dto.backCardUrl ? { backCardUrl: dto.backCardUrl } : {}),
-      ...(dto.channelProofUrl ? { channelProofUrl: dto.channelProofUrl } : {}),
-      ...(dto.platform ? { platform: dto.platform } : {}),
-      ...(dto.channelName ? { channelName: dto.channelName.trim() } : {}),
-      ...(dto.channelUrl ? { channelUrl: dto.channelUrl.trim() } : {}),
-      ...(dto.followerCount !== undefined
-        ? { followerCount: Number(dto.followerCount) }
-        : {}),
-      submittedAt: new Date().toISOString(),
-    };
-
-    if (!profile) {
-      profile = await this.prisma.collaboratorProfile.create({
-        data: {
-          userId,
-          idCardNumber: dto.idCardNumber.trim(),
-          taxCode: dto.taxCode?.trim() || null,
-          bankName: dto.bankName?.trim() || '',
-          bankAccountNumber: dto.bankAccountNumber?.trim() || '',
-          bankAccountName: dto.bankAccountName?.trim().toUpperCase() || '',
-          bio: dto.bio?.trim() || null,
-          socialLinksJson: updatedMeta,
-          totalFollowers:
-            dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
-          kycStatus: KycStatus.UNVERIFIED,
-        },
-      });
-    } else {
-      const targetStatus =
-        profile.kycStatus === KycStatus.VERIFIED
-          ? KycStatus.VERIFIED
-          : KycStatus.UNVERIFIED;
-      profile = await this.prisma.collaboratorProfile.update({
+    return this.prisma.$transaction(async (tx) => {
+      let profile = await tx.collaboratorProfile.findUnique({
         where: { userId },
-        data: {
-          idCardNumber: dto.idCardNumber.trim(),
-          taxCode: dto.taxCode?.trim() || null,
-          bankName:
-            dto.bankName !== undefined ? dto.bankName.trim() : profile.bankName,
-          bankAccountNumber:
-            dto.bankAccountNumber !== undefined
-              ? dto.bankAccountNumber.trim()
-              : profile.bankAccountNumber,
-          bankAccountName:
-            dto.bankAccountName !== undefined
-              ? dto.bankAccountName.trim().toUpperCase()
-              : profile.bankAccountName,
-          bio: dto.bio?.trim(),
-          socialLinksJson: updatedMeta,
-          ...(dto.followerCount !== undefined
-            ? { totalFollowers: Number(dto.followerCount) }
-            : {}),
-          kycStatus: targetStatus,
-        },
       });
-    }
 
-    // Tự động đồng bộ vào danh mục Kênh Mạng Xã Hội (FR-07)
-    if (dto.platform && dto.channelUrl) {
-      const platformEnum = dto.platform as SocialPlatform;
-      const existingChannel =
-        await this.prisma.collaboratorSocialChannel.findFirst({
-          where: { collaboratorId: userId, platformName: platformEnum },
-        });
+      const existingMeta = (profile?.socialLinksJson as any) || {};
+      const updatedMeta = {
+        ...existingMeta,
+        ...(dto.frontCardUrl ? { frontCardUrl: dto.frontCardUrl } : {}),
+        ...(dto.backCardUrl ? { backCardUrl: dto.backCardUrl } : {}),
+        ...(dto.channelProofUrl ? { channelProofUrl: dto.channelProofUrl } : {}),
+        ...(dto.platform ? { platform: dto.platform } : {}),
+        ...(dto.channelName ? { channelName: dto.channelName.trim() } : {}),
+        ...(dto.channelUrl ? { channelUrl: dto.channelUrl.trim() } : {}),
+        ...(dto.followerCount !== undefined
+          ? { followerCount: Number(dto.followerCount) }
+          : {}),
+        submittedAt: new Date().toISOString(),
+      };
 
-      if (existingChannel) {
-        await this.prisma.collaboratorSocialChannel.update({
-          where: { id: existingChannel.id },
+      if (!profile) {
+        profile = await tx.collaboratorProfile.create({
           data: {
-            channelName: dto.channelName?.trim() || existingChannel.channelName,
-            channelUrl: dto.channelUrl.trim(),
-            followerCount:
-              dto.followerCount !== undefined
-                ? Number(dto.followerCount)
-                : existingChannel.followerCount,
-            isPrimary: true,
+            userId,
+            idCardNumber: dto.idCardNumber.trim(),
+            taxCode: dto.taxCode?.trim() || null,
+            bankName: dto.bankName?.trim() || '',
+            bankAccountNumber: dto.bankAccountNumber?.trim() || '',
+            bankAccountName: dto.bankAccountName?.trim().toUpperCase() || '',
+            bio: dto.bio?.trim() || null,
+            socialLinksJson: updatedMeta,
+            totalFollowers:
+              dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
+            kycStatus: KycStatus.UNVERIFIED,
           },
         });
       } else {
-        await this.prisma.collaboratorSocialChannel.create({
+        // A submitted identity/bank dossier must be reviewed again. Verification
+        // of a previous dossier cannot authorize a replacement beneficiary.
+        const targetStatus = KycStatus.UNVERIFIED;
+        profile = await tx.collaboratorProfile.update({
+          where: { userId },
           data: {
-            collaboratorId: userId,
-            platformName: platformEnum,
-            channelName: dto.channelName?.trim() || `${dto.platform} Creator`,
-            channelUrl: dto.channelUrl.trim(),
-            followerCount:
-              dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
-            isPrimary: true,
+            idCardNumber: dto.idCardNumber.trim(),
+            taxCode: dto.taxCode?.trim() || null,
+            bankName:
+              dto.bankName !== undefined ? dto.bankName.trim() : profile.bankName,
+            bankAccountNumber:
+              dto.bankAccountNumber !== undefined
+                ? dto.bankAccountNumber.trim()
+                : profile.bankAccountNumber,
+            bankAccountName:
+              dto.bankAccountName !== undefined
+                ? dto.bankAccountName.trim().toUpperCase()
+                : profile.bankAccountName,
+            bio: dto.bio?.trim(),
+            socialLinksJson: updatedMeta,
+            ...(dto.followerCount !== undefined
+              ? { totalFollowers: Number(dto.followerCount) }
+              : {}),
+            kycStatus: targetStatus,
           },
         });
       }
-    }
 
-    return {
-      message:
-        'Hồ sơ KYC đã được nộp thành công! Hệ thống sẽ xem xét và phê duyệt.',
-      profile,
-    };
+      // Tự động đồng bộ vào danh mục Kênh Mạng Xã Hội (FR-07)
+      if (dto.platform && dto.channelUrl) {
+        const platformEnum = dto.platform as SocialPlatform;
+        const existingChannel =
+          await tx.collaboratorSocialChannel.findFirst({
+            where: { collaboratorId: userId, platformName: platformEnum },
+          });
+
+        if (existingChannel) {
+          await tx.collaboratorSocialChannel.update({
+            where: { id: existingChannel.id },
+            data: {
+              channelName: dto.channelName?.trim() || existingChannel.channelName,
+              channelUrl: dto.channelUrl.trim(),
+              followerCount:
+                dto.followerCount !== undefined
+                  ? Number(dto.followerCount)
+                  : existingChannel.followerCount,
+              isPrimary: true,
+            },
+          });
+        } else {
+          await tx.collaboratorSocialChannel.create({
+            data: {
+              collaboratorId: userId,
+              platformName: platformEnum,
+              channelName: dto.channelName?.trim() || `${dto.platform} Creator`,
+              channelUrl: dto.channelUrl.trim(),
+              followerCount:
+                dto.followerCount !== undefined ? Number(dto.followerCount) : 0,
+              isPrimary: true,
+            },
+          });
+        }
+      }
+
+      return {
+        message:
+          'Hồ sơ KYC đã được nộp thành công! Hệ thống sẽ xem xét và phê duyệt.',
+        profile,
+      };
+    });
   }
 
   /**

@@ -1,0 +1,41 @@
+@reference "../../index.css";
+.customer-profile-tabs {
+  @apply grid;
+  @apply [grid-template-columns:1fr_1fr_1.25fr_1.1fr];
+  @apply [grid-auto-rows:1fr];
+  @apply items-stretch;
+  @apply [gap:6px];
+  @apply [width:100%];
+  @apply [min-width:0];
+  @apply [padding:8px_10px];
+  @apply [border:1px_solid_#EAE4D7];
+  @apply [border-radius:12px];
+  @apply [background:#FFFFFF];
+}
+.customer-profile-tabs > button {
+  @apply [min-width:0];
+  @apply [min-height:36px];
+  @apply [gap:6px];
+  @apply [padding:7px_8px];
+  @apply [border-radius:7px];
+  @apply [font-size:11px];
+  @apply [font-weight:500];
+  @apply [line-height:1.5];
+}
+.customer-profile-tabs > button > svg { @apply [flex-shrink:0]; @apply [width:14px]; @apply [height:14px]; }
+.customer-profile-tabs > button > span { @apply whitespace-nowrap; }
+.customer-profile-tabs > button > span + span {
+  @apply [flex-shrink:0];
+  @apply [padding:1px_5px];
+  @apply [border-radius:5px];
+  @apply [font-size:9px];
+  @apply [line-height:1.5];
+}
+@container profile (max-width: 799px) {
+  .customer-profile-tabs { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+}
+@container profile (max-width: 399px) {
+  .customer-profile-tabs { @apply [padding:6px]; }
+  .customer-profile-tabs > button { @apply flex-wrap; @apply [padding:6px]; @apply [gap:4px]; }
+  .customer-profile-tabs > button > span { @apply whitespace-normal; }
+}

@@ -112,7 +112,13 @@ function useQrDataUrl(value?: string | null) {
   return { dataUrl, qrLoading, qrError, retry };
 }
 
-export default function ReferralLinksPage() {
+export default function ReferralLinksPage({
+  modalOnly = false,
+  onCreateClose,
+}: {
+  modalOnly?: boolean;
+  onCreateClose?: () => void;
+} = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [links, setLinks] = useState<ReferralLinkItem[]>([]);
@@ -142,7 +148,13 @@ export default function ReferralLinksPage() {
   const limit = 15;
 
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(modalOnly);
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    if (modalOnly) {
+      onCreateClose?.();
+    }
+  };
   const [createLinkStep, setCreateLinkStep] = useState<1 | 2>(1);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -214,6 +226,8 @@ export default function ReferralLinksPage() {
   const [utmContent, setUtmContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdSuccessLink, setCreatedSuccessLink] = useState<ReferralLinkItem | null>(null);
+  const [qrKitTab, setQrKitTab] = useState<'qr' | 'caption' | 'download'>('qr');
+  useEffect(() => { if (isQrModalOpen) setQrKitTab('qr'); }, [isQrModalOpen]);
   const createdQrTargetUrl = useMemo(() => {
     if (!createdSuccessLink?.shortUrl) return '';
     return createdSuccessLink.shortUrl.includes('?')
@@ -986,7 +1000,8 @@ export default function ReferralLinksPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={modalOnly ? "contents" : "space-y-4"}>
+      {!modalOnly && (<>
       {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
       {/* Banner Hướng Dẫn Tiếp Thị Toàn Diện (Song Kiếm Hợp Bích) */}
       <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-left shadow-2xs mb-4">
@@ -1019,26 +1034,22 @@ export default function ReferralLinksPage() {
         ].map(({ label, value, icon: Icon, suffix, badge }) => (
           <div
             key={label}
-            className="group relative overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs hover:border-[#C59B58]/60 hover:shadow-sm transition-all text-left"
+            className="group relative flex min-h-[128px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-[#EEDFC6] bg-gradient-to-b from-[#FBF5EB]/60 to-white p-4 shadow-2xs hover:border-[#C59B58]/60 hover:shadow-sm transition-all text-left"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D715E]">{label}</span>
-              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Icon className="w-4 h-4 text-[#B88E4F]" />
+                <span className="text-xs font-medium text-[#1A1612]">{label}</span>
               </div>
+              <span className="inline-flex shrink-0 items-center rounded-full border border-[#EAE4D7] bg-white px-2 py-0.5 text-[10px] font-medium text-[#8D6936]">{badge}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black tracking-tight text-[#1A1612] tabular-nums">
+              <span className="text-[32px] leading-tight font-bold tracking-tight text-[#1A1612] tabular-nums">
                 {value.toLocaleString('vi-VN')}
               </span>
               {suffix && (
                 <span className="text-xs font-semibold text-[#7D715E]">{suffix}</span>
               )}
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-[#EAE4D7]/60 flex items-center justify-between text-[11px]">
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#FAF8F5] text-[#8D6936] font-medium border border-[#EAE4D7]">
-                {badge}
-              </span>
             </div>
           </div>
         ))}
@@ -1079,7 +1090,11 @@ export default function ReferralLinksPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 items-center gap-2 shrink-0 lg:min-w-[230px]">
+          <div className="grid grid-cols-3 items-center gap-2 shrink-0 lg:min-w-[420px]">
+            <button type="button" onClick={() => void handleOpenCreateModal()} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] cursor-pointer">
+              <Plus className="h-4 w-4 shrink-0 text-[#B88E4F]" aria-hidden="true" />
+              Tạo link tiếp thị
+            </button>
             <button
               type="button"
               onClick={toggleExclusiveDealsCollapse}
@@ -1121,7 +1136,7 @@ export default function ReferralLinksPage() {
                 Bạn chưa gửi đề xuất nào. Chọn sản phẩm trong kho hàng rồi bấm “Đề xuất deal độc quyền”.
               </p>
             ) : (
-              <div className="kol-deal-grid grid gap-3 md:grid-cols-2">
+              <div className="kol-deal-grid grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {dealProposals.map((deal) => (
                   <div
                     key={deal.id}
@@ -1600,18 +1615,19 @@ export default function ReferralLinksPage() {
         )}
       </div>
       </section>
+      </>)}
 
       {isCreateModalOpen && (
-        <div className="kol-create-link-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div role="dialog" aria-modal="true" aria-labelledby="create-link-title" className={`kol-create-link-modal ${createdSuccessLink ? 'kol-link-success-modal' : ''} bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[590px] max-h-[92vh] flex flex-col overflow-hidden`}>
+        <div className="kol-create-link-overlay fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-[#231D15]/45 backdrop-blur-sm animate-fadeIn">
+          <div role="dialog" aria-modal="true" aria-labelledby="create-link-title" className={`kol-create-link-modal ${createdSuccessLink ? 'kol-link-success-modal' : ''} bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[820px] max-h-[94dvh] sm:max-h-[min(92dvh,920px)] flex flex-col overflow-hidden`}>
 
-            <div className="kol-create-link-heading px-4 sm:px-5 py-2.5 border-b border-[#EAE4D7] flex items-center justify-between bg-gradient-to-r from-white via-[#FAF8F5]/80 to-white flex-shrink-0">
+            <div className="kol-create-link-heading gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-[#EAE4D7] flex items-center justify-between bg-gradient-to-r from-white via-[#FAF8F5]/80 to-white flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#F6EFE3] border border-[#DEBE85]/50 flex items-center justify-center text-[#B88E4F] shadow-2xs flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#F6EFE3] border border-[#DEBE85]/50 flex items-center justify-center text-[#B88E4F] shadow-2xs flex-shrink-0">
                   <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
                 </div>
                 <div>
-                  <h3 id="create-link-title" className="text-sm font-bold text-[#1A1612] leading-tight flex items-center gap-1.5">
+                  <h3 id="create-link-title" className="text-base sm:text-lg font-bold text-[#1A1612] leading-tight flex items-center gap-1.5">
                     {createdSuccessLink ? 'Link tiếp thị đã sẵn sàng' : 'Tạo link tiếp thị rút gọn'}
                   </h3>
                   <p className="text-[11px] text-[#7D715E] mt-0.5">
@@ -1620,7 +1636,9 @@ export default function ReferralLinksPage() {
                 </div>
               </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                type="button"
+                onClick={closeCreateModal}
+                aria-label="Đóng cửa sổ tạo link"
                 className="p-1.5 text-[#7D715E] hover:text-[#1A1612] rounded-lg hover:bg-[#FAF8F5] transition-colors"
                 title="Đóng modal"
               >
@@ -1630,21 +1648,24 @@ export default function ReferralLinksPage() {
 
 
             {createdSuccessLink ? (
-              <div className="kol-link-success-body">
-                <div className="kol-link-success-status"><CheckCircle2 /><div><strong>Tạo link thành công</strong><p>Liên kết đã được lưu vào danh sách của bạn.</p></div></div>
-                {createdSuccessLink.product?.title && <p className="kol-link-success-product">{createdSuccessLink.product.title}</p>}
+              <div className="kol-link-success-body flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain p-4 text-[#1A1612] sm:p-6">
+                <div className="kol-link-success-status flex items-start gap-3 sm:items-center sm:gap-3.5 [&>svg]:size-12 [&>svg]:shrink-0 [&>svg]:rounded-2xl [&>svg]:border [&>svg]:border-[#EEDFC6] [&>svg]:bg-[#FBF5EB] [&>svg]:p-2.5 [&>svg]:text-[#B88E4F] [&_strong]:block [&_strong]:text-lg [&_strong]:font-bold [&_strong]:sm:text-xl [&_p]:mt-1 [&_p]:text-xs [&_p]:leading-7 [&_p]:text-[#7D715E]"><CheckCircle2 /><div><strong>Tạo link thành công</strong><p>Liên kết đã được lưu vào danh sách của bạn.</p></div></div>
+                {createdSuccessLink.product?.title && <div className="kol-link-success-product flex items-center gap-3.5 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 [&>img]:size-14 [&>img]:shrink-0 [&>img]:rounded-xl [&>img]:border [&>img]:border-[#EAE4D7] [&>img]:bg-white [&>img]:object-contain [&>div]:min-w-0 [&_span]:mb-1 [&_span]:block [&_span]:text-[11px] [&_span]:text-[#7D715E] [&_p]:text-[13px] [&_p]:font-semibold [&_p]:leading-7 [&_p]:wrap-anywhere">
+                  {createdSuccessLink.product.imageUrl && <img src={createdSuccessLink.product.imageUrl} alt="" />}
+                  <div><span>Sản phẩm tiếp thị</span><p>{createdSuccessLink.product.title}</p></div>
+                </div>}
 
-                <div className="kol-link-success-url">
+                <div className="kol-link-success-url rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5">
                   <div className="text-[10px] font-semibold text-[#7D715E] uppercase tracking-wider mb-1">
                     Link chia sẻ
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-bold text-[#B88E4F] text-xs sm:text-sm break-all">
+                  <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <span className="min-w-0 font-mono font-bold leading-7 text-[#8C6226] text-sm break-all">
                       {createdSuccessLink.shortUrl}
                     </span>
                     <button
                       onClick={() => handleCopyLink(createdSuccessLink.shortUrl, createdSuccessLink.shortCode)}
-                      className="px-2.5 py-1 bg-gradient-to-r from-[#EBD08C] via-[#E5C783] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#DEC07A] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-sm transition-all cursor-pointer"
+                      className="min-h-10 self-start border border-[#B88E4F] bg-[#C59B58] px-3.5 py-2.5 text-[#231D15] hover:bg-[#B88E4F] rounded-xl text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]"
                     >
                       {copiedCode === createdSuccessLink.shortCode ? (
                         <>
@@ -1660,10 +1681,10 @@ export default function ReferralLinksPage() {
                 </div>
 
 
-                <details className="kol-link-success-qr">
-                  <summary><QrCode className="w-4 h-4" /><span>Mã QR &amp; tải ảnh PNG</span><ChevronDown className="w-4 h-4" /></summary>
-                  <div className="kol-link-success-qr-content">
-                  <div className="w-28 h-28 border border-[#EAE4D7] rounded-xl p-1 bg-white shadow-xs flex items-center justify-center mb-1.5">
+                <details className="kol-link-success-qr group rounded-2xl border border-[#EAE4D7] bg-white">
+                  <summary className="flex min-h-13 cursor-pointer list-none items-center gap-2.5 px-4 py-3.5 text-[13px] font-semibold focus-visible:outline-2 focus-visible:outline-[#C59B58] [&::-webkit-details-marker]:hidden"><QrCode className="w-4 h-4 shrink-0 text-[#B88E4F]" /><span>Mã QR &amp; tải ảnh PNG</span><ChevronDown className="ml-auto w-4 h-4 shrink-0 text-[#B88E4F] transition group-open:rotate-180" /></summary>
+                  <div className="kol-link-success-qr-content flex flex-wrap items-center justify-center gap-5 rounded-b-2xl border-t border-[#EAE4D7] bg-[#FAF8F5] p-5">
+                  <div className="w-40 h-40 shrink-0 border border-[#EAE4D7] rounded-xl p-2.5 bg-white shadow-xs flex items-center justify-center">
                     {createdQrLoading ? (
                       <Loader2 className="w-5 h-5 animate-spin text-[#B88E4F]" />
                     ) : createdQrError ? (
@@ -1690,7 +1711,7 @@ export default function ReferralLinksPage() {
                     type="button"
                     disabled={isDownloadingSuccessQr}
                     onClick={() => handleDownloadSuccessQr(createdSuccessLink)}
-                    className="text-[11px] text-[#B88E4F] hover:text-[#7D715E] hover:underline flex items-center gap-1 font-semibold cursor-pointer disabled:opacity-50"
+                    className="min-h-11 rounded-xl border border-[#EEDFC6] bg-white px-3.5 py-2.5 text-xs text-[#8C6226] hover:bg-[#FBF5EB] flex items-center gap-1.5 font-semibold cursor-pointer disabled:opacity-50"
                   >
                     {isDownloadingSuccessQr ? (
                       <>
@@ -1709,8 +1730,8 @@ export default function ReferralLinksPage() {
                   )}
                   </div>
                 </details>
-                <p className="kol-link-success-note">Ghi nhận tiếp thị trong 30 ngày theo lượt nhấp cuối cùng.</p>
-                <div className="kol-link-success-actions">
+                <p className="kol-link-success-note border-l-[3px] border-[#EEDFC6] pl-3 text-xs leading-7 text-[#7D715E]">Ghi nhận tiếp thị trong 30 ngày theo lượt nhấp cuối cùng.</p>
+                <div className="kol-link-success-actions flex flex-wrap justify-end gap-2.5 border-t border-[#EAE4D7] pt-5 [&>button]:min-h-11 [&>button]:px-4 [&>button]:py-2.5 [&>button]:max-sm:flex-[1_1_140px]">
                   <button
                     onClick={() => {
                       setCreateLinkStep(1);
@@ -1727,8 +1748,8 @@ export default function ReferralLinksPage() {
                     Tạo thêm link khác
                   </button>
                   <button
-                    onClick={() => setIsCreateModalOpen(false)}
-                    className="px-4 py-1.5 bg-gradient-to-r from-[#EBD08C] via-[#E5C783] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#DEC07A] text-white rounded-xl text-xs font-semibold shadow transition-all cursor-pointer"
+                    onClick={closeCreateModal}
+                    className="px-4 py-2.5 bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] rounded-xl text-xs font-semibold transition cursor-pointer"
                   >
                     Xem danh sách link
                   </button>
@@ -1776,7 +1797,7 @@ export default function ReferralLinksPage() {
                     </button>
                   </div>
                 </nav>
-                <div className="kol-create-link-body p-4 sm:p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-2.5">
+                <div className="kol-create-link-body p-4 sm:p-6 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-2.5">
                   {createLinkStep === 1 && (<>
 
 
@@ -1919,7 +1940,7 @@ export default function ReferralLinksPage() {
                             <p className="text-[10px] text-[#7D715E] mt-0.5">Hãy thử tìm từ khóa khác hoặc liên hệ Shop để được duyệt tiếp thị.</p>
                           </div>
                         ) : (
-                          <div className="kol-create-link-products max-h-60 overflow-y-auto divide-y divide-[#EAE4D7]/60 border border-[#EAE4D7] rounded-lg bg-white custom-scrollbar">
+                          <div className="kol-create-link-products max-h-[min(38dvh,340px)] overflow-y-auto divide-y divide-[#EAE4D7]/60 border border-[#EAE4D7] rounded-lg bg-white custom-scrollbar">
                             {filteredEligibleProducts.map((p) => {
                               const isSelected = selectedProduct?.id === p.id;
                               return (
@@ -2457,7 +2478,7 @@ export default function ReferralLinksPage() {
                 </div>
 
 
-                <div className="kol-create-link-footer px-4 sm:px-5 py-2.5 border-t border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between gap-3 flex-shrink-0">
+                <div className="kol-create-link-footer px-4 sm:px-6 py-4 border-t border-[#EAE4D7] bg-[#FAF8F5] flex flex-wrap items-center justify-between gap-3 flex-shrink-0 [&_button]:min-h-10 [&>div:last-child]:ml-auto">
                   <div className="text-xs text-[#7D715E] truncate max-w-[180px] sm:max-w-xs">
                     {createLinkStep === 1 && selectedProduct ? (<span>Đã chọn sản phẩm</span>) : !selectedProduct ? (
                       <span className="text-[#7D715E] italic">Chưa chọn sản phẩm</span>
@@ -2477,7 +2498,7 @@ export default function ReferralLinksPage() {
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => createLinkStep === 2 ? setCreateLinkStep(1) : setIsCreateModalOpen(false)}
+                      onClick={() => (createLinkStep === 2 ? setCreateLinkStep(1) : closeCreateModal())}
                       className="px-3 py-1.5 rounded-lg border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:bg-white transition-colors cursor-pointer"
                     >
                       {createLinkStep === 2 ? 'Quay lại' : 'Hủy bỏ'}
@@ -2534,7 +2555,7 @@ export default function ReferralLinksPage() {
         >
           <div
             ref={qrModalRef}
-            className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-5 sm:p-6 text-center animate-in zoom-in-95 duration-150 relative"
+            className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-[560px] max-h-[calc(100dvh-32px)] overflow-y-auto p-4 sm:p-5 text-center animate-in zoom-in-95 duration-150 relative"
           >
 
 
@@ -2545,14 +2566,8 @@ export default function ReferralLinksPage() {
                 </div>
                 <div>
                   <h3 id="qr-modal-title" className="text-sm sm:text-base font-black text-[#1A1612] tracking-tight m-0 flex items-center gap-1.5">
-                    Bộ Đồ Nghề Tiếp Thị Sản Phẩm
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] rounded-md">
-                      Marketing Kit
-                    </span>
+                    Bộ công cụ tiếp thị
                   </h3>
-                  <p className="text-[11px] text-[#7D715E] m-0 mt-0.5">
-                    Trọn bộ Smart Link, Mã QR và Mã ưu đãi độc quyền dành cho bạn
-                  </p>
                 </div>
               </div>
               <button
@@ -2567,7 +2582,12 @@ export default function ReferralLinksPage() {
             </div>
 
 
-            <div className="relative p-4 bg-gradient-to-b from-white via-white to-[#FAF8F5] rounded-3xl border-2 border-[#EAE4D7] shadow-lg shadow-[#B88E4F]/5 inline-block mb-3.5 transition-all hover:border-[#C59B58]">
+            <div className="mb-4 grid grid-cols-3 gap-2" role="group" aria-label="Nội dung bộ công cụ tiếp thị">
+              {([{ key: 'qr', label: 'Mã QR' }, { key: 'caption', label: 'Nội dung' }, { key: 'download', label: 'Tải xuống' }] as const).map((tab, index) => <button key={tab.key} type="button" aria-pressed={qrKitTab === tab.key} onClick={() => setQrKitTab(tab.key)} className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg border px-2 py-2 text-xs cursor-pointer ${qrKitTab === tab.key ? 'border-[#EEDFC6] bg-[#FBF5EB] font-semibold text-[#715126]' : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:bg-[#FAF8F5]'}`}><span className="grid size-6 shrink-0 place-items-center rounded-full border border-[#EEDFC6] text-[11px] font-normal">{index + 1}</span>{tab.label}</button>)}
+            </div>
+
+            <div hidden={qrKitTab !== 'qr'}>
+            <div className="relative inline-block rounded-xl border border-[#EAE4D7] bg-white p-2 mb-3">
               {selectedQrLoading ? (
                 <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-[#7D715E]">
                   <Loader2 className="w-7 h-7 animate-spin text-[#B88E4F]" />
@@ -2599,6 +2619,7 @@ export default function ReferralLinksPage() {
                   <span className="text-xs">Đang dựng ảnh QR…</span>
                 </div>
               )}
+            </div>
             </div>
 
 
@@ -2648,7 +2669,7 @@ export default function ReferralLinksPage() {
                 type="text"
                 readOnly
                 value={selectedQrTargetUrl}
-                className="font-mono text-[11px] text-[#4A3E31] bg-transparent flex-1 outline-none select-all tracking-tight font-medium"
+                className="font-mono text-[11px] text-[#4A3E31] bg-transparent min-w-0 w-0 flex-1 outline-none select-all tracking-tight font-medium"
                 title="Short URL mã hóa trong QR"
               />
               <button
@@ -2679,6 +2700,7 @@ export default function ReferralLinksPage() {
 
 
             {/* Mẫu Lời Nhắn Đăng Bài (Sample Caption) */}
+            <div hidden={qrKitTab !== 'caption'}>
             <div className="mb-3.5 p-3 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7] text-left">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-bold text-[#1A1612] flex items-center gap-1.5">
@@ -2701,7 +2723,9 @@ export default function ReferralLinksPage() {
                 "Săn ngay {selectedLinkForQr.product?.title} chính hãng trên SCANMS với ưu đãi độc quyền khi nhập mã {selectedLinkForQr.shortCode} hoặc bấm vào link: {selectedQrTargetUrl} #SCANMS"
               </p>
             </div>
+            </div>
 
+            <div hidden={qrKitTab !== 'download'}>
             <div className="flex items-center justify-between gap-2 mb-3 text-xs">
               <span className="text-[11px] font-bold text-[#7D715E] whitespace-nowrap">
                 Kích thước PNG:
@@ -2791,6 +2815,7 @@ export default function ReferralLinksPage() {
               <span className="text-[11px] leading-relaxed text-[#5E5141]">
                 <strong className="text-[#1A1612] font-bold">Mẹo nhỏ:</strong> Quét thử bằng camera điện thoại để kiểm tra chuyển hướng trước khi in ấn số lượng lớn.
               </span>
+            </div>
             </div>
           </div>
         </div>

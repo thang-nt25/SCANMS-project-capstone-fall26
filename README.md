@@ -19,6 +19,12 @@ CAPSTONE/
 
 ## Setup & Running the Applications
 
+### Local Windows quick start
+
+From the repository root in PowerShell, run `./START_SCANMS.ps1` to start the backend and frontend in the background. Existing listeners on ports 3000/5173 are left alone. Runtime logs are in `artifacts/local-runtime/`. After a machine restart, run this command again.
+
+The backend uses `npm run start:local` (compiled `dist/main.js`) with bounded restart attempts after unexpected crashes. Run `npm run build` in `backend` after backend code changes before starting it. To actively edit TypeScript with watch mode, use the existing `npm run start:dev` instead; do not run two backends on the same port. Restart recovery does not replay payment or withdrawal HTTP requests.
+
 ### 1. Prerequisites
 Ensure you have **Node.js** (v18+) and **npm** installed on your system.
 

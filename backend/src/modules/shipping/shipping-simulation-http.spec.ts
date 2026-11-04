@@ -3,6 +3,7 @@ import {
   INestApplication,
   UnauthorizedException,
   BadRequestException,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,12 +13,14 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { HttpExceptionFilter } from '../../common/filters/http-exception.filter';
+import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 // HTTP/controller test with stubbed authentication and persistence: never connects to the group DB.
 describe('shipping simulation HTTP authorization and error contract', () => {
   let app: INestApplication;
   const orderId = '00000000-0000-4000-8000-000000000001';
   const service = {
+    createShippingOrder: jest.fn(),
     startCustomerSimulation: jest.fn(),
     completeCustomerSimulation: jest.fn(),
   };
@@ -37,19 +40,25 @@ describe('shipping simulation HTTP authorization and error contract', () => {
           const req = context.switchToHttp().getRequest();
           const role = req.headers['x-test-role'];
           if (!role) throw new UnauthorizedException();
-          req.user = { id: 'actor', role };
+          req.user = { id: 'actor', role, storeId: 'stale-jwt-shop' };
           return true;
         },
       })
       .compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
     app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
   });
   beforeEach(() => {
     jest.resetAllMocks();
     prisma.store.findFirst.mockResolvedValue({ id: 'own-shop' });
+    service.createShippingOrder.mockResolvedValue({
+      trackingNumber: 'TEST-WAYBILL',
+    });
     service.startCustomerSimulation.mockResolvedValue({ isSimulation: true });
     service.completeCustomerSimulation.mockResolvedValue({
       status: 'DELIVERED',
@@ -59,6 +68,86 @@ describe('shipping simulation HTTP authorization and error contract', () => {
   afterAll(async () => {
     await app?.close();
   });
+
+  it.each(['TEST', 'LIVE'])(
+    'allows current assigned managers to create a %s waybill',
+    async (environment) => {
+      // An owner of another Shop or a stale JWT must not select the shipping scope.
+      prisma.store.findFirst.mockResolvedValueOnce({
+        id: 'assigned-order-shop',
+      });
+      await request(app.getHttpServer())
+        .post(`/api/shipping/ghn/create-order/${orderId}`)
+        .set('x-test-role', 'SHOP_MANAGER')
+        .send({ environment })
+        .expect(201);
+      expect(prisma.store.findFirst).toHaveBeenCalledWith({
+        where: {
+          ...managedStoreWhere('actor'),
+          orders: { some: { id: orderId } },
+        },
+        select: { id: true },
+      });
+      expect(service.createShippingOrder).toHaveBeenCalledWith(
+        orderId,
+        { environment },
+        'assigned-order-shop',
+      );
+    },
+  );
+
+  it.each(['TEST', 'LIVE'])(
+    'blocks %s creation for a foreign Shop or revoked assignment',
+    async (environment) => {
+      prisma.store.findFirst.mockResolvedValueOnce(null);
+      await request(app.getHttpServer())
+        .post(`/api/shipping/ghn/create-order/${orderId}`)
+        .set('x-test-role', 'SHOP_MANAGER')
+        .send({ environment })
+        .expect(403);
+      expect(service.createShippingOrder).not.toHaveBeenCalled();
+    },
+  );
+
+  it('validates the waybill order UUID before querying Shop access', async () => {
+    await request(app.getHttpServer())
+      .post('/api/shipping/ghn/create-order/not-uuid')
+      .set('x-test-role', 'SHOP_MANAGER')
+      .send({ environment: 'TEST' })
+      .expect(400);
+    expect(prisma.store.findFirst).not.toHaveBeenCalled();
+    expect(service.createShippingOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unsupported GHN environment before invoking the carrier service', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/shipping/ghn/create-order/${orderId}`)
+      .set('x-test-role', 'SHOP_MANAGER')
+      .send({ environment: 'INVALID' })
+      .expect(400);
+    expect(prisma.store.findFirst).not.toHaveBeenCalled();
+    expect(service.createShippingOrder).not.toHaveBeenCalled();
+  });
+
+  it('requires authentication to create waybills', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/shipping/ghn/create-order/${orderId}`)
+      .send({ environment: 'TEST' })
+      .expect(401);
+    expect(service.createShippingOrder).not.toHaveBeenCalled();
+  });
+
+  it.each(['CUSTOMER', 'COLLABORATOR'])(
+    'blocks waybill creation by %s',
+    async (role) => {
+      await request(app.getHttpServer())
+        .post(`/api/shipping/ghn/create-order/${orderId}`)
+        .set('x-test-role', role)
+        .send({ environment: 'TEST' })
+        .expect(403);
+      expect(service.createShippingOrder).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(['start', 'complete'])('requires login for %s', async (action) => {
     await request(app.getHttpServer())
@@ -95,7 +184,10 @@ describe('shipping simulation HTTP authorization and error contract', () => {
       .send({ storeId: 'other-shop', actorId: 'attacker' })
       .expect(201);
     expect(prisma.store.findFirst).toHaveBeenCalledWith({
-      where: { ownerId: 'actor', deletedAt: null },
+      where: {
+        ...managedStoreWhere('actor'),
+        orders: { some: { id: orderId } },
+      },
       select: { id: true },
     });
     expect(service.completeCustomerSimulation).toHaveBeenCalledWith(

@@ -24,6 +24,7 @@ describe('Monthly bonus deduction carry-forward', () => {
     const settlements = new Map<string, any>();
     const locks: string[] = [];
     const tx = {
+      order: { count: jest.fn().mockResolvedValue(0) },
       $queryRaw: jest.fn(async (_sql, key) => {
         locks.push(key);
         return [{ locked: 1 }];
@@ -84,7 +85,7 @@ describe('Monthly bonus deduction carry-forward', () => {
           validRevenue: gross[month] ?? '0',
         }) as any,
     );
-    jest.spyOn(service, 'calculateProgressiveBonus').mockImplementation(
+    jest.spyOn(service, 'calculateMonthlyBonus').mockImplementation(
       (_, revenue) =>
         ({
           totalBonus: revenue.toString(),
@@ -137,7 +138,7 @@ describe('Monthly bonus deduction carry-forward', () => {
     expect((await f.settle('2025-09')).settlement.bonusAmount).toBe('30000');
     expect(f.adjustments.every((a) => a.status === 'APPLIED')).toBe(true);
     expect(f.sum()).toBe('-30000'); // Refund aggregate must never double-count split rows.
-    expect(f.locks).toEqual([
+    expect(f.locks.filter(key => key.startsWith('monthly-bonus:'))).toEqual([
       'monthly-bonus:shop-a:kol-a',
       'monthly-bonus:shop-a:kol-a',
     ]);
@@ -260,6 +261,7 @@ describe('Monthly bonus deduction carry-forward', () => {
       const tx = {
         ...f.tx,
         $queryRaw: async (sql, key) => {
+          if (!String(key).startsWith('monthly-bonus:')) return f.tx.$queryRaw(sql, key);
           const predecessor = tail;
           tail = new Promise<void>((resolve) => {
             release = resolve;
