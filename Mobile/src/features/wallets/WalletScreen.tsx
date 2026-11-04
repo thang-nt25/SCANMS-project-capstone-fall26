@@ -28,6 +28,7 @@ import {
 } from "../common/shared";
 import { SelectField } from "../common/SelectField";
 import { validateInput } from "../../utils/validate-input";
+import { isSandboxPayout } from "../payouts/gateway-contract";
 const Wallet = z.object({
   availableBalance: amount,
   pendingBalance: amount,
@@ -75,6 +76,8 @@ const Withdrawal = z.object({
       netAmount: amount,
       taxAmount: amount,
       createdAt: z.string(),
+      transferProvider: z.string().nullish(),
+      bankRefCode: z.string().nullish(),
     }),
   ),
   total: z.number(),
@@ -202,7 +205,9 @@ export function WalletScreen() {
           />
           {requests.data?.requests.map((item) => (
             <Card key={item.id}>
-              <Badge>{statusText(item.status)}</Badge>
+              <Badge>{item.status === "APPROVED" && isSandboxPayout(item) ? "Hoàn tất · Sandbox" : statusText(item.status)}</Badge>
+              <Caption>Mã yêu cầu: {item.id}</Caption>
+              {item.bankRefCode && <Caption>Tham chiếu: {item.bankRefCode}</Caption>}
               <Title>{money(item.amount)}</Title>
               <Text>
                 Thuế: {money(item.taxAmount)} · Thực nhận:{" "}

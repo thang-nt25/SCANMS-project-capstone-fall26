@@ -9,7 +9,7 @@ export function OrderTrackingShortcut({ sectionRef }: { sectionRef: Ref<HTMLElem
   return (
     <section ref={sectionRef} id="tracking-section" aria-labelledby="tracking-shortcut-title" className="scroll-mt-36 border-t border-[#EAE4D7] bg-[#F3EFE6] py-8">
       <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
-        <div className="grid gap-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-left lg:grid-cols-[260px_1fr] lg:items-center">
+        <div className="grid gap-5 rounded-2xl border border-[#EAE4D7] bg-white p-5 text-left lg:grid-cols-[260px_1fr] lg:items-center max-sm:gap-4 max-sm:p-4">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FBF5EB] text-[#B88E4F]"><Truck size={22} /></span>
             <div><h2 id="tracking-shortcut-title" className="m-0 text-base font-black">Đơn hàng của bạn đến đâu?</h2><Link to="/tracking" className="mt-1 inline-flex items-center gap-1 text-xs text-[#7D715E] hover:text-[#B88E4F]">Tra cứu và đánh giá<ArrowRight size={13} /></Link></div>
@@ -17,7 +17,7 @@ export function OrderTrackingShortcut({ sectionRef }: { sectionRef: Ref<HTMLElem
           <form onSubmit={(event) => {
             event.preventDefault();
             if (query.trim()) navigate(`/tracking?${new URLSearchParams({ [kind]: query.trim() })}`);
-          }} className="flex flex-wrap gap-2">
+          }} className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-[124px_minmax(0,1fr)] max-sm:[&_select]:min-w-0 max-sm:[&_select]:w-full max-sm:[&_select]:px-2 max-sm:[&_input]:w-full max-sm:[&_input]:basis-auto max-sm:[&_button]:col-span-2">
             <label className="sr-only" htmlFor="tracking-kind">Loại thông tin tra cứu</label>
             <select id="tracking-kind" value={kind} onChange={(event) => setKind(event.target.value as 'orderSn' | 'phone')} className="tracking-kind-select relative flex h-11 min-w-[148px] items-center justify-center px-[26px] py-0 text-center [text-align-last:center] leading-[1.4] [&::picker-icon]:absolute [&::picker-icon]:end-3 [&::picker-icon]:top-1/2 [&::picker-icon]:[translate:0_-50%] [&::picker-icon]:ms-0 [&::picker-icon]:text-[11px] [&_option]:text-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs outline-[#C59B58]"><option value="orderSn">Mã đơn hàng</option><option value="phone">Số điện thoại</option></select>
             <label className="sr-only" htmlFor="tracking-shortcut-query">{kind === 'phone' ? 'Số điện thoại đặt hàng' : 'Mã đơn hàng'}</label>

@@ -39,6 +39,7 @@ export const modules = {
     title: "Duyệt yêu cầu rút tiền",
     roles: ["SHOP_MANAGER", ...operations],
   },
+  "finance-reports": { title: "Thuế, Escrow & đối soát", roles: operations },
   pricing: {
     title: "Giá sàn & khuyến mãi",
     roles: ["SHOP_MANAGER", ...operations],

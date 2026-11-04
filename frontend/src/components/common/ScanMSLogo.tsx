@@ -225,7 +225,7 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
               Scan
             </span>
             <span
-              className={`font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#B88E4F] ml-0.5 ${iconDimensions.textMain}`}
+              className={`font-black italic text-[#B88E4F] ml-0.5 ${iconDimensions.textMain}`}
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               MS

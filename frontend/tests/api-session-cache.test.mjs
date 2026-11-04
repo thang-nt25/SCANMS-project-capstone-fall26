@@ -17,6 +17,7 @@ globalThis.__sessionTestCache = apiCache;
 const source = readFileSync(new URL('../src/services/api.ts', import.meta.url), 'utf8')
   .replace("import axios from 'axios';", 'const axios = globalThis.__sessionTestAxios;')
   .replace("import { apiCache } from '@/utils/api-cache.utils';", 'const apiCache = globalThis.__sessionTestCache;')
+  .replace("import { backendUrls } from '@/utils/backend-url';", "const backendUrls = { api: '/api' };")
   .replace('import.meta.env.VITE_API_URL', 'undefined');
 const { default: api } = await import(moduleUrl(compile(source)));
 const response = (config, data) => ({ config, data, status: 200, statusText: 'OK', headers: {} });

@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { frontendCorsOrigin } from './common/cors-origin';
 
 const cookieParser = require('cookie-parser');
 
@@ -38,36 +39,8 @@ async function bootstrap() {
       { path: 'p/:idOrSlug', method: RequestMethod.GET },
     ],
   });
-  const rawOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : []),
-    ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : []),
-  ];
-  const allowedOrigins = Array.from(
-    new Set(
-      rawOrigins
-        .map((origin) => origin.trim().replace(/\/$/, ''))
-        .filter(Boolean),
-    ),
-  );
-
   app.enableCors({
-    origin: (origin, callback) => {
-      // Cho phép request không có Origin (server-to-server/curl) và các frontend
-      // đã khai báo hoặc localhost dev port
-      if (
-        !origin ||
-        allowedOrigins.includes(origin.replace(/\/$/, '')) ||
-        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-      ) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error(`CORS không cho phép origin: ${origin}`), false);
-    },
+    origin: frontendCorsOrigin,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

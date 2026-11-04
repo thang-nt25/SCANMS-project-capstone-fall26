@@ -221,6 +221,7 @@ export function PublicHeader({
           {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
           <NotificationDropdown />
 
+
           {/* AUTHENTICATION & ROLE SECTION */}
           {currentUser ? (
             /* Logged in User Profile & Workspace Link */
@@ -239,16 +240,21 @@ export function PublicHeader({
                 />
 
                 {isUserMenuOpen && (
-                  <AccountMenu id="public-account-menu" user={currentUser} role={currentUser.role} onClose={() => setIsUserMenuOpen(false)} onLogout={handleLogout} inputRef={avatarInputRef} onAvatarUpload={handleAvatarUpload} uploading={uploadingAvatar} />
+                  <AccountMenu id="public-account-menu" user={currentUser} role={currentUser.role} onClose={() => setIsUserMenuOpen(false)} onLogout={handleLogout} inputRef={avatarInputRef} onAvatarUpload={handleAvatarUpload} uploading={uploadingAvatar} mobileTracking={showShoppingActions && !cartPage} />
                 )}
               </div>
             </div>
           ) : (
             /* Guest (Not Logged In) Authentication Actions */
-            <div className="flex items-center gap-1.5">
+            <div className="public-commerce-header__guest relative flex items-center gap-1.5" ref={userMenuRef}>
+              <button type="button" className="public-commerce-header__guest-menu hidden size-12 items-center justify-center rounded-xl text-[#B88E4F]" aria-label="Tài khoản" aria-expanded={isUserMenuOpen} aria-controls="public-guest-menu" onClick={() => setIsUserMenuOpen(open => !open)}><User size={21} /></button>
+              {isUserMenuOpen && <div id="public-guest-menu" className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-[#EAE4D7] bg-white p-2 text-[13px] shadow-lg sm:hidden">
+                <Link to={loginUrl} className="flex min-h-12 items-center gap-2 rounded-lg px-3 text-[#1A1612] hover:bg-[#FBF5EB]">Đăng nhập / Đăng ký</Link>
+                {showShoppingActions && <Link to="/tracking" onClick={() => setIsUserMenuOpen(false)} className="flex min-h-12 items-center gap-2 rounded-lg px-3 text-[#1A1612] hover:bg-[#FBF5EB]"><Package size={17} className="text-[#B88E4F]" />Tra cứu đơn hàng</Link>}
+              </div>}
               <Link
                 to={loginUrl}
-                className="inline-flex items-center gap-2 whitespace-nowrap px-2 sm:px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                className="public-commerce-header__guest-login inline-flex items-center gap-2 whitespace-nowrap px-2 sm:px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
                 aria-label="Đăng nhập hoặc đăng ký"
                 title="Đăng nhập hoặc đăng ký"
               >
@@ -257,13 +263,16 @@ export function PublicHeader({
               </Link>
             </div>
           )}
+          {showShoppingActions && !cartPage && <div className="public-commerce-header__mobile-cart hidden sm:hidden!">
+            <HeaderCartPreview count={effectiveCartCount} onOpenCart={handleCartClick} />
+          </div>}
         </div>
         {navigation && <div className="public-commerce-header__navigation">{navigation}</div>}
       </div>
 
       <div className="public-commerce-header__mobile-search lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC] relative z-10">
         <ProductSearchBox value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch}
-          onClear={handleClearSearch} onFilter={onOpenFilter || location.pathname !== '/search' ? handleFilterClick : undefined} />
+          onClear={handleClearSearch} onFilter={location.pathname === '/search' ? (onOpenFilter || handleFilterClick) : undefined} />
       </div>
     </header>
   );

@@ -43,7 +43,9 @@
     "lint": "oxlint --deny-warnings src tests plugins scripts",
     "test": "tsx --test tests/*.test.ts",
     "bundle:android": "expo export --platform android",
-    "build:demo": "node scripts/build-demo.cjs"
+    "build:demo": "node scripts/build-demo.cjs",
+    "release:check": "node scripts/release-preflight.cjs",
+    "eas-build-pre-install": "node scripts/release-preflight.cjs"
   },
   "private": true
 }

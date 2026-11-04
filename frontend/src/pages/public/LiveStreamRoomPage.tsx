@@ -909,7 +909,7 @@ export default function LiveStreamRoomPage() {
 
     const handleBeforeUnload = () => {
       try {
-        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/live-sessions/public/${encodeURIComponent(identifier)}/interaction`;
+        const url = `${api.defaults.baseURL}/live-sessions/public/${encodeURIComponent(identifier)}/interaction`;
         const payload = JSON.stringify({ action: 'LEAVE', clientId: clientIdRef.current });
         navigator.sendBeacon?.(url, new Blob([payload], { type: 'application/json' }));
       } catch {}

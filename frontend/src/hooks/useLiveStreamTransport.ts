@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import api from '../services/api';
+import { backendUrls } from '@/utils/backend-url';
 
 type LiveSignal = {
   description?: RTCSessionDescriptionInit;
@@ -16,7 +17,7 @@ type LiveStreamTransportOptions = {
   onReactionBroadcast?: (data: { emoji: string; iconUrl?: string }) => void;
 };
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = backendUrls.socket;
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
 ];

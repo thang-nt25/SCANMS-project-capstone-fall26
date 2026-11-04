@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { createContext, useContext, type PropsWithChildren } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +12,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { colors } from "../theme/tokens";
+const PaddedScreen = createContext(false);
 
 export function Screen({
   children,
@@ -23,7 +24,7 @@ export function Screen({
       contentContainerStyle={s.content}
       keyboardShouldPersistTaps="handled"
     >
-      {children}
+      <PaddedScreen.Provider value={true}>{children}</PaddedScreen.Provider>
     </ScrollView>
   ) : (
     <View style={s.screen}>{children}</View>
@@ -33,7 +34,8 @@ export function Card({
   children,
   style,
 }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
-  return <View style={[s.card, style]}>{children}</View>;
+  const padded = useContext(PaddedScreen);
+  return <View style={[s.card, padded && { marginHorizontal: 0 }, style]}>{children}</View>;
 }
 export function Title({ children }: PropsWithChildren) {
   return <Text style={s.title}>{children}</Text>;
@@ -90,7 +92,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
         {...props}
         style={[
           s.input,
-          props.multiline && { height: 100, textAlignVertical: "top" },
+          props.multiline && { minHeight: 100, textAlignVertical: "top" },
           props.style,
         ]}
       />
@@ -175,6 +177,7 @@ export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: 18, gap: 16, paddingBottom: 36 },
   card: {
+    minWidth: 0,
     marginHorizontal: 16,
     marginVertical: 7,
     padding: 17,
@@ -198,6 +201,8 @@ export const s = StyleSheet.create({
     fontSize: 15,
   },
   badge: {
+    flexShrink: 1,
+    maxWidth: "100%",
     alignSelf: "flex-start",
     borderWidth: 1,
     borderColor: colors.brandBorder,
@@ -210,7 +215,8 @@ export const s = StyleSheet.create({
     overflow: "hidden",
   },
   button: {
-    minHeight: 46,
+    minWidth: 0,
+    minHeight: 48,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 13,
@@ -224,7 +230,7 @@ export const s = StyleSheet.create({
   },
   secondary: { backgroundColor: colors.soft, borderColor: colors.brandBorder },
   danger: { backgroundColor: colors.white, borderColor: colors.danger },
-  buttonText: { color: colors.ink, fontWeight: "700", fontSize: 14 },
+  buttonText: { color: colors.ink, fontWeight: "700", fontSize: 14, flexShrink: 1, textAlign: "center" },
   error: {
     margin: 16,
     padding: 14,

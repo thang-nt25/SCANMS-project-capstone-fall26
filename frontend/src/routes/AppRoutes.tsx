@@ -32,6 +32,7 @@ const RedirectHandlerPage = lazyRetry(() => import('@/pages/public/RedirectHandl
 
 const UiReferencePage = lazyRetry(() => import('@/pages/public/UiReferencePage'));
 const MarketplacePage = lazyRetry(() => import('../pages/public/MarketplacePage'));
+const ShoppingDiscoverPage = lazyRetry(() => import('../pages/public/ShoppingDiscoverPage'));
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
 const PayosReturnPage = lazyRetry(() => import('../pages/public/PayosReturnPage'));
@@ -49,6 +50,7 @@ const ShopRevenueWalletPage = lazyRetry(() => import('../pages/merchant/ShopReve
 const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
 const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPortalPage'));
+const ShoppingAccountPage = lazyRetry(() => import('../pages/customer/ShoppingAccountPage'));
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
 const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
@@ -96,6 +98,7 @@ import { GuestCheckoutModal } from '../components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '../components/layout/PublicHeader';
 import { authService } from '../services/auth.service';
 import { StorePresenceHeartbeat } from '../components/store/StorePresenceHeartbeat';
+import { ShoppingMobileNavigation } from '../components/layout/ShoppingMobileNavigation';
 
 function GlobalCheckoutModal() {
   const { isCheckoutOpen, closeCheckout, checkoutItems, checkoutCouponCode } = useCart();
@@ -139,6 +142,8 @@ function AppRoutes() {
               <Routes>
               <Route path="/" element={<MarketplacePage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/stores" element={<ShoppingDiscoverPage />} />
+              <Route path="/discover/live" element={<ShoppingDiscoverPage />} />
               <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/marketplace/search" element={<SearchPage />} />
@@ -165,6 +170,7 @@ function AppRoutes() {
 
         {/* Customer Portal & Buyer Center (SCANMS E-Commerce) */}
         <Route path="/customer" element={<CustomerPortalPage />} />
+        <Route path="/customer/account" element={<ShoppingAccountPage />} />
         <Route path="/customer/portal" element={<CustomerPortalPage />} />
         <Route path="/customer/orders" element={<CustomerPortalPage />} />
         <Route path="/customer/orders/:orderId" element={<CustomerPortalPage />} />
@@ -322,6 +328,7 @@ function AppRoutes() {
           <CartDrawer />
           <GlobalCheckoutModal />
           <ScanmsFloatingChatWidget />
+          <ShoppingMobileNavigation />
         </ScanmsChatProvider>
       </CartProvider>
     </Router>

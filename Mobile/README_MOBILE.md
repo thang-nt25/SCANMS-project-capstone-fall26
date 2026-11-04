@@ -4,6 +4,8 @@
 
 ## Phạm vi hiện tại
 
+Đợt rà soát và bổ sung ngày 04/11: [NATIVE_AUDIT_2026-11-04.md](docs/NATIVE_AUDIT_2026-11-04.md). Có thêm duyệt API/đối soát payout, nhãn Sandbox trong ví KOL, báo cáo thuế theo tháng, sổ cái và Escrow cho vận hành; cấu hình EAS preview APK. Chưa nghiệm thu đầy đủ trên điện thoại thật.
+
 Menu **Nghiệp vụ** tập hợp các màn được phép theo role. Hướng dẫn test chi tiết và giới hạn nghiệm thu: [ROLE_WORKFLOWS_2026-11-03.md](docs/ROLE_WORKFLOWS_2026-11-03.md).
 
 | Role | Các nhóm chức năng native đã tích hợp |

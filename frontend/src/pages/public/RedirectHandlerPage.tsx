@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { backendUrls } from '@/utils/backend-url';
 
 export default function RedirectHandlerPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
@@ -8,7 +9,7 @@ export default function RedirectHandlerPage() {
     if (shortCode) {
 
 
-      const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const rawApiUrl = backendUrls.api;
       const backendBaseUrl = rawApiUrl.replace(/\/api\/?$/, '');
       const search = window.location.search || '';
       window.location.replace(`${backendBaseUrl}/r/${encodeURIComponent(shortCode)}${search}`);

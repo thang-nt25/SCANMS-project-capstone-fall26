@@ -24,6 +24,7 @@ import { KycScreen } from "../kyc/KycScreen";
 import { StaffScreen } from "../admin/StaffScreen";
 import { ShopSettingsScreen } from "../shop/ShopSettingsScreen";
 import { PayoutsScreen } from "../payouts/PayoutsScreen";
+import { FinanceReportsScreen } from "../payouts/FinanceReportsScreen";
 import { ProductEditScreen } from "../catalog/ProductEditScreen";
 import { StorefrontScreen } from "../stores/StorefrontScreen";
 import { CouponsScreen } from "../coupons/CouponsScreen";
@@ -90,6 +91,8 @@ function BusinessContent({ route }: Pick<ScreenProps<"Business">, "route">) {
       return <AuditScreen />;
     case "payouts":
       return <PayoutsScreen />;
+    case "finance-reports":
+      return <FinanceReportsScreen />;
     case "product-edit":
       return <ProductEditScreen params={route.params} />;
     case "storefront":

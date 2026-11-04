@@ -1,0 +1,18 @@
+@reference "../../index.css";
+
+@media (max-width: 639px) {
+  html[data-workspace-mobile-nav="true"] { @apply [--shopping-chat-bottom-space:calc(76px+env(safe-area-inset-bottom,0px))]; }
+  html[data-workspace-mobile-nav="true"] [data-shopping-chat-launcher]:not([data-custom-position="true"]),
+  html[data-workspace-mobile-nav="true"] [data-shopping-chat-minimized] { @apply [top:auto]! [bottom:calc(76px+env(safe-area-inset-bottom,0px))]!; }
+  html[data-shopping-mobile="true"] .public-commerce-header__actions { @apply hidden!; }
+  html[data-shopping-mobile="true"] .public-commerce-header__cart-slot { @apply block! [grid-column:2]! [grid-row:1]! [margin:0]! [align-self:center]!; }
+  html[data-shopping-mobile="true"] .public-commerce-header--marketplace { @apply [grid-template-columns:minmax(0,1fr)_48px]; }
+  html[data-shopping-mobile="true"] .public-commerce-header:not(.public-commerce-header--marketplace) .public-commerce-header__inner { @apply [grid-template-columns:minmax(0,1fr)_48px]; }
+  html[data-shopping-mobile="true"] .public-commerce-header__cart-slot .public-commerce-header__cart { @apply [width:48px] [height:48px]; }
+  html[data-shopping-mobile="true"] .public-commerce-header__navigation { @apply hidden!; }
+  html[data-shopping-mobile="true"] .marketplace-header .public-commerce-header { @apply [padding-bottom:4px]; }
+  html[data-shopping-mobile-nav="true"] { @apply [--shopping-chat-bottom-space:calc(76px+env(safe-area-inset-bottom,0px))]; }
+  html[data-shopping-mobile-nav="true"] [data-shopping-chat-launcher]:not([data-custom-position="true"]),
+  html[data-shopping-mobile-nav="true"] [data-shopping-chat-minimized] { @apply [top:auto]! [bottom:calc(76px+env(safe-area-inset-bottom,0px))]!; }
+  html[data-shopping-mobile="true"] { @apply [scroll-padding-bottom:calc(76px+env(safe-area-inset-bottom,0px))]; }
+}

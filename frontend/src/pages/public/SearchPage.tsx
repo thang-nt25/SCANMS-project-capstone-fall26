@@ -806,13 +806,13 @@ export default function SearchPage() {
             </p>}
             
             {/* SCANMS Standard Sort Bar: Exact matching 52px height and alignment with Bộ lọc sản phẩm */}
-            <div data-search-sort-bar className="min-h-[52px] bg-white border border-[#EAE4D7] rounded-xl px-4 py-2 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_12px_rgba(75,57,34,0.03)]">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0">
+            <div data-search-sort-bar className="min-h-[52px] bg-white border border-[#EAE4D7] rounded-xl px-4 py-2 max-sm:p-2.5 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_12px_rgba(75,57,34,0.03)]">
+              <div className={`flex flex-wrap items-center gap-2 sm:gap-2.5 min-w-0 max-sm:grid max-sm:w-full ${queryParam ? 'max-sm:grid-cols-4' : 'max-sm:grid-cols-3'}`}>
                 {/* Mobile Filter Button */}
                 <button
                   type="button"
                   onClick={() => setIsMobileFilterOpen(true)}
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#EAE4D7] text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] cursor-pointer shadow-2xs shrink-0"
+                  className="max-sm:col-span-1 max-sm:order-0 max-sm:h-10 max-sm:justify-center lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#EAE4D7] text-xs font-bold text-[#1A1612] hover:text-[#B88E4F] cursor-pointer shadow-2xs shrink-0"
                 >
                   <Filter className="w-3.5 h-3.5 text-[#B88E4F]" />
                   <span>Bộ lọc</span>
@@ -823,13 +823,13 @@ export default function SearchPage() {
                   )}
                 </button>
 
-                <span className="text-xs sm:text-sm font-medium text-[#7D715E] shrink-0">
+                <span className="max-sm:hidden text-xs sm:text-sm font-medium text-[#7D715E] shrink-0">
                   Sắp xếp theo
                 </span>
 
                 {/* Phổ Biến Button */}
                 {queryParam && <button type="button" onClick={() => { setSortBy('relevance'); updateUrlParams({ sort: 'relevance' }); }}
-                  className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${sortBy === 'relevance' ? 'bg-[#FBF5EB] text-[#8C6226] border-[#EEDFC6]' : 'bg-white text-[#1A1612] border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}
+                  className={`max-sm:order-2 max-sm:h-10 max-sm:min-w-0 max-sm:px-1 max-sm:whitespace-nowrap px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer border ${sortBy === 'relevance' ? 'bg-[#FBF5EB] text-[#8C6226] border-[#EEDFC6]' : 'bg-white text-[#1A1612] border-[#EAE4D7] hover:bg-[#FAF8F5]'}`}
                   aria-pressed={sortBy === 'relevance'}>Liên quan</button>}
                 <button
                   type="button"
@@ -837,7 +837,7 @@ export default function SearchPage() {
                     setSortBy('popular');
                     updateUrlParams({ sort: 'popular' });
                   }}
-                  className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
+                  className={`max-sm:order-2 max-sm:h-10 max-sm:min-w-0 max-sm:px-1 max-sm:whitespace-nowrap px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
                     sortBy === 'popular'
                       ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
                       : 'bg-white text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] border border-[#EAE4D7]'
@@ -854,7 +854,7 @@ export default function SearchPage() {
                     setSortBy('newest');
                     updateUrlParams({ sort: 'newest' });
                   }}
-                  className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
+                  className={`max-sm:order-2 max-sm:h-10 max-sm:min-w-0 max-sm:px-1 max-sm:whitespace-nowrap px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
                     sortBy === 'newest'
                       ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
                       : 'bg-white text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] border border-[#EAE4D7]'
@@ -871,7 +871,7 @@ export default function SearchPage() {
                     setSortBy('sales');
                     updateUrlParams({ sort: 'sales' });
                   }}
-                  className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
+                  className={`max-sm:order-2 max-sm:h-10 max-sm:min-w-0 max-sm:px-1 max-sm:whitespace-nowrap px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 ${
                     sortBy === 'sales'
                       ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
                       : 'bg-white text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] border border-[#EAE4D7]'
@@ -884,7 +884,7 @@ export default function SearchPage() {
                 {/* SCANMS Standard Giá Dropdown */}
                 <div
                   ref={priceDropdownRef}
-                  className="relative"
+                  className={`relative max-sm:order-1 max-sm:min-w-0 ${queryParam ? 'max-sm:col-span-3' : 'max-sm:col-span-2'}`}
                   onMouseEnter={() => setIsPriceDropdownOpen(true)}
                   onMouseLeave={() => setIsPriceDropdownOpen(false)}
                   onBlur={(event) => {
@@ -900,7 +900,7 @@ export default function SearchPage() {
                   <button
                     type="button"
                     onClick={() => setIsPriceDropdownOpen(true)}
-                    className={`min-w-[145px] sm:min-w-[165px] px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 flex items-center justify-between gap-2 ${
+                    className={`max-sm:w-full max-sm:min-w-0 max-sm:h-10 min-w-[145px] sm:min-w-[165px] px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer select-none active:scale-98 flex items-center justify-between gap-2 ${
                       sortBy === 'price_asc' || sortBy === 'price_desc'
                         ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
                         : 'bg-white text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F] border border-[#EAE4D7]'

@@ -58,7 +58,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   }, [interacting, reducedMotion]);
 
   return (
-    <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-5 text-left sm:py-7">
+    <section className="border-b border-[#EAE4D7] bg-[#F3EFE6] py-3 text-left sm:py-7">
       <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
         <div
           role="region" aria-roledescription="carousel" aria-label="Chương trình nổi bật SCANMS"
@@ -74,26 +74,26 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
           }}
         >
           {slides.map((slide, index) => (
-            <div key={slide.image} hidden={index !== active} role="group" aria-roledescription="slide" aria-label={`${index + 1} / ${slides.length}`}>
-              <img src={slide.image} alt="" fetchPriority={index === 0 ? 'high' : 'auto'} className="absolute inset-0 h-full w-full object-cover object-[70%_center]" />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,#FAF8F5_0%,rgba(250,248,245,.96)_32%,rgba(250,248,245,.78)_55%,rgba(250,248,245,.20)_100%)]" />
+            <div key={slide.image} hidden={index !== active} role="group" aria-roledescription="slide" aria-label={`${index + 1} / ${slides.length}`} className={index === active ? 'flex flex-col sm:block' : 'hidden'}>
+              <img src={slide.image} alt="" width={2152} height={731} fetchPriority={index === 0 ? 'high' : 'auto'} className="order-2 aspect-[2152/731] w-full object-contain sm:absolute sm:inset-0 sm:h-full sm:object-cover sm:object-[70%_center]" />
+              <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,#FAF8F5_0%,rgba(250,248,245,.96)_32%,rgba(250,248,245,.78)_55%,rgba(250,248,245,.20)_100%)] sm:block" />
               {slide.href ? (
                 <Link to={slide.href} aria-label={slide.label} className="absolute inset-0 focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[#C59B58]" />
               ) : (
                 <button type="button" onClick={onOpenLive} aria-label={slide.label} className="absolute inset-0 cursor-pointer focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[#C59B58]" />
               )}
-              <div className="pointer-events-none relative flex min-h-[430px] max-w-[660px] flex-col items-start justify-center px-6 pb-24 pt-10 sm:min-h-[440px] sm:px-12 sm:pb-28 sm:pt-14">
-                <span className="inline-flex items-center rounded-full border border-[#EEDFC6] bg-white/90 px-3 py-1.5 text-[10px] font-black tracking-[0.12em] text-[#B88E4F]">{slide.eyebrow}</span>
-                {index === 0 ? <h1 className="mb-4 mt-5 text-3xl font-black leading-[1.12] tracking-tight sm:text-[44px]">{slide.title}</h1> : <h2 className="mb-4 mt-5 text-3xl font-black leading-[1.12] tracking-tight sm:text-[44px]">{slide.title}</h2>}
-                <p className="max-w-[470px] text-sm leading-6 text-[#7D715E]">{slide.description}</p>
-                <div className="pointer-events-auto mt-6 flex flex-wrap gap-3">
-                  {slide.href ? <Link to={slide.href} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#C59B58] px-5 text-xs font-bold text-[#231D15] hover:bg-[#B88E4F]">{slide.label}<ArrowRight size={16} /></Link> : <button type="button" onClick={onOpenLive} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#C59B58] px-5 text-xs font-bold text-[#231D15] hover:bg-[#B88E4F]">{slide.label}<Radio size={16} /></button>}
-                  <Link to="/search" className="inline-flex min-h-11 items-center rounded-xl border border-[#EAE4D7] bg-white/90 px-5 text-xs font-bold hover:border-[#C59B58]">Tất cả sản phẩm</Link>
+              <div className="pointer-events-none relative order-1 flex min-h-[240px] max-w-[660px] flex-col items-start justify-center bg-[#FAF8F5] px-4 py-5 sm:min-h-[440px] sm:bg-transparent sm:px-12 sm:pb-28 sm:pt-14">
+                <span className="inline-flex max-w-full items-center text-[10px] font-bold tracking-[0.06em] text-[#7D715E] sm:rounded-full sm:border sm:border-[#EEDFC6] sm:bg-white/90 sm:px-3 sm:py-1.5">{slide.eyebrow}</span>
+                {index === 0 ? <h1 className="mb-2 mt-3 text-[23px] font-bold leading-[1.2] tracking-tight sm:mb-4 sm:mt-5 sm:text-[44px] sm:font-black">{slide.title}</h1> : <h2 className="mb-2 mt-3 text-[23px] font-bold leading-[1.2] tracking-tight sm:mb-4 sm:mt-5 sm:text-[44px] sm:font-black">{slide.title}</h2>}
+                <p className="max-w-[470px] text-[13px] leading-[1.6] text-[#7D715E] sm:text-sm sm:leading-6">{slide.description}</p>
+                <div className="pointer-events-auto mt-4 grid w-full grid-cols-2 gap-2 sm:mt-6 sm:flex sm:w-auto sm:flex-wrap sm:gap-3 [&>a]:justify-center [&>button]:justify-center">
+                  {slide.href ? <Link to={slide.href} aria-label={slide.label} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl bg-[#C59B58] px-2 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] sm:px-5 sm:text-xs sm:font-bold"><span className="sm:hidden">{partner ? 'Ghé thăm Shop' : 'Gian hàng'}</span><span className="hidden sm:inline">{slide.label}</span><ArrowRight size={14} /></Link> : <button type="button" onClick={onOpenLive} aria-label={slide.label} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl bg-[#C59B58] px-2 text-[11px] font-semibold text-[#231D15] hover:bg-[#B88E4F] sm:px-5 sm:text-xs sm:font-bold"><span className="sm:hidden">Khám phá Live</span><span className="hidden sm:inline">{slide.label}</span><Radio size={14} /></button>}
+                  <Link to="/search" className="inline-flex min-h-11 min-w-0 items-center rounded-xl border border-[#EAE4D7] bg-white/90 px-2 text-[11px] font-semibold hover:border-[#C59B58] sm:px-5 sm:text-xs sm:font-bold">Tất cả sản phẩm</Link>
                 </div>
               </div>
             </div>
           ))}
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-[#EAE4D7] bg-white/90 px-4 py-3 sm:px-6">
+          <div className="relative flex items-center justify-center gap-2 border-t border-[#EAE4D7] bg-white/90 px-4 py-1.5 sm:absolute sm:inset-x-0 sm:bottom-0 sm:px-6 sm:py-3 md:justify-between">
             <div className="hidden gap-4 text-[11px] font-semibold text-[#7D715E] md:flex"><span className="flex items-center gap-1.5"><Store size={15} /> Nhãn hàng trực thuộc</span><span className="flex items-center gap-1.5"><ShieldCheck size={15} /> Đối tác eKYC xác minh</span></div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => move(-1)} aria-label="Banner trước" className="rounded-full p-3 hover:bg-[#F3EFE6]"><ArrowLeft size={16} /></button>

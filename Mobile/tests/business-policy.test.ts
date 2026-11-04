@@ -27,6 +27,7 @@ test("buyer cannot enter operations, personnel or merchant commands", () => {
   for (const feature of [
     "pricing",
     "payouts",
+    "finance-reports",
     "kyc",
     "staff",
     "product-edit",
@@ -54,6 +55,7 @@ test("Manager has operations queues but cannot acquire Admin personnel or VIP ex
     "reviews",
     "pricing",
     "payouts",
+    "finance-reports",
     "audit",
     "fraud",
   ])

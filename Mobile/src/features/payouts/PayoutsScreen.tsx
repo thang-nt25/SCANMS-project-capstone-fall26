@@ -32,6 +32,8 @@ import {
   type CommandFormSpec,
 } from "../common/shared";
 import { SelectField } from "../common/SelectField";
+import { unwrapEnvelope } from "../../services/api/client";
+import { GatewaySchema, TransferResultSchema, gatewayAction, isSandboxPayout } from "./gateway-contract";
 const Payout = z.object({
   id: z.string(),
   status: z.string(),
@@ -43,6 +45,8 @@ const Payout = z.object({
   bankAccountName: z.string().nullish(),
   bankAccountNumber: z.string().nullish(),
   storeName: z.string().nullish(),
+  transferProvider: z.string().nullish(),
+  bankRefCode: z.string().nullish(),
 });
 const Payouts = z.object({
   requests: z.array(Payout),
@@ -70,6 +74,7 @@ export function PayoutsScreen() {
   const [bill, setBill] = useState<ImagePicker.ImagePickerAsset | null>(null),
     [bankRefCode, setBankRefCode] = useState("");
   const [proof, setProof] = useState<string | null>(null);
+  const [transferNotice, setTransferNotice] = useState("");
   const command = useCommand(),
     base = reviewer ? "/admin/payouts" : `/stores/${store?.id}/payouts`;
   const result = useResource(
@@ -84,6 +89,29 @@ export function PayoutsScreen() {
     Batches,
     !reviewer && Boolean(store),
   );
+  const gateway = useResource("payout-gateway", "/admin/payouts/gateway", GatewaySchema, reviewer);
+  const transfer = (item: z.infer<typeof Payout>) => {
+    const action = gatewayAction(reviewer, item.status, item.transferProvider, gateway.data);
+    if (!action) return;
+    confirmAction(
+      action === "reconcile" ? "Đối soát lệnh đang xử lý?" : "Duyệt qua API ngân hàng?",
+      `${item.bankName || ""} · ${item.bankAccountNumber || ""}\n${item.bankAccountName || ""}\nThực chuyển: ${money(item.netAmount)}. ${gateway.data?.environment === "SANDBOX" ? "Sandbox không chuyển tiền ngoài đời." : "Kiểm tra kỹ người nhận trước khi duyệt."}`,
+      () => void command.run(async () => {
+        setTransferNotice("");
+        try {
+          const response = TransferResultSchema.parse(unwrapEnvelope(await api.request(`/payouts/${item.id}/${action}`, {
+            method: "POST", timeout: 60000,
+          })));
+          setTransferNotice(response.status === "APPROVED"
+            ? `Đã hoàn tất${gateway.data?.environment === "SANDBOX" ? " · Sandbox" : ""}. Ví không bị trừ thêm lần nữa.`
+            : "Lệnh đang xử lý. Chỉ đối soát kết quả, không gửi lại lệnh chuyển tiền.");
+        } finally {
+          // Even on timeout, the server may already have accepted the request.
+          await result.refetch();
+        }
+      }),
+    );
+  };
   return (
     <Screen scroll>
       <Title>Duyệt rút tiền</Title>
@@ -118,11 +146,15 @@ export function PayoutsScreen() {
         retry={() => void result.refetch()}
       />
       <ErrorNotice error={command.error} />
+      {reviewer && <ErrorNotice error={gateway.error} retry={() => void gateway.refetch()} />}
+      {reviewer && gateway.data && <Caption>{gateway.data.message}</Caption>}
+      {transferNotice ? <Caption>{transferNotice}</Caption> : null}
       {result.data?.requests.map((item) => (
         <Card key={item.id}>
           <Title>{item.collaboratorName || "Nhà sáng tạo"}</Title>
           <Caption>{item.storeName}</Caption>
-          <Badge>{statusText(item.status)}</Badge>
+          <Badge>{item.status === "APPROVED" && isSandboxPayout(item) ? "Hoàn tất · Sandbox" : statusText(item.status)}</Badge>
+          {item.bankRefCode ? <DetailLine label="Mã tham chiếu" value={item.bankRefCode} /> : null}
           <DetailLine label="Số tiền yêu cầu" value={money(item.amount)} />
           <DetailLine label="Khấu trừ thuế" value={money(item.taxAmount)} />
           <DetailLine label="Thực nhận" value={money(item.netAmount)} />
@@ -130,7 +162,14 @@ export function PayoutsScreen() {
             label="Ngân hàng"
             value={`${item.bankName || ""} · ${item.bankAccountNumber || ""} · ${item.bankAccountName || ""}`}
           />
-          {["PENDING", "PROCESSING"].includes(item.status) && (
+          {gatewayAction(reviewer, item.status, item.transferProvider, gateway.data) && (
+            <Button
+              title={item.status === "PROCESSING" ? "Đối soát kết quả ngân hàng" : gateway.data?.environment === "SANDBOX" ? "Duyệt qua BIDV Sandbox" : "Duyệt qua API ngân hàng"}
+              loading={command.busy}
+              onPress={() => transfer(item)}
+            />
+          )}
+          {["PENDING", "PROCESSING"].includes(item.status) && !item.transferProvider && (
             <Button
               title="Xác nhận đã chuyển tiền / đính kèm bill"
               onPress={() => {
@@ -171,7 +210,7 @@ export function PayoutsScreen() {
               }
             />
           )}
-          {item.status === "APPROVED" && (
+          {item.status === "APPROVED" && !isSandboxPayout(item) && (
             <Button
               title="Xem chứng từ"
               secondary

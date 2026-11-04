@@ -80,9 +80,9 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
           <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/95 shadow-[0_1px_4px_rgba(35,29,21,0.05)] transition-colors group-hover/wishlist:border-[#EEDFC6]"><Heart size={15} strokeWidth={1.7} className={wished ? 'fill-[#DC2626] text-[#DC2626]' : ''} /></span>
         </button>
       </div>
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4 max-sm:p-2.5">
         <Link to={product.storeId ? `/shops/${product.storeId}` : '/search'} className="mb-2 inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#7D715E] hover:text-[#B88E4F]"><Store size={13} className="shrink-0" /><span className="truncate">{product.brand}</span></Link>
-        <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm"><Link to={`/products/${product.sku || product.id}`} className="hover:text-[#B88E4F]">{product.name}</Link></h3>
+        <h3 className="m-0 line-clamp-2 min-h-10 text-xs font-semibold leading-5 sm:text-sm max-sm:text-[13px] max-sm:leading-[19px]"><Link to={`/products/${product.sku || product.id}`} className="hover:text-[#B88E4F]">{product.name}</Link></h3>
         {product.storeId && <StoreCooperationAction storeId={product.storeId} storeName={product.brand} className="mb-2 mt-2 w-full" />}
         <div className="mb-2 mt-1.5">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] text-[#7D715E]">
@@ -95,15 +95,15 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
             </span>
           )}
         </div>
-        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 border-t border-[#EAE4D7] pt-3"><strong className="text-sm text-[#1A1612] sm:text-base">{formatMoney(price)}</strong>{product.origPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(product.origPrice)}</del>}</div>
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 border-t border-[#EAE4D7] pt-3 max-sm:min-h-[46px] max-sm:flex-col max-sm:justify-center max-sm:gap-0 max-sm:pt-2"><strong className="text-sm text-[#1A1612] sm:text-base max-sm:text-[16px] max-sm:tabular-nums">{formatMoney(price)}</strong>{product.origPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(product.origPrice)}</del>}</div>
         {variants.length > 0 && (choosing || variantId) && <div ref={choiceRef} className="marketplace-variant-choice [scroll-margin-block:16px] [&[data-required=true]_.marketplace-variant-select]:border-[#DC2626] [&[data-required=true]_.marketplace-variant-select]:bg-[#FBF5EB] [&[data-required=true]_.marketplace-variant-select]:outline-[#DC2626] mt-3" data-required={needsSelection}>
           <label htmlFor={choiceId} className="block text-[10px] text-[#7D715E]">{choiceCopy.label}</label>
           <select ref={selectRef} id={choiceId} aria-required="true" aria-invalid={needsSelection} aria-describedby={needsSelection ? `${choiceId}-hint` : undefined} value={variantId} onChange={(event) => setVariantId(event.target.value)} className="marketplace-variant-select relative flex h-11 items-center justify-center px-[26px] py-0 text-center [text-align-last:center] leading-[1.4] [&::picker-icon]:absolute [&::picker-icon]:end-2.5 [&::picker-icon]:top-1/2 [&::picker-icon]:[translate:0_-50%] [&::picker-icon]:ms-0 [&::picker-icon]:text-[11px] [&_option]:text-center [@media(max-width:480px)]:px-5 [@media(max-width:480px)]:text-[10px] mt-1 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-medium text-[#1A1612] outline-[#C59B58]"><option value="">{choiceCopy.prompt}</option>{variants.map((candidate) => <option key={candidate.id} value={candidate.id} disabled={candidate.stockQuantity <= 0}>{candidate.name}{candidate.stockQuantity <= 0 ? ' · Hết hàng' : ''}</option>)}</select>
           {needsSelection && <p id={`${choiceId}-hint`} className="marketplace-variant-hint mt-[7px] mb-0 mx-0 flex items-start gap-[5px] text-[11px] leading-[1.5] text-[#DC2626] [overflow-wrap:anywhere] [&_svg]:mt-0.5 [&_svg]:shrink-0" role="alert"><CircleAlert size={13} aria-hidden="true" /><span>Vui lòng {choiceCopy.prompt.toLocaleLowerCase('vi-VN')} để tiếp tục.</span></p>}
         </div>}
-        <div className="mt-3 grid grid-cols-[44px_1fr] gap-2">
+        <div className="mt-3 grid grid-cols-[44px_1fr] gap-2 max-sm:mt-2">
           <button type="button" onClick={() => buy('cart')} disabled={!available || !selectedAvailable} aria-label={`Thêm ${product.name} vào giỏ`} title="Thêm vào giỏ" className="flex h-11 items-center justify-center rounded-xl border border-[#C59B58] text-[#B88E4F] hover:bg-[#FBF5EB] disabled:border-[#EAE4D7] disabled:text-[#7D715E] disabled:opacity-50"><ShoppingCart size={17} /></button>
-          <button type="button" onClick={() => buy('buy')} disabled={!available} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#C59B58] px-2 text-center text-[10px] font-semibold leading-4 text-[#231D15] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:text-[#7D715E] sm:text-[11px]">{!available ? 'Hết hàng' : 'Mua ngay'}</button>
+          <button type="button" onClick={() => buy('buy')} disabled={!available} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#C59B58] px-2 text-center text-[10px] font-semibold leading-4 text-[#231D15] hover:bg-[#B88E4F] disabled:bg-[#F3EFE6] disabled:text-[#7D715E] sm:text-[11px] max-sm:text-xs">{!available ? 'Hết hàng' : 'Mua ngay'}</button>
         </div>
       </div>
     </article>

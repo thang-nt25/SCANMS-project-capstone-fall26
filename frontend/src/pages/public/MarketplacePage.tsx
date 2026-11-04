@@ -257,13 +257,13 @@ export default function MarketplacePage() {
         <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
 
         {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
-        <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)]">
+        <div className="mb-4 bg-white border border-[#EAE4D7] border-b-[4px] border-b-[#B88E4F] shadow-[0_2px_8px_rgba(75,57,34,0.04)] max-sm:rounded-xl max-sm:border-b-2">
           <div className="py-3.5 sm:py-4 px-4 text-center">
             <h2
               className="m-0 text-base sm:text-[17px] uppercase tracking-[0.04em] select-none"
               style={{ color: '#B88E4F', fontWeight: 500 }}
             >
-              ĐƠN HÀNG HÔM NAY
+              <span className="sm:hidden">Gợi ý hôm nay</span><span className="hidden sm:inline">ĐƠN HÀNG HÔM NAY</span>
             </h2>
           </div>
         </div>
@@ -327,8 +327,8 @@ export default function MarketplacePage() {
       <OrderTrackingShortcut sectionRef={trackingRef} />
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#EAE4D7] bg-[#F3EFE6] px-4 py-9 text-left text-[#1A1612] sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_1fr] lg:gap-10">
+      <footer className="mt-auto border-t border-[#EAE4D7] bg-[#F3EFE6] px-4 py-9 text-left text-[#1A1612] sm:px-6 lg:px-8 max-sm:py-6 max-sm:[&_li]:leading-5 max-sm:[&_strong]:text-xs max-sm:[&_ul]:text-xs">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_1fr] lg:gap-10 max-sm:grid-cols-2 max-sm:gap-x-4 max-sm:gap-y-5 max-sm:[&>div:first-child]:col-span-2 max-sm:[&>div:last-child]:col-span-2">
           <div className="max-w-sm">
             <div className="mb-3">
               <ScanMSLogo size="sm" />
