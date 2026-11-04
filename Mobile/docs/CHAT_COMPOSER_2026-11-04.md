@@ -10,6 +10,8 @@ Nhãn **“Chat đã kết nối”** phản ánh kết nối Socket.IO của ch
 
 ## Cách sử dụng
 
+Màn **Tin nhắn** và chi tiết **Trao đổi** luôn có nút mũi tên quay lại ở góc trái, kể cả khi mở app bằng deep link. Có lịch sử thì quay về màn trước; không có thì về trang chính với thanh tab theo role. Nút gọi chung `useMobileNavigation().goBack()`, không tự dựng route ngoài Expo Router.
+
 1. Mở hội thoại hiện có trong **Tin nhắn** hoặc từ trang Shop/hợp tác.
 2. Thanh dưới cùng gồm **+**, ô nhập nhiều dòng và nút gửi mũi tên.
 3. Bấm **+** để mở sheet **Đính kèm**. Chọn **Ảnh và video** hoặc **Tài liệu**; picker hệ điều hành mở theo lựa chọn.

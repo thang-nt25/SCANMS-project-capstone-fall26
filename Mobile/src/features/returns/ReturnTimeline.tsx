@@ -30,17 +30,18 @@ const stage: Record<string, number> = {
 export function ReturnTimeline({ status }: { status: string }) {
   const current = stage[status];
   return (
-    <View accessibilityLabel="Tiến trình đổi trả" style={{ gap: 10 }}>
+    <View
+      accessibilityLabel="Tiến trình đổi trả"
+      style={{ flexDirection: "row", gap: 4 }}
+    >
       {steps.map((label, index) => (
-        <View
-          key={label}
-          style={{ flexDirection: "row", gap: 10, alignItems: "center" }}
-        >
+        <View key={label} style={{ flex: 1, gap: 6, alignItems: "center" }}>
           <Text
             style={{
               borderRadius: 16,
-              padding: 7,
-              minWidth: 32,
+              padding: 5,
+              minWidth: 26,
+              fontSize: 11,
               textAlign: "center",
               backgroundColor:
                 current !== undefined && index <= current
@@ -55,6 +56,9 @@ export function ReturnTimeline({ status }: { status: string }) {
             style={{
               color: index === current ? colors.ink : colors.muted,
               fontWeight: index === current ? "700" : "400",
+              fontSize: 10,
+              lineHeight: 14,
+              textAlign: "center",
             }}
           >
             {label}

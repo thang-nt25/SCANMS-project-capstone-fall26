@@ -4,6 +4,7 @@ import { useAuth } from "../../features/auth/AuthProvider";
 import { RoutePayloadProvider } from "../../navigation/router";
 import { ChatProvider } from "../../services/realtime/ChatProvider";
 import { colors } from "../../theme/tokens";
+import { ChatBackButton } from "../../features/chat/ChatBackButton";
 
 export default function PrivateLayout() {
   const { session } = useAuth();
@@ -38,7 +39,10 @@ export default function PrivateLayout() {
             >
               <Stack.Screen
                 name="conversations"
-                options={{ title: "Tin nhắn" }}
+                options={{
+                  title: "Tin nhắn",
+                  headerLeft: () => <ChatBackButton />,
+                }}
               />
             </Stack.Protected>
             <Stack.Protected guard={role === "SYSTEM_ADMIN"}>
@@ -61,7 +65,10 @@ export default function PrivateLayout() {
             >
               <Stack.Screen
                 name="conversation"
-                options={{ title: "Trao đổi" }}
+                options={{
+                  title: "Trao đổi",
+                  headerLeft: () => <ChatBackButton />,
+                }}
               />
             </Stack.Protected>
             <Stack.Protected guard={role === "SHOP_MANAGER"}>

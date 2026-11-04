@@ -17,11 +17,12 @@ import { Icon } from "./commerce";
 export function Screen({
   children,
   scroll = false,
-}: PropsWithChildren<{ scroll?: boolean }>) {
+  compact = false,
+}: PropsWithChildren<{ scroll?: boolean; compact?: boolean }>) {
   return scroll ? (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, compact && { padding: 12, gap: 10 }]}
       keyboardShouldPersistTaps="handled"
     >
       {children}

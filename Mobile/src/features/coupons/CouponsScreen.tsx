@@ -1,23 +1,19 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { z } from "zod";
 import {
-  Badge,
   Button,
   Caption,
-  Card,
   Empty,
   ErrorNotice,
   PageControls,
   Screen,
-  Title,
 } from "../../components/ui";
 import { money, statusText } from "../../types/contracts";
 import { colors } from "../../theme/tokens";
 import {
-  Choice,
-  CommandForm,
+  CompactCommandForm as CommandForm,
   QueryState,
   required,
   useActor,
@@ -26,6 +22,8 @@ import {
   type CommandFormSpec,
   type FormField,
 } from "../common/shared";
+import { ExpandableRecord, FilterTabs } from "../../components/RecordList";
+import { IconButton } from "../../components/commerce";
 import { couponActions, isCustomerKolCoupon } from "./coupon-policy";
 import {
   CouponSchema,
@@ -45,6 +43,18 @@ const filters = [
   { value: "EXPIRED", label: "Hết hạn" },
 ];
 
+function discountLabel(item: Coupon): string {
+  if (item.discountValue == null) return "Ưu đãi KOL";
+  return item.discountType === "PERCENTAGE"
+    ? `Giảm ${item.discountValue}%`
+    : `Giảm ${money(item.discountValue)}`;
+}
+function minimumLabel(item: Coupon): string {
+  if (item.minimumOrderAmount == null) return "Xem điều kiện áp dụng";
+  return Number(item.minimumOrderAmount) > 0
+    ? `Đơn từ ${money(item.minimumOrderAmount)}`
+    : "Không yêu cầu đơn tối thiểu";
+}
 function termFields(item: Coupon): FormField[] {
   const fields: FormField[] = [
     {
@@ -137,11 +147,11 @@ export function CouponsScreen() {
     });
 
   return (
-    <Screen scroll>
-      <Title>Mã ưu đãi độc quyền KOL</Title>
+    <Screen scroll compact>
       <Caption>
-        Sao chép mã và tự nhập khi thanh toán trên website. Mã không được lưu
-        vào tài khoản và không tự động áp dụng.
+        {customer
+          ? "Sao chép và tự nhập mã khi thanh toán. Bấm mã để xem điều kiện."
+          : "Bấm mã để xem điều kiện và quản lý."}
       </Caption>
       {user.role === "SHOP_MANAGER" && !store && (
         <Empty text="Chọn gian hàng được phân công trong tab Tôi trước khi xử lý mã KOL." />
@@ -188,7 +198,7 @@ export function CouponsScreen() {
         </>
       )}
       {!customer && (
-        <Choice
+        <FilterTabs
           label="Trạng thái mã"
           value={status}
           options={filters}
@@ -217,34 +227,43 @@ export function CouponsScreen() {
       {rows?.map((item) => {
         const actions = couponActions(user.role, item.status);
         return (
-          <Card key={item.id}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <Text
-                style={{ fontSize: 19, fontWeight: "700", color: colors.ink }}
-              >
-                {item.displayCode || item.code}
-              </Text>
-              <Badge>
-                {item.status ? statusText(item.status) : "Đang khả dụng"}
-              </Badge>
-            </View>
-            <Caption>{item.store?.name}</Caption>
+          <ExpandableRecord
+            key={item.id}
+            title={item.displayCode || item.code || "Mã ưu đãi KOL"}
+            subtitle={item.store?.name}
+            meta={`${discountLabel(item)} · ${minimumLabel(item)}`}
+            badge={
+              copied === item.id
+                ? "Đã sao chép"
+                : item.status
+                  ? statusText(item.status)
+                  : "Đang khả dụng"
+            }
+            icon="gift"
+            disabled={command.busy}
+            accessory={
+              <IconButton
+                name={copied === item.id ? "check" : "copy"}
+                label="Sao chép mã KOL"
+                disabled={command.busy || (!item.displayCode && !item.code)}
+                onPress={() =>
+                  void command.run(async () => {
+                    await Clipboard.setStringAsync(
+                      item.displayCode || item.code || "",
+                    );
+                    setCopied(item.id);
+                  })
+                }
+              />
+            }
+          >
             <Text
               style={{ color: colors.strong, fontSize: 18, fontWeight: "600" }}
             >
-              {item.discountType === "PERCENTAGE"
-                ? `Giảm ${item.discountValue ?? 0}%`
-                : `Giảm ${money(item.discountValue)}`}
+              {discountLabel(item)}
             </Text>
             <Caption>
-              Đơn tối thiểu {money(item.minimumOrderAmount)}
+              {minimumLabel(item)}
               {item.maximumDiscountAmount != null
                 ? ` · Tối đa ${money(item.maximumDiscountAmount)}`
                 : ""}
@@ -354,7 +373,7 @@ export function CouponsScreen() {
                 }
               />
             )}
-          </Card>
+          </ExpandableRecord>
         );
       })}
       {!customer && (

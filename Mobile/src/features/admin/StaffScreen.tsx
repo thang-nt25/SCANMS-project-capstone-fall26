@@ -1,18 +1,10 @@
 import { useState } from "react";
-import { Text } from "react-native";
+import { View } from "react-native";
 import { z } from "zod";
-import {
-  Badge,
-  Button,
-  Caption,
-  Card,
-  ErrorNotice,
-  Screen,
-  Title,
-} from "../../components/ui";
+import { Button, Caption, ErrorNotice, Screen } from "../../components/ui";
 import { roleLabels, RoleSchema } from "../../types/contracts";
 import {
-  CommandForm,
+  CompactCommandForm as CommandForm,
   QueryState,
   confirmAction,
   required,
@@ -21,6 +13,11 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
+import {
+  ExpandableRecord,
+  FilterTabs,
+  InfoLine,
+} from "../../components/RecordList";
 const Staff = z.object({
   id: z.string(),
   fullName: z.string(),
@@ -32,10 +29,11 @@ const Staff = z.object({
 const Store = z.object({
   id: z.string(),
   name: z.string(),
-  ownerId: z.string(),
+  ownerId: z.string().nullish(),
   isActive: z.boolean(),
 });
 export function StaffScreen() {
+  const [tab, setTab] = useState("staff");
   const staff = useResource("staff", "/users/staff", z.array(Staff)),
     stores = useResource("all-stores", "/stores/all-admin", z.array(Store));
   const { user } = useActor(),
@@ -73,17 +71,36 @@ export function StaffScreen() {
         .transform((body) => ({ ...body, role })),
     });
   return (
-    <Screen scroll>
-      <Title>Nhân sự & gian hàng</Title>
-      <Button
-        title="Thêm quản lý Shop"
-        onPress={() => create("SHOP_MANAGER")}
+    <Screen scroll compact>
+      <FilterTabs
+        label="Quản lý nhân sự và gian hàng"
+        value={tab}
+        options={[
+          { value: "staff", label: "Nhân sự" },
+          { value: "stores", label: "Gian hàng" },
+        ]}
+        onChange={setTab}
       />
-      <Button
-        title="Thêm chuyên viên vận hành"
-        secondary
-        onPress={() => create("SYSTEM_MANAGER")}
-      />
+      {tab === "staff" && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Button
+            title="Thêm quản lý Shop"
+            disabled={
+              command.busy ||
+              stores.isLoading ||
+              Boolean(stores.error) ||
+              !stores.data?.length
+            }
+            onPress={() => create("SHOP_MANAGER")}
+          />
+          <Button
+            title="Thêm vận hành"
+            disabled={command.busy}
+            secondary
+            onPress={() => create("SYSTEM_MANAGER")}
+          />
+        </View>
+      )}
       <QueryState
         loading={staff.isLoading || stores.isLoading}
         error={staff.error || stores.error}
@@ -93,87 +110,108 @@ export function StaffScreen() {
         }}
       />
       <ErrorNotice error={command.error} />
-      {staff.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.fullName}</Title>
-          <Text>{item.email}</Text>
-          <Badge>{roleLabels[item.role]}</Badge>
-          <Caption>{item.isActive ? "Đang hoạt động" : "Đã khóa"}</Caption>
-          {item.stores?.map((store) => (
-            <Caption key={store.id}>{store.name}</Caption>
-          ))}
-          {item.id !== user.id && item.role !== "SYSTEM_ADMIN" && (
+      <Caption>
+        {tab === "staff"
+          ? `${staff.data?.length ?? "—"} nhân sự`
+          : `${stores.data?.length ?? "—"} gian hàng`}{" "}
+        · Bấm một mục để xem và quản lý
+      </Caption>
+      {tab === "staff" &&
+        staff.data?.map((item) => (
+          <ExpandableRecord
+            key={item.id}
+            title={item.fullName}
+            subtitle={item.email}
+            meta={roleLabels[item.role]}
+            badge={item.isActive ? "Đang hoạt động" : "Đã khóa"}
+            icon="user"
+            disabled={command.busy}
+          >
+            <InfoLine label="Email" value={item.email} />
+            <InfoLine label="Vai trò" value={roleLabels[item.role]} />
+            {item.stores?.map((store) => (
+              <Caption key={store.id}>{store.name}</Caption>
+            ))}
+            {item.id !== user.id && item.role !== "SYSTEM_ADMIN" && (
+              <Button
+                title={item.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                secondary
+                loading={command.busy}
+                onPress={() =>
+                  confirmAction(
+                    "Thay đổi trạng thái tài khoản?",
+                    item.fullName,
+                    () =>
+                      void command.execute(
+                        `/users/${item.id}/toggle-status`,
+                        "PATCH",
+                        { isActive: !item.isActive },
+                      ),
+                  )
+                }
+              />
+            )}
+          </ExpandableRecord>
+        ))}
+      {tab === "stores" &&
+        stores.data?.map((item) => (
+          <ExpandableRecord
+            key={item.id}
+            title={item.name}
+            subtitle={
+              staff.data?.find((row) => row.id === item.ownerId)?.fullName ||
+              "Chưa có thông tin người phụ trách"
+            }
+            badge={item.isActive ? "Đang hoạt động" : "Tạm ngừng"}
+            icon="shopping-bag"
+            disabled={command.busy}
+          >
             <Button
-              title={item.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+              title="Thay đổi chủ Shop phụ trách"
+              secondary
+              onPress={() =>
+                setForm({
+                  title: "Cập nhật người phụ trách gian hàng",
+                  path: `/stores/admin/${item.id}`,
+                  method: "PUT",
+                  fields: [
+                    {
+                      key: "ownerId",
+                      label: "Chủ Shop mới (thay đổi quyền sở hữu)",
+                      initial: item.ownerId || "",
+                      options: (staff.data || [])
+                        .filter(
+                          (row) => row.role === "SHOP_MANAGER" && row.isActive,
+                        )
+                        .map((row) => ({
+                          value: row.id,
+                          label: `${row.fullName} · ${row.email}`,
+                        })),
+                    },
+                  ],
+                  schema: z.object({ ownerId: z.string().uuid() }),
+                })
+              }
+            />
+            <Button
+              title={
+                item.isActive ? "Tạm ngừng gian hàng" : "Kích hoạt gian hàng"
+              }
               secondary
               loading={command.busy}
               onPress={() =>
                 confirmAction(
-                  "Thay đổi trạng thái tài khoản?",
-                  item.fullName,
+                  "Thay đổi trạng thái gian hàng?",
+                  item.name,
                   () =>
                     void command.execute(
-                      `/users/${item.id}/toggle-status`,
-                      "PATCH",
-                      { isActive: !item.isActive },
+                      `/stores/admin/${item.id}/toggle-status`,
                     ),
                 )
               }
             />
-          )}
-        </Card>
-      ))}
-      <Title>Gian hàng</Title>
-      {stores.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.name}</Title>
-          <Badge>{item.isActive ? "Đang hoạt động" : "Tạm ngừng"}</Badge>
-          <Button
-            title="Thay đổi chủ Shop phụ trách"
-            secondary
-            onPress={() =>
-              setForm({
-                title: "Cập nhật người phụ trách gian hàng",
-                path: `/stores/admin/${item.id}`,
-                method: "PUT",
-                fields: [
-                  {
-                    key: "ownerId",
-                    label: "Chủ Shop mới (thay đổi quyền sở hữu)",
-                    initial: item.ownerId,
-                    options: (staff.data || [])
-                      .filter(
-                        (row) => row.role === "SHOP_MANAGER" && row.isActive,
-                      )
-                      .map((row) => ({
-                        value: row.id,
-                        label: `${row.fullName} · ${row.email}`,
-                      })),
-                  },
-                ],
-                schema: z.object({ ownerId: z.string().uuid() }),
-              })
-            }
-          />
-          <Button
-            title={
-              item.isActive ? "Tạm ngừng gian hàng" : "Kích hoạt gian hàng"
-            }
-            secondary
-            loading={command.busy}
-            onPress={() =>
-              confirmAction(
-                "Thay đổi trạng thái gian hàng?",
-                item.name,
-                () =>
-                  void command.execute(
-                    `/stores/admin/${item.id}/toggle-status`,
-                  ),
-              )
-            }
-          />
-        </Card>
-      ))}
+          </ExpandableRecord>
+        ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
     </Screen>
   );

@@ -83,6 +83,8 @@ export type BusinessParams = {
   orderId?: string;
   productId?: string;
   storeId?: string;
+  pendingOnly?: boolean;
+  returnQueue?: "disputes";
 };
 export function canOpenModule(
   role: Role,

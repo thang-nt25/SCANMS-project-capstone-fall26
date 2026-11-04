@@ -4,11 +4,8 @@ import { canOpenModule } from "./policy";
 import { useActor } from "../common/shared";
 import { AddressesScreen } from "../addresses/AddressesScreen";
 import { CartScreen } from "../cart/CartScreen";
-import {
-  NotificationsScreen,
-  PersonalScreen,
-  WishlistScreen,
-} from "../account/PersonalScreens";
+import { PersonalScreen, WishlistScreen } from "../account/PersonalScreens";
+import { NotificationsScreen } from "../account/NotificationsScreen";
 import { ReturnsScreen } from "../returns/ReturnScreen";
 import { SamplesScreen } from "../samples/SamplesScreen";
 import { WalletScreen } from "../wallets/WalletScreen";
@@ -53,7 +50,7 @@ export function BusinessScreen({ route }: ScreenProps<"Business">) {
     );
   return (
     <BusinessContent
-      key={`${user.id}:${store?.id || ""}:${route.params.feature}:${route.params.productId || route.params.id || route.params.storeId || ""}`}
+      key={`${user.id}:${store?.id || ""}:${route.params.feature}:${route.params.productId || route.params.id || route.params.storeId || ""}:${route.params.pendingOnly || false}:${route.params.returnQueue || ""}`}
       route={route}
     />
   );
@@ -89,7 +86,7 @@ function BusinessContent({ route }: Pick<ScreenProps<"Business">, "route">) {
     case "social":
       return <SocialScreen />;
     case "kyc":
-      return <KycScreen />;
+      return <KycScreen pendingOnly={route.params.pendingOnly} />;
     case "staff":
       return <StaffScreen />;
     case "shop":

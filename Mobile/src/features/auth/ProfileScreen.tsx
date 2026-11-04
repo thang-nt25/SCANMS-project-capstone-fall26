@@ -210,6 +210,7 @@ export function ProfileScreen() {
             <View style={c.panel}>
               {accountEntries.map((item, index) => (
                 <MenuRow
+                  compact
                   key={item.feature}
                   icon={moduleIcons[item.feature]}
                   title={item.title}
@@ -225,6 +226,7 @@ export function ProfileScreen() {
               <View style={c.panel}>
                 {session!.bootstrap.managedStores.map((item, index) => (
                   <MenuRow
+                    compact
                     key={item.id}
                     icon={
                       item.id === store?.id ? "check-circle" : "shopping-bag"
@@ -240,11 +242,13 @@ export function ProfileScreen() {
           )}
           <View style={c.panel}>
             <MenuRow
+              compact
               icon="settings"
               title="Thiết lập tài khoản"
               onPress={() => navigation.navigate("AccountSettings")}
             />
             <MenuRow
+              compact
               icon="bell"
               title="Thông báo"
               last

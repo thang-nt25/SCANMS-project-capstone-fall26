@@ -26,9 +26,16 @@ import { useActor, useResource } from "../common/shared";
 import { MarketplaceHomeScreen } from "../catalog/MarketplaceHomeScreen";
 import { useAuth } from "../auth/AuthProvider";
 import { moduleIcons } from "./module-presentation";
+import { OperationsWorkspaceScreen } from "./OperationsWorkspaceScreen";
 
 export function WorkspaceScreen() {
   const { session } = useAuth();
+  if (
+    session?.user.role === "SYSTEM_ADMIN" ||
+    session?.user.role === "SYSTEM_MANAGER"
+  ) {
+    return <OperationsWorkspaceScreen />;
+  }
   return session?.user.role === "CUSTOMER" ? (
     <MarketplaceHomeScreen />
   ) : (

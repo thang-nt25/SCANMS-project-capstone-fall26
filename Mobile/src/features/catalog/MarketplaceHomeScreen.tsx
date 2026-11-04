@@ -24,11 +24,8 @@ import { useActor, useResource } from "../common/shared";
 import { CartSchema } from "../customer/customer-contracts";
 import type { BusinessFeature } from "../workspace/policy";
 import { ProductCard } from "./ProductCard";
-import {
-  MarketplaceHeader,
-  MarketplaceServices,
-  MarketplacePromotions,
-} from "./MarketplaceHeader";
+import { MarketplaceBanners } from "./MarketplaceBanners";
+import { MarketplaceHeader, MarketplaceServices } from "./MarketplaceHeader";
 
 export function MarketplaceHomeScreen() {
   const { user } = useActor(),
@@ -109,9 +106,11 @@ export function MarketplaceHomeScreen() {
                 openWallet={() => open("wallet")}
                 openCoupons={() => open("coupons")}
               />
-              <MarketplacePromotions
-                openCoupons={() => open("coupons")}
-                browse={() => browse()}
+              <MarketplaceBanners
+                products={catalog.data?.items || []}
+                openProduct={(product) =>
+                  navigation.navigate("ProductDetail", { product })
+                }
               />
             </View>
             <ScrollView

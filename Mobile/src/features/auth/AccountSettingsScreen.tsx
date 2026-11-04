@@ -21,12 +21,14 @@ export function AccountSettingsScreen() {
       <Text style={styles.heading}>Tài khoản của tôi</Text>
       <View style={c.panel}>
         <MenuRow
+          compact
           icon="shield"
           title="Tài khoản & bảo mật"
           onPress={() => open("profile")}
         />
         {canOpenModule(role, "addresses") && (
           <MenuRow
+            compact
             icon="map-pin"
             title="Địa chỉ nhận hàng"
             onPress={() => open("addresses")}
@@ -34,6 +36,7 @@ export function AccountSettingsScreen() {
         )}
         {canOpenModule(role, "wallet") && (
           <MenuRow
+            compact
             icon="credit-card"
             title="Ví & thông tin ngân hàng"
             onPress={() => open("wallet")}
@@ -41,6 +44,7 @@ export function AccountSettingsScreen() {
         )}
         {role === "CUSTOMER" && (
           <MenuRow
+            compact
             icon="user-check"
             title="Thông tin định danh"
             onPress={() => open("identity")}
@@ -48,6 +52,7 @@ export function AccountSettingsScreen() {
         )}
         {(role === "COLLABORATOR" || role === "SHOP_MANAGER") && (
           <MenuRow
+            compact
             icon="check-circle"
             title="Hồ sơ xác minh KYC"
             onPress={() => open("kyc")}
@@ -55,6 +60,7 @@ export function AccountSettingsScreen() {
         )}
         {role === "COLLABORATOR" && (
           <MenuRow
+            compact
             icon="link"
             title="Kênh xã hội & cấp bậc"
             onPress={() => open("social")}
@@ -62,12 +68,14 @@ export function AccountSettingsScreen() {
         )}
         {role === "SHOP_MANAGER" && (
           <MenuRow
+            compact
             icon="shopping-bag"
             title="Cài đặt gian hàng"
             onPress={() => open("shop")}
           />
         )}
         <MenuRow
+          compact
           icon="bell"
           title="Trung tâm thông báo"
           last
@@ -77,6 +85,7 @@ export function AccountSettingsScreen() {
       <Text style={styles.heading}>Phiên đăng nhập</Text>
       <View style={c.panel}>
         <MenuRow
+          compact
           icon="refresh-cw"
           title={
             operation.busy
@@ -100,14 +109,14 @@ export function AccountSettingsScreen() {
 }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: 14, paddingBottom: 36, gap: 14 },
+  content: { padding: 12, paddingBottom: 24, gap: 10 },
   heading: {
     color: colors.muted,
     fontSize: 12,
     marginTop: 8,
     paddingHorizontal: 4,
   },
-  about: { alignItems: "center", gap: 7, paddingTop: 18 },
+  about: { alignItems: "center", gap: 5, paddingTop: 8 },
   brand: {
     color: colors.strong,
     fontSize: 16,
