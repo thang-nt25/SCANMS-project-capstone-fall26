@@ -444,4 +444,50 @@ export class StoreCollaboratorsService {
       include: { store: { select: { id: true, name: true, logoUrl: true } } },
     });
   }
+
+  async terminateCooperation(
+    actorId: string,
+    role: UserRole,
+    idOrCollaboratorId: string,
+    storeId?: string,
+  ) {
+    let record = await this.prisma.storeCollaborator.findUnique({
+      where: { id: idOrCollaboratorId },
+    });
+    if (!record && storeId) {
+      record = await this.prisma.storeCollaborator.findUnique({
+        where: {
+          storeId_collaboratorId: {
+            storeId,
+            collaboratorId: idOrCollaboratorId,
+          },
+        },
+      });
+    }
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy bản ghi hợp tác đối tác');
+    }
+
+    if (role === UserRole.COLLABORATOR) {
+      if (record.collaboratorId !== actorId) {
+        throw new ForbiddenException('Bạn không có quyền chấm dứt thỏa thuận này');
+      }
+    } else {
+      await this.getOwnedStore(actorId, record.storeId);
+    }
+
+    await this.prisma.storeCollaborator.delete({
+      where: { id: record.id },
+    });
+
+    await this.invalidateStoreTeamCache(record.storeId);
+
+    return {
+      success: true,
+      message: 'Đã chấm dứt quan hệ hợp tác đối tác thành công',
+      terminatedId: record.id,
+      storeId: record.storeId,
+      collaboratorId: record.collaboratorId,
+    };
+  }
 }

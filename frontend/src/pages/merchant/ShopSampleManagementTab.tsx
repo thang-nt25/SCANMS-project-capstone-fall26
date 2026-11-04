@@ -159,6 +159,8 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   const [samples, setSamples] = useState<SampleRequestItem[]>([]);
   const sampleLoadSequence = useRef(0);
   const [storeTab, setStoreTab] = useState<'SAMPLES_QUEUE' | 'LEADERBOARD' | 'DEALS'>(() => searchParams.get('section') === 'deals' ? 'DEALS' : 'SAMPLES_QUEUE');
+  const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'OVERDUE' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [remindedSamples, setRemindedSamples] = useState<Record<string, boolean>>({});
@@ -365,6 +367,36 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
   }, [samples]);
 
   // Handlers
+
+  const handleToggleSelectSample = (id: string, checked: boolean) => {
+    setSelectedSampleIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
+  };
+
+  const handleBulkApproveSamples = async () => {
+    if (selectedSampleIds.length === 0) return;
+    setBulkApproving(true);
+    let successCount = 0;
+    try {
+      await Promise.all(
+        selectedSampleIds.map(async (id) => {
+          try {
+            await api.patch(`/sample-requests/${id}/approve`, {});
+            successCount++;
+          } catch (e) {
+            console.error('Failed to approve sample:', id, e);
+          }
+        })
+      );
+      toast.success(`Đã duyệt thành công ${successCount}/${selectedSampleIds.length} yêu cầu mẫu 0đ!`);
+      setSamples((prev) => prev.map((s) => (selectedSampleIds.includes(s.id) ? { ...s, status: 'APPROVED' } : s)));
+      setSelectedSampleIds([]);
+    } catch (err: any) {
+      toast.error('Có lỗi xảy ra khi duyệt hàng loạt.');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
   const handleApproveSample = async (sampleId: string) => {
     try {
       await api.patch(`/sample-requests/${sampleId}/approve`, {});
@@ -667,9 +699,38 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
             </div>
 
             {/* Central Sample Queue Table */}
+            {selectedSampleIds.length > 0 && (
+              <div className="flex items-center justify-between p-3 mb-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-[#C59B58] text-[#1A1612] font-bold text-xs">
+                    Đã chọn {selectedSampleIds.length} yêu cầu
+                  </span>
+                  <span className="text-xs text-[#7D715E]">Thao tác hàng loạt:</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={bulkApproving}
+                    onClick={handleBulkApproveSamples}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{bulkApproving ? 'Đang duyệt...' : `Duyệt nhanh hàng loạt (${selectedSampleIds.length})`}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSampleIds([])}
+                    className="p-1.5 text-xs text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
+                    title="Bỏ chọn"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_10px_rgb(35_29_21_/_2%)]">
               <table className="sample-queue-table w-full min-w-[1060px] table-fixed border-collapse text-left text-xs">
-                <colgroup><col className="w-[17%]" /><col className="w-[24%]" /><col className="w-[21%]" /><col className="w-[20%]" /><col className="w-[18%]" /></colgroup>
+                <colgroup><col className="w-[5%]" /><col className="w-[17%]" /><col className="w-[23%]" /><col className="w-[19%]" /><col className="w-[18%]" /><col className="w-[18%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-[#EAE4D7] bg-[#FBF5EB]/40 font-bold text-[#7D715E]">
                     <th className="py-3 px-3 font-medium">Nhà sáng tạo</th>
@@ -682,7 +743,7 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
                 <tbody className="divide-y divide-[#EAE4D7]">
                   {filteredSamples.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-[#7D715E]">
+                      <td colSpan={6} className="py-12 text-center text-[#7D715E]">
                         <Package className="w-8 h-8 mx-auto mb-2 text-[#C59B58]/40" />
                         <p className="font-semibold text-xs text-[#1A1612]">Không tìm thấy yêu cầu mẫu nào</p>
                         <p className="text-[11px] mt-0.5">Thử đổi bộ lọc hoặc từ khóa tìm kiếm</p>
@@ -700,6 +761,18 @@ export default function ShopSampleManagementTab({ refreshKey = 0, showRefreshBut
 
                       return (
                         <tr key={s.id} data-sample-row={s.id} className="bg-white align-middle transition-colors hover:bg-[#FBF5EB]/30 [&>td]:px-3 [&>td]:py-3.5">
+                          {/* Column 0: Checkbox */}
+                          <td className="py-3.5 px-3 align-middle w-10">
+                            {s.status === 'PENDING' ? (
+                              <input
+                                type="checkbox"
+                                aria-label={`Chọn yêu cầu của ${s.collaboratorInfo?.fullName || 'KOL'}`}
+                                checked={selectedSampleIds.includes(s.id)}
+                                onChange={(e) => handleToggleSelectSample(s.id, e.target.checked)}
+                                className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] cursor-pointer"
+                              />
+                            ) : null}
+                          </td>
                           {/* Column 1: KOL */}
                           <td className="py-3.5 px-4">
                             <Link to={`/merchant/kol-hub?kol=${encodeURIComponent(s.collaboratorId)}&tab=profile`} aria-label={`Xem hồ sơ ${s.collaboratorInfo?.fullName || 'KOL'}`} className="flex items-center gap-2.5 rounded-lg hover:text-[#B88E4F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58]">

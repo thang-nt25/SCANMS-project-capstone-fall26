@@ -908,3 +908,30 @@ Nhiều sinh viên và người vận hành nhầm lẫn "Chiến dịch" của 
 - **Phân định thẩm quyền kiểm soát:**
   - Mức thù lao $\le 16\%$: Thuộc khung tự trị của Shop Manager, gửi thẻ và KOC bấm chấp nhận là kích hoạt tức thời.
   - Mức thù lao $> 16\%$ (tối đa $25\%$): Kích hoạt Maker-Checker chuyển Tổng Giám Đốc (`SYSTEM_ADMIN`) phê duyệt ngoại lệ ngân sách trên Executive Dashboard.
+
+
+---
+
+# PHẦN 10: 🚩 CÁC ĐIỂM NHẤN CỐT LÕI CẦN LÀM NỔI BẬT ĐỂ ĐÚNG MỤC ĐÍCH ĐỀ TÀI (AFFILIATE B2B MARTECH)
+
+Để Hội đồng đánh giá đề tài của nhóm là **Hệ Thống Quản Trị Đội Ngũ Đối Tác Tiếp Thị & Tiếp Thị Liên Kết Nội Bộ Doanh Nghiệp (Enterprise In-House MarTech & Affiliate Network)** xuất sắc nhất, hệ thống tập trung hoàn thiện 3 điểm nhấn chiến lược sau thay vì dàn trải các tính năng bán lẻ TMĐT:
+
+### 10.1. Hiển Thị Rõ Ràng Cơ Chế "Bù Hàng 1-1 Giữ Nguyên Thù Lao KOC" (Main Flow 4)
+* **Thực tế nghiệp vụ:** Khi hàng hóa bị móp vỡ do đơn vị vận chuyển GHN hoặc lỗi nhà sản xuất, Shop thực hiện **Bù hàng mới 1-1 (Replacement)** cho khách hàng $\rightarrow$ Đơn hàng vẫn hoàn thành $\rightarrow$ **KOC vẫn được bảo lưu 100% thù lao tiếp thị** vì KOC đã hoàn thành xuất sắc nhiệm vụ truyền thông chuyển đổi đơn hàng.
+* **Hành động giao diện & hệ thống:** Thêm badge nổi bật trên màn hình quản lý đơn/đổi trả của KOC và Merchant:
+  > `[🛡️ Đơn đổi hàng bù 1-1: Bảo lưu 100% thù lao tiếp thị KOC]`
+  *(Phân biệt rõ ràng với trường hợp Hoàn tiền Trả hàng (Return & Refund) sẽ kích hoạt Clawback Engine thu hồi thù lao về 0đ).*
+
+### 10.2. Xuất Chứng Từ Khấu Trừ Thuế TNCN 10% Cho KOC (Main Flow 5 - Trọng tâm Leader Thắng)
+* **Thực tế nghiệp vụ:** Doanh nghiệp chi trả thù lao cho cá nhân không ký hợp đồng lao động có trách nhiệm khấu trừ tại nguồn 10% Thuế Thu Nhập Cá Nhân (TNCN) trước khi giải ngân Napas 24/7 / BIDV sandbox theo Thông tư 111/2013/TT-BTC.
+* **Hành động giao diện & hệ thống:** 
+  * Tích hợp nút **"Tải Chứng Từ Khấu Trừ Thuế Điện Tử (PDF/Excel)"** trên màn hình Ví KOC ([`/collaborator/wallet`](file:///c:/HW/CAPSTONE/frontend/src/pages/collaborator/WalletPage.tsx)) và màn hình Quản trị Tài chính Admin ([`/admin/payouts`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AdminFinancePayoutsPage.tsx)).
+  * Chứng từ ghi rõ: Mã số thuế cá nhân, Tổng thu nhập chịu thuế, Số thuế TNCN 10% đã khấu trừ nộp ngân sách nhà nước, Số tiền thực nhận.
+
+### 10.3. Màn Hình Giám Sát An Ninh Tiếp Thị AI Fraud Sentinel (Main Flow 4)
+* **Thực tế nghiệp vụ:** Ngăn chặn các hành vi gian lận trục lợi ngân sách tiếp thị doanh nghiệp:
+  1. *Tự mua hàng qua link của chính mình (Self-referral fraud):* KOC dùng nick clone hoặc cùng địa chỉ IP/thiết bị/số điện thoại để tự hưởng hoa hồng.
+  2. *Gian lận lượng truy cập (Click Flooding / Cookie Stuffing):* Bot tự sinh click ảo đẩy tỷ lệ chuyển đổi giả mạo.
+* **Hành động giao diện & hệ thống:** 
+  * Hoàn thiện màn hình Giám sát An ninh Tiếp thị ([`/admin/fraud-sentinel`](file:///c:/HW/CAPSTONE/frontend/src/pages/admin/AiFraudSentinelPage.tsx)).
+  * Hiển thị bảng cảnh báo thời gian thực với các mức rủi ro: `NGHI VẤN TỰ MUA (SELF-REFERRAL)`, `CLICK SPAM BẤT THƯỜNG`, kèm nút thao tác xử lý: "Đóng băng ví tạm thời" hoặc "Hủy quyền tham gia mạng lưới".

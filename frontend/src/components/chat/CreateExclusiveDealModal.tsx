@@ -83,8 +83,8 @@ export function CreateExclusiveDealModal({
       setError('Vui lòng chọn một sản phẩm áp dụng thỏa thuận.');
       return;
     }
-    if (commissionRate < 11 || commissionRate > 16) {
-      setError('Mức thù lao độc quyền phải từ 11% đến 16% (khung tự trị của Nhãn hàng).');
+    if (commissionRate < 10 || commissionRate > 25) {
+      setError('Mức thù lao độc quyền phải từ 10% đến 25% (trần toàn hệ thống).');
       return;
     }
     if (targetOrders < 1) {
@@ -230,8 +230,16 @@ export function CreateExclusiveDealModal({
             <p className="text-[11px] text-[#7D715E] mb-2">
               Khung tự trị của Giám đốc Nhãn hàng từ <strong>11%</strong> đến tối đa <strong>16%</strong> (vượt trên 16% cần Tổng Giám đốc phê duyệt).
             </p>
-            <div className="grid grid-cols-6 gap-1.5">
-              {[11, 12, 13, 14, 15, 16].map((rate) => {
+            {commissionRate > 16 && (
+              <div className="mb-2.5 p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#8C6226] flex items-start gap-2 animate-in fade-in">
+                <Sparkles className="w-4 h-4 text-[#B88E4F] shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong className="font-bold text-[#1A1612]">Leo thang phê duyệt (Maker-Checker Escalation):</strong> Mức thù lao <strong>{commissionRate}%</strong> vượt hạn mức tự trị của Shop ({'≤'} 16%). Hợp đồng sẽ chuyển sang trạng thái <strong>PENDING_ADMIN_APPROVAL</strong> và cần Tổng Giám Đốc phê duyệt ngân sách ngoại lệ.
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+              {[11, 12, 13, 14, 15, 16, 18, 20].map((rate) => {
                 const isActive = commissionRate === rate;
                 return (
                   <button
@@ -343,7 +351,7 @@ export function CreateExclusiveDealModal({
             ) : (
               <>
                 <Handshake className="w-3.5 h-3.5 stroke-[2]" />
-                <span>Gửi Thỏa Thuận Độc Quyền</span>
+                <span>{commissionRate > 16 ? 'Đề Xuất Ban Giám Đốc Thẩm Duyệt' : 'Gửi Thỏa Thuận Độc Quyền'}</span>
               </>
             )}
           </button>

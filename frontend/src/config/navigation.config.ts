@@ -58,12 +58,11 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Nhà Sáng Tạo & KOC Tiếp Thị',
     items: [
       { path: '/collaborator/dashboard', label: 'Tổng quan', icon: TrendingUp, section: 'TỔNG QUAN' },
-      { path: '/collaborator/marketing', label: 'Link & Mã tiếp thị', icon: Link2, section: 'TIẾP THỊ & HỢP TÁC' },
-      { path: '/collaborator/campaigns', label: 'Chiến dịch', icon: Tag, badge: 'Mới', section: 'TIẾP THỊ & HỢP TÁC' },
-      { path: '/collaborator/collaboration', label: 'Hàng mẫu trải nghiệm', icon: MessageSquare, section: 'TIẾP THỊ & HỢP TÁC' },
+      { path: '/collaborator/marketing', label: 'Công cụ tiếp thị', icon: Link2, section: 'TIẾP THỊ & HỢP TÁC' },
+            { path: '/collaborator/collaboration', label: 'Hợp tác & Hàng mẫu', icon: MessageSquare, section: 'TIẾP THỊ & HỢP TÁC' },
       { path: '/collaborator/live-sessions', label: 'Phiên Live', icon: Radio, section: 'TIẾP THỊ & HỢP TÁC' },
-      { path: '/collaborator/wallet', label: 'Ví thù lao', icon: Wallet, section: 'TÀI CHÍNH & HỒ SƠ' },
-      { path: '/collaborator/profile', label: 'Hồ sơ & Cấp bậc', icon: ShieldCheck, section: 'TÀI CHÍNH & HỒ SƠ' },
+      { path: '/collaborator/wallet', label: 'Thu nhập & Đối soát', icon: Wallet, section: 'TÀI CHÍNH & HỒ SƠ' },
+      { path: '/collaborator/profile', label: 'Hồ sơ & eKYC', icon: ShieldCheck, section: 'TÀI CHÍNH & HỒ SƠ' },
     ],
   },
   SHOP_MANAGER: {

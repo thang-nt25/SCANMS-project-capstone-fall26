@@ -156,12 +156,12 @@ export function Topbar({
   }
 
   return (
-    <header ref={headerRef} className="scanms-site-header workspace-topbar sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs">
+    <header ref={headerRef} className="scanms-site-header workspace-topbar sticky top-0 z-40 bg-[#C49B5B]/95 backdrop-blur-md border-b border-[#B88E4F] shadow-sm text-[#1A1612]">
       <div className="workspace-topbar-inner max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 sm:gap-6 relative z-30">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <ScanMSLogo size="md" className="scanms-header-logo" />
+            <ScanMSLogo size="md" darkMode={false} className="scanms-header-logo" />
           </Link>
         </div>
 

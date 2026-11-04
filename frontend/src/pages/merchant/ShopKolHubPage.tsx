@@ -38,6 +38,7 @@ import {
   FileText,
   Handshake,
   ShieldCheck,
+  UserMinus,
 } from 'lucide-react';
 import api from '../../services/api';
 import { analyticsService, type ReferralOrderItem } from '../../services/analytics.service';
@@ -313,7 +314,7 @@ export default function ShopKolHubPage() {
     tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
   );
   const [activeTab, setActiveTab] = useState<'messages' | 'samples' | 'performance' | 'profile'>(
-    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as any
+    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : (tabParam === 'collaborators' || tabParam === 'team') ? 'profile' : 'messages') as any
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -361,6 +362,25 @@ export default function ShopKolHubPage() {
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
   const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
+  const [terminatingKolId, setTerminatingKolId] = useState<string | null>(null);
+
+  const handleTerminateCollaboration = async (kolId: string) => {
+    const kolObj = kols.find((k) => k.id === kolId) || allPlatformKols.find((k) => k.id === kolId);
+    const kolName = kolObj?.fullName || 'đối tác này';
+    if (!window.confirm(`Bạn có chắc chắn muốn kết thúc quan hệ hợp tác với đối tác ${kolName}? Sau khi kết thúc, đối tác sẽ được rút khỏi danh sách đội ngũ của gian hàng.`)) {
+      return;
+    }
+    setTerminatingKolId(kolId);
+    try {
+      await api.delete(`/store-collaborators/${kolId}${ownedStore?.id ? `?storeId=${ownedStore.id}` : ''}`);
+      toast.success(`Đã kết thúc hợp tác với ${kolName}.`);
+      await loadBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Không thể kết thúc hợp tác lúc này.');
+    } finally {
+      setTerminatingKolId(null);
+    }
+  };
 
   // Click outside listener for KOL actions dropdown
   useEffect(() => {
@@ -394,6 +414,9 @@ export default function ShopKolHubPage() {
         setViewMode('ALL_DEALS');
       } else if (tab === 'leaderboard') {
         setViewMode('LEADERBOARD');
+      } else if (tab === 'collaborators' || tab === 'team') {
+        setViewMode('CRM');
+        setActiveTab('profile');
       } else if (['messages', 'samples', 'performance', 'profile'].includes(tab)) {
         setViewMode('CRM');
         setActiveTab(tab as any);
@@ -2367,6 +2390,20 @@ return true;
                             >
                               <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
                               <span>Xem hồ sơ & liên hệ</span>
+                            </button>
+
+                            <div className="my-1 border-t border-[#EAE4D7]" />
+
+                            <button
+                              type="button"
+                              id="btn-terminate-collab"
+                              disabled={terminatingKolId === selectedKol.id}
+                              onClick={() => handleTerminateCollaboration(selectedKol.id)}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
+                              title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
+                            >
+                              <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
+                              <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
                             </button>
                           </div>
                         )}

@@ -29,7 +29,7 @@ import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import './NotificationDropdown.css';
 
-export const NotificationDropdown: React.FC = () => {
+export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMode = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hover = useHoverDisclosure(isOpen, setIsOpen);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -420,7 +420,9 @@ export const NotificationDropdown: React.FC = () => {
         ref={bellRef}
         type="button"
         onClick={hover.toggle}
-        className="relative grid place-items-center w-[36px] h-[36px] border border-[#EAE4D7] rounded-full bg-white text-[#7D715E] cursor-pointer hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+        className={darkMode
+          ? "relative grid place-items-center w-[32px] h-[32px] rounded-full bg-transparent text-[#d4af70] hover:bg-white/10 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#d4af70]"
+          : "relative grid place-items-center w-[36px] h-[36px] rounded-full bg-white text-[#1A1612] shadow-2xs hover:bg-[#FAF8F5] transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#1A1612]"}
         title="Thông báo SCANMS"
         aria-label={"Thông báo: " + unreadCount + " chưa đọc"}
         aria-expanded={isOpen}

@@ -2667,7 +2667,8 @@ export default function ProductManagementPage() {
                           <th className="py-2.5 px-3 w-16 text-center">Ảnh</th>
                           <th className="py-2.5 px-3 min-w-[180px]">Thuộc tính</th>
                           <th className="py-2.5 px-3 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã phân loại quy cách">Mã phân loại <span className="text-rose-500">*</span></th>
+                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã phân loại quy cách">Mã phân loại (SKU) <span className="text-rose-500">*</span></th>
+                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã vạch EAN-13 vật lý gắn liền từng SKU">Mã vạch EAN-13</th>
                           <th className="py-2.5 px-3 min-w-[110px]" title="Giá cơ bản tại kho (Giá sàn bảo vệ)">Giá cơ bản kho (₫) <span className="text-rose-500">*</span></th>
                           <th className="py-2.5 px-3 min-w-[110px]" title="Giá niêm yết bán lẻ chính thức">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
                           <th className="py-2.5 px-3 min-w-[100px]">Tồn kho <span className="text-rose-500">*</span></th>

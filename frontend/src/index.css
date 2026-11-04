@@ -1,3 +1,26 @@
+
+:root {
+  /* ScanMS Premium Gold Palette (From User Exact Spec) */
+  --color-primary: #b8862f;
+  --color-primary-dark: #8b682f;
+  --color-primary-light: #d4af70;
+
+  --color-header: #3a2a12;
+  --color-background: #f7f1e8;
+  --color-surface: #fffaf3;
+  --color-card: #fffdf9;
+
+  --color-text: #302317;
+  --color-text-secondary: #897761;
+  --color-border: #eadbc5;
+
+  --shadow-soft: 0 8px 24px rgba(82, 53, 20, 0.08);
+
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap&subset=vietnamese');
 @import "tailwindcss";
 
@@ -26,18 +49,18 @@
   --font-display: "Playfair Display", Georgia, serif;
   --font-outfit: "Outfit", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --color-canvas: #FAF8F5;
+  --color-canvas: #FAF7F2;
   --color-surface: #ffffff;
-  --color-surface-sand: #F3EFE6;
+  --color-surface-sand: #ECE5D8;
   --color-brand: #C59B58;
-  --color-brand-strong: #B88E4F;
+  --color-brand-strong: #A87D38;
   --color-brand-hover: #B88E4F;
   --color-brand-dark: #231D15;
   --color-brand-soft: #FBF5EB;
   --color-brand-border: #EEDFC6;
   --color-ink: #1A1612;
-  --color-muted: #7D715E;
-  --color-line: #EAE4D7;
+  --color-muted: #6B5E4B;
+  --color-line: #DFD6C5;
 }
 
 .font-display {
@@ -56,15 +79,15 @@
   @apply [font-family:var(--font-sans)];
 
 
-  --canvas: #FAF8F5;
+  --canvas: #FAF7F2;
   --surface: #fff;
-  --surface-sand: #F3EFE6;
-  --surface-2: #F6EFE3;
-  --surface-3: #ECE1CD;
+  --surface-sand: #ECE5D8;
+  --surface-2: #ECE5D8;
+  --surface-3: #E2D7C3;
   --ink: #1A1612;
-  --muted: #7D6D55;
-  --line: #E8DAC4;
-  --line-strong: #DEBE85;
+  --muted: #6B5E4B;
+  --line: #DFD6C5;
+  --line-strong: #C4B499;
 
   --brand: #C59B58;
   --brand-strong: #B88E4F;
@@ -83,7 +106,7 @@
   --success-soft: #eafaf1;
 
   --shadow: 0 1px 3px 0 rgba(26, 22, 18, 0.06), 0 1px 2px -1px rgba(26, 22, 18, 0.04);
-  --shadow-card: 0 8px 30px rgba(110, 84, 39, 0.07);
+  --shadow-card: 0 4px 20px -2px rgba(35, 29, 21, 0.08), 0 2px 6px -1px rgba(35, 29, 21, 0.04);
   --shadow-glow: 0 4px 14px rgba(201, 163, 99, 0.25);
   --radius: 14px;
   --radius-sm: 9px;

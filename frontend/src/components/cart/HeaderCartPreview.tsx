@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, ChevronRight } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import './HeaderCartPreview.css';
@@ -63,7 +63,7 @@ export function HeaderCartPreview({ count, onOpenCart }: { count: number; onOpen
   }, [open]);
 
   return <>
-    <button ref={trigger} type="button" className="public-commerce-header__cart" aria-label="Giỏ hàng"
+    <button ref={trigger} type="button" className="cart-button" aria-label="Giỏ hàng"
       aria-expanded={open} aria-controls={open ? id : undefined} aria-haspopup="dialog"
       onPointerEnter={event => { if (event.pointerType === 'mouse') show(); }}
       onPointerLeave={closeSoon}
@@ -78,8 +78,12 @@ export function HeaderCartPreview({ count, onOpenCart }: { count: number; onOpen
         }
       }}
       onClick={() => { hide(); onOpenCart(); }}>
-      <ShoppingCart size={24} aria-hidden="true" />
-      {count > 0 && <span className="header-cart-count">{count > 99 ? '99+' : count}</span>}
+      <span className="relative inline-flex items-center justify-center">
+        <ShoppingCart size={19} aria-hidden="true" className="text-[#1A1612]" />
+        {count > 0 && <span className="header-cart-count">{count > 99 ? '99+' : count}</span>}
+      </span>
+      <span className="hidden sm:inline text-xs font-bold text-[#1A1612]">Giỏ hàng</span>
+      <ChevronRight size={14} className="text-[#7D715E] hidden sm:inline" />
     </button>
     {open && createPortal(
       <div ref={panel} id={id} role="dialog" aria-label="Xem nhanh giỏ hàng" className="header-cart-preview"
