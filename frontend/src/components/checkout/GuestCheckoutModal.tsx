@@ -4,7 +4,7 @@ import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutO
 import { CheckoutItemsSection } from './CheckoutItemsSection';
 import { CheckoutPaymentMethods } from './CheckoutPaymentMethods';
 import { ScanMSLogo } from '../common/ScanMSLogo';
-import { ScanmsCheckoutVoucherModal, type AppliedShopVoucher, type AppliedPlatformVoucher } from './ScanmsCheckoutVoucherModal';
+import type { AppliedShopVoucher, AppliedPlatformVoucher } from './ScanmsCheckoutVoucherModal';
 import {
   ArrowLeft,
   ChevronDown,
@@ -393,8 +393,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [singleQuantity] = useState(initialQuantity);
   const [selectedVariantId] = useState<string | undefined>(initialVariantId);
 
-  // Coupon selection and manual KOL attribution share the same checkout state.
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  // SCANMS 3-Tier Vouchers
+  // voucher modal streamlined into in-place KOC attribution card
   const [appliedShopCoupons, setAppliedShopCoupons] = useState<Record<string, AppliedShopVoucher>>({});
   const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<AppliedPlatformVoucher | null>(null);
   const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<AppliedPlatformVoucher | null>(null);
@@ -1958,11 +1958,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                 </div>
               </div>
 
-              <button type="button" onClick={() => setIsVoucherModalOpen(true)}
-                className="mb-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-xs font-bold text-[#8A642C] hover:border-[#C59B58]">
-                Chọn mã KOL / freeship
-              </button>
-
               {appliedCoupon ? (
                 <div className="flex items-center justify-between gap-3 p-3 bg-[#FBF5EB] border border-[#EEDFC6] rounded-xl">
                   <div className="flex items-center gap-2 min-w-0">
@@ -2035,10 +2030,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                   <span>{couponMessage.text}</span>
                 </div>
               )}
-              {appliedShippingCoupon && <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs">
-                <span><strong>{appliedShippingCoupon.code}</strong> · Giảm phí vận chuyển {formatMoney(shippingDiscount)}</span>
-                <button type="button" onClick={() => setAppliedShippingCoupon(null)} className="font-bold text-[#8A642C] underline">Bỏ mã</button>
-              </div>}
             </div>
 
             <section className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left" aria-labelledby="checkout-payment-title">
@@ -2052,7 +2043,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     <dd>−{formatMoney(totalShopDiscount)}</dd>
                   </div>
                 )}
-                {shippingDiscount > 0 && <div className="checkout-total-discount"><dt>Freeship ({appliedShippingCoupon?.code})</dt><dd>−{formatMoney(shippingDiscount)}</dd></div>}
                 <div className="checkout-total-final [&_dd]:text-[color:#1A1612]! [&_dd]:text-[26px] [&_dd]:font-[650] [&_dd]:tracking-[-.5px]! [&_dd]:leading-[1.35] [&_dd_>_span]:text-[color:#7D715E]! [&_dd_>_span]:text-[13px] [&_dd_>_span]:font-[500] [@media_(max-width:639px)]:[&_dd]:text-[24px]"><dt>Tổng thanh toán</dt><dd>{shippingFee === null || shippingFeeError || shippingAddressHint || shippingFeeLoading ? <span>Chờ tính phí ship</span> : formatMoney(finalTotal)}</dd></div>
               </dl>
 
@@ -2160,24 +2150,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
           </div>
         </div>
       )}
-      <ScanmsCheckoutVoucherModal
-        isOpen={isVoucherModalOpen && !orderSuccess}
-        onClose={() => setIsVoucherModalOpen(false)}
-        groups={itemsGroupedByShop}
-        shippingFeesByStore={shippingFeesByStore}
-        totalShippingFee={shippingFee || 0}
-        rawGoodsSubtotal={rawSubtotal}
-        customerPhone={customerPhone}
-        appliedShopCoupons={appliedShopCoupons}
-        appliedPlatformCoupon={appliedPlatformCoupon}
-        appliedShippingCoupon={appliedShippingCoupon}
-        onApplyShopCoupon={(storeId, coupon) => setAppliedShopCoupons(previous => ({ ...previous, [storeId]: { ...coupon, storeId } }))}
-        onRemoveShopCoupon={(storeId) => setAppliedShopCoupons(previous => { const next = { ...previous }; delete next[storeId]; return next; })}
-        onApplyPlatformCoupon={setAppliedPlatformCoupon}
-        onRemovePlatformCoupon={() => setAppliedPlatformCoupon(null)}
-        onApplyShippingCoupon={setAppliedShippingCoupon}
-        onRemoveShippingCoupon={() => setAppliedShippingCoupon(null)}
-      />
     </div>
   );
 };
