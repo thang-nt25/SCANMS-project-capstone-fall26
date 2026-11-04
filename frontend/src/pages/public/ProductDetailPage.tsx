@@ -39,9 +39,7 @@ import { PublicHeader } from '@/components/layout/PublicHeader';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
 import { couponService, type EligibleProductCoupon, type PublicStoreCoupon } from '@/services/coupon.service';
-import { voucherSlot } from '@/utils/voucher-intent';
 import { toast } from '@/utils/toast';
-import { formatMoney } from '@/utils/marketplace.utils';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { LiveSessionDealCard } from '@/components/product/LiveSessionDealCard';
@@ -434,7 +432,6 @@ export default function ProductDetailPage() {
   const [couponSuggestions, setCouponSuggestions] = useState<{ key: string; status: 'idle' | 'loading' | 'ready' | 'error'; items: EligibleProductCoupon[] }>({ key: '', status: 'idle', items: [] });
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [couponRefresh, setCouponRefresh] = useState(0);
-  const [selectedExtraVoucher, setSelectedExtraVoucher] = useState<any | null>(null);
   const couponRequest = useRef(0);
   const couponContextKey = `${data?.product?.id ?? ''}|${selectedVariant?.id ?? ''}|${quantity}|${selectedVariant?.price ?? data?.product?.price ?? 0}`;
   const couponContextRef = useRef(couponContextKey);
@@ -496,20 +493,8 @@ export default function ProductDetailPage() {
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedVoucherCode = searchParams.get('voucher') || searchParams.get('coupon') || searchParams.get('code');
   const isCheckoutParam = searchParams.get('checkout') === '1' || searchParams.get('checkout') === 'true';
   const isCheckoutOpen = isCheckoutParam;
-  const setIsCheckoutOpen = (open: boolean) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (open) next.set('checkout', '1');
-        else next.delete('checkout');
-        return next;
-      },
-      { replace: true },
-    );
-  };
   const [isWishlisted, setIsWishlisted] = useState(false);
   const estimatedDeliveryWindow = getEstimatedDeliveryWindow();
 
@@ -1029,12 +1014,6 @@ export default function ProductDetailPage() {
       setCouponError('Vui lòng chọn phân loại trước khi áp dụng mã ưu đãi.');
       return false;
     }
-    const discovered = availableStoreCoupons.find((voucher: any) => (voucher.displayCode || voucher.code || '').toUpperCase() === rawCode.trim().toUpperCase());
-    if (discovered && typeof voucherSlot === 'function' && voucherSlot(discovered as any) !== 'SHOP') {
-      setSelectedExtraVoucher(discovered);
-      setIsCheckoutOpen(true);
-      return true;
-    }
     const requestId = ++couponRequest.current;
     const requestContext = couponContextRef.current;
     setCouponLoading(true);
@@ -1093,17 +1072,9 @@ export default function ProductDetailPage() {
     }
   };
 
-  const applyCouponDirectly = async (codeToApply: string) => {
-    await applyCouponCode(codeToApply);
-  };
-
-  const chooseProductVoucher = (voucher: any) => {
-    if (typeof voucherSlot === 'function' && voucherSlot(voucher) !== 'SHOP') {
-      setSelectedExtraVoucher(voucher);
-      setIsCheckoutOpen(true);
-    } else {
-      void applyCouponDirectly(voucher.code || voucher.displayCode);
-    }
+  const applyCouponDirectly = async (code: string): Promise<boolean> => {
+    try { await navigator.clipboard.writeText(code); toast.success('Đã sao chép mã KOL. Hãy tự nhập khi thanh toán.'); return true; }
+    catch { setCouponError('Chưa sao chép được. Bạn có thể chọn mã và sao chép thủ công.'); return false; }
   };
 
   // Never retain a discount calculated for another product, variant or quantity.
@@ -1113,71 +1084,6 @@ export default function ProductDetailPage() {
     setCouponLoading(false);
     setCouponError(null);
   }, [data?.product?.id, selectedVariant?.id, quantity]);
-
-  const kolToastShownRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    setSelectedExtraVoucher(null);
-    const code = requestedVoucherCode?.trim().toUpperCase();
-    if (!code || !data?.product) return;
-
-    // 1. Kiểm tra nếu mã có trong danh sách voucher công khai của Shop
-    if (availableStoreCoupons.length > 0) {
-      const voucher = (availableStoreCoupons as any[]).find(
-        (item) => ((item.code || item.displayCode) as string).toUpperCase() === code,
-      );
-      if (voucher) {
-        chooseProductVoucher(voucher);
-        return;
-      }
-    }
-
-    // 2. Nếu không có trong danh sách công khai (ví dụ mã độc quyền KOL từ link dán FB/Tiktok)
-    let active = true;
-    const applyDeepLinkCoupon = async () => {
-      try {
-        const res: any = await api.post('/coupons/validate', {
-          code,
-          storeId: data.store.id,
-          items: [
-            {
-              productId: data.product.id,
-              variantId: selectedVariantIsReal ? selectedVariant?.id : undefined,
-              quantity,
-            },
-          ],
-        });
-        const couponRes = res?.data?.data || res?.data || {};
-        const discount = Number(couponRes.discountAmount || couponRes.totalDiscount || 0);
-        if (!active) return;
-
-        if (discount > 0) {
-          setAppliedCoupon({
-            contextKey: couponContextRef.current,
-            code,
-            discountAmount: discount,
-            description: couponRes.description || `Mã độc quyền ${code} đã được áp dụng!`,
-          });
-          setCouponError(null);
-          if (kolToastShownRef.current !== code) {
-            kolToastShownRef.current = code;
-            toast.success(`🎉 Nhận mã ưu đãi độc quyền "${code}" từ Creator! Giảm ${formatMoney(discount)} khi đặt hàng.`);
-          }
-        }
-      } catch (err: any) {
-        if (!active) return;
-        const msg = err?.response?.data?.message;
-        if (msg) {
-          console.warn('Deep link coupon validate error:', msg);
-        }
-      }
-    };
-
-    void applyDeepLinkCoupon();
-    return () => {
-      active = false;
-    };
-  }, [availableStoreCoupons, requestedVoucherCode, selectedVariant?.id, quantity, data?.product?.id]);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1611,9 +1517,9 @@ export default function ProductDetailPage() {
                 quantity={quantity}
                 voucher={verifiedCoupon && discountAmount > 0 ? { code: verifiedCoupon.code, discount: discountAmount, total: finalTotal } : undefined}
               />
-              <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
+              <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponDirectly} />
 
-              {/* Voucher của Shop (Hiển thị ngay dưới Khối giá) */}
+              {/* Mã độc quyền KOL (Hiển thị ngay dưới Khối giá) */}
               {displayVouchers.length > 0 && (
                 <div data-product-price-vouchers className="flex items-center gap-4 py-3 border-t border-[#EAE4D7]/80">
                   <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium flex items-center gap-1.5">
@@ -1643,7 +1549,6 @@ export default function ProductDetailPage() {
                             type="button"
                             disabled={couponLoading}
                             onClick={() => {
-                              setCouponCode(vc.displayCode);
                               applyCouponDirectly(vc.displayCode);
                             }}
                             className={`ml-1 text-[11px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${
@@ -1652,7 +1557,7 @@ export default function ProductDetailPage() {
                                 : 'bg-[#C59B58] text-white hover:bg-[#B88E4F]'
                             }`}
                           >
-                            {isApplied ? 'Đã áp dụng' : 'Lưu mã'}
+                            {'Sao chép mã'}
                           </button>
                         </div>
                       );
@@ -1690,7 +1595,7 @@ export default function ProductDetailPage() {
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <span className="text-[#1A1612] font-semibold">Cước dự kiến: 16.500 ₫ – 22.000 ₫</span>
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#8C6226]">
-                          Miễn phí với Voucher Freeship SCANMS
+                          Phí GHN được tính theo địa chỉ nhận hàng
                         </span>
                       </div>
                       <div className="mt-1 text-xs font-semibold text-[#8C6226] flex items-center gap-1">
@@ -1849,7 +1754,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-[#8C6B32] flex items-center gap-1.5">
                       <Ticket className="w-3.5 h-3.5 text-[#C59B58]" />
-                      Voucher Shop / KOL
+                      Mã độc quyền KOL
                     </span>
                     <span className="text-[10px] text-[#7D715E]">Áp dụng cho lựa chọn hiện tại</span>
                   </div>
@@ -1864,7 +1769,6 @@ export default function ProductDetailPage() {
                           data-voucher-code={vc.displayCode}
                           disabled={couponLoading}
                           onClick={() => {
-                            setCouponCode(vc.displayCode);
                             applyCouponDirectly(vc.displayCode);
                           }}
                           className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
@@ -2451,8 +2355,7 @@ export default function ProductDetailPage() {
           }}
           initialVariantId={selectedVariant?.id}
           initialQuantity={quantity}
-          initialCouponCode={appliedCoupon?.code || requestedVoucherCode || ''}
-          initialExtraVoucher={selectedExtraVoucher ? { code: selectedExtraVoucher.code, benefitType: selectedExtraVoucher.benefitType || 'GOODS' } : undefined}
+          initialCouponCode={''}
           onOrderPlaced={(order) => {
             if (order.paymentMethod === 'PAYOS') return;
             trackAnalytics('order_complete', {

@@ -28,7 +28,7 @@ export function BottomSheet({
       <View style={styles.overlay}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Đóng hộp chọn sản phẩm"
+          accessibilityLabel={`Đóng ${title}`}
           style={StyleSheet.absoluteFill}
           onPress={close}
         />

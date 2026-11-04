@@ -272,6 +272,8 @@ export const statusLabels: Record<string, string> = {
   APPROVED: "Đã duyệt",
   REJECTED: "Từ chối",
   PENDING: "Chờ xử lý",
+  PENDING_APPROVAL: "Chờ Shop duyệt",
+  DELETED: "Đã xóa",
   SHIPPING: "Đang giao",
   DELIVERED: "Đã giao",
   COMPLETED: "Hoàn thành",

@@ -28,35 +28,14 @@ import {
 } from "../common/shared";
 import { SelectField } from "../common/SelectField";
 import { validateInput } from "../../utils/validate-input";
-const Wallet = z.object({
-  availableBalance: amount,
-  pendingBalance: amount,
-  minimumWithdrawalAmount: amount,
-  canWithdraw: z.boolean(),
-  kycStatus: z.string(),
-  stores: z.array(
-    z.object({
-      storeId: z.string(),
-      storeName: z.string(),
-      availableBalance: amount,
-      pendingBalance: amount,
-      isActive: z.boolean(),
-    }),
-  ),
-  withdrawalTaxPolicy: z.object({ threshold: z.number(), rate: z.number() }),
-  bankAccount: z
-    .object({
-      bankName: z.string(),
-      maskedAccountNumber: z.string(),
-      accountName: z.string(),
-    })
-    .nullish(),
-});
+import { WalletSummarySchema, ledgerLabels } from "./wallet-contracts";
+import { WalletTopUpPanel } from "./WalletTopUpPanel";
 const Ledger = z.object({
   entries: z.array(
     z.object({
       id: z.string(),
       transactionType: z.string(),
+      referenceType: z.string().nullish(),
       amount,
       balanceBefore: amount,
       balanceAfter: amount,
@@ -99,7 +78,7 @@ export function WalletScreen() {
     [withdraw, setWithdraw] = useState(false),
     [storeId, setStoreId] = useState(""),
     [value, setValue] = useState("");
-  const wallet = useResource("wallet", "/wallets/me", Wallet);
+  const wallet = useResource("wallet", "/wallets/me", WalletSummarySchema);
   const ledger = useResource(
     "ledger",
     `/wallets/me/ledger?page=${page}&limit=20`,
@@ -158,7 +137,8 @@ export function WalletScreen() {
               <Caption>
                 Rút tối thiểu {money(wallet.data.minimumWithdrawalAmount)}. Từ{" "}
                 {money(wallet.data.withdrawalTaxPolicy.threshold)}, thuế theo
-                cấu hình hệ thống {wallet.data.withdrawalTaxPolicy.rate * 100}%.
+                cấu hình hệ thống{" "}
+                {Number(wallet.data.withdrawalTaxPolicy.rate) * 100}%.
               </Caption>
               {!wallet.data.canWithdraw && (
                 <Caption>
@@ -175,6 +155,7 @@ export function WalletScreen() {
           )}
         </>
       )}
+      {user.role === "CUSTOMER" && <WalletTopUpPanel />}
       <Title>Lịch sử biến động</Title>
       <QueryState
         loading={ledger.isLoading}
@@ -184,7 +165,11 @@ export function WalletScreen() {
       {ledger.data?.entries.length === 0 && <Empty />}
       {ledger.data?.entries.map((item) => (
         <Card key={item.id}>
-          <Badge>{statusText(item.transactionType)}</Badge>
+          <Badge>
+            {(item.referenceType && ledgerLabels[item.referenceType]) ||
+              ledgerLabels[item.transactionType] ||
+              statusText(item.transactionType)}
+          </Badge>
           <Title>{money(item.amount)}</Title>
           <Caption>
             {money(item.balanceBefore)} → {money(item.balanceAfter)}

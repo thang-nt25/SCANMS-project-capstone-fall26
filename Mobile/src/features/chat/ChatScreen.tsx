@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { randomUUID } from "expo-crypto";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { ScreenProps } from "../../navigation/router";
@@ -17,16 +16,11 @@ import { api } from "../../services/api";
 import { useChat } from "../../services/realtime/ChatProvider";
 import { mergeMessages } from "../../services/realtime/messages";
 import { useAuth } from "../auth/AuthProvider";
-import {
-  Badge,
-  Button,
-  Caption,
-  ErrorNotice,
-  Field,
-  Loading,
-} from "../../components/ui";
+import { Button, Caption, ErrorNotice, Loading } from "../../components/ui";
 import { colors } from "../../theme/tokens";
-import { AttachmentPicker, type Attachment } from "./AttachmentPicker";
+import type { Attachment } from "./AttachmentPicker";
+import { ChatComposer } from "./ChatComposer";
+import { ChatHeader } from "./ChatHeader";
 interface Ack {
   ok: boolean;
   error?: string;
@@ -37,8 +31,15 @@ export function ChatScreen({ route, navigation }: ScreenProps<"Chat">) {
   const { session } = useAuth(),
     { socket, ready, error: socketError } = useChat();
   const id = route.params.conversation.id;
+  const conversation = route.params.conversation;
+  const partner =
+    session!.user.role === "SHOP_MANAGER"
+      ? conversation.customer || conversation.collaborator
+      : null;
+  const canOpenStore =
+    session!.user.role === "CUSTOMER" || session!.user.role === "COLLABORATOR";
   const [attachment, setAttachment] = useState<Attachment | null>(null);
-  const insets = useSafeAreaInsets();
+  const uploading = useRef(false);
   const [text, setText] = useState(""),
     [sending, setSending] = useState(false),
     [error, setError] = useState("");
@@ -79,7 +80,13 @@ export function ChatScreen({ route, navigation }: ScreenProps<"Chat">) {
     };
   }, [socket, ready, id]);
   const send = () => {
-    if (lock.current || !socket || !ready || (!text.trim() && !attachment))
+    if (
+      lock.current ||
+      uploading.current ||
+      !socket ||
+      !ready ||
+      (!text.trim() && !attachment)
+    )
       return;
     if (text.trim().length > 4000) {
       setError("Tin nhắn tối đa 4.000 ký tự.");
@@ -140,24 +147,22 @@ export function ChatScreen({ route, navigation }: ScreenProps<"Chat">) {
       style={{ flex: 1, backgroundColor: colors.canvas }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={{ padding: 12, gap: 8 }}>
-        {session!.user.role === "CUSTOMER" ||
-        session!.user.role === "COLLABORATOR" ? (
-          <Button
-            title={route.params.conversation.store.name}
-            secondary
-            onPress={() =>
-              navigation.navigate("Business", {
-                feature: "storefront",
-                storeId: route.params.conversation.store.id,
-              })
-            }
-          />
-        ) : (
-          <Caption>{route.params.conversation.store.name}</Caption>
-        )}
-        <Badge>{ready ? "Đang trực tuyến" : "Đang kết nối lại…"}</Badge>
-      </View>
+      <ChatHeader
+        name={partner?.fullName || conversation.store.name}
+        avatarUri={
+          partner?.fullName ? partner.avatarUrl : conversation.store.logoUrl
+        }
+        connected={ready}
+        onOpenStore={
+          canOpenStore
+            ? () =>
+                navigation.navigate("Business", {
+                  feature: "storefront",
+                  storeId: conversation.store.id,
+                })
+            : undefined
+        }
+      />
       <ErrorNotice
         error={error || socketError || result.error}
         retry={() => {
@@ -249,47 +254,20 @@ export function ChatScreen({ route, navigation }: ScreenProps<"Chat">) {
           }}
         />
       )}
-      <View
-        style={{
-          borderTopWidth: 1,
-          borderColor: colors.line,
-          backgroundColor: colors.white,
-          padding: 14,
-          paddingBottom: Math.max(14, insets.bottom),
-          gap: 10,
+      <ChatComposer
+        key={id}
+        conversationId={id}
+        text={text}
+        setText={setText}
+        attachment={attachment}
+        setAttachment={setAttachment}
+        sending={sending}
+        ready={ready}
+        send={send}
+        onUploadBusyChange={(busy) => {
+          uploading.current = busy;
         }}
-      >
-        <AttachmentPicker
-          conversationId={id}
-          disabled={sending || !ready}
-          onSelected={setAttachment}
-        />
-        {attachment && (
-          <>
-            <Caption>Tệp đính kèm: {attachment.fileName}</Caption>
-            <Button
-              title="Bỏ tệp đính kèm"
-              secondary
-              disabled={sending}
-              onPress={() => setAttachment(null)}
-            />
-          </>
-        )}
-        <Field
-          label="Tin nhắn"
-          value={text}
-          onChangeText={setText}
-          maxLength={4000}
-          editable={!sending}
-          placeholder="Trao đổi với đối tác…"
-        />
-        <Button
-          title="Gửi tin nhắn"
-          loading={sending}
-          disabled={!ready || (!text.trim() && !attachment)}
-          onPress={send}
-        />
-      </View>
+      />
     </KeyboardAvoidingView>
   );
 }

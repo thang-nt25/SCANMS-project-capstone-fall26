@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Optional,
+  ForbiddenException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import {
   Prisma,
@@ -26,6 +32,7 @@ export class WalletsService {
   constructor(
     private readonly ledgerService: FinancialLedgerService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
 
   /** The caller must create the payout request in this same transaction. */
@@ -457,11 +464,29 @@ export class WalletsService {
   /**
    * Nạp tiền giả lập Sandbox / Demo (Phục vụ kiểm thử & trải nghiệm thanh toán giỏ hàng)
    */
+  demoTopUpAvailability() {
+    return {
+      available:
+        this.config?.get<string>('NODE_ENV') !== 'production' &&
+        this.config?.get<string>('ALLOW_DEMO_WALLET_TOPUP') === 'true',
+    };
+  }
+
   async topUpDemo(userId: string, amountNum: number) {
+    if (!this.demoTopUpAvailability().available) {
+      throw new ForbiddenException(
+        'Nạp ví thử nghiệm chưa được bật hoặc không được phép trong production.',
+      );
+    }
     if (!this.prisma) {
       throw new Error('PrismaService is required for topUpDemo');
     }
-    if (amountNum <= 0 || amountNum > 50000000) {
+    if (
+      !Number.isFinite(amountNum) ||
+      !Number.isInteger(amountNum) ||
+      amountNum <= 0 ||
+      amountNum > 50000000
+    ) {
       throw new BadRequestException(
         'Số tiền nạp thử nghiệm phải lớn hơn 0 và tối đa 50.000.000đ',
       );

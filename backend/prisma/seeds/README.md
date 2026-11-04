@@ -1,10 +1,10 @@
 # Bộ dữ liệu Capstone SCANMS
 
-> **Flow 4 (bản v4):** Bộ seed tạo 4 shop, 12 sản phẩm, 20 mã độc quyền KOL và một mã freeship toàn sàn `SCANMSFREESHIP` (giảm 100% phí ship, tối đa 100.000₫; tối đa 3 lần/khách mới; ngân sách 20 triệu, 500 lượt). Mã không hết hạn; chỉ áp dụng cho số điện thoại chưa có đơn mua trước đó, và các đơn đã dùng mã này được tính trong hạn mức 3 lần. Serum Sora 30 ml có giá 450.000₫; KOL 01 là Đinh Thảo Nhi (tài khoản demo), mã `THAONHI16` giảm 5% và deal được duyệt 16%. Đơn một sản phẩm: 427.500₫ tiền hàng sau giảm, thu nhập KOL 72.000₫ (16% giá gốc). `seed:plan` chỉ xem trước; DB nhóm hiện tại chưa được nạp lại và có thể vẫn chứa dữ liệu cũ. Xem [kịch bản review Flow 4](../../../docs/review%202/FA26SE032_R2_Kich_Ban_Thuyet_Trinh.md) để dùng DB riêng.
+> **Cập nhật 04/11/2026 — v5:** Chỉ seed 20 mã ưu đãi độc quyền KOL, không phát hành voucher Shop/Sàn/freeship và không tạo kho mã đã lưu. Khách sao chép rồi tự nhập mã khi checkout. Thay đổi này chỉ cập nhật kịch bản seed, chưa nạp lại hoặc xóa dữ liệu DB nhóm. Lịch sử đơn/đối soát cũ được giữ. Các ví dụ v4 trong tài liệu thuyết trình là lịch sử, không dùng để kiểm thử chính sách hiện tại.
 
 Entry point vẫn là `backend/prisma/seed.ts`, được gọi bằng `npx prisma db seed` theo `prisma.config.ts`. Các module trong thư mục này chỉ xây dựng fixture và ghi dữ liệu qua Prisma; không thay thế controller/service của ứng dụng.
 
-Phiên bản hiện tại là **`scanms-capstone-2026-v4`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1. Nếu DB đã có manifest cũ v1/v2/v3, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB. Không chạy reset DB nhóm khi lịch sử migration chưa được đối soát và chưa được phê duyệt.
+Phiên bản hiện tại là **`scanms-capstone-2026-v5`**. UUID tài khoản/sản phẩm được giữ ổn định theo namespace v1. Nếu DB đã có manifest cũ v1/v2/v3/v4, lệnh apply/check dừng rõ ràng; không tự cập nhật manifest hoặc ghi đè tiến độ test. Dùng `seed:audit` để đối chiếu trước khi nhóm quyết định dựng lại DB. Không chạy reset DB nhóm khi lịch sử migration chưa được đối soát và chưa được phê duyệt.
 
 `prisma/seed-runner.cjs` nạp ts-node của chính dự án và `tsconfig.seed.json`, giúp lệnh Prisma chạy được cả khi terminal/CI không có `node_modules/.bin` trên PATH. Nếu PowerShell chặn các shim `.ps1`, dùng `npm.cmd` và `npx.cmd` cho các câu lệnh bên dưới.
 
@@ -55,8 +55,8 @@ Sau khi chủ dự án cung cấp cấu hình dịch vụ, đã bổ sung các k
 | Live                 |        5 | Fixture phụ, không có voucher Live; không nằm trong demo Flow 4                                 |
 | Hội thoại / tin nhắn | 50 / 100 | Khách–Shop và KOL–Shop; có thẻ sản phẩm, thẻ đề xuất deal                                       |
 | Thông báo            |      160 | 60 thông báo đơn hàng và 100 thông báo chat; ID/read-state khớp tin nhắn để đọc chat hạ chuông |
-| Coupon KOL / freeship sàn |       21 | 20 mã KOL và một mã `SCANMSFREESHIP` áp dụng mọi shop                                      |
-| Mã đã lưu            |       30 | Mỗi Customer lưu một mã KOL; khóa kép user/coupon                                               |
+| Coupon KOL | 20 | Chỉ GOODS, SHOP_FUNDED và liên kết tài khoản COLLABORATOR |
+| Mã đã lưu | 0 | Không có cơ chế lưu mã, khách tự sao chép và nhập tại checkout |
 | Cước gửi mẫu         |       15 | TEST, Shop chịu phí, COD 0; amount NULL/PENDING_CONFIRMATION vì chưa có chứng từ GHN thật      |
 | Đổi trả              |        6 | Có ảnh/video, hồ sơ chờ duyệt hoặc được duyệt để tiếp tục test lấy hàng                         |
 | Ví / bút toán        | 66 / 212 | Tách AVAILABLE/PENDING; số dư tính từ lịch sử, không tự gán tiền không có nguồn                 |

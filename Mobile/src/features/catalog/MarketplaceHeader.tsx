@@ -12,6 +12,7 @@ import { Icon, IconButton, type IconName } from "../../components/commerce";
 import { colors } from "../../theme/tokens";
 import { money } from "../../types/contracts";
 import { amount, useResource } from "../common/shared";
+import { isCustomerKolCoupon } from "../coupons/coupon-policy";
 
 export function MarketplaceHeader({
   search,
@@ -121,7 +122,7 @@ export function MarketplaceServices({
         >
           <Icon name="gift" size={22} color={colors.strong} />
           <View style={{ gap: 4, flex: 1 }}>
-            <Text style={styles.utilityTitle}>Kho voucher</Text>
+            <Text style={styles.utilityTitle}>Mã ưu đãi KOL</Text>
             <Text style={styles.utilityDetail}>Khám phá ưu đãi</Text>
           </View>
         </Pressable>
@@ -152,6 +153,9 @@ export function MarketplaceServices({
 }
 const Coupon = z.object({
   id: z.string(),
+  couponType: z.string().optional(),
+  fundingSource: z.string().optional(),
+  benefitType: z.string().optional(),
   code: z.string().optional(),
   displayCode: z.string().optional(),
   discountType: z.string(),
@@ -168,7 +172,7 @@ export function MarketplacePromotions({
   browse(): void;
 }) {
   const coupons = useResource(
-    "home-coupon-summary",
+    "home-kol-coupon-summary-v2",
     "/coupons/available",
     z.array(Coupon),
   );
@@ -176,7 +180,7 @@ export function MarketplacePromotions({
     coupons.data
       ?.filter(
         (item) =>
-          Number(item.discountValue) > 0 &&
+          isCustomerKolCoupon(item) && Number(item.discountValue) > 0 &&
           (!item.expiresAt || Date.parse(item.expiresAt) > Date.now()),
       )
       .slice(0, 2) || [];
@@ -184,7 +188,7 @@ export function MarketplacePromotions({
     <View style={styles.promotion}>
       <View style={styles.promoHeading}>
         <Icon name="tag" size={14} color={colors.strong} />
-        <Text style={styles.promoTitle}>ƯU ĐÃI TỪ CÁC GIAN HÀNG</Text>
+        <Text style={styles.promoTitle}>MÃ ƯU ĐÃI ĐỘC QUYỀN KOL</Text>
       </View>
       <View style={styles.tickets}>
         {available.length ? (
@@ -219,7 +223,7 @@ export function MarketplacePromotions({
             >
               <Icon name="gift" size={24} color={colors.strong} />
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.ticketTitle}>Voucher Shop</Text>
+                <Text style={styles.ticketTitle}>Mã độc quyền KOL</Text>
                 <Text style={styles.ticketDetail}>Khám phá kho ưu đãi</Text>
               </View>
             </Pressable>

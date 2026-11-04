@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-04",
+  "timezone": "Asia/Bangkok",
+  "mobileTests": { "passed": 57, "failed": 0 },
+  "backendTests": { "suites": 5, "passed": 65, "failed": 0, "sharedDatabase": false, "bankCalls": false },
+  "backendBuild": "PASS",
+  "backendTargetedEslint": "PASS",
+  "mobileTypecheck": "PASS",
+  "mobileLint": "PASS",
+  "androidJsExport": "PASS",
+  "nativeVisual": { "role": "CUSTOMER", "walletSummary": "PASS", "depositForms": ["PAYOS", "DEMO"], "confirmation": "PASS", "ledgerLabels": "PASS" },
+  "liveDepositPerformed": false,
+  "paymentLinkCreatedDuringInspection": true,
+  "paymentLinkAmount": 100000,
+  "paymentLinkCancellation": "CANCELLED_CONFIRMED_ON_ANDROID",
+  "walletBalanceAfterCancellation": "1500000.00",
+  "bankTransferPerformed": false,
+  "sharedDatabaseReset": false,
+  "envTracked": false,
+  "bidvPrivateKeyDirectoryExists": false,
+  "payoutBidvTested": false,
+  "notes": [
+    "Wallet tax policy accepts Prisma decimal strings; negative clawback debt is preserved.",
+    "Demo top-up is restricted to Customer, explicit flag and non-production.",
+    "API routing/validation/authorization is tested through isolated HTTP without importing AppModule.",
+    "Native QR helper ESM compatibility was corrected during Android verification.",
+    "Payment settlement, partial/cancel/timeout and duplicate credit scenarios use mocked provider tests. Actual bank settlement remains user acceptance work."
+  ]
+}

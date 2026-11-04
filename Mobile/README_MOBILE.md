@@ -4,6 +4,12 @@
 
 ## Phạm vi hiện tại
 
+**Nguyên tắc đồng bộ:** luồng nghiệp vụ, phân quyền, trạng thái và dữ liệu lấy theo web/backend cùng hệ thống; mobile chỉ tổ chức lại FE thành màn hình, tab, sheet và thao tác dành cho điện thoại. Các tính năng chưa port phải ghi rõ, không tự rút gọn quy tắc nghiệp vụ. Chat dùng nút **+** cạnh ô nhập để chọn ảnh/video hoặc tài liệu, xem trước và gửi qua API/Socket.IO hiện có.
+
+**Luồng mới 04/11:** chỉ dùng mã độc quyền KOL; khách sao chép và tự nhập ở checkout web, không có lưu mã hoặc voucher Shop/Sàn. Đã sửa nút duyệt mã của Shop và bổ sung các thao tác theo trạng thái. Xem [cập nhật mobile và kịch bản test từng role](docs/MOBILE_COMPLETION_2026-11-04.md).
+
+**Ví 04/11:** đã sửa hợp đồng Decimal gây lỗi số dư, bổ sung nạp payOS và nạp thử nghiệm có kiểm soát cho Customer. Xem [luồng và các bước nghiệm thu ví](docs/WALLET_TOPUP_2026-11-04.md).
+
 **Giao diện mới 04/11:** Khách mua hàng dùng Trang chủ / Khám phá / Đơn mua / Tin nhắn / Tôi. Các tiện ích ví, voucher, địa chỉ, hồ sơ và đổi trả ở mục Tôi; giỏ nằm trên thanh đầu trang. Các role đối tác/vận hành dùng tab Công cụ. Xem [thiết kế và kịch bản nghiệm thu mới](docs/MARKETPLACE_UI_2026-11-04.md).
 
 Menu **Nghiệp vụ** tập hợp các màn được phép theo role. Hướng dẫn test chi tiết và giới hạn nghiệm thu: [ROLE_WORKFLOWS_2026-11-03.md](docs/ROLE_WORKFLOWS_2026-11-03.md).

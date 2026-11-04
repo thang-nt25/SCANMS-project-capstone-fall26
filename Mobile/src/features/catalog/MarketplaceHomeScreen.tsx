@@ -62,7 +62,7 @@ export function MarketplaceHomeScreen() {
   const open = (feature: BusinessFeature) =>
     navigation.navigate("Business", { feature });
   const shortcuts: { title: string; icon: IconName; action(): void }[] = [
-    { title: "Voucher", icon: "tag", action: () => open("coupons") },
+    { title: "Mã KOL", icon: "tag", action: () => open("coupons") },
     {
       title: "Đơn mua",
       icon: "package",

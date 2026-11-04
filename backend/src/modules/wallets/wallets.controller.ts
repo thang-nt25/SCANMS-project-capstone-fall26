@@ -8,6 +8,7 @@ import {
   Query,
   Param,
   ParseUUIDPipe,
+  ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,7 +18,14 @@ import type { AuthenticatedUser } from '../../common/interfaces/authenticated-re
 import { WalletSummaryService } from './wallet-summary.service';
 import { WalletsService } from './wallets.service';
 import { QueryLedgerDto } from './dto/query-ledger.dto';
-import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { WalletPayosService } from './wallet-payos.service';
 
@@ -62,7 +70,9 @@ export class WalletsController {
   ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Lấy số dư ví và trạng thái của người dùng (Customer, KOL, Shop)' })
+  @ApiOperation({
+    summary: 'Lấy số dư ví và trạng thái của người dùng (Customer, KOL, Shop)',
+  })
   getMyWallet(@CurrentUser() user: AuthenticatedUser) {
     return this.summaryService.getMyWallet(user.id);
   }
@@ -73,23 +83,46 @@ export class WalletsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: TopUpDemoDto,
   ) {
+    if (user.role !== 'CUSTOMER')
+      throw new ForbiddenException(
+        'Chỉ khách mua hàng được nạp ví mua sắm thử nghiệm.',
+      );
     const amount = Number(body?.amount || 0);
     return this.walletsService.topUpDemo(user.id, amount);
   }
 
+  @Get('top-up-demo/availability')
+  demoTopUpAvailability(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      available:
+        user.role === 'CUSTOMER' &&
+        this.walletsService.demoTopUpAvailability().available,
+    };
+  }
+
   @Get('top-up-payos/availability')
-  payosAvailability() { return this.walletPayos.availability(); }
+  payosAvailability() {
+    return this.walletPayos.availability();
+  }
 
   @Post('top-up-payos')
-  createPayosTopUp(@CurrentUser() user: AuthenticatedUser, @Body() body: PayosTopUpDto) {
+  createPayosTopUp(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: PayosTopUpDto,
+  ) {
     return this.walletPayos.create(user.id, body.amount);
   }
 
   @Get('top-up-payos/pending')
-  pendingPayosTopUp(@CurrentUser() user: AuthenticatedUser) { return this.walletPayos.latest(user.id); }
+  pendingPayosTopUp(@CurrentUser() user: AuthenticatedUser) {
+    return this.walletPayos.latest(user.id);
+  }
 
   @Get('top-up-payos/:id/status')
-  payosTopUpStatus(@CurrentUser() user: AuthenticatedUser, @Param('id', new ParseUUIDPipe()) id: string) {
+  payosTopUpStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
     return this.walletPayos.status(user.id, id);
   }
 
@@ -103,7 +136,10 @@ export class WalletsController {
   }
 
   @Post('top-up-payos/:id/cancel')
-  cancelPayosTopUp(@CurrentUser() user: AuthenticatedUser, @Param('id', new ParseUUIDPipe()) id: string) {
+  cancelPayosTopUp(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
     return this.walletPayos.cancel(user.id, id);
   }
 

@@ -73,7 +73,7 @@ export default function ShopPage() {
 
   // Shop coupons & Saved coupons state
   const [shopCoupons, setShopCoupons] = useState<PublicStoreCoupon[]>([]);
-  const [savedCouponIds, setSavedCouponIds] = useState<string[]>([]);
+  const [copiedCouponIds, setCopiedCouponIds] = useState<string[]>([]);
   const [savingCouponId, setSavingCouponId] = useState<string | null>(null);
 
   // Follow & Search states
@@ -136,15 +136,7 @@ export default function ShopPage() {
         })
         .catch(() => undefined);
 
-      api
-        .get('/coupons/saved')
-        .then((res) => {
-          const raw = unwrap(res);
-          if (active && Array.isArray(raw)) {
-            setSavedCouponIds(raw);
-          }
-        })
-        .catch(() => undefined);
+
     }
 
     return () => {
@@ -285,27 +277,15 @@ export default function ShopPage() {
     }
   };
 
-  // Save / Claim Voucher into Customer Wallet
-  const handleSaveCoupon = async (voucher: PublicStoreCoupon) => {
-    if (!authService.getCurrentUser()) {
-      toast.info('Vui lòng đăng nhập để lưu mã giảm giá vào Ví Voucher');
-      navigate(
-        `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
-      );
-      return;
-    }
+  // Copy-only: checkout requires a code entered by the customer.
+  const handleCopyCoupon = async (voucher: PublicStoreCoupon) => {
     try {
       setSavingCouponId(voucher.id);
-      await api.post(`/coupons/saved/${voucher.id}`);
-      setSavedCouponIds((prev) => [...new Set([...prev, voucher.id])]);
-      toast.success(`Đã lưu mã “${voucher.code}” vào Ví Voucher của bạn!`);
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || 'Không thể lưu mã giảm giá lúc này',
-      );
-    } finally {
-      setSavingCouponId(null);
-    }
+      await navigator.clipboard.writeText(voucher.code);
+      setCopiedCouponIds(previous => [...new Set([...previous, voucher.id])]);
+      toast.success('Đã sao chép mã. Hãy tự nhập khi thanh toán.');
+    } catch { toast.error('Không sao chép được. Bạn có thể chọn mã và sao chép thủ công.'); }
+    finally { setSavingCouponId(null); }
   };
 
   return (
@@ -449,13 +429,13 @@ export default function ShopPage() {
                       </h2>
                     </div>
                     <span className="text-xs text-[#7D715E]">
-                      Lưu mã vào ví để áp dụng khi thanh toán
+                      Sao chép mã KOL và tự nhập khi thanh toán
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {shopCoupons.map((voucher) => {
-                      const isSaved = savedCouponIds.includes(voucher.id);
+                      const isCopied = copiedCouponIds.includes(voucher.id);
                       const isPercentage =
                         voucher.discountType === 'PERCENTAGE';
                       const isSaving = savingCouponId === voucher.id;
@@ -526,26 +506,26 @@ export default function ShopPage() {
                               </span>
                               <button
                                 type="button"
-                                disabled={isSaved || isSaving}
-                                onClick={() => handleSaveCoupon(voucher)}
+                                disabled={isCopied || isSaving}
+                                onClick={() => handleCopyCoupon(voucher)}
                                 className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                  isSaved
+                                  isCopied
                                     ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] cursor-default'
                                     : 'bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] cursor-pointer'
                                 }`}
                               >
-                                {isSaved ? (
+                                {isCopied ? (
                                   <>
                                     <Check
                                       size={12}
                                       className="text-emerald-700"
                                     />
-                                    <span>Đã lưu</span>
+                                    <span>Đã sao chép</span>
                                   </>
                                 ) : isSaving ? (
-                                  'Đang lưu...'
+                                  'Đang sao chép...'
                                 ) : (
-                                  'Lưu mã'
+                                  'Sao chép mã'
                                 )}
                               </button>
                             </div>
