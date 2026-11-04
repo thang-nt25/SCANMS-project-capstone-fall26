@@ -3920,7 +3920,7 @@ export class OrdersService {
           commissions: {
             select: { id: true, commissionAmount: true, status: true },
           },
-          returnRequest: true,
+          returnRequest: { include: { refund: true, dispute: true } },
         },
       }),
     ]);
@@ -4023,6 +4023,14 @@ export class OrdersService {
     if (!explanation || explanation.length < 10 || explanation.length > 1000) {
       throw new BadRequestException('Phản hồi phải có từ 10 đến 1000 ký tự');
     }
+    const escalate = dto.decision === ReturnDecision.REJECT && dto.escalateToManager === true;
+    if (dto.escalateToManager && dto.decision !== ReturnDecision.REJECT)
+      throw new BadRequestException('Chỉ có thể chuyển Manager khi Shop từ chối');
+    if (escalate && userRole !== UserRole.SHOP_MANAGER)
+      throw new ForbiddenException('Chỉ Shop được gửi bằng chứng để yêu cầu Manager phân xử');
+    if (escalate && (explanation.length < 20 || !dto.evidenceUrls?.length || dto.evidenceUrls.length > 5 ||
+        dto.evidenceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
+      throw new BadRequestException('Cần lý do ít nhất 20 ký tự và 1–5 ảnh/video bằng chứng HTTPS để chuyển Manager');
     const rejectionLabel = dto.rejectionReason && Object.prototype.hasOwnProperty.call(RETURN_REJECTION_REASONS, dto.rejectionReason)
       ? RETURN_REJECTION_REASONS[dto.rejectionReason] : null;
     if (dto.decision === ReturnDecision.REJECT && !rejectionLabel) {
@@ -4094,10 +4102,47 @@ export class OrdersService {
           data: { response },
         },
       });
+      if (escalate) {
+        const disputed = await tx.returnRequest.updateMany({
+          where: { id: order.returnRequest!.id, status: ReturnRequestStatus.SHOP_REJECTED },
+          data: { status: ReturnRequestStatus.DISPUTED },
+        });
+        if (disputed.count !== 1)
+          throw new ConflictException('Hồ sơ đã thay đổi trạng thái; hãy tải lại');
+        await tx.dispute.create({ data: {
+          returnRequestId: order.returnRequest!.id,
+          reason: 'SHOP_REQUESTED_REVIEW',
+          details: response,
+        } });
+        await tx.returnEvent.create({ data: {
+          returnRequestId: order.returnRequest!.id,
+          actorId: userId,
+          type: 'SHOP_EVIDENCE_SUBMITTED',
+          data: { details: response, evidenceUrls: dto.evidenceUrls! },
+        } });
+        await tx.returnEvent.create({ data: {
+          returnRequestId: order.returnRequest!.id,
+          actorId: userId,
+          type: 'SHOP_REJECTED_TO_DISPUTED',
+        } });
+        const managers = await tx.user.findMany({
+          where: { role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] }, isActive: true, isDeleted: false },
+          select: { id: true },
+        });
+        for (const manager of managers) {
+          await tx.notification.create({ data: {
+            userId: manager.id,
+            title: 'Shop yêu cầu xác minh đổi trả',
+            message: `Đơn ${order.externalOrderSn}: Shop đã từ chối và gửi bằng chứng. Cần đối chiếu lỗi hàng hóa hoặc vận chuyển.`,
+            type: 'RETURN_DISPUTED',
+            data: { orderId, returnRequestId: order.returnRequest!.id },
+          } });
+        }
+      }
       if (!approved) {
         const restored = await tx.order.updateMany({
           where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
-          data: { status: order.returnRequest!.originalOrderStatus },
+          data: { status: escalate ? OrderStatus.DISPUTED : order.returnRequest!.originalOrderStatus },
         });
         if (restored.count !== 1)
           throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
@@ -4107,11 +4152,12 @@ export class OrdersService {
           userId: order.returnRequest!.customerId,
           title: approved
             ? 'Shop đã chấp thuận yêu cầu đổi trả'
-            : 'Shop đã từ chối yêu cầu đổi trả',
+            : escalate ? 'Shop đã chuyển hồ sơ đổi trả cho System Manager' : 'Shop đã từ chối yêu cầu đổi trả',
           message: approved
             ? `Đơn ${order.externalOrderSn}: Shop đã đồng ý xử lý. ${warehouseAddress ? 'Bạn có thể xác nhận địa chỉ để đặt lấy hàng tại nhà.' : 'Đang chờ Shop cấu hình kho nhận hàng trả.'} Đây chưa phải xác nhận đã hoàn tiền. Phản hồi: ${response}`
-            : `Đơn ${order.externalOrderSn}: ${response}`,
-          type: approved ? 'RETURN_APPROVED' : 'RETURN_REJECTED',
+            : escalate ? `Đơn ${order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager phân xử. ${response}`
+              : `Đơn ${order.externalOrderSn}: ${response}`,
+          type: approved ? 'RETURN_APPROVED' : escalate ? 'RETURN_DISPUTED' : 'RETURN_REJECTED',
           data: { orderId, returnRequestId: order.returnRequest!.id },
         },
       });
@@ -4122,7 +4168,7 @@ export class OrdersService {
     return {
       message: approved
         ? 'Đã duyệt yêu cầu; chờ khách đặt lấy hàng trả'
-        : 'Đã từ chối yêu cầu',
+        : escalate ? 'Đã gửi bằng chứng và chuyển hồ sơ cho System Manager' : 'Đã từ chối yêu cầu',
       returnRequest: result,
     };
   }

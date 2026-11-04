@@ -13,14 +13,22 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'voucher' | null>(null);
   const [stateReady, setStateReady] = useState(false);
+  const [resolvedInitiatorRole, setResolvedInitiatorRole] = useState<string | null>(null);
+  const [resolvedCouponTerms, setResolvedCouponTerms] = useState<any>(null);
   const [reload, setReload] = useState(0);
   const status = decision || card.status;
   const isDecision = card.type === 'EXCLUSIVE_DEAL_DECISION';
   const approved = status === 'APPROVED';
   const rejected = status === 'REJECTED';
   const rate = card.approvedCommissionRate ?? card.proposedCommissionRate;
-  const shopOffer = card.initiatorRole === 'SHOP_MANAGER' || card.offeredBy === 'SHOP';
-  const canReview = !isDecision && status === 'PENDING' && !isMine && (shopOffer ? !isShop : isShop);
+  const shopOffer = resolvedInitiatorRole
+    ? resolvedInitiatorRole === 'SHOP_MANAGER'
+    : card.initiatorRole === 'SHOP_MANAGER' || card.offeredBy === 'SHOP';
+  const terms = resolvedCouponTerms ?? card.couponTerms;
+  // The recipient's role determines who can decide. Historical chat messages
+  // can have a senderId that does not match the currently signed-in user.
+  const canReview = stateReady && !isDecision && status === 'PENDING' && (shopOffer ? !isShop : isShop);
+  const waitingForPartner = stateReady && !isDecision && status === 'PENDING' && !canReview;
 
   useEffect(() => {
     if (!card.proposalId) { setStateReady(true); return; }
@@ -28,8 +36,12 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
     let revision = 0;
     setStateReady(false);
     setDecision(null);
+    setResolvedInitiatorRole(null);
+    setResolvedCouponTerms(null);
     const apply = (state: any) => {
       setDecision(state.closedAt ? 'CLOSED' : state.status); setStateReady(true);
+      if (state.initiatorRole) setResolvedInitiatorRole(state.initiatorRole);
+      if (state.couponTerms) setResolvedCouponTerms(state.couponTerms);
       if (state.shortUrl) setLinkUrl(state.shortUrl);
       if (state.vipVoucherCode) setVoucherCode(state.vipVoucherCode);
     };
@@ -148,7 +160,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         {card.scopeType && <p className="mt-2 text-xs text-[#7D715E]">{card.scopeType === 'STORE_WIDE' ? 'Toàn gian hàng, gồm sản phẩm mới' : card.scopeType === 'SELECTED_PRODUCTS' ? 'Nhóm sản phẩm' : 'Một sản phẩm'}</p>}
         {card.targetRevenue && <p className="mt-2 text-xs text-[#7D715E]">KPI: {Number(card.targetRevenue).toLocaleString('vi-VN')} đ / {card.commitmentDays} ngày</p>}
         {!isDecision && card.targetOrders && <p className="mt-2 text-[11px] text-[#7D715E]">Mục tiêu {card.targetOrders} đơn trong {card.commitmentDays} ngày · Cam kết video review</p>}
-        {!isDecision && card.couponTerms && <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Coupon riêng giảm {card.couponTerms.discountPercent}%, tối đa {Number(card.couponTerms.maximumDiscountAmount).toLocaleString('vi-VN')} đ cho đơn từ {Number(card.couponTerms.minimumOrderAmount).toLocaleString('vi-VN')} đ; {card.couponTerms.usageLimitTotal} lượt trong {card.couponTerms.validDays} ngày sau khi kích hoạt.</p>}
+        {!isDecision && terms && <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Coupon riêng giảm {terms.discountPercent}%, tối đa {Number(terms.maximumDiscountAmount).toLocaleString('vi-VN')} đ cho đơn từ {Number(terms.minimumOrderAmount).toLocaleString('vi-VN')} đ; {terms.usageLimitTotal} lượt trong {terms.validDays} ngày sau khi kích hoạt.</p>}
         {!isDecision && status === 'PENDING' && card.isRevision && <p className="mt-2 text-[#7D715E] text-[10px] leading-relaxed">{isMine ? 'Mức hiện tại vẫn áp dụng trong lúc gian hàng xem xét đề xuất.' : 'Mức mới áp dụng cho đơn hàng mới sau khi duyệt. Đơn đã tạo giữ nguyên mức cũ.'}</p>}
         {isDecision && card.message && (
           <details className="mt-2 bg-white text-xs group">
@@ -177,7 +189,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         {error && <p className="mt-2 text-[11px] leading-relaxed text-[#DC2626]" role="alert">{error}</p>}
         {!stateReady && error && <button type="button" onClick={() => setReload(value => value + 1)} className="mt-2 rounded-lg border border-[#EAE4D7] px-3 py-1 text-xs">Làm mới trạng thái</button>}
       </div>
-      {(canReview || approved || (!isDecision && isMine && status === 'PENDING')) && (
+      {(canReview || approved || waitingForPartner) && (
         <footer className="px-3 py-2 border-t border-[#EAE4D7] bg-white">
           {approved && (
             <div className="space-y-3">
@@ -204,7 +216,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
               <button type="button" disabled={loading} onClick={() => void decide(true)} className="min-h-[32px] px-2 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#C59B58] text-[#1A1612] text-[11px] font-semibold hover:bg-[#B88E4F] cursor-pointer disabled:opacity-50">{loading ? 'Đang xử lý…' : shopOffer ? 'Chấp thuận thỏa thuận' : card.isRevision ? 'Duyệt đổi deal' : 'Duyệt & tạo link'}</button>
             </div>
           )}
-          {!isDecision && isMine && status === 'PENDING' && <p className="flex items-center gap-1.5 m-0 text-[10px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" />Đã gửi · Chờ {shopOffer ? 'đối tác' : 'gian hàng'} phản hồi</p>}
+          {waitingForPartner && <p className="flex items-center gap-1.5 m-0 text-[10px] text-[#7D715E]"><Clock3 size={13} className="text-[#B88E4F] shrink-0" />Đã gửi · Chờ {shopOffer ? 'KOL' : 'Shop'} phản hồi</p>}
         </footer>
       )}
     </article>

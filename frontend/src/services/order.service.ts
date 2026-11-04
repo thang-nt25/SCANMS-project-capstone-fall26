@@ -17,6 +17,9 @@ export interface StoreReturnRequest {
   submittedAt: string;
   shopResponse: string | null;
   shopRespondedAt: string | null;
+  resolution?: 'REFUND' | 'EXCHANGE' | null;
+  refund?: { amount: number | string; method: string; status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'; processedAt?: string | null } | null;
+  dispute?: { status: 'OPEN' | 'RESOLVED'; ruling?: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP' | null; resolutionNotes?: string | null } | null;
 }
 
 export interface ManualOrderItemInput {
@@ -193,7 +196,7 @@ export const orderService = {
     return response.data;
   },
 
-  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string; rejectionReason?: 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER' }) {
+  async respondReturnRequest(orderId: string, data: { decision: 'APPROVE' | 'REJECT'; response: string; rejectionReason?: 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER'; escalateToManager?: boolean; evidenceUrls?: string[] }) {
     const response = (await api.patch(`/orders/${orderId}/return-request/respond`, data)) as unknown as ApiEnvelope<{
       message: string;
       returnRequest: StoreReturnRequest;

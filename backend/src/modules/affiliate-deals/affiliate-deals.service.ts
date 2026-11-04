@@ -175,6 +175,9 @@ export class AffiliateDealsService {
       proposedCommissionRate: proposal.proposedCommissionRate,
       exceptionNote: proposal.exceptionNote,
       initiatorRole: proposal.initiatedById ? 'SHOP_MANAGER' : 'COLLABORATOR',
+      couponTerms: proposal.initiatedById
+        ? proposal.offerTerms ?? { ...new ApproveExclusiveDealDto() }
+        : proposal.offerTerms,
       shortUrl: shortCode
         ? `${(process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/r/${shortCode}`
         : null,
@@ -596,6 +599,7 @@ export class AffiliateDealsService {
 
     const kpi = validateDealKpi(dto.targetOrders, dto.commitmentDays);
     const salesCommitment = (dto.salesCommitment || '').trim();
+    const offerTerms = { ...new ApproveExclusiveDealDto() };
 
     let conversation = await this.prisma.conversation.findFirst({
       where: { storeId: product.storeId, collaboratorId: dto.collaboratorId },
@@ -621,7 +625,9 @@ export class AffiliateDealsService {
       targetOrders: dto.targetOrders,
       commitmentDays: dto.commitmentDays,
       salesCommitment,
+      couponTerms: offerTerms,
       offeredBy: 'SHOP',
+      initiatorRole: 'SHOP_MANAGER',
       status: ExclusiveDealStatus.PENDING,
       createdAt: new Date().toISOString(),
     };
@@ -632,16 +638,21 @@ export class AffiliateDealsService {
           collaboratorId: dto.collaboratorId,
           productId: product.id,
           status: ExclusiveDealStatus.PENDING,
+          closedAt: null,
         },
       });
+      if (existing && existing.initiatedById !== shopOwnerId)
+        throw new BadRequestException('Sản phẩm đã có đề xuất đang chờ xử lý; hãy xử lý đề xuất đó trước.');
 
       let proposal;
       if (existing) {
         proposal = await tx.exclusiveDealProposal.update({
           where: { id: existing.id },
           data: {
+            initiatedById: shopOwnerId,
             proposedCommissionRate: new Prisma.Decimal(proposedRate),
             salesCommitment,
+            offerTerms,
             conversationId: conversation.id,
             ...kpi,
             updatedAt: new Date(),
@@ -660,8 +671,10 @@ export class AffiliateDealsService {
             storeId: product.storeId,
             productId: product.id,
             conversationId: conversation.id,
+            initiatedById: shopOwnerId,
             proposedCommissionRate: new Prisma.Decimal(proposedRate),
             salesCommitment,
+            offerTerms,
             ...kpi,
           },
           include: {

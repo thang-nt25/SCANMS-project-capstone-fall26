@@ -266,9 +266,9 @@ SLIDE 12: FLOW 4 – ATTRIBUTION, GIAO HÀNG GHN & XỬ LÝ ĐỔI TRẢ
 * **Lời thoại thuyết trình**:
 > Tiếp theo là Flow 4 do em Nguyễn Phú Quý phụ trách: theo dõi nguồn KOL từ lúc chia sẻ đến đơn hàng, xử lý giao nhận và giải quyết đổi trả minh bạch.
 >
-> * KOL tạo Smart Link/QR và mã độc quyền `THAONHI16`. Click link ghi phiên attribution, cookie 30 ngày và nguồn cuối cùng có hiệu lực. Khi khách đặt bằng link hoặc mã, đơn lưu KOL để đối soát. Trên dữ liệu demo v4, serum 450.000₫ giảm 5% còn 427.500₫ tiền hàng; deal 16% tạo thu nhập 72.000₫ trên giá gốc. Thu nhập lấy tỷ lệ cao nhất, không cộng dồn các mức base, tier, campaign và deal.
-> * Shop xử lý đóng gói và vận chuyển GHN; hệ thống lưu phí, mã tracking và trạng thái đơn. Checkout có thêm mã freeship toàn sàn `SCANMSFREESHIP` dành cho khách mới, giảm tối đa 100.000₫ phí ship và giới hạn 3 lượt mỗi số điện thoại.
-> * Nếu phát sinh lỗi, khách gửi hồ sơ đổi trả kèm chứng cứ. Shop phân loại lỗi do Shop, GHN hay khách; System Manager có thể xem và phân xử hồ sơ tranh chấp.
+> * KOL tạo Smart Link/QR và mã độc quyền. Click link ghi phiên attribution, cookie 30 ngày và nguồn cuối cùng có hiệu lực. Khi khách đặt bằng link hoặc mã, đơn lưu KOL để đối soát. Bộ seed v4 minh họa `THAONHI16`: serum 450.000₫ giảm 5% còn 427.500₫ tiền hàng; deal 16% tạo thu nhập 72.000₫ trên giá gốc. **DB dùng review 02/11 chưa có seed v4**: KOL Yến Nhi có serum 280.000₫, mã `YENNHISKIN` giảm 5% và hai đơn đã giao có thu nhập 28.000₫/đơn. Thu nhập lấy tỷ lệ cao nhất, không cộng dồn các mức base, tier, campaign và deal.
+> * Shop xử lý đóng gói và vận chuyển GHN; hệ thống lưu phí, mã tracking và trạng thái đơn. Bộ seed v4 có mã freeship toàn sàn `SCANMSFREESHIP` dành cho khách mới, giảm tối đa 100.000₫ phí ship và giới hạn 3 lượt mỗi số điện thoại. **DB review hiện tại chưa có mã này**, nên không đưa vào thao tác live.
+> * Nếu phát sinh lỗi, khách gửi hồ sơ đổi trả kèm ảnh/video. System Manager đối chiếu bằng chứng của khách, Shop và lịch sử vận đơn rồi kết luận trách nhiệm; Shop xử lý đổi/hoàn cho khách. Hồ sơ đòi GHN bồi hoàn được đối soát riêng, không trì hoãn quyền lợi khách.
 > * Đổi hàng 1:1 giữ nguyên thu nhập KOL. Chỉ khi hoàn tiền thành công, hệ thống mới đảo khoản thu nhập đã ghi nhận và tạo bút toán thu hồi. Nếu hoàn tiền còn `PENDING`, chưa kết luận đã clawback.
 > * Buổi demo dùng GHN/hoàn hàng mô phỏng; không tuyên bố đã gọi vận chuyển hay thanh toán thật.
 >
@@ -283,9 +283,9 @@ SLIDE 13: UAT VALIDATION – FLOW 4: KỲ VỌNG KHI THỰC HIỆN TEST CASES
 * **Lời thoại thuyết trình**:
 > Các ca kiểm thử trực tiếp cần trình bày trong Flow 4:
 >
-> 1. **TC_F4_01 — Attribution và thu nhập:** KOL tạo link/mã; khách đặt hàng bằng `THAONHI16`; đơn gắn KOL đúng. Kiểm tra 450.000₫ × 16% = 72.000₫ dù khách chỉ trả 427.500₫ tiền hàng. Nếu KOL tự mua, đơn vẫn lưu dấu nguồn nhưng thu nhập bằng 0 với lý do `SELF_REFERRAL_`.
-> 2. **TC_F4_02 — GHN và freeship:** Shop tạo vận đơn bằng dữ liệu đóng gói hợp lệ; phí và tracking được lưu. Mã `SCANMSFREESHIP` giảm phí ship tối đa 100.000₫, chỉ cho số điện thoại chưa có đơn mua và tối đa 3 lượt. Dữ liệu GHN dùng trong buổi demo phải được giới thiệu đúng là mock/sandbox.
-> 3. **TC_F4_03 — Trách nhiệm khi đổi trả:** Khách gửi chứng cứ; Shop phân loại `SHOP_FAULT`, `LOGISTICS_FAULT` hoặc `CUSTOMER_REASON`. Khi có bất đồng, System Manager xem hồ sơ tại `/admin/return-disputes` và phân xử.
+> 1. **TC_F4_01 — Attribution và thu nhập:** KOL tạo link/mã; khách đặt bằng `YENNHISKIN` trên DB hiện tại; đơn gắn Yến Nhi đúng. Hai đơn đã giao dùng cho đổi/hoàn có thu nhập 280.000₫ × 10% = 28.000₫ mỗi đơn. Nếu KOL tự mua, đơn vẫn lưu dấu nguồn nhưng thu nhập bằng 0 với lý do `SELF_REFERRAL_`. Ví dụ 450.000₫ × 16% = 72.000₫ chỉ dành cho DB seed v4.
+> 2. **TC_F4_02 — GHN:** Shop tạo vận đơn bằng dữ liệu đóng gói hợp lệ; phí và tracking được lưu. Cước GHN TEST đọc được lúc chuẩn bị là 21.001₫ cho địa chỉ Customer demo; kiểm tra lại khi checkout. Chỉ trình bày freeship ba lượt nếu chuyển sang DB seed v4. Dữ liệu GHN dùng trong buổi demo phải được giới thiệu đúng là mock/sandbox.
+> 3. **TC_F4_03 — Trách nhiệm khi đổi trả:** Khách gửi chứng cứ; System Manager đối chiếu lỗi Shop/GHN/khách tại `/admin/return-disputes`. Chỉ kết luận `LOGISTICS_FAULT` khi có vận đơn GHN gốc và chứng cứ liên quan; thiếu căn cứ thì tiếp tục xác minh. Shop xử lý đổi/hoàn cho khách trước khi chờ đối soát bồi hoàn với GHN.
 > 4. **TC_F4_04 — Đổi hàng:** Dùng đơn đã giao để tạo yêu cầu đổi hàng 1:1. Kỳ vọng có bước gửi hàng bù và commission không chuyển `REVERSED`.
 > 5. **TC_F4_05 — Hoàn tiền và clawback:** Dùng đơn khác để hoàn tiền. Chỉ khi refund đạt `SUCCEEDED`, `order.refundedAmount` tăng, commission chuyển `REVERSED` và có bút toán thu hồi. Nếu refund `PENDING` do ví chưa ghi được tiền, System Manager mở hồ sơ và chọn **Thử hoàn tiền vào ví khách**; thao tác khóa khoản hoàn để tránh ghi hai lần. Khi thử lại còn lỗi, KOL vẫn giữ nguyên thu nhập và hồ sơ tiếp tục chờ xử lý.
 > 6. **TC_F4_06 — Tính nhất quán:** Đối chiếu hồ sơ trả hàng, Return Event, đơn hàng, trạng thái commission và sổ cái/ví KOL để chỉ ra từng thay đổi có dấu vết kiểm toán.
@@ -293,14 +293,14 @@ SLIDE 13: UAT VALIDATION – FLOW 4: KỲ VỌNG KHI THỰC HIỆN TEST CASES
 
 ### Thứ tự thao tác khi demo Flow 4
 
-1. Đăng nhập KOL 01 → `/collaborator/marketing`; mở link/QR Serum Sora và chỉ mã `THAONHI16` cùng deal 16%.
-2. Đăng nhập Customer 04 bằng cửa sổ khác; mở link KOL, thêm serum vào giỏ, xác nhận giá và attribution. Trong checkout, dùng số điện thoại mới nếu muốn áp dụng `SCANMSFREESHIP`; tạo đơn COD.
-3. Đăng nhập Shop 01 → `/merchant/orders`; xử lý đơn và tracking bằng môi trường vận chuyển mô phỏng đến trạng thái giao thành công.
-4. Chạy nhánh self-referral bằng chính tài khoản KOL; chỉ thu nhập 0 và dấu `SELF_REFERRAL_`. Không dùng đơn này để chứng minh thu nhập 72.000₫.
-5. Với các đơn đã giao riêng biệt, chạy nhánh A đổi hàng, nhánh B hoàn tiền, nhánh C lỗi GHN/tranh chấp. Đăng nhập Manager xử lý C tại `/admin/return-disputes`.
-6. Kết thúc bằng cách đối chiếu ví/sổ cái và các trạng thái đơn/commission. Dùng seed v4 thì số minh họa là giá gốc 450.000₫ → khách trả 427.500₫ tiền hàng → KOL nhận 72.000₫; nếu DB khác seed, đọc số thực tế trên màn hình và tính lại.
+1. Đăng nhập KOL Yến Nhi bằng tài khoản demo → `/collaborator/marketing`; mở link serum `/r/R_KOLBRONZE_DDC5`, QR và mã `YENNHISKIN`.
+2. Đăng nhập Customer An bằng cửa sổ khác; mở link KOL, thêm serum vào giỏ, áp `YENNHISKIN` (giảm 14.000₫ từ 280.000₫), tạo đơn COD nếu cần chứng minh checkout live.
+3. Đăng nhập Shop Sora → `/merchant/orders`; tìm đúng đơn vừa tạo và chỉ nguồn KOL, thu nhập, phí và tracking. Chỉ mô phỏng giao nhận bằng môi trường TEST.
+4. Chạy nhánh self-referral bằng chính tài khoản KOL; chỉ thu nhập 0 và dấu `SELF_REFERRAL_`. Không dùng đơn này để chứng minh thu nhập hợp lệ.
+5. Dùng Customer An với hai đơn đã giao, chưa trả: **A `DH-2026-C58C204C` đổi 1:1**, **B `DH-2026-4EEB3F8E` hoàn ví + clawback**. Mỗi đơn hiện có thu nhập KOL `PENDING` 28.000₫, **không có vận đơn GHN gốc**. Khách gửi ảnh/video TEST, Shop duyệt, kiểm tra kho trả đã hiện trên chi tiết hồ sơ, khách đặt lấy hàng; Manager chỉ quy `SHOP_FAULT` nếu chứng cứ cho thấy lỗi Shop, không quy lỗi GHN cho hai đơn này. Kết quả cuối cùng: A giữ thu nhập, B thu hồi chỉ sau khi hoàn ví `SUCCEEDED`.
+6. Kết thúc bằng cách đối chiếu ví/sổ cái và các trạng thái đơn/commission. Đọc số thực tế trên màn hình. Nếu chuyển sang DB seed v4, mới dùng ví dụ 450.000₫ → 427.500₫ tiền hàng → KOL 72.000₫.
 
-**Chuẩn bị môi trường trước buổi review:** Chạy `npm run seed:plan` rồi `npm run seed:check` trong `backend` để xác nhận đúng bộ dữ liệu v4. `seed:plan` chỉ dựng fixture, không ghi DB. Nếu `seed:check` báo thiếu manifest, chuyển sang một DB demo riêng đã sao lưu và nạp v4 theo `backend/prisma/seeds/README.md`; không reset DB nhóm đang dùng. Chuẩn bị trước hai đơn đã giao riêng biệt cho nhánh đổi hàng và hoàn tiền, một đơn tự mua, ảnh/video unboxing và tồn kho sản phẩm bù. Kiểm tra GHN đang ở chế độ mock hoặc staging trước khi thao tác; phiếu đòi bồi thường GHN trong demo là hồ sơ nội bộ chờ đối soát.
+**Chuẩn bị môi trường trước buổi review:** DB hiện tại đã được kiểm tra chỉ đọc: `seed:check` xác nhận **chưa có v4**; không reset DB nhóm. Hai đơn A/B, tài khoản demo, link, mã KOL và báo giá GHN đã được kiểm tra qua API. Chuẩn bị ảnh/video unboxing **có nhãn TEST**, tồn kho sản phẩm bù, và xác nhận kho nhận hàng trả của Shop hiện đúng trên chi tiết hồ sơ trước khi khách đặt lấy hàng. Kiểm tra GHN đang ở chế độ mock/staging; phiếu đòi bồi thường GHN trong demo là hồ sơ nội bộ chờ đối soát. Chi tiết và giới hạn xem [`FLOW_4_REVIEW_READINESS_2026-11-02.md`](../FLOW_4_REVIEW_READINESS_2026-11-02.md).
 
 ---
 

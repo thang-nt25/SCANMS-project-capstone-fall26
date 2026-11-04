@@ -26,6 +26,9 @@ describe('merchant order filters preserve shop, customer and return scope', () =
       OR: expect.arrayContaining([{ customerName: { contains: 'An', mode: 'insensitive' } }]),
     });
     expect(prisma.order.findMany.mock.calls.at(-1)?.[0].where).toEqual(where);
+    expect(prisma.order.findMany.mock.calls.at(-1)?.[0].include.returnRequest).toEqual({
+      include: { refund: true, dispute: true },
+    });
   });
   it('filters a chat customer by ID even when names collide', async () => {
     const { service, prisma } = makeService();

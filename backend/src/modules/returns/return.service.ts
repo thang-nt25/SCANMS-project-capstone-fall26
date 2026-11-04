@@ -27,7 +27,8 @@ import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
 import { PickupGateway } from './pickup.gateway';
-import { warehouseSchema } from './return.schemas';
+import { configuredReturnWarehouse } from './return.schemas';
+import { advanceGhnClaim, latestGhnClaim, type GhnClaimSnapshot } from './ghn-compensation-claim';
 import type {
   BookPickupInput,
   DisputeInput,
@@ -36,6 +37,8 @@ import type {
   LiabilityAssessmentInput,
   ResolveDisputeInput,
   ShipmentInput,
+  ShopEscalationInput,
+  GhnClaimActionInput,
   WarehouseInput,
 } from './return.schemas';
 
@@ -81,6 +84,12 @@ type Detail = Prisma.ReturnRequestGetPayload<{ include: typeof detailInclude }>;
 const SHIP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const INSPECTION_SLA_MS = 48 * 60 * 60 * 1000;
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
+
+function originalGhnTracking(rawPayload: Prisma.JsonValue | null): string | null {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) return null;
+  const code = (rawPayload as Record<string, unknown>).ghnOrderCode;
+  return typeof code === 'string' && code.trim() ? code.trim() : null;
+}
 
 @Injectable()
 export class ReturnService {
@@ -193,8 +202,30 @@ export class ReturnService {
     });
   }
 
+  private async openGhnClaim(tx: Prisma.TransactionClient, detail: Detail, actorId: string,
+    replacementTrackingNumber?: string) {
+    const originalTrackingNumber = originalGhnTracking(detail.order.rawPayload);
+    if (!originalTrackingNumber || latestGhnClaim(detail.events)) return;
+    const shopEvidence = detail.events.flatMap((event) => {
+      if (event.type !== 'SHOP_EVIDENCE_SUBMITTED' || !event.data ||
+          typeof event.data !== 'object' || Array.isArray(event.data)) return [];
+      const urls = (event.data as Record<string, unknown>).evidenceUrls;
+      return Array.isArray(urls) ? urls.filter((url): url is string => typeof url === 'string') : [];
+    });
+    const snapshot: GhnClaimSnapshot = {
+      status: 'DRAFT', originalTrackingNumber, replacementTrackingNumber,
+      evidenceUrls: [...new Set([...(detail.imageUrls ?? []), detail.unboxingVideoUrl, ...shopEvidence].filter(Boolean))],
+      updatedAt: new Date().toISOString(),
+    };
+    await tx.returnEvent.create({ data: {
+      returnRequestId: detail.id, actorId, type: 'GHN_COMPENSATION_CLAIM_OPENED',
+      data: snapshot as unknown as Prisma.InputJsonValue,
+    } });
+  }
+
   private present(item: Detail, showPartnerIncome = false) {
     const { order, shipments, ...rest } = item;
+    const outboundGhnTrackingNumber = originalGhnTracking(order.rawPayload);
     const commissions = order.commissions ?? [];
     const postedIncome = commissions.reduce(
       (sum, commission) => sum + Number(commission.commissionAmount), 0,
@@ -211,6 +242,7 @@ export class ReturnService {
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
+        outboundGhnTrackingNumber,
       },
       ...(showPartnerIncome ? { partnerIncome: {
         amount: Number(order.refundedAmount) > 0 ||
@@ -226,10 +258,8 @@ export class ReturnService {
           : 'NOT_POSTED',
         availableAt: commissions.find((commission) => commission.status === CommissionStatus.PENDING)?.availableAt ?? null,
       } } : {}),
-      returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
-        .success
-        ? order.store.returnWarehouse
-        : null,
+      returnWarehouse: configuredReturnWarehouse(order.store.returnWarehouse),
+      ...(showPartnerIncome ? { ghnClaim: latestGhnClaim(item.events) } : {}),
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -309,6 +339,8 @@ export class ReturnService {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
       throw new ForbiddenException('Chỉ vận hành hệ thống được xác định trách nhiệm');
     const detail = await this.scopedDetail(userId, role, id);
+    if (input.liability === 'LOGISTICS_FAULT' && !originalGhnTracking(detail.order.rawPayload))
+      throw new ConflictException('Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác');
     const latestAssessment = [...detail.events].reverse().find((event) => {
       const data = event.data as Record<string, unknown> | null;
       return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
@@ -337,7 +369,13 @@ export class ReturnService {
         returnRequestId: id,
         actorId: userId,
         type: 'LIABILITY_ASSESSED',
-        data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' },
+        data: {
+          ...input,
+          source: 'SYSTEM_MANAGER_REVIEW',
+          ...(input.liability === 'LOGISTICS_FAULT' ? {
+            originalTrackingNumber: originalGhnTracking(detail.order.rawPayload),
+          } : {}),
+        },
       } });
     });
     return this.getOne(userId, role, id);
@@ -463,39 +501,9 @@ export class ReturnService {
     this.requireCustomer(userId, detail);
     if (detail.status === ReturnRequestStatus.PICKUP_BOOKED)
       return this.present(detail);
-    let warehouse = warehouseSchema.safeParse(
-      detail.order.store.returnWarehouse,
-    );
-    if (!warehouse.success) {
-      const ob = ((detail.order.store as any).onboardingData || {}) as Record<string, any>;
-      const fallbackAddress = ob.warehouseAddress || ob.businessAddress || 'Kho hoàn trả hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
-      const cleanPhone = String(ob.contactPhone || '0901234567').replace(/[^0-9+]/g, '');
-      const fallbackRaw = {
-        name: (detail.order.store.name || 'Gian hàng SCANMS').slice(0, 150),
-        phone: cleanPhone.length >= 9 && cleanPhone.length <= 15 ? cleanPhone : '0901234567',
-        address: fallbackAddress.length >= 10 ? fallbackAddress.slice(0, 500) : `${fallbackAddress}, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh`,
-        wardName: ob.wardName || 'Bến Nghé',
-        provinceName: ob.provinceName || 'Hồ Chí Minh',
-        districtName: ob.districtName || 'Quận 1',
-      };
-      warehouse = warehouseSchema.safeParse(fallbackRaw);
-      if (warehouse.success) {
-        await this.prisma.store.update({
-          where: { id: detail.order.store.id },
-          data: { returnWarehouse: warehouse.data },
-        }).catch(() => null);
-      }
-    }
-    const effectiveWarehouse: WarehouseInput = warehouse.success
-      ? warehouse.data
-      : {
-          name: (detail.order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
-          phone: '0901234567',
-          address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          wardName: 'Bến Nghé',
-          provinceName: 'Hồ Chí Minh',
-          districtName: 'Quận 1',
-        };
+    const effectiveWarehouse = configuredReturnWarehouse(detail.order.store.returnWarehouse);
+    if (!effectiveWarehouse)
+      throw new ConflictException('Shop chưa cấu hình kho nhận hàng trả hợp lệ');
     if (
       detail.status !== ReturnRequestStatus.SHOP_APPROVED ||
       !detail.shipByAt
@@ -888,7 +896,7 @@ export class ReturnService {
       );
     }
     if (
-      warehouseSchema.safeParse(initial.order.store.returnWarehouse).success
+      configuredReturnWarehouse(initial.order.store.returnWarehouse)
     ) {
       throw new ConflictException(
         'Hồ sơ này sử dụng lấy hàng tận nơi; vui lòng đặt lịch lấy hàng',
@@ -1103,6 +1111,9 @@ export class ReturnService {
           data: { liability: input.liability, resolution: input.resolution, notes: input.notes },
         },
       });
+      if (input.liability === 'LOGISTICS_FAULT' && target !== ReturnRequestStatus.INSPECTION_REJECTED) {
+        await this.openGhnClaim(tx, detail, userId);
+      }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         // Existing requests are order-wide. Amount is server-calculated, never accepted from the browser.
         const amount = detail.order.finalAmount.minus(
@@ -1244,20 +1255,19 @@ export class ReturnService {
       const logisticsAssessment = [...detail.events].reverse().find((event) => {
         const data = event.data as Record<string, unknown> | null;
         return event.type === 'LIABILITY_ASSESSED' &&
-          data?.source === 'SYSTEM_MANAGER_REVIEW' && data.liability === 'LOGISTICS_FAULT';
+          ['SYSTEM_MANAGER_REVIEW', 'SYSTEM_MANAGER_ARBITRATION'].includes(String(data?.source)) &&
+          data?.liability === 'LOGISTICS_FAULT';
       });
-      if (logisticsAssessment) {
-        const raw = detail.order.rawPayload as Record<string, unknown> | null;
+      const claim = latestGhnClaim(detail.events);
+      if (claim && !claim.replacementTrackingNumber) {
         await tx.returnEvent.create({ data: {
           returnRequestId: id,
           actorId: userId,
-          type: 'GHN_COMPENSATION_CLAIM_OPENED',
-          data: {
-            originalTrackingNumber: raw?.ghnOrderCode || raw?.trackingNumber || null,
-            replacementTrackingNumber: input.trackingNumber,
-            status: 'PENDING_RECONCILIATION',
-          },
+          type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+          data: { ...claim, replacementTrackingNumber: input.trackingNumber } as unknown as Prisma.InputJsonValue,
         } });
+      } else if (logisticsAssessment && !claim) {
+        await this.openGhnClaim(tx, detail, userId, input.trackingNumber);
       }
       await this.notify(
         tx,
@@ -1316,6 +1326,66 @@ export class ReturnService {
         'Khách đã xác nhận hoàn tất đổi trả',
         `Đơn ${detail.order.externalOrderSn} đã hoàn tất.`,
       );
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async escalateShopRejection(userId: string, role: UserRole, id: string, input: ShopEscalationInput) {
+    const detail = await this.scopedDetail(userId, role, id);
+    this.requireShop(userId, role, detail);
+    const startDispute = detail.status === ReturnRequestStatus.SHOP_REJECTED && !detail.dispute;
+    const attachToDispute = detail.status === ReturnRequestStatus.DISPUTED && detail.dispute?.status === 'OPEN';
+    if (!startDispute && !attachToDispute)
+      throw new ConflictException('Hồ sơ không ở trạng thái có thể gửi bằng chứng cho Manager');
+    if (detail.events.some((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED'))
+      throw new ConflictException('Shop đã gửi bằng chứng cho hồ sơ này');
+    await this.prisma.$transaction(async (tx) => {
+      if (attachToDispute) {
+        const locked = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+        `;
+        if (locked.length !== 1) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+        const current = await tx.returnRequest.findUnique({
+          where: { id },
+          select: { status: true, dispute: { select: { status: true } },
+            events: { where: { type: 'SHOP_EVIDENCE_SUBMITTED' }, select: { id: true } } },
+        });
+        if (current?.status !== ReturnRequestStatus.DISPUTED || current.dispute?.status !== 'OPEN' || current.events.length)
+          throw new ConflictException('Hồ sơ đã được xử lý hoặc Shop đã gửi bằng chứng; hãy tải lại');
+      }
+      if (startDispute) {
+        await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
+        await tx.dispute.create({ data: {
+          returnRequestId: id, reason: 'SHOP_REQUESTED_REVIEW', details: input.details,
+        } });
+      }
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'SHOP_EVIDENCE_SUBMITTED',
+          data: { details: input.details, evidenceUrls: input.evidenceUrls },
+        },
+      });
+      if (startDispute) {
+        const changed = await tx.order.updateMany({
+          where: { id: detail.orderId, status: detail.order.status },
+          data: { status: OrderStatus.DISPUTED },
+        });
+        if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      }
+      await this.notify(tx, detail, detail.customerId, 'RETURN_DISPUTED',
+        'Hồ sơ đổi trả được chuyển cho System Manager',
+        `Đơn ${detail.order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager xem xét. Chưa có kết luận bên chịu trách nhiệm.`);
+      const managers = await tx.user.findMany({
+        where: { role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] }, isActive: true, isDeleted: false },
+        select: { id: true },
+      });
+      for (const manager of managers) {
+        await this.notify(tx, detail, manager.id, 'RETURN_DISPUTED',
+          'Shop yêu cầu xác minh hồ sơ đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: kiểm tra bằng chứng Shop và khách trước khi kết luận lỗi vận chuyển hay hàng hóa.`);
+      }
     });
     return this.getOne(userId, role, id);
   }
@@ -1416,6 +1486,83 @@ export class ReturnService {
     }));
   }
 
+  async listGhnClaims(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xem yêu cầu bồi hoàn GHN');
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { events: { some: { type: 'GHN_COMPENSATION_CLAIM_OPENED' } } },
+      include: detailInclude,
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async listRejectedForReview(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được xem hồ sơ Shop đã từ chối');
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { status: ReturnRequestStatus.SHOP_REJECTED, dispute: { is: null } },
+      include: detailInclude,
+      orderBy: { shopRespondedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async openRejectedReview(userId: string, role: UserRole, id: string) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được mở phân xử');
+    const detail = await this.scopedDetail(userId, role, id);
+    if (detail.status !== ReturnRequestStatus.SHOP_REJECTED || detail.dispute)
+      throw new ConflictException('Hồ sơ không còn ở trạng thái Shop đã từ chối');
+    await this.prisma.$transaction(async (tx) => {
+      await this.move(tx, id, ReturnRequestStatus.SHOP_REJECTED, ReturnRequestStatus.DISPUTED, userId);
+      await tx.dispute.create({ data: {
+        returnRequestId: id,
+        reason: 'MANAGER_REVIEW_SHOP_REJECTION',
+        details: detail.shopResponse || 'Manager mở phân xử hồ sơ sau khi Shop từ chối yêu cầu đổi trả.',
+      } });
+      const changed = await tx.order.updateMany({
+        where: { id: detail.orderId, status: detail.order.status },
+        data: { status: OrderStatus.DISPUTED },
+      });
+      if (changed.count !== 1) throw new ConflictException('Đơn hàng đã thay đổi; hãy tải lại');
+      for (const recipient of new Set([detail.customerId, detail.order.store.ownerId])) {
+        await this.notify(tx, detail, recipient, 'RETURN_DISPUTED',
+          'Manager đang xem xét quyết định đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: hồ sơ Shop từ chối đã được chuyển sang phân xử. Chưa có kết luận trách nhiệm.`);
+      }
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async updateGhnClaim(userId: string, role: UserRole, id: string, input: GhnClaimActionInput) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được đối soát bồi hoàn GHN');
+    await this.prisma.$transaction(async (tx) => {
+      // The claim is an event stream. Lock its parent row so two managers cannot advance it twice.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+      `;
+      if (locked.length !== 1) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const detail = await tx.returnRequest.findUnique({ where: { id }, include: detailInclude });
+      if (!detail) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const current = latestGhnClaim(detail.events);
+      if (!current) throw new ConflictException('Manager chưa kết luận lỗi GHN cho hồ sơ này');
+      const next = advanceGhnClaim(current, input);
+      await tx.returnEvent.create({ data: {
+        returnRequestId: id, actorId: userId, type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+        data: { ...next, action: input.action } as unknown as Prisma.InputJsonValue,
+      } });
+      await tx.returnRequest.update({ where: { id }, data: { updatedAt: new Date() } });
+      await this.notify(tx, detail, detail.order.store.ownerId, 'GHN_COMPENSATION_UPDATED',
+        'Cập nhật bồi hoàn GHN',
+        `Đơn ${detail.order.externalOrderSn}: yêu cầu GHN ${next.ghnReference || 'chưa gửi'} đang ở trạng thái ${next.status}.`);
+    });
+    return this.getOne(userId, role, id);
+  }
+
   async listStalledInspections(role: UserRole) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER) {
       throw new ForbiddenException(
@@ -1456,6 +1603,10 @@ export class ReturnService {
     if (!dispute || dispute.status !== 'OPEN')
       throw new NotFoundException('Không có khiếu nại đang mở');
     const detail = dispute.returnRequest;
+    if (input.liability === 'LOGISTICS_FAULT' && !originalGhnTracking(detail.order.rawPayload))
+      throw new ConflictException('Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác');
+    if (input.liability === 'LOGISTICS_FAULT' && input.ruling === 'UPHOLD_SHOP')
+      throw new ConflictException('Đã xác định lỗi GHN thì cần chọn hoàn tiền hoặc đổi hàng cho khách');
     if (
       input.ruling === 'UPHOLD_SHOP' &&
       detail.shipments.some(
@@ -1508,9 +1659,20 @@ export class ReturnService {
             returnRequestId: detail.id,
             actorId: adminId,
             type: 'LIABILITY_ASSESSED',
-            data: { liability: input.liability, ruling: input.ruling, notes: input.notes, source: 'SYSTEM_MANAGER_ARBITRATION' },
+            data: {
+              liability: input.liability,
+              ruling: input.ruling,
+              notes: input.notes,
+              source: 'SYSTEM_MANAGER_ARBITRATION',
+              ...(input.liability === 'LOGISTICS_FAULT' ? {
+                originalTrackingNumber: originalGhnTracking(detail.order.rawPayload),
+              } : {}),
+            },
           },
         });
+      }
+      if (input.liability === 'LOGISTICS_FAULT' && input.ruling !== 'UPHOLD_SHOP') {
+        await this.openGhnClaim(tx, detail, adminId);
       }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
         const amount = detail.order.finalAmount.minus(
