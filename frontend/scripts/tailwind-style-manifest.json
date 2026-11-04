@@ -1,0 +1,287 @@
+{
+  "baseline": "2ba826f0cc8346778bf97ca13bc1016490ef999a",
+  "apply": true,
+  "files": [
+    {
+      "file": "src\\components\\affiliate\\AffiliatePerformanceChart.css",
+      "converted": 82,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\components\\affiliate\\ExclusiveDealInbox.css",
+      "converted": 48,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\components\\cart\\HeaderCartPreview.css",
+      "converted": 105,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\chat\\ChatReply.css",
+      "converted": 72,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\layout\\AccountMenu.css",
+      "converted": 141,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\layout\\NotificationDropdown.css",
+      "converted": 71,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\layout\\PublicHeader.css",
+      "converted": 403,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\components\\layout\\Topbar.css",
+      "converted": 3,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\marketplace\\CategoryQuickNav.css",
+      "converted": 94,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\marketplace\\LiveNowSection.css",
+      "converted": 106,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\marketplace\\MarketplaceShortcuts.css",
+      "converted": 49,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\media\\StoreMediaLibrary.css",
+      "converted": 199,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\components\\media\\SubmitKolVideoModal.css",
+      "converted": 114,
+      "nativeRetained": 7
+    },
+    {
+      "file": "src\\components\\orders\\MerchantOrderDetailModal.css",
+      "converted": 181,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\components\\shipping\\GhnTrackingTimeline.css",
+      "converted": 63,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\pages\\admin\\AdminFinancePayoutsPage.css",
+      "converted": 469,
+      "nativeRetained": 16
+    },
+    {
+      "file": "src\\pages\\chat\\CustomerMessages.css",
+      "converted": 227,
+      "nativeRetained": 11
+    },
+    {
+      "file": "src\\pages\\collaborator\\CreatorAccountDetails.css",
+      "converted": 134,
+      "nativeRetained": 8
+    },
+    {
+      "file": "src\\pages\\collaborator\\KolBonusProgressPage.css",
+      "converted": 178,
+      "nativeRetained": 7
+    },
+    {
+      "file": "src\\pages\\collaborator\\KolCouponsPage.css",
+      "converted": 260,
+      "nativeRetained": 7
+    },
+    {
+      "file": "src\\pages\\collaborator\\KolDashboardPage.css",
+      "converted": 55,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\pages\\collaborator\\KolTierStatusPage.css",
+      "converted": 285,
+      "nativeRetained": 17
+    },
+    {
+      "file": "src\\pages\\collaborator\\KycSubmissionPage.css",
+      "converted": 470,
+      "nativeRetained": 14
+    },
+    {
+      "file": "src\\pages\\collaborator\\LiveSessionsPage.css",
+      "converted": 212,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\collaborator\\MediaHubBrowserPage.css",
+      "converted": 461,
+      "nativeRetained": 9
+    },
+    {
+      "file": "src\\pages\\collaborator\\ReferralLinksPage.css",
+      "converted": 670,
+      "nativeRetained": 21
+    },
+    {
+      "file": "src\\pages\\collaborator\\SampleRequestsPage.css",
+      "converted": 198,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\pages\\collaborator\\ShopCollaborationPage.css",
+      "converted": 832,
+      "nativeRetained": 10
+    },
+    {
+      "file": "src\\pages\\collaborator\\SocialChannelsPage.css",
+      "converted": 316,
+      "nativeRetained": 10
+    },
+    {
+      "file": "src\\pages\\collaborator\\WalletPage.css",
+      "converted": 390,
+      "nativeRetained": 13
+    },
+    {
+      "file": "src\\pages\\collaborator\\WalletStandalone.css",
+      "converted": 298,
+      "nativeRetained": 23
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerCompletedOrderDetail.css",
+      "converted": 362,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerNotifications.css",
+      "converted": 213,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerOrderDetail.css",
+      "converted": 143,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerOrderLightTheme.css",
+      "converted": 34,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerOrderReviewsModal.css",
+      "converted": 149,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerOrders.css",
+      "converted": 305,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerProfileTabs.css",
+      "converted": 34,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\pages\\customer\\CustomerVouchers.css",
+      "converted": 126,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\customer\\PartnerUpgrade.css",
+      "converted": 468,
+      "nativeRetained": 5
+    },
+    {
+      "file": "src\\pages\\dashboard\\LeaderboardPage.css",
+      "converted": 256,
+      "nativeRetained": 3
+    },
+    {
+      "file": "src\\pages\\merchant\\CommissionRulesPage.css",
+      "converted": 393,
+      "nativeRetained": 7
+    },
+    {
+      "file": "src\\pages\\merchant\\LiveSessionsPage.css",
+      "converted": 171,
+      "nativeRetained": 10
+    },
+    {
+      "file": "src\\pages\\merchant\\ManualOrderDialog.css",
+      "converted": 336,
+      "nativeRetained": 13
+    },
+    {
+      "file": "src\\pages\\merchant\\OrdersManagementPage.css",
+      "converted": 422,
+      "nativeRetained": 15
+    },
+    {
+      "file": "src\\pages\\merchant\\PayoutApprovalPage.css",
+      "converted": 33,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\merchant\\ProductEditor.css",
+      "converted": 456,
+      "nativeRetained": 9
+    },
+    {
+      "file": "src\\pages\\merchant\\ShippingDispatchModal.css",
+      "converted": 130,
+      "nativeRetained": 2
+    },
+    {
+      "file": "src\\pages\\merchant\\ShopDashboardPage.css",
+      "converted": 240,
+      "nativeRetained": 8
+    },
+    {
+      "file": "src\\pages\\merchant\\ShopKolHubPage.css",
+      "converted": 285,
+      "nativeRetained": 16
+    },
+    {
+      "file": "src\\pages\\merchant\\ShopPromotionsHubPage.css",
+      "converted": 297,
+      "nativeRetained": 9
+    },
+    {
+      "file": "src\\pages\\merchant\\StoreReferralLinksPage.css",
+      "converted": 177,
+      "nativeRetained": 9
+    },
+    {
+      "file": "src\\pages\\public\\CartPage.css",
+      "converted": 390,
+      "nativeRetained": 5
+    },
+    {
+      "file": "src\\pages\\public\\PayosReturnPage.css",
+      "converted": 174,
+      "nativeRetained": 1
+    },
+    {
+      "file": "src\\pages\\returns\\ReturnDetailPage.css",
+      "converted": 134,
+      "nativeRetained": 0
+    },
+    {
+      "file": "src\\index.css",
+      "converted": 465,
+      "nativeRetained": 130
+    }
+  ],
+  "total": 13379
+}

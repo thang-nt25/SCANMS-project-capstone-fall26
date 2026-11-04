@@ -1,0 +1,98 @@
+@reference "../../index.css";
+.kol-coupon-page { @apply [width:100%]; @apply [min-width:0]; @apply [padding:0]; }
+.kol-coupon-content { @apply flex; @apply flex-col; @apply [gap:12px]; @apply [width:100%]; @apply [min-width:0]; @apply [margin:0]; }
+.kol-coupon-summary { @apply [grid-template-columns:repeat(4,_minmax(0,_1fr))]; @apply [gap:12px]; }
+.kol-coupon-summary > div { @apply [min-width:0]; @apply [min-height:98px]; @apply [padding:13px_15px]; @apply [border-radius:12px]; box-shadow: none; }
+.kol-coupon-summary > div > div:first-child { @apply [margin-bottom:5px]; }
+.kol-coupon-summary > div > div:first-child > span { @apply [font-size:11px]; @apply [line-height:17px]; }
+.kol-coupon-summary > div > div:first-child > svg { @apply [width:26px]; @apply [height:26px]; @apply [padding:5px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FBF5EB]; }
+.kol-coupon-summary > div > p { @apply [margin:0]; @apply [font-size:22px]; @apply [line-height:29px]; @apply [font-weight:650]; @apply [letter-spacing:-.02em]; font-variant-numeric: tabular-nums; }
+.kol-coupon-summary > div > span { @apply [font-size:10px]; @apply [line-height:15px]; }
+#marketing-toolkit-hub[data-active-tab="coupons"] { @apply [gap:12px]; }
+#marketing-toolkit-hub[data-active-tab="coupons"] > div:first-child { @apply [margin-bottom:0]; @apply [padding:8px]; @apply [border-radius:13px]; }
+#marketing-toolkit-hub[data-active-tab="coupons"] > div:first-child button { @apply [min-height:40px]; @apply [border-radius:8px]; @apply [font-size:12px]; @apply [font-weight:600]; }
+.kol-coupon-toolbar {
+  @apply grid;
+  @apply [grid-template-columns:minmax(340px,_400px)_minmax(0,_1fr)_160px];
+  @apply items-center;
+  @apply [gap:10px];
+  @apply [padding:10px];
+  box-shadow: none;
+}
+.kol-coupon-search { @apply [min-width:0]; }
+.kol-coupon-search input { @apply [height:40px]; @apply [background:#fff]; @apply [font-size:12px]; }
+.kol-coupon-status-tabs { @apply grid; @apply [grid-template-columns:repeat(6,_minmax(0,_1fr))]; @apply items-stretch; @apply [gap:4px]; @apply [min-width:0]; }
+.kol-coupon-status-tabs > button { @apply inline-flex; @apply [width:100%]; @apply items-center; @apply justify-center; @apply [min-height:40px]; @apply [padding:6px_5px]; @apply [border:1px_solid_transparent]; @apply [border-radius:8px]; @apply [background:#fff]; @apply [font-size:11px]; box-shadow: none; }
+.kol-coupon-status-tabs > button:hover { @apply [border-color:#EAE4D7]; }
+.kol-coupon-status-tabs > button[aria-pressed="true"] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#1A1612]; }
+.kol-coupon-toolbar > button { @apply [min-height:40px]; @apply [border-radius:8px]; @apply [font-size:12px]; }
+.kol-coupon-grid { @apply grid; @apply [grid-template-columns:repeat(4,_minmax(0,_1fr))]; @apply items-stretch; @apply [grid-auto-rows:auto]; @apply [gap:12px]; }
+.kol-coupon-grid .kol-coupon-card { @apply [aspect-ratio:auto]; @apply [min-width:0]; @apply [min-height:0]; @apply [height:100%]; @apply [overflow:visible]; @apply [gap:10px]; @apply [padding:13px]; @apply [border-radius:12px]; @apply [box-shadow:0_2px_8px_rgb(35_29_21_/_3%)]; }
+.kol-coupon-card > div:first-child { @apply [min-height:0]; @apply [flex:1]; @apply [overflow:visible]; }
+.kol-coupon-card > div:first-child > div:first-child { @apply [min-height:25px]; @apply [margin-bottom:10px]; @apply [gap:6px]; }
+.kol-coupon-card > div:first-child > div:first-child > span { @apply [padding:2px_7px]; @apply [font-size:10px]; }
+.kol-coupon-card .kol-coupon-code { @apply [gap:8px]; @apply [padding:10px]; @apply [margin-bottom:12px]; @apply [border-color:#EEDFC6]; @apply [border-radius:9px]; @apply [background:#FFFDFA]; }
+.kol-coupon-code > div { @apply [min-width:0]; }
+.kol-coupon-code > div > span:first-child { @apply [font-size:9px]; @apply [letter-spacing:.03em]; }
+.kol-coupon-code > div > span:last-child { @apply block; @apply [margin-top:3px]; @apply [font-size:14px]; @apply [line-height:20px]; @apply [letter-spacing:0]; @apply [overflow-wrap:anywhere]; }
+.kol-coupon-code > button { @apply [flex-shrink:0]; @apply [padding:5px]; @apply [border-radius:6px]; }
+.kol-coupon-card > div:first-child > div:nth-child(3) { @apply [margin-bottom:9px]; @apply [font-size:11px]; @apply [line-height:16px]; }
+.kol-coupon-card > div:first-child > div:nth-child(3) > .flex { @apply [gap:6px]; }
+.kol-coupon-card > div:first-child > div:nth-child(3) > .flex > span:last-child { @apply [min-width:0]; @apply text-right; @apply [overflow-wrap:anywhere]; }
+.kol-coupon-card > div:first-child > div:nth-child(4) { @apply [padding:7px_8px]; @apply [margin-bottom:0]; @apply [font-size:10px]; @apply [border-radius:7px]; }
+.kol-coupon-card > div:last-child { @apply [flex-shrink:0]; @apply [min-height:36px]; @apply box-border; @apply [padding-top:8px]; @apply items-center; }
+.kol-coupon-card > div:last-child > span { @apply [font-size:10px]; }
+.kol-coupon-details > .flex > span:first-child { @apply [flex-shrink:0]; }
+.kol-coupon-details > .flex > span:last-child { @apply [font-size:11px]; @apply [line-height:17px]; font-variant-numeric: tabular-nums; }
+.kol-coupon-card .kol-coupon-earnings { @apply [padding:9px_10px]; @apply [border-color:#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FAF8F5]; font-variant-numeric: tabular-nums; }
+.kol-coupon-card > div:last-child { @apply [border-color:#F0EBE2]; }
+.kol-coupon-card > div:last-child button { @apply grid; @apply place-items-center; @apply [width:28px]; @apply [height:28px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:7px]; @apply [background:#fff]; }
+
+.kol-coupon-proposal { @apply [max-width:560px]; @apply [max-height:calc(100dvh_-_32px)]; @apply [border-radius:16px]; @apply [box-shadow:0_24px_70px_rgb(35_29_21_/_18%)]; }
+.kol-coupon-proposal-heading { @apply [gap:11px]; @apply [padding:16px_20px]; @apply [background:#fff]; }
+.kol-coupon-proposal-heading > span { @apply [width:34px]; @apply [height:34px]; @apply [border-radius:9px]; }
+.kol-coupon-proposal-heading > div { @apply [min-width:0]; @apply [flex:1]; }
+.kol-coupon-proposal-heading h3 { @apply [margin:0]; @apply [font-size:17px]; @apply [line-height:24px]; @apply [font-weight:650]; @apply [letter-spacing:0]; }
+.kol-coupon-proposal-heading > button { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:30px]; @apply [height:30px]; @apply [padding:0]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#fff]; @apply [font-size:13px]; }
+.kol-coupon-proposal-form { @apply flex; @apply flex-col; @apply [gap:18px]; @apply [min-height:0]; @apply [padding:20px]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#EEDFC6_transparent]; }
+.kol-coupon-proposal-form label { @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:600]; }
+.kol-coupon-proposal-form #coupon-partner-store { @apply [min-height:44px]; @apply [padding:8px_11px]; @apply [border-radius:9px]; @apply [background:#fff]; @apply [font-size:13px]; box-shadow: none; }
+.kol-coupon-proposal-form #coupon-partner-store + div { @apply [border-radius:9px]; }
+.kol-coupon-proposal-code { @apply grid; @apply [gap:7px]; @apply [padding:0]; @apply [border:0]; @apply [background:transparent]; }
+.kol-coupon-proposal-code > div:first-child { @apply items-center; }
+.kol-coupon-proposal-code > div:first-child > span { @apply [padding:2px_6px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:5px]; @apply [background:#FAF8F5]; @apply [font-size:10px]; @apply [line-height:15px]; }
+.kol-coupon-proposal-code label { @apply [margin-bottom:0]; }
+.kol-coupon-proposal-code input { @apply [height:44px]; @apply [padding:10px_36px_10px_11px]; @apply [border-radius:9px]; @apply [background:#fff]; @apply [font-size:15px]; @apply [line-height:21px]; @apply [letter-spacing:.02em]; }
+.kol-coupon-proposal-code input::placeholder { @apply [font-size:12px]; @apply [letter-spacing:0]; }
+.kol-coupon-proposal-code #coupon-code-feedback { @apply [margin:0]; @apply [font-size:11px]; @apply [line-height:17px]; }
+.kol-coupon-proposal-form > p { @apply [margin:0]; @apply [padding:9px_10px]; @apply [border-radius:8px]; @apply [background:#FAF8F5]; @apply [font-size:11px]; @apply [line-height:17px]; }
+.kol-coupon-proposal-form > p svg { @apply [flex-shrink:0]; @apply [margin-top:1px]; }
+.kol-coupon-proposal-footer { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:10px]; @apply [padding-top:14px]; }
+.kol-coupon-proposal-footer button { @apply inline-flex; @apply justify-center; @apply items-center; @apply [min-height:40px]; @apply [padding:8px_12px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#fff]; @apply [color:#1A1612]; @apply [font-size:12px]; @apply [line-height:18px]; }
+.kol-coupon-proposal-footer button[type="submit"] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [font-weight:600]; }
+.kol-coupon-proposal-footer button:disabled { @apply [opacity:.5]; }
+.kol-coupon-proposal button:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
+@media (max-width: 480px) {
+  .kol-coupon-proposal-heading { @apply [padding:14px]; }
+  .kol-coupon-proposal-form { @apply [padding:14px]; @apply [gap:14px]; }
+  .kol-coupon-proposal-footer { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+}
+@media (max-width: 1023px) {
+  .kol-coupon-summary { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+  .kol-coupon-grid { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+}
+@media (max-width: 540px) {
+  .kol-coupon-summary { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .kol-coupon-grid { @apply [grid-template-columns:minmax(0,_1fr)]; }
+}
+@media (max-width: 1250px) {
+  .kol-coupon-toolbar { @apply [grid-template-columns:minmax(0,_1fr)_auto]; }
+  .kol-coupon-search { @apply [grid-column:1]; @apply [grid-row:1]; }
+  .kol-coupon-toolbar > button { @apply [grid-column:2]; @apply [grid-row:1]; }
+  .kol-coupon-status-tabs { @apply [grid-column:1_/_-1]; @apply [grid-row:2]; }
+}
+@media (max-width: 480px) {
+  .kol-coupon-toolbar { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .kol-coupon-search, .kol-coupon-status-tabs, .kol-coupon-toolbar > button { @apply [grid-column:1]; @apply [grid-row:auto]; }
+  .kol-coupon-status-tabs { @apply grid; @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))]; }
+}

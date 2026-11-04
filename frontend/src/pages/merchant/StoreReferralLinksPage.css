@@ -1,0 +1,62 @@
+@reference "../../index.css";
+.promotions-links { @apply [padding-top:0]; @apply [gap:18px]; @apply [max-width:none]; }
+.referral-filters { @apply [padding:16px]; @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.referral-filters form { @apply [gap:10px]; }
+.referral-filters input { @apply [height:40px]; @apply [font-size:12px]; @apply [border-radius:8px]; @apply [background:#FAF8F5]; }
+.referral-filters button[aria-haspopup='listbox'] { @apply [height:40px]; @apply [min-height:40px]; @apply [font-size:12px]; @apply [font-weight:400]; @apply [border-radius:8px]; box-shadow: none; }
+.referral-filters button[type='submit'] { @apply [height:40px]; @apply [padding-inline:16px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-size:12px]; @apply [font-weight:550]; box-shadow: none; }
+.referral-filters button[type='submit']:hover { @apply [background:#F3EFE6]; }
+.referral-filters button[title='Xóa bộ lọc'] { @apply [width:36px]; @apply [height:40px]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.referral-table-panel { @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.referral-table-heading { @apply flex; @apply justify-between; @apply items-center; @apply [gap:16px]; @apply [padding:18px_20px]; @apply [border-bottom:1px_solid_#EAE4D7]; }
+.referral-table-heading h2 { @apply [margin:0]; @apply [font-size:15px]; @apply [line-height:22px]; @apply [font-weight:650]; @apply [letter-spacing:-.2px]; }
+.referral-table-heading p { @apply [margin:4px_0_0]; @apply [font-size:11px]; @apply [color:#7D715E]; @apply [line-height:18px]; }
+.referral-table-heading > span { @apply [padding:4px_8px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:6px]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply whitespace-nowrap; font-variant-numeric: tabular-nums; }
+.promotions-links table { @apply [min-width:1040px]; }
+.promotions-links col:nth-child(1) { @apply [width:20%]; }
+.promotions-links col:nth-child(3) { @apply [width:190px]; }
+.promotions-links col:nth-child(6) { @apply [width:135px]; }
+.promotions-links col:nth-child(7) { @apply [width:120px]; }
+.promotions-links thead tr { @apply [background:#FFFFFF]; @apply [border-color:#EAE4D7]; @apply [font-size:10px]; @apply [font-weight:500]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.promotions-links th { @apply [padding:12px_14px]; @apply [font-weight:500]; }
+.promotions-links th:last-child { @apply [background:#FFFFFF]; }
+.promotions-links td { @apply [padding:16px_14px]; @apply [font-size:12px]; @apply [vertical-align:middle]; }
+.promotions-links td:last-child { @apply [padding:12px_10px]; }
+.promotions-links tbody tr { @apply [transition:background-color_.15s]; }
+.promotions-links tbody tr:hover { @apply [background:#FEFCF9]; }
+.promotions-links td:first-child > div { @apply [gap:10px]; }
+.promotions-links td:first-child > div > div:first-child { @apply [width:32px]; @apply [height:32px]; @apply [border-radius:50%]; @apply [background:#F3EFE6]; @apply [border:0]; @apply [color:#9A702F]; @apply [font-size:10px]; box-shadow: none; }
+.promotions-links td:first-child .font-bold, .promotions-links td:first-child .font-semibold { @apply [font-weight:550]; @apply [font-size:12px]; }
+.promotions-links td:first-child [class*='text-[11px]'] { @apply [font-size:10px]; @apply [line-height:17px]; @apply [color:#9A9082]; }
+.promotions-links td:nth-child(2) img { @apply [width:40px]; @apply [height:40px]; @apply [border-radius:8px]; box-shadow: none; }
+.promotions-links td:nth-child(2) > div { @apply [gap:10px]; }
+.promotions-links td:nth-child(2) .font-bold, .promotions-links td:nth-child(2) .font-semibold { @apply [font-weight:550]; }
+.promotions-links td:nth-child(2) .font-black { @apply [font-size:13px]; @apply [font-weight:600]; @apply [color:#1A1612]; font-variant-numeric: tabular-nums; }
+.promotions-links td:nth-child(2) span.rounded-full { @apply [border-radius:5px]; @apply [font-size:9px]; @apply [font-weight:500]; @apply [padding:2px_6px]; }
+.promotions-links td code { @apply block; @apply [min-width:0]; @apply [border:0]; @apply [background:#FAF8F5]; @apply [border-radius:6px]; @apply [padding:5px_7px]; @apply [font-size:11px]; @apply [line-height:17px]; @apply [word-break:normal]; @apply [overflow-wrap:anywhere]; }
+.promotions-links td button[title='Sao chép link tiếp thị'] { @apply [width:26px]; @apply [height:28px]; @apply [border-radius:6px]; }
+.promotions-links td button[title='Sao chép link tiếp thị'] svg { @apply [width:14px]; @apply [height:14px]; }
+.promotions-links td:nth-child(3) > div:last-child > span:first-child { @apply [border:0]; @apply [border-radius:4px]; @apply [background:#FAF8F5]; @apply [padding:2px_5px]; @apply [font-size:9px]; @apply [font-weight:400]; }
+.promotions-links td[data-label] { @apply [padding-inline:5px]; }
+.promotions-links td[data-label] > div { @apply [min-width:32px]; @apply [border:0]; @apply [border-radius:6px]; @apply [background:transparent]; @apply [padding:4px]; @apply [gap:5px]; @apply [font-size:12px]; @apply [font-weight:550]; font-variant-numeric: tabular-nums; }
+.promotions-links td[data-label] svg { @apply [width:12px]; @apply [height:12px]; @apply [color:#9A9082]; }
+.promotions-links td:nth-child(6) > span, .promotions-links td:nth-child(6) > div > span:first-child { @apply [padding:4px_7px]; @apply [border-radius:6px]; @apply [font-size:10px]; @apply [font-weight:500]; }
+.promotions-links td:last-child > button { @apply [min-height:32px]; @apply [padding:7px_9px]; @apply [border-radius:7px]; @apply [font-size:11px]; @apply [font-weight:500]; box-shadow: none; }
+.promotions-links td:last-child > button svg { @apply [width:13px]; @apply [height:13px]; }
+.referral-block-dialog { @apply [padding:22px]; @apply [border-radius:15px]; @apply [max-height:calc(100dvh_-_32px)]; @apply overflow-y-auto; }
+.referral-block-dialog h3 { @apply [font-size:15px]; @apply [font-weight:650]; @apply [color:#1A1612]; }
+.referral-block-dialog h3 svg { @apply [width:18px]; @apply [height:18px]; @apply [color:#B88E4F]; }
+.referral-block-dialog form > div:first-child { @apply [border-radius:9px]; @apply [background:#FAF8F5]; }
+.referral-block-dialog label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [text-transform:none]; @apply [letter-spacing:0]; @apply [line-height:18px]; @apply [margin-bottom:6px]; }
+.referral-block-dialog textarea { @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [font-size:12px]; @apply [line-height:19px]; }
+.referral-block-dialog form > div:last-child button { @apply [border-radius:8px]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+.promotions-links button:focus-visible, .promotions-links a:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (max-width: 639px) {
+  .referral-filters { @apply [padding:14px]; }
+  .referral-filters form { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; }
+  .referral-filters form > div:first-child, .referral-filters form > div:last-child { @apply [grid-column:1_/_-1]; }
+  .referral-table-heading { @apply [padding:16px]; @apply items-start; }
+  .referral-table-heading h2 { @apply [font-size:14px]; }
+  .referral-table-heading p { @apply [font-size:10px]; }
+  .referral-block-dialog { @apply [padding:18px]; }
+}

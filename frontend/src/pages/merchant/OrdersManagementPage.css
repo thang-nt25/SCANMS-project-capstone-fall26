@@ -1,0 +1,159 @@
+@reference "../../index.css";
+.merchant-orders-filters { @apply [container-type:inline-size]; @apply [padding:10px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; }
+.merchant-orders-filter-layout { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)]; @apply items-center; @apply [gap:10px]; }
+.merchant-orders-status-tabs { @apply flex; @apply items-stretch; @apply [gap:3px]; @apply [min-width:0]; @apply [overflow-x:auto]; @apply [padding:3px]; @apply [border-radius:9px]; @apply [background:#FFFFFF]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#EEDFC6_transparent]; }
+.merchant-orders-status-tabs > button { @apply [flex:1_0_auto]; @apply [width:auto]; @apply [min-height:36px]; @apply [height:auto]; @apply [padding:8px_12px]; @apply [border:1px_solid_transparent]; @apply [border-radius:7px]; @apply [color:#7D715E]; @apply [background:transparent]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [line-height:18px]; @apply whitespace-nowrap; box-shadow: none; @apply [transition:background-color_.15s,_border-color_.15s,_color_.15s]; }
+.merchant-orders-status-tabs > button:hover { @apply [color:#1A1612]; @apply [background:#FAF8F5]; }
+.merchant-orders-status-tabs > button[aria-pressed=true] { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#79592C]; @apply [font-weight:600]; box-shadow: none; }
+.merchant-orders-search { @apply [height:42px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:9px]; @apply [background:#FFFFFF]; box-shadow: none; }
+.merchant-orders-search:focus-within { @apply [border-color:#C59B58]; @apply [box-shadow:0_0_0_3px_rgb(197_155_88_/_10%)]; }
+.merchant-orders-search input { @apply [font-size:12px]; }
+@container (min-width: 1100px) {
+  .merchant-orders-filter-layout { @apply [grid-template-columns:minmax(0,_1fr)_245px]; }
+  .merchant-orders-status-tabs > button { @apply [flex:1_1_0]; @apply [padding-inline:6px]; }
+}
+.merchant-orders-page .merchant-orders-table { @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:13px]; @apply [background:#FFFFFF]; box-shadow: none; }
+.merchant-orders-table-heading { @apply [min-height:62px]; @apply [padding:13px_18px]; @apply [border-color:#EAE4D7]; @apply [background:#FFFFFF]; }
+.merchant-orders-heading-icon { @apply grid; @apply [width:32px]; @apply [height:32px]; @apply [flex-shrink:0]; @apply place-items-center; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:9px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.merchant-orders-table-heading h2 { @apply [font-size:14px]; @apply [font-weight:600]; @apply [line-height:22px]; @apply [letter-spacing:-.15px]; }
+.merchant-orders-table-heading h2 + span { @apply [padding:2px_8px]; @apply [border-color:#EAE4D7]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [font-weight:500]; }
+.merchant-orders-scroll { @apply [min-height:0]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#EEDFC6_transparent]; }
+.merchant-orders-data thead tr { @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.merchant-orders-data th { @apply [height:42px]; @apply [padding:11px_16px]; @apply [font-weight:500]; }
+.merchant-orders-data td { @apply [padding:14px_16px]; @apply [border-color:#EAE4D7]; }
+.merchant-orders-data tbody tr { @apply [background:#FFFFFF]; }
+.merchant-orders-data tbody tr:hover { @apply [background:#FDFBF8]; }
+.merchant-orders-data td[data-label="Khách hàng"] strong { @apply [font-size:12px]; @apply [font-weight:600]; @apply [line-height:19px]; }
+.merchant-orders-data td[data-label="Khách hàng"] span { @apply [font-family:inherit]; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Sản phẩm"] > div { @apply [max-width:none]; }
+.merchant-orders-data td[data-label="Sản phẩm"] img { @apply object-contain; @apply [background:#FFFFFF]; }
+.merchant-orders-data td[data-label="Sản phẩm"] .relative { @apply [width:42px]; @apply [height:42px]; @apply [border-radius:9px]; box-shadow: none; }
+.merchant-orders-data td[data-label="Sản phẩm"] button { @apply [padding-left:52px]; @apply [font-weight:500]; }
+.merchant-orders-data :is(th:nth-child(3), td[data-label="Tổng tiền"]) { @apply text-right; }
+.merchant-orders-data td[data-label="Tổng tiền"] > div { @apply items-end; @apply [gap:5px]; }
+.merchant-orders-data td[data-label="Tổng tiền"] strong { @apply [font-family:inherit]; @apply [font-size:13px]; @apply [font-weight:600]; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Tổng tiền"] span { @apply [padding:1px_6px]; @apply [border-color:#EAE4D7]; @apply [border-radius:5px]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; @apply [font-size:9px]; @apply [font-weight:500]; @apply [line-height:16px]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.merchant-orders-data .merchant-order-status { @apply [gap:6px]; @apply [padding:4px_9px]; @apply [border-radius:7px]; @apply [font-size:11px]; @apply [font-weight:500]; @apply [line-height:18px]; }
+.merchant-orders-data [data-order-status="SHIPPING"], .merchant-orders-data [data-order-status="RETURNED"] { @apply [border-color:#EAE4D7]; @apply [background:#FAF8F5]; @apply [color:#7D715E]; }
+.merchant-orders-data :is([data-order-status="SHIPPING"], [data-order-status="RETURNED"]) > span:first-child { @apply [background:#B88E4F]; }
+.merchant-orders-data td[data-label="Hoa hồng CTV"] strong { @apply [color:#79592C]; @apply [font-family:inherit]; @apply [font-size:12px]; @apply [font-weight:600]; font-variant-numeric: tabular-nums; }
+.merchant-orders-data td[data-label="Thao tác"] button { @apply [min-height:30px]; @apply [border-radius:7px]; @apply [font-weight:500]; box-shadow: none; }
+.merchant-orders-data td[data-label="Thao tác"] > div > div > button { @apply [padding:6px_9px]; @apply [border:1px_solid_#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#1A1612]; @apply [font-size:10px]; }
+.merchant-orders-data td[data-label="Thao tác"] > div > div > button:hover { @apply [background:#F3EFE6]; }
+.merchant-orders-page :is(.merchant-orders-filters, .merchant-orders-table) :is(button, input):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
+.order-actions-menu { @apply [padding:6px]; @apply [border-color:#EAE4D7]; @apply [border-radius:11px]; @apply [background:#FFFFFF]; @apply [color:#1A1612]; @apply [box-shadow:0_10px_30px_rgb(35_29_21_/_10%)]; @apply [scrollbar-width:thin]; @apply [scrollbar-color:#EEDFC6_transparent]; }
+.order-menu-summary { @apply flex; @apply flex-col; @apply [gap:11px]; @apply [margin-bottom:4px]; @apply [padding:6px_6px_11px]; @apply [border-bottom:1px_solid_#EAE4D7]; }
+.order-menu-heading { @apply flex; @apply items-center; @apply [gap:9px]; }
+.order-menu-icon { @apply grid; @apply [width:30px]; @apply [height:30px]; @apply [flex-shrink:0]; @apply place-items-center; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.order-menu-heading > div { @apply [min-width:0]; }
+.order-menu-heading p { @apply [margin:0]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:16px]; }
+.order-menu-heading strong { @apply block; @apply [margin-top:2px]; @apply [overflow-wrap:anywhere]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:600]; }
+.order-menu-date { @apply flex; @apply items-center; @apply justify-between; @apply flex-wrap; @apply [gap:5px]; @apply [font-size:10px]; @apply [line-height:18px]; }
+.order-menu-date > span { @apply [color:#7D715E]; }
+.order-menu-date time { @apply inline-flex; @apply items-center; @apply [gap:5px]; @apply [color:#1A1612]; font-variant-numeric: tabular-nums; }
+.order-menu-date svg { @apply [color:#B88E4F]; }
+.order-menu-shipping { @apply [padding:9px_10px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.order-menu-shipping > p:first-child { @apply [margin:0_0_6px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:16px]; }
+.order-menu-shipping > button { @apply flex; @apply [width:100%]; @apply [min-height:31px]; @apply justify-between; @apply [gap:8px]; @apply [padding:5px_8px]; @apply [border-color:#EEDFC6]; @apply [border-radius:6px]; @apply [background:#FBF5EB]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.order-menu-shipping > button > span { @apply [overflow-wrap:anywhere]; @apply text-left; }
+.order-menu-shipping .order-menu-carrier { @apply flex; @apply items-start; @apply [gap:5px]; @apply [margin:6px_0_0]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [line-height:17px]; }
+.order-menu-carrier svg { @apply [flex-shrink:0]; @apply [margin-top:2px]; @apply [color:#B88E4F]; }
+.order-menu-carrier > span { @apply [overflow-wrap:anywhere]; }
+.order-menu-shipping > p:last-child:not(.order-menu-carrier) { @apply [margin:0]; @apply [font-size:10px]; @apply [line-height:17px]; @apply [font-style:normal]; }
+.order-actions-menu > button { @apply [min-height:34px]; @apply [padding:8px]; @apply [border-radius:6px]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [font-weight:500]; }
+.order-actions-menu > button:hover { @apply [background:#FBF5EB]; }
+.order-actions-menu :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:1px]; }
+@media (max-width: 639px) {
+  .merchant-orders-toolbar { @apply [grid-template-columns:minmax(0,_1fr)]; }
+  .merchant-orders-filters { @apply [padding:8px]; @apply [border-radius:11px]; }
+  .merchant-orders-status-tabs > button { @apply [flex:0_0_auto]; @apply [padding-inline:11px]; }
+  .merchant-orders-table-heading { @apply [padding:12px]; }
+  .merchant-orders-data { @apply [min-width:0]; @apply [table-layout:auto]; }
+  .merchant-orders-data :is(colgroup, thead) { @apply hidden; }
+  .merchant-orders-data tbody { @apply block; }
+  .merchant-orders-data tbody tr { @apply grid; @apply [grid-template-columns:minmax(0,_1fr)_auto]; @apply [gap:12px_10px]; @apply [padding:14px]; @apply [border-bottom:1px_solid_#EAE4D7]; }
+  .merchant-orders-data tbody tr:last-child { @apply [border-bottom:0]; }
+  .merchant-orders-data td { @apply block; @apply [padding:0]; @apply [min-width:0]; }
+  .merchant-orders-data td[data-label="Khách hàng"] { @apply [grid-column:1]; @apply [grid-row:1]; }
+  .merchant-orders-data td[data-label="Trạng thái"] { @apply [grid-column:2]; @apply [grid-row:1]; @apply text-right; }
+  .merchant-orders-data td[data-label="Sản phẩm"] { @apply [grid-column:1_/_-1]; @apply [grid-row:2]; @apply [padding-top:11px]; @apply [border-top:1px_solid_#EAE4D7]; }
+  .merchant-orders-data td[data-label="Tổng tiền"] { @apply [grid-column:2]; @apply [grid-row:3]; @apply [align-self:center]; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"] { @apply [grid-column:1]; @apply [grid-row:3]; @apply [align-self:center]; @apply text-left; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"]::before { @apply block; @apply [margin-bottom:3px]; @apply [color:#7D715E]; @apply [font-size:10px]; @apply [content:'Hoa_hồng_CTV']; }
+  .merchant-orders-data td[data-label="Hoa hồng CTV"] > div { @apply items-start; }
+  .merchant-orders-data td[data-label="Thao tác"] { @apply [grid-column:1_/_-1]; @apply [grid-row:4]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; }
+  .merchant-orders-data td[data-label="Khách hàng"] > div { @apply [max-width:none]; }
+}
+.merchant-orders-toolbar { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply items-stretch; @apply [gap:8px]; }
+.merchant-orders-view-tabs, .merchant-orders-toolbar-actions { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:8px]; @apply [min-width:0]; }
+.merchant-orders-toolbar :is(button, a) { @apply [width:100%]; @apply [min-width:0]; @apply [min-height:40px]; @apply [padding:9px_12px]; @apply [border-radius:10px]; @apply [font-size:12px]; @apply [line-height:20px]; @apply whitespace-normal; @apply text-center; }
+.merchant-orders-toolbar :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
+.merchant-orders-page .merchant-orders-toolbar { @apply [grid-template-columns:repeat(5,minmax(0,1fr))]; @apply [gap:10px]; }
+.merchant-orders-page .merchant-orders-toolbar:has(.merchant-orders-toolbar-actions) > .merchant-orders-view-tabs,
+.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-toolbar-actions { @apply [display:contents]; }
+.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-view-tabs { @apply [grid-column:1_/_-1]; }
+.merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [min-height:46px]; @apply [height:46px]; @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [margin:0]; }
+@media(max-width:760px) {
+  .merchant-orders-page .merchant-orders-toolbar { @apply flex; @apply [overflow-x:auto]; }
+  .merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [flex:1_0_150px]; }
+}
+
+/* Keep the list readable without squeezing names or fulfillment actions. */
+.merchant-orders-page .merchant-orders-table-heading { @apply [min-height:56px]; @apply [padding:12px_18px]; }
+.merchant-orders-page .merchant-orders-data { @apply [min-width:1180px]; }
+.merchant-orders-page .merchant-orders-data th { @apply [padding:12px_14px]; @apply [font-size:12px]; @apply [line-height:18px]; @apply text-left; @apply [background:#FFFDFA]; }
+.merchant-orders-page .merchant-orders-data td { @apply [padding:14px]; @apply [vertical-align:middle]; @apply [line-height:1.6]; @apply [font-size:12px]; }
+.merchant-orders-page .merchant-orders-data :is(th:first-child,td:first-child) { @apply text-center; }
+.merchant-orders-page .merchant-orders-data :is(th:nth-child(5),td:nth-child(5)) { @apply text-right; }
+.merchant-orders-page .merchant-orders-data :is(th:nth-child(6),td:nth-child(6)) { @apply text-center; }
+.merchant-orders-page .merchant-orders-data th:nth-child(7) { @apply text-right; }
+.merchant-orders-page .merchant-order-code { @apply [max-width:100%]; @apply [padding:0]; @apply [border:0]; @apply [background:transparent]; box-shadow: none; @apply [font-family:inherit]; @apply [font-size:12px]; @apply [font-weight:650]; @apply [overflow-wrap:anywhere]; @apply whitespace-normal; }
+.merchant-orders-page .merchant-orders-data td[data-label="Mã đơn & Ngày tạo"] > div { @apply [gap:5px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Mã đơn & Ngày tạo"] > div > span:last-child:not(:first-child) { @apply [font-weight:500]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Khách hàng"] { @apply text-left; }
+.merchant-orders-page .merchant-orders-data td[data-label="Khách hàng"] strong { @apply [font-size:12px]; @apply [font-weight:600]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] > div { @apply [max-width:none]; @apply [gap:6px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] .relative { @apply [width:44px]; @apply [height:44px]; @apply [border-radius:8px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] button { @apply [padding-left:54px]; @apply [font-size:12px]; @apply [line-height:18px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] strong { @apply [font-size:14px]; @apply [letter-spacing:-.2px]; @apply whitespace-nowrap; }
+.merchant-orders-page .merchant-orders-data .merchant-order-status { @apply inline-flex; @apply items-center; @apply whitespace-nowrap; @apply [padding:5px_9px]; @apply [border-radius:7px]; @apply [font-size:11px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] > div { @apply flex; @apply justify-end; @apply items-center; @apply [flex-wrap:nowrap]; @apply [gap:6px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button { @apply [min-height:34px]; @apply [flex-shrink:0]; @apply whitespace-nowrap; @apply [line-height:18px]; @apply [border-radius:8px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button svg { @apply [flex-shrink:0]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button[title="Nhập mã vận đơn & giao hàng"] { --action-bg: #FBF5EB; --action-border: #EEDFC6; --action-ink: #79592C; @apply [background:#FBF5EB]; @apply [background-image:none]; @apply [border:1px_solid_#EEDFC6]; @apply [color:#79592C]; @apply [padding:7px_10px]; }
+@media(max-width:639px) {
+  .merchant-orders-page .merchant-orders-data { @apply [min-width:0]; }
+  .merchant-orders-page .merchant-orders-data td { @apply [padding:0]; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] { @apply [padding-top:12px]; }
+}
+.merchant-orders-page .merchant-orders-data { @apply [min-width:850px]; }
+.merchant-orders-page .merchant-orders-data th:nth-child(3) { @apply text-right; }
+.merchant-orders-page .merchant-orders-data th:nth-child(4) { @apply text-center; }
+.merchant-orders-page .merchant-orders-data th:nth-child(5) { @apply text-right; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] { @apply text-left; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] { @apply text-right; }
+.merchant-orders-page .merchant-orders-data td[data-label="Trạng thái"] { @apply text-center; }
+@media(max-width:639px) { .merchant-orders-page .merchant-orders-data { @apply [min-width:0]; } }
+
+@media(min-width:640px) {
+  .merchant-orders-page .merchant-orders-data th { @apply [height:46px]; @apply [padding:12px_20px]; }
+  .merchant-orders-page .merchant-orders-data td { @apply [height:88px]; @apply [padding:15px_20px]; }
+  .merchant-orders-page .merchant-orders-data :is(th:first-child,td:first-child) { @apply [padding-inline:10px]; }
+  .merchant-orders-page .merchant-orders-data :is(th:last-child,td:last-child) { @apply text-center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Trạng thái"] > div { @apply items-center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] > div { @apply justify-center; @apply [gap:8px]; }
+}
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] .relative { @apply [width:48px]; @apply [height:48px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:9px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] button { @apply [padding-left:60px]; @apply [font-size:13px]; @apply [line-height:20px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Sản phẩm"] > div { @apply [gap:5px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] > div { @apply [gap:6px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] strong { @apply [font-size:14px]; @apply [font-weight:650]; }
+.merchant-orders-page .merchant-orders-data .merchant-order-status { @apply [min-width:106px]; @apply justify-center; @apply [min-height:32px]; @apply [padding:5px_10px]; }
+.merchant-orders-page .merchant-orders-data td[data-label="Thao tác"] button { @apply [height:34px]; @apply [min-width:34px]; box-shadow: none; }
+.merchant-orders-page .merchant-orders-data tbody tr:nth-child(even) { @apply [background:#FFFEFC]; }
+.merchant-orders-page .merchant-orders-data tbody tr:hover { @apply [background:#FBF5EB]; }
+@media(min-width:640px) {
+  .merchant-orders-page .merchant-orders-data th:nth-child(3),
+  .merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] { @apply text-center; }
+  .merchant-orders-page .merchant-orders-data td[data-label="Tổng tiền"] > div { @apply items-center; }
+}

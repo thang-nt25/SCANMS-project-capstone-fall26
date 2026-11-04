@@ -494,7 +494,7 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
         settlement!.id,
         testOwnerId,
       );
-      expect(approved.settlement.status).toBe(CommissionStatus.APPROVED);
+      expect(approved.settlement!.status).toBe(CommissionStatus.APPROVED);
 
       const walletBefore = await prisma.wallet.findUnique({
         where: { collaboratorId: testKolId },
@@ -511,7 +511,7 @@ describe('CommissionRules Real PostgreSQL Integration Tests', () => {
       expect(payoutResult.success).toBe(true);
       expect(payoutResult.settlement.paidAt).not.toBeNull();
       expect(payoutResult.settlement.walletTransactionId).not.toBeNull();
-      expect(payoutResult.ledger.amount).toBe('800000');
+      expect(payoutResult.ledger!.amount).toBe('800000');
 
       // 4. Kiểm tra số dư ví trong PostgreSQL
       const wallet = await prisma.wallet.findUnique({

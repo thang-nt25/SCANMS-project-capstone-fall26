@@ -1,0 +1,19 @@
+@reference "../../index.css";
+.kol-report-tabs { @apply grid; @apply [grid-template-columns:repeat(4,_minmax(0,_1fr))]; @apply [gap:10px]; }
+.kol-report-tabs button { @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [min-height:46px]; @apply [padding:9px_10px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:10px]; @apply [background:#fff]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [color:#7d715e]; @apply cursor-pointer; }
+.kol-report-step { @apply grid; @apply place-items-center; @apply [flex-shrink:0]; @apply [width:25px]; @apply [height:25px]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-size:11px]; @apply [font-weight:400]; }
+.kol-report-tabs button[aria-pressed=true] { @apply [border-color:#eedfc6]; @apply [background:#fbf5eb]; @apply [color:#1a1612]; @apply [font-weight:600]; }
+.kol-report-tabs button[aria-pressed=true] .kol-report-step { @apply [border-color:#c59b58]; @apply [color:#9a7135]; }
+.kol-report-tabs small { @apply [border-radius:5px]; @apply [padding:1px_5px]; @apply [background:#faf8f5]; @apply [font-size:10px]; font-variant-numeric: tabular-nums; @apply [color:#7d715e]; }
+.kol-report-tabs button:focus-visible { @apply [outline:2px_solid_#b88e4f]; @apply [outline-offset:2px]; }
+.kol-detail-report table { font-variant-numeric: tabular-nums; }
+.kol-detail-report table thead { @apply [background:#fff]; }
+.kol-detail-report table th { @apply [padding:12px_14px]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [background:#fff]; }
+.kol-detail-report table td { @apply [padding:12px_14px]; @apply [font-size:12px]; @apply [line-height:20px]; }
+.kol-detail-report table td img { @apply [width:38px]; @apply [height:38px]; }
+.kol-detail-report table td span.text-\[10px\] { @apply [font-size:11px]; @apply [line-height:17px]; }
+.kol-detail-report table td:first-child { @apply whitespace-nowrap; }
+@media (max-width: 639px) {
+  .kol-report-tabs { @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:8px]; }
+  .kol-report-tabs button { @apply [font-size:11px]; @apply [min-height:42px]; }
+}

@@ -1,0 +1,169 @@
+@reference "../../index.css";
+.commission-workspace { @apply [max-width:none]; @apply [padding-top:0]; @apply [padding-bottom:24px]; }
+.commission-workspace > * + * { @apply [margin-top:18px]; }
+.commission-workspace .commission-heading { @apply [padding:18px_20px]; @apply [border-radius:13px]; box-shadow: none; }
+.commission-heading h2 { @apply [font-size:17px]; @apply [line-height:24px]; @apply [font-weight:650]; @apply [letter-spacing:-.35px]; }
+.commission-heading p { @apply [margin:5px_0_0]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [color:#7D715E]; }
+.commission-heading > button { @apply [height:36px]; @apply [padding-inline:13px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+.commission-heading > button:hover { @apply [background:#F3EFE6]; }
+.commission-history { @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.commission-history > div:first-child { @apply [padding:14px_20px]; }
+.commission-history h3 { @apply [font-size:12px]; @apply [line-height:18px]; @apply [font-weight:600]; @apply [letter-spacing:0]; @apply [text-transform:none]; }
+.commission-workspace > .commission-tiers { @apply [container-type:inline-size]; @apply [margin-top:10px]; }
+.commission-tiers-empty { @apply [padding:20px_16px]; }
+.commission-rules-list { @apply grid; @apply [gap:8px]; }
+.commission-rule {
+  @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply items-center; @apply [gap:12px_16px];
+  @apply [padding:14px_16px]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:12px]; @apply [background:#FFFFFF];
+}
+.commission-rule--inactive { @apply [background:#FAF8F5]; }
+.commission-rule-heading { @apply [grid-column:1_/_-1]; @apply flex; @apply items-center; @apply justify-between; @apply [gap:10px]; @apply [min-width:0]; }
+.commission-rule-name { @apply [margin:0]; @apply [min-width:0]; @apply [color:#1A1612]; @apply [font-size:13px]; @apply [line-height:20px]; @apply [font-weight:600]; @apply [overflow-wrap:anywhere]; }
+.commission-rule-status { @apply [flex-shrink:0]; @apply [align-self:flex-start]; @apply [padding:3px_8px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:999px]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; @apply [font-size:11px]; @apply [line-height:16px]; @apply [font-weight:500]; @apply whitespace-nowrap; }
+.commission-rule--inactive .commission-rule-status { @apply [border-color:#EAE4D7]; @apply [background:#F3EFE6]; @apply [color:#7D715E]; }
+.commission-rule-metric { @apply [min-width:0]; }
+.commission-rule-metric > span { @apply block; @apply [color:#7D715E]; @apply [font-size:11px]; @apply [line-height:18px]; }
+.commission-rule-metric > p { @apply [margin:3px_0_0]; @apply [color:#1A1612]; @apply [font-size:14px]; @apply [line-height:20px]; @apply [font-weight:600]; font-variant-numeric: tabular-nums; @apply [overflow-wrap:anywhere]; }
+.commission-rule-reward > p { @apply [color:#B88E4F]; }
+.commission-rule-method { @apply [grid-column:1_/_-1]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; }
+.commission-rule-method > p { @apply [font-size:12px]; @apply [font-weight:500]; }
+.commission-rule-actions { @apply [grid-column:1_/_-1]; @apply flex; @apply justify-end; @apply items-center; @apply [gap:4px]; }
+.commission-rule-actions > button { @apply grid; @apply place-items-center; @apply [width:32px]; @apply [height:32px]; @apply [padding:0]; @apply [border:1px_solid_#EAE4D7]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; @apply [color:#7D715E]; @apply cursor-pointer; }
+.commission-rule-actions > button:hover { @apply [border-color:#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#B88E4F]; }
+.commission-rule-actions > .commission-rule-delete:hover { @apply [border-color:#DC2626]; @apply [color:#DC2626]; }
+.commission-rule-actions svg { @apply [width:15px]; @apply [height:15px]; }
+@container (min-width: 480px) and (max-width: 879px) {
+  .commission-rule-method { @apply [grid-column:auto]; @apply [padding-top:0]; @apply [border-top:0]; }
+  .commission-rule-actions { @apply [grid-column:auto]; @apply [align-self:end]; }
+}
+@container (min-width: 880px) {
+  .commission-rule { @apply [grid-template-columns:minmax(0,_1.5fr)_minmax(0,_.85fr)_minmax(0,_.85fr)_minmax(0,_1.25fr)_104px]; @apply [min-height:88px]; @apply [gap:20px]; }
+  .commission-rule-heading { @apply [grid-column:auto]; @apply flex-col; @apply items-start; @apply justify-center; @apply [gap:5px]; }
+  .commission-rule-name { @apply [display:-webkit-box]; @apply [-webkit-box-orient:vertical]; @apply [-webkit-line-clamp:2]; @apply overflow-hidden; }
+  .commission-rule-method { @apply [grid-column:auto]; @apply [padding-top:0]; @apply [border-top:0]; }
+  .commission-rule-metric { @apply [align-self:start]; @apply [padding-top:6px]; }
+  .commission-rule-actions { @apply [grid-column:auto]; }
+}
+.commission-tools { @apply [align-items:start]; @apply [gap:18px]; }
+.commission-settlement, .commission-simulator { @apply [padding:20px]; @apply [border-radius:13px]; @apply [box-shadow:0_2px_5px_rgb(35_29_21_/_2%)]; }
+.commission-settlement > div:first-child { @apply [gap:12px]; @apply [padding-bottom:15px]; @apply items-center; }
+.commission-settlement h3, .commission-simulator h3 { @apply [font-size:13px]; @apply [line-height:20px]; @apply [font-weight:600]; @apply [text-transform:none]; @apply [letter-spacing:-.1px]; }
+.commission-settlement > div:first-child > div:first-child > span { @apply [width:30px]; @apply [height:30px]; @apply [border-radius:8px]; }
+.commission-settlement > div:first-child > div:last-child { @apply [flex-shrink:0]; @apply [gap:7px]; }
+.commission-settlement > div:first-child > div:last-child input { @apply [width:76px]; }
+.commission-workspace input { @apply [height:38px]; @apply [border-radius:8px]; @apply [border-color:#EAE4D7]; @apply [font-size:12px]; @apply [font-weight:500]; @apply [background:#FFFFFF]; }
+.commission-workspace button[aria-haspopup='listbox'] { @apply [min-height:38px]; @apply [height:38px]; @apply [border-radius:8px]; box-shadow: none; @apply [font-size:12px]; @apply [font-weight:500]; }
+.commission-settlement label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [gap:10px]; @apply flex-wrap; }
+.commission-settlement label > span { @apply [font-size:10px]; @apply [font-weight:400]; }
+.commission-settlement > div:last-child[class*='text-center'] { @apply [padding:20px]; @apply [border-radius:9px]; @apply [font-size:11px]; @apply [line-height:18px]; @apply [background:#FAF8F5]; }
+.commission-settlement > div[class*='bg-gradient'] { @apply [background:#FEFCF8]; @apply [border-radius:11px]; @apply [padding:16px]; }
+.commission-settlement > div[class*='bg-gradient'] .font-black { @apply [font-weight:650]; }
+.commission-settlement > div[class*='bg-gradient'] .font-extrabold { @apply [font-weight:600]; }
+.commission-settlement > div[class*='bg-gradient'] button { @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:8px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-size:11px]; @apply [font-weight:550]; box-shadow: none; }
+.commission-simulator > div:first-child { @apply [gap:9px]; @apply [padding-bottom:15px]; @apply [margin-bottom:16px]; }
+.commission-simulator > div:first-child > span { @apply [width:30px]; @apply [height:30px]; @apply [border-radius:8px]; }
+.commission-simulator label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [line-height:18px]; @apply block; @apply [margin-bottom:5px]; }
+.commission-simulator > div:last-child { @apply [padding:14px]; @apply [border-radius:9px]; @apply [background:#FEFCF8]; @apply [font-size:11px]; }
+.commission-simulator > div:last-child > div { @apply [gap:12px]; }
+.commission-simulator > div:last-child .font-bold { @apply [font-weight:550]; }
+.commission-simulator > div:last-child > div:last-child { @apply [padding-top:12px]; @apply [margin-top:12px]; }
+.commission-simulator > div:last-child > div:last-child > span:last-child { @apply [font-size:17px]; @apply [line-height:22px]; @apply [font-weight:650]; font-variant-numeric: tabular-nums; }
+.commission-history > div:nth-child(2):not(.overflow-x-auto) { @apply [padding:24px_20px]; @apply [font-size:11px]; }
+.commission-history table { @apply [min-width:700px]; }
+.commission-history thead { @apply [background:#FFFFFF]; @apply [font-size:10px]; @apply [font-weight:500]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.commission-history th { @apply [font-weight:500]; @apply [padding:12px_16px]; }
+.commission-history td { @apply [padding:13px_16px]; @apply [font-size:11px]; @apply [font-weight:500]; }
+.commission-history td button { @apply [padding:6px_9px]; @apply [border:1px_solid_#EEDFC6]; @apply [border-radius:7px]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; @apply [font-weight:550]; }
+.commission-rule-dialog { @apply [padding:22px]; @apply [border-radius:16px]; @apply [max-height:calc(100dvh_-_32px)]; @apply overflow-y-auto; }
+.commission-rule-dialog h3 { @apply [font-size:16px]; @apply [font-weight:650]; }
+.commission-rule-dialog label { @apply [font-size:11px]; @apply [font-weight:550]; @apply [gap:6px]; }
+.commission-rule-dialog input { @apply [height:40px]; @apply [font-size:12px]; @apply [font-weight:400]; @apply [border-radius:8px]; @apply [background:#FFFFFF]; }
+.commission-rule-dialog form > div:last-child > button { @apply [border-radius:8px]; @apply [font-weight:550]; }
+.commission-rule-dialog form > div:last-child > button:last-child { @apply [border:1px_solid_#EEDFC6]; @apply [background:#FBF5EB]; @apply [color:#8C6226]; }
+.commission-workspace button:focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:3px]; }
+@media (min-width: 1024px) { .commission-tools { @apply [grid-template-columns:minmax(0,_1.85fr)_minmax(0,_1fr)]; } .commission-tools > div { @apply [grid-column:auto]; @apply [min-width:0]; } }
+@media (max-width: 639px) {
+  .commission-workspace > * + * { @apply [margin-top:14px]; }
+  .commission-workspace .commission-heading { @apply [padding:16px]; @apply [gap:14px]; }
+  .commission-heading h2 { @apply [font-size:16px]; }
+  .commission-heading > button { @apply [align-self:flex-start]; }
+  .commission-settlement, .commission-simulator { @apply [padding:16px]; }
+  .commission-settlement > div:first-child { @apply items-start; }
+  .commission-settlement > div:first-child > div:last-child { @apply [width:100%]; }
+  .commission-settlement > div:first-child > div:last-child > div { @apply [flex:1]; }
+  .commission-rule-dialog { @apply [padding:18px]; }
+}
+
+/* Three compact workspace panels with the same outlined step treatment as KYC. */
+.commission-workspace [hidden] { @apply hidden!; }
+.commission-workspace .commission-heading { @apply [padding:14px_18px]; @apply [border-radius:14px]; @apply [background:#fffdfa]; }
+.commission-heading h2 { @apply [font-size:16px]; }
+.commission-heading > div:last-child { @apply [gap:10px]; }
+.commission-view-tabs {
+  @apply grid;
+  @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))];
+  @apply [gap:10px];
+  @apply [padding:12px];
+  @apply [border:1px_solid_#eae4d7];
+  @apply [border-radius:14px];
+  @apply [background:#fffdfa];
+}
+.commission-view-tabs button {
+  @apply flex; @apply items-center; @apply justify-center; @apply [gap:9px];
+  @apply [min-height:46px]; @apply [padding:8px_12px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:10px];
+  @apply [background:#fffdfa]; @apply [color:#7d715e];
+  @apply [font-size:12px]; @apply cursor-pointer;
+}
+.commission-view-tabs button > span {
+  @apply grid; @apply place-items-center; @apply [flex:0_0_28px]; @apply [height:28px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:50%]; @apply [font-weight:400];
+}
+.commission-view-tabs button[aria-pressed='true'] { @apply [background:#fbf5eb]; @apply [color:#1a1612]; @apply [border-color:#eedfc6]; @apply [font-weight:600]; }
+.commission-view-tabs button[aria-pressed='true'] > span { @apply [border-color:#c59b58]; @apply [color:#8c6226]; }
+.commission-workspace .commission-team,
+.commission-workspace .commission-settlement,
+.commission-workspace .commission-simulator { @apply [padding:16px]; @apply [background:#fffdfa]; box-shadow: none; @apply [border-radius:14px]; }
+.commission-team h3, .commission-tools h3 { @apply [font-size:13px]; @apply [font-weight:600]; @apply [text-transform:none]; @apply [letter-spacing:0]; }
+.commission-team > .grid { @apply [gap:10px]; }
+.commission-team > .grid > div { @apply [padding:12px]; @apply [border-radius:10px]; @apply [background:#faf8f5]; }
+.commission-team table { @apply [background:#fffdfa]; }
+.commission-team thead { @apply [background:#faf8f5]; @apply [text-transform:none]; @apply [letter-spacing:0]; @apply [font-size:11px]; }
+.commission-team th, .commission-team td { @apply [padding:12px]; }
+.commission-tools .bg-gradient-to-br { @apply [background-image:none]; @apply [background-color:#fffdfa]; @apply [border-color:#eae4d7]; @apply [padding:12px]; @apply [border-radius:10px]; }
+.commission-tools .bg-gradient-to-br > .grid { @apply [gap:10px]; }
+.commission-tools .bg-gradient-to-br > .grid > div { @apply [border-radius:10px]; @apply [min-width:0]; }
+.commission-workspace .commission-history { @apply [border:1px_solid_#eae4d7]; @apply [background:#fffdfa]; @apply [padding:14px]; }
+.commission-workspace .commission-history > div:first-child { @apply [padding:0_0_12px]; @apply [border-bottom:1px_solid_#eae4d7]; }
+@media (max-width: 640px) {
+  .commission-view-tabs { @apply [gap:6px]; @apply [padding:8px]; }
+  .commission-view-tabs button { @apply flex-col; @apply [gap:5px]; @apply [padding:8px_4px]; @apply [font-size:11px]; }
+}
+.commission-period-picker { @apply grid; @apply [grid-template-columns:130px_110px]; @apply [gap:8px]; @apply items-center; }
+.commission-workspace .commission-period-picker button[aria-haspopup='listbox'] {
+  @apply [height:40px]; @apply [min-height:40px]; @apply [width:100%]; @apply [padding:8px_12px];
+  @apply [border:1px_solid_#eae4d7]; @apply [border-radius:9px];
+  @apply [background:#fffdfa]; @apply [color:#1a1612]; @apply [font-size:12px]; @apply [font-weight:500];
+}
+@media (max-width: 400px) {
+  .commission-period-picker { @apply [grid-template-columns:minmax(0,_1fr)_minmax(0,_1fr)]; @apply [width:100%]; }
+  .commission-heading > div { @apply flex-wrap; @apply [width:100%]; }
+}
+.commission-workspace .commission-tools-tabbed { @apply block; }
+.commission-tools-tabbed .commission-settlement,
+.commission-tools-tabbed .commission-simulator { @apply [background:#fffdfa]; @apply [padding:16px]; }
+.commission-tools-tabbed .commission-simulator { @apply [max-width:none]; }
+.commission-tools-tabbed .commission-simulator > .space-y-1 { @apply [max-width:460px]; }
+.commission-tools-tabbed .commission-simulator > div:last-child { @apply [background:#fbf5eb]; @apply [border:1px_solid_#eedfc6]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br { @apply [background:#fffdfa]; @apply [padding:12px]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { @apply [grid-template-columns:repeat(3,minmax(0,1fr))]; }
+.commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid > div { @apply [grid-column:auto]; @apply [min-height:82px]; @apply [padding:12px]; }
+@media (max-width: 600px) {
+  .commission-tools-tabbed .commission-settlement .bg-gradient-to-br > .grid { @apply [grid-template-columns:1fr]; }
+}
+.commission-data-review > ul { @apply grid; @apply [gap:8px]; @apply [list-style:none]; @apply [padding:0]; }
+.commission-data-review > ul > li { @apply [padding:10px_12px]; @apply [background:#fffdfa]; @apply [border:1px_solid_#eae4d7]; @apply [border-radius:9px]; }
+.commission-data-review > ul > li > details > summary { @apply flex; @apply justify-between; @apply items-center; @apply [gap:12px]; @apply [font-size:12px]; }
+.commission-data-review > ul > li > details > summary > span { @apply [color:#7d715e]; @apply [font-size:11px]; }
+.commission-data-review details > ul { @apply grid; @apply [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]; @apply [gap:6px_12px]; @apply [max-height:180px]; @apply overflow-y-auto; @apply [margin:10px_0_0]; @apply [padding:10px_0_0]; @apply [border-top:1px_solid_#eae4d7]; @apply [list-style:none]; }
+.commission-data-review details > ul > li { @apply [font-size:11px]; @apply [overflow-wrap:anywhere]; }

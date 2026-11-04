@@ -47,6 +47,7 @@ export interface SampleCollaborator {
 }
 
 export interface SampleRequest {
+  shippingCharges?: Array<{ environment?: string; trackingNumber: string; amount?: string | number | null }>;
   revisionDeadlineAt?: string | null;
   events?: Array<{ id: string; action: string; createdAt: string; details?: Record<string, unknown> | null }>;
   id: string;

@@ -14,14 +14,16 @@ import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 export interface SidebarProps {
   currentUser: UserProfile | null;
   onLogout: () => void;
+  className?: string;
 }
 
-export function Sidebar({ currentUser, onLogout }: SidebarProps) {
+export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState('');
   const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -184,6 +186,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     if (path === '/collaborator/collaboration') {
       return (
         currentPath.startsWith('/collaborator/collaboration') ||
+        currentPath.startsWith('/collaborator/sample-requests') ||
         currentPath.startsWith('/collaborator/messages') ||
                 currentPath === '/chat'
       );
@@ -298,7 +301,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   return (
     <aside
       data-workspace-role={role}
-      className="workspace-sidebar w-full lg:w-[250px] shrink-0 px-3.5 pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30"
+      className={`workspace-sidebar w-full lg:w-[250px] shrink-0 ${className ? className : 'px-3.5'} pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30`}
     >
       {/* Hidden file input for avatar upload */}
       <input
@@ -336,7 +339,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       />
 
       {/* User Identity Header (SCANMS UI Reference Style matching Customer) */}
-      <div className="flex items-center gap-3 px-2 py-1 pb-3 border-b border-[#EAE4D7]/70">
+      <div className={`flex items-center gap-3 ${className.includes('px-0') ? 'px-0' : 'px-2'} py-1 pb-3 border-b border-[#EAE4D7]/70`}>
         <div className="relative shrink-0 group">
           <button
             type="button"
@@ -347,16 +350,12 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
           >
             {uploading ? (
               <Loader2 className="w-4 h-4 text-[#B88E4F] animate-spin" />
-            ) : currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')) ? (
+            ) : (currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'))) && failedAvatar !== `${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}` ? (
               <img
                 src={currentUser?.avatarUrl || (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')}
-                alt="Avatar"
+                alt={`Ảnh đại diện ${currentUser?.fullName || 'tài khoản'}`}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  if (role === 'SHOP_MANAGER') {
-                    e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
-                  }
-                }}
+                onError={() => setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`)}
               />
             ) : (
               <span>

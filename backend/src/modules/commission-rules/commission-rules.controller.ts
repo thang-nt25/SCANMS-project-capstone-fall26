@@ -86,7 +86,8 @@ export class CommissionRulesController {
 
   @Get('team-progress')
   @ApiOperation({
-    summary: 'Xem tiến độ doanh số và mốc thưởng của toàn bộ đội ngũ KOL thuộc Shop trong tháng',
+    summary:
+      'Xem tiến độ doanh số và mốc thưởng của toàn bộ đội ngũ KOL thuộc Shop trong tháng',
   })
   @ApiParam({
     name: 'storeId',
@@ -107,7 +108,8 @@ export class CommissionRulesController {
 
   @Post('settle-all')
   @ApiOperation({
-    summary: 'Chốt đối soát hàng loạt cho tất cả KOL đạt mốc thưởng trong tháng',
+    summary:
+      'Chốt đối soát hàng loạt cho tất cả KOL đạt mốc thưởng trong tháng',
   })
   @ApiParam({
     name: 'storeId',
@@ -382,9 +384,9 @@ export class CommissionRulesController {
   @Post('preview')
   @ApiOperation({
     summary:
-      'Mô phỏng tính thưởng doanh số tháng theo công thức lũy tiến từng khoảng',
+      'Mô phỏng thưởng tháng theo mốc cao nhất: cố định hoặc phần trăm tổng doanh thu sạch',
     description:
-      'Tính toán chi tiết thưởng KPI cố định và thưởng phần vượt lũy tiến từng khoảng doanh số. Không phát sinh ghi nợ ví.',
+      'Mô phỏng chính sách đang cấu hình, không ghi ví. Quyết toán tháng dùng chính sách đầu kỳ đã được lưu lịch sử; thay đổi giữa kỳ áp dụng từ kỳ sau.',
   })
   @ApiParam({
     name: 'storeId',
@@ -392,7 +394,7 @@ export class CommissionRulesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Kết quả mô phỏng tính thưởng lũy tiến',
+    description: 'Kết quả mô phỏng thưởng mốc cao nhất',
     type: BonusPreviewResultDto,
   })
   async previewBonus(
@@ -408,7 +410,7 @@ export class CommissionRulesController {
     summary:
       'Chốt tính thưởng doanh số tháng cho một KOL (Trạng thái: PENDING, Chống tính trùng lặp - Idempotent)',
     description:
-      'Tổng hợp doanh số đơn hàng COMPLETED (đã trừ hoàn tiền), tính thưởng lũy tiến, lưu snapshot kết quả. Nếu kỳ đã chốt thì giữ nguyên kết quả.',
+      'Tổng hợp doanh thu sạch COMPLETED, lấy mốc cao nhất theo chính sách đầu tháng Việt Nam, thưởng cố định hoặc % toàn doanh thu. Lưu snapshot và giữ nguyên kỳ đã chốt để chống trùng.',
   })
   @ApiParam({
     name: 'storeId',
@@ -431,7 +433,7 @@ export class CommissionRulesController {
       dto.yearMonth,
       user?.id,
       ipAddress,
-      dto.allowUnfinishedMonth,
+      false,
     );
   }
 

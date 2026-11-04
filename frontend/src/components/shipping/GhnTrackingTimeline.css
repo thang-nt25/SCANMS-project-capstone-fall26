@@ -1,0 +1,69 @@
+@reference "../../index.css";
+.ghn-history-cards {
+  @apply [margin-top:16px];
+  @apply [padding:14px];
+  @apply [border:1px_solid_#eae4d7];
+  @apply [border-radius:14px];
+  @apply [background:#fff];
+}
+.ghn-history-cards > summary {
+  @apply flex;
+  @apply items-center;
+  @apply justify-between;
+  @apply [gap:12px];
+  @apply [min-height:32px];
+  @apply [list-style:none];
+  @apply cursor-pointer;
+  @apply [font-size:13px];
+  @apply [font-weight:600];
+  @apply [color:#1a1612];
+}
+.ghn-history-cards > summary::-webkit-details-marker { @apply hidden; }
+.ghn-history-cards__count {
+  @apply inline-flex;
+  @apply items-center;
+  @apply [gap:8px];
+  @apply [color:#7d715e];
+  @apply [font-size:11px];
+  @apply [font-weight:400];
+}
+.ghn-history-cards[open] > summary { @apply [padding-bottom:12px]; @apply [border-bottom:1px_solid_#eae4d7]; }
+.ghn-history-cards[open] > summary svg { @apply [transform:rotate(180deg)]; }
+.ghn-history-cards > ol {
+  @apply grid;
+  @apply [grid-template-columns:repeat(3,_minmax(0,_1fr))];
+  @apply [gap:10px];
+  @apply [margin:12px_0_0];
+  @apply [padding:0];
+  @apply [list-style:none];
+}
+.ghn-history-cards > ol > li {
+  @apply flex;
+  @apply items-start;
+  @apply [gap:9px];
+  @apply [padding:12px];
+  @apply [min-width:0];
+  @apply [border:1px_solid_#eae4d7];
+  @apply [border-radius:10px];
+  @apply [background:#fff];
+}
+.ghn-history-cards > ol > li.is-latest { @apply [border-color:#eedfc6]; @apply [background:#fbf5eb]; }
+.ghn-history-cards__number {
+  @apply grid;
+  @apply place-items-center;
+  @apply [flex:0_0_26px];
+  @apply [height:26px];
+  @apply [border:1px_solid_#eedfc6];
+  @apply [border-radius:50%];
+  @apply [background:#fff];
+  @apply [color:#8c6b32];
+  @apply [font-size:12px];
+}
+.ghn-history-cards__content { @apply [min-width:0]; @apply [overflow-wrap:anywhere]; }
+.ghn-history-cards__content strong { @apply block; @apply [font-size:12px]; @apply [line-height:1.5]; @apply [color:#1a1612]; }
+.ghn-history-cards__content time,
+.ghn-history-cards__content p { @apply block; @apply [margin:5px_0_0]; @apply [font-size:11px]; @apply [line-height:1.5]; @apply [color:#7d715e]; }
+.ghn-history-cards__content a { @apply [color:#8c6b32]; }
+@media (max-width: 640px) {
+  .ghn-history-cards > ol { @apply [grid-template-columns:1fr]; }
+}

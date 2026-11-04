@@ -159,7 +159,7 @@ export class UpdateProductDto extends ProductPackageDto {
   })
   @IsOptional()
   @IsNumber({}, { message: 'Giá bán phải là một số' })
-  @Min(0, { message: 'Giá bán không được âm' })
+  @Min(1, { message: 'Giá bán phải lớn hơn 0' })
   price?: number;
 
   @ApiPropertyOptional({
@@ -184,6 +184,7 @@ export class UpdateProductDto extends ProductPackageDto {
   @ApiPropertyOptional({ example: 100, description: 'Số lượng tồn kho' })
   @IsOptional()
   @IsNumber({}, { message: 'Số lượng tồn kho phải là số nguyên' })
+  @IsInt({ message: 'Số lượng tồn kho phải là số nguyên' })
   @Min(0, { message: 'Tồn kho không được âm' })
   stockQuantity?: number;
 

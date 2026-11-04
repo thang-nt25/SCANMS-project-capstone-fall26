@@ -413,6 +413,10 @@ export class GhnService {
       );
     }
 
+    if (!existingRawPayload.shopConfirmedAt) {
+      throw new BadRequestException('Shop cần xác nhận đơn hàng trước khi tạo vận đơn GHN.');
+    }
+
     if (!order.customerPhone || !order.shippingAddress || order.orderItems.length === 0) {
       throw new BadRequestException('Đơn hàng thiếu số điện thoại, địa chỉ nhận hoặc sản phẩm để gửi GHN.');
     }
@@ -1056,7 +1060,7 @@ export class GhnService {
         throw new BadRequestException('Chỉ đồng bộ giao thử cho đơn đang giao.');
       }
       if (simulated.status !== 'delivered') {
-        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 4 phút từ khi bắt đầu.');
+        throw new BadRequestException('Hành trình mô phỏng chưa hoàn tất. Vui lòng chờ đủ 1 phút từ khi bắt đầu.');
       }
       const completedAt = new Date();
       await tx.order.update({

@@ -13,7 +13,7 @@ describe('customer order status notifications', () => {
       customerId: 'customer-1',
       store: { ownerId: 'shop-1' },
       commissions: [],
-      rawPayload: {},
+      rawPayload: { shopConfirmedAt: new Date().toISOString() },
       status: OrderStatus.PENDING,
     };
     const prisma = {
@@ -38,7 +38,7 @@ describe('customer order status notifications', () => {
       customerId: 'customer-1',
       store: { ownerId: 'shop-1' },
       commissions: [],
-      rawPayload: {},
+      rawPayload: { shopConfirmedAt: new Date().toISOString() },
       deliveredAt: null,
       completedAt: null,
     };

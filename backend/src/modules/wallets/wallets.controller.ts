@@ -77,6 +77,9 @@ export class WalletsController {
     return this.walletsService.topUpDemo(user.id, amount);
   }
 
+  @Get('top-up-demo/availability')
+  demoTopUpAvailability() { return this.walletsService.demoTopUpAvailability(); }
+
   @Get('top-up-payos/availability')
   payosAvailability() { return this.walletPayos.availability(); }
 

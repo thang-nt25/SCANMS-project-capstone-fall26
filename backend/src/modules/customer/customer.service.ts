@@ -376,7 +376,7 @@ export class CustomerService {
             discountType: true,
           },
         },
-        returnRequest: true,
+        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
         productReviews: true,
       },
     });
@@ -414,7 +414,7 @@ export class CustomerService {
         coupon: true,
         paymentTransactions: true,
         productReviews: true,
-        returnRequest: true,
+        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
       },
     });
 

@@ -53,6 +53,8 @@ export default function SearchPage() {
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productsFailed, setProductsFailed] = useState(false);
+  const [productAttempt, setProductAttempt] = useState(0);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [stores, setStores] = useState<StoreItem[]>([]);
 
@@ -246,6 +248,14 @@ export default function SearchPage() {
     setSelectedStore(storeParam);
   }, [queryParam, categoryParam, storeParam]);
 
+  useEffect(() => {
+    setPricePreset(searchParams.get('preset') || (searchParams.has('min') || searchParams.has('max') ? 'custom' : 'all'));
+    setMinPrice(searchParams.get('min') || '');
+    setMaxPrice(searchParams.get('max') || '');
+    setOnlyHasCommission(searchParams.get('commission') === 'true');
+    setOnlyInStock(searchParams.get('inStock') === 'true');
+  }, [searchParams]);
+
   // Update URL search parameters when filters change
   const updateUrlParams = (updates: Record<string, string | null>) => {
     const newParams = new URLSearchParams(searchParams);
@@ -294,6 +304,7 @@ export default function SearchPage() {
     let mounted = true;
     const controller = new AbortController();
     setLoading(true);
+    setProductsFailed(false);
     setItems([]);
 
     const loadProducts = async () => {
@@ -364,7 +375,10 @@ export default function SearchPage() {
         }
       })
       .catch((err) => {
-        if (mounted) console.error('Lỗi khi tải sản phẩm:', err);
+        if (mounted) {
+          setProductsFailed(true);
+          console.error('Lỗi khi tải sản phẩm:', err);
+        }
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -374,7 +388,7 @@ export default function SearchPage() {
       mounted = false;
       controller.abort();
     };
-  }, [queryParam]);
+  }, [queryParam, productAttempt]);
 
 
   // Filter and Sort Logic
@@ -651,7 +665,7 @@ export default function SearchPage() {
           <button
             type="button"
             disabled={!minPrice && !maxPrice}
-            onClick={() => updateUrlParams({ min: minPrice || null, max: maxPrice || null })}
+            onClick={() => updateUrlParams({ preset: null, min: minPrice || null, max: maxPrice || null })}
             className="w-full py-1.5 rounded bg-[#C59B58] hover:bg-[#B88E4F] text-xs font-bold text-[#1A1612] uppercase tracking-wider transition shadow-2xs active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             Áp dụng
@@ -674,7 +688,9 @@ export default function SearchPage() {
                 type="button"
                 onClick={() => {
                   setPricePreset(p.id);
-                  updateUrlParams({ preset: p.id === 'all' ? null : p.id });
+                  setMinPrice('');
+                  setMaxPrice('');
+                  updateUrlParams({ preset: p.id === 'all' ? null : p.id, min: null, max: null });
                 }}
                 className={`w-full text-left py-1 text-xs transition-colors cursor-pointer flex items-center gap-1.5 ${
                   isPresetActive
@@ -1080,6 +1096,12 @@ export default function SearchPage() {
                     <div className="h-5 bg-[#F3EFE6] rounded w-1/3" />
                   </div>
                 ))}
+              </div>
+            ) : productsFailed ? (
+              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-8 text-center" role="alert">
+                <strong className="block text-base text-[#1A1612]">Chưa tải được sản phẩm</strong>
+                <p className="mt-2 text-xs text-[#7D715E]">Vui lòng thử lại. Các bộ lọc của bạn vẫn được giữ.</p>
+                <button type="button" onClick={() => setProductAttempt(value => value + 1)} className="mt-4 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs font-semibold text-[#1A1612]">Thử lại</button>
               </div>
             ) : displayedProducts.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-3xl border border-[#EAE4D7] p-8 shadow-2xs">

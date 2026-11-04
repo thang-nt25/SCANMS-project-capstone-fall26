@@ -16,7 +16,6 @@ import {
   ShoppingCart,
   CheckCircle2,
   Calendar,
-  RefreshCw,
   Download,
   Scale,
   Wallet,
@@ -93,10 +92,10 @@ const DateRangeDropdown: React.FC<{
   }, []);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative min-w-0" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1612] shadow-2xs hover:bg-[#FAF8F5] transition-all cursor-pointer"
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-sm font-medium text-[#1A1612] hover:border-[#C59B58] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
       >
         <Calendar className="w-3.5 h-3.5 text-[#C59B58]" />
         <span>{rangeLabels[range] || '30 ngày gần nhất'}</span>
@@ -300,41 +299,20 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
       )}
 
       {/* 1. Unified Clean Header Row: Breadcrumbs, Title, Subtitle + Compact Actions (NO Giant Empty Box) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 pb-1">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-[#7D715E] font-medium mb-1">
-            <span>Trang chủ</span>
-            <span>/</span>
-            <span className="text-[#1A1612] font-semibold">Tổng quan</span>
-          </div>
-          <h1 className="text-2xl font-black text-[#1A1612] tracking-tight">
-            Tổng quan hệ thống
-          </h1>
-          <p className="text-xs text-[#7D715E] mt-0.5">
-            Theo dõi sức khỏe kinh doanh và hoạt động toàn nền tảng
-          </p>
-        </div>
-
+      <div className="flex w-full min-w-0 flex-col gap-3 pt-1 pb-1">
         {/* Right Action Controls: Tab Switcher + Date Dropdown + Refresh + Export */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {headerTabs}
+        {headerTabs && <div className="w-full min-w-0">{headerTabs}</div>}
+        <div className="grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:grid-cols-2">
           <DateRangeDropdown
             range={range}
             setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
             onOpenCustom={() => setIsCustomOpen(true)}
           />
-          <button
-            onClick={() => fetchData(true)}
-            disabled={isRefreshing}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white text-[#1A1612] transition-all hover:bg-[#F3EFE6] active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
-            title="Làm mới dữ liệu ngay"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#B88E4F]' : ''}`} />
-          </button>
+
           <button
             onClick={handleExportCsv}
             disabled={loading || !!error || !timeSeries.length}
-            className="inline-flex h-9 shrink-0 items-center space-x-1.5 whitespace-nowrap rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] shadow-2xs transition-all hover:bg-[#F3EFE6] active:scale-95 cursor-pointer"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 py-2.5 text-sm font-semibold text-[#8F682E] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Xuất báo cáo</span>

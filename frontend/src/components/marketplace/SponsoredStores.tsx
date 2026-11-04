@@ -30,7 +30,7 @@ export function SponsoredStores() {
 
   return (
     <section aria-label="Gian hàng tài trợ nổi bật" className="bg-[#FAF8F5] pb-8 text-left">
-      <div className="mx-auto grid max-w-[1200px] gap-4 px-3 sm:px-4 lg:px-6">
+      <div className="mx-auto grid w-full max-w-[1248px] gap-4 px-3 sm:px-4 lg:px-6">
         {placements.map(({ store, headline }) => (
           <article key={store.id} className="relative overflow-hidden rounded-3xl border border-[#EEDFC6] bg-[#FBF5EB] p-6 text-[#1A1612] sm:p-8">
             <div aria-hidden="true" className="absolute -right-8 -top-16 h-52 w-52 rounded-full border-[30px] border-[#C59B58]/15" />

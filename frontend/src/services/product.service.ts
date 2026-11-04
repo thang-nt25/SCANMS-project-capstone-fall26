@@ -25,7 +25,7 @@ export interface Product {
   subImages?: string[];
   mediaAssets?: { id: string; urlOrContent: string }[];
   price: number;
-  originalPrice?: number;
+  originalPrice?: number | null;
   customCommissionRate?: number;
   stockQuantity: number;
   isActive: boolean;
@@ -68,6 +68,7 @@ type ProductVariantDraft = {
 
 export const productService = {
   async getProducts(params?: {
+    scope?: 'chat-share';
     storeId?: string;
     search?: string;
     category?: string;
@@ -104,6 +105,11 @@ export const productService = {
 
   async updateProduct(id: string, data: Partial<Product>) {
     const res: any = await api.put(`/products/${id}`, data);
+    return res.data;
+  },
+
+  async updateProductEditor(id: string, data: Omit<Partial<Product>, 'variants'> & { variants: ProductVariantDraft[] }) {
+    const res: any = await api.put(`/products/${id}/editor`, data, { timeout: 30000 });
     return res.data;
   },
 

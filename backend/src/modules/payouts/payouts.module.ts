@@ -14,6 +14,15 @@ import { PayoutBatchesService } from './payout-batches.service';
 import { MerchantPayoutsController } from './merchant-payouts.controller';
 import { PayoutApprovalController } from './payout-approval.controller';
 import { AdminPayoutsController } from './admin-payouts.controller';
+import { FinanceReportController } from './finance-report.controller';
+import { FinanceReportService } from './finance-report.service';
+import { PayoutTransferService } from './payout-transfer.service';
+import { PayoutEmailScheduler } from './payout-email.scheduler';
+import { AuthModule } from '../auth/auth.module';
+import { BidvSandboxController } from './bidv-sandbox.controller';
+import { BidvSandboxClient } from './bidv-sandbox.client';
+import { BidvSandboxService } from './bidv-sandbox.service';
+import { BidvPayoutAdapter } from './bidv-payout.adapter';
 
 @Module({
   imports: [ConfigModule],
@@ -26,6 +35,7 @@ class PayoutSettingsModule {}
   imports: [
     PrismaModule,
     WalletsModule,
+    AuthModule,
     CloudinaryModule,
     PayoutSettingsModule,
     MulterModule.registerAsync({
@@ -42,13 +52,20 @@ class PayoutSettingsModule {}
     }),
   ],
   controllers: [
+    BidvSandboxController,
     PayoutsController,
     MerchantPayoutsController,
-    PayoutApprovalController,
     AdminPayoutsController,
+    FinanceReportController,
   ],
   providers: [
+    BidvSandboxClient,
+    BidvPayoutAdapter,
+    BidvSandboxService,
     PayoutsService,
+    FinanceReportService,
+    PayoutTransferService,
+    PayoutEmailScheduler,
     PayoutTaxService,
     PayoutBillService,
     MerchantPayoutsService,

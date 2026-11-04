@@ -12,11 +12,21 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
-import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
+import {
+  CacheService,
+  NOOP_CACHE_SERVICE,
+} from '../../core/cache/cache.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CreateCommissionRuleDto } from './dto/create-commission-rule.dto';
 import { UpdateCommissionRuleDto } from './dto/update-commission-rule.dto';
 import { BonusPreviewResultDto } from './dto/commission-rule-response.dto';
+import { cleanGoodsRevenue } from '../payouts/finance-revenue';
+import { postFinance } from '../payouts/finance-posting';
+import {
+  isSelfReferral,
+  requiresReferralReview,
+} from '../commissions/self-referral';
+import { rulesAt } from './rule-history';
 
 @Injectable()
 export class CommissionRulesService {
@@ -46,11 +56,30 @@ export class CommissionRulesService {
     return store;
   }
 
+  private async lockRuleVersion(
+    tx: Prisma.TransactionClient,
+    rule: { id: string; version: number; storeId: string },
+  ) {
+    const key = `commission-policy:${rule.storeId}`;
+    await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+    const count =
+      await tx.$executeRaw`UPDATE commission_rules SET version = version WHERE id = ${rule.id}::uuid AND version = ${rule.version}`;
+    if (count === 0)
+      throw new ConflictException(
+        'Chính sách vừa thay đổi; vui lòng tải lại trước khi lưu.',
+      );
+  }
+
   // Tính toán ranh giới thời gian tháng theo múi giờ Việt Nam (UTC+7 / Asia/Ho_Chi_Minh)
   public getVietnamMonthDateRange(yearMonth: string): {
     startOfMonth: Date;
     endOfMonth: Date;
   } {
+    if (
+      typeof yearMonth !== 'string' ||
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)
+    )
+      throw new BadRequestException('Kỳ thưởng phải có định dạng YYYY-MM');
     const parts = yearMonth.split('-');
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
@@ -165,6 +194,67 @@ export class CommissionRulesService {
   // ==========================================
   // HÀM TÍNH THƯỞNG LŨY TIẾN TỪNG KHOẢNG + THƯỞNG CỐ ĐỊNH KPI (CORE ENGINE)
   // ==========================================
+  calculateMonthlyBonus(
+    rules: Parameters<CommissionRulesService['calculateProgressiveBonus']>[0],
+    revenue: Prisma.Decimal,
+    referenceDate?: Date,
+    startDate?: Date,
+  ) {
+    const eligible = rules
+      .filter(
+        (rule) =>
+          rule.isActive &&
+          (!rule.effectiveFrom ||
+            rule.effectiveFrom <= (referenceDate ?? new Date())) &&
+          (!rule.effectiveTo ||
+            rule.effectiveTo >= (startDate ?? referenceDate ?? new Date())) &&
+          revenue.gte(rule.minMonthlyRevenue),
+      )
+      .sort((a, b) => a.minMonthlyRevenue.comparedTo(b.minMonthlyRevenue));
+    const highest = eligible.at(-1);
+    if (!highest)
+      return this.calculateProgressiveBonus(
+        [],
+        revenue,
+        referenceDate,
+        startDate,
+      );
+    const fixed = highest.achievementBonus.gt(0);
+    const amount = (
+      fixed
+        ? highest.achievementBonus
+        : revenue.mul(highest.bonusPercentage).div(100)
+    ).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+    return {
+      monthlyRevenue: revenue.toFixed(2),
+      highestReachedRule: {
+        id: highest.id,
+        name: highest.name,
+        minMonthlyRevenue: highest.minMonthlyRevenue.toString(),
+        achievementBonus: highest.achievementBonus.toString(),
+        bonusPercentage: highest.bonusPercentage.toString(),
+        version: highest.version,
+      },
+      achievementBonus: fixed ? amount.toFixed(2) : '0.00',
+      rangeBonuses: fixed
+        ? []
+        : [
+            {
+              from: '0.00',
+              to: revenue.toFixed(2),
+              rate: highest.bonusPercentage.toString(),
+              revenue: revenue.toFixed(2),
+              bonus: amount.toFixed(2),
+            },
+          ],
+      totalBonus: amount.toFixed(2),
+      formula: fixed
+        ? `Mốc ${highest.minMonthlyRevenue.toString()}đ: thưởng cố định ${amount.toFixed(2)}đ`
+        : `${revenue.toFixed(2)}đ doanh thu sạch × ${highest.bonusPercentage.toString()}% = ${amount.toFixed(2)}đ`,
+    };
+  }
+
+  // Kept only to replay immutable settlements created under policyVersion < 3.
   calculateProgressiveBonus(
     rules: Array<{
       id: string;
@@ -414,6 +504,8 @@ export class CommissionRulesService {
     // Sử dụng transaction để đảm bảo toàn vẹn dữ liệu và ghi audit log
     const result = await this.prisma.$transaction(async (tx) => {
       // Khóa advisory lock theo store để chống race condition tạo trùng mốc
+      const policyKey = `commission-policy:${storeId}`;
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${policyKey}, 0))`;
       const hash = Math.abs(
         storeId
           .split('-')
@@ -622,6 +714,7 @@ export class CommissionRulesService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       // 1. Kiểm tra trùng ngưỡng với các mốc khác
+      await this.lockRuleVersion(tx, currentRule);
       if (dto.minMonthlyRevenue) {
         const conflict = await tx.commissionRule.findFirst({
           where: {
@@ -787,6 +880,7 @@ export class CommissionRulesService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      await this.lockRuleVersion(tx, currentRule);
       const updated = await tx.commissionRule.update({
         where: { id: ruleId },
         data: {
@@ -846,10 +940,12 @@ export class CommissionRulesService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      await this.lockRuleVersion(tx, currentRule);
       const deleted = await tx.commissionRule.update({
         where: { id: ruleId },
         data: {
           isDeleted: true,
+          version: currentRule.version + 1,
           isActive: false,
           deletedAt: new Date(),
           updatedBy: userId || null,
@@ -863,6 +959,7 @@ export class CommissionRulesService {
           details: {
             storeId,
             ruleId,
+            oldValues: JSON.parse(JSON.stringify(currentRule)),
             name: currentRule.name,
             minMonthlyRevenue: currentRule.minMonthlyRevenue.toString(),
             achievementBonus: currentRule.achievementBonus
@@ -904,6 +1001,7 @@ export class CommissionRulesService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      await this.lockRuleVersion(tx, deletedRule);
       // Kiểm tra có mốc đang hoạt động nào cùng ngưỡng không
       const conflict = await tx.commissionRule.findFirst({
         where: {
@@ -937,6 +1035,7 @@ export class CommissionRulesService {
           details: {
             storeId,
             ruleId,
+            oldValues: JSON.parse(JSON.stringify(deletedRule)),
             name: restored.name,
             version: restored.version,
           },
@@ -975,7 +1074,7 @@ export class CommissionRulesService {
       },
     });
 
-    return this.calculateProgressiveBonus(rules, revenue, referenceDate);
+    return this.calculateMonthlyBonus(rules, revenue, referenceDate);
   }
 
   // ==========================================
@@ -1028,6 +1127,7 @@ export class CommissionRulesService {
       const updateLog = await client.auditLog.findFirst({
         where: {
           action: 'UPDATE_COMMISSION_RULE',
+          details: { path: ['storeId'], equals: storeId },
           createdAt: {
             gte: startOfMonth,
             lt: endOfMonth,
@@ -1072,6 +1172,7 @@ export class CommissionRulesService {
         storeId,
         attributedCollaboratorId: collaboratorId,
         status: 'COMPLETED',
+        OR: [{ customerId: null }, { customerId: { not: collaboratorId } }],
         completedAt: {
           gte: startOfMonth,
           lt: endOfMonth,
@@ -1094,6 +1195,11 @@ export class CommissionRulesService {
     let countAfterCutoff = 0;
 
     for (const order of orders) {
+      if (isSelfReferral(order, collaborator)) continue;
+      if (requiresReferralReview(order))
+        throw new ConflictException(
+          'Kỳ thưởng có đơn cần đối soát tự mua; hãy hoàn tất thẩm định trước khi quyết toán.',
+        );
       // Công thức: Doanh số hợp lệ = finalAmount (đã gồm shipping) - tổng tiền đã hoàn
       const refundsList = order.refunds || [];
       const sumRefunds = refundsList.reduce(
@@ -1111,7 +1217,7 @@ export class CommissionRulesService {
 
       totalRefundDeducted = totalRefundDeducted.add(cappedRefund);
 
-      const netOrderAmount = order.finalAmount.minus(cappedRefund);
+      const netOrderAmount = cleanGoodsRevenue(order, cappedRefund);
       if (netOrderAmount.greaterThan(0)) {
         totalValidRevenue = totalValidRevenue.add(netOrderAmount);
         validOrdersCount++;
@@ -1215,6 +1321,7 @@ export class CommissionRulesService {
     return await this.prisma.$transaction(async (tx) => {
       await this.lockBonusLedger(tx, storeId, collaboratorId);
       // 3. Kiểm tra Idempotency
+      await this.assertCompletionDatesResolved(tx, storeId, collaboratorId);
       const existingSettlement = await tx.monthlyBonusResult.findUnique({
         where: {
           storeId_collaboratorId_yearMonth: {
@@ -1263,81 +1370,17 @@ export class CommissionRulesService {
       const validRevenue = new Prisma.Decimal(revenueData.validRevenue);
 
       // 5. Tra cứu mốc thưởng có hiệu lực trong kỳ tháng này
-      const rules = await tx.commissionRule.findMany({
-        where: {
-          storeId,
-          isDeleted: false,
-        },
-        orderBy: {
-          minMonthlyRevenue: 'asc',
-        },
-      });
+      // Freeze the opening policy for the whole Vietnam calendar month.
+      const rules = await rulesAt(tx, storeId, startOfMonth);
+      const calculation = this.calculateMonthlyBonus(
+        rules,
+        validRevenue,
+        startOfMonth,
+        startOfMonth,
+      );
+      const grossBonus = new Prisma.Decimal(calculation.totalBonus);
+      const achievementBonus = new Prisma.Decimal(calculation.achievementBonus);
 
-      let calculation: any;
-      let grossBonus: Prisma.Decimal;
-      let achievementBonus: Prisma.Decimal;
-
-      if (revenueData.splitRevenue && revenueData.splitRevenue.hasSplit) {
-        const split = revenueData.splitRevenue;
-        const cutoffDate = new Date(split.cutoffTime);
-        const calcBefore = this.calculateProgressiveBonus(
-          rules,
-          new Prisma.Decimal(split.revenueBefore),
-          cutoffDate,
-          startOfMonth,
-        );
-        const calcAfter = this.calculateProgressiveBonus(
-          rules,
-          new Prisma.Decimal(split.revenueAfter),
-          endOfMonth,
-          cutoffDate,
-        );
-        const bonusBefore = new Prisma.Decimal(calcBefore.totalBonus);
-        const bonusAfter = new Prisma.Decimal(calcAfter.totalBonus);
-        grossBonus = bonusBefore.add(bonusAfter);
-        const achieveBefore = new Prisma.Decimal(calcBefore.achievementBonus);
-        const achieveAfter = new Prisma.Decimal(calcAfter.achievementBonus);
-        achievementBonus = achieveAfter.greaterThan(achieveBefore)
-          ? achieveAfter
-          : achieveBefore;
-
-        calculation = {
-          monthlyRevenue: validRevenue.toFixed(2),
-          highestReachedRule:
-            calcAfter.highestReachedRule || calcBefore.highestReachedRule,
-          achievementBonus: achievementBonus.toFixed(2),
-          rangeBonuses: [...calcBefore.rangeBonuses, ...calcAfter.rangeBonuses],
-          totalBonus: grossBonus.toFixed(2),
-          formula: `Doanh số trước sửa mốc: ${split.revenueBefore}đ -> Thưởng: ${calcBefore.totalBonus}đ | Doanh số sau sửa mốc: ${split.revenueAfter}đ -> Thưởng: ${calcAfter.totalBonus}đ`,
-          splitBreakdown: {
-            cutoffTime: split.cutoffTime,
-            modifiedRuleName: split.modifiedRuleName,
-            before: {
-              revenue: split.revenueBefore,
-              ordersCount: split.countBefore,
-              bonus: calcBefore.totalBonus,
-              highestRule: calcBefore.highestReachedRule,
-            },
-            after: {
-              revenue: split.revenueAfter,
-              ordersCount: split.countAfter,
-              bonus: calcAfter.totalBonus,
-              highestRule: calcAfter.highestReachedRule,
-            },
-          },
-        };
-      } else {
-        calculation = this.calculateProgressiveBonus(
-          rules,
-          validRevenue,
-          endOfMonth,
-          startOfMonth,
-        );
-        grossBonus = new Prisma.Decimal(calculation.totalBonus);
-        achievementBonus = new Prisma.Decimal(calculation.achievementBonus);
-      }
-
-      // 6. Tra cứu các khoản điều chỉnh (BonusAdjustment) đang chờ của kỳ này
       const pendingAdjustments = await tx.bonusAdjustment.findMany({
         where: {
           storeId,
@@ -1456,6 +1499,12 @@ export class CommissionRulesService {
       }
 
       const ruleSnapshot = {
+        policyVersion: 3,
+        policyBasis: 'MONTH_OPEN_VIETNAM_FIXED_OR_TOTAL_REVENUE',
+        policyAsOf: startOfMonth.toISOString(),
+        rules,
+        revenueBasis: 'COMPLETED_NET_GOODS_EXCLUDING_SELF_PURCHASE',
+        splitBreakdown: null,
         highestReachedRule: calculation.highestReachedRule,
         achievementBonus: calculation.achievementBonus,
         rangeBonuses: calculation.rangeBonuses,
@@ -1541,6 +1590,15 @@ export class CommissionRulesService {
   }
 
   // Duyệt thưởng tháng (PENDING -> APPROVED)
+  private async assertCompletionDatesResolved(client: Prisma.TransactionClient, storeId: string, collaboratorId: string) {
+    const count = await client.order.count({
+      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
+    });
+    if (count > 0) {
+      throw new ConflictException('Chưa đủ dữ liệu kỳ: còn đơn hoàn tất thiếu ngày. Cần đối soát trước khi chốt, duyệt hoặc cộng thưởng.');
+    }
+  }
+
   async approveSettlement(
     storeId: string,
     settlementId: string,
@@ -1548,50 +1606,57 @@ export class CommissionRulesService {
     ipAddress?: string,
   ) {
     await this.verifyStoreExists(storeId);
+    return this.prisma.$transaction(async (tx) => {
+      const settlement = await tx.monthlyBonusResult.findFirst({
+        where: { id: settlementId, storeId },
+      });
 
-    const settlement = await this.prisma.monthlyBonusResult.findFirst({
-      where: { id: settlementId, storeId },
-    });
+      if (!settlement) {
+        throw new NotFoundException(
+          'Bản ghi chốt thưởng không tồn tại hoặc không thuộc cửa hàng này',
+        );
+      }
 
-    if (!settlement) {
-      throw new NotFoundException(
-        'Bản ghi chốt thưởng không tồn tại hoặc không thuộc cửa hàng này',
-      );
-    }
+      if (settlement.status !== CommissionStatus.PENDING) {
+        throw new BadRequestException(
+          `Chỉ có thể duyệt kỳ thưởng đang ở trạng thái PENDING (Hiện tại: ${settlement.status})`,
+        );
+      }
 
-    if (settlement.status !== CommissionStatus.PENDING) {
-      throw new BadRequestException(
-        `Chỉ có thể duyệt kỳ thưởng đang ở trạng thái PENDING (Hiện tại: ${settlement.status})`,
-      );
-    }
+      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
 
-    const updated = await this.prisma.monthlyBonusResult.update({
-      where: { id: settlementId },
-      data: {
-        status: CommissionStatus.APPROVED,
-        approvedAt: new Date(),
-      },
-    });
-
-    await this.prisma.auditLog.create({
-      data: {
-        userId: userId || null,
-        action: 'APPROVE_MONTHLY_BONUS',
-        details: {
-          storeId,
-          settlementId,
-          collaboratorId: settlement.collaboratorId,
-          bonusAmount: settlement.bonusAmount.toString(),
+      const updated = await tx.monthlyBonusResult.updateMany({
+        where: { id: settlementId, storeId, status: CommissionStatus.PENDING },
+        data: {
+          status: CommissionStatus.APPROVED,
+          approvedAt: new Date(),
         },
-        ipAddress: ipAddress || null,
-      },
-    });
+      });
+      if (!updated.count)
+        throw new ConflictException('Kỳ thưởng đã được xử lý bởi yêu cầu khác');
 
-    return {
-      success: true,
-      message: 'Đã duyệt kỳ thưởng thành công. Đủ điều kiện chi trả vào ví.',
-      settlement: updated,
-    };
+      await tx.auditLog.create({
+        data: {
+          userId: userId || null,
+          action: 'APPROVE_MONTHLY_BONUS',
+          details: {
+            storeId,
+            settlementId,
+            collaboratorId: settlement.collaboratorId,
+            bonusAmount: settlement.bonusAmount.toString(),
+          },
+          ipAddress: ipAddress || null,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Đã duyệt kỳ thưởng thành công. Đủ điều kiện chi trả vào ví.',
+        settlement: await tx.monthlyBonusResult.findUnique({
+          where: { id: settlementId },
+        }),
+      };
+    });
   }
 
   // Chi trả tiền thưởng vào Ví (APPROVED -> PAID + Wallet + FinancialLedger)
@@ -1604,13 +1669,21 @@ export class CommissionRulesService {
     await this.verifyStoreExists(storeId);
 
     return await this.prisma.$transaction(async (tx) => {
-      const settlement = await tx.monthlyBonusResult.findFirst({
+      let settlement = await tx.monthlyBonusResult.findFirst({
         where: { id: settlementId, storeId },
       });
 
       if (!settlement) {
         throw new NotFoundException('Bản ghi chốt thưởng không tồn tại');
       }
+      await this.lockBonusLedger(tx, storeId, settlement.collaboratorId);
+      // Refunds share the same lock. Re-read after waiting so an adjustment
+      // committed during approval cannot be paid using a stale bonus amount.
+      settlement = await tx.monthlyBonusResult.findFirst({
+        where: { id: settlementId, storeId },
+      });
+      if (!settlement)
+        throw new NotFoundException('Bản ghi chốt thưởng không tồn tại');
 
       if (
         settlement.status === CommissionStatus.PAID ||
@@ -1631,6 +1704,7 @@ export class CommissionRulesService {
       const now = new Date();
 
       // Cập nhật nguyên tử trạng thái sang PAID ngay trong transaction để loại bỏ hoàn toàn race condition
+      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
       const updateResult = await tx.monthlyBonusResult.updateMany({
         where: {
           id: settlementId,
@@ -1651,6 +1725,26 @@ export class CommissionRulesService {
         );
       }
 
+      if (settlement.bonusAmount.isZero()) {
+        await tx.auditLog.create({
+          data: {
+            userId: userId ?? null,
+            action: 'CLOSE_ZERO_MONTHLY_BONUS',
+            details: { settlementId, storeId },
+          },
+        });
+        return {
+          success: true,
+          message: 'Đã đóng kỳ thưởng có số tiền bằng 0',
+          settlement: {
+            ...settlement,
+            status: CommissionStatus.PAID,
+            paidAt: now,
+          },
+          ledger: null,
+        };
+      }
+
       // Locked wallet credit and append-only ledger share the settlement transaction.
       const { wallet, ledger } =
         await this.walletsService.creditAvailableBalance(
@@ -1662,6 +1756,14 @@ export class CommissionRulesService {
         );
       const balanceBefore = ledger.balanceBefore;
       const balanceAfter = ledger.balanceAfter;
+      await postFinance(
+        tx,
+        settlement.id,
+        'MONTHLY_BONUS_REWARD',
+        'AFFILIATE_MARKETING_EXPENSE',
+        'PARTNER_EARNINGS_PAYABLE',
+        settlement.bonusAmount,
+      );
 
       // 4. Cập nhật mã giao dịch ví vào bản ghi chốt thưởng
       const paidSettlement = await tx.monthlyBonusResult.update({
@@ -1690,6 +1792,15 @@ export class CommissionRulesService {
         },
       });
 
+      await tx.notification.create({
+        data: {
+          userId: settlement.collaboratorId,
+          type: 'MONTHLY_BONUS_REWARD',
+          title: `Thưởng doanh số tháng ${settlement.yearMonth}`,
+          message: `Đã cộng ${settlement.bonusAmount.toFixed(2)} VND vào thu nhập khả dụng.`,
+          data: { settlementId, storeId, actionUrl: '/collaborator/wallet' },
+        },
+      });
       return {
         success: true,
         message: 'Đã thanh toán tiền thưởng vào ví cộng tác viên thành công',
@@ -1712,7 +1823,10 @@ export class CommissionRulesService {
     reason: string,
     userId?: string,
     ipAddress?: string,
+    transaction?: Prisma.TransactionClient,
+    sourceKey?: string,
   ) {
+    const client = transaction ?? this.prisma;
     await this.verifyStoreExists(storeId);
 
     if (!/^\d{1,13}(?:\.\d{1,2})?$/.test(refundAmount))
@@ -1726,7 +1840,7 @@ export class CommissionRulesService {
       throw new BadRequestException('Số tiền hoàn phải lớn hơn 0');
     }
 
-    const order = await this.prisma.order.findFirst({
+    const order = await client.order.findFirst({
       where: { id: orderId, storeId },
     });
 
@@ -1736,7 +1850,7 @@ export class CommissionRulesService {
       );
     }
 
-    if (!order.attributedCollaboratorId) {
+    if (!order.attributedCollaboratorId && !transaction) {
       throw new BadRequestException(
         'Đơn hàng không có cộng tác viên (KOL) liên kết',
       );
@@ -1746,10 +1860,11 @@ export class CommissionRulesService {
     const completedDate = order.completedAt || order.createdAt;
     const orderYearMonth = this.getVietnamYearMonth(completedDate);
 
-    return await this.prisma.$transaction(async (tx) => {
+    const apply = async (tx: Prisma.TransactionClient) => {
       // Different orders can affect the same monthly bonus. Serialize before
       // mutating any refund, not just by order ID, until this transaction ends.
-      await this.lockBonusLedger(tx, storeId, collaboratorId);
+      if (collaboratorId)
+        await this.lockBonusLedger(tx, storeId, collaboratorId);
       // Khóa dòng Order bằng FOR UPDATE chống race condition khi có 2 yêu cầu hoàn tiền đồng thời (Issue 4)
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
 
@@ -1766,6 +1881,19 @@ export class CommissionRulesService {
         throw new BadRequestException('Đơn hàng không thuộc cửa hàng này');
       }
 
+      if (sourceKey) {
+        const existing = await tx.orderRefund.findUnique({
+          where: { sourceKey },
+        });
+        if (existing)
+          return {
+            success: true,
+            refund: existing,
+            adjustment: null,
+            message: 'Đã ghi nhận hoàn tiền',
+          };
+      }
+
       const totalRefundAfter = currentOrder.refundedAmount.add(refundDecimal);
       if (totalRefundAfter.greaterThan(currentOrder.finalAmount)) {
         throw new BadRequestException(
@@ -1780,6 +1908,7 @@ export class CommissionRulesService {
           amount: refundDecimal,
           reason,
           status: 'COMPLETED',
+          sourceKey,
         },
       });
 
@@ -1890,53 +2019,104 @@ export class CommissionRulesService {
       }
 
       const stackedRedemptions = await tx.stackedVoucherRedemption.findMany({
-        where: { orderId, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.PARTIALLY_REFUNDED] } },
+        where: {
+          orderId,
+          status: {
+            in: [
+              CouponRedemptionStatus.USED,
+              CouponRedemptionStatus.PARTIALLY_REFUNDED,
+            ],
+          },
+        },
       });
       for (const voucher of stackedRedemptions) {
-        const reversed = isFullRefund ? voucher.discountAmount : Prisma.Decimal.min(
-          voucher.discountAmount,
-          voucher.discountAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
-        );
-        const shopReversed = isFullRefund ? voucher.shopFundedAmount : Prisma.Decimal.min(
-          voucher.shopFundedAmount,
-          voucher.shopFundedAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
-        );
-        const platformReversed = isFullRefund ? voucher.platformFundedAmount : Prisma.Decimal.min(
-          voucher.platformFundedAmount,
-          voucher.platformFundedAmount.mul(refundRatio).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
-        );
+        const reversed = isFullRefund
+          ? voucher.discountAmount
+          : Prisma.Decimal.min(
+              voucher.discountAmount,
+              voucher.discountAmount
+                .mul(refundRatio)
+                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            );
+        const shopReversed = isFullRefund
+          ? voucher.shopFundedAmount
+          : Prisma.Decimal.min(
+              voucher.shopFundedAmount,
+              voucher.shopFundedAmount
+                .mul(refundRatio)
+                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            );
+        const platformReversed = isFullRefund
+          ? voucher.platformFundedAmount
+          : Prisma.Decimal.min(
+              voucher.platformFundedAmount,
+              voucher.platformFundedAmount
+                .mul(refundRatio)
+                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            );
         reversedDiscountAmount = reversedDiscountAmount.add(reversed);
-        shopFundedRemaining = shopFundedRemaining.add(voucher.shopFundedAmount.minus(shopReversed));
-        platformFundedRemaining = platformFundedRemaining.add(voucher.platformFundedAmount.minus(platformReversed));
+        shopFundedRemaining = shopFundedRemaining.add(
+          voucher.shopFundedAmount.minus(shopReversed),
+        );
+        platformFundedRemaining = platformFundedRemaining.add(
+          voucher.platformFundedAmount.minus(platformReversed),
+        );
         await tx.stackedVoucherRedemption.update({
           where: { orderId_couponId: { orderId, couponId: voucher.couponId } },
           data: {
-            status: isFullRefund ? CouponRedemptionStatus.REFUNDED : CouponRedemptionStatus.PARTIALLY_REFUNDED,
+            status: isFullRefund
+              ? CouponRedemptionStatus.REFUNDED
+              : CouponRedemptionStatus.PARTIALLY_REFUNDED,
             discountAmount: isFullRefund ? 0 : { decrement: reversed },
             shopFundedAmount: isFullRefund ? 0 : { decrement: shopReversed },
-            platformFundedAmount: isFullRefund ? 0 : { decrement: platformReversed },
+            platformFundedAmount: isFullRefund
+              ? 0
+              : { decrement: platformReversed },
           },
         });
-        await tx.coupon.update({ where: { id: voucher.couponId }, data: {
-          budgetUsed: { decrement: reversed },
-          ...(isFullRefund ? { usageCount: { decrement: 1 } } : {}),
-        } });
+        await tx.coupon.update({
+          where: { id: voucher.couponId },
+          data: {
+            budgetUsed: { decrement: reversed },
+            ...(isFullRefund ? { usageCount: { decrement: 1 } } : {}),
+          },
+        });
       }
 
       const currentRaw = (currentOrder.rawPayload || {}) as Record<string, any>;
       const campaignReservations = currentRaw.campaignBonusReservations;
       if (campaignReservations && typeof campaignReservations === 'object') {
         const remainingReservations: Record<string, number> = {};
-        for (const [campaignId, value] of Object.entries(campaignReservations)) {
+        for (const [campaignId, value] of Object.entries(
+          campaignReservations,
+        )) {
           const remaining = Number(value);
-          if (!/^[0-9a-f-]{36}$/i.test(campaignId) || !Number.isFinite(remaining) || remaining < 0) continue;
-          const release = isFullRefund ? remaining : Math.min(remaining, Math.round(remaining * Number(refundRatio) * 100) / 100);
+          if (
+            !/^[0-9a-f-]{36}$/i.test(campaignId) ||
+            !Number.isFinite(remaining) ||
+            remaining < 0
+          )
+            continue;
+          const release = isFullRefund
+            ? remaining
+            : Math.min(
+                remaining,
+                Math.round(remaining * Number(refundRatio) * 100) / 100,
+              );
           if (release > 0) {
             await tx.$executeRaw`UPDATE campaigns SET bonus_budget_used = GREATEST(0, bonus_budget_used - ${release}) WHERE id = ${campaignId}::uuid`;
           }
           remainingReservations[campaignId] = remaining - release;
         }
-        await tx.order.update({ where: { id: orderId }, data: { rawPayload: { ...currentRaw, campaignBonusReservations: remainingReservations } } });
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            rawPayload: {
+              ...currentRaw,
+              campaignBonusReservations: remainingReservations,
+            },
+          },
+        });
       }
 
       // 1.2 Phân bổ discount theo từng OrderItem và điều chỉnh commission của đơn hiện tại theo dòng hàng hoàn (Issue 5)
@@ -2031,19 +2211,21 @@ export class CommissionRulesService {
       }
 
       // 2. Kiểm tra xem kỳ của đơn hàng này đã chốt thưởng chưa
-      const pastSettlement = await tx.monthlyBonusResult.findUnique({
-        where: {
-          storeId_collaboratorId_yearMonth: {
-            storeId,
-            collaboratorId,
-            yearMonth: orderYearMonth,
-          },
-        },
-      });
+      const pastSettlement = collaboratorId
+        ? await tx.monthlyBonusResult.findUnique({
+            where: {
+              storeId_collaboratorId_yearMonth: {
+                storeId,
+                collaboratorId,
+                yearMonth: orderYearMonth,
+              },
+            },
+          })
+        : null;
 
       let adjustmentRecord: any = null;
 
-      if (pastSettlement) {
+      if (pastSettlement && collaboratorId) {
         // Đã chốt kỳ cũ -> Không sửa kỳ cũ! Tính lại tiền thưởng đúng sau hoàn (dùng transaction client tx)
         const oldRevenueData = await this.calculateValidMonthlyRevenue(
           storeId,
@@ -2053,18 +2235,61 @@ export class CommissionRulesService {
         );
         const correctRevenue = new Prisma.Decimal(oldRevenueData.validRevenue);
 
-        const rules = await tx.commissionRule.findMany({
-          where: { storeId, isDeleted: false },
-          orderBy: { minMonthlyRevenue: 'asc' },
-        });
+        const snapshot = pastSettlement.ruleSnapshot as any;
+        if (!Array.isArray(snapshot?.rules)) {
+          // Do not silently apply today's policy to a legacy paid period.
+          throw new BadRequestException(
+            'Kỳ thưởng cũ thiếu snapshot chính sách; cần bổ sung bản chính sách lịch sử trước khi hoàn tiền',
+          );
+        }
+        const rules = snapshot.rules.map((r: any) => ({
+          ...r,
+          minMonthlyRevenue: new Prisma.Decimal(r.minMonthlyRevenue),
+          achievementBonus: new Prisma.Decimal(r.achievementBonus),
+          bonusPercentage: new Prisma.Decimal(r.bonusPercentage),
+          effectiveFrom: r.effectiveFrom ? new Date(r.effectiveFrom) : null,
+          effectiveTo: r.effectiveTo ? new Date(r.effectiveTo) : null,
+        }));
 
-        const { endOfMonth } = this.getVietnamMonthDateRange(orderYearMonth);
-        const recalculation = this.calculateProgressiveBonus(
-          rules,
-          correctRevenue,
-          endOfMonth,
-        );
-        const correctBonusAmount = new Prisma.Decimal(recalculation.totalBonus);
+        const { startOfMonth, endOfMonth } =
+          this.getVietnamMonthDateRange(orderYearMonth);
+        const recalculation =
+          snapshot.policyVersion >= 3
+            ? this.calculateMonthlyBonus(
+                rules,
+                correctRevenue,
+                startOfMonth,
+                startOfMonth,
+              )
+            : this.calculateProgressiveBonus(
+                rules,
+                correctRevenue,
+                endOfMonth,
+                startOfMonth,
+              );
+        let correctBonusAmount = new Prisma.Decimal(recalculation.totalBonus);
+        if (
+          (snapshot.policyVersion ?? 2) < 3 &&
+          snapshot.splitBreakdown?.cutoffTime &&
+          oldRevenueData.splitRevenue?.hasSplit
+        ) {
+          const cutoff = new Date(snapshot.splitBreakdown.cutoffTime);
+          const before = this.calculateProgressiveBonus(
+            rules,
+            new Prisma.Decimal(oldRevenueData.splitRevenue.revenueBefore),
+            cutoff,
+            startOfMonth,
+          );
+          const after = this.calculateProgressiveBonus(
+            rules,
+            new Prisma.Decimal(oldRevenueData.splitRevenue.revenueAfter),
+            endOfMonth,
+            cutoff,
+          );
+          correctBonusAmount = new Prisma.Decimal(before.totalBonus).plus(
+            after.totalBonus,
+          );
+        }
 
         // Both queued and already applied deductions count toward the amount
         // recovered. Never charge the cumulative shortfall again on each refund.
@@ -2079,7 +2304,7 @@ export class CommissionRulesService {
         });
         const overpaidBonus = Prisma.Decimal.max(
           0,
-          pastSettlement.bonusAmount
+          new Prisma.Decimal(snapshot.netBonus ?? pastSettlement.bonusAmount)
             .minus(correctBonusAmount)
             .add(previousAdjustments._sum.adjustmentAmount ?? 0),
         );
@@ -2116,9 +2341,30 @@ export class CommissionRulesService {
               targetYearMonth,
               adjustmentAmount: overpaidBonus.mul(-1),
               reason: `Khấu trừ do hoàn tiền đơn hàng ${order.externalOrderSn}: ${reason}`,
-              status: 'PENDING',
+              status: 'APPLIED',
             },
           });
+          if (pastSettlement.status === 'PAID') {
+            await this.walletsService.reverseAvailableBalance(
+              tx,
+              collaboratorId!,
+              overpaidBonus,
+              { id: adjustmentRecord.id, type: 'MONTHLY_BONUS_ADJUSTMENT' },
+              storeId,
+            );
+          } else {
+            // Retain the original policy/calculation snapshot; correct only the
+            // payable amount, with a separate immutable adjustment and audit.
+            await tx.monthlyBonusResult.update({
+              where: { id: pastSettlement.id },
+              data: {
+                bonusAmount: Prisma.Decimal.max(
+                  0,
+                  pastSettlement.bonusAmount.minus(overpaidBonus),
+                ),
+              },
+            });
+          }
         }
       }
 
@@ -2153,7 +2399,8 @@ export class CommissionRulesService {
         refund: refundRecord,
         adjustment: adjustmentRecord,
       };
-    });
+    };
+    return transaction ? apply(transaction) : this.prisma.$transaction(apply);
   }
 
   async getSettlementHistory(storeId: string, yearMonth?: string) {
@@ -2216,28 +2463,29 @@ export class CommissionRulesService {
       collaboratorId,
       targetYearMonth,
     );
-    const validRevenue = new Prisma.Decimal(revenueData.validRevenue);
-
-    const rules = await this.prisma.commissionRule.findMany({
-      where: { storeId, isDeleted: false },
-      orderBy: { minMonthlyRevenue: 'asc' },
+    const unassignedCompletedOrders = await this.prisma.order.findMany({
+      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
+      select: { externalOrderSn: true, status: true, completedAt: true, createdAt: true, finalAmount: true },
     });
+    const validRevenue = new Prisma.Decimal(revenueData.validRevenue);
 
     const { startOfMonth, endOfMonth } =
       this.getVietnamMonthDateRange(targetYearMonth);
-    const bonusCalc = this.calculateProgressiveBonus(
+    const rules = await this.prisma.$transaction((tx) =>
+      rulesAt(tx, storeId, startOfMonth),
+    );
+    const bonusCalc = this.calculateMonthlyBonus(
       rules,
       validRevenue,
-      endOfMonth,
+      startOfMonth,
       startOfMonth,
     );
 
-    // Lọc đồng nhất các mốc đang hoạt động và còn trong thời hạn hiệu lực của kỳ tháng
     const activeRules = rules
       .filter(
         (r) =>
           r.isActive &&
-          (!r.effectiveFrom || r.effectiveFrom <= endOfMonth) &&
+          (!r.effectiveFrom || r.effectiveFrom <= startOfMonth) &&
           (!r.effectiveTo || r.effectiveTo >= startOfMonth),
       )
       .sort((a, b) =>
@@ -2316,6 +2564,15 @@ export class CommissionRulesService {
       yearMonth: targetYearMonth,
       validRevenue: validRevenue.toFixed(2),
       validOrdersCount: revenueData.validOrdersCount,
+      unassignedCompletedOrders: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .map((order) => order.externalOrderSn),
+      unassignedRecordedValue: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .reduce((total, order) => total.add(order.finalAmount || 0), new Prisma.Decimal(0)).toFixed(2),
+      unassignedOrderDetails: unassignedCompletedOrders
+        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .map((order) => ({ code: order.externalOrderSn, purchasedAt: order.createdAt, recordedValue: String(order.finalAmount || 0) })),
       currentMilestone: bonusCalc.highestReachedRule,
       achievementBonus: bonusCalc.achievementBonus,
       rangeBonuses: bonusCalc.rangeBonuses,
@@ -2415,13 +2672,19 @@ export class CommissionRulesService {
   async getCollaboratorStores(collaboratorId?: string, isDiscovery = false) {
     const whereClause: any = {
       isDeleted: false,
-      commissionRules: {
+    };
+
+    // Linked stores remain visible before their first rule is configured and
+    // after rules are retired, so collaborators can still view past rewards.
+    // Discovery only advertises stores with an active bonus policy.
+    if (isDiscovery) {
+      whereClause.commissionRules = {
         some: {
           isDeleted: false,
           isActive: true,
         },
-      },
-    };
+      };
+    }
 
     if (collaboratorId && !isDiscovery) {
       whereClause.OR = [
@@ -2517,17 +2780,59 @@ export class CommissionRulesService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const attributed = await this.prisma.order.findMany({
+      where: { storeId, attributedCollaboratorId: { not: null } },
+      distinct: ['attributedCollaboratorId'],
+      select: { attributedCollaboratorId: true },
+    });
+    const knownIds = new Set(storeCollabs.map((row) => row.collaborator.id));
+    const additionalIds = attributed
+      .map((row) => row.attributedCollaboratorId!)
+      .filter((id) => !knownIds.has(id));
+    const additionalMembers = additionalIds.length
+      ? await this.prisma.user.findMany({
+          where: {
+            id: { in: additionalIds },
+            role: 'COLLABORATOR',
+            isDeleted: false,
+          },
+          include: {
+            collaboratorProfile: true,
+            socialChannels: { where: { isPrimary: true }, take: 1 },
+          },
+        })
+      : [];
+    // Legacy completed orders without a completion timestamp cannot be assigned
+    // to any month. Report them separately; never substitute createdAt/updatedAt.
+    const unassignedOrders = await this.prisma.order.findMany({
+      where: { storeId, status: 'COMPLETED', completedAt: null, attributedCollaboratorId: { not: null } },
+      select: { id: true, externalOrderSn: true, attributedCollaboratorId: true },
+    });
+    const unassignedByCollaborator = new Map<string, string[]>();
+    for (const order of unassignedOrders) {
+      if (!order.attributedCollaboratorId) continue;
+      const codes = unassignedByCollaborator.get(order.attributedCollaboratorId) || [];
+      codes.push(order.externalOrderSn || order.id);
+      unassignedByCollaborator.set(order.attributedCollaboratorId, codes);
+    }
     const members: any[] = [];
+    const errors: Array<{ collaboratorId: string; message: string }> = [];
     let totalRevenue = new Prisma.Decimal(0);
     let totalEstimatedBonus = new Prisma.Decimal(0);
     let eligibleCount = 0;
     let settledCount = 0;
 
-    for (const sc of storeCollabs) {
-      const c = sc.collaborator;
+    for (const c of [
+      ...storeCollabs.map((row) => row.collaborator),
+      ...additionalMembers,
+    ]) {
       if (!c) continue;
       try {
-        const progress = await this.getKolProgress(storeId, c.id, targetYearMonth);
+        const progress = await this.getKolProgress(
+          storeId,
+          c.id,
+          targetYearMonth,
+        );
         const rev = new Prisma.Decimal(progress.validRevenue || 0);
         const bonus = new Prisma.Decimal(progress.estimatedTotalBonus || 0);
         totalRevenue = totalRevenue.add(rev);
@@ -2549,6 +2854,9 @@ export class CommissionRulesService {
           primaryChannel: c.socialChannels?.[0] || null,
           validRevenue: progress.validRevenue,
           validOrdersCount: progress.validOrdersCount,
+          unassignedCompletedOrders: unassignedByCollaborator.get(c.id) || [],
+          unassignedRecordedValue: progress.unassignedRecordedValue,
+          unassignedOrderDetails: progress.unassignedOrderDetails,
           currentMilestone: progress.currentMilestone,
           nextMilestone: progress.nextMilestone,
           estimatedTotalBonus: progress.estimatedTotalBonus,
@@ -2556,7 +2864,11 @@ export class CommissionRulesService {
           settlement: progress.settlement,
         });
       } catch (err) {
-        // Skip collaborator on error
+        errors.push({
+          collaboratorId: c.id,
+          message:
+            err instanceof Error ? err.message : 'Không thể tính tiến độ',
+        });
       }
     }
 
@@ -2567,11 +2879,13 @@ export class CommissionRulesService {
       summary: {
         totalCollaborators: members.length,
         totalRevenue: totalRevenue.toFixed(2),
+        unassignedCompletedOrdersCount: unassignedOrders.length,
         totalEstimatedBonus: totalEstimatedBonus.toFixed(2),
         eligibleCount,
         settledCount,
       },
       members,
+      errors,
     };
 
     await this.cache.set(cacheKey, result, 30);
@@ -2585,12 +2899,16 @@ export class CommissionRulesService {
     userId?: string,
     ipAddress?: string,
   ) {
+    const { endOfMonth } = this.getVietnamMonthDateRange(yearMonth);
+    if (endOfMonth > new Date())
+      throw new BadRequestException('Chỉ được quyết toán kỳ tháng đã kết thúc');
     const team = await this.getTeamProgress(storeId, yearMonth);
     const eligibleMembers = team.members.filter(
       (m: any) =>
         new Prisma.Decimal(m.estimatedTotalBonus || 0).greaterThan(0) &&
         !m.settlement &&
-        (m.settlementStatus === 'PENDING_SETTLEMENT' || m.settlementStatus === 'ACCUMULATING'),
+        (m.settlementStatus === 'PENDING_SETTLEMENT' ||
+          m.settlementStatus === 'ACCUMULATING'),
     );
 
     const results: any[] = [];
@@ -2602,20 +2920,24 @@ export class CommissionRulesService {
           yearMonth,
           userId,
           ipAddress,
-          true,
+          false,
         );
         results.push(res);
       } catch (err: any) {
-        // Log & continue
+        results.push({
+          collaboratorId: m.collaboratorId,
+          error: err instanceof Error ? err.message : 'Không thể quyết toán',
+        });
       }
     }
 
     return {
-      success: true,
-      message: `Đã chốt đối soát thành công cho ${results.length}/${eligibleMembers.length} đối tác đạt mốc.`,
-      settledCount: results.length,
+      success: !team.errors.length && results.every((result) => !result.error),
+      message: `Đã chốt đối soát thành công cho ${results.filter((result) => !result.error).length}/${eligibleMembers.length} đối tác đạt mốc.`,
+      settledCount: results.filter((result) => !result.error).length,
       totalEligible: eligibleMembers.length,
       results,
+      errors: team.errors,
     };
   }
 
@@ -2638,14 +2960,18 @@ export class CommissionRulesService {
       });
       if (collabs.length === 0) return;
 
-      const formatVND = (val: string) => `${Number(val || 0).toLocaleString('vi-VN')} ₫`;
+      const formatVND = (val: string) =>
+        `${Number(val || 0).toLocaleString('vi-VN')} ₫`;
       await this.prisma.notification.createMany({
         data: collabs.map((c) => ({
           userId: c.collaboratorId,
           title: `Chính sách thưởng mới từ ${store?.name || 'Shop'}`,
           message: `Mốc "${ruleName}": Doanh số từ ${formatVND(minRevenue)} nhận thưởng ${bonusRate}% + cố định ${formatVND(achievementBonus)}.`,
           type: 'COMMISSION_MILESTONE',
-          data: { storeId, actionUrl: `/collaborator/stores/${storeId}/commission-rules` },
+          data: {
+            storeId,
+            actionUrl: `/collaborator/stores/${storeId}/commission-rules`,
+          },
           isRead: false,
         })),
       });

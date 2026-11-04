@@ -22,7 +22,7 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     const notifications = [
       { id: 'welcome', type: 'WELCOME', title: 'Chào mừng bạn đến với Sàn SCANMS', message: 'Khám phá sản phẩm từ các gian hàng đối tác và theo dõi đơn mua của bạn ngay trên SCANMS.', isRead: false, data: {} },
       { id: 'promotion', type: 'VOUCHER_RECEIVED', title: 'Bạn nhận được ưu đãi giảm 15% cho đơn mua tiếp theo', message: 'Khám phá kho voucher để xem điều kiện áp dụng và chọn ưu đãi phù hợp trước khi thanh toán.', isRead: false, data: { voucherCode: 'SCANMS15' } },
-      { id: 'order', type: 'ORDER_SHIPPED', title: 'Đơn mua từ Herbal Spa đang trên đường giao đến bạn', message: 'Kiện hàng đã được bàn giao cho đơn vị vận chuyển. Bạn có thể theo dõi hành trình trong chi tiết đơn mua.', isRead: false, data: { orderSn: 'SCANMS-181026-0001', trackingNumber: 'GHN-TRACKING-123456789012345678901234567890' } },
+      { id: 'order', type: 'ORDER_SHIPPED', title: 'Đơn mua từ Herbal Spa đang trên đường giao đến bạn', message: 'Kiện hàng đã được bàn giao cho đơn vị vận chuyển. Bạn có thể theo dõi hành trình trong chi tiết đơn mua.', isRead: false, data: { orderSn: 'SCANMS-181026-0001', trackingNumber: 'GHN-TRACKING-123456789012345678901234567890', productImageUrl: '/assets/products/real/chamomile-tea-50g.webp', productTitle: 'Trà hoa cúc' } },
       { id: 'read', type: 'SYSTEM', title: 'Thông tin tài khoản đã được cập nhật', message: 'Bạn có thể kiểm tra thông tin mới nhất trong hồ sơ cá nhân.', isRead: true, data: {} },
     ].map(item => ({ ...item, userId: 'qa-customer', createdAt: '2026-10-18T04:30:00.000Z' }));
     const categoryOf = type => type.startsWith('ORDER_') ? 'ORDER' : type.startsWith('VOUCHER_') ? 'PROMOTION' : 'SYSTEM';
@@ -79,6 +79,12 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     assert.deepEqual(await page.$eval('.customer-notification-time', el => [...el.querySelectorAll('span')].map(span => span.textContent)), ['11:30', '·', '18/10/2026']);
     assert.equal(await page.$$eval('.customer-notification-unread', els => els.length), 3);
     assert.equal(await page.$$eval('.customer-notification-read', els => els.length), 1);
+    await page.waitForFunction(() => {
+      const image = document.querySelector('[data-notification-id="order"] .customer-notification-product-image img');
+      return image?.complete && image.naturalWidth > 0;
+    });
+    assert.equal(await page.$eval('[data-notification-id="order"] .customer-notification-product-image img', el => el.getAttribute('src')), '/assets/products/real/chamomile-tea-50g.webp');
+    assert.equal(await page.$('[data-notification-id="welcome"] .customer-notification-product-image'), null);
     for (const width of [1440, 1024, 768, 390, 320]) {
       await page.setViewport({ width, height: 1000 });
       assert.ok(await page.$$eval('.customer-notification-card', els => els.every(el => el.scrollWidth <= el.clientWidth + 1)), `notification content fits at ${width}px`);

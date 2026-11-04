@@ -14,6 +14,12 @@ describe('Live session UUID validation', () => {
     const errors = await validate(plainToInstance(GenerateLiveLinkCodeDto, { storeId: 'not-an-id', creatorId: 'invalid' }));
     expect(errors.map(e => e.property)).toEqual(expect.arrayContaining(['storeId', 'creatorId']));
   });
+  it('trims session titles and rejects whitespace-only titles', async () => {
+    const valid = plainToInstance(CreateLiveSessionDto, { title: '  Phiên mới  ' });
+    expect(valid.title).toBe('Phiên mới');
+    const errors = await validate(plainToInstance(CreateLiveSessionDto, { title: '   ' }));
+    expect(errors.find(error => error.property === 'title')?.constraints).toHaveProperty('isNotEmpty');
+  });
   it('accepts fixture UUIDs for products and variants when creating a session', async () => {
     const errors = await validate(plainToInstance(CreateLiveSessionDto, {
       storeId: v5, creatorId: v5, productIds: [v5], variantIds: [v5], title: 'Sale Live',

@@ -22,21 +22,31 @@ import { authService } from '../../services/auth.service';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
 import { getNotificationSection } from '../../utils/notification-categories.utils';
 import { useChatNotifications } from '../../hooks/useChatNotifications';
+import { notificationTarget, localNotificationAction } from '../../utils/notification-target';
+import { toast } from '../../utils/toast';
+import { headerNotificationSnapshot } from '../../utils/header-notification-source';
+import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
+import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
+import './NotificationDropdown.css';
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const hover = useHoverDisclosure(isOpen, setIsOpen);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM'>('ALL');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [markingRead, setMarkingRead] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const notificationListRef = useRef<HTMLDivElement>(null);
-  const [panelPosition, setPanelPosition] = useState({ top: 72, right: 12, maxHeight: 480 });
+  const [panelPosition, setPanelPosition] = useState({ top: 72, right: 12, maxHeight: 480, width: 420 });
   const listRequest = useRef(0);
+  const accountScope = useRef(`${authService.getCurrentUser()?.id || ''}:${localStorage.getItem('token') || ''}`);
 
   useLayoutEffect(() => {
     if (!isOpen) return;
@@ -51,9 +61,10 @@ export const NotificationDropdown: React.FC = () => {
       const fitViewport = Math.max(above, below) < 180;
       const maxHeight = Math.min(480, Math.max(0, fitViewport ? viewportBottom - viewportTop - 20 : openAbove ? above : below));
       const top = fitViewport ? viewportTop + 10 : openAbove ? (bounds?.top || 64) - 8 - maxHeight : Math.min((bounds?.bottom || 64) + 8, viewportBottom - 10);
-      const width = Math.min(380, window.innerWidth - 20);
-      const right = Math.min(Math.max(10, window.innerWidth - (bounds?.right || window.innerWidth - 10)), Math.max(10, window.innerWidth - width - 10));
-      setPanelPosition(previous => previous.top === top && previous.right === right && previous.maxHeight === maxHeight ? previous : { top, right, maxHeight });
+      const viewportWidth = document.documentElement.clientWidth;
+      const width = Math.min(420, viewportWidth - 20);
+      const right = Math.min(Math.max(10, viewportWidth - (bounds?.right || viewportWidth - 10)), Math.max(10, viewportWidth - width - 10));
+      setPanelPosition(previous => previous.top === top && previous.right === right && previous.maxHeight === maxHeight && previous.width === width ? previous : { top, right, maxHeight, width });
     };
     position();
     const dismiss = (event: KeyboardEvent) => {
@@ -64,7 +75,7 @@ export const NotificationDropdown: React.FC = () => {
     window.visualViewport?.addEventListener('resize', position);
     window.visualViewport?.addEventListener('scroll', position);
     document.addEventListener("keydown", dismiss);
-    panelRef.current?.focus();
+    if (!hover.openedByHover.current) panelRef.current?.focus();
     return () => {
       window.removeEventListener("resize", position);
       window.removeEventListener('scroll', position, true);
@@ -89,7 +100,6 @@ export const NotificationDropdown: React.FC = () => {
   }, []);
 
   const fetchUnreadCount = useCallback(async () => {
-    const unreadBroadcasts = liveBroadcastService.getUnreadBroadcasts().length;
     const user = authService.getCurrentUser();
     let backendUnread = 0;
     if (user) {
@@ -98,13 +108,13 @@ export const NotificationDropdown: React.FC = () => {
       if (unreadCount === null) return;
       backendUnread = unreadCount;
     }
-    const totalCount = backendUnread + unreadBroadcasts;
-    setUnreadCount(totalCount);
-  }, []);
+    setUnreadCount(headerNotificationSnapshot(!!user, [], backendUnread, getLiveNotifications()).unreadCount);
+  }, [getLiveNotifications]);
 
   const fetchNotifications = useCallback(async () => {
     const requestId = ++listRequest.current;
     setLoading(true);
+    setLoadError(false);
     try {
       const user = authService.getCurrentUser();
       let backendItems: AppNotification[] = [];
@@ -117,46 +127,14 @@ export const NotificationDropdown: React.FC = () => {
           backendUnread = res.unreadCount || 0;
         } catch {
           backendItems = [];
+          if (requestId === listRequest.current) setLoadError(true);
         }
       }
       if (user?.id !== authService.getCurrentUser()?.id || requestId !== listRequest.current) return;
 
-      // Merge broadcast notifications for ALL and PROMOTION tabs
-      const liveItems = getLiveNotifications();
-      const now = Date.now();
-      // Lọc bỏ bất kỳ thông báo phiên live nào từ backend mà đã hết thời gian endsAt hoặc đã kết thúc
-      const validBackendItems = backendItems.filter((item) => {
-        if (item.type.startsWith('LIVE_') || item.type.includes('LIVE')) {
-          if (item.type === 'LIVE_SESSION_ENDED') {
-            return false;
-          }
-          const endsAt = (item.data as any)?.endsAt;
-          if (endsAt) {
-            const endMs = new Date(endsAt).getTime();
-            if (Number.isFinite(endMs) && endMs <= now) {
-              return false;
-            }
-          }
-          const createdMs = new Date(item.createdAt).getTime();
-          if (item.type === 'LIVE_SESSION_STARTED' && Number.isFinite(createdMs) && (now - createdMs > 2 * 3600 * 1000)) {
-            return false;
-          }
-        }
-        return true;
-      });
-
-      // Tránh trùng lặp nếu cả backend lẫn local broadcast đều có cùng sessionId
-      const liveSessionIds = new Set(liveItems.map((i) => i.data?.sessionId).filter(Boolean));
-      const deduplicatedBackend = validBackendItems.filter((item) => {
-        if (item.type === 'LIVE_GOVERNANCE') return true;
-        if (item.type.startsWith('LIVE_') || item.type.includes('LIVE')) {
-          const sId = (item.data as any)?.sessionId;
-          if (sId && liveSessionIds.has(sId)) {
-            return false;
-          }
-        }
-        return true;
-      });
+      const snapshot = headerNotificationSnapshot(!!user, backendItems, backendUnread, getLiveNotifications());
+      const liveItems = user ? [] : snapshot.items;
+      const deduplicatedBackend = user ? snapshot.items : [];
 
       let combined: AppNotification[] = [];
 
@@ -174,13 +152,29 @@ export const NotificationDropdown: React.FC = () => {
       }
 
       setNotifications(combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      const unreadBroadcasts = liveBroadcastService.getUnreadBroadcasts().length;
-      setUnreadCount(backendUnread + unreadBroadcasts);
+      setUnreadCount(snapshot.unreadCount);
     } catch {
     } finally {
       if (requestId === listRequest.current) setLoading(false);
     }
   }, [activeTab, getLiveNotifications]);
+
+  useEffect(() => {
+    const reset = () => {
+      const nextScope = `${authService.getCurrentUser()?.id || ''}:${localStorage.getItem('token') || ''}`;
+      if (nextScope === accountScope.current) return;
+      accountScope.current = nextScope;
+      listRequest.current += 1;
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      setIsOpen(false);
+      setExpandedMessages(new Set());
+      void fetchUnreadCount();
+    };
+    window.addEventListener('auth-user-updated', reset);
+    return () => window.removeEventListener('auth-user-updated', reset);
+  }, [fetchUnreadCount]);
 
   const { soundOn, soundBlocked, toggleSound, unlockSound, playChime } = useChatNotifications(() => {
     void fetchUnreadCount();
@@ -239,29 +233,42 @@ export const NotificationDropdown: React.FC = () => {
   }, [isOpen]);
 
   const handleMarkAllRead = async () => {
-    liveBroadcastService.markAllAsRead();
+    if (markingRead) return;
+    setMarkingRead(true);
     try {
-      await notificationsService.markAllAsRead();
-    } catch {}
-    setUnreadCount(0);
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      const userId = authService.getCurrentUser()?.id;
+      const saved = !userId || await notificationsService.markAllAsRead();
+      if (userId !== authService.getCurrentUser()?.id) return;
+      if (!saved) { toast.error('Chưa lưu được trạng thái đã đọc. Vui lòng thử lại.'); return; }
+      if (!userId) liveBroadcastService.markAllAsRead();
+      setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } finally { setMarkingRead(false); }
   };
 
   const handleNotificationClick = async (notif: AppNotification) => {
+    const recipientId = authService.getCurrentUser()?.id;
     if (!notif.isRead) {
-      if (notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) {
+      const localLive = liveBroadcastService.getAllBroadcasts().some(item => item.id === notif.id);
+      let saved = true;
+      if (localLive) {
         liveBroadcastService.markAsRead(notif.id);
       } else {
-        try {
-          await notificationsService.markAsRead(notif.id);
-        } catch {}
+        saved = await notificationsService.markAsRead(notif.id);
       }
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      if (recipientId !== authService.getCurrentUser()?.id) return;
+      if (saved) {
+        setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } else toast.error('Chưa lưu được trạng thái đã đọc.');
     }
     setIsOpen(false);
+
+    if (notif.type === 'PRODUCT_REVIEW_REPORTED') {
+      const role = authService.getCurrentUser()?.role;
+      if (role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER') navigate(`/admin/customer-reviews?filter=PENDING&review=${encodeURIComponent(notif.data?.reviewId || '')}`);
+      return;
+    }
 
     if (notif.type === 'LIVE_GOVERNANCE') {
       const role = authService.getCurrentUser()?.role;
@@ -276,27 +283,28 @@ export const NotificationDropdown: React.FC = () => {
     if ((notif.type.startsWith('LIVE_') || notif.type.includes('LIVE')) && !notif.type.startsWith('LIVE_ORDER_')) {
       const liveUrl = notif.data?.liveUrl;
       if (liveUrl) {
-        if (liveUrl.startsWith('http')) {
+        if (/^https?:\/\//i.test(liveUrl)) {
           try {
             const urlObj = new URL(liveUrl);
             if (urlObj.origin === window.location.origin) {
               navigate(urlObj.pathname + urlObj.search);
               return;
             } else {
-              window.open(liveUrl, '_blank');
+              window.open(liveUrl, '_blank', 'noopener,noreferrer');
               return;
             }
           } catch {
-            window.open(liveUrl, '_blank');
+            toast.info('Liên kết phiên Live không hợp lệ.');
             return;
           }
-        } else if (liveUrl.startsWith('/')) {
-          navigate(liveUrl);
+        } else if (localNotificationAction(liveUrl)) {
+          navigate(localNotificationAction(liveUrl)!);
           return;
         }
       }
-      const sessionId = notif.data?.sessionId || notif.data?.id || 'demo';
-      navigate(`/live/${sessionId}`);
+      const sessionId = notif.data?.sessionId || notif.data?.id;
+      if (sessionId) navigate(`/live/${encodeURIComponent(sessionId)}`);
+      else toast.info('Thông báo này chưa có liên kết phiên Live.');
       return;
     }
 
@@ -305,8 +313,9 @@ export const NotificationDropdown: React.FC = () => {
     if (actionUrl === '/customer/upgrade' && (notif.type === 'WELCOME' || notif.type === 'SYSTEM' || !notif.type.includes('UPGRADE'))) {
       actionUrl = '/marketplace';
     }
-    if (actionUrl) {
-      navigate(actionUrl);
+    const localAction = localNotificationAction(actionUrl);
+    if (localAction) {
+      navigate(localAction);
       return;
     }
 
@@ -316,6 +325,9 @@ export const NotificationDropdown: React.FC = () => {
     const orderId = notif.data?.orderId || notif.data?.orderSn || notif.data?.id;
     const returnId = notif.data?.returnId || notif.data?.returnRequestId;
     const payoutId = notif.data?.payoutId;
+
+    const target = userRole && notificationTarget(notif, userRole);
+    if (target) { navigate(target); return; }
 
     if (notif.type.startsWith('SAMPLE_')) {
       if (userRole === 'SYSTEM_ADMIN' || userRole === 'SYSTEM_MANAGER') navigate('/admin/sample-requests');
@@ -403,11 +415,11 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} onPointerEnter={hover.enterTrigger} onPointerLeave={hover.closeSoon}>
       <button
         ref={bellRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={hover.toggle}
         className="relative grid place-items-center w-[36px] h-[36px] border border-[#EAE4D7] rounded-full bg-white text-[#7D715E] cursor-pointer hover:bg-[#FBF5EB] hover:text-[#B88E4F] transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
         title="Thông báo SCANMS"
         aria-label={"Thông báo: " + unreadCount + " chưa đọc"}
@@ -425,14 +437,19 @@ export const NotificationDropdown: React.FC = () => {
         <div
           id="scanms-notification-panel"
           ref={panelRef}
+          onPointerEnter={hover.cancelClose}
+          onPointerLeave={hover.closeSoon}
+          onFocusCapture={hover.cancelClose}
+          onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && event.relatedTarget !== bellRef.current) hover.closeSoon(); }}
           role="region"
           aria-label="Trung tâm thông báo"
           tabIndex={-1}
-          className="scanms-notifications fixed z-[100] flex flex-col w-[380px] max-w-[calc(100vw_-_20px)] min-h-0 overflow-hidden border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-[color:#1A1612]! shadow-[0_10px_32px_rgb(35_29_21_/_12%)] text-left outline-none [&_:is(button,[tabindex='0']):focus-visible]:outline-[2px] [&_:is(button,[tabindex='0']):focus-visible]:outline-solid [&_:is(button,[tabindex='0']):focus-visible]:outline-[#B88E4F] [&_:is(button,[tabindex='0']):focus-visible]:outline-offset-[-2px]"
-          style={{ top: panelPosition.top, right: panelPosition.right, maxHeight: panelPosition.maxHeight }}
+          className="scanms-notifications fixed z-[100] flex flex-col w-[420px] max-w-[calc(100vw_-_20px)] min-h-0 overflow-hidden border border-[#EAE4D7] rounded-[18px] bg-[color:#FFFFFF] text-[color:#1A1612]! shadow-[0_12px_40px_rgb(35_29_21_/_10%)] text-left outline-none [&_:is(button,[tabindex='0']):focus-visible]:outline-[2px] [&_:is(button,[tabindex='0']):focus-visible]:outline-solid [&_:is(button,[tabindex='0']):focus-visible]:outline-[#B88E4F] [&_:is(button,[tabindex='0']):focus-visible]:outline-offset-[-2px]"
+          style={{ top: panelPosition.top, left: Math.max(10, document.documentElement.clientWidth - panelPosition.right - panelPosition.width), maxHeight: panelPosition.maxHeight, width: panelPosition.width }}
         >
           <header className="scanms-notifications-header flex items-center justify-between flex-wrap shrink-0 gap-[4px_6px] p-[8px_12px] bg-[color:#FFFFFF] [&_button]:min-h-[32px] [&_button]:cursor-pointer [@media_(max-width:359px)]:p-[6px_10px] [@media_(max-width:359px)]:[&_h3]:text-[13px] [@media_(max-width:359px)]:[&_>_div:first-child]:gap-[5px] [@media_(max-width:359px)]:[&_>_div:last-child]:gap-[1px]">
             <div className="flex items-center gap-[7px]">
+              <span className="scanms-notifications-heading-icon" aria-hidden="true"><Bell size={18} /></span>
               <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
               {unreadCount > 0 && (
                 <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] leading-[1.3]">
@@ -454,6 +471,7 @@ export const NotificationDropdown: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
+                  disabled={markingRead}
                   className="inline-flex items-center justify-center gap-[4px] min-h-[28px] p-[5px_6px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
                 >
                   <CheckCheck size={13} className="text-[#B88E4F]" />
@@ -509,6 +527,11 @@ export const NotificationDropdown: React.FC = () => {
                 <Loader2 size={22} className="animate-spin text-[#B88E4F]" />
                 <p className="text-[11px] leading-[1.6] m-0">Đang tải thông báo…</p>
               </div>
+            ) : loadError ? (
+              <div className="p-5 text-center text-xs text-[#7D715E]" role="alert">
+                <p>Chưa tải được thông báo.</p>
+                <button type="button" onClick={() => void fetchNotifications()} className="mt-2 text-[#B88E4F] underline">Thử lại</button>
+              </div>
             ) : !notifications.length ? (
               <div className="flex flex-col items-center justify-center gap-[7px] p-[34px_16px] text-[#7D715E] text-center">
                 <Bell size={24} className="text-[#B88E4F]" />
@@ -518,6 +541,11 @@ export const NotificationDropdown: React.FC = () => {
             ) : (
               notifications.map(n => {
                 const isLive = n.type.startsWith('LIVE_') || n.type.includes('LIVE');
+                const isOrderNotification = n.type.startsWith('ORDER_') || n.type.startsWith('LIVE_ORDER_') || n.type.startsWith('DISPUTE_') || n.type.startsWith('RETURN_');
+                const productImageUrl = isOrderNotification && typeof n.data?.productImageUrl === 'string'
+                  ? n.data.productImageUrl
+                  : '';
+                const productTitle = typeof n.data?.productTitle === 'string' ? n.data.productTitle : '';
                 const expanded = expandedMessages.has(n.id);
                 return (
                   <article key={n.id} className="scanms-notification-item min-w-0 p-[10px_12px_8px] border-b border-b-[#F3EFE6] bg-[color:#FFFFFF] [&:last-child]:border-b-0 [&[data-read='false']:not(:hover)]:bg-[color:#FDFAF5] [&:hover]:bg-[color:#FAF8F5] [&[data-read='true']_.scanms-notification-title]:font-[500] [&:has(.scanms-notification-message[data-expanded='true'])_.scanms-notification-title]:whitespace-normal [&:has(.scanms-notification-message[data-expanded='true'])_.scanms-notification-title]:[overflow-wrap:anywhere] [@media_(max-width:359px)]:pl-[10px] [@media_(max-width:359px)]:pr-[10px]" data-notification-id={n.id} data-read={n.isRead}>
@@ -526,9 +554,26 @@ export const NotificationDropdown: React.FC = () => {
                       onClick={() => void handleNotificationClick(n)}
                       className="scanms-notification-open [font-family:inherit]! [font-size:inherit] [font-weight:inherit] leading-[inherit] [font-style:inherit] [font-variant:inherit] [font-stretch:inherit] flex items-start gap-[9px] w-full min-w-0 p-0 border-0 rounded-[5px] bg-transparent text-[color:inherit]! text-left cursor-pointer"
                     >
-                      <span className="scanms-notification-icon grid place-items-center shrink-0 w-[29px] h-[29px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-[color:#FFFFFF] text-[color:#B88E4F]!" aria-hidden="true">
-                        {getNotificationIcon(n.type)}
-                      </span>
+                      {productImageUrl ? (
+                        <span className="scanms-notification-product-image block shrink-0 w-[40px] h-[40px] mt-[1px] overflow-hidden border border-[#EEDFC6] rounded-[9px] bg-[#FAF8F5]" aria-hidden="true">
+                          <img
+                            src={getSafeProductImageUrl(productImageUrl, productTitle)}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-contain"
+                            onError={event => {
+                              if (!event.currentTarget.dataset.fallback) {
+                                event.currentTarget.dataset.fallback = 'true';
+                                event.currentTarget.src = getSafeProductImageUrl(null, productTitle);
+                              }
+                            }}
+                          />
+                        </span>
+                      ) : (
+                        <span className="scanms-notification-icon grid place-items-center shrink-0 w-[29px] h-[29px] mt-[1px] border border-[#EEDFC6] rounded-[8px] bg-[color:#FFFFFF] text-[color:#B88E4F]!" aria-hidden="true">
+                          {getNotificationIcon(n.type)}
+                        </span>
+                      )}
                       <span className="block flex-1 min-w-0">
                         <span className="flex items-start gap-[8px]">
                           <strong title={n.title} className="scanms-notification-title block flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[color:#1A1612]! text-[12px] font-[600] leading-[1.5]">
@@ -541,7 +586,7 @@ export const NotificationDropdown: React.FC = () => {
                         </span>
                       </span>
                     </button>
-                    <div className="scanms-notification-meta flex items-center justify-between flex-wrap gap-[3px_8px] min-h-[20px] m-[3px_0_0_38px] text-[color:#8A642C]! text-[10px] leading-[1.5] [&_>_time]:inline-flex [&_>_time]:items-center [&_>_time]:gap-[4px] [&_>_time]:text-[color:#7D715E]! [&_>_time_>_svg]:shrink-0">
+                    <div className={`scanms-notification-meta flex items-center justify-between flex-wrap gap-[3px_8px] min-h-[20px] ${productImageUrl ? 'm-[3px_0_0_61px]' : 'm-[3px_0_0_38px]'} text-[color:#8A642C]! text-[10px] leading-[1.5] [&_>_time]:inline-flex [&_>_time]:items-center [&_>_time]:gap-[4px] [&_>_time]:text-[color:#7D715E]! [&_>_time_>_svg]:shrink-0`}>
                       <time dateTime={n.createdAt}><Clock size={10} aria-hidden="true" />{formatTimeAgo(n.createdAt)}</time>
                       {isLive && <span>Phiên live</span>}
                     {(n.message.length > 100 || n.title.length > 52) && (

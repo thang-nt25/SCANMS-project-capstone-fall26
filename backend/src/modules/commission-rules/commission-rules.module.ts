@@ -9,6 +9,7 @@ import { AuthModule } from '../auth/auth.module';
 import { StoreCollaboratorsController } from './store-collaborators.controller';
 import { StoreCollaboratorsService } from './store-collaborators.service';
 import { WalletsModule } from '../wallets/wallets.module';
+import { MonthlyBonusScheduler } from './monthly-bonus.scheduler';
 
 @Module({
   imports: [PrismaModule, AuthModule, WalletsModule],
@@ -19,6 +20,7 @@ import { WalletsModule } from '../wallets/wallets.module';
   ],
   providers: [
     CommissionRulesService,
+    MonthlyBonusScheduler,
     StoreCollaboratorsService,
     StoreOwnerGuard,
     JwtAuthGuard,

@@ -1,0 +1,50 @@
+﻿import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import puppeteer from 'puppeteer-core';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+const base = process.env.GHN_UI_TEST_URL;
+const executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+test('completed order reviews show saved content and close using Escape or the close button', { skip: !base || !existsSync(executablePath), timeout: 25000 }, async () => {
+  const origin = new URL(base).origin;
+  assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
+  const browser = await puppeteer.launch({ executablePath, headless: true, timeout: 10000, args: ['--no-sandbox'] });
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(6000);
+    page.setDefaultNavigationTimeout(10000);
+    await page.setRequestInterception(true);
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.pathname === '/src/main.tsx') return request.respond({ status: 200, contentType: 'application/javascript', body: "import '/tests/fixtures/order-reviews-modal.tsx';" });
+      if (url.origin !== origin || url.pathname.startsWith('/api/')) return request.abort();
+      return request.continue();
+    });
+    await page.goto(origin + '/customer/orders');
+    await page.click('#qa-open-reviews');
+    await page.waitForSelector('dialog[open]');
+    const text = await page.$eval('dialog', el => el.textContent);
+    assert.match(text, /Serum kiểm thử/);
+    assert.match(text, /Sản phẩm đúng mô tả/);
+    assert.match(text, /Đã đăng/);
+    assert.match(text, /Tuấn Đình/);
+    assert.match(text, /20\/10\/2026/);
+    assert.ok(await page.$('time[datetime="2026-10-20T03:30:00.000Z"]'));
+    assert.ok(await page.$('[aria-label="4 trên 5 sao"]'));
+    await page.screenshot({ path: join(tmpdir(), 'scanms-order-review-desktop.png') });
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('dialog', { hidden: true });
+    await page.click('#qa-open-reviews');
+    await page.waitForSelector('dialog[open]');
+    await page.click('[aria-label="Đóng đánh giá"]');
+    await page.waitForSelector('dialog', { hidden: true });
+    await page.setViewport({ width: 375, height: 700 });
+    await page.click('#qa-open-reviews');
+    await page.waitForSelector('dialog[open]');
+    assert.equal(await page.$eval('dialog', el => el.getBoundingClientRect().width <= window.innerWidth), true);
+    await page.screenshot({ path: join(tmpdir(), 'scanms-order-review-mobile.png') });
+    await page.click('.order-reviews-footer button');
+    await page.waitForSelector('dialog', { hidden: true });
+  } finally { await browser.close(); }
+});

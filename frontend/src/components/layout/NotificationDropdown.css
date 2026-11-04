@@ -1,0 +1,88 @@
+@reference "../../index.css";
+/* The panel is portalled to body, so these styles do not depend on its header. */
+.scanms-notifications .scanms-notifications-header {
+  @apply [padding:14px_16px_12px];
+  @apply [gap:8px];
+  @apply [background:#fff];
+}
+.scanms-notifications-heading-icon {
+  @apply grid;
+  @apply place-items-center;
+  @apply [width:34px];
+  @apply [height:34px];
+  @apply [flex-shrink:0];
+  @apply [border-radius:11px];
+  @apply [background:#fbf5eb];
+  @apply [color:#b88e4f];
+}
+.scanms-notifications .scanms-notifications-header h3 { @apply [font-size:16px]; @apply [font-weight:650]; }
+.scanms-notifications .scanms-notifications-header button { @apply [border-radius:8px]; }
+.scanms-notifications .scanms-notifications-header button:disabled { @apply [opacity:.5]; @apply [cursor:wait]; }
+.scanms-notifications .scanms-notifications-tabs {
+  @apply [margin:0_16px_12px];
+  @apply [padding:4px];
+  @apply [gap:3px];
+  @apply [background:#faf8f5];
+  @apply [border:1px_solid_#f0eae0];
+  @apply [border-radius:11px];
+}
+.scanms-notifications .scanms-notifications-tabs > button {
+  @apply [min-height:33px];
+  @apply [padding:6px_2px];
+  @apply [font-size:11px];
+  @apply [border:1px_solid_transparent];
+  @apply [border-radius:8px];
+  @apply [background:transparent];
+}
+.scanms-notifications .scanms-notifications-tabs > button[aria-pressed="true"] {
+  @apply [background:#fff];
+  @apply [border-color:#eedfc6];
+  @apply [color:#8a642c];
+  @apply [font-weight:600];
+  @apply [box-shadow:0_1px_3px_rgb(35_29_21_/_4%)];
+}
+.scanms-notifications .scanms-notifications-list {
+  @apply [padding:0_8px_8px];
+  @apply [background:#fff];
+  @apply [scrollbar-gutter:stable];
+}
+.scanms-notifications .scanms-notification-item {
+  @apply [margin:0_0_5px];
+  @apply [padding:13px_10px_10px];
+  @apply [border:1px_solid_#f1ece3];
+  @apply [border-radius:12px];
+}
+.scanms-notifications .scanms-notification-item:last-child { @apply [margin-bottom:0]; @apply [border-bottom:1px_solid_#f1ece3]; }
+.scanms-notifications .scanms-notification-item[data-read="false"]:not(:hover) { @apply [background:#fffcf7]; }
+.scanms-notifications .scanms-notification-item:hover { @apply [background:#fbf5eb]; @apply [border-color:#eedfc6]; }
+.scanms-notifications .scanms-notification-open { @apply [gap:11px]; }
+.scanms-notifications .scanms-notification-icon,
+.scanms-notifications .scanms-notification-product-image {
+  @apply [width:38px];
+  @apply [height:38px];
+  @apply [margin-top:0];
+  @apply [border-radius:10px];
+  @apply [background:#fff];
+  @apply [border-color:#eedfc6];
+}
+.scanms-notifications .scanms-notification-title {
+  @apply whitespace-normal;
+  @apply [overflow-wrap:anywhere];
+  @apply [font-size:12px];
+  @apply [line-height:1.5];
+}
+.scanms-notifications .scanms-notification-message { @apply [margin-top:4px]; @apply [font-size:11px]; @apply [line-height:1.65]; }
+.scanms-notifications .scanms-notification-meta { @apply [margin:7px_0_0_49px]; @apply [min-height:22px]; }
+.scanms-notifications .scanms-notification-expand { @apply [padding:3px_6px]; @apply [border-radius:6px]; }
+.scanms-notifications .scanms-notifications-footer {
+  @apply [min-height:42px];
+  @apply [border-color:#f0eae0];
+  @apply [background:#faf8f5];
+}
+.scanms-notifications .scanms-notifications-footer > button { @apply [background:#faf8f5]; }
+@media (max-width: 359px) {
+  .scanms-notifications .scanms-notifications-header { @apply [padding:10px]; }
+  .scanms-notifications-heading-icon { @apply hidden; }
+  .scanms-notifications .scanms-notifications-tabs { @apply [margin-inline:10px]; }
+  .scanms-notifications .scanms-notifications-tabs > button { @apply [font-size:10px]; }
+}

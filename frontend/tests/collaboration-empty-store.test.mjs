@@ -22,7 +22,7 @@ test('effect dependencies can render before any store is selected', () => {
     if (!dependencies || !ts.isArrayLiteralExpression(dependencies)) continue;
     for (const dependency of dependencies.elements) {
       const text = dependency.getText(file);
-      if (!text.includes('selectedStore')) continue;
+      if (!/\bselectedStore\b/.test(text)) continue;
       const evaluate = new Function('selectedStore', compile(text));
       assert.doesNotThrow(() => evaluate(null));
       assert.doesNotThrow(() => evaluate(undefined));
