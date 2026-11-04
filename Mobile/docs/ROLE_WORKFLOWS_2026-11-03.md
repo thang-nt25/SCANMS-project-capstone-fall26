@@ -1,5 +1,7 @@
 # Nghiệp vụ Android bổ sung — 03/11/2026
 
+> Cập nhật giao diện 04/11: Customer mở **Trang chủ / Khám phá / Đơn mua / Tôi**. Các mục ghi “Nghiệp vụ” bên dưới chuyển vào **Tôi** hoặc biểu tượng giỏ/thông báo trên header. KOL/Shop/vận hành mở **Công cụ**. API và workflow bên dưới được giữ nguyên; xem [hướng dẫn giao diện mới](MARKETPLACE_UI_2026-11-04.md).
+
 Đây là báo cáo triển khai tiếp theo của [bản rà soát thiếu nghiệp vụ](ROLE_GAP_AUDIT_2026-11-03.md). Có màn native và tích hợp API không đồng nghĩa mọi luồng đã nghiệm thu E2E. Các thao tác nhiều role, chứng từ, hoàn tiền và vận chuyển cần người nghiệm thu chạy bằng tài khoản được phân công.
 
 ## Cách mở

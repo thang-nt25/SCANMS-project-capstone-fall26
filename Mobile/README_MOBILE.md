@@ -4,6 +4,8 @@
 
 ## Phạm vi hiện tại
 
+**Giao diện mới 04/11:** Khách mua hàng dùng Trang chủ / Khám phá / Đơn mua / Tin nhắn / Tôi. Các tiện ích ví, voucher, địa chỉ, hồ sơ và đổi trả ở mục Tôi; giỏ nằm trên thanh đầu trang. Các role đối tác/vận hành dùng tab Công cụ. Xem [thiết kế và kịch bản nghiệm thu mới](docs/MARKETPLACE_UI_2026-11-04.md).
+
 Menu **Nghiệp vụ** tập hợp các màn được phép theo role. Hướng dẫn test chi tiết và giới hạn nghiệm thu: [ROLE_WORKFLOWS_2026-11-03.md](docs/ROLE_WORKFLOWS_2026-11-03.md).
 
 | Role | Các nhóm chức năng native đã tích hợp |
