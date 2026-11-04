@@ -84,7 +84,7 @@ export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter,
   return <div ref={root} className={`product-search relative min-w-0 ${className}`} onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
   }}>
-    <form onSubmit={submit} className="search-box" role="search">
+    <form onSubmit={submit} className="flex items-center h-[54px] bg-[#fffdf9] border border-[#e5d3b9] rounded-full py-[5px] pr-2 pl-5 shadow-[0_8px_24px_rgba(82,53,20,0.08)] transition-colors focus-within:border-[#b8862f] w-full" role="search">
       <Search size={17} className="product-search-lead-icon text-[#7D715E] shrink-0 ml-1" aria-hidden="true" />
       <input ref={input} type="search" role="combobox" autoComplete="off" maxLength={80}
         aria-label="Tìm kiếm sản phẩm" aria-autocomplete="list" aria-expanded={visible}
@@ -113,7 +113,7 @@ export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter,
         onChange(''); onClear(); setOpen(false); setActive(-1); input.current?.focus();
       }}><X size={15} /></button>}
       {onFilter && <button type="button" className={`product-search-filter ${smallButtonClass}`} onClick={onFilter} aria-label="Bộ lọc"><SlidersHorizontal size={15} /></button>}
-      <button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm"><Search size={18} color="#ffffff" /></button>
+      <button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm" className="w-[42px] h-[42px] border-none rounded-full bg-[#b8862f] hover:bg-[#8b682f] text-white cursor-pointer flex items-center justify-center transition-all duration-200 shrink-0 hover:scale-105 ml-1"><Search size={18} color="#ffffff" /></button>
     </form>
     {visible && <div className="product-search-popup absolute inset-x-0 top-[calc(100%+6px)] z-[60] overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-left shadow-[0_12px_32px_rgb(35_29_21/14%)]">
       <div className="product-search-heading px-3.5 pt-3 pb-[7px] text-[11px] font-[650] text-[#7D715E]">{items.some(item => item.matchKind === 'related') ? 'Sản phẩm liên quan' : 'Sản phẩm gợi ý'}</div>

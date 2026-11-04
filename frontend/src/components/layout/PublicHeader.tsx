@@ -17,7 +17,6 @@ import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import { productLoginUrl } from '../../utils/login-return';
-import './PublicHeader.css';
 import { HeaderCartPreview } from '../cart/HeaderCartPreview';
 
 export interface PublicHeaderProps {
@@ -199,7 +198,7 @@ export function PublicHeader({
     : '/login?role=shop&returnUrl=' + encodeURIComponent('/merchant/dashboard');
 
   const renderTopHeader = () => (
-    <div className="top-header hidden sm:flex">
+    <div className="h-12 bg-gradient-to-r from-[#3a2a12] via-[#5a3d19] to-[#3a2a12] text-[#fff8ed] hidden sm:flex items-center justify-between px-4 sm:px-10 text-[13px] border-b border-[#d4af70]/30 relative z-50">
       {/* Left: Ecosystem links */}
       <div className="flex items-center gap-4 font-medium">
         <Link to={kocLink} className="flex items-center gap-1.5" title="Bàn làm việc KOC / Cổng Tiếp thị liên kết">
@@ -316,7 +315,7 @@ export function PublicHeader({
                 setShowOrderLoginModal(false);
                 navigate('/login?returnUrl=' + encodeURIComponent('/customer/orders'));
               }}
-              className="btn-primary !py-2.5 !px-5 !text-xs !shadow-sm cursor-pointer"
+              className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full py-2.5 px-5 text-xs font-semibold cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
             >
               Đăng nhập ngay
             </button>
@@ -336,8 +335,8 @@ export function PublicHeader({
       {renderTopHeader()}
 
       {/* TẦNG 2: MAIN HEADER */}
-      <div className="main-header">
-        <div className="header-container">
+      <div className="bg-[#fffaf3]/96 border-b border-[#eadbc5] py-4 sm:py-[18px] px-4 sm:px-10 shadow-[0_4px_16px_rgba(80,50,20,0.04)] relative z-40">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_180px] items-center gap-4 lg:gap-7 max-w-[1600px] mx-auto">
           {/* Col 1 (280px): Logo */}
           <div className="flex items-center gap-3">
             <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
@@ -391,7 +390,7 @@ export function PublicHeader({
 
         {/* Floating Navigation Capsule — Overlapping 50% outside header */}
         {navigation && (
-          <div className="header-nav-floating hidden lg:flex">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-50 hidden lg:flex justify-center pointer-events-auto">
             {navigation}
           </div>
         )}

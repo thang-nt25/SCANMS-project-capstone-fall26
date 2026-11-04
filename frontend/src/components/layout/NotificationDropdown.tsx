@@ -27,7 +27,6 @@ import { toast } from '../../utils/toast';
 import { headerNotificationSnapshot } from '../../utils/header-notification-source';
 import { useHoverDisclosure } from '@/hooks/useHoverDisclosure';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import './NotificationDropdown.css';
 
 export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMode = false }) => {
   const [isOpen, setIsOpen] = useState(false);

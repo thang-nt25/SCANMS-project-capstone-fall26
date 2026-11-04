@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import './MarketplaceHero.css';
 
 interface BannerStore {
   id: string;
@@ -61,9 +60,9 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
   }, [interacting, reducedMotion, slides.length]);
 
   return (
-    <section className="hero-section">
+    <section className="w-full">
       <div
-        className="hero-banner"
+        className="relative overflow-hidden my-4 md:my-9 mx-auto w-[calc(100%-32px)] md:w-[calc(100%-80px)] max-w-[1600px] min-h-[380px] md:min-h-[440px] md:h-[440px] rounded-[26px] border border-[#ead2ae] bg-[linear-gradient(110deg,#fff7e9_0%,#f5dfbd_55%,#c99a55_100%)] shadow-[0_8px_24px_rgba(82,53,20,0.08)]"
         onMouseEnter={() => setInteracting(true)}
         onMouseLeave={() => setInteracting(false)}
         onFocusCapture={() => setInteracting(true)}
@@ -80,23 +79,33 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
         {slides.map((slide, index) => (
           <div
             key={slide.image}
-            className={`hero-slide ${index === active ? 'active' : ''}`}
+            className={`absolute inset-0 w-full h-full flex items-center transition-all duration-700 ease-in-out ${
+              index === active
+                ? 'opacity-100 visible pointer-events-auto z-[2]'
+                : 'opacity-0 invisible pointer-events-none'
+            }`}
             aria-hidden={index !== active}
           >
             <img
               src={slide.image}
               alt=""
               fetchPriority={index === 0 ? 'high' : 'auto'}
-              className="hero-bg-image"
+              className="absolute inset-0 w-full h-full object-cover object-[70%_center]"
             />
-            <div className="hero-bg-overlay" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff7e9_0%,rgba(255,247,233,0.96)_35%,rgba(255,247,233,0.75)_55%,rgba(255,247,233,0.15)_100%)]" />
 
-            <div className="hero-content">
-              <span className="hero-eyebrow">{slide.eyebrow}</span>
-              <h1>{slide.title}</h1>
-              <p>{slide.description}</p>
+            <div className="relative z-[2] max-w-[650px] p-6 sm:p-9 lg:p-[60px] text-left">
+              <span className="inline-block px-3.5 py-1.5 rounded-full bg-white/85 border border-[#ead2ae] text-[#8b682f] text-[11px] font-extrabold tracking-widest uppercase mb-4">
+                {slide.eyebrow}
+              </span>
+              <h1 className="text-[28px] md:text-[clamp(32px,3.5vw,52px)] leading-[1.15] font-extrabold text-[#352313] m-0 mb-4">
+                {slide.title}
+              </h1>
+              <p className="text-[#80694d] text-[15px] leading-[1.7] m-0 mb-6.5">
+                {slide.description}
+              </p>
 
-              <div className="hero-actions">
+              <div className="flex flex-wrap gap-3.5">
                 {slide.href ? (
                   slide.href.startsWith('#') ? (
                     <a
@@ -105,21 +114,31 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
                         e.preventDefault();
                         document.getElementById('featured-stores')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
-                      className="btn-primary"
+                      className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
                     >
                       {slide.label}
                     </a>
                   ) : (
-                    <Link to={slide.href} className="btn-primary">
+                    <Link
+                      to={slide.href}
+                      className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
+                    >
                       {slide.label}
                     </Link>
                   )
                 ) : (
-                  <button type="button" onClick={onOpenLive} className="btn-primary">
+                  <button
+                    type="button"
+                    onClick={onOpenLive}
+                    className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(160,105,35,0.2)] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
+                  >
                     {slide.label}
                   </button>
                 )}
-                <Link to="/search" className="btn-secondary">
+                <Link
+                  to="/search"
+                  className="bg-white/85 text-[#302317] border border-[#b8862f] rounded-full px-7 py-3.5 font-semibold text-[13.5px] cursor-pointer no-underline inline-flex items-center transition-all duration-200 hover:bg-white hover:border-[#8b682f]"
+                >
                   Tất cả sản phẩm
                 </Link>
               </div>
@@ -128,12 +147,12 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
         ))}
 
         {/* Compact floating controls in bottom right */}
-        <div className="hero-carousel-controls">
+        <div className="absolute right-4 md:right-8 bottom-4 md:bottom-6 z-10 flex items-center gap-1 px-2.5 py-1 bg-white/70 backdrop-blur-md border border-[#ead2ae]/60 rounded-full shadow-[0_2px_8px_rgba(82,53,20,0.06)]">
           <button
             type="button"
             onClick={() => move(-1)}
             aria-label="Banner trước"
-            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors"
+            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors cursor-pointer"
           >
             <ArrowLeft size={15} />
           </button>
@@ -158,7 +177,7 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
             type="button"
             onClick={() => move(1)}
             aria-label="Banner sau"
-            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors"
+            className="rounded-full p-2 hover:bg-black/5 text-[#7a6855] transition-colors cursor-pointer"
           >
             <ArrowRight size={15} />
           </button>
