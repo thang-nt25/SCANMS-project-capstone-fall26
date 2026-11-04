@@ -73,10 +73,11 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
   const [trackingNumber, setTrackingNumber] = useState(request.customerShipment?.trackingNumber ?? '');
   const correction = useReturnAction(request.id, returnService.correctShipment);
   const completion = useReturnAction(request.id, returnService.confirmCompletion);
+  const exchangeReceipt = useReturnAction(request.id, returnService.confirmExchangeReceipt);
   const inspectionOverdue = ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
     Boolean(request.receivedAt) && new Date(request.receivedAt!).getTime() <= Date.now() - 48 * 60 * 60 * 1000;
-  const mayComplete = request.status === 'EXCHANGE_SHIPPED' ||
-    (request.status === 'AWAITING_CUSTOMER_CONFIRMATION' && request.refund?.status === 'SUCCEEDED');
+  const mayComplete = request.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
+    (request.refund?.status === 'SUCCEEDED' || Boolean(request.exchangeShipment?.receivedAt));
 
   async function correct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,16 +142,19 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
       <p className="mt-2 text-sm">Số tiền dự kiến: <strong>{money(request.refund.amount)}</strong></p>
       <p className="mt-1 text-sm">Phương thức: {request.refund.method}</p>
       <p className="mt-1 text-sm font-semibold">{request.refund.status === 'SUCCEEDED'
-        ? 'Đã xác nhận hoàn tiền thành công'
+        ? 'Đã hoàn tiền vào Ví SCANMS'
         : request.refund.status === 'FAILED' ? 'Hoàn tiền gặp lỗi; đang cần xử lý'
           : request.refund.status === 'PROCESSING' ? 'Đang xử lý tại bên thanh toán'
             : 'Chưa chuyển tiền · đang chờ đối soát'}</p>
       {request.refund.failureReason && <p className="mt-1 text-sm text-[#DC2626]">{request.refund.failureReason}</p>}
+      {request.refund.status === 'SUCCEEDED' && request.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
+        <p className="mt-1 text-xs text-[#7D715E]">Bạn có thể xác nhận hoàn tất. Sau 7 ngày, hồ sơ đã hoàn tiền sẽ tự đóng.</p>}
     </section>}
 
     {request.exchangeShipment && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Hàng đổi Shop đã gửi</h3>
       <p className="mt-2 text-sm">{request.exchangeShipment.carrierName} · {request.exchangeShipment.trackingNumber}</p>
+      {!request.exchangeShipment.receivedAt && <p className="mt-1 text-xs text-[#7D715E]">Chỉ xác nhận đã nhận hàng đổi khi kiện thực sự đến tay bạn. Nếu chưa nhận hoặc hàng có vấn đề, giữ hồ sơ mở và liên hệ hỗ trợ.</p>}
     </section>}
 
     {request.dispute && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
@@ -160,6 +164,12 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
     </section>}
 
     <div className="flex flex-wrap gap-2">
+      {request.status === 'EXCHANGE_SHIPPED' && request.exchangeShipment &&
+        <button type="button" disabled={exchangeReceipt.isPending}
+          onClick={() => void exchangeReceipt.mutateAsync(undefined).catch(() => undefined)} className={primary}>
+          {exchangeReceipt.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận hàng đổi'}
+        </button>}
+      <ErrorText error={exchangeReceipt.error} />
       {mayComplete && <button type="button" disabled={completion.isPending}
         onClick={() => void completion.mutateAsync(undefined).catch(() => undefined)} className={primary}>
         {completion.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận kết quả · Hoàn tất'}
@@ -179,9 +189,10 @@ function ShopActions({ request }: { request: ReturnDetail }) {
     name: request.order.storeName, phone: '', address: '', wardName: '', provinceName: '', districtName: '',
   });
   const [editingWarehouse, setEditingWarehouse] = useState(!request.returnWarehouse);
-  const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>('REFUND');
+  const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>(request.preferredResolution || 'REFUND');
   const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>(
-    (managerAssessment?.data?.liability as 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON') || 'SHOP_FAULT');
+    (managerAssessment?.data?.liability as 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON') ||
+      (request.reason === 'CHANGE_OF_MIND' ? 'CUSTOMER_REASON' : 'SHOP_FAULT'));
   const [notes, setNotes] = useState('');
   const [carrierName, setCarrierName] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -204,6 +215,10 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       <h3 className="font-bold">Hồ sơ yêu cầu GHN bồi hoàn</h3>
       <p className="mt-1">Trạng thái: <strong>{ghnClaimLabels[request.ghnClaim.status]}</strong></p>
       <p className="mt-1 text-[#7D715E]">Vận đơn gốc: {request.ghnClaim.originalTrackingNumber}; mã yêu cầu GHN: {request.ghnClaim.ghnReference || 'chưa gửi'}.</p>
+      {request.ghnClaim.status === 'SUBMITTED' && Date.now() - Date.parse(request.ghnClaim.updatedAt) > 7 * 86400000 &&
+        <p role="alert" className="mt-2 font-semibold text-[#8A6736]">GHN chưa phản hồi sau 7 ngày. System Manager cần liên hệ lại và cập nhật chứng từ; việc xử lý cho khách không phải chờ GHN.</p>}
+      {request.ghnClaim.status === 'REJECTED' &&
+        <p role="alert" className="mt-2 font-semibold text-[#8A6736]">GHN đã từ chối. System Manager cần xem xét kháng nghị hoặc quyết định nguồn bù cho Shop; không trừ tiền Shop tự động.</p>}
       {request.ghnClaim.claimedAmount && <p className="mt-1">Yêu cầu: {money(request.ghnClaim.claimedAmount)} · GHN chấp thuận: {request.ghnClaim.approvedAmount ? money(request.ghnClaim.approvedAmount) : 'chưa có'}</p>}
       {request.ghnClaim.notes && <p className="mt-1 text-[#7D715E]">Đối soát: {request.ghnClaim.notes}</p>}
     </section>}
@@ -278,6 +293,7 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       onSubmit={(event) => void submit(event, inspectAction, { resolution, liability: (managerAssessment?.data?.liability as typeof liability) || liability, notes: notes.trim() })}
       className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
       <h3 className="font-bold">Kết quả kiểm tra</h3>
+      {request.preferredResolution && <p className="text-sm text-[#7D715E]">Khách mong muốn: {request.preferredResolution === 'REFUND' ? 'hoàn tiền vào Ví SCANMS' : 'đổi sản phẩm mới'}. Nếu xử lý khác, ghi rõ căn cứ trong phần ghi chú.</p>}
       <select value={resolution} onChange={(event) => setResolution(event.target.value as typeof resolution)} className={field}>
         <option value="REFUND">Chấp nhận hoàn tiền</option>
         <option value="EXCHANGE">Chấp nhận đổi sản phẩm</option>
@@ -515,7 +531,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <p className="mt-2 text-xl font-black text-[#8A6736]">{money(detail.data.partnerIncome.amount)}</p>
             <p className="mt-1 text-sm text-[#7D715E]">
               {detail.data.partnerIncome.status === 'REVERSED'
-                ? `Đã thu hồi ${money(detail.data.partnerIncome.reversedAmount || 0)} sau khi hoàn tiền thành công; ví KOC còn 0 ₫ từ đơn này.`
+                ? 'Đã thu hồi toàn bộ thu nhập của đơn sau khi hoàn tiền thành công; ví KOC còn 0 ₫ từ đơn này.'
                 : detail.data.resolution === 'EXCHANGE'
                   ? 'Đổi hàng 1-1: khoản thu nhập của KOC được bảo lưu.'
                   : detail.data.partnerIncome.status === 'PENDING'
@@ -556,7 +572,8 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
           <section className="return-evidence-section rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
             <ReturnProducts request={detail.data} customer={mode === 'customer'} />
-            <div className="return-evidence-reason"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
+             <div className="return-evidence-reason"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
+             {detail.data.preferredResolution && <p><strong>Khách mong muốn:</strong> {detail.data.preferredResolution === 'REFUND' ? 'Hoàn tiền vào Ví SCANMS' : 'Đổi sản phẩm mới'}</p>}
             {detail.data.details && <p className="whitespace-pre-wrap text-[#7D715E]">{detail.data.details}</p>}</div>
             <div className="return-evidence-media">
               {detail.data.imageUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"

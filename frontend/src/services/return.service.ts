@@ -44,7 +44,8 @@ export interface ReturnDetail {
   reason: string;
   details?: string | null;
   imageUrls: string[];
-  unboxingVideoUrl: string;
+  unboxingVideoUrl?: string | null;
+  preferredResolution?: 'REFUND' | 'EXCHANGE' | null;
   status: ReturnStatus;
   shopResponse?: string | null;
   submittedAt: string;
@@ -153,6 +154,7 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/inspection/result`, data)),
   submitExchangeShipment: async (id: string, data: { carrierName: string; trackingNumber: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
+  confirmExchangeReceipt: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-receipt`)),
   confirmCompletion: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/confirmation`)),
   openDispute: async (id: string, data: { reason: string; details: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/disputes`, data)),

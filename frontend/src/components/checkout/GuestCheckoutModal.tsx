@@ -371,7 +371,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [policyError, setPolicyError] = useState<string | null>(null);
 
   // PayOS is selected by default; customers can also choose their SCANMS wallet.
-  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET'>('PAYOS');
+  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET' | 'COD'>('PAYOS');
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
 

@@ -149,6 +149,7 @@ enum ReturnReason {
   DAMAGED
   WRONG_ITEM
   EXPIRED
+  CHANGE_OF_MIND
   OTHER
 }
 
@@ -2007,7 +2008,7 @@ model ReturnRequest {
   reason              ReturnReason
   details             String?             @db.VarChar(1000)
   imageUrls           String[]            @default([]) @map("image_urls")
-  unboxingVideoUrl    String              @map("unboxing_video_url")
+  unboxingVideoUrl    String?             @map("unboxing_video_url")
   status              ReturnRequestStatus @default(REQUESTED)
   originalOrderStatus OrderStatus         @default(DELIVERED) @map("original_order_status")
   deadlineAt          DateTime            @map("deadline_at") @db.Timestamptz(6)
@@ -2018,6 +2019,7 @@ model ReturnRequest {
   returnInstructions  String?             @map("return_instructions") @db.VarChar(1000)
   pickupContact       Json?               @map("pickup_contact") @db.JsonB
   resolution          ReturnResolution?
+  preferredResolution ReturnResolution?   @map("preferred_resolution")
   inspectionNotes     String?             @map("inspection_notes") @db.VarChar(2000)
   receivedAt          DateTime?           @map("received_at") @db.Timestamptz(6)
   inspectionStartedAt DateTime?           @map("inspection_started_at") @db.Timestamptz(6)

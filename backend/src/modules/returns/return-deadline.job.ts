@@ -42,4 +42,17 @@ export class ReturnDeadlineJob {
       );
     }
   }
+
+  @Cron('0 * * * *', { name: 'return-settled-refund-close', waitForCompletion: true })
+  async closeSettledRefunds(): Promise<void> {
+    if (process.env.DISABLE_SCHEDULED_JOBS === 'true') return;
+    try {
+      let count = 0;
+      do {
+        count = await this.returns.closeSettledRefundsBatch(100);
+      } while (count === 100);
+    } catch (error) {
+      this.logger.error('Không thể đóng hồ sơ hoàn tiền đã đối soát', error);
+    }
+  }
 }
