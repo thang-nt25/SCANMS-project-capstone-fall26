@@ -120,6 +120,15 @@ export function ScanmsCheckoutVoucherModal({
   const revisionRef = useRef(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [clock, setClock] = useState(Date.now);
+  // ProductDetailPage rebuilds its product/store props on unrelated renders.
+  // Keep the fetch input stable while the actual voucher-eligible items stay the same.
+  const groupsKey = JSON.stringify(groups.map(group => ({
+    storeId: group.store.id,
+    items: group.items.map(item => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, price: item.price })),
+  })));
+  const stableGroupsRef = useRef<{ key: string; value: CheckoutShopGroup[] }>({ key: '', value: groups });
+  if (stableGroupsRef.current.key !== groupsKey) stableGroupsRef.current = { key: groupsKey, value: groups };
+  const stableGroups = stableGroupsRef.current.value;
   useEffect(() => {
     if (!isOpen) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -138,7 +147,7 @@ export function ScanmsCheckoutVoucherModal({
     applyingRef.current = false;
     setIsApplyingCode(false);
     return () => { revisionRef.current++; };
-  }, [isOpen, groups, customerPhone, shippingFeesByStore]);
+  }, [isOpen, stableGroups, customerPhone, shippingFeesByStore]);
 
   // Public product-scoped offers are usable immediately; saved codes are optional.
   useEffect(() => {
@@ -158,7 +167,7 @@ export function ScanmsCheckoutVoucherModal({
           .then((res: any) => { const data = res?.data?.data ?? res?.data ?? res; return Array.isArray(data) ? data as PublicStoreCoupon[] : []; })
           .catch(() => { errors.push('Không tải được mã đã lưu.'); return [] as PublicStoreCoupon[]; })
         : Promise.resolve([] as PublicStoreCoupon[]);
-      const publicPromise = Promise.all(groups.map(async group => {
+      const publicPromise = Promise.all(stableGroups.map(async group => {
         const results = await Promise.allSettled([...new Set(group.items.map(item => item.productId))]
           .map(productId => couponService.getPublicStoreCoupons(group.store.id, productId, controller.signal)));
         if (results.some(result => result.status === 'rejected')) errors.push('Một số ưu đãi của Shop chưa tải được.');
@@ -169,7 +178,7 @@ export function ScanmsCheckoutVoucherModal({
       if (!active) return;
       const storeMap: Record<string, PublicStoreCoupon[]> = {};
       for (const group of publicGroups) {
-        const productIds = new Set(groups.find(item => item.store.id === group.storeId)?.items.map(item => item.productId));
+        const productIds = new Set(stableGroups.find(item => item.store.id === group.storeId)?.items.map(item => item.productId));
         // Saved scoped codes remain validated by the server, never estimated locally.
         storeMap[group.storeId] = collectCheckoutVouchers([
           group.coupons.filter(c => c.fundingSource !== 'PLATFORM_FUNDED' && c.benefitType !== 'SHIPPING'),
@@ -188,7 +197,7 @@ export function ScanmsCheckoutVoucherModal({
       if (active) { setLoadError('Chưa thể tải voucher. Vui lòng thử lại.'); setLoadingCoupons(false); }
     });
     return () => { active = false; controller.abort(); };
-  }, [isOpen, groups, reload]);
+  }, [isOpen, stableGroups, reload]);
 
   const { freeshipVouchers, platformGoodsVouchers } = useMemo(() => ({
     freeshipVouchers: platformCoupons.filter(c => c.benefitType === 'SHIPPING'),

@@ -1647,6 +1647,10 @@ export class OrdersService {
         selfReferralRiskSignals = referralRiskSignals(shippingAddress, collabProfile.user?.customerAddresses ?? [],
           collabProfile.kycStatus === 'VERIFIED' ? collabProfile : null,
           buyerBank?.kycStatus === 'VERIFIED' ? buyerBank : null);
+        if (selfReferralRiskSignals.includes('SHARED_VERIFIED_BANK_ACCOUNT')) {
+          selfReferralDetected = true;
+          overrideReason = 'SELF_REFERRAL_SHARED_VERIFIED_BANK_ACCOUNT';
+        }
       }
     }
 
@@ -3966,13 +3970,13 @@ export class OrdersService {
             order.couponCodeSnapshot || order.coupon?.displayCode || null,
           incomeStatus: order.overrideReason?.startsWith('SELF_REFERRAL_')
             ? 'SELF_REFERRAL_BLOCKED'
-            : Number(order.refundedAmount) > 0 ||
+             : order.refundedAmount.greaterThanOrEqualTo(order.finalAmount) ||
                 (order.commissions.length > 0 && order.commissions.every((c) => c.status === CommissionStatus.REVERSED))
               ? 'REVERSED'
               : order.commissions.some((c) => c.status === CommissionStatus.PENDING)
                 ? 'PENDING'
                 : order.commissions.length > 0 ? 'AVAILABLE' : 'NOT_POSTED',
-          totalCommission: order.overrideReason?.startsWith('SELF_REFERRAL_') || Number(order.refundedAmount) > 0
+           totalCommission: order.overrideReason?.startsWith('SELF_REFERRAL_') || order.refundedAmount.greaterThanOrEqualTo(order.finalAmount)
             ? 0
             : order.commissions.length > 0
             ? order.commissions.filter((c) => c.status !== CommissionStatus.REVERSED).reduce(

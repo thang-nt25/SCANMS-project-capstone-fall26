@@ -28,6 +28,7 @@ const reasonLabels: Record<string, string> = {
   WRONG_ITEM: 'Shop giao sai sản phẩm',
   DAMAGED: 'Sản phẩm bị hư hỏng',
   EXPIRED: 'Sản phẩm hết hạn sử dụng',
+  CHANGE_OF_MIND: 'Đổi ý / không còn nhu cầu',
   OTHER: 'Lý do khác',
 };
 export const returnReasonLabel = (reason: string) => reasonLabels[reason] ?? 'Lý do khác';

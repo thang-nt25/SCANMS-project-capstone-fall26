@@ -1,8 +1,16 @@
 # Return fulfillment (NestJS + Prisma + PostgreSQL)
 
-This module extends the existing order-wide return request workflow. Existing
+This module extends the existing return request workflow. Existing
 `REQUESTED`, `SHOP_APPROVED`, `SHOP_REJECTED`, `REFUNDED`, and `CLOSED` records
 remain valid; the migration is additive and snapshots their order lines.
+
+New customer requests select order lines and quantities, a preferred outcome
+(refund or exchange), and a reason including change of mind. At least one image
+is required; unboxing video is required for damaged goods and optional for
+other reasons. The paid order total is allocated to selected lines in proportion
+to original line value, including the paid delivery amount and discounts.
+The current data model still permits only one return request per order; select
+all relevant lines in that request.
 
 ## Reverse pickup (new customer flow)
 
@@ -151,6 +159,13 @@ is not reversed. System Manager/Admin can retry it through the locked,
 idempotent endpoint above. This is not a verified PayOS or bank transfer back
 to the customer's original payment method; the UI and demo must say "hoàn vào
 ví SCANMS". No outbound refund provider adapter is implemented here.
+
+The commission-rules refund adjustment owns the single update to
+`order.refundedAmount` and the KOL income clawback. The return service must
+not increment the amount or reverse income a second time. A settled wallet
+refund closes automatically after seven days without customer acknowledgement.
+For exchanges, the customer first confirms receiving the replacement parcel,
+then completes the case; merely entering a tracking number cannot close it.
 
 The deadline job closes only the *return request* when the pickup booking
 deadline (`shipByAt`) is exceeded;
