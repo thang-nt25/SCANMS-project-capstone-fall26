@@ -16,6 +16,7 @@ import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { AccountConnectionStatus } from './AccountConnectionStatus';
 import { productLoginUrl } from '../../utils/login-return';
 import { HeaderCartPreview } from '../cart/HeaderCartPreview';
 
@@ -184,6 +185,17 @@ export function PublicHeader({
   const role = currentUser?.role;
   const isShop = role === 'SHOP_MANAGER';
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
+  const displayRoleDetail = isShop
+    ? storeName
+    : role === 'SYSTEM_ADMIN'
+    ? 'Tổng Quản Trị'
+    : role === 'SYSTEM_MANAGER'
+    ? 'Vận Hành & Tuân Thủ'
+    : role === 'COLLABORATOR'
+    ? currentUser?.collaboratorProfile?.tier?.name
+      ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
+      : 'KOL / KOC Đối Tác'
+    : 'Khách mua sắm';
   const isMarketplace = layout === 'marketplace' || Boolean(navigation);
   const hasShortcuts = Boolean(navigation);
 
@@ -229,7 +241,8 @@ export function PublicHeader({
         <span className="text-[#d4af70]/30 select-none">|</span>
 
         {/* Notifications */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+          <AccountConnectionStatus userId={currentUser?.id} />
           <NotificationDropdown darkMode={true} />
         </div>
 
@@ -246,7 +259,7 @@ export function PublicHeader({
               role={currentUser.role}
               expanded={isUserMenuOpen}
               menuId="public-account-menu"
-              detail={isShop ? storeName : undefined}
+              detail={displayRoleDetail}
               darkMode={true}
               onClick={() => setIsUserMenuOpen((prev) => !prev)}
             />
