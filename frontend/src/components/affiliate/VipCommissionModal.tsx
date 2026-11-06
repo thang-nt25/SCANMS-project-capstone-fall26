@@ -90,8 +90,8 @@ export function VipCommissionModal({ creator, rate, saving, onRateChange, onClos
                 style={{ background: `linear-gradient(to right, #C59B58 ${Math.max(0, Math.min(100, (rate - 11) / 5 * 100))}%, #EAE4D7 0)` }}
               />
               <div className="flex justify-between text-[#7D715E] text-[10px]"><span>Thù lao VIP 11%</span><span>Thù lao VIP 16%</span></div>
-              <div className="grid grid-cols-6 gap-1 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ thù lao">
-                {[11, 12, 13, 14, 15, 16].map(value => (
+              <div className="grid grid-cols-4 gap-1.5 mt-3 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Chọn nhanh tỷ lệ thù lao">
+                {[12, 14, 15, 16].map(value => (
                   <button
                     key={value}
                     type="button"

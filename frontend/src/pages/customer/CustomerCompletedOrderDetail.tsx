@@ -8,8 +8,6 @@ import { getCustomerOrderActions } from '../../utils/customer-order-actions';
 import { getGhnTrackingCode } from '../../utils/ghn-tracking';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
 import { formatMoney, getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
-import './CustomerCompletedOrderDetail.css';
-import './CustomerOrderLightTheme.css';
 
 const dateLabel = (value?: string | null) => value && Number.isFinite(Date.parse(value))
   ? new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hourCycle: 'h23' }) : null;

@@ -1,5 +1,4 @@
 import { useId, useState } from 'react';
-import './AffiliatePerformanceChart.css';
 import {
   ResponsiveContainer, AreaChart, Area,
   CartesianGrid, XAxis, YAxis, Tooltip,
@@ -55,16 +54,16 @@ export default function AffiliatePerformanceChart({ points, metric }: { points: 
             </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="affiliate-chart-footer">
-        <button type="button" aria-expanded={showTable} aria-controls={`affiliate-table-${uid}`} onClick={() => setShowTable(!showTable)} className="affiliate-table-toggle">{showTable ? 'Thu gọn số liệu' : 'Xem bảng số liệu'}{showTable ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</button>
+      <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-[#f3efe6]">
+        <button type="button" aria-expanded={showTable} aria-controls={`affiliate-table-${uid}`} onClick={() => setShowTable(!showTable)} className="inline-flex items-center gap-[7px] min-h-[32px] px-2.5 py-1.5 border border-[#eedfc6] rounded-lg bg-white text-[#8a642c] text-[11px] font-semibold cursor-pointer hover:bg-[#fbf5eb] focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:outline-offset-2">{showTable ? 'Thu gọn số liệu' : 'Xem bảng số liệu'}{showTable ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</button>
       </div>
-      {showTable && <section id={`affiliate-table-${uid}`} className="affiliate-data-panel" aria-label="Chi tiết số liệu tiếp thị">
-        <div className="affiliate-data-heading"><strong>Số liệu theo ngày</strong><span>{data.length} ngày · Giờ Việt Nam</span></div>
-        <div className="affiliate-data-scroll"><table>
+      {showTable && <section id={`affiliate-table-${uid}`} className="mt-3.5 overflow-hidden border border-[#eae4d7] rounded-xl bg-white" aria-label="Chi tiết số liệu tiếp thị">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 p-2.5 sm:px-3.5 sm:py-3 border-b border-[#eae4d7]"><strong className="text-[12px] font-semibold text-[#1a1612]">Số liệu theo ngày</strong><span className="text-[10px] text-[#7d715e]">{data.length} ngày · Giờ Việt Nam</span></div>
+        <div className="max-h-[380px] overflow-auto"><table className="w-full min-w-[560px] border-collapse border-spacing-0 text-right text-[11px] leading-[18px] tabular-nums">
           <caption className="sr-only">Số liệu tiếp thị từng ngày</caption>
-          <thead><tr><th scope="col">Ngày</th>{(Object.keys(labels) as Metric[]).map(key => <th key={key} scope="col" aria-sort={undefined} data-selected={metric === key}>{labels[key]}{money(key) && <small>VND</small>}</th>)}</tr></thead>
-          <tbody>{data.map((point, index) => <tr key={point.date || index}><th scope="row">{point.label}</th>{(Object.keys(labels) as Metric[]).map(key => <td key={key} data-selected={metric === key}>{format(point[key], key)}</td>)}</tr>)}</tbody>
-          <tfoot><tr><th scope="row">Tổng trong kỳ</th>{(Object.keys(labels) as Metric[]).map(key => <td key={key} data-selected={metric === key}>{format(data.reduce((sum, point) => sum + point[key], 0), key)}</td>)}</tr></tfoot>
+          <thead><tr><th scope="col" className="sticky top-0 z-[1] bg-white text-[#7d715e] font-medium border-b border-[#eae4d7] px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap text-left">Ngày</th>{(Object.keys(labels) as Metric[]).map(key => <th key={key} scope="col" aria-sort={undefined} data-selected={metric === key} className="sticky top-0 z-[1] bg-white text-[#7d715e] font-medium border-b border-[#eae4d7] px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap data-[selected=true]:text-[#8a642c] data-[selected=true]:font-semibold">{labels[key]}{money(key) && <small className="block text-[9px] font-normal">VND</small>}</th>)}</tr></thead>
+          <tbody>{data.map((point, index) => <tr key={point.date || index} className="hover:bg-[#fffaf2]"><th scope="row" className="px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap border-b border-[#f3efe6] font-medium text-[#7d715e] text-left">{point.label}</th>{(Object.keys(labels) as Metric[]).map(key => <td key={key} data-selected={metric === key} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap border-b border-[#f3efe6] data-[selected=true]:text-[#8a642c] data-[selected=true]:font-semibold">{format(point[key], key)}</td>)}</tr>)}</tbody>
+          <tfoot><tr><th scope="row" className="px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap border-t border-[#eedfc6] bg-[#fbf5eb] font-semibold text-left">Tổng trong kỳ</th>{(Object.keys(labels) as Metric[]).map(key => <td key={key} data-selected={metric === key} className="px-2.5 py-2.5 sm:px-3.5 sm:py-2.5 whitespace-nowrap border-t border-[#eedfc6] bg-[#fbf5eb] font-semibold data-[selected=true]:text-[#8a642c]">{format(data.reduce((sum, point) => sum + point[key], 0), key)}</td>)}</tr></tfoot>
         </table></div>
       </section>}
     </div>

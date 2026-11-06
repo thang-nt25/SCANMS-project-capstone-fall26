@@ -337,6 +337,8 @@ const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => 
   ];
 };
 
+const cachedProductsMap = new Map<string, Product[]>();
+
 export default function ProductManagementPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -351,7 +353,10 @@ export default function ProductManagementPage() {
     (currentUser?.role as string) === 'ADMIN';
   const currentStoreId = localStorage.getItem('current_store_id') || undefined;
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const key = String(currentStoreId || 'all');
+    return cachedProductsMap.get(key) || [];
+  });
   const [storeCategory, setStoreCategory] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -1016,6 +1021,7 @@ export default function ProductManagementPage() {
     setFormVariants(existingVariants.map((variant: any) => ({
       id: variant.id,
       sku: variant.sku || '',
+      barcode: variant.barcode || '',
       name: variant.name || '',
       attributes: variant.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes) ? variant.attributes : {},
       price: Number(variant.price ?? p.price) || 0,
@@ -2473,7 +2479,7 @@ export default function ProductManagementPage() {
                     minHeight={195}
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Mô tả chi tiết công dụng nổi bật, thành phần chính, hướng dẫn sử dụng và lưu ý bảo quản..."
+                    placeholder="Mô tả công dụng, thành phần, cách dùng và bảo quản..."
                     className="min-h-[195px] w-full flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#B88E4F] focus:bg-white"
                   />
                 </div>

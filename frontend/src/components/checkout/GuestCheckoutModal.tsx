@@ -1542,7 +1542,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       Đăng nhập để tiếp tục thanh toán
                     </h3>
                     <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
-                      Vui lòng xác thực tài khoản Google hoặc Email để quản lý đơn mua và kích hoạt bảo hộ Escrow 14 ngày.
+                      Đăng nhập Google hoặc Email để quản lý đơn mua và bảo hộ đối soát 14 ngày.
                     </p>
 
                     {loginError && (
@@ -1666,9 +1666,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               <MapPin className="w-4 h-4 text-[#C59B58] shrink-0" />
                               Đang sử dụng địa chỉ giao hàng mới bên dưới
                             </span>
-                            <span className="text-[11px] text-[#7D715E]">
-                              (Bấm vào thẻ địa chỉ ở trên nếu muốn dùng lại)
-                            </span>
+                            
                           </div>
                         )}
 
@@ -1709,7 +1707,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                 <div className="flex items-center gap-2 shrink-0 self-center">
                                   {isSelected && (
                                     <span className="text-[11px] font-bold text-[#B88E4F]">
-                                      Đang dùng ✓
+                                      Đang chọn
                                     </span>
                                   )}
                                   <button

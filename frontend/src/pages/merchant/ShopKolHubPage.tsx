@@ -1,4 +1,3 @@
-import './ShopKolHubPage.css';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -323,6 +322,9 @@ export default function ShopKolHubPage() {
   const [isDetailHeaderCompact, setIsDetailHeaderCompact] = useState(false);
   useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
 
+  // Chat & Realtime Data Cache
+  const [rawConversations, setRawConversations] = useState<any[]>([]);
+
   // Samples management
   const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>({});
   const sampleLoadSequence = useRef(0);
@@ -439,6 +441,8 @@ export default function ShopKolHubPage() {
       ]);
 
       setSampleProgramStats(statsRes?.data || statsRes || null);
+      const parsedConvs = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
+      setRawConversations(parsedConvs);
       const sampleData = sampleRes?.data || sampleRes;
       if (sequence !== sampleLoadSequence.current) return;
       if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
@@ -721,10 +725,10 @@ export default function ShopKolHubPage() {
       setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {
-        if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
-          setSelectedKolId(allKols[0].id);
-        } else {
-          setSelectedKolId(kolParam);
+        const targetKolId = kolParam && allKols.some((k) => k.id === kolParam) ? kolParam : allKols[0].id;
+        setSelectedKolId(targetKolId);
+        if (!kolParam) {
+          setSearchParams({ kol: targetKolId, tab: activeTab }, { replace: true });
         }
       } else {
         setSelectedKolId('');
@@ -736,7 +740,7 @@ if (sequence !== sampleLoadSequence.current) return;
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      if (sequence === sampleLoadSequence.current) setLoadingBackendData(false);
+      setLoadingBackendData(false);
     }
   }, [kolParam]);
 
@@ -2259,6 +2263,7 @@ return true;
                         hideSidebar
                         hideHeaderInChat
                         className="h-full w-full border-0 rounded-none shadow-none bg-white"
+                        initialConversations={rawConversations}
                       />
                     </div>
                   </div>

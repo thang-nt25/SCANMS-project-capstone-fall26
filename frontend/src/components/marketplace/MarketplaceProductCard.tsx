@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleAlert, Heart, ShoppingCart, Store } from 'lucide-react';
+import { CircleAlert, Heart, ShoppingCart, Store, ShieldCheck } from 'lucide-react';
 import type { Product } from '@/types/marketplace.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { LiveSessionDealBadge } from '@/components/product/LiveSessionDealBadge';
@@ -98,7 +98,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
             </span>
           ) : (
             <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F5EFE6] border border-[#DFD6C5] text-[#6B5E4B]">
-              ✨ Chính hãng 100%
+              <ShieldCheck className="w-3 h-3 text-[#6B5E4B] inline mr-1" /> Chính hãng 100%
             </span>
           )}
         </div>

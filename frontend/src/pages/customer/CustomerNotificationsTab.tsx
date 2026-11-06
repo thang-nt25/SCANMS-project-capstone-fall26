@@ -13,7 +13,6 @@ import type {
   NotificationCategory,
 } from '../../services/notifications.service';
 import { CustomerNotificationCard } from './CustomerNotificationCard';
-import './CustomerNotifications.css';
 
 type SpecificCategory = Exclude<NotificationCategory, 'ALL'>;
 interface CustomerNotificationsTabProps {
@@ -102,7 +101,7 @@ export function CustomerNotificationsTab({
       aria-label={heading.title}
     >
       <h1 className="sr-only">Thông báo</h1>
-      <div className="customer-notifications-toolbar">
+      <div className="flex flex-wrap items-center gap-3 min-h-[58px] p-2.5 sm:px-3 border border-[#EAE4D7] rounded-xl bg-white">
         <nav className="grid flex-1 min-w-0 grid-cols-4 @max-[699px]:basis-full @max-[449px]:grid-cols-2 gap-[6px]" aria-label="Lọc thông báo">
           {categories.map(({ key, label, icon: Icon }) => {
             const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
@@ -171,7 +170,7 @@ export function CustomerNotificationsTab({
           )}
         </div>
       ) : (
-        <div className="customer-notification-list">
+        <div className="grid min-w-0 @container border border-[#EAE4D7] rounded-xl overflow-hidden bg-white">
           {items.map((item) => (
             <CustomerNotificationCard key={item.id} item={item}
               category={getCategory(item.type)} busy={markingIds.includes(item.id) || markingAll}

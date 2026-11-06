@@ -1,9 +1,8 @@
 import { replyActionClass, replyHighlightClass } from '../../components/chat/chat-reply.styles';
 import { CouponVoucherCardBubble, type CouponVoucherCardData } from '../../components/chat/CouponVoucherCardBubble';
 import { chatVoucherDiscount } from '../../utils/chat-voucher';
-import './CustomerMessages.css';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { chatCustomerOrderQuery, chatOrderSummary } from '@/utils/chat-customer-orders';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
@@ -19,6 +18,7 @@ import {
   CheckCheck,
   Check,
   ArrowUp,
+  ArrowDown,
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
@@ -1472,7 +1472,7 @@ export default function ChatBoxPage({
   const isShop = currentUser?.role === 'SHOP_MANAGER';
   const onlyCustomerChats = isShop && location.pathname.includes('/customer-messages');
 
-  const effectiveTargetStoreId = targetStoreId || searchParams.get('storeId') || undefined;
+  const effectiveTargetStoreId = targetStoreId || searchParams.get('storeId') || searchParams.get('shop') || undefined;
   const targetStoreName = searchParams.get('storeName') || _targetStoreName || undefined;
   const targetStoreLogo = searchParams.get('storeLogo') || _targetStoreLogo || undefined;
   const targetCollaboratorName = searchParams.get('collaboratorName') || _targetCollaboratorName || undefined;
@@ -1555,6 +1555,7 @@ export default function ChatBoxPage({
   const [showNewChat, setShowNewChat] = useState(false);
   const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
   const [showExclusiveOffer, setShowExclusiveOffer] = useState(false);
+  const [showKocDealModal, setShowKocDealModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [showProposeCouponModal, setShowProposeCouponModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -1568,6 +1569,40 @@ export default function ChatBoxPage({
   const visibleMessages = canSeeAffiliateDeals
     ? messages
     : messages.filter((message) => !tryParseExclusiveDealCard(message.messageText));
+
+  const activePendingDeal = useMemo(() => {
+    if (!canSeeAffiliateDeals || !messages || messages.length === 0) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      const dealCard = tryParseExclusiveDealCard(msg.messageText);
+      if (
+        dealCard &&
+        dealCard.type === 'EXCLUSIVE_DEAL_PROPOSAL' &&
+        (dealCard.status === 'PENDING' || dealCard.status === 'PENDING_ADMIN_APPROVAL')
+      ) {
+        const isShopOffer =
+          dealCard.initiatorRole === 'SHOP_MANAGER' || dealCard.offeredBy === 'SHOP';
+        const isForMe = isShopOffer ? !isShop : isShop;
+        return {
+          messageId: msg.id,
+          card: dealCard,
+          rate: dealCard.approvedCommissionRate ?? dealCard.proposedCommissionRate,
+          isForMe,
+          isWaitingAdmin: dealCard.status === 'PENDING_ADMIN_APPROVAL',
+        };
+      }
+    }
+    return null;
+  }, [canSeeAffiliateDeals, messages, isShop]);
+
+  const jumpToDealMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`chat-message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMessage(messageId);
+      setTimeout(() => setHighlightedMessage((id) => (id === messageId ? null : id)), 2500);
+    }
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -1733,7 +1768,7 @@ export default function ChatBoxPage({
           return draft ? [draft, ...list] : list;
         });
         chatSessionCache.conversations = list;
-        if (!activeConvIdRef.current) {
+        if (!activeConvIdRef.current || activeConvIdRef.current.startsWith('draft-')) {
           setupContext(list);
         }
       })
@@ -2014,14 +2049,14 @@ export default function ChatBoxPage({
 
     if (isBankAccountOrFraudText(trimmed)) {
       showErrorToast(
-        '⚠️ Tin nhắn bị chặn: Không được phép gửi số tài khoản ngân hàng (STK) hoặc yêu cầu chuyển tiền ngoài hệ thống nhằm phòng chống lừa đảo!'
+        'Tin nhắn bị chặn: Không được phép gửi số tài khoản ngân hàng (STK) hoặc yêu cầu chuyển tiền ngoài hệ thống nhằm phòng chống lừa đảo!'
       );
       return;
     }
 
     if (isProfaneText(trimmed)) {
       showErrorToast(
-        '⚠️ Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh!'
+        'Tin nhắn bị chặn: Vui lòng không sử dụng từ ngữ thô tục, chửi thề hoặc vi phạm chuẩn mực văn minh!'
       );
       return;
     }
@@ -2354,7 +2389,7 @@ export default function ChatBoxPage({
       RETURNED: 'Đã trả hàng / hoàn tiền',
     };
     const statusName = statusMap[order.status] || order.status;
-    const text = `📦 Thông tin đơn hàng #${code}: Trạng thái hiện tại là [${statusName}]${order.trackingNumber ? ` (Mã vận đơn: ${order.trackingNumber})` : ''}. Shop đang theo dõi sát sao tiến độ đơn cho bạn ạ!`;
+    const text = `Thông tin đơn hàng #${code}: Trạng thái hiện tại là [${statusName}]${order.trackingNumber ? ` (Mã vận đơn: ${order.trackingNumber})` : ''}. Shop đang theo dõi sát sao tiến độ đơn cho bạn ạ!`;
     setInputText(text);
     showSuccessToast('Đã điền thông tin đơn hàng vào ô tin nhắn. Bạn có thể gửi ngay hoặc chỉnh sửa.');
   };
@@ -2674,18 +2709,18 @@ export default function ChatBoxPage({
                         >
                           {lastMsg
                             ? lastMsg.mediaType
-                              ? `📎 ${lastMsg.mediaName || 'Tệp đính kèm'}`
+                              ? `[Tệp đính kèm: ${lastMsg.mediaName || 'File'}]`
                               : lastMsg.messageText.startsWith('{')
                               ? lastMsg.messageText.includes('EXCLUSIVE_DEAL_')
                                 ? canSeeAffiliateDeals
-                                  ? '🤝 [Đề xuất Exclusive Deal]'
+                                  ? '[Đề xuất Deal VIP]'
                                   : 'Shop đã gửi tin nhắn.'
                                 : lastMsg.messageText.includes('PRODUCT_INQUIRY')
-                                ? '🛍️ [Trao đổi về sản phẩm]'
+                                ? '[Trao đổi sản phẩm]'
                                 : lastMsg.messageText.includes('COUPON_VOUCHER')
-                                  ? '🎟️ [Mã giảm giá]'
+                                  ? '[Mã giảm giá]'
                                   : lastMsg.messageText.includes('CAMPAIGN_')
-                                    ? '👑 [Chiến dịch hợp tác VIP]'
+                                    ? '[Chiến dịch VIP]'
                                     : '💬 [Tin nhắn đính kèm]'
                               : lastMsg.messageText
                             : 'Bắt đầu cuộc trò chuyện...'}
@@ -2875,12 +2910,66 @@ export default function ChatBoxPage({
                     <Tag className="w-3.5 h-3.5 text-[#B88E4F]" />
                     <span className="hidden sm:inline">Mã ưu đãi định danh</span>
                   </button>
+                  <button
+                    type="button"
+                    id="btn-collab-propose-deal"
+                    onClick={() => setShowKocDealModal(true)}
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#B88E4F] bg-[#231D15] px-2.5 py-1.5 text-xs font-bold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 shadow-xs"
+                    title="Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng"
+                  >
+                    <Handshake className="w-3.5 h-3.5 text-[#C59B58]" />
+                    <span className="hidden sm:inline">Đề xuất Deal VIP</span>
+                    <span className="sm:hidden">Xin Deal</span>
+                  </button>
                 </div>
               )}
               <button type="button" onClick={() => setExplorerConversationId(activeConv.id)} aria-label="Tìm tin nhắn và tệp" title="Kho nội dung: tìm tin nhắn và tệp" className="shrink-0 rounded-xl p-2 text-[#B88E4F] hover:bg-[#FBF5EB]"><Search size={20} /></button>
             </header>
             )}
 
+
+{activePendingDeal && (
+              <div
+                id="chat-pinned-deal-banner"
+                className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs shadow-xs"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[#231D15] text-[#C59B58]">
+                    <Handshake size={13} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="m-0 truncate font-semibold text-[#1A1612]">
+                      {activePendingDeal.isWaitingAdmin ? (
+                        <span className="text-[#8C6226]">
+                          ⚠️ Thỏa thuận thù lao {activePendingDeal.rate}% đang chờ Tổng Giám Đốc (Admin) phê duyệt ngoại lệ
+                        </span>
+                      ) : activePendingDeal.isForMe ? (
+                        <span>
+                          ⚡ Có 1 Thỏa thuận Độc quyền ({activePendingDeal.rate}%) đang chờ bạn phản hồi
+                        </span>
+                      ) : (
+                        <span className="text-[#7D715E]">
+                          ⏱️ Đã gửi Thỏa thuận Độc quyền ({activePendingDeal.rate}%) · Đang chờ đối tác phản hồi
+                        </span>
+                      )}
+                    </p>
+                    <p className="m-0 truncate text-[10px] text-[#7D715E]">
+                      {activePendingDeal.card.productTitle || 'Sản phẩm áp dụng'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  id="btn-jump-to-deal"
+                  onClick={() => jumpToDealMessage(activePendingDeal.messageId)}
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#B88E4F] bg-[#231D15] px-2.5 py-1 text-[11px] font-semibold text-[#FAF8F5] transition hover:bg-[#322A1E] focus-visible:outline-none shadow-2xs"
+                >
+                  <ArrowDown size={12} className="text-[#C59B58]" />
+                  <span>Cuộn tới tin nhắn deal ▾</span>
+                </button>
+              </div>
+            )}
 
             {!embedded && visibleMessages.length > 0 && (
               <div className="chat-history-toolbar flex shrink-0 items-center justify-between gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-2 text-xs text-[#7D715E]">
@@ -3169,15 +3258,15 @@ export default function ChatBoxPage({
                     </span>
                     {[
                       {
-                        label: '📦 Xin mẫu thử (Sample)',
+                        label: 'Xin mẫu thử trải nghiệm',
                         text: 'Chào Shop, mình quan tâm đến sản phẩm này và muốn đăng ký xin hàng mẫu trải nghiệm để quay video review/livestream.',
                       },
                       {
-                        label: '💰 Thỏa thuận hoa hồng',
+                        label: 'Thỏa thuận thù lao Deal VIP',
                         text: 'Chào Shop, mình muốn trao đổi thêm về chính sách hoa hồng thưởng thêm cho dòng sản phẩm này nếu đạt KPI doanh số.',
                       },
                       {
-                        label: '🔍 Kiểm tra tồn kho',
+                        label: 'Kiểm tra tồn kho mở bán',
                         text: 'Chào Shop, sản phẩm này hiện tại kho còn sẵn số lượng bao nhiêu để mình lên kế hoạch gắn link video ạ?',
                       },
                     ].map((chip, i) => (
@@ -3235,6 +3324,7 @@ export default function ChatBoxPage({
                     </>
                   ) : null
                 ) : currentUser?.role === 'COLLABORATOR' ? (
+                  <>
                   <button
                     type="button"
                     id="btn-composer-propose-coupon"
@@ -3244,6 +3334,16 @@ export default function ChatBoxPage({
                   >
                     <Tag className="w-5 h-5" />
                   </button>
+                  <button
+                    type="button"
+                    id="btn-composer-koc-deal"
+                    className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#B88E4F] transition hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40"
+                    title="Đề xuất Thỏa thuận Thù lao VIP với Nhãn hàng"
+                    onClick={() => setShowKocDealModal(true)}
+                  >
+                    <Handshake className="w-5 h-5 stroke-[1.75]" />
+                  </button>
+                  </>
                 ) : null}
                 <textarea
                   ref={messageInputRef}
@@ -3348,6 +3448,26 @@ export default function ChatBoxPage({
               void openConversation(activeConv);
             }
 
+          }}
+        />
+      )}
+
+      {showKocDealModal && activeConv && (
+        <ExclusiveOfferModal
+          key={activeConv.id + '_koc'}
+          mode="proposal"
+          storeId={activeConv.storeId || activeConv.store?.id || ''}
+          productId={pinnedProduct?.id}
+          onClose={() => setShowKocDealModal(false)}
+          onSuccess={async (conversationId: any) => {
+            setShowKocDealModal(false);
+            showSuccessToast('Đã gửi đề xuất thỏa thuận VIP tới Nhãn hàng.');
+            try {
+              const response: any = await api.get('/chat/conversations', { headers: { 'x-skip-cache': '1' } });
+              const body = response?.data?.data || response?.data || response;
+              const conversation = Array.isArray(body) ? body.find((item: Conversation) => item.id === conversationId) : undefined;
+              if (conversation) { setConversations(body); await openConversationRef.current(conversation); }
+            } catch { showErrorToast('Đề xuất đã được gửi; vui lòng mở lại hội thoại.'); }
           }}
         />
       )}

@@ -15,7 +15,6 @@ import {
   workspaceButton,
   workspaceInput,
 } from '@/components/ui/FeatureWorkspace';
-import './SampleRequestsPage.css';
 import { useSandboxSampleState, type SandboxSampleState } from '@/components/shipping/useSandboxSampleState';
 import { SandboxSampleReceipt } from '@/components/shipping/SandboxSampleReceipt';
 import type { SampleRequest } from '@/types/samples.types';
@@ -137,13 +136,13 @@ export default function SampleRequestsPage({ embedded: _embedded = false }: { em
         const code = sampleSandboxCode(item);
         return code ? <SandboxStateBridge key={code} code={code} onState={onSandboxState} /> : null;
       })}
-      <div className="samples-page-metrics">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: 'Tổng yêu cầu', value: requests.length },
           { label: 'Đang giao', value: requests.filter(item => item.status === 'SHIPPED').length },
           { label: 'Cần chú ý', value: requests.filter(item => sampleNeedsAttention(item, now)).length, attention: true },
           { label: 'Hoàn thành', value: requests.filter(item => item.status === 'COMPLETED').length },
-        ].map(metric => <div key={metric.label} className="samples-page-metric" data-attention={Boolean(metric.attention && metric.value > 0)}>
+        ].map(metric => <div key={metric.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 p-3 sm:px-4.25 sm:py-3.75 border border-[#EAE4D7] rounded-xl bg-white [&_p]:m-0 [&_p]:text-[#7D715E] [&_p]:text-xs [&_p]:font-medium [&_strong]:text-[#1A1612] [&_strong]:text-[22px] sm:[&_strong]:text-[26px] [&_strong]:font-semibold [&_strong]:tabular-nums [&>span]:col-span-full [&>span]:text-[#7D715E] [&>span]:text-[10px] [&>span]:leading-4 data-[attention=true]:border-[#EEDFC6] data-[attention=true]:[&_strong]:text-[#DC2626]" data-attention={Boolean(metric.attention && metric.value > 0)}>
           <p>{metric.label}</p><strong>{!data ? '—' : metric.value}</strong>
         </div>)}
       </div>

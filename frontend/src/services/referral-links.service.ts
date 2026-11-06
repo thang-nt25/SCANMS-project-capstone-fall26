@@ -167,9 +167,19 @@ export const referralLinksService = {
     return res?.data?.data || res?.data || res;
   },
 
+  async getCollaboratorDealProducts(collaboratorId: string, storeId?: string): Promise<any[]> {
+    const res: any = await api.get('/affiliate-deals/collaborator-products', {
+      params: { collaboratorId, ...(storeId ? { storeId } : {}) },
+      headers: { 'x-skip-cache': '1' },
+    });
+    const payload = res?.data ?? res;
+    return Array.isArray(payload) ? payload : payload?.data || [];
+  },
+
   async createShopDealOffer(payload: {
     collaboratorId: string;
-    productId: string;
+    productId?: string;
+    productIds?: string[];
     proposedCommissionRate: number;
     salesCommitment: string;
     targetOrders: number;

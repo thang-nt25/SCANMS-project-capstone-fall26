@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Clock, MapPin, Package, ShoppingBag, Users, Wallet, X } from 'lucide-react';
 import type { StoreOrderItem, StoreOrderRecord } from '../../services/order.service';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
-import './MerchantOrderDetailModal.css';
 
 const amount = (value: number) => `${(value ?? 0).toLocaleString('vi-VN')} ₫`;
 const statusLabels: Record<string, string> = {

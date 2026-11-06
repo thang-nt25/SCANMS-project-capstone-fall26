@@ -14,7 +14,6 @@ import { carrierStatusLabel, returnReasonLabel, returnStatusLabel } from '@/util
 import { customerService, type CustomerOrderItem } from '../../services/customer.service';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
-import './ReturnDetailPage.css';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -47,9 +46,9 @@ function ReturnProducts({ request, customer }: { request: ReturnDetail; customer
   }, [customer, missingItems, request.order.id]);
   const products = missingItems ? originalItems.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.product }))
     : request.items.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.orderItem.product }));
-  return <div className="return-evidence-products">
+  return <div className="grid gap-2.5 mt-4">
     {missingItems && <p className="text-xs text-[#7D715E]">{loading ? 'Đang tải sản phẩm…' : products.length ? 'Sản phẩm trong đơn gốc' : 'Hồ sơ chưa có thông tin sản phẩm liên kết.'}</p>}
-    {products.map(item => <div key={item.id} className="return-evidence-product">
+    {products.map(item => <div key={item.id} className="flex items-center gap-3.5 p-3 border border-[#EAE4D7] rounded-md [&>img]:w-16 [&>img]:h-16 [&>img]:shrink-0 [&>img]:object-contain [&>div]:flex-1 [&>div]:min-w-0 [&>div]:text-sm [&>strong]:text-sm [&>strong]:whitespace-nowrap [&_strong]:font-medium [&_span]:block [&_span]:mt-1.25 [&_span]:text-xs [&_span]:text-[#7D715E]">
       <img src={getSafeProductImageUrl(item.product?.imageUrl)} onError={handleProductImageError} alt={item.product?.title || 'Sản phẩm'} />
       <div><strong>{item.product?.title || 'Sản phẩm trong đơn'}</strong><span>Số lượng: {item.quantity}</span></div>
       <strong>{money(Number(item.unitPrice) * item.quantity)}</strong>
@@ -503,14 +502,14 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
 
   return <>
     {mode === 'customer' && <MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
-    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6${mode === 'customer' ? ' customer-return-layout' : ''}`}>
-      {mode === 'customer' && <aside className="customer-return-sidebar"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
-      <div className={`mx-auto max-w-5xl space-y-4${mode === 'customer' ? ' customer-return-content' : ''}`}>
+    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
+      {mode === 'customer' && <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
+      <div className={`mx-auto max-w-5xl space-y-4 ${mode === 'customer' ? 'min-w-0 w-full max-w-none border border-[#EAE4D7] rounded-[5px] bg-white overflow-hidden [&>div]:p-4 sm:[&>div]:p-[22px] [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0 [&_button]:border [&_button]:border-[#EEDFC6] [&_button]:bg-white [&_button]:text-[#795A2D] [&_button]:rounded-[5px] hover:[&_button]:bg-[#FBF5EB]' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
           </Link>
-          {mode === 'customer' && detail.data && <div className="customer-return-order-status"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>}
+          {mode === 'customer' && detail.data && <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>}
           <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
             <RefreshCw className="h-4 w-4" /> Tải lại
           </button>
@@ -541,7 +540,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
                       : 'Mức dự kiến theo đơn; hệ thống sẽ ghi ví khi đơn đủ điều kiện.'}
             </p>
           </section>}
-          {mode === 'customer' && <section className="customer-return-address">
+          {mode === 'customer' && <section className="customer-return-address [&_h2]:m-0 [&_h2]:mb-4.5 [&_h2]:text-lg [&_h2]:font-medium [&>div]:grid [&>div]:grid-cols-1 sm:[&>div]:grid-cols-2 [&>div]:gap-5.5 [&_address]:flex [&_address]:flex-col [&_address]:gap-2.25 [&_address]:text-[13px] [&_address]:not-italic [&_address]:leading-relaxed [&_address]:[overflow-wrap:anywhere] [&_address_strong]:font-medium [&_address_strong]:text-[#1A1612] [&_address_span]:m-0 [&_address_span]:text-[#7D715E] [&_address_p]:m-0 [&_address_p]:text-[#7D715E] [&>div>div]:flex [&>div>div]:flex-col [&>div>div]:gap-3 [&>div>div]:border-t sm:[&>div>div]:border-t-0 sm:[&>div>div]:border-l [&>div>div]:border-[#EAE4D7] [&>div>div]:pt-4 sm:[&>div>div]:pt-0 sm:[&>div>div]:pl-5.5 [&>div>div]:text-[13px] [&_a]:self-start [&_a]:px-3 [&_a]:py-1.75 [&_a]:border [&_a]:border-[#EAE4D7] [&_a]:rounded [&_a]:text-[#795A2D] [&_a]:no-underline">
             <h2>Địa chỉ nhận hàng</h2>
             <div><address><strong>{detail.data.order.customerName || 'Chưa có tên người nhận'}</strong><span>{detail.data.order.customerPhone || 'Chưa có số điện thoại'}</span><p>{detail.data.order.shippingAddress || 'Chưa có địa chỉ nhận hàng'}</p></address>
               <div><strong>{detail.data.order.storeName}</strong><Link to={`/customer/orders/${encodeURIComponent(detail.data.order.id)}`}>Xem đơn hàng gốc</Link></div></div>
@@ -572,13 +571,13 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
           <section className="return-evidence-section rounded-2xl border border-[#EAE4D7] bg-white p-4">
             <h2 className="font-bold">Sản phẩm và bằng chứng</h2>
             <ReturnProducts request={detail.data} customer={mode === 'customer'} />
-             <div className="return-evidence-reason"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
+             <div className="my-4.5 text-sm leading-relaxed [&_p+p]:mt-1.25"><p><strong>Lý do đổi trả:</strong> {returnReasonLabel(detail.data.reason)}</p>
              {detail.data.preferredResolution && <p><strong>Khách mong muốn:</strong> {detail.data.preferredResolution === 'REFUND' ? 'Hoàn tiền vào Ví SCANMS' : 'Đổi sản phẩm mới'}</p>}
             {detail.data.details && <p className="whitespace-pre-wrap text-[#7D715E]">{detail.data.details}</p>}</div>
-            <div className="return-evidence-media">
+            <div className="flex flex-wrap items-start gap-3.5">
               {detail.data.imageUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"
-                className="return-evidence-photo"><img src={getSafeProductImageUrl(url)} onError={handleProductImageError} alt={`Ảnh bằng chứng ${index + 1}`} loading="lazy" /><span>Ảnh bằng chứng {index + 1}</span></a>)}
-              {detail.data.unboxingVideoUrl && <div className="return-evidence-video"><video src={detail.data.unboxingVideoUrl} controls preload="metadata" aria-label="Video mở hộp" /><a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer">Mở video trong tab mới</a></div>}
+                className="grid gap-2 w-[132px] text-[#795A2D] text-xs no-underline [&_img]:w-[132px] [&_img]:h-[110px] [&_img]:object-contain [&_img]:border [&_img]:border-[#EAE4D7] [&_img]:rounded-md [&_img]:bg-[#FAF8F5]"><img src={getSafeProductImageUrl(url)} onError={handleProductImageError} alt={`Ảnh bằng chứng ${index + 1}`} loading="lazy" /><span>Ảnh bằng chứng {index + 1}</span></a>)}
+              {detail.data.unboxingVideoUrl && <div className="w-[min(100%,280px)] grid gap-2 text-xs [&_video]:block [&_video]:w-full [&_video]:h-[158px] [&_video]:border [&_video]:border-[#EAE4D7] [&_video]:rounded-md [&_video]:bg-[#FAF8F5] [&_a]:text-[#795A2D]"><video src={detail.data.unboxingVideoUrl} controls preload="metadata" aria-label="Video mở hộp" /><a href={detail.data.unboxingVideoUrl} target="_blank" rel="noreferrer">Mở video trong tab mới</a></div>}
               {!detail.data.imageUrls.length && !detail.data.unboxingVideoUrl && <p className="text-sm text-[#7D715E]">Chưa có bằng chứng đính kèm.</p>}
             </div>
           </section>

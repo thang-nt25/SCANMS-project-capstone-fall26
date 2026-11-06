@@ -1135,7 +1135,7 @@ export default function ProductDetailPage() {
           setCouponError(null);
           if (kolToastShownRef.current !== code) {
             kolToastShownRef.current = code;
-            toast.success(`🎉 Nhận mã ưu đãi độc quyền "${code}" từ Creator! Giảm ${formatMoney(discount)} khi đặt hàng.`);
+            toast.success(`Đã áp dụng mã ưu đãi độc quyền "${code}" từ Creator! Giảm ${formatMoney(discount)} khi đặt hàng.`);
           }
         }
       } catch (err: any) {
@@ -1850,7 +1850,7 @@ export default function ProductDetailPage() {
                     title="Đề xuất hợp tác tiếp thị / đàm phán thù lao trực tiếp với Brand Manager"
                   >
                     <Handshake className="w-4 h-4 text-[#B88E4F]" />
-                    <span>🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng</span>
+                    <span>Đề xuất hợp tác tiếp thị</span>
                   </button>
                 )}
 
@@ -1896,7 +1896,7 @@ export default function ProductDetailPage() {
                   ) : loadingSampleStatus ? (
                     'Đang kiểm tra điều kiện và trạng thái yêu cầu mẫu…'
                   ) : sampleRequestStatus?.status === 'COMPLETED' ? (
-                    <span className="text-[#059669] font-medium">✓ Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
+                    <span className="text-[#059669] font-medium">Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
                   ) : sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status) ? (
                     <>Yêu cầu mẫu của bạn: <strong className="text-[#8C6226]">{sampleRequestStatus.status}</strong>. <Link to="/collaborator/collaboration?tab=samples" className="underline text-[#8C6226]">Xem tiến độ</Link></>
                   ) : !sampleFeatureEnabled ? (

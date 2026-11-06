@@ -21,7 +21,6 @@ import { commissionRulesService } from '../../services/commission-rules.service'
 import api from '../../services/api';
 import { getVietnamCurrentMonthYear } from '@/utils/date-time.utils';
 import { Select } from '../../components/ui/Select';
-import './KolBonusProgressPage.css';
 
 interface MilestoneItem {
   id: string;
@@ -433,26 +432,26 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
   return (
     <div
       id="kol-bonus-root"
-      className={`creator-bonus-page min-w-0 text-[#1A1612] ${
+      className={`min-w-0 text-[#1A1612] ${
         embedded ? '' : 'min-h-screen bg-[#FAF8F5] p-4 sm:p-6 pb-20'
       }`}
     >
       <div className="flex flex-col gap-3.5 w-full min-w-0 mx-auto">
         {storeInvitations.map((invitation) => (
-          <div key={invitation.id} className="bonus-invitation">
-            <span className="bonus-invitation-icon"><Store size={19} aria-hidden="true" /></span>
-            <div className="bonus-invitation-copy">
+          <div key={invitation.id} className="flex items-center flex-wrap md:flex-nowrap gap-3 p-3.5 sm:px-4.5 sm:py-3.75 border border-[#EEDFC6] rounded-xl bg-white">
+            <span className="grid place-items-center shrink-0 w-[38px] h-[38px] border border-[#EEDFC6] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]"><Store size={19} aria-hidden="true" /></span>
+            <div className="flex-1 min-w-0 [&_strong]:text-[13px] [&_strong]:leading-snug [&_strong]:font-semibold [&>div]:mt-0.75 [&>div]:text-[11px] [&>div]:leading-relaxed">
               <strong className="text-sm sm:text-base font-bold text-[#1A1612]">{invitation.store?.name} mời bạn vào đội ngũ CTV</strong>
               <div className="mt-0.5 text-xs text-[#7D715E]">Chấp nhận để xem mốc thưởng và tạo link tiếp thị cho Shop này.</div>
             </div>
-            <div className="bonus-invitation-actions">
+            <div className="flex items-center gap-2 shrink-0 [&>button]:min-h-[34px] [&>button]:px-3 [&>button]:py-1.75 [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:rounded-lg [&>button]:bg-white [&>button]:text-[#1A1612] [&>button]:text-[11px] [&>button]:font-medium [&>button:last-child]:border-[#EEDFC6] [&>button:last-child]:bg-[#FBF5EB] [&>button:last-child]:font-semibold hover:[&>button:last-child]:bg-[#F3EFE6] [&>button:disabled]:opacity-55 [&>button:disabled]:cursor-wait">
               <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, false)} className="px-3 py-1.5 rounded-lg border border-[#D8C6A8] bg-white font-semibold text-xs text-[#1A1612] hover:bg-[#FAF8F5] cursor-pointer">Từ chối</button>
               <button type="button" disabled={invitationLoading === invitation.id} onClick={() => respondToStoreInvitation(invitation.id, true)} className="px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] cursor-pointer">{invitationLoading === invitation.id ? 'Đang xử lý…' : 'Chấp nhận'}</button>
             </div>
           </div>
         ))}
 
-        <div className="bonus-toolbar">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] items-center gap-3.75 p-3.75 sm:p-4.5 border border-[#EAE4D7] rounded-[13px] bg-white [&>header]:col-span-full [&>header]:pb-3 sm:[&>header]:pb-3.75 [&>header_h2]:text-[15px] sm:[&>header_h2]:text-[17px] [&>header_h2]:font-semibold [&>header_p]:mt-0.75 [&>header_p]:text-[11px] [&>[role=group]]:grid [&>[role=group]]:grid-cols-2 [&>[role=group]]:w-full sm:[&>[role=group]]:w-fit [&>[role=group]]:gap-1.75 [&>[role=group]>button]:h-[38px] [&>[role=group]>button]:px-2.75 [&>[role=group]>button]:py-2 [&>[role=group]>button]:border [&>[role=group]>button]:border-[#EAE4D7] [&>[role=group]>button]:rounded-lg [&>[role=group]>button]:bg-white [&>[role=group]>button]:text-[#7D715E] [&>[role=group]>button]:text-[11px] [&>[role=group]>button]:font-medium [&>[role=group]>button]:whitespace-nowrap [&>[role=group]>button[aria-pressed=true]]:border-[#EEDFC6] [&>[role=group]>button[aria-pressed=true]]:bg-[#FBF5EB] [&>[role=group]>button[aria-pressed=true]]:text-[#79592C] [&>[role=group]>button[aria-pressed=true]]:font-semibold">
           <header className="w-full flex items-center justify-between gap-2.5 pb-3 border-b border-[#EAE4D7]">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="grid place-items-center w-8 h-8 rounded-lg bg-[#FBF5EB] text-[#B88E4F] shrink-0">
@@ -498,7 +497,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
               Lịch sử nhận thưởng
             </button>
           </div>
-          <div className="bonus-period-filters">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[minmax(170px,220px)_110px_100px] items-center gap-2 min-w-0 w-full xl:w-auto xl:justify-self-end [&_button[aria-haspopup=listbox]]:w-full [&_button[aria-haspopup=listbox]]:h-[38px] [&_button[aria-haspopup=listbox]]:min-h-[38px] [&_button[aria-haspopup=listbox]]:px-2.5 [&_button[aria-haspopup=listbox]]:py-2 [&_button[aria-haspopup=listbox]]:rounded-lg [&_button[aria-haspopup=listbox]]:bg-white [&_button[aria-haspopup=listbox]]:text-xs [&_button[aria-haspopup=listbox]]:font-normal [&_button[aria-haspopup=listbox]:disabled]:bg-[#FAF8F5]">
             <Select
               aria-label="Gian hàng tính thưởng"
               value={selectedStoreId}
@@ -559,7 +558,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
             <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm text-[#B88E4F]">Thử lại</button>
           </section>
         ) : !storesLoading && stores.length === 0 ? (
-          <div className="bonus-empty-state">
+          <div className="flex flex-col items-center justify-center gap-2.5 p-7.5 sm:py-9.5 sm:px-5.5 border border-[#EAE4D7] rounded-[13px] bg-white text-center [&>div]:w-11 [&>div]:h-11 [&>div]:mb-0.5 [&>div]:border [&>div]:border-[#EEDFC6] [&>div]:rounded-xl [&>div]:bg-[#FBF5EB] [&_h3]:m-0 [&_h3]:text-[15px] [&_h3]:font-semibold [&_p]:max-w-[440px] [&_p]:m-0 [&_p]:text-[#7D715E] [&_p]:text-[11px] [&_p]:leading-5">
             <div className="grid place-items-center w-12 h-12 rounded-full border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F] mx-auto mb-3">
               <Store size={22} />
             </div>
@@ -572,8 +571,8 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
           </div>
         ) : errorMessage && !data ? (
           <div className="p-8 border border-red-200 rounded-2xl bg-white text-center shadow-sm">
-            <div className="grid place-items-center w-11 h-11 rounded-full bg-red-50 text-red-600 mx-auto mb-3 text-xl">
-              ⚠️
+            <div className="grid place-items-center w-11 h-11 rounded-full bg-red-50 text-red-600 mx-auto mb-3">
+              <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-base font-bold text-red-700 mb-1.5">
               Không thể tải dữ liệu thưởng
@@ -791,8 +790,8 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
           </>
         ) : historyError && historyList.length === 0 ? (
           <div className="p-8 border border-red-200 rounded-2xl bg-white text-center shadow-sm">
-            <div className="grid place-items-center w-11 h-11 rounded-full bg-red-50 text-red-600 mx-auto mb-3 text-xl">
-              ⚠️
+            <div className="grid place-items-center w-11 h-11 rounded-full bg-red-50 text-red-600 mx-auto mb-3">
+              <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-base font-bold text-red-700 mb-1.5">
               Không thể tải lịch sử nhận thưởng

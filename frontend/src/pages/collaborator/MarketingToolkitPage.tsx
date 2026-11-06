@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
 import { Link2, Package, Tag, Video, Plus, Gift, FolderOpen } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
@@ -13,7 +13,6 @@ const MARKETING_TOOLKIT_TABS = ['links', 'samples', 'coupons', 'media'] as const
 type MarketingToolkitTab = (typeof MARKETING_TOOLKIT_TABS)[number];
 
 export default function MarketingToolkitPage() {
-  const navigate = useNavigate();
   const { activeTab, setActiveTab, visitedTabs } = useControlledTab<MarketingToolkitTab>({
     defaultTab: 'links',
     validTabs: MARKETING_TOOLKIT_TABS,
@@ -33,10 +32,14 @@ export default function MarketingToolkitPage() {
     },
     {
       id: 'coupons',
-      label: 'Mã giảm giá độc quyền',
+      label: 'Mã ưu đãi (Coupon)',
       icon: Tag,
     },
-    { id: 'media', label: 'Thư viện nội dung', icon: FolderOpen },
+    {
+      id: 'media',
+      label: 'Kho tài nguyên số',
+      icon: FolderOpen,
+    },
   ];
 
   const renderContextualActions = () => {
@@ -56,15 +59,14 @@ export default function MarketingToolkitPage() {
             <span>Nộp video review</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/collaborator/collaboration?tab=samples')}
+          <Link
+            to="/marketplace"
             className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs hover:shadow cursor-pointer"
-            title="Khám phá và nhận sản phẩm dùng thử từ Shop"
+            title="Khám phá và nhận sản phẩm dùng thử từ các nhãn hàng"
           >
             <Gift className="w-4 h-4" />
-            <span>Khám phá mẫu thử</span>
-          </button>
+            <span>Khám phá sản phẩm</span>
+          </Link>
         </div>
       );
     }

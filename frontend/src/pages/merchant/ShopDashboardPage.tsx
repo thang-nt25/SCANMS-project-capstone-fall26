@@ -176,6 +176,20 @@ const DateRangeDropdown: React.FC<{
   );
 };
 
+// In-memory snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
+let lastDashboardSnapshot: {
+  store: StoreSettings | null;
+  overview: DashboardOverviewResponse | null;
+  timeSeries: TimeSeriesPoint[];
+  topProducts: Product[];
+  recentOrders: StoreOrderRecord[];
+  storeKols: any[];
+  pendingOrdersCount: number;
+  pendingSamplesCount: number;
+  pendingDealsCount: number;
+  pendingReturnsCount: number;
+} | null = null;
+
 export default function ShopDashboardPage() {
   const [currentStore, setCurrentStore] = useState<StoreSettings | null>(null);
   const [range, setRange] = useState<string>('30d');
@@ -189,19 +203,19 @@ export default function ShopDashboardPage() {
   const currentStoreRef = useRef<StoreSettings | null>(null);
   currentStoreRef.current = currentStore;
 
-  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [topProducts, setTopProducts] = useState<Product[]>([]);
-  const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
-  const [storeKols, setStoreKols] = useState<any[]>([]);
+  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(() => lastDashboardSnapshot?.overview || null);
+  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>(() => lastDashboardSnapshot?.timeSeries || []);
+  const [topProducts, setTopProducts] = useState<Product[]>(() => lastDashboardSnapshot?.topProducts || []);
+  const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>(() => lastDashboardSnapshot?.recentOrders || []);
+  const [storeKols, setStoreKols] = useState<any[]>(() => lastDashboardSnapshot?.storeKols || []);
 
   // Actionable to-do counts
-  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
-  const [pendingSamplesCount, setPendingSamplesCount] = useState<number>(0);
-  const [pendingDealsCount, setPendingDealsCount] = useState<number>(0);
-  const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(() => lastDashboardSnapshot?.pendingOrdersCount || 0);
+  const [pendingSamplesCount, setPendingSamplesCount] = useState<number>(() => lastDashboardSnapshot?.pendingSamplesCount || 0);
+  const [pendingDealsCount, setPendingDealsCount] = useState<number>(() => lastDashboardSnapshot?.pendingDealsCount || 0);
+  const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(() => lastDashboardSnapshot?.pendingReturnsCount || 0);
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => !lastDashboardSnapshot);
   const [error, setError] = useState<string | null>(null);
 
   const formatCurrency = (amount: number) => {
@@ -281,7 +295,8 @@ export default function ShopDashboardPage() {
       setStoreKols(sortedKols);
 
       // Operational pending counts
-      setPendingOrdersCount(ordersData?.pagination?.total ?? (ordersData?.items?.filter((o: any) => o.status === 'PENDING')?.length || 0));
+      const pendingOrdersTotal = ordersData?.pagination?.total ?? (ordersData?.items?.filter((o: any) => o.status === 'PENDING')?.length || 0);
+      setPendingOrdersCount(pendingOrdersTotal);
 
       const samplesList = (samplesRes as any)?.data || samplesRes || [];
       const pendingSamples = Array.isArray(samplesList)
@@ -304,6 +319,18 @@ export default function ShopDashboardPage() {
             ? returnsData.filter((r: any) => r.status === 'REQUESTED' || r.status === 'PENDING').length
             : 0;
       setPendingReturnsCount(pendingReturnsCountVal);
+      lastDashboardSnapshot = {
+        store,
+        overview: overviewData || overview,
+        timeSeries: Array.isArray(seriesData) ? seriesData : timeSeries,
+        topProducts: productsData?.items || topProducts,
+        recentOrders: ordersData?.items || recentOrders,
+        storeKols: sortedKols,
+        pendingOrdersCount: pendingOrdersTotal,
+        pendingSamplesCount: pendingSamples.length,
+        pendingDealsCount: pendingDeals.length,
+        pendingReturnsCount: pendingReturnsCountVal,
+      };
     } catch (err) {
       if (request === requestSequence.current) {
         setError(err instanceof Error ? err.message : 'Chưa tải được dữ liệu nhãn hàng. Vui lòng thử lại.');

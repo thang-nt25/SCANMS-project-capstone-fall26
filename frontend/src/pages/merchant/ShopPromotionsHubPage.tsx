@@ -3,7 +3,6 @@ import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import { ShopPricePromotionsTab } from '../../components/promotions/ShopPricePromotionsTab';
 import { ShopCreatorIncentivesTab } from '../../components/promotions/ShopCreatorIncentivesTab';
-import './ShopPromotionsHubPage.css';
 
 const PROMOTIONS_TABS = ['price-promotions', 'creator-incentives'] as const;
 type PromotionHubTab = (typeof PROMOTIONS_TABS)[number];

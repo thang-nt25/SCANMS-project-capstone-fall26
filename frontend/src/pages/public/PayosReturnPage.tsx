@@ -7,7 +7,6 @@ import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { PayosOrderPayment } from '../../components/checkout/PayosOrderPayment';
 import { toast } from '../../utils/toast';
-import './PayosReturnPage.css';
 
 export default function PayosReturnPage() {
   const navigate = useNavigate();
@@ -61,15 +60,15 @@ export default function PayosReturnPage() {
     : 'Đang chờ PayOS xác nhận';
 
   return (
-    <div className="payos-buyer-layout">
+    <div className="min-h-[100dvh] bg-[#FAF8F5]">
     <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />
-    <div className="payos-buyer-workspace">
-    <aside className="payos-buyer-sidebar"><Sidebar currentUser={authService.getCurrentUser()} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>
-    <main className="payos-return-page">
-      <div className="payos-return-card">
-        <div className="payos-return-top"><Link to={backToOrder} state={{ returnedOrderCode: orderCode, clearOrderSearch: true }}><ArrowLeft size={16} />Trở lại</Link><span>Mã đơn hàng: <strong>{orderCode || 'Chưa có mã đơn'}</strong></span></div>
-        <header className="payos-return-heading">
-        <div className="payos-return-icon">{icon}</div>
+    <div className="grid grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto px-4 sm:px-6 pb-6">
+    <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={authService.getCurrentUser()} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>
+    <main className="min-h-0 pt-5 text-[#1A1612]">
+      <div className="w-full rounded-md border border-[#EAE4D7] bg-white overflow-hidden shadow-none">
+        <div className="flex items-center justify-between gap-4 p-3.5 sm:px-5 border-b border-[#EAE4D7] text-sm leading-normal [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1.5 [&_a]:text-[#7D715E] [&_a]:no-underline [&_a]:whitespace-nowrap [&_span]:text-right [&_span]:[overflow-wrap:anywhere] [&_strong]:font-medium"><Link to={backToOrder} state={{ returnedOrderCode: orderCode, clearOrderSearch: true }}><ArrowLeft size={16} />Trở lại</Link><span>Mã đơn hàng: <strong>{orderCode || 'Chưa có mã đơn'}</strong></span></div>
+        <header className="flex items-start sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 border-b border-[#EAE4D7] [&_h1]:m-0 [&_h1]:text-lg sm:[&_h1]:text-xl [&_h1]:font-semibold [&_p]:mt-1 [&_p]:text-xs [&_p]:text-[#7D715E] [&_p]:leading-relaxed">
+        <div className="grid shrink-0 place-items-center w-10 h-10 border border-[#EEDFC6] rounded-[10px] bg-white [&_svg]:w-6 [&_svg]:h-6">{icon}</div>
         <div><h1>{title}</h1>
         <p>
           {!loggedIn ? 'Đăng nhập để xem trạng thái thanh toán của đơn hàng.'
@@ -81,7 +80,7 @@ export default function PayosReturnPage() {
         </div>
         </header>
         {loggedIn && orderCode && (status === 'WAITING_PAYMENT' || status === 'error') && (
-          <div className="payos-return-payment"><PayosOrderPayment key={orderCode} orderCode={orderCode} onPaid={() => { setConfirmedOrderCode(orderCode); setStatus('PAID'); }} /></div>
+          <div className="p-4 sm:p-5"><PayosOrderPayment key={orderCode} orderCode={orderCode} onPaid={() => { setConfirmedOrderCode(orderCode); setStatus('PAID'); }} /></div>
         )}
       </div>
     </main>

@@ -5,7 +5,6 @@ import { customerService } from '../../services/customer.service';
 import { uploadService } from '../../services/upload.service';
 import { Select } from '../../components/ui/Select';
 import { toast } from '../../utils/toast';
-import './CreatorAccountDetails.css';
 
 export default function CreatorAccountDetails() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
@@ -174,9 +173,9 @@ export default function CreatorAccountDetails() {
         </div>
       </header>
 
-      <div className="creator-account-content">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_180px] xl:grid-cols-[minmax(0,1fr)_210px] gap-5 md:gap-4.5 xl:gap-6 items-stretch p-4 sm:p-5.5">
         <form onSubmit={handleUpdateProfile} className="min-w-0" id="creator-account-form">
-          <div className="creator-account-fields">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 items-start">
             <div className="min-w-0 border-0 p-0 m-0">
               <span className="block mb-1.5 text-xs font-medium text-[#7D715E]">Tên đăng nhập</span>
               <div className="flex items-center min-h-[38px] px-3 py-2 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-xs font-medium text-[#1A1612] break-all">{username}</div>

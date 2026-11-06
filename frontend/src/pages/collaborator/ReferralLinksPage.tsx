@@ -554,7 +554,7 @@ export default function ReferralLinksPage({
 
 
   const fetchLinks = useCallback(async (silent = false) => {
-    if (!silent) {
+    if (!silent && links.length === 0) {
       setLoading(true);
       setErrorMsg(null);
     }
@@ -1003,27 +1003,6 @@ export default function ReferralLinksPage({
     <div className={modalOnly ? "contents" : "space-y-4"}>
       {!modalOnly && (<>
       {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
-      {/* Banner Hướng Dẫn Tiếp Thị Toàn Diện (Song Kiếm Hợp Bích) */}
-      <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-left shadow-2xs mb-4">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-xl bg-white border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0 mt-0.5">
-            <Lightbulb className="w-4 h-4 text-[#B88E4F]" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
-                Mẹo Tiếp Thị Đa Kênh Toàn Diện (Song Kiếm Hợp Bích)
-              </h3>
-              <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Bảo vệ 100% thù lao
-              </span>
-            </div>
-            <p className="text-xs text-[#7D715E] leading-relaxed">
-              Khách hàng chỉ cần <strong>bấm Link tiếp thị</strong> HOẶC <strong>nhập Mã ưu đãi</strong> của bạn khi thanh toán, hệ thống đều tự động ghi nhận doanh số và bảo lưu thù lao cho bạn trong <strong>30 ngày</strong> (áp dụng cho toàn bộ gian hàng).
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5" aria-label="Thống kê liên kết tiếp thị">
         {[
@@ -2072,7 +2051,7 @@ export default function ReferralLinksPage({
                             Number(camp.bonusCommissionRate || 0);
                           return (
                             <option key={camp.id} value={camp.id}>
-                              🔥 {camp.name} — Tổng HH {totalRate.toFixed(1)}% (+{camp.bonusCommissionRate}%)
+                              {camp.name} — Tổng HH {totalRate.toFixed(1)}% (+{camp.bonusCommissionRate}%)
                             </option>
                           );
                         })}
@@ -2220,9 +2199,9 @@ export default function ReferralLinksPage({
                               <span>UTM là gì? Thẻ định danh gắn vào link giúp theo dõi nguồn đơn hàng chính xác.</span>
                             </p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1.5 border-t border-[#EAE4D7]/50 text-[9px]">
-                              <div><strong className="text-[#1A1612]">🌐 source:</strong> Nền tảng (tiktok, fb...)</div>
-                              <div><strong className="text-[#1A1612]">📡 medium:</strong> Định dạng (bio, video...)</div>
-                              <div><strong className="text-[#1A1612]">🎯 campaign:</strong> Tên sự kiện/sale</div>
+                              <div><strong className="text-[#1A1612]">source:</strong> Nền tảng (tiktok, fb...)</div>
+                              <div><strong className="text-[#1A1612]">medium:</strong> Định dạng (bio, video...)</div>
+                              <div><strong className="text-[#1A1612]">campaign:</strong> Tên sự kiện/sale</div>
                               <div><strong className="text-[#1A1612]">📄 content:</strong> Vị trí bài đăng</div>
                             </div>
                           </div>
@@ -2808,14 +2787,6 @@ export default function ReferralLinksPage({
             </div>
 
 
-            <div className="p-3 bg-gradient-to-r from-[#FAF8F5] via-[#FAF8F5] to-[#FAF8F5] rounded-2xl border border-[#EAE4D7]/90 text-xs text-[#7D715E] flex items-center gap-3 text-left shadow-2xs leading-relaxed">
-              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200/70 border border-amber-300/80 flex items-center justify-center text-amber-800 flex-shrink-0 shadow-2xs ring-2 ring-amber-50">
-                <Lightbulb className="w-4 h-4" />
-              </span>
-              <span className="text-[11px] leading-relaxed text-[#5E5141]">
-                <strong className="text-[#1A1612] font-bold">Mẹo nhỏ:</strong> Quét thử bằng camera điện thoại để kiểm tra chuyển hướng trước khi in ấn số lượng lớn.
-              </span>
-            </div>
             </div>
           </div>
         </div>
