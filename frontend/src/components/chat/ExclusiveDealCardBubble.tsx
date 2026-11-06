@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, ChevronDown, ExternalLink, Copy, Check, Clock3 } from 'lucide-react';
+import { Sparkles, ChevronDown, ExternalLink, Copy, Check, Clock3, AlertTriangle, Package, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../services/api';
 import { getChatSocket } from '../../services/chat-socket.service';
@@ -16,6 +16,14 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   const [resolvedInitiatorRole, setResolvedInitiatorRole] = useState<string | null>(null);
   const [resolvedCouponTerms, setResolvedCouponTerms] = useState<any>(null);
   const [reload, setReload] = useState(0);
+  const [isProductsExpanded, setIsProductsExpanded] = useState(false);
+  const [loadedProducts, setLoadedProducts] = useState<any[]>(
+    Array.isArray(card.products) && card.products.length > 0
+      ? card.products
+      : card.productTitle
+      ? [{ id: card.productId, title: card.productTitle, imageUrl: card.productImage, price: card.productPrice }]
+      : []
+  );
   const status = decision || card.status;
   const isDecision = card.type === 'EXCLUSIVE_DEAL_DECISION';
   const approved = status === 'APPROVED';
@@ -44,6 +52,12 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
       if (state.couponTerms) setResolvedCouponTerms(state.couponTerms);
       if (state.shortUrl) setLinkUrl(state.shortUrl);
       if (state.vipVoucherCode) setVoucherCode(state.vipVoucherCode);
+      if (state.products && Array.isArray(state.products) && state.products.length > 0) {
+        setLoadedProducts(state.products);
+      } else if (state.scopeProducts && Array.isArray(state.scopeProducts) && state.scopeProducts.length > 0) {
+        const prods = state.scopeProducts.map((sp: any) => sp.product || sp).filter(Boolean);
+        if (prods.length > 0) setLoadedProducts(prods);
+      }
     };
     const sync = async () => {
       const version = revision;
@@ -142,7 +156,99 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         </span>
       </header>
       <div className="p-2.5 sm:px-3">
-        <h3 className="m-0 text-xs leading-relaxed font-semibold break-words text-[#1A1612]">{card.productTitle || 'Sản phẩm'}</h3>
+        {rate != null && rate > 16 && (
+          <div className="mb-2.5 flex items-start gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] p-2 text-left">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
+            <div className="flex-1 text-[10px] leading-relaxed text-[#8C6226]">
+              <strong className="block font-semibold">Thù lao {rate}% vượt trần tự trị (16%)</strong>
+              {status === 'PENDING'
+                ? 'Sau khi đối tác chấp thuận, thỏa thuận cần Tổng Giám Đốc (Admin) phê duyệt ngoại lệ ngân sách mới chính thức kích hoạt.'
+                : status === 'PENDING_ADMIN_APPROVAL'
+                ? 'Đã được đối tác chấp thuận. Đang chờ Tổng Giám Đốc (Admin) phê duyệt ngoại lệ ngân sách.'
+                : 'Đã được Tổng Giám Đốc phê duyệt ngoại lệ ngân sách.'}
+            </div>
+          </div>
+        )}
+
+        {card.systemNotice && (
+          <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-medium text-[#8C6226]">
+            <Check size={12} className="text-[#059669] shrink-0" />
+            <span>{card.systemNotice}</span>
+          </div>
+        )}
+
+        {loadedProducts.length > 0 ? (
+          <div>
+            <div className="flex items-center gap-2 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-2">
+              {loadedProducts[0].imageUrl ? (
+                <img
+                  src={loadedProducts[0].imageUrl}
+                  alt={loadedProducts[0].title}
+                  className="h-9 w-9 shrink-0 rounded-md border border-[#EAE4D7] object-cover bg-white"
+                />
+              ) : (
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[#EAE4D7] bg-white text-[#B88E4F]">
+                  <Package size={16} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <h3 className="m-0 truncate text-xs font-semibold text-[#1A1612]">
+                  {loadedProducts[0].title}
+                </h3>
+                <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#7D715E]">
+                  {loadedProducts[0].price != null && (
+                    <span>{Number(loadedProducts[0].price).toLocaleString('vi-VN')} đ</span>
+                  )}
+                  {loadedProducts.length > 1 && (
+                    <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-[#F3EFE6] font-medium text-[#8C6226]">
+                      <Layers size={10} /> +{loadedProducts.length - 1} sản phẩm khác
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {loadedProducts.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsProductsExpanded(!isProductsExpanded)}
+                  className="mt-1.5 flex w-full items-center justify-between rounded-md border border-[#EAE4D7] bg-white px-2 py-1 text-[10px] font-semibold text-[#8C6226] hover:bg-[#FAF8F5] transition-colors"
+                >
+                  <span className="flex items-center gap-1">
+                    <Package size={11} className="text-[#B88E4F]" />
+                    {isProductsExpanded ? 'Thu gọn danh sách sản phẩm' : `Xem toàn bộ ${loadedProducts.length} sản phẩm áp dụng`}
+                  </span>
+                  <ChevronDown size={12} className={`transform transition-transform ${isProductsExpanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isProductsExpanded && (
+                  <div className="mt-1.5 max-h-40 overflow-y-auto space-y-1.5 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] p-1.5">
+                    {loadedProducts.map((prod: any, idx: number) => (
+                      <div key={prod.id || idx} className="flex items-center gap-2 rounded-md bg-white border border-[#EAE4D7]/70 p-1.5">
+                        {prod.imageUrl ? (
+                          <img src={prod.imageUrl} alt={prod.title} className="h-7 w-7 shrink-0 rounded object-cover border border-[#EAE4D7]" />
+                        ) : (
+                          <div className="grid h-7 w-7 shrink-0 place-items-center rounded border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F]">
+                            <Package size={12} />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="m-0 truncate text-[11px] font-medium text-[#1A1612]">{prod.title}</p>
+                          <p className="m-0 text-[9px] text-[#7D715E]">
+                            {prod.price != null ? `${Number(prod.price).toLocaleString('vi-VN')} đ · ` : ''}Thù lao gốc: 10%
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <h3 className="m-0 text-xs leading-relaxed font-semibold break-words text-[#1A1612]">{card.productTitle || 'Sản phẩm'}</h3>
+        )}
         {card.storeName && <p className="m-0 mt-1 text-[#7D715E] text-[10px] leading-relaxed break-words">Gian hàng <strong className="ml-1 text-[#1A1612] font-normal">{card.storeName}</strong></p>}
         {(card.publicCommissionRate != null || rate != null) && (
           <div className="grid grid-cols-2 mt-2.5 p-2 px-2.5 rounded-lg bg-[#FBF5EB]">

@@ -42,6 +42,7 @@ describe('payout evidence checks, not a fraud probability', () => {
     const request = fixture();
     request.amount = decimal(1500000); request.taxAmount = decimal(0); request.netAmount = decimal(1500000); request.fundedAmount = decimal(-1500000);
     request.collaborator.collaboratorProfile!.taxCode = null;
+    request.status = 'APPROVED';
     expect(evaluatePayoutRisk(request).status).toBe('CLEAR');
   });
   it('does not retroactively reprice a processing or paid tax snapshot', () => {

@@ -598,7 +598,7 @@ export const ShopReturnRequestsPage: React.FC = () => {
                     </div>
 
                     <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] text-[#7D715E]">
-                      <strong className="text-[#4A3E2D]">⚖️ Lưu ý:</strong> Giải trình sẽ được chuyển đến Cổng Trọng tài độc lập SCANMS.
+                      <strong className="text-[#4A3E2D]">Lưu ý:</strong> Giải trình sẽ được chuyển đến Cổng Trọng tài độc lập SCANMS.
                       Trọng tài sẽ xem xét toàn bộ bằng chứng 2 bên và ban hành phán quyết cuối cùng trong vòng 24h.
                       Phán quyết hoàn tiền sẽ tự động kích hoạt hoàn kho và thu hồi hoa hồng KOL.
                     </div>

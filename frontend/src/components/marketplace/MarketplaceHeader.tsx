@@ -29,7 +29,7 @@ export function MarketplaceHeader({
 
   return (
     <div
-      className="marketplace-header sticky top-0 z-40 bg-white shadow-[0_2px_8px_rgb(35_29_21/4%)]"
+      className="marketplace-header sticky top-0 z-40"
       data-compact={compact}
       data-shortcuts={showShortcuts}
     >

@@ -23,7 +23,6 @@ import {
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import './LiveSessionsPage.css';
 
 type Session = {
   governance?: LiveGovernance;
@@ -212,10 +211,10 @@ export default function CollaboratorLiveSessionsPage() {
   return (
     <div className="creator-live-page flex flex-col gap-3 w-full min-w-0 pb-12 text-[#1A1612] text-left">
       <section
-        className="creator-live-toolbar"
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4 p-2 border border-[#EAE4D7] rounded-2xl bg-white"
         aria-label="Quản lý livestream và voucher"
       >
-        <nav className="creator-live-tabs" aria-label="Lọc phiên livestream">
+        <nav className="grid grid-cols-2 sm:grid-flow-col sm:auto-cols-fr w-full gap-2 min-w-0" aria-label="Lọc phiên livestream">
           {renderTab('ALL', 'Tất cả', counts.all)}
           {counts.live > 0 && renderTab('LIVE', 'Đang live', counts.live)}
           {renderTab('UPCOMING', 'Sắp diễn ra', counts.upcoming)}

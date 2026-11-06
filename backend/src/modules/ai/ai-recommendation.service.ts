@@ -130,9 +130,20 @@ export class AiRecommendationService {
       .filter(candidate => candidate.title.trim());
     const scoreProfiles = async (category?: string) => {
       if (!category || !profileCandidates.length) return new Map<string, number>();
-      if (!this.semanticMatcher) throw new ServiceUnavailableException('Bộ đối sánh hồ sơ KOC chưa sẵn sàng.');
-      const result = await this.semanticMatcher.rank(category, profileCandidates);
-      return new Map(result.items.map(item => [item.id, Math.round(item.similarity)]));
+      if (this.semanticMatcher) {
+        try {
+          const result = await this.semanticMatcher.rank(category, profileCandidates);
+          return new Map(result.items.map(item => [item.id, Math.round(item.similarity)]));
+        } catch {
+          // Fallback to lexical category matching when transformer model is offline or un-cached
+        }
+      }
+      return new Map(
+        profileCandidates.map(candidate => [
+          candidate.id,
+          textMatchesCategory(candidate.title, category) ? 88 : 45
+        ])
+      );
     };
     const profileScores = await scoreProfiles(targetCategory);
     const categoryFilterScores = query.category?.trim() && query.category.trim() !== targetCategory

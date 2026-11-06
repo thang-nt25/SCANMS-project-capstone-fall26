@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import {
-  CommissionStatus,
+  CommissionStatus, DealBonusStatus,
   OrderStatus,
   Prisma,
   UserRole,
@@ -324,11 +324,12 @@ export class CommissionsService {
       )
         return false;
 
-      if (commission.commissionAmount.greaterThan(0)) {
+      const baseToRelease = commission.baseCommissionAmount ?? commission.commissionAmount;
+      if (baseToRelease.greaterThan(0)) {
         await this.walletsService.releasePendingBalance(
           tx,
           commission.collaboratorId,
-          commission.commissionAmount,
+          baseToRelease,
           { id: commission.id, type: 'COMMISSION' },
           commission.storeWalletTracked ? commission.order.storeId : undefined,
         );

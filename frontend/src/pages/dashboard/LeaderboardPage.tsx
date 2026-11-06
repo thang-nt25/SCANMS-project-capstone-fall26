@@ -29,7 +29,6 @@ import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { WorkspaceMetrics, workspaceButton } from '@/components/ui/FeatureWorkspace';
-import './LeaderboardPage.css';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);

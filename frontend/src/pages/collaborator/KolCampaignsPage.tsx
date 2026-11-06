@@ -146,7 +146,7 @@ export default function KolCampaignsPage() {
     setActionLoading(campaign.id);
     try {
       await api.post(`/campaigns/${campaign.id}/join`);
-      showToast(`🎉 Chúc mừng! Bạn đã tham gia thành công chiến dịch "${campaign.name}". Hãy lấy link tiếp thị ngay!`);
+      showToast(`Đã tham gia thành công chiến dịch "${campaign.name}".`);
       // Update local explore state
       setExploreCampaigns((prev) =>
         prev.map((c) => (c.id === campaign.id ? { ...c, isJoined: true } : c))
@@ -164,7 +164,7 @@ export default function KolCampaignsPage() {
     setActionLoading(participantId + '-accept');
     try {
       await api.patch(`/campaigns/invitations/${participantId}/accept`, {});
-      showToast(`🎉 Đã chấp nhận tham gia chiến dịch "${campaignName}"!`);
+      showToast(`Đã chấp nhận lời mời tham gia chiến dịch "${campaignName}".`);
       loadInvitations();
       loadExplore();
     } catch (err: any) {

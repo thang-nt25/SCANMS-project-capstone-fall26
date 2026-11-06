@@ -1,5 +1,3 @@
-import './ShopKolHubPage.css';
-import { SendVipCampaignModal } from '../../components/chat/SendVipCampaignModal';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -38,8 +36,8 @@ import {
   RefreshCw,
   FileText,
   Handshake,
-  Megaphone,
   ShieldCheck,
+  UserMinus,
 } from 'lucide-react';
 import api from '../../services/api';
 import { analyticsService, type ReferralOrderItem } from '../../services/analytics.service';
@@ -305,7 +303,9 @@ export default function ShopKolHubPage() {
   const tabParam = searchParams.get('tab') || 'messages';
   const modeParam = searchParams.get('mode'); // 'ai-matching' or null
 
-  const isAiMatchingMode = modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching';
+  const [isAiMatchingMode, setIsAiMatchingMode] = useState<boolean>(() =>
+    modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching'
+  );
   const [kols, setKols] = useState<PartnerKol[]>([]);
   const [allPlatformKols, setAllPlatformKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
@@ -313,7 +313,7 @@ export default function ShopKolHubPage() {
     tabParam === 'deals' ? 'ALL_DEALS' : tabParam === 'leaderboard' ? 'LEADERBOARD' : 'CRM'
   );
   const [activeTab, setActiveTab] = useState<'messages' | 'samples' | 'performance' | 'profile'>(
-    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : 'messages') as any
+    (['messages', 'samples', 'performance', 'profile'].includes(tabParam) ? tabParam : (tabParam === 'collaborators' || tabParam === 'team') ? 'profile' : 'messages') as any
   );
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -321,6 +321,9 @@ export default function ShopKolHubPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDetailHeaderCompact, setIsDetailHeaderCompact] = useState(false);
   useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
+
+  // Chat & Realtime Data Cache
+  const [rawConversations, setRawConversations] = useState<any[]>([]);
 
   // Samples management
   const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>({});
@@ -360,14 +363,26 @@ export default function ShopKolHubPage() {
   const [directoryCreators, setDirectoryCreators] = useState<any[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [connectingKolId, setConnectingKolId] = useState<string | null>(null);
-  const [campaignModalConfig, setCampaignModalConfig] = useState<{
-    isOpen: boolean;
-    lockTarget: boolean;
-    collaboratorId?: string;
-    collaboratorName?: string;
-    conversationId?: string;
-  }>({ isOpen: false, lockTarget: false });
   const [showExclusiveDealModal, setShowExclusiveDealModal] = useState(false);
+  const [terminatingKolId, setTerminatingKolId] = useState<string | null>(null);
+
+  const handleTerminateCollaboration = async (kolId: string) => {
+    const kolObj = kols.find((k) => k.id === kolId) || allPlatformKols.find((k) => k.id === kolId);
+    const kolName = kolObj?.fullName || 'đối tác này';
+    if (!window.confirm(`Bạn có chắc chắn muốn kết thúc quan hệ hợp tác với đối tác ${kolName}? Sau khi kết thúc, đối tác sẽ được rút khỏi danh sách đội ngũ của gian hàng.`)) {
+      return;
+    }
+    setTerminatingKolId(kolId);
+    try {
+      await api.delete(`/store-collaborators/${kolId}${ownedStore?.id ? `?storeId=${ownedStore.id}` : ''}`);
+      toast.success(`Đã kết thúc hợp tác với ${kolName}.`);
+      await loadBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Không thể kết thúc hợp tác lúc này.');
+    } finally {
+      setTerminatingKolId(null);
+    }
+  };
 
   // Click outside listener for KOL actions dropdown
   useEffect(() => {
@@ -386,18 +401,30 @@ export default function ShopKolHubPage() {
 
   // Sync URL Params
   useEffect(() => {
-    if (kolParam && kolParam !== selectedKolId) {
-      setSelectedKolId(kolParam);
+    const kol = searchParams.get('kol');
+    const tab = searchParams.get('tab') || 'messages';
+    const mode = searchParams.get('mode');
+
+    if (kol && kol !== selectedKolId) {
+      setSelectedKolId(kol);
     }
-    if (tabParam === 'deals') {
-      setViewMode('ALL_DEALS');
-    } else if (tabParam === 'leaderboard') {
-      setViewMode('LEADERBOARD');
-    } else if (tabParam && ['messages', 'samples', 'performance', 'profile'].includes(tabParam)) {
-      setViewMode('CRM');
-      setActiveTab(tabParam as any);
+    if (mode === 'ai-matching' || tab === 'radar' || tab === 'ai-matching') {
+      setIsAiMatchingMode(true);
+    } else {
+      setIsAiMatchingMode(false);
+      if (tab === 'deals') {
+        setViewMode('ALL_DEALS');
+      } else if (tab === 'leaderboard') {
+        setViewMode('LEADERBOARD');
+      } else if (tab === 'collaborators' || tab === 'team') {
+        setViewMode('CRM');
+        setActiveTab('profile');
+      } else if (['messages', 'samples', 'performance', 'profile'].includes(tab)) {
+        setViewMode('CRM');
+        setActiveTab(tab as any);
+      }
     }
-  }, [kolParam, tabParam, modeParam]);
+  }, [searchParams, selectedKolId]);
 
   // Load real data from backend
   // Load real data from backend
@@ -414,6 +441,8 @@ export default function ShopKolHubPage() {
       ]);
 
       setSampleProgramStats(statsRes?.data || statsRes || null);
+      const parsedConvs = Array.isArray(convsRes) ? convsRes : convsRes?.data || [];
+      setRawConversations(parsedConvs);
       const sampleData = sampleRes?.data || sampleRes;
       if (sequence !== sampleLoadSequence.current) return;
       if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
@@ -696,10 +725,10 @@ export default function ShopKolHubPage() {
       setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {
-        if (!kolParam || !allKols.some((k) => k.id === kolParam)) {
-          setSelectedKolId(allKols[0].id);
-        } else {
-          setSelectedKolId(kolParam);
+        const targetKolId = kolParam && allKols.some((k) => k.id === kolParam) ? kolParam : allKols[0].id;
+        setSelectedKolId(targetKolId);
+        if (!kolParam) {
+          setSearchParams({ kol: targetKolId, tab: activeTab }, { replace: true });
         }
       } else {
         setSelectedKolId('');
@@ -711,7 +740,7 @@ if (sequence !== sampleLoadSequence.current) return;
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      if (sequence === sampleLoadSequence.current) setLoadingBackendData(false);
+      setLoadingBackendData(false);
     }
   }, [kolParam]);
 
@@ -825,11 +854,13 @@ return true;
 
   // Handler: Select KOL
   const setAiMatchingMode = (enabled: boolean) => {
+    setIsAiMatchingMode(enabled);
     const params = new URLSearchParams(searchParams);
     if (enabled) {
       params.set('tab', 'radar');
       params.delete('mode');
     } else {
+      setViewMode('CRM');
       if (params.get('tab') === 'radar') {
         params.set('tab', 'messages');
       }
@@ -1376,6 +1407,7 @@ return true;
           <button
             type="button"
             onClick={() => {
+              setIsAiMatchingMode(false);
               setViewMode('CRM');
               setSearchParams({ tab: 'messages', kol: selectedKolId }, { replace: true });
             }}
@@ -1392,6 +1424,7 @@ return true;
           <button
             type="button"
             onClick={() => {
+              setIsAiMatchingMode(false);
               setViewMode('LEADERBOARD');
               setSearchParams({ tab: 'leaderboard' }, { replace: true });
             }}
@@ -1408,6 +1441,7 @@ return true;
           <button
             type="button"
             onClick={() => {
+              setIsAiMatchingMode(false);
               setViewMode('ALL_DEALS');
               setSearchParams({ tab: 'deals' }, { replace: true });
             }}
@@ -1424,6 +1458,7 @@ return true;
           <button
             type="button"
             onClick={() => {
+              setIsAiMatchingMode(true);
               setSearchParams({ tab: 'radar' }, { replace: true });
             }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 cursor-pointer ${
@@ -1438,15 +1473,6 @@ return true;
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCampaignModalConfig({ isOpen: true, lockTarget: false })}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-xs font-bold text-[#8C6226] hover:bg-[#F3EFE6] transition cursor-pointer shadow-2xs"
-            title="Gửi thư mời chiến dịch kích cầu diện rộng tới các nhà sáng tạo"
-          >
-            <Megaphone size={14} className="text-[#B88E4F] stroke-[1.75]" />
-            <span>Mời Chiến Dịch Hàng Loạt</span>
-          </button>
         </div>
       </div>
 
@@ -2107,23 +2133,6 @@ return true;
                         <span>Đề xuất Thỏa thuận Độc quyền</span>
 
                       </button>
-
-                      <button
-                        type="button"
-                        id="btn-header-campaign-invite"
-                        onClick={() => setCampaignModalConfig({
-                          isOpen: true,
-                          lockTarget: true,
-                          collaboratorId: selectedKol?.id,
-                          collaboratorName: selectedKol?.fullName,
-                          conversationId: undefined
-                        })}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8C6226] transition cursor-pointer shadow-2xs active:scale-[0.98]"
-                        title={`Mời riêng nhà sáng tạo ${selectedKol?.fullName || 'đối tác'} vào chiến dịch kích cầu`}
-                      >
-                        <Megaphone className="w-3.5 h-3.5 stroke-[1.75] text-[#B88E4F]" />
-                        <span>Mời vào Chiến dịch</span>
-                      </button>
                     </div>
                   </div>
 
@@ -2254,6 +2263,7 @@ return true;
                         hideSidebar
                         hideHeaderInChat
                         className="h-full w-full border-0 rounded-none shadow-none bg-white"
+                        initialConversations={rawConversations}
                       />
                     </div>
                   </div>
@@ -2385,6 +2395,20 @@ return true;
                             >
                               <FileText className="w-3.5 h-3.5 text-[#7D715E]" />
                               <span>Xem hồ sơ & liên hệ</span>
+                            </button>
+
+                            <div className="my-1 border-t border-[#EAE4D7]" />
+
+                            <button
+                              type="button"
+                              id="btn-terminate-collab"
+                              disabled={terminatingKolId === selectedKol.id}
+                              onClick={() => handleTerminateCollaboration(selectedKol.id)}
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-xs font-semibold text-[#DC2626] hover:bg-[#FEE2E2] transition text-left cursor-pointer border-0 disabled:opacity-50"
+                              title="Chấm dứt thỏa thuận hợp tác và rút đối tác khỏi đội ngũ nhãn hàng"
+                            >
+                              <UserMinus className="w-3.5 h-3.5 text-[#DC2626]" />
+                              <span>{terminatingKolId === selectedKol.id ? 'Đang xử lý...' : 'Chấm dứt hợp tác'}</span>
                             </button>
                           </div>
                         )}
@@ -3212,22 +3236,6 @@ setActiveTab('messages');
             setShowExclusiveDealModal(false);
             toast.success('Đã gửi đề xuất Thỏa thuận Độc quyền thành công!');
             setActiveTab('messages');
-          }}
-        />
-      )}
-
-      {campaignModalConfig.isOpen && (
-        <SendVipCampaignModal
-          lockTarget={campaignModalConfig.lockTarget}
-          targetCollaboratorId={campaignModalConfig.collaboratorId}
-          collaboratorName={campaignModalConfig.collaboratorName}
-          conversationId={campaignModalConfig.conversationId}
-          onClose={() => setCampaignModalConfig(prev => ({ ...prev, isOpen: false }))}
-          onSuccess={() => {
-            setCampaignModalConfig(prev => ({ ...prev, isOpen: false }));
-            toast.success('Đã gửi thư mời chiến dịch kích cầu thành công!');
-            // Success callback handled by toast
-
           }}
         />
       )}

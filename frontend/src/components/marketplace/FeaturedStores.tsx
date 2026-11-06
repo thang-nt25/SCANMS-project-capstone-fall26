@@ -25,7 +25,7 @@ export function FeaturedStores({ stores, loading, failed, onRetry }: { stores: M
   return (
     <section id="featured-stores" aria-labelledby="featured-stores-title" className="scroll-mt-36 bg-[#FAF8F5] py-5 text-left sm:py-7">
       <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
-        <div className="rounded-3xl border border-[#EAE4D7] bg-white px-4 py-6 sm:px-6 sm:py-7" {...interactionProps}>
+        <div className="rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)] px-5 py-6 sm:px-6 sm:py-7" {...interactionProps}>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <p className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#B88E4F]">THƯƠNG HIỆU TRÊN SCANMS</p>

@@ -1,5 +1,4 @@
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
-import './ShopCollaborationPage.css';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -618,6 +617,9 @@ export default function ShopCollaborationPage() {
                 lastMessageText: '',
                 lastMessageAt: undefined,
               };
+              if (!mappedStores.some((s) => s.id === targetNewStore!.id)) {
+                mappedStores.unshift(targetNewStore);
+              }
             }
           } catch {}
         }
@@ -655,10 +657,20 @@ export default function ShopCollaborationPage() {
   }, [loadConversationsAndStores]);
 
   const selectedStore = useMemo(() => {
-    if (activeTargetStore && activeTargetStore.id === selectedStoreId) {
-      return activeTargetStore;
+    if (selectedStoreId) {
+      const matchInStores = stores.find((s) => s.id === selectedStoreId);
+      if (matchInStores) return matchInStores;
+      if (activeTargetStore && activeTargetStore.id === selectedStoreId) return activeTargetStore;
+      const matchInCache = cachedPartnerStores.find((s) => s.id === selectedStoreId);
+      if (matchInCache) return matchInCache;
+      return activeTargetStore || ({
+        id: selectedStoreId,
+        name: 'Đang tải gian hàng...',
+        category: 'Gian hàng đối tác',
+        defaultCommissionRate: 10,
+      } as PartnerStore);
     }
-    return stores.find((s) => s.id === selectedStoreId) || stores[0] || activeTargetStore || null;
+    return stores[0] || activeTargetStore || null;
   }, [stores, selectedStoreId, activeTargetStore]);
   const tabScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -764,7 +776,7 @@ export default function ShopCollaborationPage() {
         setProductsLoadError(true);
       }
     } finally {
-      if (sequence === productLoadSequence.current) setLoadingProducts(false);
+      setLoadingProducts(false);
     }
   }, []);
 
@@ -800,7 +812,7 @@ export default function ShopCollaborationPage() {
         setSamplesLoadError(true);
       }
     } finally {
-      if (sequence === sampleLoadSequence.current) setLoadingSamples(false);
+      setLoadingSamples(false);
     }
   }, []);
 
@@ -972,7 +984,7 @@ export default function ShopCollaborationPage() {
 setActiveTab('samples');
       setSampleStatusFilter('ALL');
       if (selectedStore?.id) {
-        updateUrl(selectedStore.id, 'samples');
+        updateUrl(selectedStoreId || selectedStore?.id, 'samples');
         void loadStoreSamples(selectedStore.id);
       }
       toast.success(editingRequest ? 'Đã cập nhật yêu cầu và gửi lại Shop chờ duyệt.' : `Đã gửi yêu cầu nhận mẫu "${requestSampleModalProduct.title}" kèm cam kết video trong 14 ngày sau khi nhận hàng.`);
@@ -983,7 +995,7 @@ setActiveTab('samples');
         setRequestSampleModalProduct(null);
         setActiveTab('samples');
         setSampleStatusFilter('ALL');
-        if (selectedStore?.id) updateUrl(selectedStore.id, 'samples');
+        if (selectedStore?.id) updateUrl(selectedStoreId || selectedStore?.id, 'samples');
         toast.error(editingRequest ? message : 'Bạn đã có yêu cầu cho sản phẩm này. Xem tại tab Hàng mẫu.');
       } else {
         toast.error(message);
@@ -1443,7 +1455,7 @@ setActiveTab('samples');
                         aria-selected={isActive}
                         onClick={() => {
                           setActiveTab(tab.id as any);
-                          updateUrl(selectedStore.id, tab.id);
+                          updateUrl(selectedStoreId || selectedStore?.id, tab.id);
                         }}
                         className={`flex min-w-0 min-h-[40px] items-center justify-center gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none border ${
                           isActive
@@ -1683,7 +1695,7 @@ setActiveTab('samples');
                                 </div>
 
                                 {displayedSample && <button type="button"
-                                  onClick={() => { setActiveTab('samples'); updateUrl(selectedStore.id, 'samples'); }}
+                                  onClick={() => { setActiveTab('samples'); updateUrl(selectedStoreId || selectedStore?.id, 'samples'); }}
                                   className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1.5 text-left text-xs font-semibold text-[#795A2D]"
                                   title="Xem yêu cầu trong tab Hàng mẫu">
                                   {sampleStatusLabels[displayedSample.status] || 'Đã từng xin mẫu'} · Xem yêu cầu
@@ -1773,7 +1785,7 @@ setActiveTab('samples');
                           type="button"
                           onClick={() => {
                             setActiveTab('products');
-                            updateUrl(selectedStore.id, 'products');
+                            updateUrl(selectedStoreId || selectedStore?.id, 'products');
                           }}
                           className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
                         >

@@ -25,7 +25,6 @@ import {
   Clock,
   Users,
   Printer,
-  ChevronDown,
   MoreHorizontal,
   Info,
   Copy,
@@ -67,9 +66,6 @@ import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
 import { uploadService } from '../../services/upload.service';
 import { StatCard } from '../../components/ui/StatCard';
 import ShopSampleManagementTab from './ShopSampleManagementTab';
-import './ManualOrderDialog.css';
-import './OrdersManagementPage.css';
-import './ShippingDispatchModal.css';
 
 const ManualOrderAddressMap = lazy(() => import('../../components/customer/AddressLocationPicker').then(module => ({ default: module.AddressLocationPicker })));
 
@@ -140,6 +136,9 @@ function ProductThumbnail({
     </div>
   );
 }
+
+// In-memory orders snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
+let lastOrdersSnapshot: { orders: StoreOrderRecord[]; total: number; totalPages: number } | null = null;
 
 export default function OrdersManagementPage({
   initialAction,
@@ -220,12 +219,12 @@ export default function OrdersManagementPage({
   const [result, setResult] = useState<ExcelImportResult>();
 
   // Real store orders list state
-  const [orders, setOrders] = useState<StoreOrderRecord[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [orders, setOrders] = useState<StoreOrderRecord[]>(() => lastOrdersSnapshot?.orders || []);
+  const [ordersLoading, setOrdersLoading] = useState(() => !lastOrdersSnapshot);
   const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const lastFetchTimeRef = useRef<number>(Date.now());
-  const [ordersTotal, setOrdersTotal] = useState(0);
-  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [ordersTotal, setOrdersTotal] = useState(() => lastOrdersSnapshot?.total || 0);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(() => lastOrdersSnapshot?.totalPages || 1);
   const [ordersPage, setOrdersPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
@@ -409,7 +408,7 @@ export default function OrdersManagementPage({
       if (background && (document.hidden || ordersAutoRefreshPaused.current || Date.now() - lastStartedAt < 9000)) return;
       requestRunning = true;
       lastStartedAt = Date.now();
-      if (!background) setOrdersLoading(true);
+      if (!background && orders.length === 0) setOrdersLoading(true);
       else setIsBackgroundRefreshing(true);
       try {
         const res = await orderService.getMyStoreOrders({
@@ -422,6 +421,11 @@ export default function OrdersManagementPage({
           storeId,
         }, background || isManualFresh);
         if (active && res) {
+          lastOrdersSnapshot = {
+            orders: res.items || [],
+            total: res.pagination?.total || 0,
+            totalPages: res.pagination?.totalPages || 1,
+          };
           setOrders(res.items || []);
           setOrdersTotal(res.pagination?.total || 0);
           setOrdersTotalPages(res.pagination?.totalPages || 1);
@@ -2242,7 +2246,7 @@ export default function OrdersManagementPage({
                         <option value="OTHER">Lý do khác</option>
                       </select>
                     </label>
-                    <label className="block font-bold">Giải thích / hướng xử lý gửi khách
+                    <label className="block font-bold">Phản hồi khiếu nại khách hàng
                       <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={850} rows={3} placeholder="Nêu rõ tình trạng sản phẩm, bằng chứng và căn cứ chấp nhận hoặc từ chối."
                         className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
                     </label>
@@ -2848,15 +2852,10 @@ export default function OrdersManagementPage({
                       e.target.value = "";
                     }}
                   />
-                  <details className="group rounded-xl border border-line bg-white text-xs" data-excel-instructions>
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-3 font-medium text-muted [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><Info size={14} className="text-brand-strong" />Hướng dẫn chuẩn bị file</span><ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180" /></summary>
-                    <div className="space-y-2 border-t border-line px-3.5 py-3 leading-relaxed text-muted">
-                      <p>Cột bắt buộc: <code className="break-words text-[11px] text-ink">order_code, customer_name, customer_phone, shipping_address, sku, quantity</code>.</p>
-                      <p>Cột tùy chọn: <code className="text-[11px] text-ink">status, unit_price, discount_amount</code>.</p>
-                      <p>Định dạng cột số điện thoại là Text để giữ số 0 ở đầu. Bạn có thể tải file mẫu để điền đúng cấu trúc.</p>
-                      <p>Đơn hợp lệ vẫn được nhập nếu các đơn khác có lỗi. Kết quả và lỗi từng dòng sẽ hiển thị sau khi xử lý.</p>
-                    </div>
-                  </details>
+                  <div className="rounded-xl border border-line bg-[#FAF8F5] p-3 text-xs flex flex-wrap items-center justify-between gap-2 text-muted">
+                    <span className="flex items-center gap-1.5"><Info size={14} className="text-brand-strong shrink-0" /> Định dạng cột bắt buộc: <code className="text-ink font-semibold">order_code, customer_name, customer_phone, shipping_address, sku, quantity</code></span>
+                    <span className="text-[11px] text-[#7D715E]">Cột số điện thoại định dạng Text để giữ số 0</span>
+                  </div>
                   {result && (
                     <section className="space-y-4">
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

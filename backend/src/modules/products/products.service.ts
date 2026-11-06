@@ -320,6 +320,13 @@ export class ProductsService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
+    const isTopProductsQuery = !query.search?.trim() && !query.category && page === 1 && limit <= 10;
+    const prodCacheKey = `products:shop:top:${viewer?.id || ''}:${query.storeId || ''}:${limit}`;
+    if (isTopProductsQuery && this.cacheService?.get) {
+      const cached = await this.cacheService.get(prodCacheKey);
+      if (cached) return cached;
+    }
+
     const UUID_REGEX =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -448,7 +455,7 @@ export class ProductsService {
           Array<{ caption: string | null; urlOrContent: string }>
         >();
 
-    return {
+    const finalProductsResult = {
       items: canViewEvidence
         ? items.map((product) =>
             this.attachProductEvidence(
@@ -464,6 +471,10 @@ export class ProductsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    if (isTopProductsQuery && this.cacheService?.set) {
+      await this.cacheService.set(prodCacheKey, finalProductsResult, 30);
+    }
+    return finalProductsResult;
   }
 
   /**
@@ -1270,6 +1281,7 @@ export class ProductsService {
       }
       return {
         sku: variantSkus[index],
+        barcode: variant.barcode?.trim() || null,
         name: variant.name.trim(),
         attributes: Object.fromEntries(
           Object.entries(raw)
@@ -1960,6 +1972,7 @@ export class ProductsService {
         assertFloor(price, previous?.floorPrice ?? currentPricing.floorPrice);
         const data = {
           sku: normalizedSkus[index],
+          barcode: variant.barcode?.trim() || null,
           name: variant.name.trim(),
           attributes: normalizedAttributes[index],
           price,

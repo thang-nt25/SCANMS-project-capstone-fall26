@@ -156,14 +156,29 @@ export async function createDealProposal(
             productId,
           })),
         });
+      const scopedProductsList = await tx.product.findMany({
+        where: { id: { in: scope.productIds } },
+        select: { id: true, title: true, imageUrl: true, price: true },
+      });
       const card = {
         type: 'EXCLUSIVE_DEAL_PROPOSAL',
         proposalId: proposal.id,
         initiatorRole: initiatedById ? 'SHOP_MANAGER' : 'COLLABORATOR',
         productId: product.id,
-        productTitle: product.title,
+        productTitle:
+          scope.productIds.length > 1
+            ? `${product.title} (+${scope.productIds.length - 1} sản phẩm khác)`
+            : product.title,
         productImage: product.imageUrl,
         productIds: scope.productIds,
+        productTitles: scopedProductsList.map((p) => p.title),
+        products: scopedProductsList.map((p) => ({
+          id: p.id,
+          title: p.title,
+          imageUrl: p.imageUrl,
+          price: Number(p.price),
+          baseRate: 10,
+        })),
         scopeType: scope.scopeType,
         storeId: product.storeId,
         storeName: product.store.name,

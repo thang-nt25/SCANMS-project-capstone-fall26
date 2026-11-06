@@ -3,15 +3,15 @@ import { CalendarDays, Percent, Ticket, Package, Video } from 'lucide-react';
 // Only format the complete invitation template; custom or partial messages stay as text.
 export function parseLiveInvite(text?: string | null) {
   if (!text) return null;
-  const marker = '🔴 LỜI MỜI LIVESTREAM TỪ GIAN HÀNG ';
+  const marker = 'LỜI MỜI LIVESTREAM TỪ GIAN HÀNG ';
   const start = text.indexOf(marker);
   if (start < 0) return null;
   const lines = text.slice(start).split(/\r?\n/);
   const fields = [
     { prefix: '⏰ Lịch phát sóng:', label: 'Lịch phát sóng', icon: CalendarDays },
-    { prefix: '💰 Hoa hồng phiên Live:', label: 'Hoa hồng', icon: Percent },
-    { prefix: '🎁 Voucher độc quyền:', label: 'Voucher độc quyền', icon: Ticket },
-    { prefix: '📦 Sản phẩm ghim:', label: 'Sản phẩm ghim', icon: Package },
+    { prefix: 'Hoa hồng phiên Live:', label: 'Hoa hồng', icon: Percent },
+    { prefix: 'Voucher độc quyền:', label: 'Voucher độc quyền', icon: Ticket },
+    { prefix: 'Sản phẩm ghim:', label: 'Sản phẩm ghim', icon: Package },
   ];
   const values = fields.map(field => {
     const line = lines.find(item => item.startsWith(field.prefix));

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import './SocialChannelsPage.css';
 import { useNavigate } from 'react-router-dom';
 import {
   Share2,

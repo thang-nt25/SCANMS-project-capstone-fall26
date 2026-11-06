@@ -196,6 +196,15 @@ export class ReturnController {
     return this.returns.confirmCompletion(userId, role, id);
   }
 
+  @Post(':id/exchange-receipt')
+  async confirmExchangeReceipt(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.confirmExchangeReceipt(userId, role, id);
+  }
+
   @Post(':id/disputes')
   async openDispute(
     @CurrentUser('id') userId: string,

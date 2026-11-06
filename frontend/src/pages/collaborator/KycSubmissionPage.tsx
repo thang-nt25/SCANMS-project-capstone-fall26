@@ -1,5 +1,4 @@
 import React, { useState, useLayoutEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import './KycSubmissionPage.css';
 import {
   Link as LinkIcon,
   UserCheck,

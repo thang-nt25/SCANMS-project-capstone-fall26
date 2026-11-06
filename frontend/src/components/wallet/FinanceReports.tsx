@@ -110,24 +110,24 @@ interface Executive {
   taxWithheld: string;
   holdDays: number;
 }
+const executiveSummaryCache = new Map<string, Executive>();
+
 export function ExecutiveFinanceReport() {
   const [month, setMonth] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 7));
-  const [data, setData] = useState<Executive | null>(null);
+  const [data, setData] = useState<Executive | null>(() => executiveSummaryCache.get(month) || null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const load = useCallback(async () => {
-    setLoading(true);
-    setData(null);
+    if (!data && !executiveSummaryCache.has(month)) setLoading(true);
     setError("");
     try {
-      setData(
-        unwrap<Executive>(
-          await api.get("/analytics/executive-summary", {
-            params: { yearMonth: month },
-            headers: { "x-skip-cache": "true" },
-          }),
-        ),
+      const res = unwrap<Executive>(
+        await api.get("/analytics/executive-summary", {
+          params: { yearMonth: month },
+        }),
       );
+      executiveSummaryCache.set(month, res);
+      setData(res);
     } catch {
       setData(null);
       setError(

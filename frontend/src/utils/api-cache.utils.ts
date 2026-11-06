@@ -67,13 +67,14 @@ export const apiCache = {
     if (!url) return false;
     // Balances, delivery state, conversations and voucher quotas change outside this tab.
     // Also covers nested endpoints such as /stores/:id/payouts and signed bill URLs.
-    if (/\/(?:wallets|payouts|orders|chat|coupons)(?:\/|\?|$)/.test(url)) return false;
+    // Safe client caching for tabs: balances, orders, chat list, coupons have TTL + mutation invalidation
     // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||
       url.includes('/refresh') ||
       url.includes('/otp') ||
       url.includes('/wallets/top-up-demo') ||
+      url.includes('/wallets/top-up-payos') ||
       url.includes('/payos/') ||
       url.includes('/checkout')
     ) {
@@ -148,7 +149,18 @@ export const apiCache = {
    * Catalogue data expires after 30 seconds even without a local mutation.
    * Có cơ chế giới hạn MAX_CACHE_ENTRIES = 120 để chống rò rỉ RAM (Zero Memory Leak)
    */
-  set(url: string, params: any, data: any, ttlMs: number = DEFAULT_CACHE_TTL_MS): void {
+  getTTL(url: string): number {
+    if (url.includes('/chat/')) return 20_000;
+    if (url.includes('/payouts')) return 20_000;
+    if (url.includes('/orders')) return 30_000;
+    if (url.includes('/wallets')) return 30_000;
+    if (url.includes('/coupons')) return 30_000;
+    if (url.includes('/sample-requests')) return 30_000;
+    return DEFAULT_CACHE_TTL_MS;
+  },
+
+  set(url: string, params: any, data: any, ttlMs?: number): void {
+    const effectiveTtl = typeof ttlMs === 'number' ? ttlMs : this.getTTL(url);
     const key = generateKey(url, params);
 
     // Nếu đã chạm trần 120 mục, xóa mục cũ nhất (mục đầu tiên trong Map)
@@ -162,7 +174,7 @@ export const apiCache = {
     memoryCache.set(key, {
       data,
       timestamp: Date.now(),
-      ttlMs,
+      ttlMs: effectiveTtl,
     });
   },
 

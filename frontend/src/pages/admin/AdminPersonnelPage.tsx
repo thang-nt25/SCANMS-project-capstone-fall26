@@ -38,10 +38,13 @@ const LOCKED_CATEGORIES = [
   'Thiết bị gia dụng & Đồ bếp thông minh',
 ];
 
+let cachedStaffList: InternalStaffMember[] = [];
+let cachedStoresList: AdminStoreOption[] = [];
+
 export const AdminPersonnelPage: React.FC = () => {
-  const [staffList, setStaffList] = useState<InternalStaffMember[]>([]);
-  const [stores, setStores] = useState<AdminStoreOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [staffList, setStaffList] = useState<InternalStaffMember[]>(() => cachedStaffList);
+  const [stores, setStores] = useState<AdminStoreOption[]>(() => cachedStoresList);
+  const [loading, setLoading] = useState(() => cachedStaffList.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'SHOP_MANAGER' | 'SYSTEM_MANAGER' | 'SYSTEM_ADMIN' | 'STORES'>('ALL');
   const [storeStatusFilter, setStoreStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'>('ALL');
@@ -131,12 +134,14 @@ export const AdminPersonnelPage: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    setLoading(true);
+    if (cachedStaffList.length === 0) setLoading(true);
     try {
       const [staffData, storeData] = await Promise.all([
         personnelService.getStaffList(),
         personnelService.getAdminStores(true),
       ]);
+      cachedStaffList = staffData;
+      cachedStoresList = storeData;
       setStaffList(staffData);
       setStores(storeData);
       if (storeData.length > 0 && !staffForm.storeId) {

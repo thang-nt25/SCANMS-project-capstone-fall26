@@ -45,12 +45,14 @@ describe('AffiliateDealsService', () => {
       product: {
         findUnique: productFindMock,
         findFirst: productFindMock,
+        findMany: jest.fn(async () => { const p = await productFindMock(); return p ? [p] : []; }),
       },
       collaboratorProfile: {
         findUnique: jest.fn().mockResolvedValue({ socialLinksJson: {} }),
       },
       exclusiveDealProposal: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },

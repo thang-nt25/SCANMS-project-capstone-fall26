@@ -21,7 +21,6 @@ import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { Select } from '../../components/ui/Select';
-import './StoreReferralLinksPage.css';
 
 export default function StoreReferralLinksPage() {
   const initStartedRef = useRef(false);

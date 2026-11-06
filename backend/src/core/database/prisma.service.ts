@@ -26,12 +26,12 @@ export class PrismaService
       connectionString?.includes('pooler') ||
       connectionString?.includes('sslmode');
     const configuredPoolMax = Number(
-      configService?.get<string>('DB_POOL_MAX') || process.env.DB_POOL_MAX || 5,
+      configService?.get<string>('DB_POOL_MAX') || process.env.DB_POOL_MAX || 15,
     );
     // Tối ưu pool để hỗ trợ các batch transaction song song ($transaction) mà không bị nghẽn
     const poolMax = Number.isFinite(configuredPoolMax)
-      ? Math.min(10, Math.max(2, Math.trunc(configuredPoolMax)))
-      : 5;
+      ? Math.min(30, Math.max(5, Math.trunc(configuredPoolMax)))
+      : 15;
     const pool = new Pool({
       connectionString,
       max: poolMax,
@@ -50,8 +50,7 @@ export class PrismaService
 
     const adapter = new PrismaPg(pool);
 
-    // Allow concurrent requests to queue for the small connection pool.
-    // Prisma's default 2s acquisition limit is shorter than the pg pool limit.
+    // Allow concurrent requests to queue for the connection pool.
     super({ adapter, transactionOptions: { maxWait: 15000 } });
     this.pool = pool;
   }

@@ -371,7 +371,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [policyError, setPolicyError] = useState<string | null>(null);
 
   // PayOS is selected by default; customers can also choose their SCANMS wallet.
-  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET'>('PAYOS');
+  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET' | 'COD'>('PAYOS');
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
 
@@ -523,7 +523,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [payosAvailable, setPayosAvailable] = useState<boolean | null>(null);
 
   // Normalize active items to order
-  const activeItems = useMemo<CartItem[]>(() => {
+  const computedActiveItems = useMemo<CartItem[]>(() => {
     if (checkoutItems && checkoutItems.length > 0) {
       return checkoutItems.map((item) => ({
         ...item,
@@ -568,6 +568,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     return [];
   }, [checkoutItems, product, store, selectedVariantId, singleQuantity]);
+  // The product page passes fresh product/store objects on unrelated renders.
+  // Preserve the cart reference until its actual contents change, so an in-flight
+  // GHN quote is not cancelled and restarted continuously.
+  const activeItemsSnapshot = JSON.stringify(computedActiveItems);
+  const activeItemsRef = useRef({ snapshot: '', items: computedActiveItems });
+  if (activeItemsRef.current.snapshot !== activeItemsSnapshot) {
+    activeItemsRef.current = { snapshot: activeItemsSnapshot, items: computedActiveItems };
+  }
+  const activeItems = activeItemsRef.current.items;
 
   // Group active items by Shop
   const itemsGroupedByShop = useMemo(() => {
@@ -1533,7 +1542,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       Đăng nhập để tiếp tục thanh toán
                     </h3>
                     <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
-                      Vui lòng xác thực tài khoản Google hoặc Email để quản lý đơn mua và kích hoạt bảo hộ Escrow 14 ngày.
+                      Đăng nhập Google hoặc Email để quản lý đơn mua và bảo hộ đối soát 14 ngày.
                     </p>
 
                     {loginError && (
@@ -1657,9 +1666,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               <MapPin className="w-4 h-4 text-[#C59B58] shrink-0" />
                               Đang sử dụng địa chỉ giao hàng mới bên dưới
                             </span>
-                            <span className="text-[11px] text-[#7D715E]">
-                              (Bấm vào thẻ địa chỉ ở trên nếu muốn dùng lại)
-                            </span>
+                            
                           </div>
                         )}
 
@@ -1700,7 +1707,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                 <div className="flex items-center gap-2 shrink-0 self-center">
                                   {isSelected && (
                                     <span className="text-[11px] font-bold text-[#B88E4F]">
-                                      Đang dùng ✓
+                                      Đang chọn
                                     </span>
                                   )}
                                   <button

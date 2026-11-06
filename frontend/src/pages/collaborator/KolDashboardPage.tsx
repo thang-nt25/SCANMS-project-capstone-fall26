@@ -1,4 +1,3 @@
-import './KolDashboardPage.css';
 import AffiliatePerformanceChart from '../../components/affiliate/AffiliatePerformanceChart';
 import { useState, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -522,19 +521,19 @@ export default function KolDashboardPage() {
       </div>
 
       {/* KHỐI BÁO CÁO CHI TIẾT GỌN GÀNG DẠNG SUB-TABS (TRÁNH KÉO DÀI TRANG) */}
-      <div className="kol-detail-report flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
+      <div className="flex flex-col min-w-0 rounded-2xl border border-[#EAE4D7] bg-white shadow-xs overflow-hidden">
         {/* Khay tab điều hướng */}
         <div className="px-3 py-3 border-b border-[#EAE4D7] bg-white">
-          <div className="kol-report-tabs" role="group" aria-label="Loại báo cáo tiếp thị">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5" role="group" aria-label="Loại báo cáo tiếp thị">
             {([
               { id: 'orders', label: 'Đơn hàng', count: referralOrders.length },
               { id: 'products', label: 'Sản phẩm', count: topProducts.length },
               { id: 'stores', label: 'Gian hàng', count: storeBreakdown.length },
               { id: 'live', label: 'Livestream', count: liveSummary.sessions.length },
             ] as const).map((tab, index) => (
-              <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
-                <span className="kol-report-step" aria-hidden="true">{index + 1}</span>
-                <span>{tab.label}</span><small>{tab.count}</small>
+              <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center justify-center gap-2 min-h-[42px] sm:min-h-[46px] px-2.5 py-2 border rounded-[10px] text-[11px] sm:text-[12px] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:outline-offset-2 ${activeTab === tab.id ? "border-[#eedfc6] bg-[#fbf5eb] text-[#1a1612] font-semibold" : "border-[#eae4d7] bg-white text-[#7d715e] font-medium"}`}>
+                <span className={`grid place-items-center shrink-0 w-[25px] h-[25px] border rounded-full text-[11px] font-normal ${activeTab === tab.id ? "border-[#c59b58] text-[#9a7135]" : "border-[#eae4d7]"}`} aria-hidden="true">{index + 1}</span>
+                <span>{tab.label}</span><small className="rounded-[5px] px-[5px] py-[1px] bg-[#faf8f5] text-[10px] tabular-nums text-[#7d715e]">{tab.count}</small>
               </button>
             ))}
           </div>

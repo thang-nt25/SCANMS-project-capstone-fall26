@@ -1,25 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Tag,
-  Ticket,
-  Plus,
-  Copy,
-  Check,
-  Pause,
-  Play,
-  Trash2,
-  Search,
-  Store,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Percent,
-  Loader2,
-  Sparkles,
-  ChevronDown,
-  DollarSign,
-} from 'lucide-react';
+import { Tag, Ticket, Plus, Copy, Check, Pause, Play, Trash2, Search, Store, AlertCircle, Clock, CheckCircle2, XCircle, Percent, Loader2, Sparkles, ChevronDown, DollarSign, X } from 'lucide-react';
 import {
   couponService,
   type CouponItem,
@@ -29,7 +9,6 @@ import {
 } from '../../services/coupon.service';
 import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
-import './KolCouponsPage.css';
 
 interface EligibleStore {
   id?: string;
@@ -850,7 +829,7 @@ export const KolCouponsPage: React.FC = () => {
                 aria-label="Đóng đề xuất mã giảm giá"
                 className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-lg hover:bg-[#F3EFE6] transition-colors cursor-pointer"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
@@ -1279,19 +1258,19 @@ export const KolCouponsPage: React.FC = () => {
                 {/* 4. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
                   <div className={`flex items-center gap-1.5 ${isLengthValid ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{isLengthValid ? '✓' : '•'}</span>
+                    {isLengthValid ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Từ 4 đến 20 ký tự</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${isAlphanumeric && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{isAlphanumeric && proposeCode ? '✓' : '•'}</span>
+                    {isAlphanumeric && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Chỉ dùng chữ cái & số</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{hasLetter ? '✓' : '•'}</span>
+                    {hasLetter ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Có ít nhất 1 chữ cái</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${!isBanned && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{!isBanned && proposeCode ? '✓' : '•'}</span>
+                    {!isBanned && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Không chứa từ khóa cấm</span>
                   </div>
                 </div>
@@ -1410,7 +1389,7 @@ export const KolCouponsPage: React.FC = () => {
             className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] transition-colors cursor-pointer shrink-0 -mr-1 -mt-1"
             title="Đóng thông báo"
           >
-            ✕
+            <X size={15} />
           </button>
         </div>
       )}

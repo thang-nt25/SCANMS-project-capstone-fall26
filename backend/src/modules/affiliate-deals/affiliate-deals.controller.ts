@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -84,6 +85,16 @@ export class AffiliateDealsController {
     @Body() dto: CreateShopDealOfferDto,
   ) {
     return this.service.createShopOffer(userId, role, dto);
+  }
+
+    @Get('collaborator-products')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({ summary: 'Lấy danh sách sản phẩm kèm trạng thái Deal độc quyền hiện hành của KOL' })
+  getCollaboratorDealProducts(
+    @Query('collaboratorId') collaboratorId: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.getCollaboratorDealProducts(collaboratorId, storeId);
   }
 
   @Get('shop')

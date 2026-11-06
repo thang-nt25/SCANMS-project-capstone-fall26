@@ -17,7 +17,7 @@ export class WalletSummaryService {
   ) {}
 
   async getMyWallet(collaboratorId: string) {
-    const [wallet, profile, partnerships] = await Promise.all([
+    const [wallet, profile, partnerships, activeDeals] = await Promise.all([
       this.prisma.wallet.upsert({
         where: { collaboratorId },
         update: {},
@@ -56,6 +56,24 @@ export class WalletSummaryService {
           store: { select: { name: true, logoUrl: true } } },
         orderBy: { store: { name: 'asc' } },
       }),
+      (this.prisma as any).exclusiveDealProposal?.findMany
+        ? (this.prisma as any).exclusiveDealProposal.findMany({
+            where: { collaboratorId, status: 'APPROVED' },
+            select: {
+              id: true,
+              storeId: true,
+              store: { select: { id: true, name: true, logoUrl: true } },
+              product: { select: { id: true, title: true, imageUrl: true } },
+              proposedCommissionRate: true,
+              approvedCommissionRate: true,
+              targetOrders: true,
+              targetRevenue: true,
+              commitmentStartedAt: true,
+              commitmentEndsAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([])
     ]);
 
     const hasBankAccount = Boolean(
@@ -85,11 +103,15 @@ export class WalletSummaryService {
       pendingBalance: wallet?.pendingBalance.toFixed(2) ?? '0.00',
       availableBalance: wallet?.availableBalance.toFixed(2) ?? '0.00',
       shoppingBalance: wallet?.shoppingBalance?.toFixed(2) ?? '0.00',
+      conditionalDealEscrowBalance: (wallet as any)?.conditionalDealEscrowBalance?.toFixed(2) ?? '0.00',
       earningsReviewRequired,
       stores: (wallet?.storeWallets ?? []).map((balance) => ({
         storeId: balance.storeId,
         storeName: balance.store.name,
-        availableBalance: balance.availableBalance.toFixed(2),
+        availableBalance: Prisma.Decimal.min(
+          balance.availableBalance,
+          wallet?.availableBalance ?? new Prisma.Decimal(0),
+        ).toFixed(2),
         pendingBalance: balance.pendingBalance.toFixed(2),
         isActive:
           !balance.store.isDeleted &&
@@ -139,6 +161,19 @@ export class WalletSummaryService {
               accountName: profile.bankAccountName,
             }
           : null,
+      activeDeals: (activeDeals || []).map((deal: any) => ({
+        id: deal.id,
+        storeId: deal.storeId,
+        store: deal.store,
+        product: deal.product,
+        proposedCommissionRate: Number(deal.proposedCommissionRate ?? 10),
+        approvedCommissionRate: Number(deal.approvedCommissionRate ?? 10),
+        bonusRate: Math.max(0, Number(deal.approvedCommissionRate ?? 10) - 10),
+        targetOrders: deal.targetOrders ?? null,
+        targetRevenue: deal.targetRevenue ? Number(deal.targetRevenue) : null,
+        commitmentStartedAt: deal.commitmentStartedAt ? deal.commitmentStartedAt.toISOString() : null,
+        commitmentEndsAt: deal.commitmentEndsAt ? deal.commitmentEndsAt.toISOString() : null,
+      })),
     };
   }
 
