@@ -45,11 +45,10 @@ export class CreatePricePromotionDto {
   @Min(0.01)
   @Max(1000000000000)
   proposedPrice!: number;
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Max(1000000000000)
-  budgetTotal!: number;
+  budgetTotal?: number;
   @Type(() => Date) @IsDate() startsAt!: Date;
   @Type(() => Date) @IsDate() endsAt!: Date;
   @IsString() @MinLength(10) @MaxLength(1000) reason!: string;
@@ -76,11 +75,10 @@ export class BatchCreatePricePromotionDto {
   @Type(() => BatchPromotionItemDto)
   items!: BatchPromotionItemDto[];
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Max(1000000000000)
-  budgetTotal!: number;
+  budgetTotal?: number;
 
   @Type(() => Date) @IsDate() startsAt!: Date;
   @Type(() => Date) @IsDate() endsAt!: Date;

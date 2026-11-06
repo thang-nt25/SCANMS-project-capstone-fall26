@@ -248,7 +248,8 @@ export class PricingService {
       throw new BadRequestException('Thời gian khuyến mãi không hợp lệ hoặc quá 366 ngày.');
 
     const uniqueProductIds: string[] = Array.from(new Set(dto.items.map((i) => i.productId)));
-    const budgetPerItem = Math.max(1, Math.round(Number(dto.budgetTotal) / dto.items.length));
+    const effectiveBudget = dto.budgetTotal ? Number(dto.budgetTotal) : 1000000000000;
+    const budgetPerItem = Math.max(1, Math.round(effectiveBudget / dto.items.length));
 
     return this.prisma.$transaction(async (tx) => {
       await lockPricingProducts(tx, uniqueProductIds);
@@ -288,7 +289,7 @@ export class PricingService {
           details: {
             itemCount: dto.items.length,
             productIds: uniqueProductIds.join(','),
-            budgetTotal: dto.budgetTotal,
+            budgetTotal: dto.budgetTotal ?? 1000000000000,
             startsAt: dto.startsAt,
             endsAt: dto.endsAt,
             reason: dto.reason,
@@ -335,7 +336,7 @@ export class PricingService {
           proposedPrice: dto.proposedPrice,
           startsAt: dto.startsAt,
           endsAt: dto.endsAt,
-          budgetTotal: dto.budgetTotal,
+          budgetTotal: dto.budgetTotal ?? 0,
           reason: dto.reason.trim(),
         },
       });

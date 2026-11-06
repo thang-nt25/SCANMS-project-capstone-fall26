@@ -283,7 +283,15 @@ private readonly commissionRulesService?: CommissionRulesService,
     return this.present(await this.scopedDetail(userId, role, id), role !== UserRole.CUSTOMER);
   }
 
+  private static readonly shopQueueCache = new Map<string, { data: any; cachedAt: number }>();
+
   async listShop(userId: string, role: UserRole, status?: string, page = 1) {
+    const cacheKey = `returns:shop:${userId}:${status || 'ALL'}:${page}`;
+    const now = Date.now();
+    const memCached = ReturnService.shopQueueCache.get(cacheKey);
+    if (memCached && now - memCached.cachedAt < 20000) {
+      return memCached.data;
+    }
     if (role !== UserRole.SHOP_MANAGER)
       throw new ForbiddenException('Chỉ Shop được xem hàng đợi đổi trả');
     if (
@@ -294,7 +302,6 @@ private readonly commissionRulesService?: CommissionRulesService,
     ) {
       throw new BadRequestException('Trạng thái không hợp lệ');
     }
-    const cacheKey = `returns:shop:${userId}:${status || 'ALL'}:${page}`;
     if (this.cacheService) {
       const cached = await this.cacheService.get(cacheKey);
       if (cached) return cached;
@@ -319,6 +326,7 @@ private readonly commissionRulesService?: CommissionRulesService,
       page,
       items: records.map((record) => this.present(record, true)),
     };
+    ReturnService.shopQueueCache.set(cacheKey, { data: returnQueueResult, cachedAt: now });
     if (this.cacheService) {
       await this.cacheService.set(cacheKey, returnQueueResult, 30);
     }

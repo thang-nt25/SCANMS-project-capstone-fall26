@@ -1281,6 +1281,7 @@ export class ProductsService {
       }
       return {
         sku: variantSkus[index],
+        barcode: variant.barcode?.trim() || null,
         name: variant.name.trim(),
         attributes: Object.fromEntries(
           Object.entries(raw)
@@ -1971,6 +1972,7 @@ export class ProductsService {
         assertFloor(price, previous?.floorPrice ?? currentPricing.floorPrice);
         const data = {
           sku: normalizedSkus[index],
+          barcode: variant.barcode?.trim() || null,
           name: variant.name.trim(),
           attributes: normalizedAttributes[index],
           price,

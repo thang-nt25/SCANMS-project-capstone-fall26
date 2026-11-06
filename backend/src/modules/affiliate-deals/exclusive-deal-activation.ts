@@ -403,13 +403,19 @@ export async function decideExclusiveDeal(
               ? null
               : Number(proposal.targetRevenue),
           proposedCommissionRate: rate,
+          systemNotice: exceptionReview
+            ? `Tổng Giám Đốc đã phê duyệt ngoại lệ ngân sách thù lao ${rate}%`
+            : undefined,
           ...response,
           decidedAt: now.toISOString(),
         };
         const message = await tx.chatMessage.create({
           data: {
             conversationId: proposal.conversationId,
-            senderId: actorId,
+            senderId:
+              (exceptionReview &&
+                (proposal.initiatedById || proposal.reviewerId)) ||
+              actorId,
             messageText: JSON.stringify(card),
           },
           include: {

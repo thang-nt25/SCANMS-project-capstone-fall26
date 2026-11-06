@@ -10,6 +10,14 @@ export interface JwtPayload {
   role: string;
 }
 
+interface CachedUser {
+  user: any;
+  cachedAt: number;
+}
+
+const userCache = new Map<string, CachedUser>();
+const USER_CACHE_TTL_MS = 30_000; // 30s in-memory TTL to eliminate redundant Supabase RTTs on parallel requests
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -28,7 +36,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  static invalidateUser(userId: string) {
+    userCache.delete(userId);
+  }
+
+  static clearCache() {
+    userCache.clear();
+  }
+
   async validate(payload: JwtPayload) {
+    const now = Date.now();
+    const cached = userCache.get(payload.sub);
+    if (cached && now - cached.cachedAt < USER_CACHE_TTL_MS) {
+      return cached.user;
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
@@ -44,10 +66,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user || !user.isActive || user.isDeleted) {
+      userCache.delete(payload.sub);
       throw new UnauthorizedException(
         'Tài khoản không tồn tại hoặc đã bị khóa',
       );
     }
+
+    if (userCache.size > 2000) {
+      const firstKey = userCache.keys().next().value;
+      if (firstKey) userCache.delete(firstKey);
+    }
+    userCache.set(payload.sub, { user, cachedAt: now });
 
     return user;
   }

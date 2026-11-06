@@ -37,10 +37,7 @@ export async function reconcileProductPrice(
   });
   const active = [] as typeof promotions;
   for (const promotion of promotions) {
-    if (
-      promotion.endsAt <= now ||
-      promotion.budgetUsed.gte(promotion.budgetTotal)
-    ) {
+    if (promotion.endsAt <= now) {
       await tx.productPricePromotion.update({
         where: { id: promotion.id },
         data: { status: 'EXPIRED', finishedAt: now },

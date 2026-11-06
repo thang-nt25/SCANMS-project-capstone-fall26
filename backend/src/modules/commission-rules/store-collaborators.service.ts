@@ -476,8 +476,13 @@ export class StoreCollaboratorsService {
       await this.getOwnedStore(actorId, record.storeId);
     }
 
-    await this.prisma.storeCollaborator.delete({
+    await this.prisma.storeCollaborator.update({
       where: { id: record.id },
+      data: {
+        status: StoreCollaboratorStatus.TERMINATED,
+        terminatedAt: new Date(),
+        terminatedById: actorId,
+      },
     });
 
     await this.invalidateStoreTeamCache(record.storeId);
