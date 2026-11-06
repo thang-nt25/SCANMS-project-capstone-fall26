@@ -133,7 +133,7 @@ function formatMoney(amount?: number | string | null): string {
 function getPlatformBadge(platform?: string) {
   const p = (platform || '').toUpperCase();
   if (p.includes('TIKTOK')) {
-    return { name: 'TikTok', bg: 'bg-[#000000] text-white', icon: '🎵' };
+    return { name: 'TikTok', bg: 'bg-[#000000] text-white', icon: 'TikTok' };
   }
   if (p.includes('YOUTUBE')) {
     return { name: 'YouTube', bg: 'bg-[#FF0000] text-white', icon: '▶' };
@@ -144,7 +144,7 @@ function getPlatformBadge(platform?: string) {
   if (p.includes('INSTAGRAM')) {
     return { name: 'Instagram', bg: 'bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCB045] text-white', icon: '📷' };
   }
-  return { name: platform || 'Mạng xã hội', bg: 'bg-[#231D15] text-white', icon: '🌐' };
+  return { name: platform || 'Mạng xã hội', bg: 'bg-[#231D15] text-white', icon: 'Web' };
 }
 
 export default function AdminSampleRequestsPage() {

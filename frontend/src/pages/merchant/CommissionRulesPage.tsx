@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import './CommissionRulesPage.css';
 import {
   Plus,
   Edit2,

@@ -1,19 +1,20 @@
 import { ExecutiveFinanceReport } from '../../components/wallet/FinanceReports';
 import { authService } from '../../services/auth.service';
-import { useSearchParams } from 'react-router-dom';
 import { TrendingUp, Trophy } from 'lucide-react';
 import type { HubTabItem } from '../../components/common/HubTabs';
+import { useControlledTab } from '../../hooks/useControlledTab';
 import RealtimeAnalyticsPage from '../dashboard/RealtimeAnalyticsPage';
 import LeaderboardPage from '../dashboard/LeaderboardPage';
 
-export default function AdminAnalyticsHubPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const isAdmin = authService.getCurrentUser()?.role === 'SYSTEM_ADMIN';
-  const activeTab = searchParams.get('tab') || (isAdmin ? 'finance' : 'realtime');
+const ADMIN_ANALYTICS_TABS = ['finance', 'realtime', 'leaderboard'] as const;
+type AdminAnalyticsTab = (typeof ADMIN_ANALYTICS_TABS)[number];
 
-  const handleTabChange = (tabId: string) => {
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
+export default function AdminAnalyticsHubPage() {
+  const isAdmin = authService.getCurrentUser()?.role === 'SYSTEM_ADMIN';
+  const { activeTab, setActiveTab } = useControlledTab<AdminAnalyticsTab>({
+    defaultTab: isAdmin ? 'finance' : 'realtime',
+    validTabs: ADMIN_ANALYTICS_TABS,
+  });
 
   const tabs: HubTabItem[] = [
     ...(isAdmin ? [{ id: 'finance', label: 'Tài chính doanh nghiệp', icon: TrendingUp }] : []),
@@ -37,7 +38,7 @@ export default function AdminAnalyticsHubPage() {
         return (
           <button
             key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
+            onClick={() => setActiveTab(tab.id as AdminAnalyticsTab)}
             className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 transition-colors cursor-pointer ${
               isActive
                 ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] font-semibold'

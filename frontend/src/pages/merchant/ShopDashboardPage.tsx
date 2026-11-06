@@ -176,6 +176,20 @@ const DateRangeDropdown: React.FC<{
   );
 };
 
+// In-memory snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
+let lastDashboardSnapshot: {
+  store: StoreSettings | null;
+  overview: DashboardOverviewResponse | null;
+  timeSeries: TimeSeriesPoint[];
+  topProducts: Product[];
+  recentOrders: StoreOrderRecord[];
+  storeKols: any[];
+  pendingOrdersCount: number;
+  pendingSamplesCount: number;
+  pendingDealsCount: number;
+  pendingReturnsCount: number;
+} | null = null;
+
 export default function ShopDashboardPage() {
   const [currentStore, setCurrentStore] = useState<StoreSettings | null>(null);
   const [range, setRange] = useState<string>('30d');
@@ -186,20 +200,22 @@ export default function ShopDashboardPage() {
   const [activeChartTab, setActiveChartTab] = useState<'revenue' | 'commission'>('revenue');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const requestSequence = useRef(0);
+  const currentStoreRef = useRef<StoreSettings | null>(null);
+  currentStoreRef.current = currentStore;
 
-  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
-  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>([]);
-  const [topProducts, setTopProducts] = useState<Product[]>([]);
-  const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>([]);
-  const [storeKols, setStoreKols] = useState<any[]>([]);
+  const [overview, setOverview] = useState<DashboardOverviewResponse | null>(() => lastDashboardSnapshot?.overview || null);
+  const [timeSeries, setTimeSeries] = useState<TimeSeriesPoint[]>(() => lastDashboardSnapshot?.timeSeries || []);
+  const [topProducts, setTopProducts] = useState<Product[]>(() => lastDashboardSnapshot?.topProducts || []);
+  const [recentOrders, setRecentOrders] = useState<StoreOrderRecord[]>(() => lastDashboardSnapshot?.recentOrders || []);
+  const [storeKols, setStoreKols] = useState<any[]>(() => lastDashboardSnapshot?.storeKols || []);
 
   // Actionable to-do counts
-  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
-  const [pendingSamplesCount, setPendingSamplesCount] = useState<number>(0);
-  const [pendingDealsCount, setPendingDealsCount] = useState<number>(0);
-  const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(() => lastDashboardSnapshot?.pendingOrdersCount || 0);
+  const [pendingSamplesCount, setPendingSamplesCount] = useState<number>(() => lastDashboardSnapshot?.pendingSamplesCount || 0);
+  const [pendingDealsCount, setPendingDealsCount] = useState<number>(() => lastDashboardSnapshot?.pendingDealsCount || 0);
+  const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(() => lastDashboardSnapshot?.pendingReturnsCount || 0);
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => !lastDashboardSnapshot);
   const [error, setError] = useState<string | null>(null);
 
   const formatCurrency = (amount: number) => {
@@ -223,9 +239,20 @@ export default function ShopDashboardPage() {
       if (showIndicator) setIsRefreshing(true);
       setError(null);
 
-      const store = await storeService.getMyStore(true);
+      // 1. Khởi chạy song song ngay lập tức các API không phụ thuộc storeId (Zero-Waterfall)
+      const teamPromise = api.get('/store-collaborators/shop').catch(() => null);
+      const samplesPromise = api.get('/sample-requests/shop', { params: { status: 'PENDING' } }).catch(() => null);
+      const dealsPromise = api.get('/affiliate-deals/shop').catch(() => null);
+      const returnsPromise = api.get('/returns/shop', { params: { status: 'REQUESTED' } }).catch(() => null);
+
+      // 2. Tái sử dụng store từ cache/state để loại bỏ hoàn toàn độ trễ nối tiếp
+      const cachedStore = currentStoreRef.current;
+      const store = cachedStore?.id && !showIndicator
+        ? cachedStore
+        : await storeService.getMyStore(showIndicator);
+
       if (!store?.id) throw new Error('Không xác định được nhãn hàng trực thuộc.');
-      setCurrentStore(store);
+      if (cachedStore?.id !== store.id) setCurrentStore(store);
 
       const params = {
         range,
@@ -245,12 +272,12 @@ export default function ShopDashboardPage() {
       ] = await Promise.all([
         analyticsService.getRealtimeOverview(params, showIndicator),
         analyticsService.getTimeSeries(params, showIndicator),
-        productService.getProducts({ storeId: store.id, page: 1, limit: 5 }, true).catch(() => null),
-        orderService.getMyStoreOrders({ storeId: store.id, page: 1, limit: 10 }, true).catch(() => null),
-        api.get('/store-collaborators/shop').catch(() => null),
-        api.get('/samples/shop-requests').catch(() => null),
-        api.get('/affiliate-deals/shop/proposals').catch(() => null),
-        api.get('/returns/shop').catch(() => null),
+        productService.getProducts({ storeId: store.id, page: 1, limit: 5 }, showIndicator).catch(() => null),
+        orderService.getMyStoreOrders({ storeId: store.id, page: 1, limit: 10 }, showIndicator).catch(() => null),
+        teamPromise,
+        samplesPromise,
+        dealsPromise,
+        returnsPromise,
       ]);
 
       if (request !== requestSequence.current) return;
@@ -268,13 +295,14 @@ export default function ShopDashboardPage() {
       setStoreKols(sortedKols);
 
       // Operational pending counts
-      setPendingOrdersCount(ordersData?.pagination?.total ?? (ordersData?.items?.filter((o: any) => o.status === 'PENDING')?.length || 0));
+      const pendingOrdersTotal = ordersData?.pagination?.total ?? (ordersData?.items?.filter((o: any) => o.status === 'PENDING')?.length || 0);
+      setPendingOrdersCount(pendingOrdersTotal);
 
       const samplesList = (samplesRes as any)?.data || samplesRes || [];
       const pendingSamples = Array.isArray(samplesList)
         ? samplesList.filter((s: any) => s.status === 'PENDING')
         : [];
-      setPendingSamplesCount(pendingSamples.length);
+      setPendingSamplesCount(Array.isArray(samplesList) && samplesList.length > 0 && !samplesList.some((s: any) => s.status !== 'PENDING') ? samplesList.length : pendingSamples.length);
 
       const dealsList = (dealsRes as any)?.data || dealsRes || [];
       const pendingDeals = Array.isArray(dealsList)
@@ -282,11 +310,27 @@ export default function ShopDashboardPage() {
         : [];
       setPendingDealsCount(pendingDeals.length);
 
-      const returnsList = (returnsRes as any)?.data || returnsRes || [];
-      const pendingReturns = Array.isArray(returnsList)
-        ? returnsList.filter((r: any) => r.status === 'PENDING')
-        : [];
-      setPendingReturnsCount(pendingReturns.length);
+      const returnsData = (returnsRes as any)?.data || returnsRes || {};
+      const pendingReturnsCountVal = typeof returnsData.total === 'number'
+        ? returnsData.total
+        : Array.isArray(returnsData.items)
+          ? returnsData.items.filter((r: any) => r.status === 'REQUESTED' || r.status === 'PENDING').length
+          : Array.isArray(returnsData)
+            ? returnsData.filter((r: any) => r.status === 'REQUESTED' || r.status === 'PENDING').length
+            : 0;
+      setPendingReturnsCount(pendingReturnsCountVal);
+      lastDashboardSnapshot = {
+        store,
+        overview: overviewData || overview,
+        timeSeries: Array.isArray(seriesData) ? seriesData : timeSeries,
+        topProducts: productsData?.items || topProducts,
+        recentOrders: ordersData?.items || recentOrders,
+        storeKols: sortedKols,
+        pendingOrdersCount: pendingOrdersTotal,
+        pendingSamplesCount: pendingSamples.length,
+        pendingDealsCount: pendingDeals.length,
+        pendingReturnsCount: pendingReturnsCountVal,
+      };
     } catch (err) {
       if (request === requestSequence.current) {
         setError(err instanceof Error ? err.message : 'Chưa tải được dữ liệu nhãn hàng. Vui lòng thử lại.');

@@ -23,6 +23,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
@@ -101,7 +102,9 @@ export class ReturnService {
     private readonly cloudinary: CloudinaryService,
     private readonly pickupGateway: PickupGateway = new PickupGateway(),
     @Optional() private readonly walletsService?: WalletsService,
-    private readonly commissionRulesService?: CommissionRulesService,
+    @Optional() private readonly cacheService?: CacheService,
+private readonly commissionRulesService?: CommissionRulesService,
+
   ) {}
 
   /** Allocate the paid order total (including discounts and delivery) across original item value. */
@@ -280,7 +283,15 @@ export class ReturnService {
     return this.present(await this.scopedDetail(userId, role, id), role !== UserRole.CUSTOMER);
   }
 
+  private static readonly shopQueueCache = new Map<string, { data: any; cachedAt: number }>();
+
   async listShop(userId: string, role: UserRole, status?: string, page = 1) {
+    const cacheKey = `returns:shop:${userId}:${status || 'ALL'}:${page}`;
+    const now = Date.now();
+    const memCached = ReturnService.shopQueueCache.get(cacheKey);
+    if (memCached && now - memCached.cachedAt < 20000) {
+      return memCached.data;
+    }
     if (role !== UserRole.SHOP_MANAGER)
       throw new ForbiddenException('Chỉ Shop được xem hàng đợi đổi trả');
     if (
@@ -291,6 +302,11 @@ export class ReturnService {
     ) {
       throw new BadRequestException('Trạng thái không hợp lệ');
     }
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
+
     const where: Prisma.ReturnRequestWhereInput = {
       order: { store: managedStoreWhere(userId) },
       ...(status ? { status: status as ReturnRequestStatus } : {}),
@@ -305,11 +321,16 @@ export class ReturnService {
         take: 20,
       }),
     ]);
-    return {
+    const returnQueueResult = {
       total,
       page,
       items: records.map((record) => this.present(record, true)),
     };
+    ReturnService.shopQueueCache.set(cacheKey, { data: returnQueueResult, cachedAt: now });
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, returnQueueResult, 30);
+    }
+    return returnQueueResult;
   }
 
   async listForOversight(role: UserRole) {

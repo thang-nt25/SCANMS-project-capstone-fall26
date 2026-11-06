@@ -33,7 +33,6 @@ import { getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { buildMediaPack, saveMediaPack, MEDIA_USAGE_GUIDE, downloadMediaFile } from '../../utils/media-pack.utils';
 import { MediaAssetViewer } from '../../components/media/MediaAssetViewer';
 import { copyMediaScript, isExternalMediaVideo } from '../../utils/media-asset.utils';
-import './MediaHubBrowserPage.css';
 
 export default function MediaHubBrowserPage() {
   const currentUser = authService.getCurrentUser();

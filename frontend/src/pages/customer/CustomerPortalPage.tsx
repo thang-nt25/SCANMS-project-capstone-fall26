@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './CustomerOrderDetail.css';
-import './CustomerOrderLightTheme.css';
-import './CustomerProfileTabs.css';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { OrderProductLink } from '../../components/customer/OrderProductLink';
@@ -90,6 +87,8 @@ import { resolveMapShippingAddress } from '../../utils/checkout-address.utils';
 type CustomerTab = 'orders' | 'addresses' | 'wishlist' | 'profile' | 'upgrade' | 'vouchers' | 'notifications' | 'security' | 'wallet';
 type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED' | 'RECEIVING' | 'COMPLETED' | 'RETURN_REQUESTED' | 'CANCELLED' | 'RETURNED';
 export type ProfileSubTab = 'info' | 'addresses' | 'security';
+
+let cachedCustomerOrders: CustomerOrder[] = [];
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -180,7 +179,7 @@ export default function CustomerPortalPage() {
   }>({ ORDER: 0, PROMOTION: 0, SYSTEM: 0 });
 
   // Tab 1: Orders State
-  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [orders, setOrders] = useState<CustomerOrder[]>(() => cachedCustomerOrders);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(false);
   const ordersRequestSequence = useRef(0);
@@ -700,7 +699,7 @@ export default function CustomerPortalPage() {
   const fetchOrders = async (searchOverride?: string, silent = false) => {
     const search = (searchOverride ?? orderSearch).trim();
     const sequence = ++ordersRequestSequence.current;
-    if (!silent) { setOrdersLoading(true); setOrdersError(false); }
+    if (!silent && orders.length === 0 && cachedCustomerOrders.length === 0) { setOrdersLoading(true); setOrdersError(false); }
     try {
       const statusParam = orderStatusFilter === 'ALL' ? undefined : orderStatusFilter;
 
@@ -710,6 +709,7 @@ export default function CustomerPortalPage() {
       });
       const loadedOrders = res.orders || [];
       if (sequence !== ordersRequestSequence.current) return;
+      cachedCustomerOrders = loadedOrders;
       setOrders(loadedOrders);
       setOrdersError(false);
       setSelectedOrderDetails(current => current ? loadedOrders.find(order => order.id === current.id) || current : current);

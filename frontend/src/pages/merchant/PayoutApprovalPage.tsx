@@ -447,8 +447,7 @@ export default function PayoutApprovalPage() {
   const load = useCallback(async () => {
     if (!storeId) return;
     const sequence = ++loadSequence.current;
-    setLoading(true);
-    setHistory(null);
+    if (!history) setLoading(true);
     setSelected([]);
     try {
       const [requests, batchHistory] = await Promise.all([

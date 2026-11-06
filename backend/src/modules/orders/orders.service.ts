@@ -3851,9 +3851,18 @@ export class OrdersService {
       }
     }
 
-    await syncCustomerGhnSimulations(this.prisma, targetStoreId ? { storeId: targetStoreId } : {});
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+
+    // Cache hit cho trang đầu không có tìm kiếm văn bản tự do
+    const isCacheableOrderQuery = !query.search?.trim() && page === 1;
+    const orderCacheKey = `orders:store:${targetStoreId || userId}:${query.status || 'ALL'}:${query.paymentStatus || 'ALL'}:${limit}`;
+    if (isCacheableOrderQuery) {
+      const cached = await this.cacheService.get(orderCacheKey);
+      if (cached) return cached;
+    }
+
+    await syncCustomerGhnSimulations(this.prisma, targetStoreId ? { storeId: targetStoreId } : {});
     const skip = (page - 1) * limit;
 
     const where: Prisma.OrderWhereInput = {};
@@ -3929,7 +3938,7 @@ export class OrdersService {
       }),
     ]);
 
-    return {
+    const ordersResult = {
       items: orders.map((order) => {
         const raw = (order.rawPayload as Record<string, any>) || {};
         return {
@@ -4009,6 +4018,10 @@ export class OrdersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    if (isCacheableOrderQuery) {
+      await this.cacheService.set(orderCacheKey, ordersResult, 30);
+    }
+    return ordersResult;
   }
 
   async respondReturnRequest(

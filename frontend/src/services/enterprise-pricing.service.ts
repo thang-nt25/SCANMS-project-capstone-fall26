@@ -12,6 +12,7 @@ export const pricingApi = {
   floor: (id: string, body: unknown) =>
     api.put(`/pricing/products/${id}/floor`, body),
   create: (body: unknown) => api.post("/pricing/promotions", body),
+  batchCreate: (body: unknown) => api.post("/pricing/promotions/batch", body),
   review: (id: string, body: unknown) =>
     api.patch(`/pricing/promotions/${id}/review`, body),
   cancel: (id: string) => api.patch(`/pricing/promotions/${id}/cancel`),

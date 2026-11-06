@@ -71,7 +71,7 @@ describe('wallet cooperation visibility', () => {
     } as never);
     const result = await service.getMyWallet('kol');
     expect(result.withdrawalTaxPolicy).toEqual({
-      threshold: '2000000.00',
+      threshold: '0.00',
       rate: '0.10',
     });
     expect(prisma.storeCollaborator.findMany).toHaveBeenCalledWith(

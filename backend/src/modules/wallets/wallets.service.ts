@@ -236,6 +236,77 @@ export class WalletsService {
     ).wallet;
   }
 
+  async creditConditionalDealEscrow(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+  ) {
+    if (amount.lessThanOrEqualTo(0)) return;
+    await tx.wallet.update({
+      where: { collaboratorId },
+      data: {
+        conditionalDealEscrowBalance: { increment: amount },
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async releaseConditionalDealBonus(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+    reference: LedgerReference,
+    storeId?: string,
+  ) {
+    this.assertPositiveAmount(amount);
+    const wallet = await this.lockWallet(tx, collaboratorId);
+    const conditionalBalance = (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
+    const releaseAmount = Prisma.Decimal.min(conditionalBalance, amount);
+    if (releaseAmount.greaterThan(0)) {
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          conditionalDealEscrowBalance: { decrement: releaseAmount },
+          availableBalance: { increment: releaseAmount },
+          version: { increment: 1 },
+        },
+      });
+      this.ledgerService.appendEntry(
+        tx,
+        wallet.id,
+        reference,
+        {
+          bucket: WalletBalanceBucket.AVAILABLE,
+          transactionType: TransactionType.COMMISSION_APPROVED,
+          amount: releaseAmount,
+          balanceBefore: wallet.availableBalance,
+          balanceAfter: wallet.availableBalance.plus(releaseAmount),
+        },
+      );
+    }
+  }
+
+  async forfeitConditionalDealBonus(
+    tx: Prisma.TransactionClient,
+    collaboratorId: string,
+    amount: Prisma.Decimal,
+  ) {
+    if (amount.lessThanOrEqualTo(0)) return;
+    const wallet = await this.lockWallet(tx, collaboratorId);
+    const conditionalBalance = (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
+    const forfeitAmount = Prisma.Decimal.min(conditionalBalance, amount);
+    if (forfeitAmount.greaterThan(0)) {
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          conditionalDealEscrowBalance: { decrement: forfeitAmount },
+          version: { increment: 1 },
+        },
+      });
+    }
+  }
+
+
   async reverseAvailableBalance(
     tx: Prisma.TransactionClient,
     collaboratorId: string,

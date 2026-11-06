@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Truck, RefreshCw, Phone, Check, Clock, UserRound, ChevronDown } from 'lucide-react';
 import api from '../../services/api';
-import './GhnTrackingTimeline.css';
 import { GHN_MILESTONES } from '../../utils/ghn-tracking';
 
 export interface TrackingEvent {
@@ -172,12 +171,12 @@ export function GhnTrackingTimeline({ orderCode, sampleRequestId, onSampleDelive
           <div className="ghn-journey__driver-info min-w-0 flex-1 [&_strong]:my-0.5 [&_strong]:block [&_strong]:text-[12px] [&_strong]:[overflow-wrap:anywhere] [&>p:last-child]:text-[10px] [&>p:last-child]:text-[#7D715E]"><p className="ghn-journey__caption text-[10px] font-normal text-[#7D715E]">{tracking.isSimulation ? 'Shipper mô phỏng' : 'Shipper phụ trách giao hàng'}</p><strong>{tracking.shipperName || 'GHN chưa cung cấp tên shipper'}</strong><p>{tracking.isSimulation ? tracking.shipperPhoneDisplay || '09xx xxx xxx' : tracking.shipperPhone || 'Đang chờ GHN cập nhật SĐT liên hệ.'}</p></div>
           {tracking.isSimulation ? <button type="button" disabled className="ghn-journey__call [&:is(a)]:text-[#795A2D]! inline-flex min-h-9 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EAE4D7] bg-white px-[11px] py-2 text-[11px] font-semibold text-[#795A2D] no-underline transition-[background] duration-150 ease-[ease] hover:bg-[#FBF5EB] [@media(max-width:480px)]:w-[34px] [@media(max-width:480px)]:p-2 [@media(max-width:480px)]:[&>span]:hidden" aria-label="Gọi shipper" title="Số điện thoại mô phỏng, không hỗ trợ gọi"><Phone size={14} /><span>Gọi shipper</span></button> : tracking.shipperPhone ? <a href={phoneHref(tracking.shipperPhone)} className="ghn-journey__call [&:is(a)]:text-[#795A2D]! inline-flex min-h-9 cursor-pointer items-center justify-center gap-[7px] whitespace-nowrap rounded-[9px] border border-[#EAE4D7] bg-white px-[11px] py-2 text-[11px] font-semibold text-[#795A2D] no-underline transition-[background] duration-150 ease-[ease] hover:bg-[#FBF5EB] [@media(max-width:480px)]:w-[34px] [@media(max-width:480px)]:p-2 [@media(max-width:480px)]:[&>span]:hidden" aria-label="Gọi shipper"><Phone size={14} /><span>Gọi shipper</span></a> : null}
         </div>}
-        {tracking.timeline.length ? <details open className="ghn-history-cards">
-          <summary><span>Lịch sử vận chuyển</span><span className="ghn-history-cards__count">{tracking.timeline.length} mốc<ChevronDown size={14} /></span></summary>
+        {tracking.timeline.length ? <details open className="mt-4 p-3.5 border border-[#eae4d7] rounded-2xl bg-white [&>summary]:flex [&>summary]:items-center [&>summary]:justify-between [&>summary]:gap-3 [&>summary]:min-h-[32px] [&>summary]:list-none [&>summary]:cursor-pointer [&>summary]:text-[13px] [&>summary]:font-semibold [&>summary]:text-[#1a1612] [&>summary::-webkit-details-marker]:hidden [&[open]>summary]:pb-3 [&[open]>summary]:border-b [&[open]>summary]:border-[#eae4d7] [&[open]>summary_svg]:rotate-180 [&>ol]:grid [&>ol]:grid-cols-1 sm:[&>ol]:grid-cols-3 [&>ol]:gap-2.5 [&>ol]:mt-3 [&>ol]:p-0 [&>ol]:list-none [&>ol>li]:flex [&>ol>li]:items-start [&>ol>li]:gap-2.25 [&>ol>li]:p-3 [&>ol>li]:min-w-0 [&>ol>li]:border [&>ol>li]:border-[#eae4d7] [&>ol>li]:rounded-[10px] [&>ol>li]:bg-white [&>ol>li.is-latest]:border-[#eedfc6] [&>ol>li.is-latest]:bg-[#fbf5eb]">
+          <summary><span>Lịch sử vận chuyển</span><span className="inline-flex items-center gap-2 text-[#7d715e] text-[11px] font-normal">{tracking.timeline.length} mốc<ChevronDown size={14} /></span></summary>
           <ol aria-label="Lịch sử vận chuyển">
             {tracking.timeline.map((event, index) => <li key={`${event.status}-${event.time || index}`} className={index === tracking.timeline.length - 1 ? 'is-latest' : ''}>
-              <span className="ghn-history-cards__number">{index + 1}</span>
-              <div className="ghn-history-cards__content">
+              <span className="grid place-items-center shrink-0 w-[26px] h-[26px] border border-[#eedfc6] rounded-full bg-white text-[#8c6b32] text-xs">{index + 1}</span>
+              <div className="min-w-0 [overflow-wrap:anywhere] [&_strong]:block [&_strong]:text-xs [&_strong]:leading-normal [&_strong]:text-[#1a1612] [&_time]:block [&_time]:mt-1.25 [&_time]:text-[11px] [&_time]:leading-normal [&_time]:text-[#7d715e] [&_p]:block [&_p]:mt-1.25 [&_p]:text-[11px] [&_p]:leading-normal [&_p]:text-[#7d715e] [&_a]:text-[#8c6b32]">
                 <strong>{event.title}</strong>
                 <time>{formatTime(event.time) || 'Chưa có thời gian xác nhận'}</time>
                 {event.warehouse && <p>{event.warehouse}</p>}

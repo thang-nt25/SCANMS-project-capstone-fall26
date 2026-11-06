@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import api from '../../services/api';
 import type { SampleRequest, SampleRequestStatus, ShopStats } from '@/types/samples.types';
 import { Select } from '../../components/ui/Select';
+import { Clock, CheckCircle2, Truck, Check, X, XCircle, PackageSearch, Loader2, Search, MapPin } from 'lucide-react';
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ duyệt',
@@ -22,14 +23,7 @@ const STATUS_CLASS: Record<string, string> = {
   REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
-const STATUS_ICON: Record<string, string> = {
-  PENDING: '⏳',
-  APPROVED: '✅',
-  SHIPPED: '🚚',
-  DELIVERED: '📦',
-  COMPLETED: '🎉',
-  REJECTED: '❌',
-};
+
 
 function formatDate(d: string) {
   if (!d) return '—';
@@ -82,7 +76,7 @@ function TrackingModal({
         aria-modal="true"
       >
         <div className="px-6 py-4 border-b border-[#EAE4D7] flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-[#1A1612]">🚚 Nhập Mã Vận Đơn Mẫu</h2>
+          <h2 className="text-base font-bold text-[#1A1612] flex items-center gap-2"><Truck className="w-4 h-4 text-[#B88E4F]" /> Nhập Mã Vận Đơn Hàng Mẫu</h2>
           <button
             type="button"
             className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D715E] hover:bg-[#F3EFE6] transition cursor-pointer"
@@ -97,7 +91,7 @@ function TrackingModal({
           <div className="font-extrabold text-[#1A1612]">{request.collaborator.fullName}</div>
           <div className="text-[#7D715E]">{request.product.title}</div>
           <div className="text-[11px] text-[#7D715E] pt-1 border-t border-[#EAE4D7]/60">
-            📍 {request.shippingAddress}
+            <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" /> {request.shippingAddress}</span>
           </div>
         </div>
 
@@ -147,7 +141,7 @@ function TrackingModal({
               className="px-5 py-2.5 rounded-xl bg-[#EBD08C] hover:bg-[#DEC07A] text-white text-xs font-extrabold transition shadow-xs cursor-pointer disabled:opacity-50"
               disabled={loading || !trackingNumber.trim()}
             >
-              {loading ? '⏳ Đang lưu...' : '🚚 Xác nhận giao hàng'}
+              {loading ? <span className='inline-flex items-center gap-1.5'><Loader2 className='w-3.5 h-3.5 animate-spin' /> Đang lưu...</span> : <span className='inline-flex items-center gap-1.5'><Truck className='w-3.5 h-3.5' /> Xác nhận giao hàng</span>}
             </button>
           </div>
         </form>
@@ -198,7 +192,7 @@ export default function ShopSampleRequestsPage() {
     setActionLoading(id + '-approve');
     try {
       await api.patch(`/sample-requests/${id}/approve`, {});
-      showToast('✅ Đã duyệt yêu cầu xin mẫu');
+      showToast('Đã duyệt yêu cầu xin mẫu');
       loadData();
     } catch (err: any) {
       showToast(err.message, 'error');
@@ -212,7 +206,7 @@ export default function ShopSampleRequestsPage() {
     setActionLoading(id + '-reject');
     try {
       await api.patch(`/sample-requests/${id}/reject`, {});
-      showToast('❌ Đã từ chối yêu cầu xin mẫu');
+      showToast('Đã từ chối yêu cầu xin mẫu');
       loadData();
     } catch (err: any) {
       showToast(err.message, 'error');
@@ -249,28 +243,28 @@ export default function ShopSampleRequestsPage() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
-            <div className="text-2xl">⏳</div>
+            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0"><Clock className="w-5 h-5" /></div>
             <div>
               <div className="text-xl font-black text-[#B88E4F]">{stats.pending}</div>
               <div className="text-xs font-semibold text-[#7D715E]">Chờ duyệt</div>
             </div>
           </div>
           <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
-            <div className="text-2xl">✅</div>
+            <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-center justify-center text-[#059669] shrink-0"><CheckCircle2 className="w-5 h-5" /></div>
             <div>
               <div className="text-xl font-black text-[#1A1612]">{stats.approved}</div>
               <div className="text-xs font-semibold text-[#7D715E]">Đã duyệt</div>
             </div>
           </div>
           <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
-            <div className="text-2xl">🚚</div>
+            <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0"><Truck className="w-5 h-5" /></div>
             <div>
               <div className="text-xl font-black text-[#1A1612]">{stats.shipped}</div>
               <div className="text-xs font-semibold text-[#7D715E]">Đang giao</div>
             </div>
           </div>
           <div className="bg-white border border-[#EAE4D7] rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
-            <div className="text-2xl">❌</div>
+            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#DC2626] shrink-0"><XCircle className="w-5 h-5" /></div>
             <div>
               <div className="text-xl font-black text-[#1A1612]">{stats.rejected}</div>
               <div className="text-xs font-semibold text-[#7D715E]">Từ chối</div>
@@ -297,8 +291,8 @@ export default function ShopSampleRequestsPage() {
           >
             <span>
               {s === 'ALL'
-                ? '📋 Tất cả'
-                : `${STATUS_ICON[s as SampleRequestStatus]} ${STATUS_LABEL[s as SampleRequestStatus]}`}
+                ? 'Tất cả'
+                : STATUS_LABEL[s as SampleRequestStatus]}
             </span>
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
@@ -321,7 +315,7 @@ export default function ShopSampleRequestsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white border border-[#EAE4D7] rounded-2xl text-[#7D715E] p-8 shadow-xs">
-          <div className="text-4xl mb-3">📭</div>
+          <PackageSearch className="w-12 h-12 text-[#7D715E]/40 mx-auto mb-3" />
           <h3 className="text-base font-bold text-[#1A1612]">Không có yêu cầu nào</h3>
           <p className="text-xs text-[#7D715E] mt-1 max-w-md mx-auto">
             Chưa có KOL/CTV nào gửi yêu cầu xin mẫu trong mục này.
@@ -391,7 +385,7 @@ export default function ShopSampleRequestsPage() {
                         STATUS_CLASS[req.status]
                       }`}
                     >
-                      <span>{STATUS_ICON[req.status]}</span>
+                      
                       <span>{STATUS_LABEL[req.status]}</span>
                     </span>
                   </td>
@@ -407,7 +401,7 @@ export default function ShopSampleRequestsPage() {
                             disabled={!!actionLoading}
                             title="Duyệt"
                           >
-                            {actionLoading === req.id + '-approve' ? '⏳' : '✅ Duyệt'}
+                            {actionLoading === req.id + '-approve' ? <Loader2 className='w-3.5 h-3.5 animate-spin' /> : <span className='inline-flex items-center gap-1'><Check className='w-3.5 h-3.5' /> Duyệt</span>}
                           </button>
                           <button
                             id={`btn-reject-${req.id}`}
@@ -417,7 +411,7 @@ export default function ShopSampleRequestsPage() {
                             disabled={!!actionLoading}
                             title="Từ chối"
                           >
-                            {actionLoading === req.id + '-reject' ? '⏳' : '❌ Từ chối'}
+                            {actionLoading === req.id + '-reject' ? <Loader2 className='w-3.5 h-3.5 animate-spin' /> : <span className='inline-flex items-center gap-1'><X className='w-3.5 h-3.5' /> Từ chối</span>}
                           </button>
                         </>
                       )}
@@ -429,7 +423,7 @@ export default function ShopSampleRequestsPage() {
                           onClick={() => setShippingTarget(req)}
                           title="Nhập mã vận đơn"
                         >
-                          🚚 Nhập mã vận đơn
+                          <span className="inline-flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> Nhập mã vận đơn</span>
                         </button>
                       )}
                       {req.status === 'SHIPPED' && (
@@ -440,7 +434,7 @@ export default function ShopSampleRequestsPage() {
                           className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-extrabold text-xs transition inline-block"
                           id={`btn-track-${req.id}`}
                         >
-                          🔍 Tra cứu GHTK
+                          <span className="inline-flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Tra cứu GHN</span>
                         </a>
                       )}
                     </div>

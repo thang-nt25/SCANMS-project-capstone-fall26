@@ -5,6 +5,7 @@ interface ScanMSLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showSubtitle?: boolean;
   variant?: 'full' | 'icon';
+  darkMode?: boolean;
 }
 
 export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
@@ -12,6 +13,7 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
   size = 'md',
   showSubtitle = true,
   variant = 'full',
+  darkMode = false,
 }) => {
   const rawId = React.useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -219,23 +221,23 @@ export const ScanMSLogo: React.FC<ScanMSLogoProps> = ({
         <div className="flex flex-col text-left leading-none">
           <div className="flex items-baseline tracking-tight">
             <span
-              className={`font-black tracking-tight text-[#1A1612] ${iconDimensions.textMain}`}
+              className={`font-black tracking-tight ${darkMode ? "text-white" : "text-[#1A1612]"} ${iconDimensions.textMain}`}
               style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}
             >
               Scan
             </span>
             <span
-              className={`font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#B88E4F] via-[#C59B58] to-[#B88E4F] ml-0.5 ${iconDimensions.textMain}`}
+              className={`font-black italic ${darkMode ? "text-white" : "text-[#B88E4F]"} ml-0.5 ${iconDimensions.textMain}`}
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               MS
             </span>
-            <span className="text-[#B88E4F] text-xs ml-1 font-serif font-bold animate-pulse">✦</span>
+            <span className={`text-xs ml-1 font-serif font-bold animate-pulse ${darkMode ? "text-white" : "text-[#C59B58]"}`}>✦</span>
           </div>
 
           {showSubtitle && (
             <span
-              className={`scanms-logo-subtitle text-[#7D715E] font-bold uppercase tracking-widest mt-1 ${iconDimensions.textSub}`}
+              className={`scanms-logo-subtitle ${darkMode ? "text-[#C5BBAA]" : "text-[#2A2012]"} font-bold uppercase tracking-widest mt-1 ${iconDimensions.textSub}`}
             >
               Affiliate Commerce Network
             </span>

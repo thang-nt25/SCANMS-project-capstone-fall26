@@ -12,7 +12,6 @@ import {
 import api from '../../services/api';
 import { toast } from '../../utils/toast';
 import { payoutDisplayCode } from '../../utils/payout-display-code';
-import './AdminFinancePayoutsPage.css';
 
 interface PayoutItem {
   id: string;

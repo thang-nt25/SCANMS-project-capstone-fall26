@@ -3,15 +3,30 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { OrderStatus, StoreCollaboratorStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class StoreCollaboratorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
+
+  private async invalidateStoreTeamCache(storeId: string) {
+    if (this.cacheService) {
+      try {
+        await this.cacheService.del(`store:team:${storeId}`);
+      } catch {
+        // Safe fallback
+      }
+    }
+  }
 
   async getPartnerPerformance(ownerId: string, collaboratorId: string, range: string, storeId?: string) {
     if (!['7d', '30d', 'month', 'all'].includes(range)) throw new BadRequestException('Khoảng thời gian không hợp lệ');
@@ -86,6 +101,7 @@ export class StoreCollaboratorsService {
       });
     }
     try {
+      await this.invalidateStoreTeamCache(storeId);
       return await this.prisma.storeCollaborator.create({
         data: {
           storeId,
@@ -154,6 +170,11 @@ export class StoreCollaboratorsService {
 
   async getShopTeam(ownerId: string, storeId?: string) {
     const store = await this.getOwnedStore(ownerId, storeId);
+    const cacheKey = `store:team:${store.id}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
     const [members, pendingMembers] = await Promise.all([
       this.prisma.storeCollaborator.findMany({
         where: { storeId: store.id, status: StoreCollaboratorStatus.APPROVED },
@@ -297,12 +318,16 @@ export class StoreCollaboratorsService {
       };
     });
 
-    return {
+    const teamResult = {
       store: { id: store.id, name: store.name },
       members: enrichedMembers,
       pendingRequests: pendingMembers,
       pendingCount: pendingMembers.length,
     };
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, teamResult, 60);
+    }
+    return teamResult;
   }
 
   async invite(ownerId: string, dto: InviteStoreCollaboratorDto) {
@@ -418,5 +443,56 @@ export class StoreCollaboratorsService {
       where: { id: invitationId },
       include: { store: { select: { id: true, name: true, logoUrl: true } } },
     });
+  }
+
+  async terminateCooperation(
+    actorId: string,
+    role: UserRole,
+    idOrCollaboratorId: string,
+    storeId?: string,
+  ) {
+    let record = await this.prisma.storeCollaborator.findUnique({
+      where: { id: idOrCollaboratorId },
+    });
+    if (!record && storeId) {
+      record = await this.prisma.storeCollaborator.findUnique({
+        where: {
+          storeId_collaboratorId: {
+            storeId,
+            collaboratorId: idOrCollaboratorId,
+          },
+        },
+      });
+    }
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy bản ghi hợp tác đối tác');
+    }
+
+    if (role === UserRole.COLLABORATOR) {
+      if (record.collaboratorId !== actorId) {
+        throw new ForbiddenException('Bạn không có quyền chấm dứt thỏa thuận này');
+      }
+    } else {
+      await this.getOwnedStore(actorId, record.storeId);
+    }
+
+    await this.prisma.storeCollaborator.update({
+      where: { id: record.id },
+      data: {
+        status: StoreCollaboratorStatus.TERMINATED,
+        terminatedAt: new Date(),
+        terminatedById: actorId,
+      },
+    });
+
+    await this.invalidateStoreTeamCache(record.storeId);
+
+    return {
+      success: true,
+      message: 'Đã chấm dứt quan hệ hợp tác đối tác thành công',
+      terminatedId: record.id,
+      storeId: record.storeId,
+      collaboratorId: record.collaboratorId,
+    };
   }
 }

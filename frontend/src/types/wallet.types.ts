@@ -23,7 +23,21 @@ export interface WalletSummary {
   pendingBalance: string;
   availableBalance: string;
   shoppingBalance?: string;
+  conditionalDealEscrowBalance?: string;
   earningsReviewRequired?: boolean;
+  activeDeals?: {
+    id: string;
+    storeId: string;
+    store: { id: string; name: string; logoUrl?: string | null };
+    product: { id: string; title: string; imageUrl?: string | null };
+    proposedCommissionRate: number;
+    approvedCommissionRate: number;
+    bonusRate: number;
+    targetOrders?: number | null;
+    targetRevenue?: number | null;
+    commitmentStartedAt?: string | null;
+    commitmentEndsAt?: string | null;
+  }[];
   balanceConsistency?: {
     requiresReview: boolean;
     allocatedAvailableBalance: string;

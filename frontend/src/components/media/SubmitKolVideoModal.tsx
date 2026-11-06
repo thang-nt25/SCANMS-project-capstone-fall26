@@ -1,4 +1,3 @@
-import './SubmitKolVideoModal.css';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
@@ -426,12 +425,12 @@ export function SubmitKolVideoModal({
   };
 
   return (
-    <div className="kol-video-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
-      <div className="kol-video-dialog bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
-        <button type="button" onClick={onClose} className="kol-video-close" aria-label="Đóng">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-xl max-h-[90vh] flex flex-col p-6 text-left animate-in zoom-in-95 duration-150">
+        <button type="button" onClick={onClose} className="absolute z-20 top-3 sm:top-3.5 right-3.5 sm:right-4.5 grid place-items-center w-8 h-8 border border-[#eae4d7] rounded-lg bg-white text-[#7d715e] cursor-pointer hover:bg-[#fbf5eb] focus-visible:outline-2 focus-visible:outline-[#c59b58] focus-visible:outline-offset-2" aria-label="Đóng">
           <X className="w-5 h-5" />
         </button>
-        <div className="kol-video-scroll">
+        <div className="min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#eedfc6_transparent]">
         <header className="flex items-start justify-between gap-4 border-b border-[#EAE4D7] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FBF5EB] border border-[#EAE4D7] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-xs">
@@ -446,7 +445,7 @@ export function SubmitKolVideoModal({
         </header>
 
 
-        <form onSubmit={handleSubmit} className="kol-video-form overflow-y-auto py-4 space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="flex-none overflow-visible p-3.5 sm:px-4.5 sm:py-4 space-y-3.5 flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:#eedfc6_transparent]">
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">

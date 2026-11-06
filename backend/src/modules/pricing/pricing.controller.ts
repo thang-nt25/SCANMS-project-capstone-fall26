@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PricingService } from './pricing.service';
 import {
+  BatchCreatePricePromotionDto,
   CreatePricePromotionDto,
   ReviewPricePromotionDto,
   SetFloorPriceDto,
@@ -48,6 +49,16 @@ export class PricingController {
   ) {
     return this.service.setFloor(actor, role, id, dto);
   }
+  @Post('promotions/batch')
+  @Roles(UserRole.SHOP_MANAGER)
+  batchCreate(
+    @CurrentUser('id') actor: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: BatchCreatePricePromotionDto,
+  ) {
+    return this.service.batchCreate(actor, role, dto);
+  }
+
   @Post('promotions')
   @Roles(UserRole.SHOP_MANAGER)
   create(

@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Delete,
   Query,
   ParseUUIDPipe,
   Req,
@@ -87,5 +88,25 @@ export class StoreCollaboratorsController {
   @Roles(UserRole.COLLABORATOR)
   reject(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.service.respond(req.user!.id, id, false);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  terminate(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
+  }
+
+  @Post(':id/terminate')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  terminatePost(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
   }
 }
