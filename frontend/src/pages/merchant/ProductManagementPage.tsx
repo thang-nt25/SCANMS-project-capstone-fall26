@@ -775,7 +775,10 @@ export default function ProductManagementPage() {
         search: search || undefined,
         storeId: currentStoreId,
       });
-      setProducts(res.items || []);
+      const items = res.items || [];
+      const key = String(currentStoreId || 'all');
+      if (!search) cachedProductsMap.set(key, items);
+      setProducts(items);
     } catch (err) {
       console.error('Lỗi tải sản phẩm:', err);
     }

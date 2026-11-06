@@ -297,6 +297,13 @@ export interface AffiliateOrderItem {
   status: 'DELIVERED' | 'SHIPPING' | 'PROCESSING' | 'CANCELLED';
 }
 
+let lastShopKolHubSnapshot: {
+  kols: PartnerKol[];
+  rawConversations: any[];
+  samplesMap: Record<string, SampleRequestItem[]>;
+  sampleProgramStats: any;
+} | null = null;
+
 export default function ShopKolHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const kolParam = searchParams.get('kol');
@@ -306,7 +313,7 @@ export default function ShopKolHubPage() {
   const [isAiMatchingMode, setIsAiMatchingMode] = useState<boolean>(() =>
     modeParam === 'ai-matching' || tabParam === 'radar' || tabParam === 'ai-matching'
   );
-  const [kols, setKols] = useState<PartnerKol[]>([]);
+  const [kols, setKols] = useState<PartnerKol[]>(() => lastShopKolHubSnapshot?.kols || []);
   const [allPlatformKols, setAllPlatformKols] = useState<PartnerKol[]>([]);
   const [selectedKolId, setSelectedKolId] = useState<string>(kolParam || '');
   const [viewMode, setViewMode] = useState<'CRM' | 'LEADERBOARD' | 'ALL_DEALS'>(
@@ -323,12 +330,12 @@ export default function ShopKolHubPage() {
   useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
 
   // Chat & Realtime Data Cache
-  const [rawConversations, setRawConversations] = useState<any[]>([]);
+  const [rawConversations, setRawConversations] = useState<any[]>(() => lastShopKolHubSnapshot?.rawConversations || []);
 
   // Samples management
-  const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>({});
+  const [samplesMap, setSamplesMap] = useState<Record<string, SampleRequestItem[]>>(() => lastShopKolHubSnapshot?.samplesMap || {});
   const sampleLoadSequence = useRef(0);
-  const [loadingBackendData, setLoadingBackendData] = useState(true);
+  const [loadingBackendData, setLoadingBackendData] = useState(() => !lastShopKolHubSnapshot);
   const [sampleFilter, setSampleFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'SHIPPED' | 'RECEIVED' | 'VIDEO_SUBMITTED' | 'REVISION_REQUIRED' | 'OVERDUE' | 'DELIVERY_ISSUE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'>('ALL');
   const [sampleProgramStats, setSampleProgramStats] = useState<any>(null);
   const [trackingModalItem, setTrackingModalItem] = useState<SampleRequestItem | null>(null);
@@ -448,9 +455,10 @@ export default function ShopKolHubPage() {
       if (!Array.isArray(sampleData)) throw new Error('Không đọc được danh sách hàng mẫu.');
       const sampleStatsByKol: Record<string, { total: number; pending: number; completed: number }> = {};
       const requestKols: PartnerKol[] = [];
+      let grouped: Record<string, SampleRequestItem[]> = {};
 
       if (Array.isArray(sampleData)) {
-        const grouped: Record<string, SampleRequestItem[]> = {};
+        grouped = {};
         sampleData.forEach((item: any) => {
           const kolId = item.collaboratorId || item.collaborator?.id || 'kol-unknown';
           const transformed: SampleRequestItem = {
@@ -722,6 +730,12 @@ export default function ShopKolHubPage() {
       });
 
       setKols(allKols);
+      lastShopKolHubSnapshot = {
+        kols: allKols,
+        rawConversations: parsedConvs,
+        samplesMap: grouped,
+        sampleProgramStats: statsRes?.data || statsRes || null,
+      };
       setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
       if (allKols.length > 0) {

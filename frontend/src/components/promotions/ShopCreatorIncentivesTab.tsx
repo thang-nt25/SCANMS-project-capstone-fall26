@@ -82,18 +82,20 @@ const MONTHLY_MILESTONES: MonthlyMilestone[] = [
 const money = (val: unknown) =>
   val == null ? '0 ₫' : `${Number(val).toLocaleString('vi-VN')} ₫`;
 
+let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
+
 export function ShopCreatorIncentivesTab() {
   const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>('coupons');
-  const [coupons, setCoupons] = useState<CreatorCoupon[]>([]);
-  const [currentStoreId, setCurrentStoreId] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => lastCreatorIncentivesSnapshot?.coupons || []);
+  const [currentStoreId, setCurrentStoreId] = useState<string>(() => lastCreatorIncentivesSnapshot?.currentStoreId || '');
+  const [loading, setLoading] = useState<boolean>(() => !lastCreatorIncentivesSnapshot);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Modal states
   const [isIssueCouponOpen, setIsIssueCouponOpen] = useState<boolean>(false);
-  const [partnerKols, setPartnerKols] = useState<any[]>([]);
+  const [partnerKols, setPartnerKols] = useState<any[]>(() => lastCreatorIncentivesSnapshot?.partnerKols || []);
   const [selectedKolId, setSelectedKolId] = useState<string>('');
   const [couponDiscountPercent, setCouponDiscountPercent] = useState<number>(10);
   const [issuingCoupon, setIssuingCoupon] = useState<boolean>(false);
@@ -120,6 +122,7 @@ export function ShopCreatorIncentivesTab() {
         const raw = partnersRes.value?.data?.data || partnersRes.value?.data || [];
         setPartnerKols(Array.isArray(raw) ? raw : []);
       }
+      lastCreatorIncentivesSnapshot = { coupons: couponsRes.status === 'fulfilled' ? ((couponsRes.value as any)?.data?.data || (couponsRes.value as any)?.data || (couponsRes.value as any)?.items || (Array.isArray(couponsRes.value) ? couponsRes.value : [])) : [], partnerKols: partnersRes.status === 'fulfilled' ? (partnersRes.value?.data?.data || partnersRes.value?.data || []) : [], currentStoreId: sId };
     } catch {
       // Fallback safe handling
     } finally {

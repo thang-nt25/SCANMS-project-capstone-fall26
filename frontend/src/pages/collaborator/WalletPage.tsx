@@ -95,6 +95,12 @@ function toMinorUnits(amount: string): bigint {
   );
 }
 
+let lastWalletSnapshot: {
+  wallet: WalletSummary | null;
+  history: WithdrawalHistory | null;
+  ledger: LedgerHistory | null;
+} | null = null;
+
 export default function WalletPage({ embedded = false, onBusyChange }: { embedded?: boolean; onBusyChange?: (busy: boolean) => void } = {}) {
   const [routeSearchParams, setRouteSearchParams] = useSearchParams();
   const [localSearchParams, setLocalSearchParams] = useState(() => new URLSearchParams());
@@ -119,14 +125,14 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
   }, [requestedTab, navigate]);
 
   const [createLinkOpen, setCreateLinkOpen] = useState(false);
-  const [wallet, setWallet] = useState<WalletSummary | null>(null);
-  const [history, setHistory] = useState<WithdrawalHistory | null>(null);
-  const [ledger, setLedger] = useState<LedgerHistory | null>(null);
+  const [wallet, setWallet] = useState<WalletSummary | null>(() => lastWalletSnapshot?.wallet || null);
+  const [history, setHistory] = useState<WithdrawalHistory | null>(() => lastWalletSnapshot?.history || null);
+  const [ledger, setLedger] = useState<LedgerHistory | null>(() => lastWalletSnapshot?.ledger || null);
   const [page, setPage] = useState(1);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [walletPanel, setWalletPanel] = useState<'withdraw' | 'stores' | 'history'>(() => searchParams.has('payoutId') ? 'history' : 'withdraw');
   const [amount, setAmount] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !lastWalletSnapshot?.wallet);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

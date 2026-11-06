@@ -151,11 +151,14 @@ export const apiCache = {
    */
   getTTL(url: string): number {
     if (url.includes('/chat/')) return 20_000;
-    if (url.includes('/payouts')) return 20_000;
+    if (url.includes('/payouts')) return 30_000;
     if (url.includes('/orders')) return 30_000;
     if (url.includes('/wallets')) return 30_000;
-    if (url.includes('/coupons')) return 30_000;
+    if (url.includes('/coupons')) return 60_000;
     if (url.includes('/sample-requests')) return 30_000;
+    if (url.includes('/products')) return 120_000; // 2 minutes for products
+    if (url.includes('/stores')) return 180_000; // 3 minutes for store details
+    if (url.includes('/dashboard') || url.includes('/analytics')) return 60_000;
     return DEFAULT_CACHE_TTL_MS;
   },
 
@@ -208,9 +211,8 @@ export const apiCache = {
     const domain = this.getAffectedDomain(url);
     this.invalidate(domain);
     if (domain === '/orders' || domain === '/returns') {
-      for (const related of ['/products', '/stores', '/coupons', '/analytics', '/referral-links']) {
-        this.invalidate(related);
-      }
+      this.invalidate('/analytics');
+      this.invalidate('/dashboard');
     }
   },
 };
