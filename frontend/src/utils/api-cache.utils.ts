@@ -216,6 +216,9 @@ export const apiCache = {
     const domain = this.getAffectedDomain(url);
     this.invalidate(domain);
     if (domain === '/orders' || domain === '/returns') {
+      this.invalidate('/products');
+      this.invalidate('/stores');
+      this.invalidate('/coupons');
       this.invalidate('/analytics');
       this.invalidate('/dashboard');
     }
