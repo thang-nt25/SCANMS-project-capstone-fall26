@@ -689,7 +689,7 @@ export function ScanmsFloatingChatWidget() {
               }
             : undefined
         }
-        className={`fixed z-40 select-none group touch-none min-h-[46px] p-[7px_16px_7px_9px] border border-[#EEDFC6] rounded-[16px] bg-white text-[#231D15] shadow-[0_4px_18px_rgba(35,29,21,0.1),0_1px_3px_rgba(35,29,21,0.05)] hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:shadow-[0_5px_20px_rgba(35,29,21,0.15)] focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${
+        className={`fixed z-40 select-none group touch-none min-h-[46px] p-2 sm:p-[7px_16px_7px_9px] border border-[#EEDFC6] rounded-[16px] bg-white text-[#231D15] shadow-[0_4px_18px_rgba(35,29,21,0.1),0_1px_3px_rgba(35,29,21,0.05)] hover:bg-[#FBF5EB] hover:border-[#C59B58] hover:shadow-[0_5px_20px_rgba(35,29,21,0.15)] focus-visible:outline-2 focus-visible:outline-[#B88E4F] ${
           isCustomPositioned
             ? ''
             : isLiveRoute
@@ -704,7 +704,7 @@ export function ScanmsFloatingChatWidget() {
         aria-label="Chat"
       >
         <div className="flex items-center gap-2 pointer-events-none">
-          <GripVertical className="text-[#9B8B72] w-3.5 h-3.5 shrink-0" />
+          <GripVertical className="hidden sm:block text-[#9B8B72] w-3.5 h-3.5 shrink-0" />
           <div className="grid place-items-center w-[30px] h-[30px] rounded-[9px] bg-[#FBF5EB] text-[#B88E4F] relative">
             <MessageSquare size={18} strokeWidth={1.8} />
             {totalUnread > 0 && (
@@ -713,7 +713,7 @@ export function ScanmsFloatingChatWidget() {
               </span>
             )}
           </div>
-          <span className="text-[13px] font-semibold leading-5 text-[#231D15]">Chat</span>
+          <span className="hidden sm:inline text-[13px] font-semibold leading-5 text-[#231D15]">Chat</span>
         </div>
       </button>
     );

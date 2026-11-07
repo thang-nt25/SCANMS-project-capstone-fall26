@@ -42,7 +42,7 @@ test('catalogue and has() expire at the exact TTL boundary', () => {
   try {
     apiCache.clear();
     apiCache.set('/products', undefined, ['old']);
-    now += 29999;
+    now += apiCache.getTTL('/products') - 1;
     assert.equal(apiCache.has('/products'), true);
     now++;
     assert.equal(apiCache.has('/products'), false);

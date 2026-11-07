@@ -9,7 +9,7 @@ test('same-account name refresh notifies UI once and ignores an obsolete session
   const events = [];
   let options;
   let next = { id: 'customer', fullName: 'Nguyễn Minh An', role: 'CUSTOMER' };
-  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.window = { dispatchEvent: event => events.push(event.type) };
   globalThis.__profileRefreshApi = { get: async (_url, config) => { options = config; return { data: next }; } };
   try {

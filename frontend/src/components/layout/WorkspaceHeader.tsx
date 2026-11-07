@@ -90,7 +90,7 @@ export function WorkspaceHeader({
   let BadgeIcon = Megaphone;
 
   if (role === 'SHOP_MANAGER') {
-    badgeTitle = currentUser?.stores?.[0]?.name || 'Gian Hàng Sora Skin';
+    badgeTitle = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
     badgeSub = 'Cửa Hàng Trực Thuộc';
     BadgeIcon = Store;
   } else if (role === 'SYSTEM_ADMIN') {
@@ -162,7 +162,7 @@ export function WorkspaceHeader({
     <header className="scanms-site-header workspace-topbar sticky top-0 z-40 bg-gradient-to-r from-[#2A1E11] via-[#4A3418] to-[#2A1E11] border-b border-[#D4AF70]/30 shadow-sm text-[#FFF8ED]">
       <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* LEFT: BRAND LOGO + DYNAMIC ROLE/STORE BADGE */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             to="/marketplace"
             className="flex items-center gap-2 group transition-transform hover:scale-[1.02]"
@@ -171,13 +171,13 @@ export function WorkspaceHeader({
             <ScanMSLogo size="sm" darkMode={true} showSubtitle={false} className="items-center" />
           </Link>
 
-          <div className="h-5 w-[1px] bg-[#D4AF70]/30 shrink-0" />
+          <div className="hidden h-5 w-[1px] shrink-0 bg-[#D4AF70]/30 sm:block" />
 
           {/* Role-Adaptive Badge */}
-          <div className="flex items-center gap-2 py-1 px-3 rounded-full bg-black/30 border border-[#D4AF70]/30 shadow-xs">
+          <div className="hidden min-w-0 items-center gap-2 rounded-full border border-[#D4AF70]/30 bg-black/30 px-3 py-1 shadow-xs sm:flex">
             <BadgeIcon className="w-3.5 h-3.5 text-[#D4AF70] shrink-0" />
             <div className="flex items-center gap-1.5 text-xs">
-              <strong className="text-white font-semibold tracking-tight whitespace-nowrap">
+              <strong className="truncate text-white font-semibold tracking-tight">
                 {badgeTitle}
               </strong>
               <span className="text-[#D4AF70]/50 select-none hidden sm:inline">·</span>

@@ -433,14 +433,14 @@ export const ShopReturnRequestsPage: React.FC = () => {
                 </div>
 
                 {/* 14-day policy meter */}
-                <div className={`rounded-xl p-3 text-xs flex items-center gap-3 ${isExpired ? 'bg-rose-50 border border-rose-200' : daysLeft <= 3 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
-                  <CalendarDays className={`w-4 h-4 shrink-0 ${isExpired ? 'text-rose-500' : daysLeft <= 3 ? 'text-amber-500' : 'text-green-500'}`} />
+                <div className={`rounded-xl border p-3 text-xs flex items-center gap-3 ${isExpired ? 'bg-rose-50 border-rose-200' : daysLeft <= 3 ? 'bg-amber-50 border-amber-200' : 'bg-[#FBF5EB] border-[#EEDFC6]'}`}>
+                  <CalendarDays className={`w-4 h-4 shrink-0 ${isExpired ? 'text-rose-500' : daysLeft <= 3 ? 'text-amber-500' : 'text-[#B88E4F]'}`} />
                   <div className="flex-1">
                     <div className="font-bold text-[#1A1612]">Chính sách đổi trả 14 ngày</div>
                     {isExpired ? (
                       <div className="text-rose-600">⏰ Đã hết hạn đổi trả (đơn tạo {new Date(selected.createdAt).toLocaleDateString('vi-VN')})</div>
                     ) : (
-                      <div className={daysLeft <= 3 ? 'text-amber-700' : 'text-green-700'}>
+                      <div className={daysLeft <= 3 ? 'text-amber-700' : 'text-[#795A2D]'}>
                         Còn <strong>{daysLeft} ngày</strong> trong cửa sổ đổi trả · Hạn chót: {deadline14d?.toLocaleDateString('vi-VN')}
                       </div>
                     )}
@@ -449,7 +449,7 @@ export const ShopReturnRequestsPage: React.FC = () => {
                     <div className="w-16 shrink-0">
                       <div className="h-1.5 rounded-full bg-white/50 overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${daysLeft <= 3 ? 'bg-rose-400' : 'bg-green-400'}`}
+                          className={`h-full rounded-full transition-all ${daysLeft <= 3 ? 'bg-rose-400' : 'bg-[#C59B58]'}`}
                           style={{ width: `${Math.min(100, (daysLeft / 14) * 100)}%` }}
                         />
                       </div>
@@ -621,9 +621,9 @@ export const ShopReturnRequestsPage: React.FC = () => {
 
               {/* ── Arbitration Result ── */}
               {selected.dispute?.arbitration && (
-                <div className={`rounded-2xl shadow-xs p-4 border ${selected.dispute.arbitration.ruling === 'REFUND_BUYER' ? 'bg-rose-50 border-rose-200' : 'bg-green-50 border-green-200'}`}>
+                <div className={`rounded-2xl shadow-xs p-4 border ${selected.dispute.arbitration.ruling === 'REFUND_BUYER' ? 'bg-rose-50 border-rose-200' : 'bg-[#FBF5EB] border-[#EEDFC6]'}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Scale className={`w-5 h-5 ${selected.dispute.arbitration.ruling === 'REFUND_BUYER' ? 'text-rose-500' : 'text-green-600'}`} />
+                    <Scale className={`w-5 h-5 ${selected.dispute.arbitration.ruling === 'REFUND_BUYER' ? 'text-rose-500' : 'text-[#B88E4F]'}`} />
                     <div>
                       <div className="text-xs font-extrabold text-[#1A1612]">Phán quyết Trọng tài SCANMS</div>
                       <div className="text-[10px] text-[#7D715E]">
@@ -635,7 +635,7 @@ export const ShopReturnRequestsPage: React.FC = () => {
                         ↩ Hoàn tiền Khách
                       </div>
                     ) : (
-                      <div className="ml-auto text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full border border-green-200">
+                      <div className="ml-auto text-xs font-bold text-[#795A2D] bg-[#FBF5EB] px-2.5 py-1 rounded-full border border-[#EEDFC6]">
                         ✓ Từ chối Đổi trả
                       </div>
                     )}
