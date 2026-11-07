@@ -49,8 +49,8 @@ export function ProposePromotionModal({
 
   // Discount Mechanism: 'PERCENTAGE' (%) | 'FIXED_AMOUNT' (₫)
   const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED_AMOUNT'>('PERCENTAGE');
-  const [discountPercent, setDiscountPercent] = useState<number>(15);
-  const [fixedDiscountAmount, setFixedDiscountAmount] = useState<number>(50000);
+  const [discountPercent, setDiscountPercent] = useState<number | ''>(15);
+  const [fixedDiscountAmount, setFixedDiscountAmount] = useState<number | ''>(50000);
 
   // Single mode states
   const [selectedProductId, setSelectedProductId] = useState<string>('');
@@ -143,11 +143,13 @@ export function ProposePromotionModal({
     if (isManualPriceOverride && customProposedPrice) {
       return Number(customProposedPrice);
     }
+    const numDiscount = Number(discountPercent) || 0;
+    const numFixed = Number(fixedDiscountAmount) || 0;
     if (discountType === 'PERCENTAGE') {
-      const discounted = listPrice * (1 - discountPercent / 100);
+      const discounted = listPrice * (1 - numDiscount / 100);
       return Math.max(1000, Math.round(discounted / 1000) * 1000);
     } else {
-      return Math.max(1000, Math.round((listPrice - fixedDiscountAmount) / 1000) * 1000);
+      return Math.max(1000, Math.round((listPrice - numFixed) / 1000) * 1000);
     }
   }, [isManualPriceOverride, customProposedPrice, discountType, discountPercent, fixedDiscountAmount, listPrice]);
 
@@ -168,10 +170,12 @@ export function ProposePromotionModal({
       const pList = Number(p.listPrice ?? p.price ?? 0);
       const pFloor = p.floorPrice != null ? Number(p.floorPrice) : null;
       let finalPrice = pList;
+      const numDiscount = Number(discountPercent) || 0;
+      const numFixed = Number(fixedDiscountAmount) || 0;
       if (discountType === 'PERCENTAGE') {
-        finalPrice = Math.max(1000, Math.round((pList * (1 - discountPercent / 100)) / 1000) * 1000);
+        finalPrice = Math.max(1000, Math.round((pList * (1 - numDiscount / 100)) / 1000) * 1000);
       } else {
-        finalPrice = Math.max(1000, Math.round((pList - fixedDiscountAmount) / 1000) * 1000);
+        finalPrice = Math.max(1000, Math.round((pList - numFixed) / 1000) * 1000);
       }
 
       const isBelow = pFloor != null && finalPrice < pFloor;
@@ -705,9 +709,14 @@ export function ProposePromotionModal({
                         step="1"
                         value={discountPercent}
                         onChange={(e) => {
-                          setDiscountPercent(Math.max(1, Math.min(90, Number(e.target.value) || 0)));
+                          setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value));
                           setIsManualPriceOverride(false);
                         }}
+                        onBlur={() =>
+                          setDiscountPercent((prev) =>
+                            prev === '' ? 15 : Math.max(1, Math.min(90, Number(prev)))
+                          )
+                        }
                         className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-1.5 text-sm font-bold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
                       />
                       <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">%</span>
@@ -754,9 +763,14 @@ export function ProposePromotionModal({
                       step="1000"
                       value={fixedDiscountAmount}
                       onChange={(e) => {
-                        setFixedDiscountAmount(Math.max(1000, Number(e.target.value) || 0));
+                        setFixedDiscountAmount(e.target.value === '' ? '' : Number(e.target.value));
                         setIsManualPriceOverride(false);
                       }}
+                      onBlur={() =>
+                        setFixedDiscountAmount((prev) =>
+                          prev === '' ? 50000 : Math.max(1000, Number(prev))
+                        )
+                      }
                       className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-1.5 text-sm font-bold font-mono text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
                     />
                     <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">VNĐ</span>

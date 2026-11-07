@@ -64,15 +64,17 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   REJECTED: { label: 'Đã từ chối', className: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
 
+let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null; total: number } | null = null;
+
 export default function AdminFinancePayoutsPage() {
   const [activeTab, setActiveTab] = useState<'kol' | 'escrow' | 'operations'>('kol');
-  const [loading, setLoading] = useState(true);
-  const [payouts, setPayouts] = useState<PayoutItem[]>([]);
-  const [stats, setStats] = useState<PayoutStats | null>(null);
+  const [loading, setLoading] = useState(() => !lastAdminPayoutsSnapshot);
+  const [payouts, setPayouts] = useState<PayoutItem[]>(() => lastAdminPayoutsSnapshot?.payouts || []);
+  const [stats, setStats] = useState<PayoutStats | null>(() => lastAdminPayoutsSnapshot?.stats || null);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(() => lastAdminPayoutsSnapshot?.total || 0);
   const [loadError, setLoadError] = useState('');
   const [gatewayEnabled, setGatewayEnabled] = useState(false);
   const [gatewayProvider, setGatewayProvider] = useState('GATEWAY');
@@ -93,7 +95,7 @@ export default function AdminFinancePayoutsPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await api.get('/admin/payouts/stats', { headers: { 'x-skip-cache': 'true' } });
+      const res = await api.get('/admin/payouts/stats');
       setStats(res.data?.data || res.data);
     } catch {
       setStats(null);
@@ -107,7 +109,7 @@ export default function AdminFinancePayoutsPage() {
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) params.search = search.trim();
 
-      const res = await api.get('/admin/payouts', { params, headers: { 'x-skip-cache': 'true' } });
+      const res = await api.get('/admin/payouts', { params });
       const data = res.data?.data || res.data;
       setPayouts(data.requests || []);
       setTotal(data.total || 0);

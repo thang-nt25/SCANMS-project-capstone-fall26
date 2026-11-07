@@ -169,6 +169,8 @@ export class AiRecommendationService {
             },
           ],
         },
+        take: 1000,
+        orderBy: { createdAt: 'desc' },
         select: {
           attributedCollaboratorId: true,
           orderItems: {

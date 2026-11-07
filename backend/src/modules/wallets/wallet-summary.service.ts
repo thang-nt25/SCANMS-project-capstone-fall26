@@ -85,7 +85,19 @@ export class WalletSummaryService {
     const balanceConsistency = walletBalanceConsistency(wallet, wallet.storeWallets);
     const earningsReviewRequired = Boolean(wallet.earningsReviewRequired || balanceConsistency.requiresReview);
 
+    const pendingPayoutAggregate = await this.prisma.payoutRequest.aggregate({
+      where: {
+        collaboratorId,
+        status: { in: ['PENDING', 'PROCESSING'] },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+    const lockedPayoutBalance = pendingPayoutAggregate._sum.amount?.toFixed(2) ?? '0.00';
+
     return {
+      lockedPayoutBalance,
       balanceConsistency,
       cooperationStores: partnerships.map((partnership) => {
         const balance = wallet.storeWallets.find((item) => item.storeId === partnership.storeId);

@@ -17,10 +17,12 @@ import { toast } from '../../utils/toast';
 const money = (val: unknown) =>
   val == null ? '0 đ' : `${Number(val).toLocaleString('vi-VN')} đ`;
 
+let lastPricePromotionsSnapshot: { promotions: any[]; catalog: any[] } | null = null;
+
 export function ShopPricePromotionsTab() {
-  const [promotions, setPromotions] = useState<any[]>([]);
-  const [catalog, setCatalog] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [promotions, setPromotions] = useState<any[]>(() => lastPricePromotionsSnapshot?.promotions || []);
+  const [catalog, setCatalog] = useState<any[]>(() => lastPricePromotionsSnapshot?.catalog || []);
+  const [loading, setLoading] = useState<boolean>(() => !lastPricePromotionsSnapshot);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'ACTIVE' | 'FINISHED'>('ALL');
@@ -37,6 +39,7 @@ export function ShopPricePromotionsTab() {
       ]);
       setPromotions(Array.isArray(promotionsRes) ? promotionsRes : []);
       setCatalog(Array.isArray(catalogRes) ? catalogRes : []);
+      lastPricePromotionsSnapshot = { promotions: Array.isArray(promotionsRes) ? promotionsRes : [], catalog: Array.isArray(catalogRes) ? catalogRes : [] };
     } catch (err) {
       setError(requestError(err));
     } finally {

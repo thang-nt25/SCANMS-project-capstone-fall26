@@ -577,7 +577,6 @@ function CustomerCouponModal({
   const dialog = useRef<HTMLDivElement>(null);
   const sendBusy = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [storeCampaigns, setStoreCampaigns] = useState<any[]>([]);
 
   useChatDialog(dialog, onClose, sendingCoupon !== null || isSubmitting);
 
@@ -602,7 +601,6 @@ function CustomerCouponModal({
   const [discountValue, setDiscountValue] = useState<number>(10);
   const [minimumOrderAmount, setMinimumOrderAmount] = useState<number>(150000);
   const [maximumDiscountAmount, setMaximumDiscountAmount] = useState<number>(50000);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
 
   const generateCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -634,14 +632,6 @@ function CustomerCouponModal({
         if (active) setLoading(false);
       });
 
-    api.get('/campaigns/shop')
-      .then((res: any) => {
-        if (!active) return;
-        const payload = res?.data?.data || res?.data || res;
-        setStoreCampaigns((Array.isArray(payload) ? payload : []).filter((c: any) => c.isActive && new Date(c.endDate) > new Date()));
-      })
-      .catch(() => {});
-
     return () => { active = false; };
   }, [effectiveStoreId, attempt]);
 
@@ -668,8 +658,7 @@ function CustomerCouponModal({
         discountValue: Number(discountValue),
         minimumOrderAmount: Number(minimumOrderAmount) || 0,
         maximumDiscountAmount: discountType === 'PERCENTAGE' ? Number(maximumDiscountAmount) || undefined : undefined,
-        scopeType: selectedCampaignId ? 'CAMPAIGN' : 'STORE_WIDE',
-        campaignId: selectedCampaignId || undefined,
+        scopeType: 'STORE_WIDE' as const,
         startsAt: now.toISOString(),
         expiresAt: expires.toISOString(),
         usageLimitTotal: 100,
@@ -902,8 +891,8 @@ function CustomerCouponModal({
                   type="number"
                   min={1}
                   max={discountType === 'PERCENTAGE' ? 99 : 5000000}
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(Number(e.target.value))}
+                  value={discountValue === 0 ? '' : discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value === '' ? 0 : Number(e.target.value))}
                   required
                   className="w-full px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl outline-none focus:border-[#C59B58]"
                 />
@@ -924,8 +913,8 @@ function CustomerCouponModal({
                   type="number"
                   min={0}
                   step={10000}
-                  value={minimumOrderAmount}
-                  onChange={(e) => setMinimumOrderAmount(Number(e.target.value))}
+                  value={minimumOrderAmount === 0 ? '' : minimumOrderAmount}
+                  onChange={(e) => setMinimumOrderAmount(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="w-full px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl outline-none focus:border-[#C59B58]"
                 />
               </div>
@@ -944,31 +933,13 @@ function CustomerCouponModal({
                     type="number"
                     min={0}
                     step={10000}
-                    value={maximumDiscountAmount}
-                    onChange={(e) => setMaximumDiscountAmount(Number(e.target.value))}
+                    value={maximumDiscountAmount === 0 ? '' : maximumDiscountAmount}
+                    onChange={(e) => setMaximumDiscountAmount(e.target.value === '' ? 0 : Number(e.target.value))}
                     className="w-full px-3.5 py-2 text-xs font-mono font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl outline-none focus:border-[#C59B58]"
                   />
                 </div>
               )}
             </div>
-
-            {storeCampaigns.length > 0 && (
-              <div>
-                <label className="block text-xs font-bold text-[#1A1612] mb-1">Gắn vào chiến dịch (Tùy chọn)</label>
-                <select
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl outline-none focus:border-[#C59B58]"
-                >
-                  <option value="">Không gắn (Áp dụng toàn gian hàng)</option>
-                  {storeCampaigns.map((camp) => (
-                    <option key={camp.id} value={camp.id}>
-                      {camp.name} (+{camp.bonusCommissionRate}% hoa hồng)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#7D715E] space-y-0.5">
               <p>✓ Tự động kích hoạt ngay sau khi phát hành</p>

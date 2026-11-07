@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Trophy,
   Award,
@@ -111,15 +111,20 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
 
 
 
+  const [reloadKey, setReloadKey] = useState(0);
+  const handleRetry = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
     const handleAuthSync = (event: MessageEvent) => {
       if (event.data?.type === 'SCANMS_AUTH_SYNC') {
-        window.location.reload();
+        handleRetry();
       }
     };
     window.addEventListener('message', handleAuthSync);
     return () => window.removeEventListener('message', handleAuthSync);
-  }, []);
+  }, [handleRetry]);
 
 
   useEffect(() => {
@@ -154,7 +159,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     api.get('/store-collaborators/my-invitations')
@@ -163,14 +168,14 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
         setStoreInvitations(Array.isArray(body) ? body.filter((item: any) => item.status === 'PENDING' && !item.requestedByKol) : []);
       })
       .catch(() => setStoreInvitations([]));
-  }, []);
+  }, [reloadKey]);
 
   const respondToStoreInvitation = async (id: string, accept: boolean) => {
     setInvitationLoading(id);
     try {
       await api.patch(`/store-collaborators/${id}/${accept ? 'accept' : 'reject'}`, {});
       setStoreInvitations((items) => items.filter((item) => item.id !== id));
-      if (accept) window.location.reload();
+      if (accept) handleRetry();
     } catch (error: any) {
       setErrorMessage(error?.message || 'Không thể xử lý lời mời của Shop');
     } finally {
@@ -288,7 +293,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
 
     fetchProgress();
     return () => { active = false; };
-  }, [selectedStoreId, currentYearMonth, isDevMockEnabled, stores]);
+  }, [selectedStoreId, currentYearMonth, isDevMockEnabled, stores, reloadKey]);
 
 
   useEffect(() => {
@@ -335,7 +340,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
     }
     fetchHistory();
     return () => { active = false; };
-  }, [activeTab, selectedStoreId, isDevMockEnabled, stores]);
+  }, [activeTab, selectedStoreId, isDevMockEnabled, stores, reloadKey]);
 
   const formatVnd = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
@@ -555,7 +560,7 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
         ) : storesError ? (
           <section className="p-6 border border-[#EAE4D7] rounded-2xl bg-white text-center" role="alert">
             <p className="text-sm text-[#7D715E]">{storesError}</p>
-            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm text-[#B88E4F]">Thử lại</button>
+            <button onClick={handleRetry} className="mt-3 px-4 py-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-sm text-[#B88E4F] hover:bg-[#F3EFE6] transition-colors cursor-pointer">Thử lại</button>
           </section>
         ) : !storesLoading && stores.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2.5 p-7.5 sm:py-9.5 sm:px-5.5 border border-[#EAE4D7] rounded-[13px] bg-white text-center [&>div]:w-11 [&>div]:h-11 [&>div]:mb-0.5 [&>div]:border [&>div]:border-[#EEDFC6] [&>div]:rounded-xl [&>div]:bg-[#FBF5EB] [&_h3]:m-0 [&_h3]:text-[15px] [&_h3]:font-semibold [&_p]:max-w-[440px] [&_p]:m-0 [&_p]:text-[#7D715E] [&_p]:text-[11px] [&_p]:leading-5">
@@ -582,8 +587,8 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
             </p>
             <div className="flex gap-2.5 justify-center">
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 border border-[#EEDFC6] rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition-colors"
+                onClick={handleRetry}
+                className="px-4 py-2 border border-[#EEDFC6] rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition-colors cursor-pointer"
               >
                 Thử lại
               </button>
@@ -801,8 +806,8 @@ export const KolBonusProgressPage: React.FC<{ embedded?: boolean }> = ({ embedde
             </p>
             <div className="flex gap-2.5 justify-center">
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 border border-[#EEDFC6] rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition-colors"
+                onClick={handleRetry}
+                className="px-4 py-2 border border-[#EEDFC6] rounded-lg bg-[#C59B58] text-white font-bold text-xs hover:bg-[#B88E4F] transition-colors cursor-pointer"
               >
                 Thử lại
               </button>

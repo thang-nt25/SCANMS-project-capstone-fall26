@@ -408,7 +408,7 @@ export default function ProductDetailPage() {
   const [variantSelectionRequired, setVariantSelectionRequired] = useState(false);
   const variantOptionsRef = useRef<HTMLDivElement | null>(null);
 
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number>(1);
 
 
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -1117,7 +1117,7 @@ export default function ProductDetailPage() {
             {
               productId: data.product.id,
               variantId: selectedVariantIsReal ? selectedVariant?.id : undefined,
-              quantity,
+              quantity: safeQuantity,
             },
           ],
         });
@@ -1191,7 +1191,8 @@ export default function ProductDetailPage() {
     : data?.product?.sampleAvailable === true;
 
   const unitPrice = currentPrice;
-  const subtotal = unitPrice * quantity;
+  const safeQuantity = Number(quantity) || 1;
+  const subtotal = unitPrice * safeQuantity;
   const verifiedCoupon = appliedCoupon?.contextKey === couponContextKey ? appliedCoupon : null;
   const discountAmount = verifiedCoupon ? Math.min(subtotal, verifiedCoupon.discountAmount) : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
@@ -1229,7 +1230,7 @@ export default function ProductDetailPage() {
         policyShipping: policies?.shipping,
       },
       variantId: selectedVariant?.id,
-      quantity,
+      quantity: safeQuantity,
       openCartAfterAdd: true,
     });
     toast.success('Đã thêm sản phẩm vào giỏ hàng thành công!');
@@ -1707,8 +1708,8 @@ export default function ProductDetailPage() {
                   <div className="flex items-center border border-black/10 rounded-[2px] bg-white overflow-hidden shadow-none">
                     <button
                       type="button"
-                      disabled={needsVariantChoice || quantity <= 1 || currentStock <= 0}
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={needsVariantChoice || Number(quantity) <= 1 || currentStock <= 0}
+                      onClick={() => setQuantity(Math.max(1, (Number(quantity) || 1) - 1))}
                       className="w-8 h-8 flex items-center justify-center text-[#555555] hover:bg-black/[0.02] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition border-r border-black/10 select-none"
                       aria-label="Giảm số lượng"
                     >
@@ -1719,14 +1720,17 @@ export default function ProductDetailPage() {
                       role="spinbutton"
                       aria-label="Số lượng sản phẩm"
                       disabled={needsVariantChoice || currentStock <= 0}
-                      aria-valuenow={quantity}
-                      value={quantity}
+                      aria-valuenow={typeof quantity === 'number' ? quantity : 1}
+                      value={quantity === 0 ? '' : quantity}
                       onChange={(e) => {
-                        const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                        const raw = e.target.value.replace(/\D/g, '');
+                        if (raw === '') {
+                          setQuantity(0);
+                          return;
+                        }
+                        const val = parseInt(raw, 10);
                         if (!isNaN(val) && val >= 1) {
                           setQuantity(Math.min(currentStock > 0 ? currentStock : 1, val));
-                        } else if (e.target.value === '') {
-                          setQuantity(1);
                         }
                       }}
                       onBlur={() => {
@@ -1736,8 +1740,8 @@ export default function ProductDetailPage() {
                     />
                     <button
                       type="button"
-                      disabled={needsVariantChoice || quantity >= currentStock || currentStock <= 0}
-                      onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
+                      disabled={needsVariantChoice || (Number(quantity) || 1) >= currentStock || currentStock <= 0}
+                      onClick={() => setQuantity(Math.min(currentStock, (Number(quantity) || 1) + 1))}
                       className="w-8 h-8 flex items-center justify-center text-[#555555] hover:bg-black/[0.02] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition border-l border-black/10 select-none"
                       aria-label="Tăng số lượng"
                     >

@@ -267,23 +267,27 @@ export class WalletsService {
         where: { id: wallet.id },
         data: {
           conditionalDealEscrowBalance: { decrement: releaseAmount },
-          availableBalance: { increment: releaseAmount },
           version: { increment: 1 },
         },
       });
-      this.ledgerService.appendEntry(
-        tx,
-        wallet.id,
-        reference,
-        {
-          bucket: WalletBalanceBucket.AVAILABLE,
-          transactionType: TransactionType.COMMISSION_APPROVED,
-          amount: releaseAmount,
-          balanceBefore: wallet.availableBalance,
-          balanceAfter: wallet.availableBalance.plus(releaseAmount),
-        },
-      );
+      return (
+        await this.applyBalanceChanges(
+          tx,
+          wallet,
+          reference,
+          [
+            this.buildChange(
+              WalletBalanceBucket.AVAILABLE,
+              TransactionType.COMMISSION_APPROVED,
+              wallet.availableBalance,
+              releaseAmount,
+            ),
+          ],
+          storeId,
+        )
+      ).wallet;
     }
+    return wallet;
   }
 
   async forfeitConditionalDealBonus(
