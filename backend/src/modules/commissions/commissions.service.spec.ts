@@ -1,5 +1,6 @@
 import {
   CommissionStatus,
+  DealBonusStatus,
   OrderStatus,
   Prisma,
   UserRole,
@@ -45,6 +46,8 @@ describe('CommissionsService', () => {
     };
     const wallets = {
       creditPendingBalance: jest.fn().mockResolvedValue({}),
+      creditConditionalDealEscrow: jest.fn().mockResolvedValue({}),
+      forfeitConditionalDealBonus: jest.fn().mockResolvedValue({}),
       releasePendingBalance: jest.fn().mockResolvedValue({}),
       reversePendingBalance: jest.fn().mockResolvedValue({}),
       reverseAvailableBalance: jest.fn().mockResolvedValue({}),
@@ -143,10 +146,82 @@ describe('CommissionsService', () => {
       collaboratorId,
       status: CommissionStatus.PENDING,
       eligibleAt,
-      availableAt: new Date('2026-01-08T00:00:00.000Z'),
+      availableAt: new Date('2026-01-15T00:00:00.000Z'),
     });
     expect(create.data.commissionAmount.toString()).toBe('24000');
     expect(wallets.creditPendingBalance).toHaveBeenCalledTimes(1);
+  });
+
+  it('splits commission into tier base and conditional escrow when deal uplift exists', async () => {
+    const {
+      service,
+      tx,
+      wallets,
+      getCommissionCreateInput,
+    } = createService();
+    const eligibleAt = new Date('2026-01-01T00:00:00.000Z');
+    const now = new Date('2026-01-02T00:00:00.000Z');
+    tx.order.findUnique.mockResolvedValue({
+      id: orderId,
+      attributedCollaboratorId: collaboratorId,
+      status: OrderStatus.DELIVERED,
+      updatedAt: eligibleAt,
+      storeId: 'store-1',
+      store: { defaultCommissionRate: new Prisma.Decimal('10') },
+      attributedCollaborator: {
+        id: collaboratorId,
+        role: UserRole.COLLABORATOR,
+        isActive: true,
+        isDeleted: false,
+        collaboratorProfile: {
+          tier: { name: 'Vàng', extraBonusPercentage: new Prisma.Decimal('2') }, // 12% tier base
+        },
+      },
+      orderItems: [
+        {
+          id: 'item-vip',
+          quantity: 1,
+          unitPrice: new Prisma.Decimal('1000000'), // 1M VND
+          appliedCommissionRate: new Prisma.Decimal('15'), // 15% VIP Deal
+          calculatedCommissionAmount: new Prisma.Decimal('150000'),
+          commissionSnapshotAt: now,
+          product: { customCommissionRate: null },
+        },
+      ],
+      commissions: [],
+    });
+
+    await expect(service.createPendingCommission(orderId, now)).resolves.toBe(true);
+
+    const create = getCommissionCreateInput() as {
+      data: {
+        commissionAmount: Prisma.Decimal;
+        baseCommissionRate: Prisma.Decimal;
+        baseCommissionAmount: Prisma.Decimal;
+        dealBonusRate: Prisma.Decimal;
+        dealBonusAmount: Prisma.Decimal;
+        dealBonusStatus: DealBonusStatus;
+      };
+    };
+    expect(create.data.commissionAmount.toString()).toBe('150000');
+    expect(create.data.baseCommissionRate.toString()).toBe('12');
+    expect(create.data.baseCommissionAmount.toString()).toBe('120000'); // 12% protected base
+    expect(create.data.dealBonusAmount.toString()).toBe('30000'); // 3% escrow uplift
+    expect(create.data.dealBonusStatus).toBe(DealBonusStatus.PENDING_KPI);
+
+    // Wallets: 120k to pendingBalance, 30k to conditionalDealEscrowBalance
+    expect(wallets.creditPendingBalance).toHaveBeenCalledWith(
+      tx,
+      collaboratorId,
+      new Prisma.Decimal('120000'),
+      expect.anything(),
+      'store-1',
+    );
+    expect(wallets.creditConditionalDealEscrow).toHaveBeenCalledWith(
+      tx,
+      collaboratorId,
+      new Prisma.Decimal('30000'),
+    );
   });
 
   it('moves a mature pending commission to approved in one transaction', async () => {

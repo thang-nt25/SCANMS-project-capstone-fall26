@@ -852,11 +852,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1}
                             max={20}
-                            value={terms.discountPercent}
+                            value={terms.discountPercent === 0 ? '' : (terms.discountPercent ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, discountPercent: Number(e.target.value) },
+                                [item.id]: { ...terms, discountPercent: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -869,11 +869,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={0}
                             step={10000}
-                            value={terms.minimumOrderAmount}
+                            value={terms.minimumOrderAmount === 0 ? '' : (terms.minimumOrderAmount ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, minimumOrderAmount: Number(e.target.value) },
+                                [item.id]: { ...terms, minimumOrderAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -886,11 +886,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1000}
                             step={5000}
-                            value={terms.maximumDiscountAmount}
+                            value={terms.maximumDiscountAmount === 0 ? '' : (terms.maximumDiscountAmount ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, maximumDiscountAmount: Number(e.target.value) },
+                                [item.id]: { ...terms, maximumDiscountAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -902,11 +902,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                           <input
                             type="number"
                             min={1}
-                            value={terms.usageLimitTotal}
+                            value={terms.usageLimitTotal === 0 ? '' : (terms.usageLimitTotal ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, usageLimitTotal: Number(e.target.value) },
+                                [item.id]: { ...terms, usageLimitTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -919,11 +919,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={10000}
                             step={100000}
-                            value={terms.budgetTotal}
+                            value={terms.budgetTotal === 0 ? '' : (terms.budgetTotal ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, budgetTotal: Number(e.target.value) },
+                                [item.id]: { ...terms, budgetTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -936,11 +936,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1}
                             max={365}
-                            value={terms.validDays}
+                            value={terms.validDays === 0 ? '' : (terms.validDays ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, validDays: Number(e.target.value) },
+                                [item.id]: { ...terms, validDays: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"

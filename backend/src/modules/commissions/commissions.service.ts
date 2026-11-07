@@ -238,11 +238,94 @@ export class CommissionsService {
         );
         const hasPayableCommission =
           calculation.totalCommissionAmount.greaterThan(0);
+
+        const tierBonusNum = tier?.name
+          ? tierBonusByName(tier.name)
+          : Math.min(3, Math.max(0, Number(tier?.extraBonusPercentage || 0)));
+        const tierBaseRateNum = 10 + tierBonusNum;
+
+        // Check if items have deal rates above tier base rate
+        let totalBaseCommission = new Prisma.Decimal(0);
+        let totalDealCommission = new Prisma.Decimal(0);
+        let activeDealProposalId: string | null = null;
+        let activeDealApprovedRate = 0;
+
+        for (const item of calculation.items) {
+          const appliedRate = Number(item.appliedCommissionRate || 0);
+          if (appliedRate > tierBaseRateNum) {
+            const originalItem = order.orderItems.find((oi) => oi.id === item.orderItemId);
+            const itemSubtotal = originalItem ? originalItem.unitPrice.times(originalItem.quantity) : new Prisma.Decimal(0);
+            const basePortion = itemSubtotal.times(tierBaseRateNum).dividedBy(100).toDecimalPlaces(2);
+            const dealPortion = item.calculatedCommissionAmount.minus(basePortion);
+            totalBaseCommission = totalBaseCommission.plus(basePortion);
+            totalDealCommission = totalDealCommission.plus(dealPortion.greaterThan(0) ? dealPortion : new Prisma.Decimal(0));
+          } else {
+            totalBaseCommission = totalBaseCommission.plus(item.calculatedCommissionAmount);
+          }
+        }
+
+        // Check if there is an active deal proposal to link with exact scope and non-expired window
+        const hasDealProposalModel = typeof (tx as any).exclusiveDealProposal?.findFirst === 'function';
+        if (totalDealCommission.greaterThan(0) && hasDealProposalModel) {
+          const dealEligibleProductIds = order.orderItems.map((oi) => oi.productId);
+          const deal = await (tx as any).exclusiveDealProposal.findFirst({
+            where: {
+              collaboratorId: collaborator.id,
+              storeId: order.storeId,
+              status: 'APPROVED',
+              closedAt: null,
+              OR: [
+                { commitmentEndsAt: null },
+                { commitmentEndsAt: { gt: now } },
+              ],
+              AND: [
+                {
+                  OR: [
+                    { scopeType: 'STORE_WIDE' },
+                    { productId: { in: dealEligibleProductIds } },
+                    { scopeProducts: { some: { productId: { in: dealEligibleProductIds } } } },
+                  ],
+                },
+              ],
+            },
+            orderBy: [{ approvedCommissionRate: 'desc' }, { createdAt: 'desc' }],
+            select: { id: true, approvedCommissionRate: true, proposedCommissionRate: true },
+          });
+          if (deal) {
+            activeDealProposalId = deal.id;
+            activeDealApprovedRate = Number(deal.approvedCommissionRate || deal.proposedCommissionRate || 0);
+          } else {
+            // C-05: No active exclusive deal proposal found. Non-deal commission (e.g. live bonus)
+            // must NOT be locked into conditionalDealEscrowBalance!
+            totalBaseCommission = calculation.totalCommissionAmount;
+            totalDealCommission = new Prisma.Decimal(0);
+          }
+        }
+
+        const hasDealUplift = totalDealCommission.greaterThan(0);
+        const dealBonusStatus = hasDealUplift ? DealBonusStatus.PENDING_KPI : DealBonusStatus.NONE;
+        const baseRateToRecord = new Prisma.Decimal(tierBaseRateNum);
+        // C-07: dealBonusRate is the KPI differential rate (e.g. Deal 16% - Standard 10% = 6.00%),
+        // NOT dividing by total commission which produced 37.50%!
+        const dealRateToRecord = hasDealUplift
+          ? (activeDealApprovedRate > tierBaseRateNum
+              ? new Prisma.Decimal(activeDealApprovedRate - tierBaseRateNum)
+              : (order.subtotalAmount && Number(order.subtotalAmount) > 0
+                  ? totalDealCommission.dividedBy(order.subtotalAmount).times(100).toDecimalPlaces(2)
+                  : new Prisma.Decimal(0)))
+          : new Prisma.Decimal(0);
+
         const commission = await tx.commission.create({
           data: {
             orderId: order.id,
             collaboratorId: collaborator.id,
             commissionAmount: calculation.totalCommissionAmount,
+            baseCommissionRate: baseRateToRecord,
+            baseCommissionAmount: totalBaseCommission,
+            dealBonusRate: dealRateToRecord,
+            dealBonusAmount: totalDealCommission,
+            dealBonusStatus,
+            dealProposalId: activeDealProposalId,
             storeWalletTracked: true,
             status: hasPayableCommission
               ? CommissionStatus.PENDING
@@ -253,13 +336,22 @@ export class CommissionsService {
           },
         });
         if (hasPayableCommission) {
-          await this.walletsService.creditPendingBalance(
-            tx,
-            collaborator.id,
-            calculation.totalCommissionAmount,
-            { id: commission.id, type: 'COMMISSION' },
-            order.storeId,
-          );
+          if (totalBaseCommission.greaterThan(0)) {
+            await this.walletsService.creditPendingBalance(
+              tx,
+              collaborator.id,
+              totalBaseCommission,
+              { id: commission.id, type: 'COMMISSION' },
+              order.storeId,
+            );
+          }
+          if (hasDealUplift) {
+            await this.walletsService.creditConditionalDealEscrow(
+              tx,
+              collaborator.id,
+              totalDealCommission,
+            );
+          }
         }
 
         return true;
@@ -334,6 +426,20 @@ export class CommissionsService {
           commission.storeWalletTracked ? commission.order.storeId : undefined,
         );
       }
+      // C-04: If this commission has an achieved/qualified deal bonus, release it now that 14 days have matured!
+      if (
+        commission.dealBonusAmount &&
+        commission.dealBonusAmount.greaterThan(0) &&
+        commission.dealBonusStatus === DealBonusStatus.QUALIFIED
+      ) {
+        await this.walletsService.releaseConditionalDealBonus(
+          tx,
+          commission.collaboratorId,
+          commission.dealBonusAmount,
+          { id: commission.id, type: 'COMMISSION' },
+          commission.storeWalletTracked ? commission.order.storeId : undefined,
+        );
+      }
       await tx.commission.update({
         where: { id: commission.id },
         data: {
@@ -371,11 +477,13 @@ export class CommissionsService {
       }
 
       if (commission.commissionAmount.greaterThan(0)) {
+        const baseToReverse =
+          commission.baseCommissionAmount ?? commission.commissionAmount;
         if (commission.status === CommissionStatus.PENDING) {
           await this.walletsService.reversePendingBalance(
             tx,
             commission.collaboratorId,
-            commission.commissionAmount,
+            baseToReverse,
             { id: commission.id, type: 'COMMISSION' },
             commission.storeWalletTracked
               ? commission.order.storeId
@@ -385,12 +493,45 @@ export class CommissionsService {
           await this.walletsService.reverseAvailableBalance(
             tx,
             commission.collaboratorId,
-            commission.commissionAmount,
+            baseToReverse,
             { id: commission.id, type: 'COMMISSION' },
             commission.storeWalletTracked
               ? commission.order.storeId
               : undefined,
           );
+          // C-02: If deal bonus was already QUALIFIED (released to availableBalance), reverse it from availableBalance too!
+          if (
+            commission.dealBonusAmount?.greaterThan(0) &&
+            commission.dealBonusStatus === DealBonusStatus.QUALIFIED
+          ) {
+            await this.walletsService.reverseAvailableBalance(
+              tx,
+              commission.collaboratorId,
+              commission.dealBonusAmount,
+              { id: commission.id, type: 'COMMISSION' },
+              commission.storeWalletTracked
+                ? commission.order.storeId
+                : undefined,
+            );
+            await tx.commission.update({
+              where: { id: commission.id },
+              data: { dealBonusStatus: DealBonusStatus.CLAWED_BACK },
+            });
+          }
+        }
+        if (
+          commission.dealBonusAmount?.greaterThan(0) &&
+          commission.dealBonusStatus === DealBonusStatus.PENDING_KPI
+        ) {
+          await this.walletsService.forfeitConditionalDealBonus(
+            tx,
+            commission.collaboratorId,
+            commission.dealBonusAmount,
+          );
+          await tx.commission.update({
+            where: { id: commission.id },
+            data: { dealBonusStatus: DealBonusStatus.CLAWED_BACK },
+          });
         }
       }
 

@@ -24,6 +24,7 @@ export interface WalletSummary {
   availableBalance: string;
   shoppingBalance?: string;
   conditionalDealEscrowBalance?: string;
+  lockedPayoutBalance?: string;
   earningsReviewRequired?: boolean;
   activeDeals?: {
     id: string;

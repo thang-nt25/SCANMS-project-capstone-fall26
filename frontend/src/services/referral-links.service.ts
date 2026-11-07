@@ -146,6 +146,11 @@ export const referralLinksService = {
     return res.data;
   },
 
+  async settleDeal(id: string): Promise<any> {
+    const res = await api.post(`/affiliate-deals/${id}/settle`);
+    return res.data;
+  },
+
   async getMyExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
     const res: any = await api.get('/affiliate-deals/mine');
     const payload = res?.data ?? res;

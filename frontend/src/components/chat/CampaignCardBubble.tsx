@@ -33,8 +33,7 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond, can
       if (!controller.signal.aborted) setCurrentState(response.data);
     }).catch(() => { if (!controller.signal.aborted) setFeedbackError('Không đồng bộ được trạng thái lời mời. Hãy thử lại.'); });
     sync();
-    window.addEventListener('focus', sync);
-    return () => { controller.abort(); window.removeEventListener('focus', sync); };
+    return () => { controller.abort(); };
   }, [card.type, effectiveParticipantId, stateRevision]);
 
   const respond = async (decision: 'ACCEPTED' | 'REJECTED') => {

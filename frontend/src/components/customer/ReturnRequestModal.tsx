@@ -113,8 +113,9 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
                 onChange={event => setSelectedItems(current => ({ ...current, [item.id]: event.target.checked ? item.quantity : 0 }))} />
               <span className="min-w-[120px] flex-1 break-words leading-relaxed text-[#1A1612]">{item.product?.title || 'Sản phẩm'}{item.variant?.name ? ` · ${item.variant.name}` : ''}</span>
               <input type="number" min={1} max={item.quantity} disabled={!selectedItems[item.id]}
-                value={selectedItems[item.id] || 1} aria-label={`Số lượng trả ${item.product?.title || 'sản phẩm'}`}
-                onChange={event => setSelectedItems(current => ({ ...current, [item.id]: Math.max(1, Math.min(item.quantity, Number(event.target.value) || 1)) }))}
+                value={selectedItems[item.id] === 0 ? '' : (selectedItems[item.id] ?? '')} aria-label={`Số lượng trả ${item.product?.title || 'sản phẩm'}`}
+                onChange={event => setSelectedItems(current => ({ ...current, [item.id]: event.target.value === '' ? ('' as unknown as number) : Number(event.target.value) }))}
+                onBlur={() => setSelectedItems(current => ({ ...current, [item.id]: Math.max(1, Math.min(item.quantity, Number(current[item.id]) || 1)) }))}
                 className="w-14 rounded-lg border border-[#EAE4D7] p-2 text-center" />
               <span className="text-[#7D715E]">/ {item.quantity}</span>
             </div>)}

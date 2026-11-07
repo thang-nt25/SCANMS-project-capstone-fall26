@@ -16,8 +16,10 @@ export class MonthlyBonusScheduler {
   async settleClosedMonth(now = new Date()) {
     if (process.env.DISABLE_SCHEDULED_JOBS === 'true') return;
     const local = new Date(now.getTime() + 7 * 3600000);
+    // User decision: settle previous month on or after the 15th (allowing 14-day return window of month-end orders to expire)
+    const monthsBack = local.getUTCDate() >= 15 ? 1 : 2;
     const previous = new Date(
-      Date.UTC(local.getUTCFullYear(), local.getUTCMonth() - 1, 1),
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth() - monthsBack, 1),
     );
     const lastClosedMonth = previous.toISOString().slice(0, 7);
     const stores = await this.prisma.store.findMany({

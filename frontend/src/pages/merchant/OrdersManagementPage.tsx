@@ -419,7 +419,7 @@ export default function OrdersManagementPage({
           page: ordersPage,
           limit: 12,
           storeId,
-        }, background || isManualFresh);
+        }, isManualFresh);
         if (active && res) {
           lastOrdersSnapshot = {
             orders: res.items || [],
