@@ -1512,7 +1512,7 @@ export class CouponsService {
         }, tx);
 
       // 1b. Tự động thu hồi/hết hạn các mã cũ của KOL tại Store này (Đảm bảo 1 KOL = 1 mã active)
-      if (coupon.collaboratorId) {
+      if (coupon.collaboratorId && typeof tx.coupon?.updateMany === 'function') {
         await tx.coupon.updateMany({
           where: {
             collaboratorId: coupon.collaboratorId,
