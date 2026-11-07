@@ -54,6 +54,7 @@ describe('Mobile bootstrap HTTP contract', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    JwtStrategy.clearCache();
     prisma.store.findMany.mockResolvedValue([]);
   });
   afterAll(async () => {
