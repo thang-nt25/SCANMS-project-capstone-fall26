@@ -1422,9 +1422,11 @@ export class DashboardService {
         : 10;
       
       const dealRate = dealRateByProduct.get(p.productId);
-      const dealBonus = dealRate ? Math.max(0, dealRate - 10) : 0;
       const baseRate = 10;
-      const finalRate = Math.min(25, Math.max(avgRate, baseRate + tierBonus + dealBonus));
+      const standardRate = baseRate + tierBonus;
+      // C-06: Non-stacking rule: dealBonus is the KPI differential rate (Deal% - (10% + Tier%))
+      const dealBonus = dealRate ? Math.max(0, dealRate - standardRate) : 0;
+      const finalRate = Math.min(25, Math.max(avgRate, dealRate || standardRate));
 
       return {
         productId: p.productId,

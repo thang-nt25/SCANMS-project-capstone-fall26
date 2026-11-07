@@ -251,6 +251,56 @@ export default function KycApprovalPage() {
   const rejectedCount = displayKols.filter((u: any) => u.kycStatus === 'REJECTED').length;
   const totalCount = displayKols.length;
 
+  const handleExportCsv = () => {
+    if (!displayKols || displayKols.length === 0) {
+      showToast('Không có dữ liệu đối tác để xuất báo cáo', 'error');
+      return;
+    }
+    const headers = [
+      'Mã hồ sơ',
+      'Họ và tên',
+      'Email',
+      'Số điện thoại',
+      'Số CCCD/Định danh',
+      'Ngân hàng',
+      'Số tài khoản',
+      'Chủ tài khoản',
+      'Kênh nội dung',
+      'Nền tảng',
+      'Lượt theo dõi',
+      'Trạng thái eKYC',
+      'Hạng bậc',
+      'Ngày nộp',
+    ];
+    const rows = displayKols.map((k: any) => [
+      `"${k.id || ''}"`,
+      `"${(k.fullName || '').replace(/"/g, '""')}"`,
+      `"${(k.email || '').replace(/"/g, '""')}"`,
+      `"${k.phone || ''}"`,
+      `"\t${k.idCardNumber || ''}"`,
+      `"${(k.bankName || '').replace(/"/g, '""')}"`,
+      `"\t${k.accountNumber || ''}"`,
+      `"${(k.accountHolder || '').replace(/"/g, '""')}"`,
+      `"${(k.channelName || '').replace(/"/g, '""')}"`,
+      `"${k.channelPlatform || ''}"`,
+      k.followerCount || 0,
+      `"${k.kycLabel || ''}"`,
+      `"${k.tierName || ''}"`,
+      `"${k.createdAt || ''}"`,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bao_cao_tham_dinh_ekyc_kol_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Đã xuất báo cáo ${displayKols.length} hồ sơ đối tác thành công!`);
+  };
+
   return (
     <div className="w-full min-w-0 pb-8 flex flex-col gap-4 text-left">
       {/* Toast thông báo */}
@@ -307,7 +357,7 @@ export default function KycApprovalPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => showToast('Đang tạo báo cáo thẩm định eKYC...')}
+            onClick={handleExportCsv}
             className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#7D715E] transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8F682E] cursor-pointer"
           >
             <Download className="h-4 w-4 text-[#B88E4F]" />

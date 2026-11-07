@@ -201,6 +201,22 @@ export async function decideExclusiveDeal(
               ? proposal.offerTerms ?? {}
               : requestedTerms,
           );
+
+          // C-10: Floor price guard - verify that discountPercent does not drop any scoped product below floorPrice
+          if (terms.discountPercent > 0) {
+            for (const p of products) {
+              const floor = Number((p as any).floorPrice || 0);
+              const price = Number(p.price || 0);
+              if (floor > 0 && price > 0) {
+                const discountedPrice = price * (1 - terms.discountPercent / 100);
+                if (discountedPrice < floor) {
+                  throw new BadRequestException(
+                    `Mã ưu đãi Deal (${terms.discountPercent}%) làm giá bán sản phẩm "${p.title}" giảm xuống ${Math.round(discountedPrice).toLocaleString('vi-VN')}₫, vi phạm Giá sàn thấp nhất (${Math.round(floor).toLocaleString('vi-VN')}₫).`,
+                  );
+                }
+              }
+            }
+          }
           if (rate > 16 && !exceptionReview) {
             status = 'PENDING_ADMIN_APPROVAL';
             await tx.exclusiveDealProposal.update({

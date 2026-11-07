@@ -329,6 +329,16 @@ export default function ShopKolHubPage() {
   const [isDetailHeaderCompact, setIsDetailHeaderCompact] = useState(false);
   useEffect(() => { setIsDetailHeaderCompact(false); }, [selectedKolId, activeTab]);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   // Chat & Realtime Data Cache
   const [rawConversations, setRawConversations] = useState<any[]>(() => lastShopKolHubSnapshot?.rawConversations || []);
 
@@ -718,9 +728,13 @@ export default function ShopKolHubPage() {
       });
 
       // Only include creators with real engagement (conversations, samples, or memberships).
-      // If a specific KOL was requested via URL, ensure they are in the list.
-      if (kolParam && !mergedMap.has(kolParam)) {
-        const found = dbKols.find(k => k.id === kolParam);
+      // Check current URL params dynamically without stale closure
+      const currentSearchParams = new URLSearchParams(window.location.search);
+      const currentKolParam = currentSearchParams.get('kol');
+      const currentTab = currentSearchParams.get('tab') || 'messages';
+
+      if (currentKolParam && !mergedMap.has(currentKolParam)) {
+        const found = dbKols.find(k => k.id === currentKolParam);
         if (found) mergedMap.set(found.id, found);
       }
 
@@ -738,25 +752,38 @@ export default function ShopKolHubPage() {
       };
       setAllPlatformKols(Array.from(new Map([...dbKols, ...backendKols].map(kol => [kol.id, kol])).values()).map(kol => ({ ...kol, stats: measuredMembers.get(kol.id)?.stats || kol.stats, statsAvailable: measuredMembers.get(kol.id)?.statsAvailable || false, tier: measuredMembers.get(kol.id)?.tier || kol.tier })));
 
+      if (!isMountedRef.current || sequence !== sampleLoadSequence.current) return;
+
       if (allKols.length > 0) {
-        const targetKolId = kolParam && allKols.some((k) => k.id === kolParam) ? kolParam : allKols[0].id;
+        const targetKolId = currentKolParam && allKols.some((k) => k.id === currentKolParam) ? currentKolParam : allKols[0].id;
         setSelectedKolId(targetKolId);
-        if (!kolParam) {
-          setSearchParams({ kol: targetKolId, tab: activeTab }, { replace: true });
+
+        // Anti Bounce-Back: CHỈ đồng bộ kol vào URL nếu đang ở tab CRM (messages, samples, performance, profile).
+        // Tuyệt đối KHÔNG ghi đè URL khi người dùng đang ở tab 'deals', 'leaderboard', 'radar' hay 'ai-matching'!
+        const isCrmTab = ['messages', 'samples', 'performance', 'profile'].includes(currentTab);
+        if (isCrmTab && !currentKolParam) {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set('kol', targetKolId);
+            if (!next.get('tab')) next.set('tab', currentTab);
+            return next;
+          }, { replace: true });
         }
       } else {
         setSelectedKolId('');
       }
     } catch {
-if (sequence !== sampleLoadSequence.current) return;
+      if (!isMountedRef.current || sequence !== sampleLoadSequence.current) return;
       setKols([]);
       setSamplesMap({});
       setTrackingModalItem(null);
       toast.error('Chưa tải được thông tin nhận hàng mới nhất. Vui lòng làm mới danh sách mẫu.');
     } finally {
-      setLoadingBackendData(false);
+      if (isMountedRef.current) {
+        setLoadingBackendData(false);
+      }
     }
-  }, [kolParam]);
+  }, []);
 
   useEffect(() => {
     loadBackendData();

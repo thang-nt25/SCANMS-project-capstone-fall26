@@ -264,7 +264,8 @@ export function ProposeCouponInChatModal({
                     min={5}
                     max={50}
                     value={desiredPercent || ''}
-                    onChange={(e) => setDesiredPercent(Number(e.target.value) || 0)}
+                    onChange={(e) => setDesiredPercent(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value))}
+                    onBlur={() => setDesiredPercent((prev) => prev ? Math.max(5, Math.min(50, Number(prev))) : 15)}
                     className="w-full px-3 py-2 text-sm font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
                     placeholder="15"
                   />

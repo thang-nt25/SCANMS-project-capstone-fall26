@@ -77,7 +77,7 @@ export default function MainLayout() {
   if (isAuth || isIframe) {
     return (
       <main className="w-full">
-        <Outlet key={location.pathname} />
+        <Outlet />
       </main>
     );
   }
@@ -109,7 +109,7 @@ export default function MainLayout() {
                 </div>
               }
             >
-              <Outlet key={location.pathname} />
+              <Outlet />
             </Suspense>
           </div>
         </div>

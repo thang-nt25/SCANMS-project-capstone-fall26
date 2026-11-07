@@ -146,7 +146,8 @@ export default function RegisterPage() {
         phoneNumber: phone || undefined,
         role: 'CUSTOMER',
         otp: otp.trim(),
-      });
+        ...(referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
+      } as any);
 
       toast.success('Đăng ký tài khoản thành công! Đang tự động đăng nhập...');
 
@@ -489,13 +490,11 @@ export default function RegisterPage() {
       </Modal>
 
       <footer className="max-w-[1240px] mx-auto mt-0 w-full pt-3 text-center text-[11px] text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
-        <span>© 2026 SCANMS Corporation</span>
+        <span>© 2026 SCANMS — Hệ thống Quản lý Cộng tác viên & Tiếp thị Liên kết</span>
         <span>•</span>
-        <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>
+        <span className="text-[#7D715E]">Bảo mật dữ liệu cá nhân eKYC</span>
         <span>•</span>
-        <Link to="/privacy" className="hover:underline">Chính sách bảo mật</Link>
-        <span>•</span>
-        <Link to="/terms" className="hover:underline">Điều khoản dịch vụ</Link>
+        <span className="text-[#7D715E]">Quy chế hoạt động nội bộ</span>
       </footer>
     </div>
   );

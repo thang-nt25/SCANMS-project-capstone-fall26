@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition, useCallback } from 'react';
+import { useState, useEffect, useTransition, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export interface UseControlledTabOptions<T extends string> {
@@ -48,6 +48,9 @@ export function useControlledTab<T extends string>({
 
   const [isPending, startTransition] = useTransition();
 
+  // Track last known URL param to prevent race-condition loops
+  const lastUrlTabRef = useRef<string | null>(searchParams.get(paramKey));
+
   // Visited tabs cache (Keep-alive support)
   const [visitedTabs, setVisitedTabs] = useState<Record<T, boolean>>(() => {
     const initial = resolveTab(searchParams.get(paramKey));
@@ -58,6 +61,9 @@ export function useControlledTab<T extends string>({
   const setActiveTab = useCallback(
     (nextTab: T) => {
       if (!validTabs.includes(nextTab) || nextTab === activeTab) return;
+
+      // Mark this tab as the desired URL state so the sync effect won't bounce it back
+      lastUrlTabRef.current = nextTab;
 
       // Optical instant update (0ms UI latency)
       setActiveTabState(nextTab);
@@ -81,14 +87,17 @@ export function useControlledTab<T extends string>({
     [validTabs, activeTab, paramKey, replace, setSearchParams, onTabChange]
   );
 
-  // 3. Browser History Sync: Listen for Back/Forward navigation
+  // 3. Browser History Sync: Listen for Back/Forward navigation or external URL updates
+  // (activeTab removed from dependency array to eliminate race-condition tab bounces)
   useEffect(() => {
-    const currentFromUrl = resolveTab(searchParams.get(paramKey));
-    if (currentFromUrl !== activeTab) {
+    const rawFromUrl = searchParams.get(paramKey);
+    if (rawFromUrl !== lastUrlTabRef.current) {
+      lastUrlTabRef.current = rawFromUrl;
+      const currentFromUrl = resolveTab(rawFromUrl);
       setActiveTabState(currentFromUrl);
       setVisitedTabs((prev) => (prev[currentFromUrl] ? prev : { ...prev, [currentFromUrl]: true }));
     }
-  }, [searchParams, paramKey, resolveTab, activeTab]);
+  }, [searchParams, paramKey, resolveTab]);
 
   return { activeTab, setActiveTab, isPending, visitedTabs };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, ChevronDown, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
+import { TrendingUp, CheckCircle, ChevronDown, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
 import {
   referralLinksService,
   type DealKpiProgress as Progress,
@@ -180,6 +180,28 @@ export function DealKpiProgress({ id }: { id: string }) {
                   </span>
                 </div>
               </div>
+
+              {progress.state === 'ACHIEVED' && progress.rebateStatus !== 'UNLOCKED' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setBusy(true);
+                      await referralLinksService.settleDeal(id);
+                      setReload((n) => n + 1);
+                    } catch (e: any) {
+                      setError(e?.response?.data?.message || 'Không thể quyết toán Deal');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy}
+                  className="w-full py-2 px-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Quyết toán &amp; Mở khóa Quỹ Escrow ({formatVnd(progress.vipRebateEscrow || 0)})</span>
+                </button>
+              )}
 
               <div className="flex justify-end pt-1">
                 <button

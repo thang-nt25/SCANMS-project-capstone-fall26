@@ -208,6 +208,13 @@ export default function ShopCollaborationPage() {
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [searchShopQuery, setSearchShopQuery] = useState('');
   const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'INVITATIONS' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
 
@@ -629,6 +636,7 @@ export default function ShopCollaborationPage() {
       cachedTargetNewStore = targetNewStore;
       cachedRawConversations = convList;
 
+      if (!isMountedRef.current) return;
       setStores(mappedStores);
       setActiveTargetStore(targetNewStore);
 
@@ -640,13 +648,14 @@ export default function ShopCollaborationPage() {
       cachedLastSelectedStoreId = targetStoreId;
       if (targetStoreId) {
         setSelectedStoreId(targetStoreId);
-        if (!shopParam && mappedStores.length > 0) {
+        if (!shopParam && mappedStores.length > 0 && isMountedRef.current) {
           updateUrl(mappedStores[0].id, activeTabRef.current);
         }
       } else {
         setSelectedStoreId('');
       }
     } catch {
+      if (!isMountedRef.current) return;
       setStores([]);
       setActiveTargetStore(null);
     }

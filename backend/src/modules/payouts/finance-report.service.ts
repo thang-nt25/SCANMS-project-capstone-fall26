@@ -39,6 +39,15 @@ export class FinanceReportService {
     ] = await Promise.all([
       this.prisma.order.findMany({
         where: { storeId, status: 'COMPLETED' },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          subtotalAmount: true,
+          finalAmount: true,
+          couponDiscountAmount: true,
+          discountAmount: true,
+          refundedAmount: true,
+        },
       }),
       this.prisma.commission.aggregate({
         where: { order: { storeId, status: 'COMPLETED' }, status: { not: 'REVERSED' } },

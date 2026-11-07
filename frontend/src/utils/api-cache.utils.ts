@@ -93,6 +93,10 @@ export const apiCache = {
     if (url.includes('/chat/conversations/') && url.includes('/read')) {
       return null;
     }
+    // Heartbeat presence không được xóa cache /stores hay tăng revision bộ nhớ đệm
+    if (url.includes('/presence')) {
+      return null;
+    }
     // Shipping creates the waybill and changes the purchase order's fulfillment state.
     if (url.includes('/shipping/ghn/create-order/')) return '/orders';
     if (url.includes('/shipping/ghn/simulation/')) return '/orders';

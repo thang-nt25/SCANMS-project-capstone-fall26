@@ -3,11 +3,18 @@ import { PrismaModule } from '../../core/database/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { ChatModule } from '../chat/chat.module';
 import { ReferralLinksModule } from '../referral-links/referral-links.module';
+import { WalletsModule } from '../wallets/wallets.module';
 import { AffiliateDealsController } from './affiliate-deals.controller';
 import { AffiliateDealsService } from './affiliate-deals.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ChatModule, ReferralLinksModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    ChatModule,
+    ReferralLinksModule,
+    WalletsModule,
+  ],
   controllers: [AffiliateDealsController],
   providers: [AffiliateDealsService],
   exports: [AffiliateDealsService],

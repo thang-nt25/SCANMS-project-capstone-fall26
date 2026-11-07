@@ -141,7 +141,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
   const walletReadSequence = useRef(0);
   const walletBusy = useRef(false);
   const [walletSyncError, setWalletSyncError] = useState('');
-  const [activeInfoCard, setActiveInfoCard] = useState<'available' | 'pending' | 'deal' | null>(null);
+  const [activeInfoCard, setActiveInfoCard] = useState<'available' | 'pending' | 'deal' | 'locked' | null>(null);
   const ledgerSectionRequested = searchParams.get('section') === 'ledger';
 
   useEffect(() => {
@@ -476,159 +476,250 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           Dữ liệu chưa khớp, cần kiểm tra sổ giao dịch trước khi xác nhận số tiền được rút.
         </p> : <p className="mt-1">Số dư cũ cần được kế toán đối soát nguồn tiền trước khi rút thu nhập.</p>}
       </div>}
-      <section className="kol-wallet-balances grid grid-cols-1 md:grid-cols-3 gap-3" aria-label="Tổng quan số dư 3 tầng" aria-busy={loading}>
+      <section className="kol-wallet-balances grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-stretch" aria-label="Tổng quan 4 giỏ thù lao minh bạch" aria-busy={loading}>
         {/* Card 1: Khả dụng rút tiền Napas */}
-        <div className="rounded-2xl border border-[#DFD6C5] bg-white p-4 shadow-sm hover:border-[#C59B58] transition flex flex-col justify-between">
+        <div className={cn(
+          "relative rounded-2xl border bg-gradient-to-b from-white via-white to-[#FDFBF7] p-4.5 shadow-xs transition-all duration-200 flex flex-col justify-between hover:shadow-md min-h-[178px]",
+          activeInfoCard === 'available' ? "border-[#C59B58] ring-2 ring-[#C59B58]/30 shadow-md" : "border-[#E8DEC8] hover:border-[#C59B58]"
+        )}>
           <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-[#6B5E4B]">
-                <Wallet size={16} className="text-[#A87D38]" /> Khả Dụng Rút Tiền
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(activeInfoCard === 'available' ? null : 'available')}
-                  className={cn(
-                    "p-0.5 rounded-full transition",
-                    activeInfoCard === 'available' ? "text-[#B88E4F] bg-[#FBF5EB]" : "text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#F3EFE6]"
-                  )}
-                  title="Xem quy chế & giải thích"
-                >
-                  <HelpCircle size={13} />
-                </button>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#DFD6C5] bg-[#F5EFE6] text-[10px] font-semibold text-[#6B5E4B]">
-                {!walletSyncError && wallet?.canWithdraw ? <CheckCircle2 size={11} className="text-[#059669]" /> : <Clock3 size={11} />}
-                {loading ? 'Đang tải' : wallet?.canWithdraw ? 'Sẵn sàng rút' : Number(wallet?.availableBalance || 0) < Number(wallet?.minimumWithdrawalAmount || 200000) ? 'Dưới mức tối thiểu' : 'Chờ đối soát'}
+            {/* Hàng 1: Icon + Badge trạng thái độc lập */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shadow-2xs">
+                <Wallet size={18} />
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#FDE68A] bg-[#FEF3C7] text-[10.5px] font-bold text-[#92400E] shadow-2xs whitespace-nowrap">
+                {!walletSyncError && wallet?.canWithdraw ? <CheckCircle2 size={12} className="text-[#059669]" /> : <Clock3 size={12} />}
+                <span>{loading ? 'Đang tải' : wallet?.canWithdraw ? '⚡ Sẵn sàng rút' : 'Chờ đối soát'}</span>
               </span>
             </div>
-            <strong className="block text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-2">
-              {wallet ? formatMoney(wallet.availableBalance) : "—"}
-            </strong>
-            {activeInfoCard === 'available' && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#6B5E4B] leading-relaxed relative animate-fadeIn flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#8C6226] block mb-0.5">Quy chế khả dụng rút tiền:</span>
-                  Thu nhập sau 14 ngày bảo chứng đối soát. Rút Napas 24/7 (tự động khấu trừ 10% thuế TNCN tại nguồn theo quy định).
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(null)}
-                  className="text-[#8C6226] hover:text-[#1A1612] p-0.5 rounded transition shrink-0"
-                  title="Đóng giải thích"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-[#DFD6C5]/60 flex items-center justify-between text-[11px]">
-            <span className="text-[#6B5E4B]">Mức rút tối thiểu:</span>
-            <span className="font-semibold text-[#1A1612] tabular-nums">{wallet ? formatMoney(wallet.minimumWithdrawalAmount) : '50.000 ₫'}</span>
-          </div>
-        </div>
 
-        {/* Card 2: Đang bảo chứng 14 ngày (10% cơ sở) */}
-        <div className="rounded-2xl border border-[#DFD6C5] bg-white p-4 shadow-sm hover:border-[#C59B58] transition flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-[#6B5E4B]">
-                <ShieldCheck size={16} className="text-[#A87D38]" /> Bảo Chứng Đối Soát
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(activeInfoCard === 'pending' ? null : 'pending')}
-                  className={cn(
-                    "p-0.5 rounded-full transition",
-                    activeInfoCard === 'pending' ? "text-[#B88E4F] bg-[#FBF5EB]" : "text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#F3EFE6]"
-                  )}
-                  title="Xem quy chế & giải thích"
-                >
-                  <HelpCircle size={13} />
-                </button>
+            {/* Hàng 2: Tiêu đề đầy đủ không bị cắt chữ */}
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-xs font-bold text-[#6B5E4B] tracking-wide uppercase">
+                Khả Dụng Rút Tiền
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[10px] font-semibold text-[#8C6226]">
-                <Clock size={11} /> SLA 14 ngày GHN
-              </span>
+              <button
+                type="button"
+                onClick={() => setActiveInfoCard(activeInfoCard === 'available' ? null : 'available')}
+                className={cn(
+                  "p-0.5 rounded-full transition cursor-pointer",
+                  activeInfoCard === 'available' ? "text-[#B88E4F] bg-[#FBF5EB]" : "text-[#A89E90] hover:text-[#B88E4F]"
+                )}
+                title="Xem quy chế & giải thích"
+              >
+                <HelpCircle size={13} />
+              </button>
             </div>
-            <strong className="block text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-2">
-              {wallet ? formatMoney(wallet.pendingBalance) : "—"}
-            </strong>
-            {activeInfoCard === 'pending' && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#6B5E4B] leading-relaxed relative animate-fadeIn flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#8C6226] block mb-0.5">Quy chế bảo chứng đối soát:</span>
-                  Thù lao 10% cơ sở đang trong thời hạn đối soát & đổi trả GHN. Tự động kết chuyển sau 14 ngày giao thành công.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(null)}
-                  className="text-[#8C6226] hover:text-[#1A1612] p-0.5 rounded transition shrink-0"
-                  title="Đóng giải thích"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
+
+            {/* Hàng 3: Số tiền to rõ ràng */}
+            <div>
+              <strong className="block text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#1A1612] tabular-nums">
+                {wallet ? formatMoney(wallet.availableBalance) : "—"}
+              </strong>
+            </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#DFD6C5]/60 flex items-center justify-between text-[11px]">
-            <span className="text-[#6B5E4B]">Trạng thái bảo chứng:</span>
-            <span className="font-semibold text-[#8C6226]">
-              {Number(wallet?.pendingBalance || 0) > 0 ? 'Đang bảo chứng an toàn' : 'Không có khoản tạm giữ'}
+
+          {/* Hàng 4: Chú thích chân card chuẩn 1 hàng */}
+          <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between text-[11px] leading-tight mt-3">
+            <span className="text-[#7D715E]">Mức rút tối thiểu:</span>
+            <span className="font-semibold text-[#1A1612] tabular-nums font-mono">
+              {wallet ? formatMoney(wallet.minimumWithdrawalAmount) : '200.000 ₫'}
             </span>
           </div>
         </div>
 
-        {/* Card 3: Thù lao Deal VIP & KPI Mốc Tháng Tạm Tính */}
-        <div className="rounded-2xl border border-[#DFD6C5] bg-[#FBF5EB]/50 p-4 shadow-sm hover:border-[#C59B58] transition flex flex-col justify-between">
+        {/* Card 2: Chờ 14 Ngày Đối Soát (Gốc 10% + Bậc) */}
+        <div className={cn(
+          "relative rounded-2xl border bg-gradient-to-b from-white via-white to-[#FAF6EE] p-4.5 shadow-xs transition-all duration-200 flex flex-col justify-between hover:shadow-md min-h-[178px]",
+          activeInfoCard === 'pending' ? "border-[#D97706] ring-2 ring-[#D97706]/30 shadow-md" : "border-[#E8DEC8] hover:border-[#D97706]/70"
+        )}>
           <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-[#1A1612]">
-                <TrendingUp size={16} className="text-[#A87D38]" /> Deal VIP & Thưởng Mốc
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(activeInfoCard === 'deal' ? null : 'deal')}
-                  className={cn(
-                    "p-0.5 rounded-full transition",
-                    activeInfoCard === 'deal' ? "text-[#B88E4F] bg-[#FBF5EB]" : "text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#F3EFE6]"
-                  )}
-                  title="Xem quy chế & giải thích"
-                >
-                  <HelpCircle size={13} />
-                </button>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#EEDFC6] bg-white text-[10px] font-semibold text-[#8C6226]">
-                Quyết toán tháng (FR-09)
-              </span>
-            </div>
-            <strong className="block text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1612] tabular-nums mt-2">
-              {wallet ? formatMoney(String(Math.round(Number(wallet.pendingBalance || 0) * 0.4))) : "0 ₫"}
-            </strong>
-            {activeInfoCard === 'deal' && (
-              <div className="mt-2.5 p-2.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[11px] text-[#6B5E4B] leading-relaxed relative animate-fadeIn flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-[#8C6226] block mb-0.5">Quy chế Deal VIP & Thưởng Mốc:</span>
-                  Khoản thưởng +4% Deal VIP & Kickback mốc doanh số tháng. Kết chuyển vào ví ngày cuối tháng khi đạt KPI cam kết.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveInfoCard(null)}
-                  className="text-[#8C6226] hover:text-[#1A1612] p-0.5 rounded transition shrink-0"
-                  title="Đóng giải thích"
-                >
-                  <X size={12} />
-                </button>
+            {/* Hàng 1: Icon + Badge trạng thái độc lập */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[#D97706] flex items-center justify-center shadow-2xs">
+                <ShieldCheck size={18} />
               </div>
-            )}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#EEDFC6] bg-[#FBF5EB] text-[10.5px] font-bold text-[#8C6226] shadow-2xs whitespace-nowrap">
+                <Clock size={11} /> 10% Gốc + Bậc
+              </span>
+            </div>
+
+            {/* Hàng 2: Tiêu đề đầy đủ không bị cắt chữ */}
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-xs font-bold text-[#6B5E4B] tracking-wide uppercase">
+                Chờ Đối Soát 14 Ngày
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveInfoCard(activeInfoCard === 'pending' ? null : 'pending')}
+                className={cn(
+                  "p-0.5 rounded-full transition cursor-pointer",
+                  activeInfoCard === 'pending' ? "text-[#D97706] bg-[#FFFBEB]" : "text-[#A89E90] hover:text-[#D97706]"
+                )}
+                title="Xem quy chế & giải thích"
+              >
+                <HelpCircle size={13} />
+              </button>
+            </div>
+
+            {/* Hàng 3: Số tiền to rõ ràng */}
+            <div>
+              <strong className="block text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#1A1612] tabular-nums">
+                {wallet ? formatMoney(wallet.pendingBalance) : "—"}
+              </strong>
+            </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#DFD6C5]/60">
-            <div className="flex items-center justify-between text-[10px] text-[#6B5E4B] mb-1">
-              <span>Tiến độ mốc doanh số:</span>
-              <span className="font-semibold text-[#1A1612]">Đạt 68% (Mốc Bạc 20M)</span>
+
+          {/* Hàng 4: Chú thích chân card chuẩn 1 hàng */}
+          <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between text-[11px] leading-tight mt-3">
+            <span className="text-[#7D715E]">Bảo đảm thù lao:</span>
+            <span className="font-semibold text-[#059669]">
+              Sau 14 ngày sạch
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Thù lao Deal VIP Ký Quỹ KPI (Điểm nhấn Vàng Cam nổi bật) */}
+        <div className={cn(
+          "relative rounded-2xl border bg-gradient-to-b from-white via-[#FFFDF5] to-[#FEF3C7]/40 p-4.5 shadow-[0_4px_16px_rgba(245,158,11,0.09)] transition-all duration-200 flex flex-col justify-between hover:shadow-lg min-h-[178px]",
+          activeInfoCard === 'deal' ? "border-[#F59E0B] ring-2 ring-[#F59E0B]/50 shadow-md" : "border-[#FCD34D] hover:border-[#F59E0B]"
+        )}>
+          <div>
+            {/* Hàng 1: Icon + Badge trạng thái độc lập */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] text-white flex items-center justify-center shadow-xs">
+                <TrendingUp size={18} />
+              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#FCD34D] bg-[#FEF3C7] text-[10.5px] font-bold text-[#B45309] shadow-2xs whitespace-nowrap">
+                Deal% − (10%+Bậc)
+              </span>
             </div>
-            <div className="w-full h-1.5 bg-[#DFD6C5] rounded-full overflow-hidden">
-              <div className="h-full bg-[#C59B58] rounded-full transition-all" style={{ width: '68%' }} />
+
+            {/* Hàng 2: Tiêu đề đầy đủ không bị cắt chữ */}
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-xs font-bold text-[#B45309] tracking-wide uppercase">
+                Ký Quỹ KPI Deal
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveInfoCard(activeInfoCard === 'deal' ? null : 'deal')}
+                className={cn(
+                  "p-0.5 rounded-full transition cursor-pointer",
+                  activeInfoCard === 'deal' ? "text-[#D97706] bg-[#FEF3C7]" : "text-[#A89E90] hover:text-[#D97706]"
+                )}
+                title="Xem quy chế & giải thích"
+              >
+                <HelpCircle size={13} />
+              </button>
             </div>
+
+            {/* Hàng 3: Số tiền to rõ ràng với màu Vàng Cam điểm nhấn */}
+            <div>
+              <strong className="block text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#B45309] tabular-nums">
+                {wallet ? formatMoney(wallet.conditionalDealEscrowBalance || '0') : "0 ₫"}
+              </strong>
+            </div>
+          </div>
+
+          {/* Hàng 4: Chú thích chân card chuẩn 1 hàng */}
+          <div className="pt-3 border-t border-[#FCD34D]/70 flex items-center justify-between text-[11px] leading-tight mt-3">
+            <span className="text-[#8C6226]">Điều kiện giải tỏa:</span>
+            <span className="font-semibold text-[#D97706]">
+              {Number(wallet?.conditionalDealEscrowBalance || 0) > 0 ? 'Đạt đủ 100% KPI' : 'Không có thỏa thuận'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Đang Khóa Chờ Chi (lockedPayoutBalance) */}
+        <div className={cn(
+          "relative rounded-2xl border bg-gradient-to-b from-white via-white to-[#FAF8F5] p-4.5 shadow-xs transition-all duration-200 flex flex-col justify-between hover:shadow-md min-h-[178px]",
+          activeInfoCard === 'locked' ? "border-[#231D15] ring-2 ring-[#231D15]/30 shadow-md" : "border-[#E8DEC8] hover:border-[#7D715E]"
+        )}>
+          <div>
+            {/* Hàng 1: Icon + Badge trạng thái độc lập */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] flex items-center justify-center shadow-2xs">
+                <Clock3 size={18} />
+              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#EAE4D7] bg-[#F3EFE6] text-[10.5px] font-bold text-[#231D15] shadow-2xs whitespace-nowrap">
+                Thuế TNCN 10%
+              </span>
+            </div>
+
+            {/* Hàng 2: Tiêu đề đầy đủ không bị cắt chữ */}
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-xs font-bold text-[#6B5E4B] tracking-wide uppercase">
+                Đang Chờ Giải Ngân
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveInfoCard(activeInfoCard === 'locked' ? null : 'locked')}
+                className={cn(
+                  "p-0.5 rounded-full transition cursor-pointer",
+                  activeInfoCard === 'locked' ? "text-[#231D15] bg-[#F3EFE6]" : "text-[#A89E90] hover:text-[#231D15]"
+                )}
+                title="Xem quy chế & giải thích"
+              >
+                <HelpCircle size={13} />
+              </button>
+            </div>
+
+            {/* Hàng 3: Số tiền to rõ ràng */}
+            <div>
+              <strong className="block text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#1A1612] tabular-nums">
+                {wallet ? formatMoney(wallet.lockedPayoutBalance || '0') : "0 ₫"}
+              </strong>
+            </div>
+          </div>
+
+          {/* Hàng 4: Chú thích chân card chuẩn 1 hàng */}
+          <div className="pt-3 border-t border-[#EAE4D7] flex items-center justify-between text-[11px] leading-tight mt-3">
+            <span className="text-[#7D715E]">Tiến độ xử lý:</span>
+            <span className="font-semibold text-[#7D715E]">
+              {Number(wallet?.lockedPayoutBalance || 0) > 0 ? 'Kế toán đang xử lý' : 'Không có lệnh chờ'}
+            </span>
           </div>
         </div>
       </section>
+
+      {/* FULL-WIDTH BANNER GIẢI TRÌNH QUY CHẾ KHI NHẤP VÀO ICON HỎI (TRÁNH BIẾN DẠNG CARD) */}
+      {activeInfoCard && (
+        <div className="rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FFFBEB] via-[#FDF9F0] to-[#FAF8F5] p-3.5 sm:p-4 text-xs shadow-xs animate-fadeIn relative">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0 shadow-2xs mt-0.5">
+                {activeInfoCard === 'available' && <Wallet size={16} className="text-[#C59B58]" />}
+                {activeInfoCard === 'pending' && <ShieldCheck size={16} className="text-[#D97706]" />}
+                {activeInfoCard === 'deal' && <TrendingUp size={16} className="text-[#D97706]" />}
+                {activeInfoCard === 'locked' && <Clock3 size={16} className="text-[#231D15]" />}
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-xs sm:text-sm text-[#1A1612] m-0">
+                  {activeInfoCard === 'available' && 'Quy chế Khả dụng Rút tiền (Napas 24/7)'}
+                  {activeInfoCard === 'pending' && 'Quy chế Thù lao Tiêu chuẩn 14 Ngày (10% Gốc + Bậc)'}
+                  {activeInfoCard === 'deal' && 'Quy chế Ký quỹ Thưởng Deal Độc quyền [Deal% − (10% + Bậc)]'}
+                  {activeInfoCard === 'locked' && 'Quy trình Khấu trừ Thuế TNCN 10% & Giải ngân Kế toán'}
+                </h4>
+                <p className="text-[11.5px] text-[#7D715E] leading-relaxed m-0">
+                  {activeInfoCard === 'available' && 'Thu nhập đã hoàn tất 14 ngày bảo chứng đối soát sạch không có yêu cầu đổi trả hàng. Bạn có thể rút ngay về tài khoản ngân hàng liên kết mọi lúc 24/7 (hệ thống tự động khấu trừ 10% thuế TNCN tại nguồn nộp cơ quan thuế).'}
+                  {activeInfoCard === 'pending' && 'Bao gồm 10% Thù lao cơ bản cố định toàn hệ thống cộng thêm Thưởng Cấp bậc KOL (+0% Đồng, +1% Bạc, +2% Vàng, +3% Kim Cương). Khoản này được bảo chứng an toàn và sẽ tự động kết chuyển 100% sang Số dư khả dụng đúng 14 ngày sau khi đơn giao thành công.'}
+                  {activeInfoCard === 'deal' && 'Khoản tiền chênh lệch giữa Deal thỏa thuận và Thù lao tiêu chuẩn [Deal% − (10% + Bậc%)]. Nguyên tắc kế toán bất biến: Tuyệt đối không cộng dồn Deal với Bậc. Khoản tiền này được ký quỹ an toàn và giải ngân tự động khi thỏa thuận đạt đủ 100% chỉ tiêu KPI cam kết.'}
+                  {activeInfoCard === 'locked' && 'Lệnh rút tiền đã được hệ thống tiếp nhận và khóa an toàn tại ngân hàng thụ hưởng (Row-Level Locking). Chuyên viên kế toán đối soát hồ sơ và thực hiện chuyển khoản Napas 24/7, xuất biên lai khấu trừ 10% thuế TNCN.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveInfoCard(null)}
+              className="p-1 rounded-lg text-[#7D715E] hover:text-[#1A1612] hover:bg-white/80 transition cursor-pointer shrink-0"
+              title="Đóng giải thích"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
 
 
@@ -1053,7 +1144,129 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           </div>
         </form>
       </section>
+            {/* KHỐI BIẾN ĐỘNG TÀI CHÍNH GẦN NHẤT TRÊN TAB VÍ & RÚT TIỀN (LẤP ĐẦY TRANG & MINH BẠCH SỔ CÁI) */}
+      {walletPanel === 'withdraw' && (
+        <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-xs flex flex-col gap-3">
+          <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
+                <ReceiptText className="w-4 h-4 text-[#B88E4F]" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0">Nhật ký thù lao & biến động gần nhất</h3>
+                <p className="text-[11px] text-[#7D715E] m-0">Đối soát minh bạch số dư, thời hạn 14 ngày & giải ngân Napas</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWalletPanel('history')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-xs font-bold text-[#8C6226] hover:text-[#1A1612] transition cursor-pointer"
+            >
+              <span>Xem toàn bộ sổ cái ({ledger?.total ?? 0})</span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-[#B88E4F]" />
+            </button>
+          </div>
 
+          {/* Bảng 5 biến động gần nhất */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[10.5px] font-bold uppercase tracking-wider text-[#7D715E]">
+                <tr>
+                  <th className="px-3.5 py-2 whitespace-nowrap">Thời gian</th>
+                  <th className="px-3.5 py-2 whitespace-nowrap">Nghiệp vụ thù lao</th>
+                  <th className="px-3.5 py-2 whitespace-nowrap">Ngăn ví</th>
+                  <th className="px-3.5 py-2 text-right whitespace-nowrap">Biến động</th>
+                  <th className="px-3.5 py-2 whitespace-nowrap">Dòng tiền</th>
+                  <th className="px-3.5 py-2 whitespace-nowrap">Nguồn / Tham chiếu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EAE4D7]">
+                {ledger && ledger.entries.length > 0 ? (
+                  ledger.entries.slice(0, 5).map((entry) => {
+                    const entryDate = new Date(entry.createdAt);
+                    const amt = Number(entry.amount);
+                    const isPositive = amt > 0;
+                    const isNegative = amt < 0;
+                    return (
+                      <tr key={entry.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                        <td className="px-3.5 py-2 whitespace-nowrap font-mono text-[11px] text-[#7D715E]">
+                          {entryDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}{" "}
+                          {entryDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td className="px-3.5 py-2 whitespace-nowrap">
+                          {entry.transactionType === "COMMISSION_PENDING" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
+                              <Clock3 className="w-2.5 h-2.5 text-[#B88E4F]" />
+                              Ghi nhận thù lao chờ 14 ngày
+                            </span>
+                          )}
+                          {entry.transactionType === "COMMISSION_APPROVED" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-[#059669]" />
+                              Mở khóa khả dụng sau 14 ngày
+                            </span>
+                          )}
+                          {entry.transactionType === "PAYOUT_WITHDRAW" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
+                              <ArrowUpRight className="w-2.5 h-2.5 text-[#B88E4F]" />
+                              Yêu cầu rút tiền
+                            </span>
+                          )}
+                          {entry.transactionType === "REVERSAL" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                              <AlertCircle className="w-2.5 h-2.5 text-[#DC2626]" />
+                              Thu hồi Clawback hoàn trả
+                            </span>
+                          )}
+                          {!["COMMISSION_PENDING", "COMMISSION_APPROVED", "PAYOUT_WITHDRAW", "REVERSAL"].includes(entry.transactionType) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
+                              {TRANSACTION_LABELS[entry.transactionType] || entry.transactionType}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3.5 py-2 whitespace-nowrap text-[11px]">
+                          {entry.balanceBucket === "PENDING" ? (
+                            <span className="px-2 py-0.5 rounded bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] font-medium text-[10.5px]">
+                              Ví Chờ 14d
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] font-semibold text-[10.5px]">
+                              Ví Khả Dụng
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3.5 py-2 text-right whitespace-nowrap font-mono text-xs font-bold tabular-nums">
+                          <span className={cn(
+                            isPositive && "text-[#059669]",
+                            isNegative && "text-[#DC2626]",
+                            !isPositive && !isNegative && "text-[#7D715E]"
+                          )}>
+                            {isPositive ? "+" : ""}{formatMoney(entry.amount)}
+                          </span>
+                        </td>
+                        <td className="px-3.5 py-2 whitespace-nowrap font-mono text-[10.5px] text-[#7D715E] tabular-nums">
+                          <span>{formatMoney(entry.balanceBefore)}</span>
+                          <span className="mx-1 text-[#B88E4F]">→</span>
+                          <strong className="text-[#1A1612] font-bold">{formatMoney(entry.balanceAfter)}</strong>
+                        </td>
+                        <td className="px-3.5 py-2 whitespace-nowrap text-[10.5px] text-[#7D715E]">
+                          {entry.referenceDetails?.storeName || (entry.referenceType ? REFERENCE_LABELS[entry.referenceType] : 'Hệ thống')}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-xs text-[#7D715E]">
+                      Chưa có giao dịch phát sinh gần đây.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
               {/* 1. LỊCH SỬ YÊU CẦU RÚT TIỀN (FINTECH & SCANMS COMPACT E-COMMERCE STYLE) */}
       {/* 2. NHÃN HÀNG ĐỐI TÁC & PHÂN BỔ THU NHẬP */}
