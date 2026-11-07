@@ -21,7 +21,7 @@ const liabilityLabels: Record<string, string> = {
   SHOP_FAULT: 'Shop / hàng hóa',
   CUSTOMER_REASON: 'Khách đổi ý',
 };
-const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B88E4F] disabled:opacity-50';
+const primary = 'rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#231D15] hover:bg-[#B88E4F] disabled:opacity-50';
 const money = (amount: number | string) => `${Number(amount).toLocaleString('vi-VN')} ₫`;
 const ghnClaimLabels: Record<string, string> = {
   DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN, chờ phản hồi',
@@ -48,7 +48,7 @@ function ReturnProducts({ request, customer }: { request: ReturnDetail; customer
     : request.items.map(item => ({ id: item.id, quantity: item.quantity, unitPrice: item.unitPrice, product: item.orderItem.product }));
   return <div className="grid gap-2.5 mt-4">
     {missingItems && <p className="text-xs text-[#7D715E]">{loading ? 'Đang tải sản phẩm…' : products.length ? 'Sản phẩm trong đơn gốc' : 'Hồ sơ chưa có thông tin sản phẩm liên kết.'}</p>}
-    {products.map(item => <div key={item.id} className="flex items-center gap-3.5 p-3 border border-[#EAE4D7] rounded-md [&>img]:w-16 [&>img]:h-16 [&>img]:shrink-0 [&>img]:object-contain [&>div]:flex-1 [&>div]:min-w-0 [&>div]:text-sm [&>strong]:text-sm [&>strong]:whitespace-nowrap [&_strong]:font-medium [&_span]:block [&_span]:mt-1.25 [&_span]:text-xs [&_span]:text-[#7D715E]">
+    {products.map(item => <div key={item.id} className="flex flex-wrap items-center gap-3.5 p-3 border border-[#EAE4D7] rounded-md [&>img]:w-16 [&>img]:h-16 [&>img]:shrink-0 [&>img]:object-contain [&>div]:flex-1 [&>div]:min-w-0 [&>div]:basis-[calc(100%-80px)] sm:[&>div]:basis-auto [&>div]:text-sm [&>div_strong]:break-words [&>strong]:text-sm [&>strong]:whitespace-nowrap max-sm:[&>strong]:ml-auto [&_strong]:font-medium [&_span]:block [&_span]:mt-1.25 [&_span]:text-xs [&_span]:text-[#7D715E]">
       <img src={getSafeProductImageUrl(item.product?.imageUrl)} onError={handleProductImageError} alt={item.product?.title || 'Sản phẩm'} />
       <div><strong>{item.product?.title || 'Sản phẩm trong đơn'}</strong><span>Số lượng: {item.quantity}</span></div>
       <strong>{money(Number(item.unitPrice) * item.quantity)}</strong>
@@ -502,14 +502,17 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
 
   return <>
     {mode === 'customer' && <MarketplaceHeader showShortcuts={false} onOpenTracking={() => navigate('/tracking')} onOpenLive={() => navigate('/marketplace#live')} />}
-    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
+    <main className={`min-h-screen bg-[#FAF8F5] px-4 py-6 text-[#1A1612] sm:px-6 ${mode === 'customer' ? 'grid w-full lg:grid-cols-[250px_minmax(0,1fr)] items-start gap-5 max-w-[1248px] mx-auto' : ''}`}>
       {mode === 'customer' && <aside className="min-w-0 hidden lg:block"><Sidebar currentUser={user} onLogout={() => { authService.logout(); navigate('/login'); }} /></aside>}
-      <div className={`mx-auto max-w-5xl space-y-4 ${mode === 'customer' ? 'min-w-0 w-full max-w-none border border-[#EAE4D7] rounded-[5px] bg-white overflow-hidden [&>div]:p-4 sm:[&>div]:p-[22px] [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0 [&_button]:border [&_button]:border-[#EEDFC6] [&_button]:bg-white [&_button]:text-[#795A2D] [&_button]:rounded-[5px] hover:[&_button]:bg-[#FBF5EB]' : ''}`}>
+      <div className={`mx-auto max-w-5xl space-y-4 ${mode === 'customer' ? 'min-w-0 w-full max-w-none border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-[0_8px_30px_rgba(110,84,39,.06)] [&>div]:p-4 sm:[&>div]:p-[22px] [&>section]:p-4 sm:[&>section]:p-[22px] [&>div]:border-b [&>div]:border-[#EAE4D7] [&>section]:border-b [&>section]:border-[#EAE4D7] [&>*:last-child]:border-b-0' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to={back} state={mode === 'customer' ? { returnedOrderCode: detail.data?.order.externalOrderSn, clearOrderSearch: true } : undefined} className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D715E] hover:text-[#B88E4F]">
             <ArrowLeft className="h-4 w-4" /> Quay lại đơn hàng
           </Link>
-          {mode === 'customer' && detail.data && <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>}
+          {mode === 'customer' && detail.data && <div className="min-w-0">
+            <h1 className="text-base font-bold">Hồ sơ đổi trả</h1>
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>
+          </div>}
           <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
             <RefreshCw className="h-4 w-4" /> Tải lại
           </button>

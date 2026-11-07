@@ -30,6 +30,7 @@ import {
   User,
   Mail,
   KeyRound,
+  Menu,
 } from 'lucide-react';
 import { getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
 import { authService, type UserProfile } from '../../services/auth.service';
@@ -93,6 +94,8 @@ let cachedCustomerOrders: CustomerOrder[] = [];
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
   const { orderId: detailOrderId } = useParams<{ orderId: string }>();
   const [detailRefreshVersion, setDetailRefreshVersion] = useState(0);
   const placedOrderCodes: string[] = Array.isArray(location.state?.placedOrderCodes)
@@ -1032,6 +1035,15 @@ export default function CustomerPortalPage() {
         onOpenLive={() => navigate('/marketplace#live')}
       />
 
+      <div className="mx-auto w-full max-w-[1360px] px-3 pt-3 sm:px-4 lg:hidden">
+        <button type="button" aria-controls="customer-mobile-navigation" aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(open => !open)}
+          className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm font-semibold text-[#795A2D] shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+          <span className="flex items-center gap-2">{mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} {mobileMenuOpen ? 'Đóng menu tài khoản' : 'Mở menu tài khoản'}</span>
+          <span className="text-xs font-normal text-[#7D715E]">Khách mua</span>
+        </button>
+      </div>
+
       <main
         className="w-full max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
       >
@@ -1039,7 +1051,7 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           {/* CỘT TRÁI: SIDEBAR DÙNG CHUNG 100% TOÀN SÀN SCANMS */}
           {/* ========================================================= */}
-          <div data-order-detail-sidebar={Boolean(detailOrderId)} className="relative w-full lg:w-[250px] lg:shrink-0 lg:sticky lg:top-[116px] lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
+          <div id="customer-mobile-navigation" onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }} data-order-detail-sidebar={Boolean(detailOrderId)} className={`relative w-full lg:w-[250px] lg:shrink-0 lg:sticky lg:top-[116px] lg:flex lg:flex-col ${mobileMenuOpen ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white' : 'hidden'} lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
             <Sidebar
               currentUser={currentUser}
               className="px-0"
@@ -1067,8 +1079,8 @@ export default function CustomerPortalPage() {
             {currentTab === 'orders' && !detailOrderId && (
               <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
-                <div className="customer-orders__filters">
-                  <div className="customer-orders__tabs" role="group" aria-label="Lọc trạng thái đơn mua">
+                <div className="customer-orders__filters min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
+                  <div className="customer-orders__tabs flex min-w-0 gap-1 overflow-x-auto border-b border-[#EAE4D7] p-2 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
                     {[
                       { key: 'ALL', label: 'Tất cả' },
                       { key: 'PENDING', label: 'Chờ Shop xác nhận' },
@@ -1098,7 +1110,7 @@ export default function CustomerPortalPage() {
                   </div>
 
                   {/* 2. Order Search Bar */}
-                  <div className="customer-orders__search">
+                  <div className="customer-orders__search p-3 sm:p-4">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
                       {/* Thanh tìm kiếm nhỏ gọn, cân xứng, đẹp mắt */}
                       <form
@@ -1106,7 +1118,7 @@ export default function CustomerPortalPage() {
                           e.preventDefault();
                           fetchOrders();
                         }}
-                        className="customer-orders__search-form relative flex items-center flex-1 min-w-0 group"
+                        className="customer-orders__search-form relative flex min-h-11 items-center flex-1 min-w-0 group rounded-xl border border-[#EAE4D7] bg-white px-3 focus-within:border-[#B88E4F] focus-within:ring-1 focus-within:ring-[#B88E4F]"
                       >
                         <Search className="w-4 h-4 text-[#7D715E] group-focus-within:text-[#B88E4F] shrink-0 mr-2.5 transition-colors" />
                         <input
@@ -1229,7 +1241,7 @@ export default function CustomerPortalPage() {
                             revealedCheckoutOrders.current.add(key);
                             if (returnedToOrder || order.externalOrderSn === placedOrderCodes[0]) element.scrollIntoView({ block: 'nearest' });
                           }}
-                          className="customer-order-card group/order"
+                          className="customer-order-card group/order min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_4px_18px_rgba(110,84,39,.04)]"
                         >
                           <CustomerOrderSummary order={order} statusLabel={statusLabel} statusIcon={StatusIcon} onChat={() => handleOpenChat(order)} />
 
@@ -1271,7 +1283,7 @@ export default function CustomerPortalPage() {
                               ))}
                             </div>
 
-                            {returnRejection && <p className="customer-order-return-reason" title={returnRejection}>
+                            {returnRejection && <p className="customer-order-return-reason mx-3 my-2 rounded-lg border border-[#F4C7C7] bg-[#FFF5F5] p-3 text-sm text-[#DC2626]" title={returnRejection}>
                               <span><strong>Lý do từ chối: </strong>{returnRejection.replace(/^Lý do:\s*/, '')}</span>
                             </p>}
 
@@ -1326,11 +1338,11 @@ export default function CustomerPortalPage() {
                             )}
 
                             {/* Order Footer: Summary & Action Buttons */}
-                            <div className="customer-order-details-footer">
+                            <div className="customer-order-details-footer flex flex-wrap items-center gap-3 border-t border-[#EAE4D7] p-3 sm:p-4 text-sm [&_a]:inline-flex [&_a]:min-h-9 [&_a]:items-center [&_a]:justify-center [&_a]:rounded-lg [&_a]:border [&_a]:border-[#EEDFC6] [&_a]:px-3 [&_a]:text-[#795A2D] [&_button]:min-h-9 [&_button]:rounded-lg [&_button]:border [&_button]:border-[#EEDFC6] [&_button]:bg-white [&_button]:px-3 [&_button]:text-[#795A2D]">
                               <CustomerOrderTotals order={order} />
 
-                              {isCancelled && <span className="customer-order-cancel-note">Đơn hàng đã hủy</span>}
-                              {completedActions && <div className="customer-order-secondary-links">
+                              {isCancelled && <span className="customer-order-cancel-note text-[#7D715E]">Đơn hàng đã hủy</span>}
+                              {completedActions && <div className="customer-order-secondary-links flex flex-wrap items-center gap-2">
                                 <Link to={`/customer/orders/${encodeURIComponent(order.id)}`}>Xem chi tiết</Link>
                                 {canRequestReturn && <button type="button" onClick={() => setReturnOrder(order)}>Trả hàng / Hoàn tiền</button>}
                               </div>}

@@ -26,6 +26,10 @@ const eventLabels: Record<string, string> = {
   GHN_COMPENSATION_CLAIM_OPENED: 'Đã mở hồ sơ bồi hoàn GHN',
   GHN_COMPENSATION_CLAIM_UPDATED: 'Manager cập nhật đối soát GHN',
 };
+const ghnClaimStatusLabels: Record<string, string> = {
+  DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN', NEEDS_MORE_EVIDENCE: 'Cần bổ sung bằng chứng',
+  ACCEPTED: 'GHN chấp thuận', REJECTED: 'GHN từ chối', PAID: 'GHN đã thanh toán',
+};
 
 const steps = [
   'Shop phản hồi',
@@ -80,7 +84,7 @@ export function ReturnTimeline({ request }: { request: ReturnDetail }) {
         <header className="flex items-center justify-between gap-3 text-sm text-[#8A6736]"><h3 className="font-semibold">Lịch sử xử lý</h3><span className="text-xs">{events.length} mốc xử lý</span></header>
         <ol className="mt-3 space-y-2 text-sm">
           {events.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2">
-            <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type === 'GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${event.data.status}` : ''}</span>
+            <span>{eventLabels[event.type] ?? 'Hồ sơ được cập nhật'}{event.type === 'GHN_COMPENSATION_CLAIM_UPDATED' && event.data?.status ? ` · ${ghnClaimStatusLabels[event.data.status] || event.data.status}` : ''}</span>
             <time className="text-[#7D715E]" dateTime={event.createdAt}>
               {new Date(event.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
             </time>

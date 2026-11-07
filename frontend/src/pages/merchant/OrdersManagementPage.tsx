@@ -622,7 +622,7 @@ export default function OrdersManagementPage({
         status: "DELIVERED",
       });
       toast.success("Xác nhận giao hàng thành công!", {
-        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát hoa hồng.`,
+        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát thu nhập đối tác.`,
       });
       setActionSuccessMsg(`Đã xác nhận giao thành công đơn #${confirmDeliveredOrder.externalOrderSn}!`);
       setTimeout(() => setActionSuccessMsg(null), 4000);
@@ -651,7 +651,7 @@ export default function OrdersManagementPage({
     try {
       await orderService.shopCancelOrder(cancelModalOrder.id, finalReason);
       setActionSuccessMsg(
-        `Đã hủy đơn #${cancelModalOrder.externalOrderSn} — Kho hàng đã được hoàn lại, hoa hồng KOL đã thu hồi.`
+        `Đã hủy đơn #${cancelModalOrder.externalOrderSn} — Kho hàng đã được hoàn lại, thu nhập KOL đã thu hồi.`
       );
       setTimeout(() => setActionSuccessMsg(null), 6000);
       setCancelModalOrder(null);
@@ -2068,7 +2068,7 @@ export default function OrdersManagementPage({
               Bạn có chắc chắn khách hàng đã nhận được kiện hàng này? Sau khi xác nhận:
               <ul className="list-disc pl-4 mt-1.5 space-y-1 text-[#1A1612] font-medium">
                 <li>Trạng thái đơn hàng sẽ chuyển thành <span className="text-[#059669] font-bold">Hoàn thành</span>.</li>
-                <li>Hệ thống SCANMS sẽ bắt đầu ghi nhận và kích hoạt chu kỳ đối soát hoa hồng cho đối tác CTV / KOL.</li>
+                <li>Hệ thống SCANMS sẽ bắt đầu ghi nhận và kích hoạt chu kỳ đối soát thu nhập cho đối tác CTV / KOL.</li>
               </ul>
             </div>
 
@@ -2133,7 +2133,7 @@ export default function OrdersManagementPage({
                 <li>Trạng thái đơn → <strong>ĐÃ HỦY</strong></li>
                 <li>Tồn kho sản phẩm được <strong>hoàn lại tự động</strong></li>
                 <li>Mã giảm giá (nếu có) được <strong>hoàn lượt sử dụng</strong></li>
-                <li>Hoa hồng KOL đang tạm giữ bị <strong>thu hồi (Clawback)</strong></li>
+                <li>Thu nhập KOL đang tạm giữ bị <strong>thu hồi (Clawback)</strong></li>
               </ul>
             </div>
 

@@ -18,9 +18,9 @@ export function MarketplaceHero({ stores, onOpenLive }: { stores: BannerStore[];
     {
       image: '/assets/marketplace/scanms-marketplace-banner-v3.png',
       eyebrow: 'SCANMS · MẠNG LƯỚI TIẾP THỊ & CỘNG TÁC VIÊN',
-      title: partner ? partner.activeCampaign!.name : 'Chiến Dịch Siêu Thưởng Thời Trang Thiết Kế 2026',
-      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và lấy liên kết tiếp thị.` : 'Khám phá chương trình đang diễn ra tại Aura Fashion Studio và lấy liên kết tiếp thị.',
-      label: partner ? `Ghé thăm ${partner.name} ->` : 'Khám phá chiến dịch ->',
+      title: partner ? partner.activeCampaign!.name : 'Một điểm đến. Nhiều lựa chọn chính hãng.',
+      description: partner ? `Khám phá chương trình đang diễn ra tại ${partner.name} và lấy liên kết tiếp thị.` : 'Khám phá sản phẩm từ nhiều gian hàng đối tác, mua sắm chính hãng và nhận ưu đãi từ mạng lưới nhà sáng tạo SCANMS.',
+      label: partner ? `Ghé thăm ${partner.name}` : 'Khám phá gian hàng',
       href: partner ? `/shops/${partner.id}` : '#featured-stores',
     },
     {
