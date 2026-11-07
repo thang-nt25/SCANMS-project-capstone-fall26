@@ -16,7 +16,7 @@ interface CachedUser {
 }
 
 const userCache = new Map<string, CachedUser>();
-const USER_CACHE_TTL_MS = 30_000; // 30s in-memory TTL to eliminate redundant Supabase RTTs on parallel requests
+const USER_CACHE_TTL_MS = 60_000; // 60s in-memory TTL to eliminate redundant Supabase RTTs on parallel requests
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -51,19 +51,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return cached.user;
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        storeId: true,
-        phoneNumber: true,
-        isActive: true,
-        isDeleted: true,
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          storeId: true,
+          phoneNumber: true,
+          isActive: true,
+          isDeleted: true,
+        },
+      });
+    } catch (dbErr: any) {
+      if (cached?.user) {
+        return cached.user;
+      }
+      throw dbErr;
+    }
 
     if (!user || !user.isActive || user.isDeleted) {
       userCache.delete(payload.sub);

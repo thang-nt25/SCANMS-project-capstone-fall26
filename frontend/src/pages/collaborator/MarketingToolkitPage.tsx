@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
-import { Link2, Package, Tag, Video, Plus, Gift, FolderOpen } from 'lucide-react';
+import { Link2, Package, Tag, Video, Plus, Gift } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import ReferralLinksPage from './ReferralLinksPage';
 import SampleRequestsPage from './SampleRequestsPage';
 import KolCouponsPage from './KolCouponsPage';
-import MediaHubBrowserPage from './MediaHubBrowserPage';
 
-const MARKETING_TOOLKIT_TABS = ['links', 'samples', 'coupons', 'media'] as const;
+const MARKETING_TOOLKIT_TABS = ['links', 'samples', 'coupons'] as const;
 type MarketingToolkitTab = (typeof MARKETING_TOOLKIT_TABS)[number];
 
 export default function MarketingToolkitPage() {
@@ -35,15 +34,9 @@ export default function MarketingToolkitPage() {
       label: 'Mã ưu đãi (Coupon)',
       icon: Tag,
     },
-    {
-      id: 'media',
-      label: 'Kho tài nguyên số',
-      icon: FolderOpen,
-    },
   ];
 
   const renderContextualActions = () => {
-    if (activeTab === 'media') return null;
     if (activeTab === 'links') return null;
 
     if (activeTab === 'samples') {
@@ -129,9 +122,6 @@ export default function MarketingToolkitPage() {
 
         <div className={activeTab === 'coupons' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-coupons">
           {visitedTabs['coupons'] && <KolCouponsPage />}
-        </div>
-        <div className={activeTab === 'media' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-media">
-          {visitedTabs['media'] && <MediaHubBrowserPage />}
         </div>
       </div>
 

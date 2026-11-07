@@ -29,8 +29,6 @@ const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
 
 const ProductDetailPage = lazyRetry(() => import('@/pages/public/ProductDetailPage'));
 const RedirectHandlerPage = lazyRetry(() => import('@/pages/public/RedirectHandlerPage'));
-
-const UiReferencePage = lazyRetry(() => import('@/pages/public/UiReferencePage'));
 const MarketplacePage = lazyRetry(() => import('../pages/public/MarketplacePage'));
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
 const SearchPage = lazyRetry(() => import('../pages/public/SearchPage'));
@@ -153,10 +151,10 @@ function AppRoutes() {
               <Route path="/live/:id" element={<LiveStreamRoomPage />} />
               <Route path="/live" element={<LiveStreamRoomPage />} />
 
-        <Route path="/prototype" element={<UiReferencePage />} />
-        <Route path="/ui-reference" element={<UiReferencePage />} />
-        <Route path="/app" element={<UiReferencePage />} />
-        <Route path="/app/:screenId" element={<UiReferencePage />} />
+        <Route path="/prototype" element={<Navigate to="/" replace />} />
+        <Route path="/ui-reference" element={<Navigate to="/" replace />} />
+        <Route path="/app" element={<Navigate to="/" replace />} />
+        <Route path="/app/:screenId" element={<Navigate to="/" replace />} />
 
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />
@@ -220,16 +218,17 @@ function AppRoutes() {
               <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
 
               {/* Merchant Backward Compatibility Redirects */}
-              <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
-              <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
-              <Route path="merchant/referral-links" element={<Navigate to="/merchant/promotions?tab=referral-links" replace />} />
-              <Route path="stores/:storeId/referral-links" element={<Navigate to="/merchant/promotions?tab=referral-links" replace />} />
-              <Route path="merchant/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
-              <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
+              <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="merchant/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />
+              <Route path="stores/:storeId/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />
+              <Route path="merchant/coupons" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
               <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions" replace />} />
-              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
+              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?tab=radar" replace />} />
+              <Route path="merchant/ai-matching" element={<Navigate to="/merchant/kol-hub?tab=radar" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
               <Route path="shop/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -260,10 +259,10 @@ function AppRoutes() {
               <Route path="kol/referral-links" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
-              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
+              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
-              <Route path="collaborator/campaigns" element={<Navigate to="/marketplace" replace />} />
+              <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />
@@ -288,6 +287,7 @@ function AppRoutes() {
               <Route path="admin/internal-staff" element={<AdminPersonnelPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
               <Route path="admin/kyc" element={<KycApprovalPage />} />
+              <Route path="admin/kyc-approval" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
               <Route path="admin/audit-logs" element={<AuditLogsPage />} />
               <Route path="admin/internal-traffic-test" element={<InternalTrafficTestPage />} />

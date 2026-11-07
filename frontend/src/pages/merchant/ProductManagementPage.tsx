@@ -471,68 +471,7 @@ export default function ProductManagementPage() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [selectedVideoProduct, rejectionModalMedia]);
 
-  const localKolVideoStorageKey = 'scanms_kol_video_submissions';
-  const readLocalKolVideos = () => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(localKolVideoStorageKey) || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-  const saveLocalKolVideoStatus = (
-    mediaId: string,
-    status: 'APPROVED' | 'REJECTED' | 'HIDDEN',
-    options?: { isFeatured?: boolean; rejectionReason?: string | null },
-  ) => {
-    const localVideos = readLocalKolVideos();
-    const targetProductId = localVideos.find((video: any) => video.id === mediaId)?.productId;
-    const updated = localVideos.map((video: any) =>
-      video.id === mediaId
-        ? {
-            ...video,
-            status,
-            isApproved: status === 'APPROVED',
-            isFeatured: Boolean(options?.isFeatured),
-            rejectionReason: options?.rejectionReason || null,
-          }
-        : options?.isFeatured && video.productId === targetProductId
-          ? { ...video, isFeatured: false }
-          : video,
-    );
-    localStorage.setItem(localKolVideoStorageKey, JSON.stringify(updated));
-  };
-
-  const normalizeLocalKolVideo = (video: any, matchedProduct?: Product) => ({
-    ...video,
-    _localPrototype: true,
-    assetType: 'VIDEO',
-    urlOrContent: video.videoUrl?.startsWith('./assets/')
-      ? `/reference/${video.videoUrl.slice(2)}`
-      : video.videoUrl,
-    posterUrl: video.image?.startsWith('./assets/')
-      ? `/reference/${video.image.slice(2)}`
-      : video.image,
-    caption: video.caption || null,
-    collaborator: video.collaborator || { fullName: 'Trần Văn Nhật' },
-    product: matchedProduct
-      ? {
-          id: matchedProduct.id,
-          sku: matchedProduct.sku,
-          title: matchedProduct.title || (matchedProduct as any).name,
-        }
-      : video.product || {
-          id: video.productId,
-          sku: video.productId,
-          title: video.productName || 'Sản phẩm KOL đã chọn',
-        },
-  });
-
-  const pendingKolVideoCount = new Set(
-    [...readLocalKolVideos(), ...productVideos]
-      .filter((video: any) => video.status === 'PENDING')
-      .map((video: any) => video.id),
-  ).size;
+  const pendingKolVideoCount = productVideos.filter((video: any) => video.status === 'PENDING').length;
 
 
   const [showReviewModeration, setShowReviewModeration] = useState(false);
@@ -620,26 +559,11 @@ export default function ProductManagementPage() {
     } as Product);
     setLoadingVideos(true);
 
-    const localVideos = readLocalKolVideos().map((video: any) => {
-      const matchedProduct = products.find((product) => {
-        const aliases = new Set([
-          product.id,
-          product.sku,
-          ...(product.sku === 'SR-VTC-15' ? ['SKIN-C15'] : []),
-        ]);
-        return aliases.has(video.productId);
-      });
-      return normalizeLocalKolVideo(video, matchedProduct);
-    });
-
     try {
       const res = await api.get('/media', {
         params: { assetType: 'VIDEO', limit: 100 },
       });
       const merged = [...(res.data?.items || [])];
-      localVideos.forEach((video: any) => {
-        if (!merged.some((item: any) => item.id === video.id)) merged.push(video);
-      });
       merged.sort((a: any, b: any) => {
         if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
         if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
@@ -648,7 +572,7 @@ export default function ProductManagementPage() {
       setProductVideos(merged);
     } catch (err) {
       console.error('Lỗi khi tải toàn bộ video KOL:', err);
-      setProductVideos(localVideos);
+      setProductVideos([]);
     } finally {
       setLoadingVideos(false);
     }
@@ -657,17 +581,10 @@ export default function ProductManagementPage() {
   const handleApproveVideo = async (mediaId: string, isFeatured: boolean) => {
     setReviewingMediaId(mediaId);
     try {
-      const isLocalVideo = Boolean(
-        productVideos.find((video) => video.id === mediaId)?._localPrototype,
-      );
-      if (isLocalVideo) {
-        saveLocalKolVideoStatus(mediaId, 'APPROVED', { isFeatured });
-      } else {
-        await api.patch(`/media/${mediaId}/review`, {
-          status: 'APPROVED',
-          isFeatured,
-        });
-      }
+      await api.patch(`/media/${mediaId}/review`, {
+        status: 'APPROVED',
+        isFeatured,
+      });
       showToast(
         isFeatured
           ? 'Đã duyệt và ghim video làm nổi bật Landing!'
@@ -714,16 +631,10 @@ export default function ProductManagementPage() {
     const mediaId = rejectionModalMedia.id;
     setReviewingMediaId(mediaId);
     try {
-      if (rejectionModalMedia._localPrototype) {
-        saveLocalKolVideoStatus(mediaId, rejectionActionType, {
-          rejectionReason: rejectionReasonInput.trim(),
-        });
-      } else {
-        await api.patch(`/media/${mediaId}/review`, {
-          status: rejectionActionType,
-          rejectionReason: rejectionReasonInput.trim(),
-        });
-      }
+      await api.patch(`/media/${mediaId}/review`, {
+        status: rejectionActionType,
+        rejectionReason: rejectionReasonInput.trim(),
+      });
       showToast(
         rejectionActionType === 'REJECTED'
           ? 'Đã từ chối video review và lưu lý do kiểm duyệt.'
@@ -775,7 +686,10 @@ export default function ProductManagementPage() {
         search: search || undefined,
         storeId: currentStoreId,
       });
-      setProducts(res.items || []);
+      const items = res.items || [];
+      const key = String(currentStoreId || 'all');
+      if (!search) cachedProductsMap.set(key, items);
+      setProducts(items);
     } catch (err) {
       console.error('Lỗi tải sản phẩm:', err);
     }
@@ -2761,8 +2675,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.basePrice ?? (variant.price ? Math.round(variant.price * 0.6) : 0)}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: Number(item.basePrice) || 0 } : item))}
                                 placeholder="100.000"
                                 className="h-8 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2.5 text-xs font-bold text-[#8C6226] outline-none focus:border-[#B88E4F]"
                               />
@@ -2773,8 +2688,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.price}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.price === 0 ? '' : (variant.price ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: Number(item.price) || 0 } : item))}
                                 placeholder="200.000"
                                 className={`h-8 w-full rounded-lg border px-2.5 text-xs font-bold outline-none focus:border-[#B88E4F] ${
                                   variant.basePrice && variant.price < variant.basePrice ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-[#EAE4D7] bg-white text-[#1A1612]'
@@ -2790,8 +2706,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.stockQuantity}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.stockQuantity === 0 ? '' : (variant.stockQuantity ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Number(item.stockQuantity) || 0 } : item))}
                                 className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
                               />
                             </td>
@@ -2872,7 +2789,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageWeight}
-                        onChange={(e) => setFormPackageWeight(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageWeight((prev) => prev === '' ? 250 : Math.max(1, Number(prev)))}
                         placeholder="250"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-6 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2890,7 +2808,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageLength}
-                        onChange={(e) => setFormPackageLength(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageLength(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageLength((prev) => prev === '' ? 15 : Math.max(1, Number(prev)))}
                         placeholder="15"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2908,7 +2827,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageWidth}
-                        onChange={(e) => setFormPackageWidth(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageWidth(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageWidth((prev) => prev === '' ? 10 : Math.max(1, Number(prev)))}
                         placeholder="10"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2926,7 +2846,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageHeight}
-                        onChange={(e) => setFormPackageHeight(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageHeight(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageHeight((prev) => prev === '' ? 5 : Math.max(1, Number(prev)))}
                         placeholder="5"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -3009,7 +2930,8 @@ export default function ProductManagementPage() {
                           type="number"
                           min={1}
                           value={formSampleQuota}
-                          onChange={(e) => setFormSampleQuota(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                          onChange={(e) => setFormSampleQuota(e.target.value === '' ? '' : Number(e.target.value))}
+                          onBlur={() => setFormSampleQuota((prev) => prev === '' ? 20 : Math.max(1, Number(prev)))}
                           placeholder="VD: 20"
                           required={formSampleEnabled}
                           className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"

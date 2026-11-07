@@ -9,6 +9,7 @@ import {
   Prisma,
   CommissionStatus,
   CouponRedemptionStatus,
+  DealBonusStatus,
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -2174,38 +2175,98 @@ export class CommissionRulesService {
                   trackedStoreId,
                 );
           };
+          const baseToReverse = comm.baseCommissionAmount ?? comm.commissionAmount;
+          const dealBonus = comm.dealBonusAmount ?? new Prisma.Decimal(0);
+
           if (isFullRefund) {
+            // 1. C-02: Handle Deal bonus clawback without touching base pendingBalance incorrectly
+            if (dealBonus.greaterThan(0)) {
+              if (comm.dealBonusStatus === DealBonusStatus.PENDING_KPI) {
+                await this.walletsService.forfeitConditionalDealBonus(
+                  tx,
+                  comm.collaboratorId,
+                  dealBonus,
+                );
+                await tx.commission.update({
+                  where: { id: comm.id },
+                  data: { dealBonusStatus: DealBonusStatus.CLAWED_BACK },
+                });
+              } else if (comm.dealBonusStatus === DealBonusStatus.QUALIFIED) {
+                if (comm.status === CommissionStatus.APPROVED) {
+                  await reverseBalance(dealBonus);
+                } else {
+                  await this.walletsService.forfeitConditionalDealBonus(
+                    tx,
+                    comm.collaboratorId,
+                    dealBonus,
+                  );
+                }
+                await tx.commission.update({
+                  where: { id: comm.id },
+                  data: { dealBonusStatus: DealBonusStatus.CLAWED_BACK },
+                });
+              }
+            }
+
+            // 2. Handle Base commission (10% + Tier%) clawback
+            if (baseToReverse.greaterThan(0)) {
+              await reverseBalance(baseToReverse);
+            }
+
             await tx.commission.update({
               where: { id: comm.id },
               data: {
                 commissionAmount: new Prisma.Decimal(0),
+                baseCommissionAmount: new Prisma.Decimal(0),
+                dealBonusAmount: new Prisma.Decimal(0),
                 status: CommissionStatus.REVERSED,
                 reversedAt: new Date(),
               },
             });
-
-            if (comm.commissionAmount.greaterThan(0)) {
-              await reverseBalance(comm.commissionAmount);
-            }
           } else {
-            const commReversal = comm.commissionAmount
+            // Partial refund
+            const baseReversal = baseToReverse
               .mul(refundRatio)
               .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-            const remainingCommission = Prisma.Decimal.max(
-              0,
-              comm.commissionAmount.minus(commReversal),
-            );
+            const dealReversal = dealBonus
+              .mul(refundRatio)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+            if (dealReversal.greaterThan(0)) {
+              if (comm.dealBonusStatus === DealBonusStatus.PENDING_KPI) {
+                await this.walletsService.forfeitConditionalDealBonus(
+                  tx,
+                  comm.collaboratorId,
+                  dealReversal,
+                );
+              } else if (comm.dealBonusStatus === DealBonusStatus.QUALIFIED) {
+                if (comm.status === CommissionStatus.APPROVED) {
+                  await reverseBalance(dealReversal);
+                } else {
+                  await this.walletsService.forfeitConditionalDealBonus(
+                    tx,
+                    comm.collaboratorId,
+                    dealReversal,
+                  );
+                }
+              }
+            }
+
+            if (baseReversal.greaterThan(0)) {
+              await reverseBalance(baseReversal);
+            }
+
+            const remainingBase = Prisma.Decimal.max(0, baseToReverse.minus(baseReversal));
+            const remainingDeal = Prisma.Decimal.max(0, dealBonus.minus(dealReversal));
 
             await tx.commission.update({
               where: { id: comm.id },
               data: {
-                commissionAmount: remainingCommission,
+                baseCommissionAmount: remainingBase,
+                dealBonusAmount: remainingDeal,
+                commissionAmount: remainingBase.plus(remainingDeal),
               },
             });
-
-            if (commReversal.greaterThan(0)) {
-              await reverseBalance(commReversal);
-            }
           }
         }
       }

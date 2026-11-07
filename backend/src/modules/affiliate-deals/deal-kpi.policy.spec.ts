@@ -155,9 +155,50 @@ describe('Deal KPI contract', () => {
       await service.getProgress('id', 'creator', 'COLLABORATOR'),
     ).toMatchObject({ completedOrders: 3, pendingOrders: 2 });
     expect(prisma.order.count.mock.calls[0][0].where).toMatchObject({
-      status: 'COMPLETED',
+      status: { in: ['COMPLETED', 'DELIVERED'] },
       refundedAmount: 0,
-      completedAt: { lte: deal.settlementEndsAt },
+      OR: [
+        { completedAt: { lte: deal.settlementEndsAt } },
+        { deliveredAt: { lte: deal.settlementEndsAt } },
+      ],
+    });
+  });
+
+  it('protects tier baseline for Gold KOC (12%) in a 15% VIP deal on KPI success', () => {
+    const goldDeal = {
+      ...deal,
+      approvedCommissionRate: 15,
+      tierBonus: 2, // Gold tier (+2% -> 12% baseline)
+    };
+    const validSales = 10000000; // 10M VND
+    const progress = evaluateDealKpi(goldDeal, 10, 0, new Date('2026-02-14'), validSales);
+    expect(progress).toMatchObject({
+      state: 'ACHIEVED',
+      baseRate: 12,
+      approvedRate: 15,
+      rebateBonusRate: 3, // 15% - 12% = 3%
+      baseCommissionEarned: 1200000, // 12% of 10M
+      vipRebateEscrow: 300000, // 3% of 10M
+      rebateStatus: 'UNLOCKED',
+    });
+  });
+
+  it('preserves Gold KOC 12% baseline even when VIP deal fails KPI (state REVIEW_REQUIRED)', () => {
+    const goldDeal = {
+      ...deal,
+      approvedCommissionRate: 15,
+      tierBonus: 2, // Gold tier (+2% -> 12% baseline)
+    };
+    const validSales = 10000000; // 10M VND
+    const progress = evaluateDealKpi(goldDeal, 3, 0, new Date('2026-02-14'), validSales);
+    expect(progress).toMatchObject({
+      state: 'REVIEW_REQUIRED',
+      baseRate: 12,
+      approvedRate: 15,
+      rebateBonusRate: 3,
+      baseCommissionEarned: 1200000, // Still earns 12% (1.2M VND)
+      vipRebateEscrow: 300000, // 3% escrow is forfeited
+      rebateStatus: 'FORFEITED',
     });
   });
 });

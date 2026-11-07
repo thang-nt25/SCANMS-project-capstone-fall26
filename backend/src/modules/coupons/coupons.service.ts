@@ -1377,6 +1377,22 @@ export class CouponsService {
         });
       }
 
+      // Tự động thu hồi/hết hạn các mã cũ của KOL tại Store này khi Shop cấp mã mới
+      if (dto.collaboratorId) {
+        await tx.coupon.updateMany({
+          where: {
+            collaboratorId: dto.collaboratorId,
+            storeId,
+            id: { not: created.id },
+            status: CouponStatus.ACTIVE,
+          },
+          data: {
+            status: CouponStatus.EXPIRED,
+            blockedReason: `Đã thay thế bởi mã định danh mới: ${created.displayCode}`,
+          },
+        });
+      }
+
       return created;
     });
 
@@ -1494,6 +1510,22 @@ export class CouponsService {
           approvedBy: userId,
           approvedAt: new Date(),
         }, tx);
+
+      // 1b. Tự động thu hồi/hết hạn các mã cũ của KOL tại Store này (Đảm bảo 1 KOL = 1 mã active)
+      if (coupon.collaboratorId) {
+        await tx.coupon.updateMany({
+          where: {
+            collaboratorId: coupon.collaboratorId,
+            storeId: coupon.storeId,
+            id: { not: coupon.id },
+            status: CouponStatus.ACTIVE,
+          },
+          data: {
+            status: CouponStatus.EXPIRED,
+            blockedReason: `Đã thay thế bởi mã định danh mới: ${coupon.displayCode}`,
+          },
+        });
+      }
 
       // 2. Handle Scope products
       if (
@@ -2344,6 +2376,28 @@ export class CouponsService {
 
     // Cap at eligible subtotal
     calculatedDiscount = Math.min(calculatedDiscount, eligibleSubtotal);
+
+    // C-10: Floor price guard in coupon evaluation
+    for (const item of storeItems) {
+      const prod = dbProductMap.get(item.productId);
+      if (!prod) continue;
+      const variant = item.variantId ? dbVariantMap.get(item.variantId) : undefined;
+      const itemUnitPrice = Number(variant?.price ?? prod.price);
+      const itemFloorPrice = Number(variant?.floorPrice ?? prod.floorPrice ?? 0);
+      if (itemFloorPrice > 0 && itemUnitPrice > 0 && eligibleSubtotal > 0) {
+        const itemDiscount = coupon.discountType === DiscountType.PERCENTAGE
+          ? itemUnitPrice * (discountVal / 100)
+          : (calculatedDiscount / eligibleSubtotal) * itemUnitPrice;
+        const discountedUnitPrice = itemUnitPrice - itemDiscount;
+        if (discountedUnitPrice < itemFloorPrice) {
+          await this.recordValidationFailure(rateLimitKey);
+          throw new BadRequestException({
+            errorCode: 'FLOOR_PRICE_VIOLATION',
+            message: `Mã giảm giá làm đơn giá sản phẩm "${prod.title}" giảm xuống ${Math.round(discountedUnitPrice).toLocaleString('vi-VN')} ₫, thấp hơn Giá sàn quy định (${Math.round(itemFloorPrice).toLocaleString('vi-VN')} ₫).`,
+          });
+        }
+      }
+    }
 
     // Reset failure counter on success
     await this.resetValidationFailure(rateLimitKey);

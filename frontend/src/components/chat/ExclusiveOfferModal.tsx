@@ -67,9 +67,9 @@ export function ExclusiveOfferModal({
     initialProductIds.length > 0 ? initialProductIds : productId ? [productId] : []
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [rate, setRate] = useState<number>(14);
-  const [targetRevenue, setTargetRevenue] = useState<number>(10000000);
-  const [days, setDays] = useState<number>(14);
+  const [rate, setRate] = useState<number | ''>(14);
+  const [targetRevenue, setTargetRevenue] = useState<number | ''>(10000000);
+  const [days, setDays] = useState<number | ''>(14);
   const [plan, setPlan] = useState<string>(
     'Thực hiện video review chuyên sâu giới thiệu sản phẩm và hướng dẫn khách mua qua link tiếp thị độc quyền.'
   );
@@ -142,9 +142,15 @@ export function ExclusiveOfferModal({
     setRate(preset);
   };
 
-  const handleRateChange = (val: number) => {
-    if (isNaN(val)) return;
-    setRate(Math.min(25, Math.max(10, val)));
+  const handleRateChange = (val: string) => {
+    if (val === '') {
+      setRate('');
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      setRate(num);
+    }
   };
 
   async function submit(event: FormEvent) {
@@ -153,6 +159,10 @@ export function ExclusiveOfferModal({
     lock.current = true;
     setBusy(true);
     setError(null);
+
+    const numRate = Number(rate) || 14;
+    const numTargetRev = Number(targetRevenue) || 10000000;
+    const numDays = Number(days) || 14;
 
     try {
       const isMulti = selectedProductIds.length > 1;
@@ -163,11 +173,11 @@ export function ExclusiveOfferModal({
         {
           ...(mode === 'offer' ? { collaboratorId } : {}),
           productId: primaryProduct.id,
-          proposedCommissionRate: Number(rate),
+          proposedCommissionRate: numRate,
           scopeType,
           ...(isMulti ? { productIds: selectedProductIds } : {}),
-          targetRevenue,
-          commitmentDays: days,
+          targetRevenue: numTargetRev,
+          commitmentDays: numDays,
           videoReviewCommitment: true,
           salesCommitment: plan.trim(),
         },
@@ -402,7 +412,7 @@ export function ExclusiveOfferModal({
                   </div>
                   <span className="text-xs font-semibold text-[#8C6226]">
                     Đang chọn: <strong className="text-sm text-[#1A1612]">{rate}%</strong>
-                    {rate > 10 ? ` (+${rate - 10}% so với gốc)` : ''}
+                    {(Number(rate) || 0) > 10 ? ` (+${(Number(rate) || 0) - 10}% so với gốc)` : ''}
                   </span>
                 </div>
 
@@ -415,7 +425,12 @@ export function ExclusiveOfferModal({
                       max="25"
                       step="0.5"
                       value={rate}
-                      onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                      onChange={(e) => handleRateChange(e.target.value)}
+                      onBlur={() =>
+                        setRate((prev) =>
+                          prev === '' ? 14 : Math.min(25, Math.max(10, Number(prev)))
+                        )
+                      }
                       className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm font-bold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
                     />
                     <span className="absolute right-3 top-2 text-sm font-bold text-[#7D715E]">%</span>
@@ -447,7 +462,7 @@ export function ExclusiveOfferModal({
                 </div>
 
                 {/* Warning Banner if Rate > 16% */}
-                {rate > 16 && (
+                {(Number(rate) || 0) > 16 && (
                   <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-2.5 text-left">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B88E4F]" />
                     <div className="text-[11px] leading-relaxed text-[#8C6226]">
@@ -469,11 +484,20 @@ export function ExclusiveOfferModal({
                     min="1000000"
                     step="500000"
                     value={targetRevenue}
-                    onChange={(e) => setTargetRevenue(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) =>
+                      setTargetRevenue(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    onBlur={() =>
+                      setTargetRevenue((prev) =>
+                        prev === '' ? 10000000 : Math.max(1000000, Number(prev))
+                      )
+                    }
                     className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-semibold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
                   />
                   <span className="block mt-1 text-[10px] text-[#7D715E]">
-                    {Number(targetRevenue).toLocaleString('vi-VN')} đ
+                    {Number(targetRevenue || 0).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
                 <div>
@@ -485,11 +509,18 @@ export function ExclusiveOfferModal({
                     min="7"
                     max="90"
                     value={days}
-                    onChange={(e) => setDays(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) =>
+                      setDays(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    onBlur={() =>
+                      setDays((prev) =>
+                        prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev)))
+                      )
+                    }
                     className="w-full rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-semibold text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
                   />
                   <span className="block mt-1 text-[10px] text-[#7D715E]">
-                    Hoàn thành trong {days} ngày
+                    Hoàn thành trong {days || 0} ngày
                   </span>
                 </div>
               </div>
@@ -519,7 +550,7 @@ export function ExclusiveOfferModal({
                 Cam kết đạt mục tiêu doanh số{' '}
                 <strong className="text-[#1A1612]">{Number(targetRevenue).toLocaleString('vi-VN')} đ</strong> trong vòng{' '}
                 <strong className="text-[#1A1612]">{days} ngày</strong>.
-                {rate > 16 && (
+                {(Number(rate) || 0) > 16 && (
                   <span className="block mt-1 text-[11px] text-[#B88E4F] font-semibold">
                     * Lưu ý: Do thù lao &gt;16%, thỏa thuận cần sự phê duyệt ngoại lệ từ Tổng Giám Đốc.
                   </span>

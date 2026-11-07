@@ -235,7 +235,10 @@ export const WalletFinancialBreakdown: React.FC<WalletFinancialBreakdownProps> =
                   {formatMoney(totalWalletPending.toString())}
                 </td>
                 <td className="px-3.5 py-3 text-center text-[11px] text-[#7D715E] font-normal">
-                  Quỹ Escrow Deal KPI
+                  <span className="font-mono font-semibold text-[#8C6226]">
+                    {formatMoney(wallet.conditionalDealEscrowBalance || '0')}
+                  </span>
+                  <span className="block text-[10px] text-[#7D715E]">Quỹ Escrow Deal</span>
                 </td>
                 <td className="px-3.5 py-3 text-center">
                   <span className="inline-flex items-center gap-1 text-[11px] text-[#059669] font-bold">
@@ -272,7 +275,7 @@ export const WalletFinancialBreakdown: React.FC<WalletFinancialBreakdownProps> =
                     Chi Tiết Tiền Thưởng Deal VIP & Thưởng Mốc
                   </h3>
                   <span className="text-[11px] text-[#7D715E]">
-                    Cơ chế tạm giữ 4% chênh lệch KPI & Điều kiện giải tỏa thù lao
+                    Cơ chế ký quỹ chênh lệch KPI [Deal% − (10% + Bậc%)] & Điều kiện giải tỏa thù lao
                   </span>
                 </div>
               </div>
@@ -289,25 +292,24 @@ export const WalletFinancialBreakdown: React.FC<WalletFinancialBreakdownProps> =
             {/* Nội dung giải thích công thức */}
             <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 space-y-2">
               <span className="font-bold text-xs text-[#8C6226] block">
-                📐 Công thức phân tách 2 tầng thù lao Deal VIP:
+                📐 Cơ chế tính thù lao 2 giai đoạn (Nguyên tắc KHÔNG cộng dồn Deal & Bậc):
               </span>
               <div className="p-2.5 rounded-lg bg-white border border-[#EEDFC6] font-mono text-xs text-[#1A1612] leading-relaxed">
-                <strong>Tổng thù lao Deal VIP (14%)</strong> ={' '}
-                <span className="text-[#059669]">10% Thù lao cơ sở</span> +{' '}
-                <span className="text-[#B88E4F]">4% Thưởng Deal KPI</span>
+                <strong>Tổng thù lao thỏa thuận (Deal%)</strong> ={' '}
+                <span className="text-[#059669]">Tiêu chuẩn (10% Gốc + Bậc%)</span> +{' '}
+                <span className="text-[#B88E4F]">Ký quỹ KPI [Deal% − (10% + Bậc%)]</span>
               </div>
               <ul className="text-[11.5px] text-[#7D715E] space-y-1.5 pl-4 list-disc m-0">
                 <li>
-                  <strong className="text-[#1A1612]">10% Cơ sở:</strong> Được
-                  ghi nhận vào Ví bảo chứng ngay khi khách đặt đơn, và tự động
-                  mở khóa vào <strong>Khả dụng rút tiền</strong> sau 14 ngày
-                  GHN giao thành công.
+                  <strong className="text-[#1A1612]">Khoản 1 (Tiêu chuẩn 10% + Bậc):</strong> Được
+                  ghi nhận vào giỏ đối soát 14 ngày khi giao thành công. Hết 14 ngày không đổi trả
+                  sẽ tự động mở khóa 100% sang <strong>Khả dụng rút tiền</strong>, bảo toàn quyền lợi tối thiểu của KOL.
                 </li>
                 <li>
-                  <strong className="text-[#1A1612]">4% Thưởng Deal:</strong>{' '}
-                  Được bảo lưu an toàn trong quỹ <strong>Escrow Deal</strong>{' '}
-                  cho đến khi KOC hoàn thành cam kết KPI sản lượng hoặc doanh số.
-                  Khi đạt KPI, toàn bộ 4% được giải tỏa 100% vào Ví khả dụng!
+                  <strong className="text-[#1A1612]">Khoản 2 (Chênh lệch KPI Deal):</strong>{' '}
+                  Được bảo lưu an toàn trong giỏ <strong>Escrow Deal</strong>{' '}
+                  cho đến khi KOC hoàn thành đủ 100% KPI cam kết và đơn hàng đã vượt mốc 14 ngày sạch.
+                  Không cộng dồn trùng với bậc xếp hạng.
                 </li>
               </ul>
             </div>

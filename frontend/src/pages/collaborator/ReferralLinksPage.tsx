@@ -715,7 +715,14 @@ export default function ReferralLinksPage({
         }
       };
       openWithContext();
-      setSearchParams({}, { replace: true });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('openCreate');
+        next.delete('storeId');
+        next.delete('productId');
+        next.delete('campId');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 

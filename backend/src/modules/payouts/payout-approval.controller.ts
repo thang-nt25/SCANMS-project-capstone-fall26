@@ -25,7 +25,8 @@ import { MerchantPayoutsService } from './merchant-payouts.service';
 @ApiTags('Merchant Payouts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SHOP_MANAGER)
+// C-09: SoD compliance - Only SYSTEM_ADMIN and SYSTEM_MANAGER can approve payouts
+@Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
 @Controller('payouts')
 export class PayoutApprovalController {
   constructor(

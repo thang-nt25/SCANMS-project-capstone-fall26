@@ -53,9 +53,9 @@ export function CreateExclusiveDealModal({
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [commissionRate, setCommissionRate] = useState<number>(14);
-  const [targetOrders, setTargetOrders] = useState<number>(30);
-  const [commitmentDays, setCommitmentDays] = useState<number>(14);
+  const [commissionRate, setCommissionRate] = useState<number | ''>(14);
+  const [targetOrders, setTargetOrders] = useState<number | ''>(30);
+  const [commitmentDays, setCommitmentDays] = useState<number | ''>(14);
   const [salesCommitment, setSalesCommitment] = useState<string>(
     'Đề xuất thỏa thuận phân phối độc quyền với mức thù lao ưu đãi.'
   );
@@ -128,17 +128,21 @@ export function CreateExclusiveDealModal({
       setError('Vui lòng chọn ít nhất một sản phẩm áp dụng thỏa thuận.');
       return;
     }
-    if (commissionRate < 11 || commissionRate > 25) {
+    const numRate = Number(commissionRate) || 0;
+    const numOrders = Number(targetOrders) || 0;
+    const numDays = Number(commitmentDays) || 0;
+
+    if (numRate < 11 || numRate > 25) {
       setError(
         'Mức thù lao độc quyền phải từ 11% đến 25% (trần toàn hệ thống).'
       );
       return;
     }
-    if (targetOrders < 1) {
+    if (numOrders < 1) {
       setError('Cam kết số đơn hàng (KPI) phải từ 1 trở lên.');
       return;
     }
-    if (commitmentDays < 7) {
+    if (numDays < 7) {
       setError('Thời hạn cam kết KPI tối thiểu là 7 ngày.');
       return;
     }
@@ -150,9 +154,9 @@ export function CreateExclusiveDealModal({
         collaboratorId,
         productId: selectedProductIds[0],
         productIds: selectedProductIds,
-        proposedCommissionRate: Number(commissionRate),
-        targetOrders,
-        commitmentDays,
+        proposedCommissionRate: numRate,
+        targetOrders: numOrders,
+        commitmentDays: numDays,
         salesCommitment:
           salesCommitment.trim() || 'Thỏa thuận thù lao độc quyền',
       });
@@ -172,7 +176,7 @@ export function CreateExclusiveDealModal({
     selectedProductIds.includes(p.id)
   );
 
-  const isEscalation = commissionRate > 16;
+  const isEscalation = (Number(commissionRate) || 0) > 16;
 
   return (
     <div
@@ -399,7 +403,7 @@ export function CreateExclusiveDealModal({
                     {commissionRate}%
                   </strong>{' '}
                   <span className="text-[11px] font-medium text-[#7D715E]">
-                    (+{commissionRate - 10}% so với chuẩn)
+                    (+{(Number(commissionRate) || 10) - 10}% so với chuẩn)
                   </span>
                 </span>
               </div>
@@ -432,7 +436,12 @@ export function CreateExclusiveDealModal({
                       value={commissionRate}
                       onChange={(e) =>
                         setCommissionRate(
-                          Math.min(25, Math.max(11, Number(e.target.value) || 11))
+                          e.target.value === '' ? '' : Number(e.target.value)
+                        )
+                      }
+                      onBlur={() =>
+                        setCommissionRate((prev) =>
+                          prev === '' ? 14 : Math.min(25, Math.max(11, Number(prev)))
                         )
                       }
                       className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm font-black text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
@@ -507,7 +516,14 @@ export function CreateExclusiveDealModal({
                       max={10000}
                       value={targetOrders}
                       onChange={(e) =>
-                        setTargetOrders(Math.max(1, Number(e.target.value) || 1))
+                        setTargetOrders(
+                          e.target.value === '' ? '' : Number(e.target.value)
+                        )
+                      }
+                      onBlur={() =>
+                        setTargetOrders((prev) =>
+                          prev === '' ? 30 : Math.max(1, Number(prev))
+                        )
                       }
                       className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
                       placeholder="Ví dụ: 30"
@@ -530,7 +546,12 @@ export function CreateExclusiveDealModal({
                       value={commitmentDays}
                       onChange={(e) =>
                         setCommitmentDays(
-                          Math.max(7, Number(e.target.value) || 7)
+                          e.target.value === '' ? '' : Number(e.target.value)
+                        )
+                      }
+                      onBlur={() =>
+                        setCommitmentDays((prev) =>
+                          prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev)))
                         )
                       }
                       className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"

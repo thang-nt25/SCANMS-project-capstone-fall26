@@ -20,7 +20,7 @@ export default function AdminOversightHubPage() {
 
   const user = authService.getCurrentUser();
   if (user && user.role === 'SHOP_MANAGER') {
-    return <Navigate to="/merchant/promotions?tab=referral-links" replace />;
+    return <Navigate to="/merchant/kol-hub?tab=performance" replace />;
   }
   if (user && user.role === 'COLLABORATOR') {
     return <Navigate to="/collaborator/marketing?tab=links" replace />;
