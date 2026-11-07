@@ -45,9 +45,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    const isTest = process.env.NODE_ENV === 'test';
     const now = Date.now();
-    const cached = userCache.get(payload.sub);
-    if (cached && now - cached.cachedAt < USER_CACHE_TTL_MS) {
+    const cached = isTest ? undefined : userCache.get(payload.sub);
+    if (!isTest && cached && now - cached.cachedAt < USER_CACHE_TTL_MS) {
       return cached.user;
     }
 

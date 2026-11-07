@@ -3857,7 +3857,7 @@ export class OrdersService {
     // Cache hit cho trang đầu không có tìm kiếm văn bản tự do
     const isCacheableOrderQuery = !query.search?.trim() && page === 1;
     const orderCacheKey = `orders:store:${targetStoreId || userId}:${query.status || 'ALL'}:${query.paymentStatus || 'ALL'}:${limit}`;
-    if (isCacheableOrderQuery) {
+    if (isCacheableOrderQuery && this.cacheService) {
       const cached = await this.cacheService.get(orderCacheKey);
       if (cached) return cached;
     }
@@ -4018,7 +4018,7 @@ export class OrdersService {
         totalPages: Math.ceil(total / limit),
       },
     };
-    if (isCacheableOrderQuery) {
+    if (isCacheableOrderQuery && this.cacheService) {
       await this.cacheService.set(orderCacheKey, ordersResult, 30);
     }
     return ordersResult;
