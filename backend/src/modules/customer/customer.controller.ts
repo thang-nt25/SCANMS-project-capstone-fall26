@@ -29,6 +29,7 @@ import { UpdateCustomerAddressDto } from './dto/update-address.dto';
 import {
   SetPasswordWithOtpDto,
   VerifyPasswordOtpDto,
+  SendPasswordSecurityOtpDto,
 } from './dto/set-password-otp.dto';
 import { VerifyCustomerIdentityDto } from './dto/verify-identity.dto';
 import { SyncCustomerCartDto } from './dto/sync-cart.dto';
@@ -81,13 +82,18 @@ export class CustomerController {
   })
   async sendPasswordOtp(
     @CurrentUser('id') userId: string,
+    @Body() dto: SendPasswordSecurityOtpDto,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    return this.customerService.sendPasswordSecurityOtp(userId, {
-      ipAddress: ip,
-      userAgent: userAgent || 'Trình duyệt Web',
-    });
+    return this.customerService.sendPasswordSecurityOtp(
+      userId,
+      {
+        ipAddress: ip,
+        userAgent: userAgent || 'Trình duyệt Web',
+      },
+      dto?.email,
+    );
   }
 
   @Post('verify-password-otp')

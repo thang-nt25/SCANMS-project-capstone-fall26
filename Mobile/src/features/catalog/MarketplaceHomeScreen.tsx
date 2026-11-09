@@ -159,6 +159,7 @@ export function MarketplaceHomeScreen() {
         }
         renderItem={({ item }) => (
           <ProductCard
+            grid
             product={item}
             onPress={() =>
               navigation.navigate("ProductDetail", { product: item })

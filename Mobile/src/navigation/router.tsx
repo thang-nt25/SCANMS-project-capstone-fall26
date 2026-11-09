@@ -20,7 +20,7 @@ const paths: Record<keyof RootStackParams, string> = {
   ProductEditor: "/(private)/product-editor",
   OrderDetail: "/(private)/order",
   Chat: "/(private)/conversation",
-  Deals: "/(private)/deals",
+  Deals: "/(private)/vip-deals",
   DealEditor: "/(private)/deal-editor",
   AiMatching: "/(private)/ai-matching",
   ProductReview: "/(private)/product-review",

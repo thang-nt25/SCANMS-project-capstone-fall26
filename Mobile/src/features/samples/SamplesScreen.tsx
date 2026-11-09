@@ -1,19 +1,22 @@
 import { useState } from "react";
-import { Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { z } from "zod";
 import {
   Badge,
   Button,
   Caption,
   Card,
-  Empty,
   ErrorNotice,
-  Field,
   Screen,
   Title,
 } from "../../components/ui";
-import { ProductSchema, statusText } from "../../types/contracts";
-import { AddressSchema, type Address } from "../customer/customer-contracts";
+import { statusText } from "../../types/contracts";
+import { Sample, Eligibility } from "./sample-contracts";
+import { SampleRequestForm } from "./SampleRequestForm";
+import { ProductPhoto } from "../../components/ProductPhoto";
+import { Icon } from "../../components/commerce";
+import { colors } from "../../theme/tokens";
+import { sampleStyles as ss } from "./sample-styles";
 import {
   CommandForm,
   DetailLine,
@@ -28,67 +31,10 @@ import {
   type CommandFormSpec,
 } from "../common/shared";
 import { SelectField } from "../common/SelectField";
-import { useMobileNavigation } from "../../navigation/router";
-import { validateInput } from "../../utils/validate-input";
+import { ShopSampleProducts } from "./ShopSampleProducts";
 import type { BusinessParams } from "../workspace/policy";
-const Sample = z.object({
-  id: z.string(),
-  status: z.string(),
-  recipientName: z.string().nullish(),
-  recipientPhone: z.string().nullish(),
-  shippingAddress: z.string(),
-  trackingNumber: z.string().nullish(),
-  carrier: z.string().nullish(),
-  deadlineAt: z.string().nullish(),
-  collaboratorId: z.string(),
-  rejectedReason: z.string().nullish(),
-  deliveryIssueReason: z.string().nullish(),
-  product: z.object({
-    id: z.string(),
-    title: z.string(),
-    store: z.object({ name: z.string() }),
-  }),
-  collaborator: z.object({ fullName: z.string() }).nullish(),
-  videoAssets: z
-    .array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        urlOrContent: z.string(),
-        status: z.string(),
-        rejectionReason: z.string().nullish(),
-      }),
-    )
-    .optional(),
-});
-const Eligibility = z.object({
-  canRequest: z.boolean(),
-  kycVerified: z.boolean(),
-  hasSocialChannel: z.boolean(),
-  blockReason: z.string().nullish(),
-  channels: z.array(
-    z.object({
-      id: z.string(),
-      channelName: z.string(),
-      platformName: z.string(),
-    }),
-  ),
-});
-const CreateSample = z.object({
-  productId: z.string().uuid(),
-  productVariantId: z.string().uuid().optional(),
-  recipientName: required.min(2).max(150),
-  recipientPhone: z.string().regex(/^(?:0[35789]\d{8}|\+84[35789]\d{8})$/),
-  recipientPhoneConfirmed: z.literal(true),
-  shippingAddress: required.min(10).max(500),
-  ghnProvinceId: z.number().int().positive(),
-  ghnDistrictId: z.number().int().positive(),
-  ghnWardCode: required,
-  socialChannelId: z.string().uuid(),
-  contentType: required.max(500),
-  termsAccepted: z.literal(true),
-});
 export function SamplesScreen({ params }: { params: BusinessParams }) {
+  const [shopTab, setShopTab] = useState<"requests" | "products">("requests");
   const { user, store, reviewer } = useActor(),
     koc = user.role === "COLLABORATOR",
     shop = user.role === "SHOP_MANAGER";
@@ -116,6 +62,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
     koc,
   );
   const row = result.data?.find((item) => item.id === selected);
+  const visible = (result.data || []).filter(item => !status || (status === "processing" ? ["PENDING", "APPROVED", "SHIPPED", "DELIVERY_ISSUE"].includes(item.status) : status === "video" ? ["RECEIVED", "VIDEO_SUBMITTED", "REVISION_REQUIRED", "OVERDUE"].includes(item.status) : status === "closed" ? ["CANCELLED", "REJECTED"].includes(item.status) : item.status === status));
   const reasonForm = (
     id: string,
     suffix: string,
@@ -148,7 +95,8 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
   );
   return (
     <Screen scroll>
-      <Title>Hàng mẫu & video review</Title>
+      {shop && <View style={{ flexDirection: "row", gap: 8 }}>{[{ key: "requests" as const, label: "Yêu cầu KOL" }, { key: "products" as const, label: "Sản phẩm cấp mẫu" }].map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: shopTab === tab.key }} onPress={() => setShopTab(tab.key)} style={[ss.pill, { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center" }, shopTab === tab.key && ss.active]}><Text style={[ss.name, { fontSize: 13 }]}>{tab.label}</Text></Pressable>)}</View>}
+      {shop && shopTab === "products" ? <ShopSampleProducts storeId={store?.id} /> : <>
       {koc && (
         <>
           <QueryState
@@ -156,21 +104,25 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
             error={eligibility.error}
             retry={() => void eligibility.refetch()}
           />
-          <Caption>
-            {eligibility.data?.canRequest
-              ? "Bạn đủ điều kiện gửi yêu cầu xin mẫu."
-              : eligibility.data?.blockReason ||
-                "Cần xác minh KYC và liên kết kênh xã hội để xin mẫu."}
-          </Caption>
-          <Button
-            title="Xin hàng mẫu"
-            disabled={!eligibility.data?.canRequest}
-            onPress={() => setCreate(true)}
-          />
+          <View style={ss.card}>
+            <View style={ss.row}><View style={ss.icon}><Icon name="package" size={20} color={colors.strong} /></View><View style={[ss.flex, { paddingRight: 4 }]}><Text style={[ss.heading, { fontSize: 16 }]}>Trải nghiệm & sáng tạo</Text><Text style={ss.note}>Theo dõi mẫu và video của bạn</Text></View></View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {[{ label: "Đang xử lý", count: result.data?.filter(item => ["PENDING", "APPROVED", "SHIPPED", "DELIVERY_ISSUE"].includes(item.status)).length }, { label: "Cần nộp video", count: result.data?.filter(item => ["RECEIVED", "REVISION_REQUIRED", "OVERDUE"].includes(item.status)).length }, { label: "Hoàn tất", count: result.data?.filter(item => item.status === "COMPLETED").length }].map(stat => <View key={stat.label} style={ss.summary}><Text style={[ss.heading, { fontSize: 20 }]}>{stat.count ?? "—"}</Text><Text style={ss.tiny}>{stat.label}</Text></View>)}
+            </View>
+            <View style={ss.line} />
+            <View style={ss.row}><Icon name={eligibility.data?.canRequest ? "check-circle" : "info"} size={16} color={colors.strong} /><Text style={[ss.note, { flex: 1 }]}>{eligibility.isLoading ? "Đang kiểm tra điều kiện…" : eligibility.data?.canRequest ? "Hồ sơ đủ điều kiện gửi yêu cầu xin mẫu." : eligibility.data?.blockReason || "Cần KYC và kênh xã hội hợp lệ."}</Text></View>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !eligibility.data?.canRequest }} disabled={!eligibility.data?.canRequest} style={[ss.cta, { opacity: eligibility.data?.canRequest ? 1 : 0.5 }]} onPress={() => setCreate(true)}><Icon name="plus" size={18} color={colors.strong} /><Text style={ss.name}>Xin sản phẩm mẫu</Text></Pressable>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
+            {[{ value: "", label: "Tất cả" }, { value: "processing", label: "Đang xử lý" }, { value: "video", label: "Video review" }, { value: "COMPLETED", label: "Hoàn tất" }, { value: "closed", label: "Đã đóng" }].map(tab => <Pressable key={tab.value} accessibilityRole="tab" accessibilityState={{ selected: status === tab.value }} onPress={() => setStatus(tab.value)} style={[ss.pill, status === tab.value && ss.active]}><Text style={[ss.note, status === tab.value && { color: colors.ink, fontWeight: "600" }]}>{tab.label}</Text></Pressable>)}
+          </ScrollView>
         </>
       )}
-      <SelectField
+      {!koc && <SelectField
         label="Trạng thái"
+        hideLabel
+        compact
+        renderTrigger={open => <Pressable accessibilityRole="button" accessibilityLabel="Lọc trạng thái yêu cầu hàng mẫu" onPress={open} style={ss.select}><View style={ss.icon}><Icon name="sliders" size={18} color={colors.strong} /></View><View style={ss.flex}><Text style={ss.name}>{status ? statusText(status) : "Tất cả yêu cầu"}</Text><Text style={ss.tiny}>Lọc trạng thái hàng mẫu</Text></View><Icon name="chevron-down" size={18} color={colors.muted} /></Pressable>}
         value={status}
         options={[
           { value: "", label: "Tất cả" },
@@ -179,34 +131,24 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
           ),
         ]}
         onChange={setStatus}
-      />
+      />}
       <QueryState
         loading={result.isLoading}
         error={result.error}
         retry={() => void result.refetch()}
       />
       <ErrorNotice error={command.error} />
-      {result.data?.length === 0 && <Empty />}
-      {result.data
-        ?.filter((item) => !status || item.status === status)
-        .map((item) => (
-          <Card key={item.id}>
-            <Caption>{item.product.store.name}</Caption>
-            <Title>{item.product.title}</Title>
-            <Badge>{statusText(item.status)}</Badge>
-            <Caption>{item.collaborator?.fullName}</Caption>
-            {item.deadlineAt && (
-              <Caption>
-                Hạn nộp video:{" "}
-                {new Date(item.deadlineAt).toLocaleString("vi-VN")}
-              </Caption>
-            )}
-            <Button
-              title="Xem và xử lý"
-              secondary
-              onPress={() => setSelected(item.id)}
-            />
-          </Card>
+      {!result.isLoading && !result.error && result.data && visible.length === 0 && <View style={ss.card}><View style={[ss.empty, { paddingVertical: 22 }]}><View style={[ss.icon, { width: 48, height: 48, borderRadius: 16 }]}><Icon name="package" size={24} color={colors.strong} /></View><Text style={ss.heading}>{result.data.length ? "Chưa có yêu cầu ở nhóm này" : "Chưa có yêu cầu hàng mẫu"}</Text><Text style={[ss.note, { textAlign: "center" }]}>{result.data.length ? "Đổi bộ lọc để xem các yêu cầu khác." : shop ? "Yêu cầu xin mẫu của KOL sẽ hiển thị tại đây." : reviewer ? "Chưa có hồ sơ hàng mẫu cần theo dõi." : "Chọn sản phẩm và gửi kế hoạch video đến Shop."}</Text>{!!status && <Button title="Xem tất cả yêu cầu" soft onPress={() => setStatus("")} />}</View></View>}
+      {visible.map((item) => (
+          <View key={item.id} style={ss.card}>
+            <View style={ss.row}><ProductPhoto uri={item.product.imageUrl} style={ss.photo} resizeMode="contain" /><View style={ss.flex}><Text numberOfLines={2} style={ss.name}>{item.product.title}</Text><Text style={ss.tiny}>{item.product.store.name}</Text>{item.productVariant?.name && <Text style={ss.tiny}>{item.productVariant.name}</Text>}</View></View>
+            <View style={ss.row}><Badge>{statusText(item.status)}</Badge><View style={{ flex: 1 }} />{item.createdAt && <Text style={ss.tiny}>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</Text>}</View>
+            {item.deadlineAt && <View style={ss.soft}><Text style={ss.note}>Hạn nộp video: {new Date(item.deadlineAt).toLocaleString("vi-VN")}</Text></View>}
+            {item.trackingNumber && <Text style={ss.note}>{item.carrier || "Vận đơn"}: {item.trackingNumber}</Text>}
+            {item.rejectedReason && <Text style={ss.note}>Lý do: {item.rejectedReason}</Text>}
+            {!koc && <Caption>{item.collaborator?.fullName}</Caption>}
+            <Pressable accessibilityRole="button" onPress={() => setSelected(item.id)} style={[ss.row, { minHeight: 42, borderTopWidth: 1, borderColor: colors.line, paddingTop: 8 }]}><Text style={[ss.link, { flex: 1 }]}>{["RECEIVED", "REVISION_REQUIRED", "OVERDUE"].includes(item.status) && koc ? "Xem yêu cầu & nộp video" : "Xem chi tiết yêu cầu"}</Text><Icon name="chevron-right" size={17} color={colors.strong} /></Pressable>
+          </View>
         ))}
       {row && (
         <Sheet
@@ -215,13 +157,18 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
             if (!command.busy) setSelected(null);
           }}
         >
+          <View style={ss.row}><ProductPhoto uri={row.product.imageUrl} style={ss.photo} resizeMode="contain" /><View style={ss.flex}><Text style={ss.name}>{row.product.store.name}</Text>{row.productVariant?.name && <Text style={ss.note}>{row.productVariant.name}</Text>}{row.createdAt && <Text style={ss.tiny}>Gửi {new Date(row.createdAt).toLocaleString("vi-VN")}</Text>}</View></View>
           <Badge>{statusText(row.status)}</Badge>
           <DetailLine
             label="Người nhận"
             value={`${row.recipientName || ""} · ${row.recipientPhone || ""}`}
           />
           <Text>{row.shippingAddress}</Text>
+          <DetailLine label="Kênh cam kết" value={[row.socialChannelNameSnapshot || row.socialChannel?.channelName, row.socialPlatformSnapshot || row.socialChannel?.platformName].filter(Boolean).join(" · ") || undefined} />
+          <DetailLine label="Kế hoạch nội dung" value={row.contentType} />
           <DetailLine label="Vận đơn" value={row.trackingNumber} />
+          {row.carrier && <DetailLine label="Đơn vị vận chuyển" value={row.carrier} />}
+          {row.deliveryIssueReason && <DetailLine label="Sự cố giao nhận" value={row.deliveryIssueReason} />}
           <DetailLine label="Lý do từ chối" value={row.rejectedReason} />
           {row.deadlineAt && (
             <DetailLine
@@ -502,187 +449,17 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
       )}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
       {(create || editing) && koc && (
-        <Sheet
-          title={editing ? "Sửa thông tin yêu cầu mẫu" : "Xin sản phẩm mẫu"}
-          close={() => {
-            if (!command.busy) {
-              setCreate(false);
-              setEditing(null);
-            }
-          }}
-        >
           <SampleRequestForm
             initialProductId={editing?.product.id || params.productId}
-            editId={editing?.id}
+            initialSample={editing || undefined}
             eligibility={eligibility.data}
             done={() => {
               setCreate(false);
               setEditing(null);
             }}
           />
-        </Sheet>
       )}
+      </>}
     </Screen>
-  );
-}
-function SampleRequestForm({
-  initialProductId,
-  editId,
-  eligibility,
-  done,
-}: {
-  initialProductId?: string;
-  editId?: string;
-  eligibility?: z.infer<typeof Eligibility>;
-  done(): void;
-}) {
-  const navigation = useMobileNavigation(),
-    command = useCommand();
-  const catalog = useResource(
-    "sample-products",
-    "/public/products?limit=100&page=1",
-    z.object({ items: z.array(ProductSchema) }),
-  );
-  const addresses = useResource(
-    "addresses",
-    "/customer/addresses",
-    z.array(AddressSchema),
-  );
-  const [productId, setProductId] = useState(initialProductId || ""),
-    [variantId, setVariantId] = useState(""),
-    [addressId, setAddressId] = useState("");
-  const [channel, setChannel] = useState(""),
-    [content, setContent] = useState(""),
-    [confirmed, setConfirmed] = useState(false);
-  const product = catalog.data?.items.find((item) => item.id === productId),
-    address: Address | undefined = addresses.data?.find(
-      (item) => item.id === addressId,
-    );
-  return (
-    <>
-      <QueryState
-        loading={catalog.isLoading || addresses.isLoading}
-        error={catalog.error || addresses.error}
-        retry={() => {
-          void catalog.refetch();
-          void addresses.refetch();
-        }}
-      />
-      <SelectField
-        label="Sản phẩm"
-        value={productId}
-        options={(catalog.data?.items || []).map((item) => ({
-          value: item.id,
-          label: item.title,
-        }))}
-        onChange={(id) => {
-          setProductId(id);
-          setVariantId("");
-        }}
-        disabled={command.busy || Boolean(editId)}
-      />
-      {!editId && product?.variants?.length ? (
-        <SelectField
-          label="Phân loại mẫu"
-          value={variantId}
-          options={product.variants.map((item) => ({
-            value: item.id,
-            label: item.name,
-          }))}
-          onChange={setVariantId}
-          disabled={command.busy}
-        />
-      ) : null}
-      <SelectField
-        label="Địa chỉ nhận"
-        value={addressId}
-        options={(addresses.data || []).map((item) => ({
-          value: item.id,
-          label: `${item.fullName} · ${item.detailAddress}, ${item.wardName}`,
-        }))}
-        onChange={setAddressId}
-        disabled={command.busy}
-      />
-      <Button
-        title="Quản lý sổ địa chỉ"
-        secondary
-        disabled={command.busy}
-        onPress={() => {
-          done();
-          navigation.navigate("Business", { feature: "addresses" });
-        }}
-      />
-      <SelectField
-        label="Kênh đăng video"
-        value={channel}
-        options={(eligibility?.channels || []).map((item) => ({
-          value: item.id,
-          label: `${item.channelName} · ${item.platformName}`,
-        }))}
-        onChange={setChannel}
-        disabled={command.busy}
-      />
-      <Field
-        label="Nội dung dự kiến"
-        value={content}
-        onChangeText={setContent}
-        multiline
-        editable={!command.busy}
-      />
-      <View>
-        <Text>
-          Tôi xác nhận số điện thoại liên hệ được và cam kết nộp video trong 14
-          ngày sau khi nhận mẫu.
-        </Text>
-        <Switch
-          value={confirmed}
-          onValueChange={setConfirmed}
-          disabled={command.busy}
-        />
-      </View>
-      <ErrorNotice error={command.error} />
-      <Button
-        title={editId ? "Lưu thông tin yêu cầu" : "Gửi yêu cầu xin mẫu"}
-        loading={command.busy}
-        disabled={(!editId && !eligibility?.canRequest) || !confirmed}
-        onPress={() =>
-          void command.execute(
-            editId ? `/sample-requests/${editId}/details` : "/sample-requests",
-            editId ? "PATCH" : "POST",
-            () =>
-              validateInput(
-                editId
-                  ? CreateSample.omit({
-                      productId: true,
-                      productVariantId: true,
-                    })
-                  : CreateSample,
-                {
-                  productId,
-                  ...(variantId ? { productVariantId: variantId } : {}),
-                  recipientName: address?.fullName,
-                  recipientPhone: address?.phoneNumber,
-                  recipientPhoneConfirmed: confirmed,
-                  shippingAddress: address
-                    ? [
-                        address.detailAddress,
-                        address.wardName,
-                        address.districtName,
-                        address.provinceName,
-                      ].join(", ")
-                    : "",
-                  ghnProvinceId: Number(address?.provinceCode),
-                  ghnDistrictId: Number(address?.districtCode),
-                  ghnWardCode: address?.wardCode,
-                  socialChannelId: channel,
-                  contentType: content,
-                  termsAccepted: confirmed,
-                },
-              ),
-            done,
-          )
-        }
-      />
-    </>
   );
 }

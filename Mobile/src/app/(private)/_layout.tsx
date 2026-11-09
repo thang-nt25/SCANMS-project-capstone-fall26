@@ -25,6 +25,9 @@ export default function PrivateLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Protected guard={partner}>
+              <Stack.Screen name="tools" options={{ title: "Tất cả công cụ" }} />
+            </Stack.Protected>
             <Stack.Screen
               name="account-settings"
               options={{ title: "Thiết lập tài khoản" }}
@@ -76,7 +79,7 @@ export default function PrivateLayout() {
             </Stack.Protected>
             <Stack.Protected guard={partner}>
               <Stack.Screen
-                name="deals"
+                name="vip-deals"
                 options={{ title: "Thỏa thuận VIP" }}
               />
               <Stack.Screen

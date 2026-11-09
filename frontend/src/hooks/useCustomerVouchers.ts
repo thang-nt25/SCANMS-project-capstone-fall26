@@ -8,6 +8,7 @@ export interface CustomerVoucher {
   minimumOrderAmount: number; maximumDiscountAmount: number | null; remainingUses: number | null;
   expiresAt: string | null; scopeType: string; fundingSource: string; benefitType: 'GOODS' | 'SHIPPING';
   store: { id: string; name: string; slug: string };
+  canSave?: boolean;
 }
 interface Inventory { vouchers: CustomerVoucher[]; savedIds: string[] }
 const unwrap = (response: any) => response?.data?.data ?? response?.data ?? response;
@@ -61,6 +62,7 @@ export function useCustomerVouchers(userId?: string) {
     .sort((a, b) => Date.parse(b.expiresAt!) - Date.parse(a.expiresAt!));
 
   const toggleSaved = async (voucher: CustomerVoucher) => {
+    if (voucher.canSave === false) throw new Error('Mã độc quyền KOL chỉ hỗ trợ sao chép và nhập khi thanh toán.');
     if (!userId) throw new Error('Vui lòng đăng nhập để lưu voucher.');
     if (voucherExpiryState(voucher.expiresAt) === 'expired') throw new Error('Voucher đã hết hạn sử dụng.');
     const saved = savedIds.includes(voucher.id);

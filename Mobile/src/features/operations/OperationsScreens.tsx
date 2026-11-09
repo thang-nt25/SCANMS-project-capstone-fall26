@@ -7,7 +7,6 @@ import {
   Caption,
   Card,
   Empty,
-  ErrorNotice,
   Field,
   PageControls,
   Screen,
@@ -21,13 +20,13 @@ import {
   QueryState,
   required,
   useActor,
-  useCommand,
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
 const Overview = z.object({
   metrics: z.object({
     totalOrders: z.number(),
+    completedOrders: z.number(),
     totalClicks: z.number(),
     grossRevenue: z.number(),
     totalCommission: z.number(),
@@ -45,7 +44,7 @@ export function DashboardScreen() {
   );
   return (
     <Screen scroll>
-      <Title>Tổng quan hoạt động</Title>
+      <Title>{user.role === "COLLABORATOR" ? "Hiệu quả tiếp thị" : "Tổng quan hoạt động"}</Title>
       <View style={{ flexDirection: "row", gap: 8 }}>
         {[7, 30, 90].map((value) => (
           <Button
@@ -64,12 +63,15 @@ export function DashboardScreen() {
       {result.data && (
         <>
           <Card>
+            {user.role === "COLLABORATOR" && (
+              <DetailLine label="Đơn giao thành công" value={result.data.metrics.completedOrders} />
+            )}
             <DetailLine
               label="Tổng đơn"
               value={result.data.metrics.totalOrders}
             />
             <DetailLine
-              label="Doanh thu"
+              label={user.role === "COLLABORATOR" ? `Doanh số tiếp thị · ${days} ngày` : "Doanh thu"}
               value={money(result.data.metrics.grossRevenue)}
             />
           </Card>
@@ -345,139 +347,4 @@ export function AuditScreen() {
     </Screen>
   );
 }
-const Channel = z.object({
-  id: z.string(),
-  platformName: z.string(),
-  channelName: z.string().nullish(),
-  channelUrl: z.string(),
-  followerCount: z.number(),
-  isPrimary: z.boolean(),
-});
-export function SocialScreen() {
-  const channels = useResource("social", "/social-channels", z.array(Channel)),
-    command = useCommand(),
-    [form, setForm] = useState<CommandFormSpec | null>(null);
-  const tier = useResource(
-    "tier",
-    "/tiers/my-status",
-    z.object({
-      currentTier: z.object({
-        name: z.string(),
-        extraBonusPercentage: z.number(),
-      }),
-      currentRevenue: z.number(),
-      progressPercentage: z.number(),
-      revenueNeeded: z.number(),
-      nextEvaluationAt: z.string(),
-    }),
-  );
-  return (
-    <Screen scroll>
-      <Title>Kênh xã hội</Title>
-      <Button
-        title="Thêm kênh"
-        onPress={() =>
-          setForm({
-            title: "Liên kết kênh xã hội",
-            path: "/social-channels",
-            method: "POST",
-            fields: [
-              {
-                key: "platformName",
-                label: "Nền tảng",
-                options: [
-                  "TIKTOK",
-                  "YOUTUBE",
-                  "FACEBOOK",
-                  "INSTAGRAM",
-                  "SHOPEE_VIDEO",
-                  "LEMON8",
-                  "OTHER",
-                ].map((value) => ({ value, label: value })),
-              },
-              { key: "channelName", label: "Tên kênh" },
-              { key: "channelUrl", label: "URL kênh HTTPS" },
-              { key: "followerCount", label: "Lượt theo dõi", numeric: true },
-            ],
-            schema: z.object({
-              platformName: z.enum([
-                "TIKTOK",
-                "YOUTUBE",
-                "FACEBOOK",
-                "INSTAGRAM",
-                "SHOPEE_VIDEO",
-                "LEMON8",
-                "OTHER",
-              ]),
-              channelName: required.max(150),
-              channelUrl: z.string().url().startsWith("https://"),
-              followerCount: z.coerce
-                .number()
-                .int()
-                .nonnegative()
-                .max(2147483647),
-            }),
-          })
-        }
-      />
-      <QueryState
-        loading={channels.isLoading}
-        error={channels.error}
-        retry={() => void channels.refetch()}
-      />
-      <ErrorNotice error={command.error} />
-      <Title>Cấp bậc & thăng hạng</Title>
-      <QueryState
-        loading={tier.isLoading}
-        error={tier.error}
-        retry={() => void tier.refetch()}
-      />
-      {tier.data && (
-        <Card>
-          <Title>{tier.data.currentTier.name}</Title>
-          <Caption>
-            Thưởng cấp bậc +{tier.data.currentTier.extraBonusPercentage}%
-          </Caption>
-          <Text>Doanh số kỳ đánh giá: {money(tier.data.currentRevenue)}</Text>
-          <Caption>
-            Tiến độ {tier.data.progressPercentage}% · Còn{" "}
-            {money(tier.data.revenueNeeded)} tới cấp tiếp theo
-          </Caption>
-          <Caption>
-            Xét tiếp theo:{" "}
-            {new Date(tier.data.nextEvaluationAt).toLocaleString("vi-VN")}
-          </Caption>
-        </Card>
-      )}
-      {channels.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.channelName || item.platformName}</Title>
-          {item.isPrimary && <Badge>Kênh chính</Badge>}
-          <Text>
-            {item.followerCount.toLocaleString("vi-VN")} người theo dõi
-          </Text>
-          <Evidence urls={[item.channelUrl]} />
-          {!item.isPrimary && (
-            <Button
-              title="Đặt làm kênh chính"
-              secondary
-              loading={command.busy}
-              onPress={() =>
-                void command.execute(`/social-channels/${item.id}/primary`)
-              }
-            />
-          )}
-          <Button
-            title="Gỡ liên kết kênh"
-            secondary
-            loading={command.busy}
-            onPress={() =>
-              void command.execute(`/social-channels/${item.id}`, "DELETE")
-            }
-          />
-        </Card>
-      ))}
-      {form && <CommandForm spec={form} close={() => setForm(null)} />}
-    </Screen>
-  );
-}
+export { SocialProfileScreen as SocialScreen } from "../account/SocialProfileScreen";

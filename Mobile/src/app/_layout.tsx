@@ -8,6 +8,7 @@ import { Button, ErrorNotice, Loading, Screen } from "../components/ui";
 import { colors } from "../theme/tokens";
 import { useFonts } from "expo-font";
 import Feather from "@expo/vector-icons/Feather";
+import { SuccessToastProvider } from "../components/SuccessToast";
 
 function SessionRoutes() {
   const { session, restoring, restoreError, restore, logout } = useAuth();
@@ -55,7 +56,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SessionRoutes />
+          <SuccessToastProvider><SessionRoutes /></SuccessToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

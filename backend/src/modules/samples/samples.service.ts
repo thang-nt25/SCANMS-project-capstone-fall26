@@ -102,6 +102,47 @@ export class SamplesService {
     };
   }
 
+  async getMySampleCatalog(collaboratorId: string) {
+    const [products, existing] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          isDeleted: false, isActive: true, moderationStatus: 'APPROVED',
+          store: { isDeleted: false, isActive: true },
+          OR: [{ sampleEnabled: true }, { variants: { some: { isActive: true, sampleEnabled: true } } }],
+        },
+        select: {
+          id: true, title: true, price: true, imageUrl: true, sampleEnabled: true,
+          sampleQuota: true, sampleGrantedCount: true,
+          store: { select: { id: true, name: true, logoUrl: true } },
+          variants: { where: { isActive: true }, select: {
+            id: true, name: true, sku: true, price: true, imageUrl: true, stockQuantity: true,
+            sampleEnabled: true, sampleQuota: true, sampleGrantedCount: true,
+          } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.sampleProductRequest.findMany({
+        where: { collaboratorId, status: { in: [...ACTIVE_SAMPLE_STATUSES, SampleRequestStatus.COMPLETED] } },
+        select: { productId: true },
+      }),
+    ]);
+    const excluded = new Set(existing.map(item => item.productId));
+    const items = products.filter(product => !excluded.has(product.id)).map(product => {
+      const baseRemaining = product.sampleEnabled ? Math.max(0, product.sampleQuota - product.sampleGrantedCount) : 0;
+      const variants = product.variants.map(variant => {
+        const override = variant.sampleEnabled !== null || variant.sampleQuota !== null;
+        const enabled = variant.sampleEnabled ?? product.sampleEnabled;
+        const remaining = enabled ? Math.max(0, (variant.sampleQuota ?? product.sampleQuota) - (override ? variant.sampleGrantedCount : product.sampleGrantedCount)) : 0;
+        return { ...variant, price: Number(variant.price ?? product.price), isActive: true, sampleEnabled: enabled, sampleAvailable: remaining > 0, sampleQuotaRemaining: remaining, sharedSampleQuota: !override };
+      }).filter(variant => variant.sampleAvailable);
+      // Inherited SKUs draw from one shared product pool; never sum it once per SKU.
+      const remaining = product.variants.length ?
+        (variants.some(variant => variant.sharedSampleQuota) ? baseRemaining : 0) + variants.filter(variant => !variant.sharedSampleQuota).reduce((sum, variant) => sum + variant.sampleQuotaRemaining, 0) : baseRemaining;
+      return { id: product.id, title: product.title, price: Number(product.price), imageUrl: product.imageUrl, store: product.store, isActive: true, sampleEnabled: true, sampleAvailable: remaining > 0, sampleQuotaRemaining: remaining, variants };
+    }).filter(product => product.sampleAvailable);
+    return { items, total: items.length, checkedAt: new Date().toISOString() };
+  }
+
   private async validateRecipientAddress(dto: CreateSampleRequestDto | UpdateSampleRequestDto) {
     const recipientName = typeof dto.recipientName === 'string' ? dto.recipientName.trim() : '';
     const shippingAddress = typeof dto.shippingAddress === 'string' ? dto.shippingAddress.trim() : '';
@@ -213,8 +254,8 @@ export class SamplesService {
     }
     const sampleEnabled = variant?.sampleEnabled ?? product.sampleEnabled;
     const sampleQuota = variant?.sampleQuota ?? product.sampleQuota;
-    const sampleGrantedCount =
-      variant?.sampleGrantedCount ?? product.sampleGrantedCount;
+    const hasVariantPolicy = variant && (variant.sampleEnabled !== null || variant.sampleQuota !== null);
+    const sampleGrantedCount = hasVariantPolicy && variant ? variant.sampleGrantedCount : product.sampleGrantedCount;
     if (!sampleEnabled || sampleQuota <= sampleGrantedCount) {
       throw new BadRequestException(
         'Sản phẩm hiện không nhận đăng ký mẫu hoặc đã hết hạn mức mẫu.',

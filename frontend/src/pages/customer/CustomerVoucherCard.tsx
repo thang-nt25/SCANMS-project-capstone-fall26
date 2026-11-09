@@ -41,7 +41,7 @@ export function CustomerVoucherCard({ voucher, now, saved, saving, copied, onTog
             {countdown && <span className="customer-voucher-countdown">{countdown}</span>}
           </div>}
           <span className="customer-voucher-store"><Store size={14} aria-hidden="true" /><span>{voucher.store.name}</span></span>
-          <h2>{voucher.fundingSource === 'PLATFORM_FUNDED' ? 'Voucher sàn SCANMS' : 'Voucher gian hàng'}</h2>
+          <h2>{voucher.canSave === false ? 'Mã độc quyền KOL' : voucher.fundingSource === 'PLATFORM_FUNDED' ? 'Voucher sàn SCANMS' : 'Voucher gian hàng'}</h2>
           <p>{minimum}</p>
           {percentage && voucher.maximumDiscountAmount !== null && <p>Giảm tối đa {formatMoney(voucher.maximumDiscountAmount)}</p>}
         </div>
@@ -54,11 +54,11 @@ export function CustomerVoucherCard({ voucher, now, saved, saving, copied, onTog
           <span>{voucher.code}</span>
           {copied && <span className="sr-only" role="status">Đã sao chép</span>}
         </button>
-        <button type="button" className="customer-voucher-save" disabled={saving || expired} aria-pressed={saved} aria-busy={saving}
+        {voucher.canSave !== false && <button type="button" className="customer-voucher-save" disabled={saving || expired} aria-pressed={saved} aria-busy={saving}
           onClick={() => { if (voucherExpiryState(voucher.expiresAt) !== 'expired') onToggleSaved(); }}>
           {saving ? <Loader2 size={14} className="customer-voucher-spinner" aria-hidden="true" /> : saved ? <Check size={14} aria-hidden="true" /> : null}
           <span>{expired ? 'Đã lưu' : saved ? 'Bỏ lưu' : 'Lưu mã'}</span>
-        </button>
+        </button>}
         {expired ? <button type="button" className="customer-voucher-use" disabled>Đã hết hạn</button> : <Link className="customer-voucher-use" to={`/shop/${voucher.store.slug || voucher.store.id}`}
           onClick={event => { if (voucherExpiryState(voucher.expiresAt) === 'expired') event.preventDefault(); }}>
           <span>Dùng ngay</span><ArrowRight size={14} aria-hidden="true" />

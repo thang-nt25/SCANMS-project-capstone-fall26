@@ -1,4 +1,10 @@
+import { Pressable, View } from "react-native";
+import { colors } from "../../theme/tokens";
+import { Icon } from "../../components/commerce";
+import { BottomSheet } from "../../components/BottomSheet";
+import { WalletLedgerRow, WithdrawSheet } from "./WalletActivity";
 import { useState } from "react";
+import { BankAccountSheet, WalletPresentation } from "./WalletPresentation";
 import { Text } from "react-native";
 import { z } from "zod";
 import {
@@ -8,25 +14,20 @@ import {
   Card,
   Empty,
   ErrorNotice,
-  Field,
   PageControls,
   Screen,
   Title,
 } from "../../components/ui";
 import { money, statusText } from "../../types/contracts";
 import {
-  ActionForm,
   DetailLine,
   QueryState,
-  Sheet,
   amount,
   confirmAction,
-  required,
   useActor,
   useCommand,
   useResource,
 } from "../common/shared";
-import { SelectField } from "../common/SelectField";
 import { validateInput } from "../../utils/validate-input";
 import { isSandboxPayout } from "../payouts/gateway-contract";
 const Wallet = z.object({
@@ -35,16 +36,21 @@ const Wallet = z.object({
   minimumWithdrawalAmount: amount,
   canWithdraw: z.boolean(),
   kycStatus: z.string(),
+  cooperationStores: z.array(z.object({ storeId: z.string(), logoUrl: z.string().nullish() })).optional(),
   stores: z.array(
     z.object({
       storeId: z.string(),
       storeName: z.string(),
+      logoUrl: z.string().nullish(),
       availableBalance: amount,
       pendingBalance: amount,
       isActive: z.boolean(),
     }),
   ),
-  withdrawalTaxPolicy: z.object({ threshold: z.number(), rate: z.number() }),
+  withdrawalTaxPolicy: z.object({
+    threshold: amount.transform(Number),
+    rate: amount.transform(Number).refine(value => value >= 0 && value <= 1),
+  }),
   bankAccount: z
     .object({
       bankName: z.string(),
@@ -58,6 +64,8 @@ const Ledger = z.object({
     z.object({
       id: z.string(),
       transactionType: z.string(),
+      balanceBucket: z.string().optional(),
+      referenceDetails: z.object({ storeName: z.string().nullish(), orderCode: z.string().nullish() }).nullish(),
       amount,
       balanceBefore: amount,
       balanceAfter: amount,
@@ -78,6 +86,8 @@ const Withdrawal = z.object({
       createdAt: z.string(),
       transferProvider: z.string().nullish(),
       bankRefCode: z.string().nullish(),
+      processedAt: z.string().nullish(),
+      store: z.object({ name: z.string() }).nullish(),
     }),
   ),
   total: z.number(),
@@ -102,6 +112,10 @@ export function WalletScreen() {
     [withdraw, setWithdraw] = useState(false),
     [storeId, setStoreId] = useState(""),
     [value, setValue] = useState("");
+  const [tab, setTab] = useState<"summary" | "withdraw" | "history">("summary");
+  const [requestPage, setRequestPage] = useState(1);
+  const [historyTab, setHistoryTab] = useState<"ledger" | "requests">("ledger");
+  const [requestDetail, setRequestDetail] = useState<z.infer<typeof Withdrawal>["requests"][number] | null>(null);
   const wallet = useResource("wallet", "/wallets/me", Wallet);
   const ledger = useResource(
     "ledger",
@@ -110,14 +124,15 @@ export function WalletScreen() {
   );
   const requests = useResource(
     "withdrawals",
-    `/wallets/withdrawals?page=${page}&limit=20`,
+    `/wallets/withdrawals?page=${requestPage}&limit=20`,
     Withdrawal,
     koc,
   );
   const selected = wallet.data?.stores.find((item) => item.storeId === storeId);
   return (
     <Screen scroll>
-      <Title>Ví SCANMS</Title>
+      {!koc && <Title>Ví SCANMS</Title>}
+      {koc && <View style={{ flexDirection: "row", gap: 8 }}>{([["summary", "Tổng quan"], ["withdraw", "Rút tiền"], ["history", "Lịch sử"]] as const).map(([key, title]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={{ flex: 1, minHeight: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: tab === key ? colors.strong : colors.line, borderRadius: 12, backgroundColor: tab === key ? colors.soft : colors.white }}><Text style={{ fontSize: 12, fontWeight: "600", color: tab === key ? colors.ink : colors.muted }}>{title}</Text></Pressable>)}</View>}
       <QueryState
         loading={wallet.isLoading}
         error={wallet.error}
@@ -125,44 +140,21 @@ export function WalletScreen() {
       />
       {wallet.data && (
         <>
-          <Card>
-            <DetailLine
-              label="Số dư khả dụng"
-              value={money(wallet.data.availableBalance)}
-            />
-            <DetailLine
-              label="Đang tạm giữ"
-              value={money(wallet.data.pendingBalance)}
-            />
-          </Card>
-          {wallet.data.stores.map((item) => (
-            <Card key={item.storeId}>
-              <Title>{item.storeName}</Title>
-              <Text>Khả dụng: {money(item.availableBalance)}</Text>
-              <Caption>Tạm giữ: {money(item.pendingBalance)}</Caption>
-            </Card>
-          ))}
-          {koc && (
+          {koc ? tab !== "history" && <WalletPresentation wallet={{ ...wallet.data, stores: wallet.data.stores.map(store => ({ ...store, logoUrl: store.logoUrl || wallet.data.cooperationStores?.find(partner => partner.storeId === store.storeId)?.logoUrl })) }} mode={tab === "withdraw" ? "bank" : "summary"} editBank={() => setBank(true)} /> : <Card>
+            <DetailLine label="Số dư khả dụng" value={money(wallet.data.availableBalance)} />
+            <DetailLine label="Đang tạm giữ" value={money(wallet.data.pendingBalance)} />
+          </Card>}
+          {!koc && wallet.data.stores.map((item) => <Card key={item.storeId}>
+            <Title>{item.storeName}</Title>
+            <Text>Khả dụng: {money(item.availableBalance)}</Text>
+            <Caption>Tạm giữ: {money(item.pendingBalance)}</Caption>
+          </Card>)}
+          {koc && tab === "withdraw" && (
             <>
-              <Badge>KYC: {wallet.data.kycStatus}</Badge>
-              <DetailLine
-                label="Tài khoản nhận tiền"
-                value={
-                  wallet.data.bankAccount
-                    ? `${wallet.data.bankAccount.bankName} · ${wallet.data.bankAccount.maskedAccountNumber} · ${wallet.data.bankAccount.accountName}`
-                    : "Chưa liên kết"
-                }
-              />
-              <Button
-                title="Cập nhật tài khoản ngân hàng"
-                secondary
-                onPress={() => setBank(true)}
-              />
-              <Caption>
-                Rút tối thiểu {money(wallet.data.minimumWithdrawalAmount)}. Từ{" "}
-                {money(wallet.data.withdrawalTaxPolicy.threshold)}, thuế theo
-                cấu hình hệ thống {wallet.data.withdrawalTaxPolicy.rate * 100}%.
-              </Caption>
+              <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, gap: 6 }}>
+                <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "600" }}>Rút từ {money(wallet.data.minimumWithdrawalAmount)}</Text>
+                <Caption>Từ {money(wallet.data.withdrawalTaxPolicy.threshold)}, khấu trừ {wallet.data.withdrawalTaxPolicy.rate * 100}% theo chính sách hệ thống.</Caption>
+              </View>
               {!wallet.data.canWithdraw && (
                 <Caption>
                   Chưa đủ điều kiện rút: kiểm tra KYC, ngân hàng và số dư khả
@@ -171,6 +163,7 @@ export function WalletScreen() {
               )}
               <Button
                 title="Tạo yêu cầu rút hoa hồng"
+                soft
                 disabled={!wallet.data.canWithdraw}
                 onPress={() => setWithdraw(true)}
               />
@@ -178,113 +171,69 @@ export function WalletScreen() {
           )}
         </>
       )}
-      <Title>Lịch sử biến động</Title>
+      {(!koc || tab === "history") && <>
+      {koc && <View style={{ flexDirection: "row", gap: 8 }}>{([["ledger", "Biến động số dư"], ["requests", "Lệnh rút của tôi"]] as const).map(([key, title]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: historyTab === key }} onPress={() => setHistoryTab(key)} style={{ flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: historyTab === key ? colors.strong : colors.line }}><Text style={{ fontSize: 12, fontWeight: "600", color: historyTab === key ? colors.ink : colors.muted }}>{title}</Text></Pressable>)}</View>}
+      {(!koc || historyTab === "ledger") && <>
       <QueryState
         loading={ledger.isLoading}
         error={ledger.error}
         retry={() => void ledger.refetch()}
       />
       {ledger.data?.entries.length === 0 && <Empty />}
-      {ledger.data?.entries.map((item) => (
-        <Card key={item.id}>
-          <Badge>{statusText(item.transactionType)}</Badge>
-          <Title>{money(item.amount)}</Title>
-          <Caption>
-            {money(item.balanceBefore)} → {money(item.balanceAfter)}
-          </Caption>
-          <Caption>{new Date(item.createdAt).toLocaleString("vi-VN")}</Caption>
-        </Card>
-      ))}
-      {koc && (
+      {!!ledger.data?.entries.length && <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 16, overflow: "hidden" }}>{ledger.data.entries.map((item, index) => <WalletLedgerRow key={item.id} item={item} last={index === ledger.data.entries.length - 1} />)}</View>}
+      {!!ledger.data && ledger.data.total > 20 && <PageControls page={page} totalPages={Math.ceil(ledger.data.total / 20)} loading={ledger.isFetching} onChange={setPage} />}
+      </>}
+      {koc && historyTab === "requests" && (
         <>
-          <Title>Yêu cầu rút tiền</Title>
           <QueryState
             loading={requests.isLoading}
             error={requests.error}
             retry={() => void requests.refetch()}
           />
+          {requests.data?.requests.length === 0 && <Card><View style={{ alignItems: "center", paddingVertical: 20, gap: 8 }}><Icon name="credit-card" size={26} color={colors.strong} /><Text style={{ fontWeight: "600", color: colors.ink }}>Chưa có yêu cầu rút tiền</Text><Caption>Các yêu cầu bạn tạo sẽ được theo dõi tại đây.</Caption><Button title="Tạo yêu cầu rút" soft onPress={() => setTab("withdraw")} /></View></Card>}
           {requests.data?.requests.map((item) => (
-            <Card key={item.id}>
+            <Pressable key={item.id} accessibilityRole="button" accessibilityLabel="Xem chi tiết yêu cầu rút tiền" onPress={() => setRequestDetail(item)} style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 14, gap: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}><Text style={{ fontSize: 12, fontWeight: "700", color: colors.ink }}>#{item.id.slice(0, 8).toUpperCase()}</Text>
               <Badge>{item.status === "APPROVED" && isSandboxPayout(item) ? "Hoàn tất · Sandbox" : statusText(item.status)}</Badge>
-              <Caption>Mã yêu cầu: {item.id}</Caption>
-              {item.bankRefCode && <Caption>Tham chiếu: {item.bankRefCode}</Caption>}
-              <Title>{money(item.amount)}</Title>
-              <Text>
-                Thuế: {money(item.taxAmount)} · Thực nhận:{" "}
-                {money(item.netAmount)}
-              </Text>
-            </Card>
+              </View>
+              <Caption>{new Date(item.createdAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })}{item.store?.name ? ` · ${item.store.name}` : ""}</Caption>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><View style={{ flex: 1, gap: 4 }}><Caption>Yêu cầu</Caption><Text style={{ fontSize: 15, fontWeight: "700", color: colors.ink }}>{money(item.amount)}</Text></View><Icon name="arrow-right" size={16} color={colors.muted} /><View style={{ flex: 1, alignItems: "flex-end", gap: 4 }}><Caption>Sau thuế</Caption><Text style={{ fontSize: 15, fontWeight: "700", color: colors.strong }}>{money(item.netAmount)}</Text></View></View>
+              {Number(item.taxAmount) > 0 && <Caption>Khấu trừ thuế: {money(item.taxAmount)}</Caption>}
+            </Pressable>
           ))}
+      {!!requests.data && requests.data.total > 20 &&
+      <PageControls
+        page={requestPage}
+        totalPages={Math.ceil(
+          (requests.data?.total || 0) / 20,
+        )}
+        loading={requests.isFetching}
+        onChange={setRequestPage}
+      />
+      }
         </>
       )}
-      <PageControls
-        page={page}
-        totalPages={Math.ceil(
-          Math.max(ledger.data?.total || 0, requests.data?.total || 0) / 20,
-        )}
-        loading={ledger.isFetching || requests.isFetching}
-        onChange={setPage}
-      />
+      </>}
+      {requestDetail && <BottomSheet title="Chi tiết yêu cầu rút" close={() => setRequestDetail(null)}><Badge>{requestDetail.status === "APPROVED" && isSandboxPayout(requestDetail) ? "Hoàn tất · Sandbox" : statusText(requestDetail.status)}</Badge><DetailLine label="Yêu cầu" value={money(requestDetail.amount)} /><DetailLine label="Thuế" value={money(requestDetail.taxAmount)} /><DetailLine label="Sau thuế" value={money(requestDetail.netAmount)} />{requestDetail.store?.name && <DetailLine label="Nguồn hoa hồng" value={requestDetail.store.name} />}<Caption>Mã yêu cầu đầy đủ</Caption><Text selectable style={{ color: colors.ink, fontSize: 12 }}>{requestDetail.id}</Text>{requestDetail.bankRefCode && <><Caption>Mã tham chiếu</Caption><Text selectable style={{ color: colors.ink, fontSize: 12 }}>{requestDetail.bankRefCode}</Text></>}{requestDetail.processedAt && <Caption>Xử lý: {new Date(requestDetail.processedAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</Caption>}</BottomSheet>}
       <ErrorNotice error={command.error} />
       {bank && (
-        <ActionForm
-          title="Ngân hàng nhận hoa hồng"
-          fields={[
-            { key: "bankName", label: "Ngân hàng" },
-            { key: "bankAccountNumber", label: "Số tài khoản" },
-            { key: "bankAccountName", label: "Tên chủ tài khoản" },
-          ]}
-          schema={z.object({
-            bankName: required.max(100),
-            bankAccountNumber: required.regex(/^[0-9]{6,30}$/),
-            bankAccountName: required.max(150),
-          })}
-          submit={(body) =>
-            command.execute("/wallets/me/bank-account", "PUT", body, () =>
-              setBank(false),
-            )
-          }
+        <BankAccountSheet
+          current={wallet.data?.bankAccount}
           busy={command.busy}
           error={command.error}
           close={() => setBank(false)}
+          save={(body) => void command.execute("/wallets/me/bank-account", "PUT", body, () => setBank(false))}
         />
       )}
       {withdraw && (
-        <Sheet
-          title="Yêu cầu rút hoa hồng"
-          close={() => {
-            if (!command.busy) setWithdraw(false);
-          }}
-        >
-          <SelectField
-            label="Shop thanh toán"
-            value={storeId}
-            options={(wallet.data?.stores || [])
-              .filter((item) => item.isActive)
-              .map((item) => ({
-                value: item.storeId,
-                label: `${item.storeName} · ${money(item.availableBalance)}`,
-              }))}
-            onChange={setStoreId}
-            disabled={command.busy}
-          />
-          <Field
-            label="Số tiền rút VNĐ"
-            value={value}
-            onChangeText={setValue}
-            keyboardType="decimal-pad"
-            editable={!command.busy}
-          />
-          <Caption>
-            Hệ thống sẽ khóa số dư và khấu trừ thuế khi tạo yêu cầu. Shop duyệt
-            chứng từ thanh toán riêng.
-          </Caption>
-          <ErrorNotice error={command.error} />
-          <Button
-            title="Xác nhận tạo yêu cầu rút"
-            loading={command.busy}
-            disabled={!selected || !wallet.data?.canWithdraw}
-            onPress={() =>
+        <WithdrawSheet
+          stores={wallet.data?.stores || []}
+          storeId={storeId} setStoreId={setStoreId} value={value} setValue={setValue}
+          minimum={wallet.data?.minimumWithdrawalAmount || 0}
+          policy={wallet.data?.withdrawalTaxPolicy || { threshold: 0, rate: 0 }}
+          canWithdraw={wallet.data?.canWithdraw || false}
+          busy={command.busy} error={command.error} close={() => setWithdraw(false)}
+          submit={() =>
               confirmAction(
                 "Xác nhận rút hoa hồng?",
                 `Số tiền yêu cầu: ${money(value)}. Số tiền và thuế chính thức được backend xác nhận.`,
@@ -315,8 +264,7 @@ export function WalletScreen() {
                   ),
               )
             }
-          />
-        </Sheet>
+        />
       )}
     </Screen>
   );

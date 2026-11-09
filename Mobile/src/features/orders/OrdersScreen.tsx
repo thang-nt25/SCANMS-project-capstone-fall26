@@ -75,15 +75,7 @@ export function OrdersScreen() {
     <View style={{ flex: 1, backgroundColor: colors.canvas }}>
       <AppBar
         title={role === "CUSTOMER" ? "Đơn mua của tôi" : "Quản lý đơn hàng"}
-        subtitle={role === "SHOP_MANAGER" ? store?.name : undefined}
-      >
-        <IconButton
-          name="refresh-cw"
-          label="Làm mới đơn hàng"
-          disabled={result.isFetching}
-          onPress={() => void result.refetch()}
-        />
-      </AppBar>
+      />
       <View style={orderStyles.search}>
         <Icon name="search" size={16} color={colors.muted} />
         <TextInput
@@ -107,7 +99,7 @@ export function OrdersScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 12, gap: 15 }}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8, gap: 7 }}
         >
           {filters.map((item) => (
             <Pressable
@@ -120,7 +112,7 @@ export function OrdersScreen() {
               }}
               style={[
                 orderStyles.filter,
-                item.value === status && { borderBottomColor: colors.brand },
+                item.value === status && { borderColor: colors.brand, backgroundColor: colors.soft },
               ]}
             >
               <Text
@@ -190,7 +182,7 @@ export function OrdersScreen() {
                 <View style={orderStyles.product}>
                   <View style={orderStyles.image}>
                     <ProductPhoto
-                      uri={product?.imageUrl}
+                      uri={product?.imageUrl || item.items?.[0]?.imageUrl}
                       style={StyleSheet.absoluteFill}
                     />
                   </View>
@@ -205,6 +197,7 @@ export function OrdersScreen() {
                       {quantity ? String(quantity) + " sản phẩm · " : ""}
                       {new Date(item.createdAt).toLocaleDateString("vi-VN")}
                     </Text>
+                    {item.customerName && role === "SHOP_MANAGER" && <Text numberOfLines={1} style={orderStyles.meta}>Khách: {item.customerName}</Text>}
                   </View>
                 </View>
                 <View style={orderStyles.summary}>
@@ -213,7 +206,7 @@ export function OrdersScreen() {
                     {money(item.finalAmount)}
                   </Text>
                 </View>
-                <Text style={orderStyles.link}>Xem chi tiết đơn hàng →</Text>
+                <View style={orderStyles.detail}><Text style={orderStyles.link}>Xem chi tiết</Text><Icon name="chevron-right" size={15} color={colors.strong} /></View>
               </Pressable>
             );
           }}
@@ -246,9 +239,12 @@ const orderStyles = StyleSheet.create({
     borderColor: colors.line,
   },
   filter: {
-    paddingVertical: 13,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
   },
   card: {
     padding: 13,
@@ -267,11 +263,11 @@ const orderStyles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   shopName: { flex: 1, fontSize: 12, fontWeight: "600", color: colors.ink },
-  status: { fontSize: 10, color: colors.strong },
+  status: { fontSize: 10, color: colors.strong, backgroundColor: colors.soft, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 7, maxWidth: "40%" },
   product: { flexDirection: "row", gap: 12 },
   image: {
-    width: 72,
-    height: 72,
+    width: 76,
+    height: 80,
     borderRadius: 9,
     overflow: "hidden",
     alignItems: "center",
@@ -282,7 +278,7 @@ const orderStyles = StyleSheet.create({
   meta: { fontSize: 11, color: colors.muted },
   summary: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -291,6 +287,7 @@ const orderStyles = StyleSheet.create({
   },
   price: { fontSize: 16, fontWeight: "700", color: colors.strong },
   link: { fontSize: 11, color: colors.muted, textAlign: "right" },
+  detail: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 36, borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
 });
 
 export function OrderDetailScreen({

@@ -21,7 +21,7 @@ import { useStoreScope } from "../auth/StoreScope";
 import { useResource } from "../common/shared";
 import { ProductCard } from "./ProductCard";
 
-export function CatalogScreen() {
+export function CatalogScreen({ onScrollOffset }: { onScrollOffset?: (offset: number) => void } = {}) {
   const { session } = useAuth(),
     { store } = useStoreScope(),
     navigation = useMobileNavigation();
@@ -73,9 +73,8 @@ export function CatalogScreen() {
   };
   return (
     <View style={styles.screen}>
-      <AppBar
-        title={shop ? "Sản phẩm của Shop" : "Khám phá"}
-        subtitle={shop ? store?.name : "Tìm điều bạn yêu thích"}
+      {shop && <AppBar
+        title="Sản phẩm của Shop"
       >
         {shop ? (
           <IconButton
@@ -83,24 +82,8 @@ export function CatalogScreen() {
             label="Thêm sản phẩm"
             onPress={() => navigation.navigate("ProductEditor")}
           />
-        ) : (
-          <IconButton
-            name="sliders"
-            label="Đổi thứ tự giá"
-            onPress={() => {
-              setSortBy(sortBy === "price_asc" ? "price_desc" : "price_asc");
-              setPage(1);
-            }}
-          />
-        )}
-        {role === "CUSTOMER" && (
-          <IconButton
-            name="shopping-cart"
-            label="Giỏ hàng"
-            onPress={() => navigation.navigate("Business", { feature: "cart" })}
-          />
-        )}
-      </AppBar>
+        ) : null}
+      </AppBar>}
       <View style={styles.filterPanel}>
         <View style={styles.search}>
           <Icon name="search" size={17} color={colors.muted} />
@@ -129,6 +112,15 @@ export function CatalogScreen() {
                 : submit
             }
           />
+          {!shop && <IconButton
+            name="sliders"
+            label="Đổi thứ tự giá"
+            onPress={() => {
+              setSortBy(sortBy === "price_asc" ? "price_desc" : "price_asc");
+              setPage(1);
+            }}
+          />}
+          {!shop && role === "CUSTOMER" && <IconButton name="shopping-cart" label="Giỏ hàng" onPress={() => navigation.navigate("Business", { feature: "cart" })} />}
         </View>
         {!shop && (
           <ScrollView
@@ -211,6 +203,8 @@ export function CatalogScreen() {
         <Loading />
       ) : (
         <FlatList
+          onScroll={onScrollOffset ? (event) => onScrollOffset(event.nativeEvent.contentOffset.y) : undefined}
+          scrollEventThrottle={onScrollOffset ? 32 : undefined}
           data={result.data?.items || []}
           numColumns={2}
           keyExtractor={(item) => item.id}
@@ -225,10 +219,10 @@ export function CatalogScreen() {
           refreshing={result.isRefetching}
           onRefresh={() => void result.refetch()}
           ListHeaderComponent={
-            <Text style={styles.count}>
-              {result.data?.total ?? 0} sản phẩm
+            result.data && !shop ? <Text style={styles.count}>
+              {result.data.total} sản phẩm
               {keyword ? ` cho “${keyword}”` : ""}
-            </Text>
+            </Text> : undefined
           }
           ListEmptyComponent={
             !result.error ? (
@@ -237,6 +231,7 @@ export function CatalogScreen() {
           }
           renderItem={({ item }) => (
             <ProductCard
+              grid
               product={item}
               onPress={() =>
                 navigation.navigate("ProductDetail", { product: item })

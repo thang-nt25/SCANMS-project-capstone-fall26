@@ -7,9 +7,11 @@ import { money, type Product } from "../../types/contracts";
 export function ProductCard({
   product,
   onPress,
+  grid = false,
 }: {
   product: Product;
   onPress(): void;
+  grid?: boolean;
 }) {
   const price = Number(product.price),
     original = Number(product.originalPrice);
@@ -23,7 +25,7 @@ export function ProductCard({
       accessibilityRole="button"
       accessibilityLabel={`${product.title}, ${money(product.price)}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.75 }]}
+      style={({ pressed }) => [styles.card, grid && styles.gridCard, pressed && { opacity: 0.75 }]}
     >
       <View style={styles.photo}>
         <ProductPhoto uri={product.imageUrl} style={StyleSheet.absoluteFill} />
@@ -77,6 +79,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  gridCard: { flexGrow: 0, flexShrink: 0, flexBasis: "48%" },
   photo: {
     width: "100%",
     aspectRatio: 1,

@@ -26,16 +26,21 @@ import { useActor, useResource } from "../common/shared";
 import { MarketplaceHomeScreen } from "../catalog/MarketplaceHomeScreen";
 import { useAuth } from "../auth/AuthProvider";
 import { moduleIcons } from "./module-presentation";
+import { CollaboratorHome } from "./CollaboratorHome";
+import { MerchantHome } from "./MerchantHome";
 
 export function WorkspaceScreen() {
   const { session } = useAuth();
   return session?.user.role === "CUSTOMER" ? (
     <MarketplaceHomeScreen />
-  ) : (
+  ) : session?.user.role === "COLLABORATOR" ? <CollaboratorHome /> : session?.user.role === "SHOP_MANAGER" ? <MerchantHome /> : (
     <PartnerWorkspaceScreen />
   );
 }
-function PartnerWorkspaceScreen() {
+export function WorkspaceToolsScreen() {
+  return <PartnerWorkspaceScreen tools />;
+}
+function PartnerWorkspaceScreen({ tools = false }: { tools?: boolean }) {
   const [search, setSearch] = useState("");
   const { user, store } = useActor(),
     navigation = useMobileNavigation(),
@@ -69,10 +74,10 @@ function PartnerWorkspaceScreen() {
   );
   return (
     <View style={styles.screen}>
-      <AppBar
+      {!tools && <AppBar
         title={
-          user.role === "COLLABORATOR"
-            ? "Không gian sáng tạo"
+          ["COLLABORATOR", "SHOP_MANAGER"].includes(user.role)
+            ? "Tất cả công cụ"
             : "Trung tâm quản lý"
         }
         subtitle="SCANMS PARTNER"
@@ -90,12 +95,12 @@ function PartnerWorkspaceScreen() {
           label="Tài khoản và đăng xuất"
           onPress={() => router.navigate("/(private)/(tabs)/account")}
         />
-      </AppBar>
+      </AppBar>}
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.identity}>
+        {!tools && <View style={styles.identity}>
           <Avatar uri={user.avatarUrl} name={user.fullName} size={43} />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.name}>{user.fullName}</Text>
@@ -104,11 +109,11 @@ function PartnerWorkspaceScreen() {
             </Text>
           </View>
           <Icon name="shield" size={20} color={colors.strong} />
-        </View>
-        {overview.data && (
+        </View>}
+        {!tools && overview.data && (
           <View style={styles.metrics}>
             <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Doanh thu · 30 ngày</Text>
+              <Text style={styles.metricLabel}>{user.role === "COLLABORATOR" ? "Doanh số tiếp thị · 30 ngày" : "Doanh thu · 30 ngày"}</Text>
               <Text style={styles.amount}>
                 {money(overview.data.metrics.grossRevenue)}
               </Text>
@@ -133,10 +138,6 @@ function PartnerWorkspaceScreen() {
             style={styles.input}
           />
         </View>
-        <SectionHeading
-          title="Công cụ của bạn"
-          subtitle="Các chức năng theo vai trò và phân công"
-        />
         <View style={styles.tools}>
           {rows.map(([key, item]) => (
             <Pressable
@@ -160,9 +161,13 @@ function PartnerWorkspaceScreen() {
                 />
               </View>
               <Text numberOfLines={3} style={styles.toolLabel}>
-                {user.role === "SHOP_MANAGER" && key === "wallet"
+                {user.role === "SHOP_MANAGER" && key === "payouts" ? "Đối soát chi trả" : user.role === "SHOP_MANAGER" && key === "wallet"
                   ? "Tài chính Shop"
-                  : item.title}
+                  : user.role === "COLLABORATOR" && key === "wallet"
+                    ? "Ví thù lao"
+                  : user.role === "COLLABORATOR" && key === "coupons"
+                    ? "Mã giảm giá độc quyền"
+                    : item.title}
               </Text>
             </Pressable>
           ))}
@@ -243,7 +248,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: { flex: 1, paddingVertical: 12, fontSize: 13, color: colors.ink },
-  tools: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
+  tools: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 14 },
   tool: {
     width: "31.5%",
     flexGrow: 1,
@@ -253,6 +258,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,

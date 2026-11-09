@@ -9,8 +9,22 @@ import {
   Min,
   MaxLength,
   Matches,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export class WarehouseLocationDto {
+  @IsString() @MaxLength(30) provinceCode: string;
+  @IsString() @IsNotEmpty() @MaxLength(150) provinceName: string;
+  @IsString() @MaxLength(30) districtCode: string;
+  @IsString() @IsNotEmpty() @MaxLength(150) districtName: string;
+  @IsString() @MaxLength(30) wardCode: string;
+  @IsString() @IsNotEmpty() @MaxLength(150) wardName: string;
+  @IsString() @IsNotEmpty() @MaxLength(300) detailAddress: string;
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) latitude?: number | null;
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) longitude?: number | null;
+}
 
 export class UpdateStoreDto {
   @ApiPropertyOptional({
@@ -106,6 +120,18 @@ export class UpdateStoreDto {
   @IsNotEmpty()
   @MaxLength(500)
   warehouseAddress?: string;
+
+  @ApiPropertyOptional({ type: WarehouseLocationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WarehouseLocationDto)
+  warehouseLocation?: WarehouseLocationDto;
+
+  @ApiPropertyOptional({ type: WarehouseLocationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WarehouseLocationDto)
+  returnWarehouseLocation?: WarehouseLocationDto;
 
   @ApiPropertyOptional({
     example: 'Tòa nhà Bitexco, 2 Hải Triều, P. Bến Nghé, Q.1, TP. Hồ Chí Minh',

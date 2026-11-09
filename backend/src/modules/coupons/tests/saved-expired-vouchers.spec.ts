@@ -32,7 +32,7 @@ describe('Saved expired voucher history', () => {
     expect(result.map(item => item.id)).toEqual(['expired-a', 'boundary']);
     expect(result[0]).toMatchObject({ code: 'EXPIRED-A', discountValue: 15000, remainingUses: 95 });
     expect(result[0]).not.toHaveProperty('status');
-    expect(prisma.customerSavedCoupon.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'a' } }));
+    expect(prisma.customerSavedCoupon.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'a', coupon: { collaborator: { role: { not: 'COLLABORATOR' } } } } }));
     expect(prisma.coupon.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ expiresAt: { lte: current }, deletedAt: null }),
       orderBy: [{ expiresAt: 'desc' }, { id: 'asc' }],
@@ -52,6 +52,13 @@ describe('Saved expired voucher history', () => {
     expect(prisma.coupon.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ AND: expect.arrayContaining([{ OR: [{ expiresAt: null }, { expiresAt: { gt: current } }] }]) }),
     }));
+  });
+
+  it('rejects saving an active exclusive KOL code without writing a saved record', async () => {
+    prisma.coupon.findFirst.mockResolvedValue({ id: 'kol-code', collaborator: { role: 'COLLABORATOR' }, usageLimitTotal: null, usageCount: 0, liveSession: null });
+    prisma.customerSavedCoupon.upsert = jest.fn();
+    await expect(service.saveCoupon('a', 'kol-code')).rejects.toThrow('Mã độc quyền KOL không hỗ trợ lưu');
+    expect(prisma.customerSavedCoupon.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects expired shop, platform and shipping vouchers at the apply endpoints', async () => {

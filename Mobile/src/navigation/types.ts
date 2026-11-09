@@ -12,7 +12,7 @@ export type RootStackParams = {
   Chat: { conversation: Conversation };
   Deals: undefined;
   DealEditor:
-    | { product?: Product; collaboratorId?: string; collaboratorName?: string }
+    | { product?: Product; collaboratorId?: string; collaboratorName?: string; collaboratorEmail?: string; collaboratorAvatar?: string; storeId?: string }
     | undefined;
   AiMatching: { product: Product };
   ProductReview: { product: Product };

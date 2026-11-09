@@ -89,7 +89,8 @@ export class MerchantPayoutsService {
           query.page ?? 1,
           Math.max(1, Math.ceil(total / limit)),
         );
-        const [requests, pending, approvedToday, tax, kycPendingCount] =
+        const sandbox: Prisma.PayoutRequestWhereInput = { OR: [{ transferProvider: 'BIDV_SANDBOX' }, { bankRefCode: { startsWith: 'SBX-' } }] };
+        const [requests, pending, approvedToday, tax, kycPendingCount, sandboxToday, sandboxTax] =
           await Promise.all([
             tx.payoutRequest.findMany({
               where,
@@ -129,6 +130,14 @@ export class MerchantPayoutsService {
               _sum: { taxAmount: true },
             }),
             tx.payoutRequest.count({ where: scopes.kyc }),
+            tx.payoutRequest.aggregate({
+              where: { AND: [scopes.approvedToday, sandbox] },
+              _sum: { netAmount: true },
+            }),
+            tx.payoutRequest.aggregate({
+              where: { AND: [scopes.tax, sandbox] },
+              _sum: { taxAmount: true },
+            }),
           ]);
         return {
           requests,
@@ -152,6 +161,12 @@ export class MerchantPayoutsService {
               amount: tax._sum.taxAmount?.toFixed(2) ?? '0.00',
             },
             kycPendingCount,
+            breakdown: {
+              approvedOutsideSandboxToday: (approvedToday._sum.netAmount ?? new Prisma.Decimal(0)).minus(sandboxToday._sum.netAmount ?? 0).toFixed(2),
+              approvedSandboxToday: sandboxToday._sum.netAmount?.toFixed(2) ?? '0.00',
+              withheldTaxOutsideSandbox: (tax._sum.taxAmount ?? new Prisma.Decimal(0)).minus(sandboxTax._sum.taxAmount ?? 0).toFixed(2),
+              withheldTaxSandbox: sandboxTax._sum.taxAmount?.toFixed(2) ?? '0.00',
+            },
           },
         };
       },

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { OrderStatus, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
@@ -10,6 +11,7 @@ import { MailService } from '../auth/mail.service';
 import { AuthService } from '../auth/auth.service';
 import { CustomerIdentityService } from './customer-identity.service';
 import { randomInt } from 'node:crypto';
+import { isEmail } from 'class-validator';
 import { UpdateCustomerProfileDto } from './dto/update-profile.dto';
 import { ChangeCustomerPasswordDto } from './dto/change-password.dto';
 import { CreateCustomerAddressDto } from './dto/create-address.dto';
@@ -33,7 +35,14 @@ const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 export class CustomerService {
   private readonly securityOtpCache = new Map<
     string,
-    { code: string; expiresAt: number }
+    {
+      code: string;
+      expiresAt: number;
+      sentAt: number;
+      attempts: number;
+      email: string;
+      originalEmail: string;
+    }
   >();
 
   constructor(
@@ -57,6 +66,7 @@ export class CustomerService {
         phoneNumber: true,
         role: true,
         createdAt: true,
+        avatarUrl: true,
       },
     });
 
@@ -176,13 +186,20 @@ export class CustomerService {
   async sendPasswordSecurityOtp(
     userId: string,
     meta: { ipAddress?: string; userAgent?: string },
+    requestedEmail?: string,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        isActive: true,
+        isDeleted: true,
+      },
     });
 
-    if (!user) {
+    if (!user || user.isDeleted) {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng');
     }
 
@@ -190,37 +207,88 @@ export class CustomerService {
       throw new ForbiddenException('Tài khoản đã bị tạm khóa');
     }
 
-    // Sinh mã ngẫu nhiên 6 chữ số
+    const registeredEmail = (user.email || '').trim();
+    const email = registeredEmail || requestedEmail?.trim().toLowerCase();
+    if (!email || !isEmail(email)) {
+      throw new BadRequestException(
+        'Vui lòng bổ sung email hợp lệ để nhận mã OTP.',
+      );
+    }
+    if (
+      registeredEmail &&
+      requestedEmail &&
+      requestedEmail.trim().toLowerCase() !== registeredEmail.toLowerCase()
+    ) {
+      throw new BadRequestException(
+        'Mã OTP chỉ được gửi về email đã đăng ký của tài khoản.',
+      );
+    }
+    if (!registeredEmail) {
+      const owner = await this.prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      if (owner && owner.id !== userId)
+        throw new BadRequestException('Email này đã được sử dụng.');
+    }
+    const previous = this.securityOtpCache.get(userId);
+    if (previous && Date.now() - previous.sentAt < 60000) {
+      throw new BadRequestException(
+        'Vui lòng chờ 60 giây trước khi gửi lại mã.',
+      );
+    }
+    for (const [key, item] of this.securityOtpCache) {
+      if (item.expiresAt <= Date.now()) this.securityOtpCache.delete(key);
+    }
+    // Lưu email đích theo phiên đã xác thực; không cho thay email đã có.
     const otpCode = randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
-    this.securityOtpCache.set(userId, { code: otpCode, expiresAt });
+    const challenge = {
+      code: otpCode,
+      expiresAt,
+      sentAt: Date.now(),
+      attempts: 0,
+      email,
+      originalEmail: user.email,
+    };
+    this.securityOtpCache.set(userId, challenge);
 
     const loginTime = new Date().toLocaleString('vi-VN', {
       timeZone: 'Asia/Ho_Chi_Minh',
     });
 
-    await this.mailService.sendPasswordSecurityOtp(
-      user.email,
-      user.fullName,
-      otpCode,
-      {
-        ipAddress: meta.ipAddress || '127.0.0.1',
-        userAgent: meta.userAgent || 'Trình duyệt Web',
-        time: loginTime,
-        location: 'Việt Nam',
-      },
-    );
+    try {
+      await this.mailService.sendPasswordSecurityOtp(
+        email,
+        user.fullName,
+        otpCode,
+        {
+          ipAddress: meta.ipAddress || '127.0.0.1',
+          userAgent: meta.userAgent || 'Trình duyệt Web',
+          time: loginTime,
+          location: 'Việt Nam',
+        },
+      );
+    } catch {
+      if (this.securityOtpCache.get(userId) === challenge)
+        this.securityOtpCache.delete(userId);
+      throw new ServiceUnavailableException(
+        'Chưa gửi được mã OTP qua email. Vui lòng thử lại sau.',
+      );
+    }
 
-    const parts = user.email.split('@');
+    const parts = email.split('@');
     const masked =
       parts.length === 2
         ? `${parts[0].slice(0, 2)}***********@${parts[1]}`
-        : user.email;
+        : email;
 
     return {
       success: true,
       maskedEmail: masked,
+      expiresIn: 300,
+      resendAfter: 60,
       message: `Mã OTP xác thực đã được gửi đến địa chỉ Email ${masked}`,
     };
   }
@@ -229,24 +297,7 @@ export class CustomerService {
    * 3.2. Xác thực mã OTP gửi qua Email
    */
   async verifyPasswordSecurityOtp(userId: string, otp: string) {
-    const cached = this.securityOtpCache.get(userId);
-
-    if (!cached) {
-      throw new BadRequestException(
-        'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng gửi lại mã mới.',
-      );
-    }
-    if (Date.now() > cached.expiresAt) {
-      this.securityOtpCache.delete(userId);
-      throw new BadRequestException(
-        'Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới.',
-      );
-    }
-    if (cached.code !== otp.trim()) {
-      throw new BadRequestException(
-        'Mã OTP không chính xác. Vui lòng kiểm tra lại trong Gmail.',
-      );
-    }
+    this.assertSecurityOtp(userId, otp);
 
     return {
       success: true,
@@ -259,35 +310,58 @@ export class CustomerService {
    * 3.3. Thiết lập mật khẩu mới bằng OTP xác thực (Không cần mật khẩu cũ)
    */
   async setPasswordWithOtp(userId: string, dto: SetPasswordWithOtpDto) {
-    const cached = this.securityOtpCache.get(userId);
-
-    if (!cached) {
-      throw new BadRequestException('Mã OTP không tồn tại hoặc đã hết hạn.');
-    }
-    if (Date.now() > cached.expiresAt) {
-      this.securityOtpCache.delete(userId);
-      throw new BadRequestException(
-        'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.',
-      );
-    }
-    if (cached.code !== dto.otp.trim()) {
-      throw new BadRequestException('Mã OTP không chính xác.');
-    }
-
-    const newHash = await this.authService.hashPassword(dto.newPassword);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: newHash },
-    });
-
-    // Xóa OTP sau khi sử dụng thành công
+    const cached = this.assertSecurityOtp(userId, dto.otp);
+    // Claim trước await để hai request không dùng cùng mã.
     this.securityOtpCache.delete(userId);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive || user.isDeleted)
+      throw new ForbiddenException('Tài khoản không còn hoạt động.');
+    if (user.email !== cached.originalEmail)
+      throw new BadRequestException(
+        'Email tài khoản đã thay đổi. Vui lòng gửi lại mã.',
+      );
+    const newHash = await this.authService.hashPassword(dto.newPassword);
+    const updated = await this.prisma.user.updateMany({
+      where: {
+        id: userId,
+        email: cached.originalEmail,
+        isActive: true,
+        isDeleted: false,
+      },
+      data: {
+        passwordHash: newHash,
+        ...(!cached.originalEmail?.trim() ? { email: cached.email } : {}),
+      },
+    });
+    if (updated.count !== 1)
+      throw new BadRequestException(
+        'Thông tin tài khoản đã thay đổi. Vui lòng gửi lại mã.',
+      );
 
     return {
       success: true,
       message:
         'Thiết lập mật khẩu mới thành công! Bạn có thể sử dụng mật khẩu này để đăng nhập.',
     };
+  }
+
+  private assertSecurityOtp(userId: string, otp: string) {
+    const cached = this.securityOtpCache.get(userId);
+    if (!cached || cached.expiresAt <= Date.now()) {
+      this.securityOtpCache.delete(userId);
+      throw new BadRequestException(
+        'Mã OTP không tồn tại hoặc đã hết hạn. Vui lòng gửi lại mã.',
+      );
+    }
+    if (cached.attempts >= 5)
+      throw new BadRequestException(
+        'Đã nhập sai mã 5 lần. Vui lòng gửi lại mã mới.',
+      );
+    if (!/^\d{6}$/.test(otp.trim()) || cached.code !== otp.trim()) {
+      cached.attempts += 1;
+      throw new BadRequestException('Mã OTP không chính xác.');
+    }
+    return cached;
   }
 
   /**
@@ -337,7 +411,9 @@ export class CustomerService {
         {
           OR: [
             { externalOrderSn: { contains: q, mode: 'insensitive' } },
-            ...[...phoneTerms].map(phone => ({ customerPhone: { contains: phone } })),
+            ...[...phoneTerms].map((phone) => ({
+              customerPhone: { contains: phone },
+            })),
             { store: { name: { contains: q, mode: 'insensitive' } } },
             {
               orderItems: {
@@ -376,7 +452,9 @@ export class CustomerService {
             discountType: true,
           },
         },
-        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
+        returnRequest: {
+          include: { dispute: { select: { id: true, status: true } } },
+        },
         productReviews: true,
       },
     });
@@ -396,11 +474,16 @@ export class CustomerService {
       select: { email: true, phoneNumber: true },
     });
 
-    await syncCustomerGhnSimulations(this.prisma, { id: orderId, OR: [
-      { customerId: userId },
-      ...(user?.email ? [{ customerEmail: user.email.toLowerCase() }] : []),
-      ...(user?.phoneNumber ? [{ customerPhone: user.phoneNumber.trim() }] : []),
-    ] });
+    await syncCustomerGhnSimulations(this.prisma, {
+      id: orderId,
+      OR: [
+        { customerId: userId },
+        ...(user?.email ? [{ customerEmail: user.email.toLowerCase() }] : []),
+        ...(user?.phoneNumber
+          ? [{ customerPhone: user.phoneNumber.trim() }]
+          : []),
+      ],
+    });
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -414,7 +497,9 @@ export class CustomerService {
         coupon: true,
         paymentTransactions: true,
         productReviews: true,
-        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
+        returnRequest: {
+          include: { dispute: { select: { id: true, status: true } } },
+        },
       },
     });
 
@@ -670,7 +755,9 @@ export class CustomerService {
         rejectionReason: null,
       },
     });
-    await this.cacheService.delPrefix(`landing:v2:${dto.productId}:`).catch(() => undefined);
+    await this.cacheService
+      .delPrefix(`landing:v2:${dto.productId}:`)
+      .catch(() => undefined);
     return { message: 'Đánh giá đã được đăng', review };
   }
 

@@ -1,6 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { z } from "zod";
+import { amount, useResource } from "../common/shared";
 import {
   Avatar,
   Icon,
@@ -12,7 +14,7 @@ import {
 } from "../../components/commerce";
 import { useAuth } from "./AuthProvider";
 import { useStoreScope } from "./StoreScope";
-import { roleLabels } from "../../types/contracts";
+import { roleLabels, statusText } from "../../types/contracts";
 import { useMobileNavigation } from "../../navigation/router";
 import { colors } from "../../theme/tokens";
 import { LogoutButton } from "./LogoutButton";
@@ -26,12 +28,16 @@ export function ProfileScreen() {
     { store, select } = useStoreScope();
   const insets = useSafeAreaInsets();
   const user = session!.user,
-    customer = user.role === "CUSTOMER";
+    customer = user.role === "CUSTOMER",
+    collaborator = user.role === "COLLABORATOR",
+    shop = user.role === "SHOP_MANAGER";
+  const tier = useResource("profile-tier-summary", "/tiers/my-status", z.object({ currentTier: z.object({ name: z.string(), extraBonusPercentage: amount }) }), collaborator);
+  const kyc = useResource("profile-kyc-summary", "/kyc/profile", z.object({ kycStatus: z.string() }).nullable(), collaborator);
   const open = (feature: BusinessFeature) =>
     navigation.navigate("Business", { feature });
   const entryOptions: { feature: BusinessFeature; title: string }[] = [
-    { feature: "wallet", title: "Ví & lịch sử giao dịch" },
-    { feature: "coupons", title: "Kho voucher" },
+    { feature: "wallet", title: shop ? "Tài chính Shop" : collaborator ? "Ví thù lao" : "Ví & lịch sử giao dịch" },
+    { feature: "coupons", title: user.role === "COLLABORATOR" ? "Mã giảm giá độc quyền" : "Kho voucher" },
     { feature: "wishlist", title: "Sản phẩm yêu thích" },
     { feature: "addresses", title: "Sổ địa chỉ" },
     { feature: "returns", title: "Trả hàng & khiếu nại" },
@@ -50,7 +56,13 @@ export function ProfileScreen() {
   const utilities = entries.filter((item) =>
     ["wallet", "coupons", "wishlist", "addresses"].includes(item.feature),
   );
-  const accountEntries = customer
+  const kolOrder: BusinessFeature[] = ["wallet", "marketing", "coupons", "samples", "bonuses", "profile", "kyc", "social", "addresses"];
+  const accountEntries = collaborator
+    ? [...entries, { feature: "profile" as BusinessFeature, title: "Hồ sơ & bảo mật" }].sort((a, b) => {
+      const rank = (feature: BusinessFeature) => kolOrder.includes(feature) ? kolOrder.indexOf(feature) : kolOrder.length;
+      return rank(a.feature) - rank(b.feature);
+    })
+    : customer
     ? entries.filter((item) => !utilities.includes(item))
     : entries;
   const purchases: { title: string; icon: IconName; status: string }[] = [
@@ -65,7 +77,7 @@ export function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+        <View style={[styles.header, (collaborator || shop) && styles.kolHeader, { paddingTop: insets.top + 6 }]}>
           <View style={styles.headerActions}>
             <Text style={styles.headerTitle}>Tôi</Text>
             <IconButton
@@ -91,18 +103,19 @@ export function ProfileScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Xem và sửa hồ sơ"
-            style={styles.identity}
+            style={[styles.identity, (collaborator || shop) && styles.kolIdentity]}
             onPress={() => open("profile")}
           >
-            <Avatar uri={user.avatarUrl} name={user.fullName} size={58} />
-            <View style={{ flex: 1, gap: 5 }}>
+            <Avatar uri={user.avatarUrl} name={user.fullName} size={collaborator ? 52 : 58} />
+            <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
               <Text style={styles.name}>{user.fullName}</Text>
-              <Text style={styles.role}>{roleLabels[user.role]}</Text>
+              {!collaborator && <Text style={styles.role}>{roleLabels[user.role]}</Text>}
               <Text numberOfLines={1} style={styles.email}>
                 {user.email}
               </Text>
+              {collaborator && <View style={styles.profileBadges}><View style={styles.profileBadge}><Icon name="award" size={12} color={colors.strong} /><Text style={styles.profileBadgeText}>{tier.data ? `${tier.data.currentTier.name} · +${Number(tier.data.currentTier.extraBonusPercentage)}%` : tier.error ? "Chưa tải cấp bậc" : "Đang tải…"}</Text></View><View style={styles.profileBadge}><Icon name="shield" size={12} color={colors.strong} /><Text style={styles.profileBadgeText}>{kyc.data ? statusText(kyc.data.kycStatus) : kyc.error ? "Chưa tải KYC" : kyc.isLoading ? "Đang tải…" : "Chưa nộp KYC"}</Text></View></View>}
             </View>
-            <Icon name="chevron-right" size={19} />
+            <Icon name="chevron-right" size={19} color={colors.strong} />
           </Pressable>
           {customer && (
             <Pressable
@@ -204,10 +217,14 @@ export function ProfileScreen() {
             </View>
           )}
           <View>
-            <SectionHeading
+            {shop && <SectionHeading title="Quản lý gian hàng" />}
+            {customer && <SectionHeading
               title={customer ? "Tài khoản & hỗ trợ" : "Không gian của bạn"}
-            />
+            />}
             <View style={c.panel}>
+              {["COLLABORATOR", "SHOP_MANAGER"].includes(user.role) && (
+                <MenuRow icon="grid" title="Tất cả công cụ" onPress={() => router.push("/(private)/tools")} />
+              )}
               {accountEntries.map((item, index) => (
                 <MenuRow
                   key={item.feature}
@@ -219,7 +236,7 @@ export function ProfileScreen() {
               ))}
             </View>
           </View>
-          {session!.bootstrap.managedStores.length > 0 && (
+          {session!.bootstrap.managedStores.length > 1 && (
             <View>
               <SectionHeading title="Gian hàng phụ trách" />
               <View style={c.panel}>
@@ -238,6 +255,8 @@ export function ProfileScreen() {
               </View>
             </View>
           )}
+          <View>
+          {shop && <SectionHeading title="Tài khoản" />}
           <View style={c.panel}>
             <MenuRow
               icon="settings"
@@ -250,6 +269,7 @@ export function ProfileScreen() {
               last
               onPress={() => open("notifications")}
             />
+          </View>
           </View>
           <LogoutButton />
           <View style={styles.footer}>
@@ -268,6 +288,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
   },
+  kolHeader: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.line, paddingBottom: 16 },
+  kolIdentity: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 18, padding: 14, gap: 12, marginTop: 6 },
+  profileBadges: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  profileBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.soft, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6 },
+  profileBadgeText: { fontSize: 10, lineHeight: 14, color: colors.strong, fontWeight: "600" },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -282,8 +307,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   name: { fontSize: 18, fontWeight: "700", color: colors.ink },
-  email: { fontSize: 10, color: colors.dark },
-  role: { fontSize: 11, fontWeight: "600", color: colors.dark },
+  email: { fontSize: 12, color: colors.muted },
+  role: { fontSize: 12, fontWeight: "600", color: colors.muted },
   voucher: {
     backgroundColor: colors.soft,
     flexDirection: "row",

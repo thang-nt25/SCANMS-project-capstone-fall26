@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Image } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { z } from "zod";
 import {
-  Badge,
   Button,
   Caption,
   Card,
@@ -15,11 +14,9 @@ import {
 } from "../../components/ui";
 import { api } from "../../services/api";
 import { money, statusText } from "../../types/contracts";
-import { shareExport, XLSX_MIME } from "../../services/exports";
 import { filePart } from "../common/MediaPicker";
 import {
   CommandForm,
-  DetailLine,
   Evidence,
   QueryState,
   Sheet,
@@ -34,6 +31,8 @@ import {
 import { SelectField } from "../common/SelectField";
 import { unwrapEnvelope } from "../../services/api/client";
 import { GatewaySchema, TransferResultSchema, gatewayAction, isSandboxPayout } from "./gateway-contract";
+import { Icon } from "../../components/commerce";
+import { colors } from "../../theme/tokens";
 const Payout = z.object({
   id: z.string(),
   status: z.string(),
@@ -47,6 +46,7 @@ const Payout = z.object({
   storeName: z.string().nullish(),
   transferProvider: z.string().nullish(),
   bankRefCode: z.string().nullish(),
+  createdAt: z.string().nullish(),
 });
 const Payouts = z.object({
   requests: z.array(Payout),
@@ -54,23 +54,12 @@ const Payouts = z.object({
   page: z.number(),
   limit: z.number(),
 });
-const Batches = z.object({
-  batches: z.array(
-    z.object({
-      id: z.string(),
-      createdAt: z.string(),
-      payoutCount: z.number(),
-    }),
-  ),
-  total: z.number(),
-});
 export function PayoutsScreen() {
   const { store, reviewer } = useActor(),
     [page, setPage] = useState(1),
     [status, setStatus] = useState(""),
     [form, setForm] = useState<CommandFormSpec | null>(null);
-  const [selected, setSelected] = useState<string[]>([]),
-    [approval, setApproval] = useState<z.infer<typeof Payout> | null>(null);
+  const [approval, setApproval] = useState<z.infer<typeof Payout> | null>(null);
   const [bill, setBill] = useState<ImagePicker.ImagePickerAsset | null>(null),
     [bankRefCode, setBankRefCode] = useState("");
   const [proof, setProof] = useState<string | null>(null);
@@ -82,12 +71,6 @@ export function PayoutsScreen() {
     `${base}?page=${page}&limit=20${status ? `&status=${status}` : ""}`,
     Payouts,
     reviewer || Boolean(store),
-  );
-  const batches = useResource(
-    "payout-batches",
-    `/stores/${store?.id}/payouts/batches?page=${page}&limit=20`,
-    Batches,
-    !reviewer && Boolean(store),
   );
   const gateway = useResource("payout-gateway", "/admin/payouts/gateway", GatewaySchema, reviewer);
   const transfer = (item: z.infer<typeof Payout>) => {
@@ -114,14 +97,13 @@ export function PayoutsScreen() {
   };
   return (
     <Screen scroll>
-      <Title>Duyệt rút tiền</Title>
+      {reviewer && <Title>Duyệt rút tiền</Title>}
       <Button
-        title="Làm mới yêu cầu và lịch sử lô"
+        title="Cập nhật danh sách"
         secondary
         disabled={result.isFetching || command.busy}
         onPress={() => {
           void result.refetch();
-          if (!reviewer && store) void batches.refetch();
         }}
       />
       <SelectField
@@ -137,7 +119,6 @@ export function PayoutsScreen() {
         onChange={(value) => {
           setStatus(value);
           setPage(1);
-          setSelected([]);
         }}
       />
       <QueryState
@@ -151,17 +132,7 @@ export function PayoutsScreen() {
       {transferNotice ? <Caption>{transferNotice}</Caption> : null}
       {result.data?.requests.map((item) => (
         <Card key={item.id}>
-          <Title>{item.collaboratorName || "Nhà sáng tạo"}</Title>
-          <Caption>{item.storeName}</Caption>
-          <Badge>{item.status === "APPROVED" && isSandboxPayout(item) ? "Hoàn tất · Sandbox" : statusText(item.status)}</Badge>
-          {item.bankRefCode ? <DetailLine label="Mã tham chiếu" value={item.bankRefCode} /> : null}
-          <DetailLine label="Số tiền yêu cầu" value={money(item.amount)} />
-          <DetailLine label="Khấu trừ thuế" value={money(item.taxAmount)} />
-          <DetailLine label="Thực nhận" value={money(item.netAmount)} />
-          <DetailLine
-            label="Ngân hàng"
-            value={`${item.bankName || ""} · ${item.bankAccountNumber || ""} · ${item.bankAccountName || ""}`}
-          />
+          <PayoutSummary item={item} />
           {gatewayAction(reviewer, item.status, item.transferProvider, gateway.data) && (
             <Button
               title={item.status === "PROCESSING" ? "Đối soát kết quả ngân hàng" : gateway.data?.environment === "SANDBOX" ? "Duyệt qua BIDV Sandbox" : "Duyệt qua API ngân hàng"}
@@ -169,7 +140,7 @@ export function PayoutsScreen() {
               onPress={() => transfer(item)}
             />
           )}
-          {["PENDING", "PROCESSING"].includes(item.status) && !item.transferProvider && (
+          {reviewer && ["PENDING", "PROCESSING"].includes(item.status) && !item.transferProvider && (
             <Button
               title="Xác nhận đã chuyển tiền / đính kèm bill"
               onPress={() => {
@@ -179,7 +150,7 @@ export function PayoutsScreen() {
               }}
             />
           )}
-          {item.status === "PENDING" && (
+          {reviewer && item.status === "PENDING" && (
             <Button
               title="Từ chối yêu cầu"
               secondary
@@ -193,24 +164,7 @@ export function PayoutsScreen() {
               }
             />
           )}
-          {!reviewer && item.status === "PENDING" && (
-            <Button
-              title={
-                selected.includes(item.id)
-                  ? "✓ Đã chọn xuất lô"
-                  : "Chọn xuất lô"
-              }
-              secondary
-              onPress={() =>
-                setSelected((old) =>
-                  old.includes(item.id)
-                    ? old.filter((id) => id !== item.id)
-                    : [...old, item.id],
-                )
-              }
-            />
-          )}
-          {item.status === "APPROVED" && !isSandboxPayout(item) && (
+          {reviewer && item.status === "APPROVED" && !isSandboxPayout(item) && (
             <Button
               title="Xem chứng từ"
               secondary
@@ -228,58 +182,6 @@ export function PayoutsScreen() {
           )}
         </Card>
       ))}
-      {!reviewer && selected.length > 0 && (
-        <Button
-          title={`Xuất lô VietQR (${selected.length})`}
-          loading={command.busy}
-          onPress={() =>
-            confirmAction(
-              "Tạo lô chi trả?",
-              "Các yêu cầu được chọn chuyển sang Đang xử lý. Xuất file không tự chuyển tiền.",
-              () =>
-                void command.run(async () => {
-                  await shareExport(
-                    `${base}/export-vietqr`,
-                    `SCANMS-VietQR-${Date.now()}.xlsx`,
-                    XLSX_MIME,
-                    { payoutIds: selected },
-                  );
-                  setSelected([]);
-                  await result.refetch();
-                  await batches.refetch();
-                }),
-            )
-          }
-        />
-      )}
-      {!reviewer && (
-        <>
-          <Title>Lịch sử lô VietQR</Title>
-          <ErrorNotice error={batches.error} />
-          {batches.data?.batches.map((item) => (
-            <Card key={item.id}>
-              <Caption>
-                {new Date(item.createdAt).toLocaleString("vi-VN")} ·{" "}
-                {item.payoutCount} yêu cầu
-              </Caption>
-              <Button
-                title="Tải lại file lô"
-                secondary
-                loading={command.busy}
-                onPress={() =>
-                  void command.run(() =>
-                    shareExport(
-                      `${base}/batches/${item.id}/download`,
-                      `SCANMS-VietQR-${item.id}.xlsx`,
-                      XLSX_MIME,
-                    ),
-                  )
-                }
-              />
-            </Card>
-          ))}
-        </>
-      )}
       <PageControls
         page={page}
         totalPages={Math.ceil((result.data?.total || 0) / 20)}
@@ -371,3 +273,36 @@ export function PayoutsScreen() {
     </Screen>
   );
 }
+
+function PayoutSummary({ item }: { item: z.infer<typeof Payout> }) {
+  const sandbox = isSandboxPayout(item);
+  const reference = item.bankRefCode;
+  const date = item.createdAt ? new Date(item.createdAt) : null;
+  const statusIcon = item.status === "APPROVED" ? "check-circle" : item.status === "REJECTED" ? "x-circle" : "clock";
+  return <View style={p.summary}>
+    <View style={p.header}>
+      <View style={p.avatar}><Icon name="user" size={19} color={colors.strong} /></View>
+      <View style={{ flex: 1, gap: 4 }}><Text style={p.name}>{item.collaboratorName || "Nhà sáng tạo"}</Text><Text selectable style={p.meta}>#{item.id.slice(0, 8).toUpperCase()}{date && Number.isFinite(date.getTime()) ? ` · ${date.toLocaleDateString("vi-VN")}` : ""}</Text></View>
+    </View>
+    <View style={p.status}><Icon name={statusIcon} size={13} color={colors.strong} /><Text style={p.statusText}>{item.status === "APPROVED" && sandbox ? "Hoàn tất · Sandbox" : statusText(item.status)}</Text></View>
+    <View style={p.amounts}>
+      <View style={p.cell}><Text style={p.meta}>Yêu cầu rút</Text><Text style={p.value}>{money(item.amount)}</Text></View>
+      <View style={p.cell}><Text style={p.meta}>{sandbox ? "Thuế mô phỏng" : "Thuế khấu trừ"}</Text><Text style={p.value}>{money(item.taxAmount)}</Text></View>
+    </View>
+    <View style={p.net}><Text style={p.meta}>{sandbox ? "Thực nhận mô phỏng" : "Thực nhận theo lệnh"}</Text><Text style={p.netValue}>{money(item.netAmount)}</Text></View>
+    <View style={p.bank}><Icon name="credit-card" size={18} color={colors.strong} /><View style={{ flex: 1, gap: 4 }}><Text style={p.bankName}>{item.bankName?.split(" (")[0] || "Chưa ghi nhận ngân hàng"}</Text><Text selectable style={p.account}>{item.bankAccountNumber || "Chưa ghi nhận số tài khoản"}</Text>{!!item.bankAccountName && <Text style={p.meta}>{item.bankAccountName}</Text>}</View></View>
+    {!!reference && <Pressable accessibilityRole="button" accessibilityLabel="Xem mã tham chiếu đầy đủ" onPress={() => Alert.alert(sandbox ? "Mã thử nghiệm nội bộ SCANMS" : "Mã tham chiếu đã ghi nhận", `${reference}${sandbox ? "\n\nMã SBX dùng đối soát thử nghiệm; không phải mã xác nhận chuyển tiền thật từ ngân hàng." : ""}`)} style={p.reference}><Icon name="hash" size={14} color={colors.muted} /><Text style={p.meta}>{sandbox ? "Mã thử nghiệm" : "Mã tham chiếu"}</Text><Text numberOfLines={1} style={p.refCode}>{reference.length > 22 ? `${reference.slice(0, 12)}…${reference.slice(-6)}` : reference}</Text><Icon name="chevron-right" size={15} color={colors.strong} /></Pressable>}
+  </View>;
+}
+const p = StyleSheet.create({
+  summary: { gap: 12 }, header: { flexDirection: "row", alignItems: "center", gap: 10 },
+  avatar: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.soft, alignItems: "center", justifyContent: "center" },
+  name: { fontSize: 16, fontWeight: "700", color: colors.ink }, meta: { fontSize: 11, lineHeight: 16, color: colors.muted },
+  status: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", backgroundColor: colors.soft, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 5 },
+  statusText: { fontSize: 11, color: colors.strong }, amounts: { flexDirection: "row", gap: 12 }, cell: { flex: 1, gap: 5 },
+  value: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  net: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.line },
+  netValue: { fontSize: 19, fontWeight: "700", color: colors.strong }, bank: { flexDirection: "row", gap: 9, backgroundColor: colors.canvas, borderRadius: 10, padding: 10 },
+  bankName: { fontSize: 12, fontWeight: "600", color: colors.ink }, account: { fontSize: 13, color: colors.ink },
+  reference: { flexDirection: "row", alignItems: "center", gap: 5, minHeight: 36 }, refCode: { flex: 1, textAlign: "right", color: colors.muted, fontSize: 11 },
+});

@@ -5,8 +5,11 @@ import { ROLE_TABS, type TabKey } from "../../../navigation/role-tabs";
 import { colors } from "../../../theme/tokens";
 import { Icon, Wordmark, type IconName } from "../../../components/commerce";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KolSectionHeader } from "../../../features/workspace/KolSectionHeader";
 const labels: Record<TabKey, string> = {
   workspace: "Nghiệp vụ",
+  marketing: "Tiếp thị",
+  wallet: "Ví thù lao",
   catalog: "Sản phẩm",
   orders: "Đơn hàng",
   cooperation: "Hợp tác",
@@ -19,6 +22,8 @@ const labels: Record<TabKey, string> = {
 };
 const icons: Record<TabKey, IconName> = {
   workspace: "home",
+  marketing: "link",
+  wallet: "credit-card",
   catalog: "grid",
   orders: "package",
   cooperation: "users",
@@ -54,16 +59,19 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ href: null }} />
-      {Object.keys(labels).map((key) => (
+      {[...allowed, ...Object.keys(labels).filter((key) => !allowed.includes(key as TabKey))].map((key) => (
         <Tabs.Protected key={key} guard={allowed.includes(key as TabKey)}>
           <Tabs.Screen
             name={key}
             options={{
+              ...((session.user.role === "COLLABORATOR" && ["marketing", "cooperation", "wallet"].includes(key) || session.user.role === "SHOP_MANAGER" && key === "cooperation") ? {
+                header: () => <KolSectionHeader />,
+              } : {}),
               title:
                 key === "workspace"
                   ? session.user.role === "CUSTOMER"
                     ? "Trang chủ"
-                    : "Công cụ"
+                    : ["COLLABORATOR", "SHOP_MANAGER"].includes(session.user.role) ? "Tổng quan" : "Công cụ"
                   : key === "account"
                     ? "Tôi"
                     : key === "catalog" && session.user.role === "CUSTOMER"

@@ -19,6 +19,7 @@ import { buildExplorerWhere, ChatExplorerQuery } from './chat-explorer.query';
 import { liveVoucherActive } from '../coupons/voucher-pricing';
 import { chatReplySelect, chatMessageSelect } from './chat-reply';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
+import { validateChatReaction, type ChatReactionSummary } from './chat-reactions';
 
 function isExclusiveDealMessage(messageText?: string): boolean {
   if (!messageText) return false;
@@ -35,6 +36,7 @@ function isExclusiveDealMessage(messageText?: string): boolean {
 @Injectable()
 export class ChatService {
   private repliesSchemaCache = { checkedAt: 0, enabled: false };
+  private reactionsSchemaCache = { checkedAt: 0, enabled: false };
 
   async getCapabilities() {
     if (Date.now() - this.repliesSchemaCache.checkedAt > 30000) {
@@ -49,7 +51,17 @@ export class ChatService {
       } catch { /* Existing messaging remains available while the migration is pending. */ }
       this.repliesSchemaCache = { checkedAt: Date.now(), enabled };
     }
-    return { messageReplies: this.repliesSchemaCache.enabled };
+    if (Date.now() - this.reactionsSchemaCache.checkedAt > 30000) {
+      let enabled = false;
+      try {
+        const rows = await this.prisma.$queryRaw<Array<{ enabled: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM information_schema.tables
+            WHERE table_schema = current_schema() AND table_name = 'chat_message_reactions') AS enabled`;
+        enabled = rows[0]?.enabled === true;
+      } catch { /* Reactions are optional until their additive migration has been deployed. */ }
+      this.reactionsSchemaCache = { checkedAt: Date.now(), enabled };
+    }
+    return { messageReplies: this.repliesSchemaCache.enabled, messageReactions: this.reactionsSchemaCache.enabled };
   }
   constructor(
     private prisma: PrismaService,
@@ -711,11 +723,43 @@ export class ChatService {
       (conversation.collaboratorId === userId &&
         conversation.collaborator?.role === 'CUSTOMER') ||
       conversation.customerId === userId;
-    return isCustomerConversation
+    const visibleMessages = isCustomerConversation
       ? orderedMessages.filter(
           (message) => !isExclusiveDealMessage(message.messageText),
         )
       : orderedMessages;
+    const reactions = await this.reactionSummaries(visibleMessages.map(message => message.id), userId);
+    return visibleMessages.map(message => ({ ...message, reactions: reactions.filter(item => item.messageId === message.id) }));
+  }
+
+  private async reactionSummaries(messageIds: string[], userId: string): Promise<ChatReactionSummary[]> {
+    if (!messageIds.length || !(await this.getCapabilities()).messageReactions) return [];
+    return this.prisma.$queryRaw<ChatReactionSummary[]>(Prisma.sql`
+      SELECT message_id::text AS "messageId", emoji, COUNT(*)::int AS count,
+        BOOL_OR(user_id = ${userId}::uuid) AS mine
+      FROM chat_message_reactions
+      WHERE message_id IN (${Prisma.join(messageIds.map(id => Prisma.sql`${id}::uuid`))})
+      GROUP BY message_id, emoji ORDER BY emoji`);
+  }
+
+  async setMessageReaction(conversationId: string, userId: string, messageId: string, emoji: unknown) {
+    const validated = validateChatReaction(emoji);
+    await this.getMessage(conversationId, userId, messageId);
+    if (!(await this.getCapabilities()).messageReactions) throw new BadRequestException('Cảm xúc đang chờ cập nhật cơ sở dữ liệu.');
+    // One reaction per actor/message. Retrying the same selection never adds a duplicate.
+    await this.prisma.$executeRaw`
+      INSERT INTO chat_message_reactions (message_id, user_id, emoji)
+      VALUES (${messageId}::uuid, ${userId}::uuid, ${validated})
+      ON CONFLICT (message_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji, updated_at = CURRENT_TIMESTAMP`;
+    return this.reactionSummaries([messageId], userId);
+  }
+
+  async removeMessageReaction(conversationId: string, userId: string, messageId: string) {
+    await this.getMessage(conversationId, userId, messageId);
+    if (!(await this.getCapabilities()).messageReactions) throw new BadRequestException('Cảm xúc đang chờ cập nhật cơ sở dữ liệu.');
+    // The actor always comes from authentication, never from request data.
+    await this.prisma.$executeRaw`DELETE FROM chat_message_reactions WHERE message_id = ${messageId}::uuid AND user_id = ${userId}::uuid`;
+    return this.reactionSummaries([messageId], userId);
   }
 
   async getMessage(conversationId: string, userId: string, messageId: string) {

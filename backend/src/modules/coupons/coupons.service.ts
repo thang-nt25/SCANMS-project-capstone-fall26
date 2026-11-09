@@ -139,7 +139,7 @@ export class CouponsService {
 
   async getSavedCouponIds(userId: string) {
     const rows = await this.prisma.customerSavedCoupon.findMany({
-      where: { userId }, select: { couponId: true }, orderBy: { savedAt: 'desc' },
+      where: { userId, coupon: { collaborator: { role: { not: UserRole.COLLABORATOR } } } }, select: { couponId: true }, orderBy: { savedAt: 'desc' },
     });
     return rows.map((row) => row.couponId);
   }
@@ -186,12 +186,15 @@ export class CouponsService {
           { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
         ],
       },
-      select: { id: true, usageLimitTotal: true, usageCount: true, liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } } },
+      select: { id: true, collaborator: { select: { role: true } }, usageLimitTotal: true, usageCount: true, liveSession: { select: { status: true, inviteStatus: true, startsAt: true, endsAt: true } } },
     });
     if (!coupon ||
       (coupon.usageLimitTotal !== null && coupon.usageCount >= coupon.usageLimitTotal) ||
       !liveVoucherActive(coupon.liveSession)) {
       throw new NotFoundException('Voucher không còn khả dụng.');
+    }
+    if (coupon.collaborator.role === UserRole.COLLABORATOR) {
+      throw new BadRequestException('Mã độc quyền KOL không hỗ trợ lưu. Hãy sao chép mã và nhập khi thanh toán.');
     }
     await this.prisma.customerSavedCoupon.upsert({
       where: { userId_couponId: { userId, couponId } },
@@ -246,6 +249,7 @@ export class CouponsService {
         minimumOrderAmount: Number(coupon.minimumOrderAmount || 0),
         maximumDiscountAmount: coupon.maximumDiscountAmount === null ? null : Number(coupon.maximumDiscountAmount),
         remainingUses: coupon.usageLimitTotal === null ? null : coupon.usageLimitTotal - coupon.usageCount,
+        canSave: false,
         expiresAt: coupon.expiresAt,
         scopeType: coupon.scopeType,
         fundingSource: coupon.fundingSource,

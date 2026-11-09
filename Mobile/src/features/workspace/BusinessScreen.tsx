@@ -43,7 +43,7 @@ export function BusinessScreen({ route }: ScreenProps<"Business">) {
   const stack = useNavigation();
   useEffect(() => {
     if (canOpenModule(user.role, route.params.feature))
-      stack.setOptions({ title: modules[route.params.feature].title });
+      stack.setOptions({ title: user.role === "SHOP_MANAGER" && route.params.feature === "payouts" ? "Đối soát chi trả" : user.role === "SHOP_MANAGER" && route.params.feature === "wallet" ? "Tài chính Shop" : user.role === "COLLABORATOR" && route.params.feature === "coupons" ? "Mã giảm giá độc quyền" : user.role === "COLLABORATOR" && route.params.feature === "wallet" ? "Ví thù lao" : modules[route.params.feature].title });
   }, [stack, user.role, route.params.feature]);
   if (!canOpenModule(user.role, route.params.feature))
     return (

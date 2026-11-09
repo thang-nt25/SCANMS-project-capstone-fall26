@@ -18,12 +18,16 @@ const PaddedScreen = createContext(false);
 export function Screen({
   children,
   scroll = false,
-}: PropsWithChildren<{ scroll?: boolean }>) {
+  onScrollOffset,
+}: PropsWithChildren<{ scroll?: boolean; onScrollOffset?: (offset: number) => void }>) {
   return scroll ? (
     <ScrollView
       style={s.screen}
+      onScroll={onScrollOffset ? (event) => onScrollOffset(event.nativeEvent.contentOffset.y) : undefined}
+      scrollEventThrottle={onScrollOffset ? 32 : undefined}
       contentContainerStyle={s.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       <PaddedScreen.Provider value={true}>{children}</PaddedScreen.Provider>
     </ScrollView>
@@ -53,6 +57,7 @@ export function Button({
   loading = false,
   disabled = false,
   secondary = false,
+  soft = false,
   danger = false,
 }: {
   title: string;
@@ -60,6 +65,7 @@ export function Button({
   loading?: boolean;
   disabled?: boolean;
   secondary?: boolean;
+  soft?: boolean;
   danger?: boolean;
 }) {
   return (
@@ -71,6 +77,7 @@ export function Button({
       style={({ pressed }) => [
         s.button,
         secondary && s.secondary,
+        soft && { backgroundColor: colors.soft, borderColor: colors.brandBorder },
         danger && s.danger,
         (disabled || loading) && { opacity: 0.5 },
         pressed && { opacity: 0.8 },

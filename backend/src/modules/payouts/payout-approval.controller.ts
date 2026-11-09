@@ -25,7 +25,7 @@ import { MerchantPayoutsService } from './merchant-payouts.service';
 @ApiTags('Merchant Payouts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SHOP_MANAGER)
+@Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
 @Controller('payouts')
 export class PayoutApprovalController {
   constructor(
@@ -54,9 +54,9 @@ export class PayoutApprovalController {
     @Body() dto: ReceiptApprovalDto,
     @UploadedFile() bill: Express.Multer.File,
   ) {
-    // Resolve the shop from the owned payout, never from client-supplied identity.
+    // Only platform finance roles can confirm payout settlement.
     const request = await this.prisma.payoutRequest.findFirst({
-      where: { id: payoutId, store: { ownerId: user.id, isDeleted: false } },
+      where: { id: payoutId, store: { isDeleted: false } },
       select: { storeId: true },
     });
     if (!request?.storeId)

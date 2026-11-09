@@ -36,7 +36,7 @@ export const modules = {
     roles: ["CUSTOMER", "COLLABORATOR", "SHOP_MANAGER"],
   },
   payouts: {
-    title: "Duyệt yêu cầu rút tiền",
+    title: "Quản lý chi trả KOL",
     roles: ["SHOP_MANAGER", ...operations],
   },
   "finance-reports": { title: "Thuế, Escrow & đối soát", roles: operations },
@@ -61,7 +61,7 @@ export const modules = {
   },
   social: { title: "Kênh xã hội & cấp bậc", roles: ["COLLABORATOR"] },
   audit: { title: "Nhật ký vận hành", roles: operations },
-  coupons: { title: "Voucher & Coupon", roles: all },
+  coupons: { title: "Voucher & Coupon", roles: all.filter(role => role !== "SHOP_MANAGER") },
   "manual-orders": {
     title: "Tạo đơn & Import Excel",
     roles: ["SHOP_MANAGER", ...operations],

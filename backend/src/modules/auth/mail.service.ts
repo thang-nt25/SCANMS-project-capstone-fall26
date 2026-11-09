@@ -301,6 +301,7 @@ export class MailService {
       subject,
       html,
       `Mã OTP xác thực thêm/đổi mật khẩu SCANMS của bạn là: ${otp} (Hiệu lực 5 phút).`,
+      true,
     );
   }
 

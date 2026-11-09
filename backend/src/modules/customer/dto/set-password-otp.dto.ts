@@ -1,10 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
+
+export class SendPasswordSecurityOtpDto {
+  @IsOptional()
+  @IsEmail({}, { message: 'Email không đúng định dạng' })
+  email?: string;
+}
 
 export class SetPasswordWithOtpDto {
   @ApiProperty({ description: 'Mã OTP 6 số nhận qua Email', example: '123456' })
   @IsNotEmpty({ message: 'Mã OTP không được để trống' })
   @IsString({ message: 'Mã OTP phải là chuỗi' })
+  @Matches(/^\d{6}$/, { message: 'Mã OTP phải gồm đúng 6 chữ số' })
   otp: string;
 
   @ApiProperty({
@@ -21,5 +35,6 @@ export class VerifyPasswordOtpDto {
   @ApiProperty({ description: 'Mã OTP 6 số nhận qua Email', example: '123456' })
   @IsNotEmpty({ message: 'Mã OTP không được để trống' })
   @IsString({ message: 'Mã OTP phải là chuỗi' })
+  @Matches(/^\d{6}$/, { message: 'Mã OTP phải gồm đúng 6 chữ số' })
   otp: string;
 }
