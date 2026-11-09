@@ -34,8 +34,11 @@ export class AffiliateDealsController {
 
   @Get('exceptions')
   @Roles(UserRole.SYSTEM_ADMIN)
-  exceptions(@CurrentUser('role') role: UserRole) {
-    return this.service.listExceptions(role);
+  exceptions(
+    @CurrentUser('role') role: UserRole,
+    @Query('tab') tab?: string,
+  ) {
+    return this.service.listExceptions(role, tab);
   }
 
   @Patch(':id/exception-review')
