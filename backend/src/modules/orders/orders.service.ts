@@ -124,9 +124,15 @@ export class OrdersService {
     @Optional() private readonly ghnService?: GhnService,
   ) {}
 
-  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number }>, products: Map<string, any>, subtotal: number, storeId: string) {
+  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number; variantId?: string }>, products: Map<string, any>, subtotal: number, storeId: string, variants?: Map<string, any>) {
     if (!this.ghnService) throw new InternalServerErrorException('Dịch vụ tính cước GHN chưa sẵn sàng. Vui lòng thử lại sau.');
-    const parcel = buildShippingPackage(items.map((item) => ({ product: products.get(item.productId), quantity: item.quantity })));
+    const parcel = buildShippingPackage(items.map((item) => {
+      const prod = products.get(item.productId);
+      const variant = item.variantId && variants
+        ? variants.get(item.variantId)
+        : (prod?.variants || []).find((v: any) => v.id === item.variantId);
+      return { product: prod, variant, quantity: item.quantity };
+    }));
     return { ...await this.ghnService.quoteAddress(address, parcel.weight, subtotal, storeId, parcel), shippingPackage: parcel };
   }
 
@@ -1062,7 +1068,7 @@ export class OrdersService {
         ORDER BY id FOR UPDATE
       `);
       const packages = new Map(current.map((product) => [product.id, product]));
-      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, quantity: item.quantity })));
+      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, variant: item.variantId ? variantMap.get(item.variantId) : null, quantity: item.quantity })));
       if (['weight', 'length', 'width', 'height'].some((key: keyof ShippingPackage) => locked[key] !== shippingQuote.shippingPackage![key])) {
         throw new ConflictException('Thông số đóng gói vừa thay đổi. Vui lòng tải lại báo giá vận chuyển.');
       }

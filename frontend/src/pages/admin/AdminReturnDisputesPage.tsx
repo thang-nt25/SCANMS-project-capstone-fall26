@@ -84,20 +84,16 @@ export default function AdminReturnDisputesPage() {
     resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
 
-  return <main className="min-h-screen bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
-    <div className="mx-auto max-w-7xl space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#B88E4F]">SCANMS · Trọng tài đổi trả</p>
-          <h1 className="mt-1 text-2xl font-black">Trung tâm đổi trả và tranh chấp</h1>
-          <p className="mt-1 text-sm text-[#7D715E]">Theo dõi hồ sơ, xác định trách nhiệm và xử lý khiếu nại theo từng bước.</p>
-        </div>
+  return <div className="w-full min-w-0 space-y-4 pb-6 text-[#1A1612]">
+    <div className="w-full min-w-0 space-y-4">
+      <div className="flex items-center justify-between gap-3 pb-0.5">
+        <span className="text-xs font-semibold text-[#7D715E]">Hồ sơ khiếu nại đổi trả và bồi hoàn GHN</span>
         <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); void rejectedReturns.refetch(); }}
           disabled={disputes.isFetching || stalled.isFetching}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm disabled:opacity-50">
-          <RefreshCw className="h-4 w-4" /> Làm mới
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] disabled:opacity-50 cursor-pointer">
+          <RefreshCw className="h-3.5 w-3.5 text-[#B88E4F]" /> Làm mới
         </button>
-      </header>
+      </div>
 
       <nav aria-label="Đi nhanh đến nhóm hồ sơ" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         {[
@@ -266,5 +262,5 @@ export default function AdminReturnDisputesPage() {
         </div>
       </div>}
     </div>
-  </main>;
+  </div>;
 }

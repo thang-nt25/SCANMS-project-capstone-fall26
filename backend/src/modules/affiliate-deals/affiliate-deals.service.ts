@@ -980,9 +980,169 @@ export class AffiliateDealsService {
     );
   }
 
-  async listExceptions(role: UserRole) {
-    if (role !== UserRole.SYSTEM_ADMIN) throw new ForbiddenException('Chỉ Admin được xem hàng đợi ngoại lệ.');
-    return this.prisma.exclusiveDealProposal.findMany({ where: { status: 'PENDING_ADMIN_APPROVAL', closedAt: null }, include: { store: { select: { name: true } }, collaborator: { select: { fullName: true } }, product: { select: { title: true } }, scopeProducts: { include: { product: { select: { title: true } } } } }, orderBy: { recipientAcceptedAt: 'asc' }, take: 200 });
+  async listExceptions(role: UserRole, tab?: string) {
+    if (role !== UserRole.SYSTEM_ADMIN) {
+      throw new ForbiddenException('Chỉ Admin được xem hàng đợi thỏa thuận đặc cách.');
+    }
+
+    const normalizedTab = (tab || 'pending').toLowerCase();
+
+    let whereCondition: Prisma.ExclusiveDealProposalWhereInput = {
+      status: 'PENDING_ADMIN_APPROVAL',
+      closedAt: null,
+    };
+
+    if (normalizedTab === 'approved') {
+      whereCondition = {
+        status: 'APPROVED',
+        OR: [
+          { adminApprovedById: { not: null } },
+          { proposedCommissionRate: { gt: 16 } },
+        ],
+      };
+    } else if (normalizedTab === 'rejected') {
+      whereCondition = {
+        status: 'REJECTED',
+        OR: [
+          { adminApprovedById: { not: null } },
+          { exceptionNote: { not: null } },
+          { proposedCommissionRate: { gt: 16 } },
+        ],
+      };
+    } else if (normalizedTab === 'all') {
+      whereCondition = {
+        OR: [
+          { status: 'PENDING_ADMIN_APPROVAL' },
+          { proposedCommissionRate: { gt: 16 } },
+          { adminApprovedById: { not: null } },
+        ],
+      };
+    }
+
+    const items = await this.prisma.exclusiveDealProposal.findMany({
+      where: whereCondition,
+      include: {
+        store: { select: { id: true, name: true, slug: true, logoUrl: true } },
+        collaborator: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            avatarUrl: true,
+            collaboratorProfile: {
+              select: {
+                tier: { select: { name: true, extraBonusPercentage: true } },
+              },
+            },
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            sku: true,
+            title: true,
+            price: true,
+            originalPrice: true,
+            floorPrice: true,
+            imageUrl: true,
+            categoryName: true,
+            stockQuantity: true,
+            description: true,
+            origin: true,
+            sampleEnabled: true,
+          },
+        },
+        scopeProducts: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                sku: true,
+                title: true,
+                price: true,
+                originalPrice: true,
+                floorPrice: true,
+                imageUrl: true,
+                categoryName: true,
+                stockQuantity: true,
+                description: true,
+                origin: true,
+                sampleEnabled: true,
+              },
+            },
+          },
+        },
+        exceptionReviewer: { select: { id: true, fullName: true, email: true } },
+        reviewer: { select: { id: true, fullName: true, email: true } },
+      },
+      orderBy: normalizedTab === 'pending' ? { recipientAcceptedAt: 'asc' } : { updatedAt: 'desc' },
+      take: 200,
+    });
+
+    const [pendingCount, approvedCount, rejectedCount, escalatedProposals] =
+      await Promise.all([
+        this.prisma.exclusiveDealProposal.count({
+          where: { status: 'PENDING_ADMIN_APPROVAL', closedAt: null },
+        }),
+        this.prisma.exclusiveDealProposal.count({
+          where: {
+            status: 'APPROVED',
+            OR: [
+              { adminApprovedById: { not: null } },
+              { proposedCommissionRate: { gt: 16 } },
+            ],
+          },
+        }),
+        this.prisma.exclusiveDealProposal.count({
+          where: {
+            status: 'REJECTED',
+            OR: [
+              { adminApprovedById: { not: null } },
+              { exceptionNote: { not: null } },
+              { proposedCommissionRate: { gt: 16 } },
+            ],
+          },
+        }),
+        this.prisma.exclusiveDealProposal.findMany({
+          where: {
+            OR: [
+              { status: 'PENDING_ADMIN_APPROVAL' },
+              { proposedCommissionRate: { gt: 16 } },
+              { adminApprovedById: { not: null } },
+            ],
+          },
+          select: {
+            targetRevenue: true,
+            proposedCommissionRate: true,
+            approvedCommissionRate: true,
+          },
+        }),
+      ]);
+
+    const totalTargetRevenue = escalatedProposals.reduce(
+      (sum, p) => sum + Number(p.targetRevenue || 0),
+      0,
+    );
+    const avgRate =
+      escalatedProposals.length > 0
+        ? escalatedProposals.reduce(
+            (sum, p) =>
+              sum +
+              Number(p.approvedCommissionRate || p.proposedCommissionRate || 0),
+            0,
+          ) / escalatedProposals.length
+        : 18.5;
+
+    return {
+      items,
+      stats: {
+        pendingCount,
+        approvedCount,
+        rejectedCount,
+        totalTargetRevenue,
+        avgRate: Math.round(avgRate * 10) / 10,
+      },
+    };
   }
 
   async reviewException(id: string, actorId: string, role: UserRole, approve: boolean, note: string) {

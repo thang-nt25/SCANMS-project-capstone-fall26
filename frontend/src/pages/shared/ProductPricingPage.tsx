@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   pricingApi,
   requestError,
@@ -13,6 +13,10 @@ import {
   Coins,
   SlidersHorizontal,
   Store,
+  Info,
+  CheckCircle2,
+  Clock3,
+  History,
 } from "lucide-react";
 
 const money = (value: unknown) =>
@@ -94,8 +98,40 @@ export default function ProductPricingPage({
   );
   const [note, setNote] = useState("");
   const [approve, setApprove] = useState(true);
+  const [promoFilter, setPromoFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'HISTORY'>('ALL');
+  const [storeFilter, setStoreFilter] = useState<string>('ALL');
+  const [showMapInfoModal, setShowMapInfoModal] = useState<boolean>(false);
+
+  const [catalogSearch, setCatalogSearch] = useState("");
 
   const product = catalog.find((item) => item.id === productId);
+
+  const pendingCount = useMemo(() => promotions.filter((p) => p.status === "PENDING").length, [promotions]);
+  const activeCount = useMemo(() => promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status)).length, [promotions]);
+  const historyCount = useMemo(() => promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status)).length, [promotions]);
+
+  const filteredPromotions = useMemo(() => {
+    if (promoFilter === "PENDING") return promotions.filter((p) => p.status === "PENDING");
+    if (promoFilter === "ACTIVE") return promotions.filter((p) => ["ACTIVE", "APPROVED"].includes(p.status));
+    if (promoFilter === "HISTORY") return promotions.filter((p) => ["REJECTED", "CANCELLED", "EXPIRED"].includes(p.status));
+    return promotions;
+  }, [promotions, promoFilter]);
+
+  const availableStores = useMemo(() => {
+    const set = new Set<string>();
+    catalog.forEach((item) => {
+      if (item.store?.name) set.add(item.store.name);
+    });
+    return Array.from(set);
+  }, [catalog]);
+
+  const filteredCatalog = useMemo(() => {
+    return catalog.filter((item) => {
+      const matchStore = storeFilter === "ALL" || item.store?.name === storeFilter;
+      const matchSearch = !catalogSearch.trim() || item.title.toLowerCase().includes(catalogSearch.toLowerCase().trim());
+      return matchStore && matchSearch;
+    });
+  }, [catalog, storeFilter, catalogSearch]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,37 +217,31 @@ export default function ProductPricingPage({
     }
   }
 
-  const pendingCount = promotions.filter((p) => p.status === "PENDING").length;
-  const activeCount = promotions.filter((p) => p.status === "ACTIVE").length;
-
   return (
-    <main className="space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen">
+    <div className={reviewer ? "space-y-4 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
       {/* Header section */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
-        <div>
+      {reviewer ? (
+        <div className="flex items-center justify-between gap-2 pb-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612]">
-              {reviewer
-                ? "Kiểm duyệt giá sàn & Khuyến mại"
-                : "Quản lý giá bán & Khuyến mại sản phẩm"}
-            </h1>
-            {reviewer && pendingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowMapInfoModal(true)}
+              title="Xem quy chuẩn kiểm soát giá sàn MAP"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5" />
+              <span>Quy chuẩn giá sàn MAP</span>
+            </button>
+            {pendingCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
                 {pendingCount} chờ duyệt
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-[#7D715E]">
-            {reviewer
-              ? "Cơ chế kiểm soát biên lợi nhuận Maker-Checker: Thẩm định giá sàn bảo vệ (MAP) và phê duyệt chiến dịch giảm giá của nhãn hàng."
-              : "Giá bán sau giảm phải tuân thủ giá sàn bảo vệ (MAP); ngân sách giữ khi đặt đơn và hoàn lại khi hủy đơn."}
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
             disabled={loading || busy}
             onClick={() => void load()}
           >
@@ -220,7 +250,37 @@ export default function ProductPricingPage({
             />
             <span>Làm mới</span>
           </button>
-          {!reviewer && (
+        </div>
+      ) : (
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1A1612]">
+                Quản lý giá bán & Khuyến mại sản phẩm
+              </h1>
+              <button
+                type="button"
+                onClick={() => setShowMapInfoModal(true)}
+                title="Xem quy chuẩn kiểm soát giá sàn MAP"
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] border border-[#EAE4D7] transition ml-0.5"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
+              disabled={loading || busy}
+              onClick={() => void load()}
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? "animate-spin" : ""}`}
+              />
+              <span>Làm mới</span>
+            </button>
             <button
               type="button"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer disabled:opacity-50"
@@ -230,9 +290,9 @@ export default function ProductPricingPage({
               <Tag className="w-3.5 h-3.5" />
               <span>Đề xuất khuyến mãi</span>
             </button>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       {error && !modal && (
         <div
@@ -254,38 +314,89 @@ export default function ProductPricingPage({
         <>
           {/* Section 1: Promotion requests */}
           <section className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-[#1A1612]">
-                  Yêu cầu thẩm định khuyến mãi ({promotions.length})
-                </h2>
-                <p className="text-xs text-[#7D715E] mt-0.5">
-                  Các đề xuất giảm giá từ Giám đốc Nhãn hàng cần Checker kiểm
-                  duyệt ngân sách và biên lãi
-                </p>
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-[#7D715E]">
-                  Đang chạy:{" "}
-                  <strong className="text-[#065F46]">{activeCount}</strong>
-                </span>
+                <h2 className="text-base font-bold text-[#1A1612]">
+                  Chiến dịch khuyến mãi ({promotions.length})
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowMapInfoModal(true)}
+                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
+                  title="Quy chuẩn thẩm định"
+                >
+                  <Info className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Status Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("ALL")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                    promoFilter === "ALL"
+                      ? "bg-white text-[#1A1612] shadow-2xs"
+                      : "text-[#7D715E] hover:text-[#1A1612]"
+                  }`}
+                >
+                  Tất cả ({promotions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("PENDING")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    promoFilter === "PENDING"
+                      ? "bg-white text-[#92400E] shadow-2xs font-bold"
+                      : "text-[#7D715E] hover:text-[#92400E]"
+                  }`}
+                >
+                  <Clock3 className="w-3 h-3 text-[#D97706]" />
+                  <span>Chờ duyệt ({pendingCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("ACTIVE")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    promoFilter === "ACTIVE"
+                      ? "bg-white text-[#065F46] shadow-2xs font-bold"
+                      : "text-[#7D715E] hover:text-[#065F46]"
+                  }`}
+                >
+                  <CheckCircle2 className="w-3 h-3 text-[#059669]" />
+                  <span>Đang chạy ({activeCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoFilter("HISTORY")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    promoFilter === "HISTORY"
+                      ? "bg-white text-[#7D715E] shadow-2xs font-bold"
+                      : "text-[#7D715E] hover:text-[#1A1612]"
+                  }`}
+                >
+                  <History className="w-3 h-3 text-[#7D715E]" />
+                  <span>Lịch sử ({historyCount})</span>
+                </button>
               </div>
             </div>
 
-            {!promotions.length ? (
+            {!filteredPromotions.length ? (
               <div className="rounded-2xl border border-[#EAE4D7] bg-white p-8 text-center">
-                <Tag className="w-8 h-8 text-[#A79B89] mx-auto mb-2 opacity-50" />
+                <Tag className="w-8 h-8 text-[#A79B89] mx-auto mb-2 opacity-40" />
                 <p className="text-xs font-semibold text-[#1A1612]">
-                  Không có yêu cầu khuyến mãi nào
-                </p>
-                <p className="text-[11px] text-[#7D715E] mt-0.5">
-                  Các chiến dịch giảm giá do nhãn hàng đề xuất sẽ xuất hiện tại
-                  đây để thẩm định.
+                  {promoFilter === "PENDING"
+                    ? "Không có yêu cầu chờ thẩm định"
+                    : promoFilter === "ACTIVE"
+                      ? "Không có chiến dịch đang áp dụng"
+                      : promoFilter === "HISTORY"
+                        ? "Chưa có chiến dịch trong lịch sử"
+                        : "Không có dữ liệu khuyến mãi"}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {promotions.map((item) => {
+                {filteredPromotions.map((item) => {
                   const badge =
                     statusBadges[item.status] || statusBadges.PENDING;
                   const prodImg = getSafeProductImageUrl(
@@ -478,15 +589,46 @@ export default function ProductPricingPage({
 
           {/* Section 2: Catalog and MAP configuration */}
           <section className="space-y-3.5 pt-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-[#1A1612]">
-                  Cấu hình giá sàn bảo vệ biên lãi (MAP)
+                  Cấu hình giá sàn bảo vệ biên lãi (MAP) ({filteredCatalog.length})
                 </h2>
-                <p className="text-xs text-[#7D715E] mt-0.5">
-                  Thiết lập hạn mức giá tối thiểu (MAP) theo từng SKU nhằm ngăn
-                  chặn việc bán lỗ ngân sách
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMapInfoModal(true)}
+                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
+                  title="Quy chuẩn giá sàn MAP"
+                >
+                  <Info className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Filter by In-house Store and Search */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Tìm tên sản phẩm..."
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    className="w-44 sm:w-52 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#A79B89] focus:border-[#C59B58] focus:outline-none"
+                  />
+                </div>
+                {availableStores.length > 1 && (
+                  <select
+                    value={storeFilter}
+                    onChange={(e) => setStoreFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
+                  >
+                    <option value="ALL">Tất cả nhãn hàng ({catalog.length})</option>
+                    {availableStores.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -504,7 +646,7 @@ export default function ProductPricingPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EAE4D7]">
-                  {catalog.map((item) => {
+                  {filteredCatalog.map((item) => {
                     const img = getSafeProductImageUrl(
                       item.imageUrl,
                       item.title,
@@ -584,7 +726,7 @@ export default function ProductPricingPage({
                   })}
                 </tbody>
               </table>
-              {!catalog.length && (
+              {!filteredCatalog.length && (
                 <p className="p-6 text-center text-xs text-[#7D715E]">
                   Chưa có sản phẩm trong phạm vi quản lý.
                 </p>
@@ -839,6 +981,54 @@ export default function ProductPricingPage({
           </form>
         </Modal>
       )}
-    </main>
+      {/* Info Modal for MAP Governance */}
+      {showMapInfoModal && (
+        <Modal
+          isOpen
+          onClose={() => setShowMapInfoModal(false)}
+          title="Quy chuẩn Kiểm soát Giá sàn MAP & Biên lãi"
+          maxWidth="md"
+        >
+          <div className="space-y-3.5 text-xs text-[#1A1612]">
+            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
+              <span className="font-bold text-[#8C6226] block">
+                1. Giá sàn MAP (Minimum Advertised Price)
+              </span>
+              <p className="text-[#7D715E]">
+                Mức giá bán tối thiểu được cấu hình theo từng SKU nhằm bảo vệ giá trị thương hiệu và ngăn chặn việc bán phá giá hoặc lỗ ngân sách chiến dịch.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                2. Cơ chế kiểm soát Maker-Checker
+              </span>
+              <p className="text-[#7D715E]">
+                Quản lý cửa hàng (Maker) đề xuất giảm giá kèm dự toán ngân sách. System Manager / Admin (Checker) thẩm định biên lãi an toàn trước khi chiến dịch được kích hoạt.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                3. Đảm bảo nguồn thù lao Tiếp thị Liên kết
+              </span>
+              <p className="text-[#7D715E]">
+                Giá thực thu sau khuyến mãi và voucher độc quyền của KOL luôn phải lớn hơn hoặc bằng giá sàn MAP để đảm bảo khả năng thanh toán thù lao cho đối tác.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowMapInfoModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }

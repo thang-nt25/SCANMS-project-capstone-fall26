@@ -2694,7 +2694,7 @@ export class CouponsService {
     // Cap at eligible subtotal
     calculatedDiscount = Math.min(calculatedDiscount, eligibleSubtotal);
 
-    // C-10: Floor price guard in coupon evaluation
+    // C-10: Floor price advisory tracking (Allows clearance / liquidation below floor price)
     for (const item of storeItems) {
       const prod = dbProductMap.get(item.productId);
       if (!prod) continue;
@@ -2712,11 +2712,10 @@ export class CouponsService {
             : (calculatedDiscount / eligibleSubtotal) * itemUnitPrice;
         const discountedUnitPrice = itemUnitPrice - itemDiscount;
         if (discountedUnitPrice < itemFloorPrice) {
-          await this.recordValidationFailure(rateLimitKey);
-          throw new BadRequestException({
-            errorCode: 'FLOOR_PRICE_VIOLATION',
-            message: `Mã giảm giá làm đơn giá sản phẩm "${prod.title}" giảm xuống ${Math.round(discountedUnitPrice).toLocaleString('vi-VN')} ₫, thấp hơn Giá sàn quy định (${Math.round(itemFloorPrice).toLocaleString('vi-VN')} ₫).`,
-          });
+          // Clearance / liquidation sale allowed without hard blocking checkout
+          this.logger?.warn?.(
+            `[CLEARANCE_DISCOUNT] Sản phẩm "${prod.title}" áp mã giảm xuống ${Math.round(discountedUnitPrice)}đ (dưới giá sàn ${Math.round(itemFloorPrice)}đ)`,
+          );
         }
       }
     }
