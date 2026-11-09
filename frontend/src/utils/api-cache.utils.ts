@@ -67,7 +67,8 @@ export const apiCache = {
     if (!url) return false;
     // Balances, delivery state, conversations and voucher quotas change outside this tab.
     // Also covers nested endpoints such as /stores/:id/payouts and signed bill URLs.
-    // Safe client caching for tabs: balances, orders, chat list, coupons have TTL + mutation invalidation
+    // Money, order state, messages and coupon limits can change in another session.
+    if (/\/(?:wallets|payouts|orders|chat\/conversations|coupons)(?:\/|$)/.test(url)) return false;
     // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||
@@ -215,6 +216,9 @@ export const apiCache = {
     const domain = this.getAffectedDomain(url);
     this.invalidate(domain);
     if (domain === '/orders' || domain === '/returns') {
+      this.invalidate('/products');
+      this.invalidate('/stores');
+      this.invalidate('/coupons');
       this.invalidate('/analytics');
       this.invalidate('/dashboard');
     }

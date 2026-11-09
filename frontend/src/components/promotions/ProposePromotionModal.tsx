@@ -111,8 +111,6 @@ export function ProposePromotionModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, submitting]);
 
-  if (!isOpen) return null;
-
   // Single Product Calculation
   const activeProduct =
     initialProduct ||
@@ -301,6 +299,8 @@ export function ProposePromotionModal({
       setSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div

@@ -1,8 +1,6 @@
-const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage'));
 const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
-const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
 
 /**
  * Tự động retry dynamic import module nếu gặp lỗi kết nối hoặc Vite HMR reload
@@ -47,7 +45,6 @@ const WalletPage = lazyRetry(() => import('../pages/collaborator/WalletPage'));
 const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingPage'));
 const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPortalPage'));
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
-const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
@@ -62,21 +59,13 @@ const LiveSessionsPage = lazy(() => import('../pages/merchant/LiveSessionsPage')
 const CollaboratorLiveSessionsPage = lazy(() => import('../pages/collaborator/LiveSessionsPage'));
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
-const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
 const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
-const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 const AdminPersonnelPage = lazyRetry(() => import('../pages/admin/AdminPersonnelPage'));
 const AdminFinancePayoutsPage = lazy(() => import('../pages/admin/AdminFinancePayoutsPage'));
-
-// AI Anti-Fraud Sentinel & Traffic Defense
-const AiFraudSentinelPage = lazy(() => import('../pages/admin/AiFraudSentinelPage'));
-
-// Audit Logs & Security Trail
-const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
-
-// Dispute Arbitration Portal
-const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
+const AdminProductPricingHubPage = lazy(() => import('../pages/admin/AdminProductPricingHubPage'));
+const AdminArbitrationHubPage = lazy(() => import('../pages/admin/AdminArbitrationHubPage'));
+const AdminSecurityAuditHubPage = lazy(() => import('../pages/admin/AdminSecurityAuditHubPage'));
 
 // Shop Return Requests (Merchant)
 const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
@@ -289,21 +278,28 @@ function AppRoutes() {
               <Route path="admin/kyc" element={<KycApprovalPage />} />
               <Route path="admin/kyc-approval" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
-              <Route path="admin/audit-logs" element={<AuditLogsPage />} />
-              <Route path="admin/internal-traffic-test" element={<InternalTrafficTestPage />} />
-              <Route path="admin/audit" element={<AuditLogsPage />} />
-              <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
+              
+              {/* Consolidated Hubs */}
+              <Route path="admin/products-pricing" element={<AdminProductPricingHubPage />} />
+              <Route path="admin/arbitration" element={<AdminArbitrationHubPage />} />
+              <Route path="admin/security-audit" element={<AdminSecurityAuditHubPage />} />
+
+              {/* Backward compatibility redirects */}
+              <Route path="admin/pricing" element={<Navigate to="/admin/products-pricing?tab=pricing" replace />} />
+              <Route path="admin/product-moderation" element={<Navigate to="/admin/products-pricing?tab=moderation" replace />} />
+              <Route path="admin/sample-requests" element={<Navigate to="/admin/arbitration?tab=samples" replace />} />
+              <Route path="admin/return-disputes" element={<Navigate to="/admin/arbitration?tab=returns" replace />} />
+              <Route path="admin/disputes" element={<Navigate to="/admin/arbitration?tab=returns" replace />} />
+              <Route path="admin/fraud-sentinel" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
+              <Route path="admin/audit-logs" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
+              <Route path="admin/audit" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
+              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=sandbox" replace />} />
+
+              <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
+              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
+              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
               <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
               <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
-              <Route path="admin/disputes" element={<DisputeResolutionPage />} />
-              <Route path="admin/return-disputes" element={<AdminReturnDisputesPage />} />
-              <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
-              <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
-              <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
-              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
-              <Route path="admin/pricing" element={<ProductPricingPage reviewer />} />
-              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
-              <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />
             </Route>

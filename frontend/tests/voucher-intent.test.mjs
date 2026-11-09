@@ -18,14 +18,14 @@ test('platform goods and shop goods are routed to separate validation APIs', () 
 test('legacy coupons without funding metadata retain shop validation', () => {
   assert.equal(voucherSlot({}), 'SHOP');
 });
-test('product deep link carries normalized voucher without requiring a saved id', () => {
+test('product deep link never preselects a coupon or saves it', () => {
   const url = new URL(voucherProductUrl('product-1', ' deal30 '), 'https://example.test');
   assert.equal(url.pathname, '/products/product-1');
-  assert.equal(url.searchParams.get('voucher'), 'DEAL30');
+  assert.equal(url.searchParams.get('voucher'), null);
   assert.equal(url.searchParams.has('saved'), false);
 });
 test('URL encoding prevents a voucher code from injecting other checkout parameters', () => {
   const url = new URL(voucherProductUrl('product-1', 'TEST&checkout=1'), 'https://example.test');
   assert.equal(url.searchParams.get('checkout'), null);
-  assert.equal(url.searchParams.get('voucher'), 'TEST&CHECKOUT=1');
+  assert.equal(url.searchParams.get('voucher'), null);
 });

@@ -185,39 +185,6 @@ export function buildMarketing(data: SeedDataset, context: SeedContext): void {
     );
   });
 
-  // Single platform-wide free-shipping voucher for checkout demos.
-  // Coupon requires store/collaborator foreign keys, so anchor it to the first
-  // seeded store and admin; checkout recognizes platform-funded shipping as global.
-  data.coupons.push({
-    id: seedId('platform-free-shipping'),
-    storeId: seedId('store:0'),
-    collaboratorId: seedId('user:admin'),
-    codeNormalized: 'SCANMSFREESHIP',
-    displayCode: 'SCANMSFREESHIP',
-    status: 'ACTIVE',
-    discountType: 'PERCENTAGE',
-    discountValue: 100,
-    minimumOrderAmount: 0,
-    maximumDiscountAmount: 100_000,
-    usageLimitTotal: 500,
-    usageLimitPerCustomer: 3,
-    budgetTotal: 20_000_000,
-    budgetUsed: 0,
-    startsAt: createdAt,
-    expiresAt: null,
-    scopeType: 'STORE_WIDE',
-    fundingSource: 'PLATFORM_FUNDED',
-    shopFundingRate: 0,
-    platformFundingRate: 100,
-    benefitType: 'SHIPPING',
-    stackableWithProductDiscount: true,
-    stackableWithShopVoucher: true,
-    stackableWithPlatformVoucher: true,
-    approvedBy: seedId('user:admin'),
-    approvedAt: createdAt,
-    createdAt,
-  });
-
   for (let index = 0; index < 5; index++) {
     const storeIndex = index % SHOPS.length;
     const sessionId = seedId(`live:${index}`);

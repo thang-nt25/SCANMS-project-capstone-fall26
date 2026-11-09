@@ -5,9 +5,18 @@ import { RefreshCw, Scale } from 'lucide-react';
 import { returnService, type ReturnDisputeRecord } from '../../services/return.service';
 import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { toast } from '../../utils/toast';
+import { returnStatusLabel } from '../../utils/return-status.utils';
 
 type Ruling = 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP';
 type Liability = 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON';
+const ghnClaimLabels: Record<string, string> = {
+  DRAFT: 'Chờ gửi GHN', SUBMITTED: 'Đã gửi GHN', NEEDS_MORE_EVIDENCE: 'Cần bổ sung bằng chứng',
+  ACCEPTED: 'GHN chấp thuận', REJECTED: 'GHN từ chối', PAID: 'GHN đã thanh toán',
+};
+const disputeReasonLabels: Record<string, string> = {
+  SHOP_REQUESTED_REVIEW: 'Shop đề nghị Manager xem xét',
+  CUSTOMER_DISAGREES: 'Khách không đồng ý với Shop',
+};
 
 export default function AdminReturnDisputesPage() {
   const client = useQueryClient();
@@ -75,22 +84,32 @@ export default function AdminReturnDisputesPage() {
     resolve.mutate({ id: selected.id, data: { ruling, liability, notes: notes.trim() } });
   }
 
-  return <main className="min-h-screen bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6">
-    <div className="mx-auto max-w-7xl space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#B88E4F]">SCANMS · Trọng tài đổi trả</p>
-          <h1 className="mt-1 text-2xl font-black">Khiếu nại trả hàng đang mở</h1>
-          <p className="mt-1 text-sm text-[#7D715E]">Đối chiếu lịch sử, bằng chứng và kết quả kiểm tra trước khi ra quyết định.</p>
-        </div>
+  return <div className="w-full min-w-0 space-y-4 pb-6 text-[#1A1612]">
+    <div className="w-full min-w-0 space-y-4">
+      <div className="flex items-center justify-between gap-3 pb-0.5">
+        <span className="text-xs font-semibold text-[#7D715E]">Hồ sơ khiếu nại đổi trả và bồi hoàn GHN</span>
         <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); void rejectedReturns.refetch(); }}
           disabled={disputes.isFetching || stalled.isFetching}
-          className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-4 py-2 text-sm disabled:opacity-50">
-          <RefreshCw className="h-4 w-4" /> Làm mới
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] disabled:opacity-50 cursor-pointer">
+          <RefreshCw className="h-3.5 w-3.5 text-[#B88E4F]" /> Làm mới
         </button>
-      </header>
+      </div>
 
-      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Shop đã từ chối đổi trả">
+      <nav aria-label="Đi nhanh đến nhóm hồ sơ" className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+        {[
+          { href: '#shop-rejected', label: 'Shop từ chối', count: rejectedReturns.data?.length, loading: rejectedReturns.isLoading },
+          { href: '#active-returns', label: 'Đang xử lý', count: activeReturns.data?.length, loading: activeReturns.isLoading },
+          { href: '#ghn-claims', label: 'Bồi hoàn GHN', count: ghnClaims.data?.length, loading: ghnClaims.isLoading },
+          { href: '#stalled-returns', label: 'Quá 48 giờ', count: stalled.data?.length, loading: stalled.isLoading },
+          { href: '#open-disputes', label: 'Cần phân xử', count: rows.length, loading: disputes.isLoading },
+        ].map((item) => <a key={item.href} href={item.href}
+          className="flex min-h-20 items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 transition last:col-span-2 sm:last:col-span-1 hover:border-[#C59B58] hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+          <span className="text-xs font-semibold text-[#7D715E] sm:text-sm">{item.label}</span>
+          <strong className="text-xl tabular-nums text-[#795A2D]" aria-label={item.loading ? 'Đang tải' : `${item.count ?? 0} hồ sơ`}>{item.loading ? '…' : item.count ?? 0}</strong>
+        </a>)}
+      </nav>
+
+      <section id="shop-rejected" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Shop đã từ chối đổi trả">
         <h2 className="font-bold">Shop đã từ chối · Chờ Manager xem xét</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Bao gồm cả đơn bị từ chối trước khi có nút gửi bằng chứng. Manager xem hồ sơ rồi mở phân xử khi cần; việc mở phân xử chưa phải kết luận Shop hay GHN có lỗi.</p>
         {rejectedReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải đơn Shop từ chối…</p>}
@@ -105,13 +124,13 @@ export default function AdminReturnDisputesPage() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Link to={`/admin/returns/${item.id}`} className="rounded-lg border border-[#EEDFC6] px-3 py-2 text-xs font-semibold text-[#8A6736]">Xem hồ sơ</Link>
               <button type="button" disabled={openReview.isPending} onClick={() => openReview.mutate(item.id)}
-                className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Mở phân xử</button>
+                className="rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-bold text-[#231D15] disabled:opacity-50">Mở phân xử</button>
             </div>
           </div>)}
         </div>}
       </section>
 
-      <section className="rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
+      <section id="active-returns" className="scroll-mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-5" aria-label="Hồ sơ đổi trả đang xử lý">
         <h2 className="font-bold">Hồ sơ đổi trả đang xử lý</h2>
         <p className="mt-1 text-xs text-[#7D715E]">System Manager xác minh lỗi vận chuyển hoặc lỗi hàng hóa trước khi Shop xử lý đổi, hoàn.</p>
         {activeReturns.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ…</p>}
@@ -122,13 +141,13 @@ export default function AdminReturnDisputesPage() {
           {activeReturns.data.map((item) => <Link key={item.id} to={`/admin/returns/${item.id}`}
             className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 hover:border-[#C59B58]">
             <span className="block text-sm font-bold">#{item.order.externalOrderSn}</span>
-            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {item.status}</span>
+            <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · {returnStatusLabel(item.status)}</span>
             <span className="mt-1 block text-xs font-semibold text-[#8A6736]">Xem bằng chứng và xác định trách nhiệm →</span>
           </Link>)}
         </div>}
       </section>
 
-      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Yêu cầu GHN bồi hoàn">
+      <section id="ghn-claims" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Yêu cầu GHN bồi hoàn">
         <h2 className="font-bold">Đối soát bồi hoàn GHN</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Theo dõi yêu cầu từ lúc gửi GHN đến khi có phản hồi và chứng từ thanh toán. Việc xử lý cho khách đi theo luồng riêng.</p>
         {ghnClaims.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ GHN…</p>}
@@ -139,12 +158,12 @@ export default function AdminReturnDisputesPage() {
             className="rounded-xl border border-[#EAE4D7] bg-white p-3 hover:border-[#C59B58]">
             <strong className="block text-sm">#{item.order.externalOrderSn}</strong>
             <span className="mt-1 block text-xs text-[#7D715E]">{item.order.storeName} · Vận đơn {item.ghnClaim?.originalTrackingNumber}</span>
-            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">{item.ghnClaim?.status || 'Chờ đối soát'} → Mở hồ sơ</span>
+            <span className="mt-1 block text-xs font-semibold text-[#8A6736]">{ghnClaimLabels[item.ghnClaim?.status || ''] || 'Chờ đối soát'} → Mở hồ sơ</span>
           </Link>)}
         </div>}
       </section>
 
-      <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Hồ sơ quá hạn kiểm tra">
+      <section id="stalled-returns" className="scroll-mt-6 rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-5" aria-label="Hồ sơ quá hạn kiểm tra">
         <h2 className="font-bold">Shop chậm kiểm tra quá 48 giờ</h2>
         <p className="mt-1 text-xs text-[#7D715E]">Các hồ sơ này vẫn đang chờ Shop xử lý; khách có quyền gửi khiếu nại.</p>
         {stalled.isLoading && <p role="status" className="mt-3 text-sm">Đang tải hồ sơ quá hạn…</p>}
@@ -160,6 +179,10 @@ export default function AdminReturnDisputesPage() {
         </div>}
       </section>
 
+      <div id="open-disputes" className="scroll-mt-6">
+        <h2 className="text-lg font-bold">Hồ sơ cần phân xử</h2>
+        <p className="mt-1 text-sm text-[#7D715E]">Chọn một hồ sơ để xem bằng chứng và lưu quyết định.</p>
+      </div>
       {disputes.isLoading && <p role="status">Đang tải khiếu nại…</p>}
       {disputes.error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-[#DC2626]">
         Không thể tải khiếu nại. Vui lòng thử lại.
@@ -169,7 +192,7 @@ export default function AdminReturnDisputesPage() {
 
       {selected && <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="space-y-2" aria-label="Danh sách khiếu nại">
-          {rows.map((item) => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setRuling('APPROVE_REFUND'); }}
+          {rows.map((item) => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setRuling('APPROVE_REFUND'); setLiability(''); setNotes(''); }}
             className={`w-full rounded-xl border p-4 text-left ${selected.id === item.id
               ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'}`}>
             <span className="block text-sm font-bold">#{item.returnRequest.order.externalOrderSn}</span>
@@ -181,7 +204,7 @@ export default function AdminReturnDisputesPage() {
           <section className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
             <div className="flex items-center gap-2"><Scale className="h-5 w-5 text-[#B88E4F]" />
               <h2 className="text-lg font-bold">Hồ sơ #{selected.returnRequest.order.externalOrderSn}</h2></div>
-            <p className="mt-3 text-sm"><strong>Lý do khiếu nại:</strong> {selected.reason}</p>
+            <p className="mt-3 text-sm"><strong>Lý do khiếu nại:</strong> {disputeReasonLabels[selected.reason] || selected.reason}</p>
             <p className="mt-1 whitespace-pre-wrap text-sm">{selected.details}</p>
             {selected.reason === 'SHOP_REQUESTED_REVIEW' && <p className="mt-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-sm">Shop đề nghị Manager xác minh sau khi từ chối. Đây là ý kiến của Shop, chưa phải kết luận lỗi GHN.</p>}
             {selected.returnRequest.shopResponse && <p className="mt-2 text-sm"><strong>Phản hồi Shop gửi khách:</strong> {selected.returnRequest.shopResponse}</p>}
@@ -232,12 +255,12 @@ export default function AdminReturnDisputesPage() {
             <button type="submit" disabled={resolve.isPending || !liability || notes.trim().length < 20 ||
               (ruling === 'UPHOLD_SHOP' && (!canUpholdShop || liability === 'LOGISTICS_FAULT')) ||
               (liability === 'LOGISTICS_FAULT' && !selected.returnRequest.order.outboundGhnTrackingNumber)}
-              className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+              className="rounded-xl bg-[#C59B58] px-4 py-2.5 text-sm font-bold text-[#231D15] disabled:opacity-50">
               {resolve.isPending ? 'Đang lưu…' : 'Lưu quyết định'}</button>
             {resolve.error && <p role="alert" className="text-sm text-[#DC2626]">Không thể lưu quyết định. Vui lòng thử lại.</p>}
           </form>
         </div>
       </div>}
     </div>
-  </main>;
+  </div>;
 }

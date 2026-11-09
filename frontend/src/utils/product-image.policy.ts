@@ -1,8 +1,8 @@
 export const MAX_PRODUCT_GALLERY_IMAGES = 4;
 
 export function assertProductCoverDimensions(width: number, height: number) {
-  if (width < 800 || height < 800 || width !== height)
-    throw new Error('Ảnh bìa phải vuông (1:1), tối thiểu 800 × 800 px. Vui lòng cắt ảnh trước khi tải lên.');
+  if (!width || !height || width <= 0 || height <= 0)
+    throw new Error('Ảnh không hợp lệ hoặc không đọc được kích thước.');
 }
 
 export function validateProductCoverUrl(url: string): Promise<void> {

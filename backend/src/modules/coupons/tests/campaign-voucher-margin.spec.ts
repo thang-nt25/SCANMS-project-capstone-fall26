@@ -13,21 +13,7 @@ describe('Campaign voucher creation and immutable stacking policy', () => {
     return { service, prisma, dto, run: () => service.createStoreCoupon('shop', 'owner', 'SHOP_MANAGER', dto) };
   }
 
-  it('creates a campaign coupon for the selected Shop campaign and cannot re-enable Shop stacking', async () => {
-    const { prisma, run } = fixture(); await run();
-    expect(prisma.campaign.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'campaign', storeId: 'shop' } }));
-    expect(prisma.coupon.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
-      campaignId: 'campaign', scopeType: 'CAMPAIGN', discountValue: expect.anything(),
-      stackableWithShopVoucher: false, stackableWithPlatformVoucher: true,
-    }) }));
-  });
+  it("generic Shop campaign issuance is retired without creating coupons", async () => {const {prisma,run}=fixture(); await expect(run()).rejects.toMatchObject({status:410});expect(prisma.coupon.create).not.toHaveBeenCalled();});
 
-  it('rejects a missing campaign or a campaign belonging to another Shop before writing', async () => {
-    const missing = fixture(); delete missing.dto.campaignId;
-    await expect(missing.run()).rejects.toThrow('chọn chiến dịch');
-    expect(missing.prisma.coupon.create).not.toHaveBeenCalled();
-    const foreign = fixture(); foreign.prisma.campaign.findFirst.mockResolvedValue(null);
-    await expect(foreign.run()).rejects.toThrow('hiệu lực');
-    expect(foreign.prisma.coupon.create).not.toHaveBeenCalled();
-  });
+  it("retired retail issuance does not query or mutate any campaign", async () => {const {prisma,run}=fixture();await expect(run()).rejects.toMatchObject({status:410});expect(prisma.campaign.findFirst).not.toHaveBeenCalled();expect(prisma.coupon.create).not.toHaveBeenCalled();});
 });

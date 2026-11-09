@@ -73,6 +73,7 @@ import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { liveVoucherActive, priceVoucherLines } from '../coupons/voucher-pricing';
+import { assertNoRetailVoucherSelection, isKolExclusiveCoupon } from '../coupons/kol-coupon.policy';
 import {
   normalizeCustomerPhone,
   validateOrderMoney,
@@ -123,9 +124,15 @@ export class OrdersService {
     @Optional() private readonly ghnService?: GhnService,
   ) {}
 
-  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number }>, products: Map<string, any>, subtotal: number, storeId: string) {
+  private async quoteCheckoutShipping(address: string, items: Array<{ productId: string; quantity: number; variantId?: string }>, products: Map<string, any>, subtotal: number, storeId: string, variants?: Map<string, any>) {
     if (!this.ghnService) throw new InternalServerErrorException('Dịch vụ tính cước GHN chưa sẵn sàng. Vui lòng thử lại sau.');
-    const parcel = buildShippingPackage(items.map((item) => ({ product: products.get(item.productId), quantity: item.quantity })));
+    const parcel = buildShippingPackage(items.map((item) => {
+      const prod = products.get(item.productId);
+      const variant = item.variantId && variants
+        ? variants.get(item.variantId)
+        : (prod?.variants || []).find((v: any) => v.id === item.variantId);
+      return { product: prod, variant, quantity: item.quantity };
+    }));
     return { ...await this.ghnService.quoteAddress(address, parcel.weight, subtotal, storeId, parcel), shippingPackage: parcel };
   }
 
@@ -581,10 +588,7 @@ export class OrdersService {
       userAgent?: string;
     },
   ) {
-    if (dto.platformCouponCode?.trim() ||
-      Object.values(dto.platformCouponsByStore || {}).some(Boolean)) {
-      throw new BadRequestException('Chỉ mã ưu đãi độc quyền của KOC được áp dụng.');
-    }
+    assertNoRetailVoucherSelection(dto);
     // 0. Kiểm tra thông tin người nhận và giỏ hàng theo chuẩn FR-16
     const customerName = validateCustomerName(dto.customerName);
     const customerPhone = normalizeCustomerPhone(dto.customerPhone);
@@ -1014,6 +1018,7 @@ export class OrdersService {
       clientContext,
     } = params;
 
+    assertNoRetailVoucherSelection(dto);
     const confirmedShippingFee = requireShippingFee(shippingQuote?.totalFee);
     await lockPricingProducts(tx, dto.items.map(item => item.productId));
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
@@ -1063,7 +1068,7 @@ export class OrdersService {
         ORDER BY id FOR UPDATE
       `);
       const packages = new Map(current.map((product) => [product.id, product]));
-      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, quantity: item.quantity })));
+      const locked = buildShippingPackage(dto.items.map((item) => ({ product: packages.get(item.productId)!, variant: item.variantId ? variantMap.get(item.variantId) : null, quantity: item.quantity })));
       if (['weight', 'length', 'width', 'height'].some((key: keyof ShippingPackage) => locked[key] !== shippingQuote.shippingPackage![key])) {
         throw new ConflictException('Thông số đóng gói vừa thay đổi. Vui lòng tải lại báo giá vận chuyển.');
       }
@@ -1147,7 +1152,7 @@ export class OrdersService {
       if (!lockedCoupon) {
         throw new ConflictException('Mã giảm giá không tồn tại');
       }
-      if (lockedCoupon.storeId !== store.id || lockedCoupon.benefitType === 'SHIPPING' || lockedCoupon.fundingSource === 'PLATFORM_FUNDED' || lockedCoupon.collaborator?.role !== UserRole.COLLABORATOR || lockedCoupon.deletedAt) {
+      if (lockedCoupon.storeId !== store.id || !isKolExclusiveCoupon(lockedCoupon) || lockedCoupon.deletedAt) {
         throw new ConflictException('Voucher không thuộc ô tiền hàng của Shop này.');
       }
 

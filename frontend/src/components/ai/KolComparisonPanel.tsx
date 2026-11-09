@@ -23,8 +23,6 @@ export function KolComparisonModal({
   selectedKols,
   onNegotiateDeal,
 }: KolComparisonModalProps) {
-  if (!isOpen || selectedKols.length === 0) return null;
-
   // Datasets for Multi-Radar
   const radarDatasets = useMemo(() => {
     return selectedKols.slice(0, 3).map((kol, idx) => ({
@@ -34,6 +32,8 @@ export function KolComparisonModal({
       fillColor: COMPARISON_COLORS[idx % COMPARISON_COLORS.length].fill,
     }));
   }, [selectedKols]);
+
+  if (!isOpen || selectedKols.length === 0) return null;
 
   const metrics: Array<{
     label: string;

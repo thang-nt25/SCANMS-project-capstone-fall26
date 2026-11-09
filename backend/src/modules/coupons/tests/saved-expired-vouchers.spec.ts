@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, GoneException } from '@nestjs/common';
 import { CouponsService } from '../coupons.service';
 
 describe('Saved expired voucher history', () => {
@@ -27,32 +27,14 @@ describe('Saved expired voucher history', () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  it('returns only this customer’s saved expired coupons, including the exact expiry boundary', async () => {
-    const result = await service.getSavedExpiredCoupons('a');
-    expect(result.map(item => item.id)).toEqual(['expired-a', 'boundary']);
-    expect(result[0]).toMatchObject({ code: 'EXPIRED-A', discountValue: 15000, remainingUses: 95 });
-    expect(result[0]).not.toHaveProperty('status');
-    expect(prisma.customerSavedCoupon.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'a' } }));
-    expect(prisma.coupon.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ expiresAt: { lte: current }, deletedAt: null }),
-      orderBy: [{ expiresAt: 'desc' }, { id: 'asc' }],
-      select: expect.objectContaining({ store: { select: { id: true, name: true, slug: true } } }),
-    }));
-    expect(prisma.coupon.findMany.mock.calls[0][0]).not.toHaveProperty('take');
-    expect((await service.getSavedExpiredCoupons('b')).map(item => item.id)).toEqual(['expired-b']);
-  });
+  it("does not return obsolete saved coupon inventories for either customer", async () => {await expect(service.getSavedExpiredCoupons('a')).resolves.toEqual([]);await expect(service.getSavedExpiredCoupons('b')).resolves.toEqual([]);expect(prisma.customerSavedCoupon.findMany).not.toHaveBeenCalled();expect(prisma.coupon.findMany).not.toHaveBeenCalled();});
 
   it('does not query global expired coupons for an account with no saved vouchers', async () => {
     await expect(service.getSavedExpiredCoupons('empty')).resolves.toEqual([]);
     expect(prisma.coupon.findMany).not.toHaveBeenCalled();
   });
 
-  it('cannot save an expired voucher', async () => {
-    await expect(service.saveCoupon('a', 'expired-a')).rejects.toBeInstanceOf(NotFoundException);
-    expect(prisma.coupon.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ AND: expect.arrayContaining([{ OR: [{ expiresAt: null }, { expiresAt: { gt: current } }] }]) }),
-    }));
-  });
+  it("saving any coupon is retired without reading or writing inventory", async () => {await expect(service.saveCoupon('a','expired-a')).rejects.toBeInstanceOf(GoneException);expect(prisma.coupon.findFirst).not.toHaveBeenCalled();});
 
   it('rejects expired shop, platform and shipping vouchers at the apply endpoints', async () => {
     (service as any).checkRateLimit = jest.fn();
@@ -61,7 +43,7 @@ describe('Saved expired voucher history', () => {
     await expect(service.validateCoupon({ code: 'EXPIRED-A' } as any)).rejects.toMatchObject({ response: expect.objectContaining({ errorCode: 'COUPON_EXPIRED' }) });
     for (const benefitType of ['GOODS', 'SHIPPING']) {
       prisma.coupon.findUnique.mockResolvedValue(coupon('expired-a', current, { storeId: 'shop', benefitType, fundingSource: 'PLATFORM_FUNDED' }));
-      await expect(service.previewStackedVoucher({ code: 'EXPIRED-A', storeId: 'shop', benefitType, goodsSubtotal: 200000, shippingFee: 20000, shopDiscount: 0 } as any)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.previewStackedVoucher({ code: 'EXPIRED-A', storeId: 'shop', benefitType, goodsSubtotal: 200000, shippingFee: 20000, shopDiscount: 0 } as any)).rejects.toBeInstanceOf(GoneException);
     }
   });
 });
