@@ -156,8 +156,8 @@ export class DashboardService {
         prevOrderWhere.storeId = storeId;
         currentCommissionWhere.order = { storeId };
         prevCommissionWhere.order = { storeId };
-        currentClickWhere.referralLink = { product: { storeId } };
-        prevClickWhere.referralLink = { product: { storeId } };
+        currentClickWhere.storeId = storeId;
+        prevClickWhere.storeId = storeId;
       }
     } else {
       // Vai trò KOL / Collaborator
@@ -165,8 +165,8 @@ export class DashboardService {
       prevOrderWhere.attributedCollaboratorId = userId;
       currentCommissionWhere.collaboratorId = userId;
       prevCommissionWhere.collaboratorId = userId;
-      currentClickWhere.referralLink = { collaboratorId: userId };
-      prevClickWhere.referralLink = { collaboratorId: userId };
+      currentClickWhere.collaboratorId = userId;
+      prevClickWhere.collaboratorId = userId;
     }
 
     // Lọc theo campaignId nếu có (FR-27)
@@ -476,7 +476,7 @@ export class DashboardService {
       storesBreakdown,
       operationsSummary,
     };
-    await this.cacheService.set(cacheKey, overviewResult, 30);
+    await this.cacheService.set(cacheKey, overviewResult, 60);
     return overviewResult;
   }
 
@@ -511,7 +511,7 @@ export class DashboardService {
         endDate,
       );
     }
-    await this.cacheService.set(cacheKey, result, 30);
+    await this.cacheService.set(cacheKey, result, 60);
     return result;
   }
 
@@ -635,9 +635,9 @@ export class DashboardService {
     };
 
     if (isShop && storeId) {
-      clickWhere.referralLink = { product: { storeId } };
+      clickWhere.storeId = storeId;
     } else if (!isShop) {
-      clickWhere.referralLink = { collaboratorId: userId };
+      clickWhere.collaboratorId = userId;
     }
 
     // Lấy click traffic log kèm thông tin kênh
@@ -936,9 +936,9 @@ export class DashboardService {
     // Query click traffic logs theo giờ
     const clickWhere: any = { createdAt: { gte: startDate, lte: endDate } };
     if (isShop && storeId) {
-      clickWhere.referralLink = { product: { storeId } };
+      clickWhere.storeId = storeId;
     } else if (!isShop) {
-      clickWhere.referralLink = { collaboratorId: userId };
+      clickWhere.collaboratorId = userId;
     }
 
     const clicks = await this.prisma.clickTrafficLog.findMany({
@@ -1422,9 +1422,11 @@ export class DashboardService {
         : 10;
       
       const dealRate = dealRateByProduct.get(p.productId);
-      const dealBonus = dealRate ? Math.max(0, dealRate - 10) : 0;
       const baseRate = 10;
-      const finalRate = Math.min(25, Math.max(avgRate, baseRate + tierBonus + dealBonus));
+      const standardRate = baseRate + tierBonus;
+      // C-06: Non-stacking rule: dealBonus is the KPI differential rate (Deal% - (10% + Tier%))
+      const dealBonus = dealRate ? Math.max(0, dealRate - standardRate) : 0;
+      const finalRate = Math.min(25, Math.max(avgRate, dealRate || standardRate));
 
       return {
         productId: p.productId,

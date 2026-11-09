@@ -22,6 +22,30 @@ export interface WalletSummary {
   unallocatedPendingBalance: string;
   pendingBalance: string;
   availableBalance: string;
+  shoppingBalance?: string;
+  conditionalDealEscrowBalance?: string;
+  lockedPayoutBalance?: string;
+  earningsReviewRequired?: boolean;
+  activeDeals?: {
+    id: string;
+    storeId: string;
+    store: { id: string; name: string; logoUrl?: string | null };
+    product: { id: string; title: string; imageUrl?: string | null };
+    proposedCommissionRate: number;
+    approvedCommissionRate: number;
+    bonusRate: number;
+    targetOrders?: number | null;
+    targetRevenue?: number | null;
+    commitmentStartedAt?: string | null;
+    commitmentEndsAt?: string | null;
+  }[];
+  balanceConsistency?: {
+    requiresReview: boolean;
+    allocatedAvailableBalance: string;
+    allocatedPendingBalance: string;
+    unallocatedAvailableBalance: string;
+    unallocatedPendingBalance: string;
+  };
   minimumWithdrawalAmount: string;
   withdrawalTaxPolicy: { threshold: string; rate: string };
   kycStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
@@ -34,6 +58,7 @@ export interface WalletSummary {
 }
 
 export interface WithdrawalRequest {
+  transferProvider?: string | null;
   storeId: string | null;
   store: { name: string } | null;
   batchId: string | null;
@@ -84,6 +109,12 @@ export interface LedgerEntry {
   balanceAfter: string;
   referenceId: string | null;
   referenceType: string | null;
+  referenceDetails?: {
+    storeName: string | null;
+    orderId: string | null;
+    orderCode: string | null;
+    period: string | null;
+  } | null;
   createdAt: string;
 }
 

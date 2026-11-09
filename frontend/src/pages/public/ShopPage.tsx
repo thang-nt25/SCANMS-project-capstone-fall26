@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Search, Ticket, Check, Clock } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
-import {
-  couponService,
-  type PublicStoreCoupon,
-} from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
 import { PublicHeader } from '../../components/layout/PublicHeader';
 import { ShopProfileHeader } from '../../components/store/ShopProfileHeader';
@@ -19,32 +15,6 @@ import { useScanmsChat } from '../../context/ScanmsChatContext';
 import { useLiveSessionDeals } from '../../components/product/LiveSessionDealBadge';
 import { Select } from '../../components/ui/Select';
 
-function formatVoucherRemainingTime(expiresAt?: string | null): {
-  text: string;
-  isUrgent: boolean;
-} {
-  if (!expiresAt) return { text: 'Vô thời hạn', isUrgent: false };
-  const now = Date.now();
-  const exp = new Date(expiresAt).getTime();
-  const diffMs = exp - now;
-  if (diffMs <= 0) return { text: 'Đã hết hạn', isUrgent: false };
-
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffHours < 24) {
-    const hours = Math.max(1, diffHours);
-    return { text: `Hết hạn sau ${hours} giờ`, isUrgent: true };
-  }
-  if (diffDays <= 3) {
-    return { text: `Còn ${diffDays} ngày`, isUrgent: true };
-  }
-  const d = new Date(expiresAt);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return { text: `HSD: ${day}.${month}.${year}`, isUrgent: false };
-}
 
 type ProductResult = {
   items: Product[];
@@ -70,11 +40,6 @@ export default function ShopPage() {
   const [productsRevision, setProductsRevision] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-
-  // Shop coupons & Saved coupons state
-  const [shopCoupons, setShopCoupons] = useState<PublicStoreCoupon[]>([]);
-  const [copiedCouponIds, setCopiedCouponIds] = useState<string[]>([]);
-  const [savingCouponId, setSavingCouponId] = useState<string | null>(null);
 
   // Follow & Search states
   const [following, setFollowing] = useState(false);
@@ -109,7 +74,6 @@ export default function ShopPage() {
     setPage(1);
     setError('');
     setFollowing(false);
-    setShopCoupons([]);
 
     api
       .get(`/stores/public/id/${identifier}`)
@@ -135,8 +99,6 @@ export default function ShopPage() {
           if (active) setFollowing(Boolean(unwrap(res)?.following));
         })
         .catch(() => undefined);
-
-
     }
 
     return () => {
@@ -192,31 +154,6 @@ export default function ShopPage() {
       active = false;
     };
   }, [shop?.id, highlightsRevision]);
-
-  useEffect(() => {
-    if (!shop?.id) return;
-    let active = true;
-    // Fetch Public Coupons of this Store
-    couponService
-      .getPublicStoreCoupons(shop.id)
-      .then((coupons) => {
-        if (active) {
-          const filtered = coupons.filter(
-            (c) =>
-              c.benefitType !== 'SHIPPING' &&
-              c.fundingSource !== 'PLATFORM_FUNDED' &&
-              !c.code.toUpperCase().startsWith('KOL') &&
-              !c.code.toUpperCase().startsWith('PHANHAIY'),
-          );
-          setShopCoupons(filtered);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
-    };
-  }, [shop?.id]);
 
   const selectTab = (tab: string, nextCategory = 'all') => {
     setActiveTab(tab);
@@ -275,17 +212,6 @@ export default function ShopPage() {
     } finally {
       setSavingFollow(false);
     }
-  };
-
-  // Copy-only: checkout requires a code entered by the customer.
-  const handleCopyCoupon = async (voucher: PublicStoreCoupon) => {
-    try {
-      setSavingCouponId(voucher.id);
-      await navigator.clipboard.writeText(voucher.code);
-      setCopiedCouponIds(previous => [...new Set([...previous, voucher.id])]);
-      toast.success('Đã sao chép mã. Hãy tự nhập khi thanh toán.');
-    } catch { toast.error('Không sao chép được. Bạn có thể chọn mã và sao chép thủ công.'); }
-    finally { setSavingCouponId(null); }
   };
 
   return (
@@ -415,125 +341,6 @@ export default function ShopPage() {
                       ))}
                     </div>
                   )}
-                </section>
-              )}
-
-              {/* Khối Mã Giảm Giá Của Shop (Thu Thập / Sưu Tập Voucher) */}
-              {activeTab === 'home' && shopCoupons.length > 0 && (
-                <section className="mt-6 rounded-3xl border border-[#EAE4D7] bg-white p-4 sm:p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Ticket className="w-5 h-5 text-[#C59B58]" />
-                      <h2 className="text-base sm:text-lg font-bold text-[#1A1612]">
-                        Mã Giảm Giá Của Shop
-                      </h2>
-                    </div>
-                    <span className="text-xs text-[#7D715E]">
-                      Sao chép mã KOL và tự nhập khi thanh toán
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {shopCoupons.map((voucher) => {
-                      const isCopied = copiedCouponIds.includes(voucher.id);
-                      const isPercentage =
-                        voucher.discountType === 'PERCENTAGE';
-                      const isSaving = savingCouponId === voucher.id;
-                      const expiry = formatVoucherRemainingTime(
-                        voucher.expiresAt,
-                      );
-
-                      return (
-                        <div
-                          key={voucher.id}
-                          className="flex items-stretch rounded-2xl border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden hover:border-[#C59B58] transition shadow-xs"
-                        >
-                          {/* Cuống vé */}
-                          <div className="w-20 bg-[#F3EFE6] border-r border-dashed border-[#EEDFC6] p-2 flex flex-col items-center justify-center text-center shrink-0">
-                            <Ticket className="w-5 h-5 text-[#B88E4F] mb-1" />
-                            <span className="text-[10px] font-bold text-[#B88E4F] uppercase tracking-wide">
-                              VOUCHER
-                            </span>
-                          </div>
-
-                          {/* Thân vé */}
-                          <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-                            <div>
-                              <p className="text-sm font-bold text-[#1A1612] truncate">
-                                {isPercentage
-                                  ? `Giảm ${voucher.discountValue}%`
-                                  : `Giảm ${Number(voucher.discountValue).toLocaleString('vi-VN')} ₫`}
-                                {voucher.maximumDiscountAmount
-                                  ? ` (Tối đa ${Number(voucher.maximumDiscountAmount).toLocaleString('vi-VN')} ₫)`
-                                  : ''}
-                              </p>
-                              <p className="text-xs text-[#7D715E] mt-0.5">
-                                Đơn từ{' '}
-                                {Number(
-                                  voucher.minimumOrderAmount || 0,
-                                ).toLocaleString('vi-VN')}{' '}
-                                ₫
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <span className="inline-block font-mono text-[10px] font-semibold text-[#8A642C] bg-[#FBF5EB] border border-[#EEDFC6] px-1.5 py-0.5 rounded">
-                                  {voucher.code}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
-                                    expiry.isUrgent
-                                      ? 'bg-amber-100/80 text-amber-800 font-bold border border-amber-300'
-                                      : 'bg-[#F3EFE6] text-[#7D715E]'
-                                  }`}
-                                >
-                                  <Clock
-                                    size={10}
-                                    className={
-                                      expiry.isUrgent
-                                        ? 'text-amber-700'
-                                        : 'text-[#8A642C]'
-                                    }
-                                  />
-                                  <span>{expiry.text}</span>
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="mt-2.5 pt-2 border-t border-[#EAE4D7] flex items-center justify-between gap-2">
-                              <span className="text-[10px] text-[#7D715E]">
-                                {voucher.remainingUses !== null
-                                  ? `Còn ${voucher.remainingUses} lượt`
-                                  : 'Số lượng có hạn'}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={isCopied || isSaving}
-                                onClick={() => handleCopyCoupon(voucher)}
-                                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                  isCopied
-                                    ? 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] cursor-default'
-                                    : 'bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] cursor-pointer'
-                                }`}
-                              >
-                                {isCopied ? (
-                                  <>
-                                    <Check
-                                      size={12}
-                                      className="text-emerald-700"
-                                    />
-                                    <span>Đã sao chép</span>
-                                  </>
-                                ) : isSaving ? (
-                                  'Đang sao chép...'
-                                ) : (
-                                  'Sao chép mã'
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </section>
               )}
 

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -40,6 +40,7 @@ export class ReleaseLiveVoucherDto {
 export class CreateLiveSessionDto {
   @IsUUID() storeId: string;
   @IsUUID() creatorId: string;
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   @IsString() @IsNotEmpty() @MaxLength(200) title: string;
   @IsEnum(LiveSessionPlatform) platform: LiveSessionPlatform;
   @IsUrl({ require_protocol: true, require_tld: false })

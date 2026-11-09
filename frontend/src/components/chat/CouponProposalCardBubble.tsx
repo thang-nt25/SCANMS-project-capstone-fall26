@@ -279,7 +279,7 @@ export function CouponProposalCardBubble({
                       value={discountType === 'PERCENTAGE' ? (discountValue === 0 ? '0' : (discountValue || '')) : (discountValue ? String(discountValue) : '')}
                       onChange={(e) => {
                         if (discountType === 'PERCENTAGE') {
-                          setDiscountValue(Number(e.target.value) || 0);
+                          setDiscountValue(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value));
                         } else {
                           handleNumericInput(e.target.value, setDiscountValue);
                         }
@@ -299,7 +299,8 @@ export function CouponProposalCardBubble({
                       min={10}
                       max={5000}
                       value={usageLimit || ''}
-                      onChange={(e) => setUsageLimit(Number(e.target.value) || 0)}
+                      onChange={(e) => setUsageLimit(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value))}
+                      onBlur={() => setUsageLimit((prev) => Math.max(10, Math.min(5000, Number(prev) || 100)))}
                       className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold focus:border-[#C59B58] outline-none"
                     />
                   </div>

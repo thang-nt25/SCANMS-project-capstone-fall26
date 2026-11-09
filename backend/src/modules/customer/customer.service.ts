@@ -376,7 +376,7 @@ export class CustomerService {
             discountType: true,
           },
         },
-        returnRequest: true,
+        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
         productReviews: true,
       },
     });
@@ -414,7 +414,7 @@ export class CustomerService {
         coupon: true,
         paymentTransactions: true,
         productReviews: true,
-        returnRequest: true,
+        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
       },
     });
 
@@ -583,6 +583,18 @@ export class CustomerService {
       throw new BadRequestException('Đơn hàng đã quá thời hạn đổi trả 14 ngày');
     }
 
+    const requestedItems = dto.items ?? order.orderItems.map(item => ({ orderItemId: item.id, quantity: item.quantity }));
+    if (!requestedItems.length || new Set(requestedItems.map(item => item.orderItemId)).size !== requestedItems.length) {
+      throw new BadRequestException('Vui lòng chọn sản phẩm đổi trả hợp lệ');
+    }
+    const orderItemMap = new Map(order.orderItems.map(item => [item.id, item]));
+    for (const item of requestedItems) {
+      const original = orderItemMap.get(item.orderItemId);
+      if (!original || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > original.quantity) {
+        throw new BadRequestException('Sản phẩm hoặc số lượng đổi trả không hợp lệ');
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.order.updateMany({
         where: {
@@ -601,9 +613,15 @@ export class CustomerService {
           orderId,
           customerId: userId,
           reason: dto.reason,
+          preferredResolution: dto.preferredResolution ?? (dto.reason === 'CHANGE_OF_MIND' ? 'REFUND' : 'EXCHANGE'),
           details: dto.details?.trim() || null,
           imageUrls: dto.imageUrls,
-          unboxingVideoUrl: dto.unboxingVideoUrl,
+          unboxingVideoUrl: dto.unboxingVideoUrl ?? null,
+          items: { create: requestedItems.map(item => ({
+            orderItemId: item.orderItemId,
+            quantity: item.quantity,
+            unitPrice: orderItemMap.get(item.orderItemId)!.unitPrice,
+          })) },
           deadlineAt,
           originalOrderStatus: order.status,
         },

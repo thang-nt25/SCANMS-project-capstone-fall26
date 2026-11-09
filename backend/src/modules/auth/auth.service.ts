@@ -506,119 +506,31 @@ export class AuthService {
       },
     });
 
-    // Nếu người dùng chưa tồn tại -> Tự động khởi tạo tài khoản mới (Mặc định: CUSTOMER)
+    // Signing in proves identity, not consent to become an affiliate or staff.
+    // New Google accounts start as customers. Partner onboarding is a separate
+    // explicit KYC workflow; internal staff are appointed by SYSTEM_ADMIN.
     if (!user) {
-      const requestedShopRole = dto.role === 'SHOP_MANAGER';
-      const desiredRole = requestedShopRole
-        ? UserRole.SHOP_MANAGER
-        : dto.role === 'COLLABORATOR'
-          ? UserRole.COLLABORATOR
-          : UserRole.CUSTOMER;
-
       const randomPassword = randomBytes(32).toString('base64url');
       const passwordHash = await this.hashPassword(randomPassword);
-
       const createdUser = await this.prisma.user.create({
         data: {
           email,
-          fullName:
-            payload.name ||
-            payload.given_name ||
-            (desiredRole === UserRole.CUSTOMER
-              ? 'Khách Hàng Google'
-              : 'KOL / CTV Google'),
+          fullName: payload.name || payload.given_name || 'Khách Hàng Google',
           passwordHash,
-          role: desiredRole,
+          role: UserRole.CUSTOMER,
           isActive: true,
+          auditLogs: { create: {
+            action: 'GOOGLE_CUSTOMER_REGISTERED',
+            details: { source: 'GOOGLE_LOGIN', assignedRole: 'CUSTOMER', requestedRole: dto.role ?? null },
+          } },
         },
       });
-
-      // Nếu là KOL: Tạo profile & ví hoa hồng
-      if (desiredRole === UserRole.COLLABORATOR) {
-        const bronzeTier = await this.prisma.collaboratorTier.findFirst({
-          where: { name: 'Đồng' },
-        });
-
-        const avatarUrl =
-          payload.picture ||
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
-
-        await this.prisma.collaboratorProfile.create({
-          data: {
-            userId: createdUser.id,
-            tierId: bronzeTier?.id || null,
-            avatarUrl,
-            bankName: '',
-            bankAccountNumber: '',
-            bankAccountName: createdUser.fullName,
-          },
-        });
-
-        await this.prisma.wallet.create({
-          data: {
-            collaboratorId: createdUser.id,
-            availableBalance: 0,
-            pendingBalance: 0,
-          },
-        });
-      } else if (requestedShopRole) {
-        // Nếu là Shop: Tạo store mặc định
-        const storeName =
-          dto.storeName?.trim() || `${createdUser.fullName} Store`;
-        const slug =
-          storeName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '') +
-          '-' +
-          Date.now().toString().slice(-4);
-
-        const logoUrl =
-          payload.picture ||
-          'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80';
-
-        await this.prisma.store.create({
-          data: {
-            ownerId: createdUser.id,
-            name: storeName,
-            slug,
-            logoUrl,
-            defaultCommissionRate: 10.0,
-            attributionWindowDays: 30,
-            isActive: false,
-            isVerified: false,
-            onboardingStatus: 'DRAFT',
-          },
-        });
-      }
-
-      // Nếu là Customer: Khởi tạo địa chỉ mặc định
-      if (desiredRole === UserRole.CUSTOMER) {
-        await this.prisma.customerAddress.create({
-          data: {
-            userId: createdUser.id,
-            fullName: createdUser.fullName,
-            provinceCode: '79',
-            provinceName: 'Thành phố Hồ Chí Minh',
-            districtCode: '769',
-            districtName: 'Thành phố Thủ Đức',
-            wardCode: '26848',
-            wardName: 'Phường Linh Trung',
-            detailAddress: 'Khu Công Nghệ Cao',
-            phoneNumber: '0901234567',
-            isDefault: true,
-          },
-        });
-      }
-
-      // Re-fetch user with relations
+      // Customers supply their own shipping address at checkout.
       user = await this.prisma.user.findUnique({
         where: { id: createdUser.id },
         include: {
           stores: { where: { isDeleted: false } },
-          collaboratorProfile: {
-            include: { tier: true },
-          },
+          collaboratorProfile: { include: { tier: true } },
           wallet: true,
         },
       });
@@ -628,8 +540,8 @@ export class AuthService {
       throw new BadRequestException('Không thể khởi tạo tài khoản');
     }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('Tài khoản đã bị tạm khóa');
+    if (!user.isActive || user.isDeleted) {
+      throw new UnauthorizedException('Tài khoản đã bị tạm khóa hoặc xóa');
     }
 
     // Tự động kích hoạt Email cảnh báo đăng nhập mới vào Gmail của người dùng

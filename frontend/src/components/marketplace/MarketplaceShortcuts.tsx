@@ -1,50 +1,50 @@
-import { Link } from 'react-router-dom';
-import { Radio, ShoppingBag, Sparkles, Store } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Radio, Tag, Store } from 'lucide-react';
 
-const shortcutBaseClassName =
-  'inline-flex min-w-0 items-center justify-center gap-2 rounded-lg text-center transition-[padding,min-height,background-color] duration-[180ms] ease-[ease] hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] motion-reduce:transition-none [&>svg]:shrink-0';
+export function MarketplaceShortcuts({ onOpenLive }: { onOpenLive: () => void; compact?: boolean }) {
+  const location = useLocation();
+  const storesActive = location.hash === '#featured-stores';
+  const discountsActive = location.pathname === '/search' && new URLSearchParams(location.search).get('discount') === 'true';
 
-export function MarketplaceShortcuts({
-  onOpenLive,
-  compact = false,
-}: {
-  onOpenLive: () => void;
-  compact?: boolean;
-}) {
-  const shortcutClassName = `${shortcutBaseClassName} ${compact ? 'min-h-10 flex-[0_0_auto] whitespace-nowrap px-2.5 py-1 sm:min-h-8 sm:px-2' : 'min-h-11 px-2 py-2.5'}`;
   return (
-    <nav
-      aria-label="Khám phá SCANMS"
-      className="border-b border-[#EAE4D7] bg-white"
-    >
-      <div
-        className={`mx-auto max-w-[1200px] items-stretch px-3 text-[11px] font-semibold text-[#7D715E] transition-[padding,gap] duration-[180ms] ease-[ease] motion-reduce:transition-none sm:px-4 lg:px-6 ${compact ? 'flex gap-1 overflow-x-auto overscroll-x-contain py-[3px] [scrollbar-width:thin] sm:grid sm:grid-cols-4' : 'grid grid-cols-2 gap-2 py-2 sm:grid-cols-4 sm:gap-3'}`}
+    <nav aria-label="Khám phá SCANMS" className="inline-flex items-center gap-0 py-[3px] px-2 bg-[#FAF5EC] rounded-full border border-[#E6D8C2] shadow-[0_4px_14px_rgba(70,45,15,0.06),0_1px_3px_rgba(0,0,0,0.02)]">
+      <Link
+        to="/marketplace#featured-stores"
+        aria-current={storesActive ? 'location' : undefined}
+        onClick={() => document.getElementById('featured-stores')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        className={`relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] border-0 bg-transparent cursor-pointer transition-colors duration-200 whitespace-nowrap ${
+          storesActive ? 'text-[#94621f] font-semibold' : 'text-[#63523e] font-medium hover:text-[#94621f]'
+        }`}
       >
-        <Link
-          to="/"
-          aria-current="page"
-          className={`${shortcutClassName} bg-[#FBF5EB] text-[#1A1612]`}
-        >
-          <ShoppingBag size={15} />
-          Kho sản phẩm & Chiến dịch
-        </Link>
-        <Link to="#featured-stores" className={shortcutClassName}>
-          <Store size={15} />
-          Nhãn hàng trực thuộc
-        </Link>
-        <button
-          type="button"
-          onClick={onOpenLive}
-          className={shortcutClassName}
-        >
-          <Radio size={15} className="text-[#B88E4F]" />
-          Khám phá Live KOC
-        </button>
-        <Link to="/search?commission=true" className={shortcutClassName}>
-          <Sparkles size={15} />
-          Sản phẩm tiếp thị KOC
-        </Link>
-      </div>
+        <Store size={14} className={storesActive ? 'text-[#94621f]' : 'text-[#85735f]'} aria-hidden="true" />
+        <span>Gian hàng</span>
+        {storesActive && <span className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-[26px] h-[2.5px] bg-[#B8862F] rounded-full" />}
+      </Link>
+
+      <span className="text-[#DEC9B0] text-[11px] font-light select-none px-0.5" aria-hidden="true">|</span>
+
+      <button
+        type="button"
+        onClick={onOpenLive}
+        className="relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] font-medium text-[#63523e] border-0 bg-transparent cursor-pointer transition-colors duration-200 hover:text-[#94621f] whitespace-nowrap"
+      >
+        <Radio size={14} className="text-[#85735f]" aria-hidden="true" />
+        <span>Live KOC</span>
+      </button>
+
+      <span className="text-[#DEC9B0] text-[11px] font-light select-none px-0.5" aria-hidden="true">|</span>
+
+      <Link
+        to="/search?discount=true&inStock=true"
+        aria-current={discountsActive ? 'page' : undefined}
+        className={`relative inline-flex items-center gap-1.5 py-1.5 px-3.5 no-underline rounded-full text-[13px] border-0 bg-transparent cursor-pointer transition-colors duration-200 whitespace-nowrap ${
+          discountsActive ? 'text-[#94621f] font-semibold' : 'text-[#63523e] font-medium hover:text-[#94621f]'
+        }`}
+      >
+        <Tag size={14} className={discountsActive ? 'text-[#94621f]' : 'text-[#85735f]'} aria-hidden="true" />
+        <span>Giảm giá</span>
+        {discountsActive && <span className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 w-[26px] h-[2.5px] bg-[#B8862F] rounded-full" />}
+      </Link>
     </nav>
   );
 }

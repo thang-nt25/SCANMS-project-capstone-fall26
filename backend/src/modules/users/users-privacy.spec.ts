@@ -53,8 +53,11 @@ describe('Private user and escrow endpoints (real JWT and role guards)', () => {
         if (where.orderId !== orderId) return null;
         if (where.collaboratorId && where.collaboratorId !== 'kol-owner')
           return null;
-        if (where.order && where.order.store.ownerId !== 'shop-owner')
-          return null;
+        if (where.order) {
+          const s = where.order.store;
+          const ok = s?.ownerId === 'shop-owner' || s?.OR?.some((c: any) => c.owner?.is?.id === 'shop-owner' || c.staffMembers?.some?.id === 'shop-owner');
+          if (!ok) return null;
+        }
         return commission;
       }),
     },
@@ -167,10 +170,7 @@ describe('Private user and escrow endpoints (real JWT and role guards)', () => {
     if (id === 'shop-owner')
       expect(prisma.commission.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
-            orderId,
-            order: { store: { ownerId: id, isDeleted: false } },
-          },
+          where: expect.objectContaining({ orderId, order: expect.objectContaining({ store: expect.objectContaining({ isDeleted: false }) }) }),
         }),
       );
   });

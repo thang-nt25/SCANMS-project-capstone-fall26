@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -84,6 +85,16 @@ export class AffiliateDealsController {
     @Body() dto: CreateShopDealOfferDto,
   ) {
     return this.service.createShopOffer(userId, role, dto);
+  }
+
+    @Get('collaborator-products')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @ApiOperation({ summary: 'Lấy danh sách sản phẩm kèm trạng thái Deal độc quyền hiện hành của KOL' })
+  getCollaboratorDealProducts(
+    @Query('collaboratorId') collaboratorId: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.getCollaboratorDealProducts(collaboratorId, storeId);
   }
 
   @Get('shop')
@@ -194,7 +205,27 @@ export class AffiliateDealsController {
     return this.service.rejectProposal(id, userId, role, dto.reason);
   }
 
-  @Post(':id/terminate')
+  
+  @Post(':id/settle')
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
+  @ApiOperation({
+    summary:
+      'Quyết toán Deal VIP khi KOC đạt chỉ tiêu KPI, giải phóng Quỹ Ký Quỹ Escrow sang số dư khả dụng',
+  })
+  settle(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.service.settleSuccessfulDeal(id, userId, role);
+  }
+
+@Post(':id/terminate')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary:

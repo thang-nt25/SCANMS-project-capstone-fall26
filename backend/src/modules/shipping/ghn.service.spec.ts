@@ -391,11 +391,19 @@ describe('GHN customer order notifications', () => {
       .rejects.toThrow('Phường/xã');
   });
 
+  it('does not contact GHN for an unconfirmed order', async () => {
+    const prisma = { order: { findUnique: jest.fn().mockResolvedValue({ status: OrderStatus.PENDING, rawPayload: {} }) } };
+    const service = new GhnService(prisma as any, {} as ConfigService);
+    const send = jest.spyOn(service as any, 'ghnFetch');
+    await expect(service.createShippingOrder('order')).rejects.toThrow('xác nhận đơn');
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('sends GHN the same weight and insured goods value used at checkout', async () => {
     const order = {
       id: 'order-1', storeId: 'store-1', status: OrderStatus.PENDING, externalOrderSn: 'SCANMS-1',
       customerName: 'Khách', customerPhone: '0912345678', shippingAddress: '12 Đường A',
-      customerId: null, rawPayload: { paymentMethod: 'COD' },
+      customerId: null, rawPayload: { shopConfirmedAt: '2026-01-01T00:00:00Z', paymentMethod: 'COD' },
       subtotalAmount: 200000, finalAmount: 225000,
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 2, unitPrice: 100000, product: { title: 'Sản phẩm A' } }],
@@ -414,7 +422,7 @@ describe('GHN customer order notifications', () => {
       id: 'order-staging', storeId: 'store-1', status: OrderStatus.PENDING,
       externalOrderSn: 'DH-STAGING-1', customerName: 'Khách', customerPhone: '0912345678',
       shippingAddress: '12 Đường A, Phường B, Quận C, Thành phố D', customerId: null,
-      rawPayload: { paymentMethod: 'WALLET' }, subtotalAmount: 200000, finalAmount: 200000,
+      rawPayload: { shopConfirmedAt: '2026-01-01T00:00:00Z', paymentMethod: 'WALLET' }, subtotalAmount: 200000, finalAmount: 200000,
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
@@ -463,7 +471,7 @@ describe('GHN customer order notifications', () => {
       id: 'order-limit', storeId: 'store-1', status: OrderStatus.PENDING,
       externalOrderSn: 'DH-LIMIT-1', customerName: 'Khách', customerPhone: '0912345678',
       shippingAddress: '12 Đường A, Phường B, Quận C, Thành phố D', customerId: null,
-      rawPayload: { paymentMethod: 'COD' }, subtotalAmount: 200000, finalAmount: 225000,
+      rawPayload: { shopConfirmedAt: '2026-01-01T00:00:00Z', paymentMethod: 'COD' }, subtotalAmount: 200000, finalAmount: 225000,
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
@@ -490,7 +498,7 @@ describe('GHN customer order notifications', () => {
       id: 'order-limit', storeId: 'store-1', status: OrderStatus.PENDING,
       externalOrderSn: 'DH-LIMIT-1', customerName: 'Khách', customerPhone: '0912345678',
       shippingAddress: '12 Đường A, Phường B, Quận C, Thành phố D', customerId: null,
-      rawPayload: { paymentMethod: 'COD' }, subtotalAmount: 200000, finalAmount: 225000,
+      rawPayload: { shopConfirmedAt: '2026-01-01T00:00:00Z', paymentMethod: 'COD' }, subtotalAmount: 200000, finalAmount: 225000,
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],
     };
@@ -514,7 +522,7 @@ describe('GHN customer order notifications', () => {
     const order = {
       id: 'order-1', storeId: 'store-1', status: OrderStatus.SHIPPING, externalOrderSn: 'DH-TEST-1',
       customerName: 'Khách', customerPhone: '0912345678', shippingAddress: '12 Đường A',
-      customerId: null, rawPayload: { paymentMethod: 'WALLET', trackingNumber: 'GHN-0ABFBVQ3K', carrierName: 'GHN Express' },
+      customerId: null, rawPayload: { shopConfirmedAt: '2026-01-01T00:00:00Z', paymentMethod: 'WALLET', trackingNumber: 'GHN-0ABFBVQ3K', carrierName: 'GHN Express' },
       subtotalAmount: 200000, finalAmount: 225000,
       store: { id: 'store-1', name: 'Shop A', onboardingData: { warehouseAddress: '12 Đường B', contactPhone: '0987654321' } },
       orderItems: [{ quantity: 1, unitPrice: 200000, product: { title: 'Sản phẩm A' } }],

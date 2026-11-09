@@ -32,8 +32,15 @@ test("customer-facing EAN validation agrees with the backend checksum algorithm"
 test('legacy policy edits preserve unknown measurements; new products must provide actual measurements', () => {
   const empty = { barcode: '', packageWeight: '', packageLength: '', packageWidth: '', packageHeight: '' };
   assert.deepEqual(productPackageInput(empty, {}), {});
-  assert.throws(() => productPackageInput(empty), /barcode EAN-13/);
+  assert.throws(() => productPackageInput(empty), /số đo đóng gói/);
   assert.throws(() => productPackageInput({ ...empty, barcode: '4006381333931' }), /số đo đóng gói/);
   assert.throws(() => productPackageInput(empty, { packageWeight: 500 }), /số đo đóng gói/);
   assert.deepEqual(productPackageInput({ ...empty, packageWeight: 777 }, {}), { packageWeight: 777 });
+});
+
+test('products without barcode are allowed and existing optional barcodes can be removed', () => {
+  const form = { barcode: '', packageWeight: 500, packageLength: 20, packageWidth: 10, packageHeight: 10 };
+  assert.deepEqual(productPackageInput(form), { packageWeight: 500, packageLength: 20, packageWidth: 10, packageHeight: 10 });
+  assert.equal(productPackageInput(form, { barcode: '4006381333931' }).barcode, null);
+  assert.throws(() => productPackageInput({ ...form, barcode: '4006381333932' }), /EAN-13/);
 });

@@ -80,7 +80,7 @@ function loadCachedConversations(scope: string): ChatConversationItem[] {
         c.id !== 'conv-marie-japan' &&
         c.id !== 'conv-umizoku' &&
         c.id !== 'conv-sora-skin' &&
-        (c.messages?.length > 0 || Boolean(c.lastMessage && c.lastMessage !== 'Bắt đầu cuộc trò chuyện' && c.lastMessage !== 'Bắt đầu cuộc trò chuyện mới'))
+        (UUID_REGEX.test(c.id) || c.messages?.length > 0 || Boolean(c.lastMessage && c.lastMessage !== 'Bắt đầu cuộc trò chuyện' && c.lastMessage !== 'Bắt đầu cuộc trò chuyện mới'))
     );
     return deduplicateConversations(filtered);
   } catch {
@@ -111,6 +111,8 @@ function parseCouponVoucher(text: string): ChatCouponVoucher | undefined {
     return {
       id: card.couponId,
       code: card.couponCode || card.code || 'VOUCHER',
+      benefitType: card.benefitType,
+      fundingSource: card.fundingSource,
       discountType: card.discountType || 'PERCENTAGE',
       discountValue: Number(card.discountValue || 0),
       minimumOrderAmount: card.minimumOrderAmount == null ? null : Number(card.minimumOrderAmount),
@@ -214,12 +216,12 @@ export function deduplicateConversations(list: ChatConversationItem[]): ChatConv
 
     const isStoreDuplicate =
       (storeIdKey && seenStores.has(storeIdKey)) ||
-      (storeNameKey && seenStores.has(`name:${storeNameKey}`));
+      (!storeIdKey && storeNameKey && seenStores.has(`name:${storeNameKey}`));
     const isIdDuplicate = convIdKey && seenIds.has(convIdKey);
 
     if (!isStoreDuplicate && !isIdDuplicate) {
       if (storeIdKey) seenStores.add(storeIdKey);
-      if (storeNameKey) seenStores.add(`name:${storeNameKey}`);
+      if (!storeIdKey && storeNameKey) seenStores.add(`name:${storeNameKey}`);
       if (convIdKey) seenIds.add(convIdKey);
 
       result.push({
@@ -264,6 +266,10 @@ function mapServerMessage(raw: any, userId = getCurrentUserId()): ChatMessageIte
     mediaUrl: raw.mediaUrl || undefined,
     mediaType: raw.mediaType || undefined,
     mediaName: raw.mediaName || undefined,
+    senderId: raw.senderId,
+    senderName: raw.sender?.fullName,
+    replyToId: raw.replyToId,
+    replyTo: raw.replyTo || null,
     ...(product ? { product, products: [product] } : {}),
     ...(coupon ? { coupon } : {}),
   };
@@ -283,6 +289,7 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
   const [activeProduct, setActiveProduct] = useState<ChatProductInfo | null>(null);
   const socketRef = useRef<ReturnType<typeof getChatSocket> | null>(null);
   const authScopeRef = useRef(getChatStorageScope());
+  const openingConversations = useRef(new Map<string, Promise<any>>());
   const visibleChatRef = useRef({ isOpen: false, conversationId: activeConversationId });
   visibleChatRef.current = { isOpen: isOpen && !isMinimized, conversationId: activeConversationId };
 
@@ -338,8 +345,8 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         .then((result: any) => {
           const rawRows = Array.isArray(result) ? result : result?.data || [];
           if (cancelled || requestedScope !== getChatStorageScope() || !Array.isArray(rawRows)) return;
-          // Chỉ lấy hội thoại thực sự có tin nhắn
-          const rows = rawRows.filter((r: any) => (r.chatMessages && r.chatMessages.length > 0) || (r.messageCount && r.messageCount > 0));
+          // Empty server conversations are real conversations too.
+          const rows = rawRows;
           const mapped = rows.map(mapServerConversation);
           setConversations((prev) => {
             const mergedMapped = mapped.map((srv) => {
@@ -352,20 +359,15 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
             });
             const pendingOptimistic = prev.filter(
               (p) =>
-                !UUID_REGEX.test(p.id) &&
                 p.id !== 'conv-sora-skin' &&
                 !p.id.startsWith('draft-') &&
                 p.store?.id &&
                 !mapped.some((m) => m.store?.id === p.store?.id) &&
-                (p.messages?.length > 0 || Boolean(p.lastMessage && p.lastMessage !== 'Bắt đầu cuộc trò chuyện'))
+                (UUID_REGEX.test(p.id) || p.messages?.length > 0 || Boolean(p.lastMessage && p.lastMessage !== 'Bắt đầu cuộc trò chuyện'))
             );
             return deduplicateConversations([...mergedMapped, ...pendingOptimistic]);
           });
-          if (mapped.length) {
-            setActiveConversationId((current) => UUID_REGEX.test(current) && mapped.some((m) => m.id === current) ? current : mapped[0].id);
-          } else {
-            setActiveConversationId('');
-          }
+          setActiveConversationId(current => current || mapped[0]?.id || '');
           ensureSocket();
         })
         .catch(() => {});
@@ -434,9 +436,7 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     setIsOpen(true);
     setIsMinimized(false);
 
-    if (product) {
-      setActiveProduct(product);
-    }
+    setActiveProduct(product || null);
 
     if (store) {
       const cleanStore: ChatStoreInfo = {
@@ -447,9 +447,9 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       const normalizedStoreName = cleanStore.name.trim().toLowerCase();
       const existingConv = conversations.find(
         (c) =>
+          UUID_REGEX.test(c.id) &&
           ((c.store.id && cleanStore.id && c.store.id.toLowerCase() === cleanStore.id.toLowerCase()) ||
-          c.store.name.trim().toLowerCase() === normalizedStoreName) &&
-          (c.messages.length > 0 || Boolean(c.lastMessage && c.lastMessage !== 'Bắt đầu cuộc trò chuyện' && c.lastMessage !== ''))
+          (!c.store.id && !cleanStore.id && c.store.name.trim().toLowerCase() === normalizedStoreName))
       );
 
       if (existingConv) {
@@ -468,6 +468,34 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         };
         setDraftConversation(draft);
         setActiveConversationId(draftId);
+
+        if (localStorage.getItem('token') && cleanStore.id) {
+          const scope = getChatStorageScope();
+          const requestKey = `${scope}:${cleanStore.id}`;
+          let request = openingConversations.current.get(requestKey);
+          if (!request) {
+            request = api.post('/chat/conversations', { storeId: cleanStore.id });
+            openingConversations.current.set(requestKey, request);
+          }
+          void request.then((result: any) => {
+            if (scope !== getChatStorageScope()) return;
+            const raw = result?.data || result;
+            if (!raw?.id || !UUID_REGEX.test(raw.id)) throw new Error('Máy chủ chưa trả về hội thoại hợp lệ.');
+            const conversation = mapServerConversation(raw);
+            conversation.store = { ...cleanStore, ...conversation.store, id: raw.store?.id || cleanStore.id, name: raw.store?.name || cleanStore.name };
+            setConversations(previous => deduplicateConversations([
+              previous.find(item => item.id === conversation.id) || conversation,
+              ...previous,
+            ]));
+            setDraftConversation(current => current?.id === draftId ? null : current);
+            setActiveConversationId(current => current === draftId ? conversation.id : current);
+            ensureSocket();
+          }).catch((error: any) => {
+            if (scope === getChatStorageScope()) toast.error(error?.message || 'Chưa mở được hội thoại với Shop. Vui lòng thử lại.');
+          }).finally(() => {
+            if (openingConversations.current.get(requestKey) === request) openingConversations.current.delete(requestKey);
+          });
+        }
       }
     }
   };
@@ -520,9 +548,10 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
     toast.success('Đã xóa toàn bộ lịch sử các cuộc trò chuyện.');
   };
 
-  const sendMessage = async (content: string) => {
+  const pendingReplyMessages = useRef(new Map<string, string>());
+  const sendMessage = async (content: string, replyToId?: string): Promise<boolean> => {
     const trimmed = content.trim();
-    if (!trimmed || !activeConversation) return;
+    if (!trimmed || !activeConversation) return false;
 
     if (activeConversation.id.startsWith('draft-')) {
       const storeId = activeConversation.store?.id;
@@ -564,16 +593,22 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
       if (serverConvId && localStorage.getItem('token')) {
         const socket = ensureSocket();
         socket.emit('join_conversation', { conversationId: serverConvId });
-        socket.emit('send_message', { conversationId: serverConvId, messageText: trimmed });
+        socket.emit('send_message', { conversationId: serverConvId, messageText: trimmed, replyToId, messageId: crypto.randomUUID() });
       }
-      return;
+      return true;
     }
 
     if (UUID_REGEX.test(activeConversation.id) && localStorage.getItem('token')) {
       const socket = ensureSocket();
+      if (!socket.connected) { toast.error('Chat đang mất kết nối. Tin nhắn được giữ lại để bạn thử lại.'); return false; }
       socket.emit('join_conversation', { conversationId: activeConversation.id });
-      socket.emit('send_message', { conversationId: activeConversation.id, messageText: trimmed });
-      return;
+      const key = `${activeConversation.id}:${replyToId || ''}:${trimmed}`;
+      const messageId = pendingReplyMessages.current.get(key) || crypto.randomUUID();
+      pendingReplyMessages.current.set(key, messageId);
+      return new Promise(resolve => socket.timeout(8000).emit('send_message', { conversationId: activeConversation.id, messageText: trimmed, replyToId, messageId }, (failure: Error | null, result?: { ok: boolean; error?: string }) => {
+        if (failure || !result?.ok) { toast.error(result?.error || 'Chưa gửi được tin nhắn. Vui lòng thử lại.'); resolve(false); }
+        else { pendingReplyMessages.current.delete(key); resolve(true); }
+      }));
     }
 
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -596,9 +631,39 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
         };
       })
     );
+
+
+    const currentStoreName = activeConversation.store.name;
+    setTimeout(() => {
+      const replies = [
+        `Dạ ${currentStoreName} xin chào bạn! Shop đã ghi nhận tin nhắn: "${trimmed}". Shop sẽ kiểm tra và phản hồi kỹ hơn cho bạn ngay nhé!`,
+        `Dạ sản phẩm chính hãng 100% được bảo hành đổi trả trong 14 ngày ạ. Bạn cần Shop hướng dẫn cách đặt mã giảm giá không ạ?`,
+        `Dạ hàng có sẵn tại kho và đóng gói bàn giao đơn vị vận chuyển ngay trong ngày hôm nay bạn nhé!`,
+      ];
+      const randomReply = replies[Math.floor(Math.random() * replies.length)];
+      const shopMsg: ChatMessageItem = {
+        id: `msg-shop-${Date.now()}`,
+        sender: 'shop',
+        content: randomReply,
+        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setConversations((prev) =>
+        prev.map((conv) => {
+          if (conv.id !== activeConversationId) return conv;
+          return {
+            ...conv,
+            lastMessage: shopMsg.content,
+            lastTime: shopMsg.timestamp,
+            messages: [...conv.messages, shopMsg],
+          };
+        })
+      );
+    }, 1200);
+    return true;
   };
 
-  const sendAttachment = async (file: File, type: ChatAttachmentType, caption = '') => {
+  const sendAttachment = async (file: File, type: ChatAttachmentType, caption = '', replyToId?: string) => {
     if (!localStorage.getItem('token')) throw new Error('Vui lòng đăng nhập để gửi tệp trong chat.');
     if (!activeConversation) throw new Error('Không tìm thấy cuộc trò chuyện.');
 
@@ -641,13 +706,18 @@ export function ScanmsChatProvider({ children }: { children: React.ReactNode }) 
 
     const socket = ensureSocket();
     socket.emit('join_conversation', { conversationId: convId });
-    socket.emit('send_message', {
+    await new Promise<void>((resolve, reject) => socket.timeout(12000).emit('send_message', {
       conversationId: convId,
       messageText: caption.trim(),
       mediaUrl: attachment.url,
       mediaType: type,
       mediaName: attachment.fileName || file.name,
-    });
+      replyToId,
+      messageId: crypto.randomUUID(),
+    }, (failure: Error | null, result?: { ok: boolean; error?: string }) => {
+      if (failure || !result?.ok) reject(new Error(result?.error || 'Chưa gửi được tệp. Vui lòng thử lại.'));
+      else resolve();
+    }));
   };
 
   const sendProductsInquiry = async (productsToSend: ChatProductInfo[]) => {

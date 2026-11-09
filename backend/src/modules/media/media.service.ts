@@ -97,6 +97,13 @@ export class MediaService {
       : null;
     if (cached) return cached;
 
+    if (query.scope === 'library' || query.scope === 'visual-library') {
+      where.status = 'APPROVED';
+    }
+    if (query.scope === 'visual-library') {
+      where.AND = [{ assetType: { in: ['VIDEO', 'IMAGE'] } }];
+    }
+
     if (query.productId) {
       where.productId = query.productId;
     }

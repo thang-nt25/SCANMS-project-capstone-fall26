@@ -23,6 +23,11 @@ export class ProductVariantInputDto {
   @MaxLength(100)
   sku: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(13)
+  barcode?: string | null;
+
   @IsString()
   @MaxLength(150)
   name: string;
@@ -33,7 +38,7 @@ export class ProductVariantInputDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(1, { message: 'Giá bán phân loại phải lớn hơn 0' })
   price?: number;
 
   @IsInt()

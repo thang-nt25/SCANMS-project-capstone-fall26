@@ -178,6 +178,7 @@ export class AiFraudService {
     let totalScannedClicks = 0;
     let potentialSavedAmount = 0;
     const countedCollaborators = new Set<string>();
+    const auditPromises: Promise<any>[] = [];
 
     for (const link of referralLinks) {
       const pendingAmount =
@@ -222,8 +223,8 @@ export class AiFraudService {
       if (analysis.riskScore >= 70) {
         const hash = createHash('sha256').update(`AI_FRAUD_FLAG:v1:${link.id}:${timeframe}:${now.toISOString().slice(0, 10)}`).digest('hex').slice(0, 32);
         const eventId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20)}`;
-        try {
-          await this.prisma.auditLog.upsert({
+        auditPromises.push(
+          this.prisma.auditLog.upsert({
             where: { eventId },
             update: {},
             create: {
@@ -232,10 +233,8 @@ export class AiFraudService {
               action: 'AI_FRAUD_FLAG',
               details: { incidentId, linkId: link.id, storeId: link.storeId, timeframe, totalClicks, totalOrders: totalOrdersCount, riskScore: analysis.riskScore, anomalies: analysis.anomalies, ruleVersion: 1 },
             },
-          });
-        } catch (e) {
-          this.logger.debug('Audit log record skipped', e);
-        }
+          }).catch((e: any) => this.logger.debug('Audit log record skipped', e))
+        );
       }
       if (analysis.riskScore >= 70 && !countedCollaborators.has(link.collaboratorId)) {
         potentialSavedAmount += pendingAmount;
@@ -275,6 +274,10 @@ export class AiFraudService {
       };
 
       incidents.push(incident);
+    }
+
+    if (auditPromises.length > 0) {
+      void Promise.allSettled(auditPromises);
     }
 
     // Sắp xếp các sự vụ theo điểm nguy cơ giảm dần

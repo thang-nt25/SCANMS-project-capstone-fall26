@@ -8,12 +8,20 @@ const source = readFileSync(new URL('../src/utils/media-pack.utils.ts', import.m
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace("import('jszip')", `import(${JSON.stringify(import.meta.resolve('jszip'))})`);
-const { buildMediaPack } = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(compiled)}`);
+const { buildMediaPack, downloadMediaFile } = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(compiled)}`);
 const asset = (id, assetType, urlOrContent, title = 'Mẫu / tài nguyên') => ({
   id, assetType, urlOrContent, title, storeId: 'shop', status: 'APPROVED',
   createdAt: '2026-10-08', store: { name: 'Gian hàng A', slug: 'a' },
 });
 const options = { baseUrl: 'https://scanms.vn/collaborator/marketing?tab=media' };
+
+test('single downloads reject streaming pages and HTML instead of claiming a saved file', async () => {
+  await assert.rejects(downloadMediaFile(asset('1', 'VIDEO', 'https://youtube.com/watch?v=x'), options.baseUrl), /trực tuyến/);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<html>Login</html>', { headers: { 'content-type': 'text/html' } });
+  try { await assert.rejects(downloadMediaFile(asset('1', 'IMAGE', '/image.jpg'), options.baseUrl), /không trả về/); }
+  finally { globalThis.fetch = originalFetch; }
+});
 
 test('ZIP contains real image/video bytes, UTF-8 scripts and unique safe filenames', async () => {
   const originalFetch = globalThis.fetch;

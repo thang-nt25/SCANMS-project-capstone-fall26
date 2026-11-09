@@ -1,31 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Tag,
-  Ticket,
-  Plus,
-  Copy,
-  Check,
-  Pause,
-  Play,
-  Trash2,
-  Search,
-  Store,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Percent,
-  Loader2,
-  Sparkles,
-  ChevronDown,
-  DollarSign,
-} from 'lucide-react';
+import { Tag, Ticket, Plus, Copy, Check, Pause, Play, Trash2, Search, Store, AlertCircle, Clock, CheckCircle2, XCircle, Percent, Loader2, ChevronDown, X, DollarSign } from 'lucide-react';
 import {
   couponService,
   type CouponItem,
   type CouponStatus,
-  type DiscountType,
-  type CouponScope,
 } from '../../services/coupon.service';
 import { toast as sonnerToast } from '../../utils/toast';
 import api from '../../services/api';
@@ -93,7 +71,7 @@ const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: str
     border: 'border-red-200',
   },
   EXPIRED: {
-    label: 'Hết hạn',
+    label: 'Đã thay thế / Hết hạn',
     bg: 'bg-stone-100',
     text: 'text-stone-500',
     border: 'border-stone-200',
@@ -121,6 +99,7 @@ export const KolCouponsPage: React.FC = () => {
     activeCoupons: number;
   }>({ totalSales: 0, totalCommission: 0, totalOrders: 0, activeCoupons: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -132,27 +111,10 @@ export const KolCouponsPage: React.FC = () => {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const storeDropdownRef = useRef<HTMLDivElement>(null);
   const [proposeCode, setProposeCode] = useState('');
-  const [proposeDiscountType, setProposeDiscountType] = useState<DiscountType>('PERCENTAGE');
-  const [proposeDesiredPercent, setProposeDesiredPercent] = useState<number>(15);
-  const [proposeFixedAmount, setProposeFixedAmount] = useState<number>(30000);
-  const [proposeMaxDiscount, setProposeMaxDiscount] = useState<number>(50000);
-  const [proposeMinOrder, setProposeMinOrder] = useState<number>(150000);
-  const [proposeValidityDays, setProposeValidityDays] = useState<number>(30);
-  const [proposeScopeType, setProposeScopeType] = useState<CouponScope>('STORE_WIDE');
   const [proposeNote, setProposeNote] = useState<string>('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
-
-  const handleNumericInput = (rawText: string, setter: (val: number) => void) => {
-    const digits = rawText.replace(/\D/g, '');
-    if (!digits) {
-      setter(0);
-      return;
-    }
-    const parsed = parseInt(digits, 10);
-    setter(Number.isNaN(parsed) ? 0 : parsed);
-  };
 
 
   const selectedStore = approvedStores.find(
@@ -291,6 +253,7 @@ export const KolCouponsPage: React.FC = () => {
         ? res.data
         : (Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res) ? res : []));
       setCoupons(list);
+      setLoadError('');
       const sum = res?.summary || res?.data?.summary;
       if (sum) {
         setSummary(sum);
@@ -300,6 +263,7 @@ export const KolCouponsPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Lỗi khi tải danh sách coupon của KOL:', err);
+      setLoadError('Không tải được danh sách mã giảm giá. Vui lòng thử lại.');
       if (retryCount < 2) {
         setTimeout(() => fetchCoupons(retryCount + 1), 400);
       }
@@ -328,11 +292,15 @@ export const KolCouponsPage: React.FC = () => {
   };
   fetchApprovedStoresRef.current = fetchApprovedStores;
 
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    sonnerToast.success('Đã sao chép mã giảm giá!');
-    setTimeout(() => setCopiedCode(null), 2500);
+  const handleCopy = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      sonnerToast.success('Đã sao chép mã giảm giá!');
+      setTimeout(() => setCopiedCode(null), 2500);
+    } catch {
+      sonnerToast.error('Không thể sao chép mã giảm giá. Vui lòng thử lại.');
+    }
   };
 
   const handleTogglePause = async (coupon: CouponItem) => {
@@ -399,37 +367,28 @@ export const KolCouponsPage: React.FC = () => {
       setModalLoading(true);
       setModalError(null);
 
-      const startsAt = new Date().toISOString();
-      const expiresAt = proposeValidityDays > 0
-        ? new Date(Date.now() + proposeValidityDays * 24 * 60 * 60 * 1000).toISOString()
-        : undefined;
-
       await couponService.proposeCoupon({
         storeId: selectedStoreId,
         code: trimmedCode,
-        discountType: proposeDiscountType,
-        discountValue: proposeDiscountType === 'PERCENTAGE' ? proposeDesiredPercent : proposeFixedAmount,
-        minimumOrderAmount: proposeMinOrder > 0 ? proposeMinOrder : undefined,
-        maximumDiscountAmount: proposeDiscountType === 'PERCENTAGE' && proposeMaxDiscount > 0 ? proposeMaxDiscount : undefined,
-        startsAt,
-        expiresAt,
-        scopeType: proposeScopeType,
+        discountType: 'PERCENTAGE',
+        discountValue: 10,
+        scopeType: 'STORE_WIDE',
         note: proposeNote.trim() || undefined,
       });
 
-
       setModalSuccess(
-        `Đề xuất mã "${trimmedCode}" thành công! Đang chuyển tiếp...`,
+        `Đề xuất tên mã "${trimmedCode}" thành công! Đang chuyển tiếp...`,
       );
       setTimeout(() => {
         setIsModalOpen(false);
         setModalSuccess(null);
         setProposeCode('');
+        setProposeNote('');
         fetchCoupons();
         showToast(
           'success',
-          'Đã gửi đề xuất mã thành công!',
-          `Mã "${trimmedCode}" đã được gửi tới Gian hàng và đang chờ cấu hình ưu đãi xét duyệt.`,
+          'Đã gửi đề xuất tên mã thành công!',
+          `Tên mã định danh "${trimmedCode}" đã được gửi tới Quản lý gian hàng để duyệt kích hoạt (áp dụng toàn shop).`,
         );
       }, 500);
     } catch (err: any) {
@@ -470,10 +429,10 @@ export const KolCouponsPage: React.FC = () => {
   );
 
   return (
-    <div className="kol-coupon-page min-h-screen h-full overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6 lg:p-8 text-[#1A1612]">
+    <div className="kol-coupon-page text-[#1A1612]">
 
-      <div className="kol-coupon-content max-w-[1520px] mx-auto mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="kol-coupon-content">
+        <div className="kol-coupon-summary grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
@@ -527,7 +486,7 @@ export const KolCouponsPage: React.FC = () => {
         </div>
 
 
-        <div className="kol-coupon-toolbar bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs mb-6">
+        <div className="kol-coupon-toolbar bg-white p-4 rounded-xl border border-[#EAE4D7] shadow-xs">
           <div className="kol-coupon-search relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
             <input
@@ -566,7 +525,9 @@ export const KolCouponsPage: React.FC = () => {
         </div>
 
 
-        {loading ? (
+        {loadError ? (
+          <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-xs text-[#7D715E]">{loadError}<button type="button" onClick={() => void fetchCoupons()} className="ml-2 text-[#B88E4F] underline">Thử lại</button></div>
+        ) : loading ? (
           <div className="bg-white rounded-xl border border-[#EAE4D7] p-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-[#B88E4F] mx-auto mb-3" />
             <p className="text-sm text-[#7D715E]">
@@ -593,7 +554,7 @@ export const KolCouponsPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="kol-coupon-grid">
             {filteredCoupons.map((coupon) => {
               const statusCfg =
                 STATUS_LABELS[coupon.status] || STATUS_LABELS.PENDING_APPROVAL;
@@ -604,7 +565,8 @@ export const KolCouponsPage: React.FC = () => {
               return (
                 <div
                   key={coupon.id}
-                  className="bg-white rounded-2xl border border-[#EAE4D7] shadow-xs hover:border-[#C59B58] hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+
+                  className="kol-coupon-card bg-white rounded-2xl border border-[#EAE4D7] shadow-xs hover:border-[#C59B58] hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
                 >
                   {/* Top Ticket Header */}
                   <div className="bg-gradient-to-br from-[#FAF8F5] via-[#FBF5EB] to-[#F3EFE6] p-4 pb-4 border-b border-dashed border-[#EEDFC6] relative">
@@ -623,8 +585,9 @@ export const KolCouponsPage: React.FC = () => {
                       </span>
                     </div>
 
+
                     {/* Voucher Code Box */}
-                    <div className="flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
+                    <div className="kol-coupon-code flex items-center justify-between gap-2 bg-white/95 border border-[#EEDFC6] rounded-xl px-3 py-2 shadow-2xs">
                       <div className="min-w-0 flex-1">
                         <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#7D715E] block">
                           MÃ VOUCHER ĐỘC QUYỀN
@@ -658,8 +621,9 @@ export const KolCouponsPage: React.FC = () => {
                     <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-[#FAF8F5] rounded-full border border-[#EAE4D7]" />
                   </div>
 
+
                   {/* Bottom Ticket Body */}
-                  <div className="p-4 pt-3 flex flex-col justify-between flex-1">
+                  <div className="kol-coupon-details p-4 pt-3 flex flex-col justify-between flex-1">
                     <div className="space-y-2 mb-4 text-xs text-[#7D715E]">
                       {coupon.status === 'PENDING_APPROVAL' ? (
                         <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80 flex items-start gap-2">
@@ -746,7 +710,8 @@ export const KolCouponsPage: React.FC = () => {
                     </div>
 
                     {(coupon.status === 'ACTIVE' || coupon.status === 'PAUSED') && (
-                      <div className="mb-4 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
+
+                      <div className="kol-coupon-earnings mb-4 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[#7D715E]">Doanh số tạo ra:</span>
                           <span className="font-bold text-[#1A1612]">
@@ -814,19 +779,17 @@ export const KolCouponsPage: React.FC = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/35 p-4 backdrop-blur-xs overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col text-left">
-            <div className="px-5 py-4 border-b border-[#EAE4D7] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
+
+          <div role="dialog" aria-modal="true" aria-labelledby="coupon-proposal-title" className="kol-coupon-proposal bg-white w-full max-w-lg rounded-2xl border border-[#EAE4D7] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto max-h-[92vh] flex flex-col text-left">
+            <div className="kol-coupon-proposal-heading px-5 py-4 border-b border-[#EAE4D7] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]" aria-hidden="true">
                   <Ticket className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
                   <h3 id="coupon-proposal-title" className="text-sm sm:text-base font-bold text-[#1A1612]">
-                    Đề xuất mã giảm giá riêng
+                    Đề xuất mã ưu đãi
                   </h3>
-                  <p className="text-xs text-[#7D715E] mt-0.5">
-                    Tạo mã ưu đãi mang dấu ấn thương hiệu cá nhân của bạn.
-                  </p>
                 </div>
               </div>
               <button
@@ -835,11 +798,12 @@ export const KolCouponsPage: React.FC = () => {
                 aria-label="Đóng đề xuất mã giảm giá"
                 className="text-[#7D715E] hover:text-[#1A1612] p-1.5 rounded-lg hover:bg-[#F3EFE6] transition-colors cursor-pointer"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleProposeSubmit} className="overflow-y-auto p-5 space-y-4">
+
+            <form onSubmit={handleProposeSubmit} className="kol-coupon-proposal-form overflow-y-auto p-5 space-y-4">
               {modalError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -936,18 +900,16 @@ export const KolCouponsPage: React.FC = () => {
                   </div>
                 )}
 
-                <span className="text-[11px] text-[#7D715E] mt-1 block">
-                  Chỉ hiển thị gian hàng đã duyệt hợp tác với bạn.
-                </span>
               </div>
 
 
-              <div className="space-y-4">
+
+              <div className="kol-coupon-proposal-code space-y-4">
                 {/* 1. Nhập mã voucher */}
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <label htmlFor="coupon-proposal-code" className="block text-xs font-semibold text-[#1A1612]">
-                      Mã giảm giá đề xuất <span className="text-[#DC2626]">*</span>
+                      Mã ưu đãi mong muốn <span className="text-[#DC2626]">*</span>
                     </label>
                     <span className="text-[11px] font-medium text-[#7D715E]">
                       {proposeCode.length}/20 ký tự
@@ -998,233 +960,32 @@ export const KolCouponsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. Cấu hình điều kiện ưu đãi đề xuất */}
-                <div className="space-y-3 pt-1 border-t border-[#EAE4D7]">
-                  {/* Hình thức giảm giá */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1.5">
-                      Hình thức giảm giá mong muốn
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setProposeDiscountType('PERCENTAGE')}
-                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                          proposeDiscountType === 'PERCENTAGE'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
-                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
-                        }`}
-                      >
-                        <Percent className="w-3.5 h-3.5" />
-                        <span>Giảm theo phần trăm (%)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setProposeDiscountType('FIXED_AMOUNT')}
-                        className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                          proposeDiscountType === 'FIXED_AMOUNT'
-                            ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]/30 shadow-2xs'
-                            : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] hover:bg-white'
-                        }`}
-                      >
-                        <DollarSign className="w-3.5 h-3.5" />
-                        <span>Giảm tiền cố định (VNĐ)</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Giá trị giảm */}
-                  {proposeDiscountType === 'PERCENTAGE' ? (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Mức giảm (%)
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={5}
-                            max={50}
-                            value={proposeDesiredPercent || ''}
-                            onChange={(e) => setProposeDesiredPercent(Number(e.target.value) || 0)}
-                            className="w-full px-3 py-2 text-xs font-bold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                            placeholder="15"
-                          />
-                          <span className="text-xs font-bold text-[#7D715E]">%</span>
-                        </div>
-                        <div className="flex gap-1 mt-1">
-                          {[10, 15, 20, 25].map((pct) => (
-                            <button
-                              key={pct}
-                              type="button"
-                              onClick={() => setProposeDesiredPercent(pct)}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                                proposeDesiredPercent === pct
-                                  ? 'bg-[#B88E4F] text-white'
-                                  : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
-                              }`}
-                            >
-                              {pct}%
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                          Giảm tối đa (VNĐ)
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={proposeMaxDiscount ? String(proposeMaxDiscount) : ''}
-                          onChange={(e) => handleNumericInput(e.target.value, setProposeMaxDiscount)}
-                          placeholder="50000"
-                          className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                        />
-                        <div className="flex items-center justify-between text-[10px] mt-0.5">
-                          <span className="text-[#7D715E]">Trần giảm bảo vệ Shop</span>
-                          {proposeMaxDiscount > 0 && (
-                            <span className="font-bold text-[#B88E4F] font-mono">
-                              {proposeMaxDiscount.toLocaleString('vi-VN')} ₫
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        Số tiền giảm cố định (VNĐ)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={proposeFixedAmount ? String(proposeFixedAmount) : ''}
-                        onChange={(e) => handleNumericInput(e.target.value, setProposeFixedAmount)}
-                        placeholder="30000"
-                        className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                      />
-                      {proposeFixedAmount > 0 && (
-                        <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
-                          Quy đổi: {proposeFixedAmount.toLocaleString('vi-VN')} ₫
-                        </div>
-                      )}
-                      <div className="flex gap-1.5 mt-1">
-                        {[20000, 30000, 50000, 100000].map((amt) => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => setProposeFixedAmount(amt)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                              proposeFixedAmount === amt
-                                ? 'bg-[#B88E4F] text-white'
-                                : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
-                            }`}
-                          >
-                            {(amt / 1000).toLocaleString('vi-VN')}K
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Giá trị đơn tối thiểu */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                      Giá trị đơn hàng tối thiểu (VNĐ)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={proposeMinOrder ? String(proposeMinOrder) : ''}
-                      onChange={(e) => handleNumericInput(e.target.value, setProposeMinOrder)}
-                      placeholder="150000"
-                      className="w-full px-3 py-2 text-xs font-bold font-mono bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                    />
-                    {proposeMinOrder > 0 && (
-                      <div className="text-[10px] text-[#B88E4F] font-bold font-mono mt-0.5">
-                        Áp dụng đơn từ: {proposeMinOrder.toLocaleString('vi-VN')} ₫
-                      </div>
-                    )}
-                    <div className="flex gap-1.5 mt-1 flex-wrap">
-                      {[0, 100000, 150000, 200000, 300000].map((amt) => (
-                        <button
-                          key={amt}
-                          type="button"
-                          onClick={() => setProposeMinOrder(amt)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                            proposeMinOrder === amt
-                              ? 'bg-[#B88E4F] text-white'
-                              : 'bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] hover:bg-white'
-                          }`}
-                        >
-                          {amt === 0 ? 'Không giới hạn' : `${(amt / 1000).toLocaleString('vi-VN')}K`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Phạm vi & Thời hạn */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        Phạm vi áp dụng
-                      </label>
-                      <select
-                        value={proposeScopeType}
-                        onChange={(e) => setProposeScopeType(e.target.value as CouponScope)}
-                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                      >
-                        <option value="STORE_WIDE">Toàn bộ gian hàng</option>
-                        <option value="PRODUCTS">Sản phẩm review chỉ định</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        Thời hạn hiệu lực
-                      </label>
-                      <select
-                        value={proposeValidityDays}
-                        onChange={(e) => setProposeValidityDays(Number(e.target.value))}
-                        className="w-full px-2.5 py-2 text-xs font-semibold bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none"
-                      >
-                        <option value={14}>14 ngày (Đợt review)</option>
-                        <option value={30}>30 ngày (Tháng này)</option>
-                        <option value={60}>60 ngày (Dài hạn)</option>
-                        <option value={0}>Vô thời hạn</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Cam kết review */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                      Kế hoạch đẩy số / Mục đích sử dụng
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={proposeNote}
-                      onChange={(e) => setProposeNote(e.target.value)}
-                      placeholder="VD: Em chuẩn bị lên video review trên TikTok và ghim mã trong giỏ hàng..."
-                      className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none resize-none"
-                    />
-                  </div>
+                {/* 2. Ghi chú gửi Quản lý Gian hàng (Tùy chọn) */}
+                <div>
+                  <label htmlFor="coupon-proposal-note" className="block text-xs font-semibold text-[#1A1612] mb-1">
+                    Ghi chú <span className="text-[#7D715E] font-normal">(tùy chọn)</span>
+                  </label>
+                  <textarea
+                    id="coupon-proposal-note"
+                    rows={2}
+                    value={proposeNote}
+                    onChange={(e) => setProposeNote(e.target.value)}
+                    placeholder="Nhập ghi chú cho quản lý gian hàng..."
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl focus:border-[#C59B58] focus:bg-white outline-none resize-none"
+                  />
                 </div>
 
-                {/* 3. LIVE INTERACTIVE VOUCHER PREVIEW (Vé Ưu Đãi Trực Quan Thời Gian Thực) */}
+                {/* 3. Xem trước mã định danh đối tác toàn shop */}
                 <div className="pt-1">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-[#7D715E] mb-1.5">
                     <span className="flex items-center gap-1 text-[#B88E4F]">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Xem trước hiển thị trên App khách hàng</span>
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Xem trước</span>
                     </span>
-                    <span>Bản mẫu ưu đãi</span>
+                    <span>Áp dụng toàn gian hàng</span>
                   </div>
 
                   <div className="relative rounded-2xl border border-[#EEDFC6] bg-gradient-to-r from-[#FBF5EB] via-[#FAF8F5] to-[#FBF5EB] p-3.5 shadow-2xs overflow-hidden">
-                    {/* Đường rãnh vé khuyết 2 bên */}
                     <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border border-[#EEDFC6]" />
                     <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border border-[#EEDFC6]" />
 
@@ -1232,19 +993,13 @@ export const KolCouponsPage: React.FC = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#B88E4F] uppercase tracking-wider">
                           <Ticket className="w-3.5 h-3.5" />
-                          <span>Voucher Độc Quyền KOL</span>
+                          <span>Mã ưu đãi (Toàn shop)</span>
                         </div>
                         <div className="mt-1 text-base sm:text-lg font-black tracking-widest text-[#1A1612] truncate font-sans">
                           {trimmedCode || 'THANGVIP10'}
                         </div>
                         <div className="text-[11px] text-[#7D715E] mt-0.5 truncate">
-                          Áp dụng tại: <strong>{selectedStore?.name || selectedStore?.storeName || 'Gian hàng đối tác'}</strong>
-                        </div>
-                        <div className="text-[10px] text-[#B88E4F] font-semibold mt-0.5">
-                          {proposeDiscountType === 'PERCENTAGE'
-                            ? `Giảm ${proposeDesiredPercent}%${proposeMaxDiscount ? ` (Tối đa ${(proposeMaxDiscount / 1000).toLocaleString('vi-VN')}K)` : ''}`
-                            : `Giảm ${(proposeFixedAmount / 1000).toLocaleString('vi-VN')}K₫`}
-                          {proposeMinOrder > 0 ? ` · Đơn từ ${(proposeMinOrder / 1000).toLocaleString('vi-VN')}K` : ''}
+                          Gian hàng: <strong>{selectedStore?.name || selectedStore?.storeName || 'Gian hàng đối tác'}</strong>
                         </div>
                       </div>
 
@@ -1253,7 +1008,7 @@ export const KolCouponsPage: React.FC = () => {
                           Chờ duyệt
                         </span>
                         <div className="text-[10px] text-[#7D715E] mt-1">
-                          {proposeValidityDays > 0 ? `${proposeValidityDays} ngày` : 'Dài hạn'}
+                          Toàn bộ sản phẩm
                         </div>
                       </div>
                     </div>
@@ -1263,30 +1018,26 @@ export const KolCouponsPage: React.FC = () => {
                 {/* 4. Kiểm tra điều kiện mã trực quan (Real-time Checklist) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
                   <div className={`flex items-center gap-1.5 ${isLengthValid ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{isLengthValid ? '✓' : '•'}</span>
+                    {isLengthValid ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Từ 4 đến 20 ký tự</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${isAlphanumeric && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{isAlphanumeric && proposeCode ? '✓' : '•'}</span>
+                    {isAlphanumeric && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Chỉ dùng chữ cái & số</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{hasLetter ? '✓' : '•'}</span>
+                    {hasLetter ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Có ít nhất 1 chữ cái</span>
                   </div>
                   <div className={`flex items-center gap-1.5 ${!isBanned && proposeCode ? 'text-emerald-700 font-medium' : 'text-[#7D715E]'}`}>
-                    <span>{!isBanned && proposeCode ? '✓' : '•'}</span>
+                    {!isBanned && proposeCode ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-[#A79B89] inline-block shrink-0 mx-1" />}
                     <span>Không chứa từ khóa cấm</span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] text-[#7D715E]">
-                  <Clock className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                  <span>Sau khi gửi, Chủ Shop sẽ thiết lập hạn mức giảm (10% - 20%) và ngân sách kích hoạt mã.</span>
-                </div>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+              <div className="kol-coupon-proposal-footer pt-4 mt-2 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -1305,7 +1056,7 @@ export const KolCouponsPage: React.FC = () => {
                       <span>Đang gửi đề xuất...</span>
                     </>
                   ) : (
-                    <span>Gửi đề xuất mã</span>
+                    <span>Gửi đề xuất</span>
                   )}
                 </button>
               </div>
@@ -1372,7 +1123,7 @@ export const KolCouponsPage: React.FC = () => {
             ) : toast.type === 'error' ? (
               <AlertCircle className="w-5 h-5 text-red-600" />
             ) : (
-              <Sparkles className="w-5 h-5 text-[#B88E4F]" />
+              <Ticket className="w-5 h-5 text-[#B88E4F]" />
             )}
           </div>
 
@@ -1393,7 +1144,7 @@ export const KolCouponsPage: React.FC = () => {
             className="text-[#7D715E] hover:text-[#1A1612] p-1 rounded-lg hover:bg-[#F3EFE6] transition-colors cursor-pointer shrink-0 -mr-1 -mt-1"
             title="Đóng thông báo"
           >
-            ✕
+            <X size={15} />
           </button>
         </div>
       )}

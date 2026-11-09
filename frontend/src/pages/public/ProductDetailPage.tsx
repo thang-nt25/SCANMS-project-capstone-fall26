@@ -5,7 +5,6 @@ import {
   ShoppingBag,
   ShieldCheck,
   Truck,
-  CheckCircle2,
   ArrowRight,
   Star,
   Play,
@@ -30,7 +29,6 @@ import {
   Store,
   MessageSquare,
   Package,
-  Ticket,
   Handshake,
 } from 'lucide-react';
 import api from '@/services/api';
@@ -38,7 +36,6 @@ import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
-import { couponService, type EligibleProductCoupon, type PublicStoreCoupon } from '@/services/coupon.service';
 import { toast } from '@/utils/toast';
 import { useCart } from '@/context/CartContext';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
@@ -408,7 +405,7 @@ export default function ProductDetailPage() {
   const [variantSelectionRequired, setVariantSelectionRequired] = useState(false);
   const variantOptionsRef = useRef<HTMLDivElement | null>(null);
 
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number>(1);
 
 
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -429,67 +426,11 @@ export default function ProductDetailPage() {
     description?: string;
   } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [couponSuggestions, setCouponSuggestions] = useState<{ key: string; status: 'idle' | 'loading' | 'ready' | 'error'; items: EligibleProductCoupon[] }>({ key: '', status: 'idle', items: [] });
-  const [showAllCoupons, setShowAllCoupons] = useState(false);
-  const [couponRefresh, setCouponRefresh] = useState(0);
   const couponRequest = useRef(0);
   const couponContextKey = `${data?.product?.id ?? ''}|${selectedVariant?.id ?? ''}|${quantity}|${selectedVariant?.price ?? data?.product?.price ?? 0}`;
   const couponContextRef = useRef(couponContextKey);
   couponContextRef.current = couponContextKey;
   useEffect(() => { setAppliedCoupon(null); setCouponError(null); }, [couponContextKey]);
-
-  const [publicStoreCoupons, setPublicStoreCoupons] = useState<PublicStoreCoupon[]>([]);
-
-  useEffect(() => {
-    if (!data?.store?.id) return;
-    let active = true;
-    couponService.getPublicStoreCoupons(data.store.id, data.product?.id)
-      .then(items => { if (active) setPublicStoreCoupons(items); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [data?.store?.id, data?.product?.id]);
-
-  const availableStoreCoupons = couponSuggestions.key === couponContextKey ? couponSuggestions.items : [];
-  const displayVouchers = availableStoreCoupons.length > 0
-    ? availableStoreCoupons
-    : publicStoreCoupons.map((c) => ({
-        id: c.id,
-        displayCode: c.code,
-        code: c.code,
-        discountType: c.discountType,
-        discountValue: c.discountValue,
-        discountAmount: c.discountValue,
-        minimumOrderAmount: c.minimumOrderAmount || 0,
-      }));
-  // Recheck the same server rules used by Apply, with real SKU prices and account usage.
-  useEffect(() => {
-    setShowAllCoupons(false);
-    if (!data?.store?.id || !data.product ||
-        (resolveProductVariants(data.product).length > 0 && !selectedVariant)) {
-      setCouponSuggestions({ key: couponContextKey, status: 'idle', items: [] });
-      return;
-    }
-    let active = true;
-    const controller = new AbortController();
-    setCouponSuggestions({ key: couponContextKey, status: 'loading', items: [] });
-    const timer = window.setTimeout(() => {
-      couponService.getEligibleProductCoupons(data.store.id, {
-        productId: data.product.id, variantId: selectedVariant?.id, quantity,
-      }, controller.signal).then(items => {
-        if (active) setCouponSuggestions({ key: couponContextKey, status: 'ready', items });
-      }).catch(() => {
-        if (active) setCouponSuggestions({ key: couponContextKey, status: 'error', items: [] });
-      });
-    }, 250);
-    return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [data?.store?.id, data?.product?.id, selectedVariant?.id, quantity, couponContextKey, currentUser?.id, couponRefresh]);
-
-  useEffect(() => {
-    const refresh = () => { if (!document.hidden) setCouponRefresh(value => value + 1); };
-    window.addEventListener('focus', refresh);
-    const timer = window.setInterval(refresh, 60000);
-    return () => { window.removeEventListener('focus', refresh); clearInterval(timer); };
-  }, []);
 
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1123,7 +1064,8 @@ export default function ProductDetailPage() {
     : data?.product?.sampleAvailable === true;
 
   const unitPrice = currentPrice;
-  const subtotal = unitPrice * quantity;
+  const safeQuantity = Number(quantity) || 1;
+  const subtotal = unitPrice * safeQuantity;
   const verifiedCoupon = appliedCoupon?.contextKey === couponContextKey ? appliedCoupon : null;
   const discountAmount = verifiedCoupon ? Math.min(subtotal, verifiedCoupon.discountAmount) : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount);
@@ -1161,7 +1103,7 @@ export default function ProductDetailPage() {
         policyShipping: policies?.shipping,
       },
       variantId: selectedVariant?.id,
-      quantity,
+      quantity: safeQuantity,
       openCartAfterAdd: true,
     });
     toast.success('Đã thêm sản phẩm vào giỏ hàng thành công!');
@@ -1519,65 +1461,6 @@ export default function ProductDetailPage() {
               />
               <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponDirectly} />
 
-              {/* Mã độc quyền KOL (Hiển thị ngay dưới Khối giá) */}
-              {displayVouchers.length > 0 && (
-                <div data-product-price-vouchers className="flex items-center gap-4 py-3 border-t border-[#EAE4D7]/80">
-                  <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium flex items-center gap-1.5">
-                    <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
-                    Mã giảm giá
-                  </span>
-                  <div className="flex-1 flex flex-wrap items-center gap-2">
-                    {displayVouchers.slice(0, 3).map((vc) => {
-                      const isApplied = verifiedCoupon?.code === vc.displayCode;
-                      const label = vc.discountType === 'PERCENTAGE'
-                        ? `Giảm ${vc.discountValue || 0}%`
-                        : `Giảm ${Number(vc.discountAmount || vc.discountValue || 0).toLocaleString('vi-VN')}₫`;
-                      return (
-                        <div
-                          key={vc.id}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
-                            isApplied
-                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6B32]'
-                              : 'bg-white border-[#EEDFC6] text-[#1A1612] hover:border-[#C59B58]'
-                          }`}
-                        >
-                          <span className="font-bold text-[#8C6B32]">{label}</span>
-                          <span className="font-mono text-[10px] text-[#7D715E] bg-[#FAF8F5] px-1 py-0.5 rounded border border-[#EAE4D7]">
-                            {vc.displayCode}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={couponLoading}
-                            onClick={() => {
-                              applyCouponDirectly(vc.displayCode);
-                            }}
-                            className={`ml-1 text-[11px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${
-                              isApplied
-                                ? 'bg-[#059669] text-white'
-                                : 'bg-[#C59B58] text-white hover:bg-[#B88E4F]'
-                            }`}
-                          >
-                            {'Sao chép mã'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {displayVouchers.length > 3 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const el = document.querySelector('[data-product-coupons]');
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="text-[11px] font-semibold text-[#8C6B32] hover:underline"
-                      >
-                        +{displayVouchers.length - 3} mã khác
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Shipping estimate: realistic fulfillment info & voucher support */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-0.5">
@@ -1700,8 +1583,8 @@ export default function ProductDetailPage() {
                   <div className="flex items-center border border-black/10 rounded-[2px] bg-white overflow-hidden shadow-none">
                     <button
                       type="button"
-                      disabled={needsVariantChoice || quantity <= 1 || currentStock <= 0}
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={needsVariantChoice || Number(quantity) <= 1 || currentStock <= 0}
+                      onClick={() => setQuantity(Math.max(1, (Number(quantity) || 1) - 1))}
                       className="w-8 h-8 flex items-center justify-center text-[#555555] hover:bg-black/[0.02] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition border-r border-black/10 select-none"
                       aria-label="Giảm số lượng"
                     >
@@ -1712,14 +1595,17 @@ export default function ProductDetailPage() {
                       role="spinbutton"
                       aria-label="Số lượng sản phẩm"
                       disabled={needsVariantChoice || currentStock <= 0}
-                      aria-valuenow={quantity}
-                      value={quantity}
+                      aria-valuenow={typeof quantity === 'number' ? quantity : 1}
+                      value={quantity === 0 ? '' : quantity}
                       onChange={(e) => {
-                        const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                        const raw = e.target.value.replace(/\D/g, '');
+                        if (raw === '') {
+                          setQuantity(0);
+                          return;
+                        }
+                        const val = parseInt(raw, 10);
                         if (!isNaN(val) && val >= 1) {
                           setQuantity(Math.min(currentStock > 0 ? currentStock : 1, val));
-                        } else if (e.target.value === '') {
-                          setQuantity(1);
                         }
                       }}
                       onBlur={() => {
@@ -1729,8 +1615,8 @@ export default function ProductDetailPage() {
                     />
                     <button
                       type="button"
-                      disabled={needsVariantChoice || quantity >= currentStock || currentStock <= 0}
-                      onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
+                      disabled={needsVariantChoice || (Number(quantity) || 1) >= currentStock || currentStock <= 0}
+                      onClick={() => setQuantity(Math.min(currentStock, (Number(quantity) || 1) + 1))}
                       className="w-8 h-8 flex items-center justify-center text-[#555555] hover:bg-black/[0.02] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition border-l border-black/10 select-none"
                       aria-label="Tăng số lượng"
                     >
@@ -1747,69 +1633,13 @@ export default function ProductDetailPage() {
                   </span>
                 </div>
               </div>
-
-              {/* ────── AVAILABLE SHOP VOUCHERS CAROUSEL / LIST ────── */}
-              {availableStoreCoupons.length > 0 && (
-                <div data-product-coupons className="py-2.5 border-t border-[#EAE4D7]/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-[#8C6B32] flex items-center gap-1.5">
-                      <Ticket className="w-3.5 h-3.5 text-[#C59B58]" />
-                      Mã độc quyền KOL
-                    </span>
-                    <span className="text-[10px] text-[#7D715E]">Áp dụng cho lựa chọn hiện tại</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(showAllCoupons ? availableStoreCoupons : availableStoreCoupons.slice(0, 3)).map((vc) => {
-                      const label = `Giảm ${vc.discountAmount.toLocaleString('vi-VN')}₫`;
-                      const isApplied = verifiedCoupon?.code === vc.displayCode;
-                      return (
-                        <button
-                          key={vc.id}
-                          type="button"
-                          data-voucher-code={vc.displayCode}
-                          disabled={couponLoading}
-                          onClick={() => {
-                            applyCouponDirectly(vc.displayCode);
-                          }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
-                            isApplied
-                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6B32] font-bold'
-                              : 'bg-white border-[#DEBE85] hover:bg-[#F3EFE6] text-[#1A1612] hover:border-[#C59B58]'
-                          }`}
-                        >
-                          <Ticket
-                            className={`w-3.5 h-3.5 ${
-                              isApplied ? 'text-[#B88E4F]' : 'text-[#C59B58]'
-                            }`}
-                          />
-                          <span>{label}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 bg-[#FAF8F5] border rounded text-[#8C6B32] font-bold uppercase">
-                            {vc.displayCode}
-                          </span>
-                          {isApplied && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {availableStoreCoupons.length > 3 && <button type="button" className="mt-2 text-xs font-medium text-[#8C6B32]" onClick={() => setShowAllCoupons(value => !value)}>{showAllCoupons ? 'Thu gọn' : `Xem thêm ${availableStoreCoupons.length - 3} mã`}</button>}
-                </div>
-              )}
-
-              {!availableStoreCoupons.length && <div data-product-coupon-hint aria-live="polite" className="py-2 text-xs text-[#7D715E]">
-                {needsVariantChoice ? 'Chọn phân loại để xem voucher dùng được.'
-                  : couponSuggestions.status === 'loading' ? 'Đang kiểm tra voucher phù hợp…'
-                    : couponSuggestions.status === 'error' ? <span>Chưa tải được voucher. <button type="button" className="underline text-[#8C6B32]" onClick={() => setCouponRefresh(value => value + 1)}>Thử lại</button></span>
-                      : 'Chưa có voucher Shop / KOL phù hợp với lựa chọn này.'}
-              </div>}
               <div className="py-2.5 border-t border-[#EAE4D7]/80">
                 <form onSubmit={handleApplyCoupon} className="flex w-full items-stretch gap-2">
                   <div className="relative min-w-0 flex-1">
                     <Tag className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Mã Shop / KOL (VD: THANGVIP10)..."
+                      placeholder="Nhập mã ưu đãi độc quyền KOL (VD: THAONHI16)..."
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       className="w-full pl-8 pr-3 py-1.5 bg-white border border-[#EAE4D7] rounded text-xs font-mono uppercase text-[#1A1612] placeholder-[#7D715E]/60 focus:outline-hidden focus:border-[#C59B58]"
@@ -1899,7 +1729,7 @@ export default function ProductDetailPage() {
                     title="Đề xuất hợp tác tiếp thị / đàm phán thù lao trực tiếp với Brand Manager"
                   >
                     <Handshake className="w-4 h-4 text-[#B88E4F]" />
-                    <span>🤝 Đề Xuất Hợp Tác Tiếp Thị Với Nhãn Hàng</span>
+                    <span>Đề xuất hợp tác tiếp thị</span>
                   </button>
                 )}
 
@@ -1945,7 +1775,7 @@ export default function ProductDetailPage() {
                   ) : loadingSampleStatus ? (
                     'Đang kiểm tra điều kiện và trạng thái yêu cầu mẫu…'
                   ) : sampleRequestStatus?.status === 'COMPLETED' ? (
-                    <span className="text-[#059669] font-medium">✓ Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
+                    <span className="text-[#059669] font-medium">Bạn đã nhận mẫu sản phẩm này và hoàn tất video đánh giá (Mỗi Creator nhận tối đa 1 suất).</span>
                   ) : sampleRequestStatus && !['REJECTED', 'CANCELLED'].includes(sampleRequestStatus.status) ? (
                     <>Yêu cầu mẫu của bạn: <strong className="text-[#8C6226]">{sampleRequestStatus.status}</strong>. <Link to="/collaborator/collaboration?tab=samples" className="underline text-[#8C6226]">Xem tiến độ</Link></>
                   ) : !sampleFeatureEnabled ? (

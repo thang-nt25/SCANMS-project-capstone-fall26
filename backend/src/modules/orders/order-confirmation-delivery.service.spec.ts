@@ -70,6 +70,20 @@ describe('durable order confirmation delivery', () => {
     expect(prisma.order.findUnique).not.toHaveBeenCalled();
   });
 
+  it('leaves queued receipts untouched when local demo delivery is disabled', async () => {
+    const previous = process.env.ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED;
+    process.env.ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED = 'true';
+    try {
+      const { worker, prisma, mail } = fixture();
+      await worker.deliverQueued();
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(mail.sendOrderConfirmation).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED;
+      else process.env.ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED = previous;
+    }
+  });
+
   it('keeps the worker available after a database outage', async () => {
     const { worker, prisma, mail } = fixture();
     prisma.$queryRaw.mockRejectedValueOnce(new Error('database offline'));

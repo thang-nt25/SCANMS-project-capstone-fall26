@@ -56,7 +56,8 @@ describe('Explicitly enabled demo wallet top-up', () => {
       .mockResolvedValue({
         wallet: {
           id: 'wallet',
-          availableBalance: { toFixed: () => '100000.00' },
+          availableBalance: { toFixed: () => '900000.00' },
+          shoppingBalance: { toFixed: () => '100000.00' },
         },
       } as never);
     expect(await service.topUpDemo('user', 100000)).toMatchObject({

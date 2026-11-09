@@ -369,7 +369,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [policyError, setPolicyError] = useState<string | null>(null);
 
   // PayOS is selected by default; customers can also choose their SCANMS wallet.
-  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET'>('PAYOS');
+  const [paymentMethod, setPaymentMethod] = useState<'PAYOS' | 'WALLET' | 'COD'>('PAYOS');
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
 
@@ -527,7 +527,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [payosAvailable, setPayosAvailable] = useState<boolean | null>(null);
 
   // Normalize active items to order
-  const activeItems = useMemo<CartItem[]>(() => {
+  const computedActiveItems = useMemo<CartItem[]>(() => {
     if (checkoutItems && checkoutItems.length > 0) {
       return checkoutItems.map((item) => ({
         ...item,
@@ -572,6 +572,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
     return [];
   }, [checkoutItems, product, store, selectedVariantId, singleQuantity]);
+  // The product page passes fresh product/store objects on unrelated renders.
+  // Preserve the cart reference until its actual contents change, so an in-flight
+  // GHN quote is not cancelled and restarted continuously.
+  const activeItemsSnapshot = JSON.stringify(computedActiveItems);
+  const activeItemsRef = useRef({ snapshot: '', items: computedActiveItems });
+  if (activeItemsRef.current.snapshot !== activeItemsSnapshot) {
+    activeItemsRef.current = { snapshot: activeItemsSnapshot, items: computedActiveItems };
+  }
+  const activeItems = activeItemsRef.current.items;
 
   // Group active items by Shop
   const itemsGroupedByShop = useMemo(() => {
@@ -1461,7 +1470,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                       Đăng nhập để tiếp tục thanh toán
                     </h3>
                     <p className="text-xs text-[#7D715E] mt-1 leading-relaxed">
-                      Vui lòng xác thực tài khoản Google hoặc Email để quản lý đơn mua và kích hoạt bảo hộ Escrow 14 ngày.
+                      Đăng nhập Google hoặc Email để quản lý đơn mua và bảo hộ đối soát 14 ngày.
                     </p>
 
                     {loginError && (
@@ -1585,9 +1594,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                               <MapPin className="w-4 h-4 text-[#C59B58] shrink-0" />
                               Đang sử dụng địa chỉ giao hàng mới bên dưới
                             </span>
-                            <span className="text-[11px] text-[#7D715E]">
-                              (Bấm vào thẻ địa chỉ ở trên nếu muốn dùng lại)
-                            </span>
+                            
                           </div>
                         )}
 
@@ -1628,7 +1635,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                                 <div className="flex items-center gap-2 shrink-0 self-center">
                                   {isSelected && (
                                     <span className="text-[11px] font-bold text-[#B88E4F]">
-                                      Đang dùng ✓
+                                      Đang chọn
                                     </span>
                                   )}
                                   <button
@@ -1953,7 +1960,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
             </div>
 
             <section className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-[14px] bg-[color:#FFFFFF] text-left" aria-labelledby="checkout-payment-title">
-              <CheckoutPaymentMethods method={paymentMethod} onChange={setPaymentMethod} balance={Number(wallet?.availableBalance || 0)} loading={walletLoading} total={finalTotal} payosAvailable={payosAvailable} />
+              <CheckoutPaymentMethods method={paymentMethod} onChange={setPaymentMethod} balance={Number(wallet?.shoppingBalance || 0)} loading={walletLoading} total={finalTotal} payosAvailable={payosAvailable} />
               <dl className="checkout-totals grid gap-[12px] w-full max-w-[440px] m-[0_0_0_auto] p-[22px_24px] [&_>_div]:flex [&_>_div]:items-baseline [&_>_div]:justify-between [&_>_div]:gap-[20px] [&_>_div]:text-[color:#7D715E]! [&_>_div]:text-[12px] [&_>_div]:leading-[1.65] [&_dt]:min-w-0 [&_dd]:min-w-0 [&_dd]:max-w-[240px] [&_dd]:m-0 [&_dd]:text-[color:#1A1612]! [&_dd]:text-right [&_dd]:tabular-nums [&_dd]:[overflow-wrap:anywhere] [&_.checkout-total-discount_dd]:text-[color:#8A642C]! [&_.checkout-total-final]:items-center [&_.checkout-total-final]:mt-[3px] [&_.checkout-total-final]:pt-[16px] [&_.checkout-total-final]:border-t [&_.checkout-total-final]:border-t-[#EAE4D7] [@media_(max-width:639px)]:max-w-none [@media_(max-width:639px)]:p-[18px_16px]" aria-label="Chi tiết thanh toán">
                 <div><dt>Tổng tiền hàng ({activeUnitCount} sản phẩm)</dt><dd>{formatMoney(rawSubtotal)}</dd></div>
                 <div><dt>Phí vận chuyển GHN</dt><dd role="status">{shippingAddressHint || shippingFeeError || (shippingFeeLoading ? 'Đang tính cước…' : shippingFee === null ? 'Chưa có phí vận chuyển.' : formatMoney(shippingFee))}{shippingFeeError && !shippingAddressHint && <button type="button" onClick={() => setShippingQuoteRetry(value => value + 1)} className="ml-2 text-[#795A2D] underline underline-offset-2">Tính lại</button>}</dd></div>

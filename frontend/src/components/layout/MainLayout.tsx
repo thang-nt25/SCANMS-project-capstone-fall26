@@ -1,14 +1,33 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { applyTheme } from '../../utils/theme.utils';
+import { SeedDataNotice } from '../common/SeedDataNotice';
+import { Menu, X } from 'lucide-react';
 
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pageColumnRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
+  useLayoutEffect(() => {
+    const column = pageColumnRef.current;
+    if (!column) return;
+    const syncHeaderInset = () => {
+      document.documentElement.style.setProperty('--workspace-scrollbar-width', `${Math.max(0, column.offsetWidth - column.clientWidth)}px`);
+    };
+    syncHeaderInset();
+    const observer = new ResizeObserver(syncHeaderInset);
+    observer.observe(column);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--workspace-scrollbar-width');
+    };
+  }, [location.pathname, location.search]);
   useEffect(() => {
     applyTheme('light');
   }, []);
@@ -54,6 +73,8 @@ export default function MainLayout() {
   };
 
   const isAuth = location.pathname === '/login' || location.pathname === '/register';
+  const isKycPage = location.pathname === '/collaborator/wallet' &&
+    new URLSearchParams(location.search).get('tab') === 'kyc';
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   if (isAuth || isIframe) {
@@ -65,23 +86,33 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+    <div className={`bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans ${isKycPage ? 'min-h-dvh workspace-document-scroll' : 'min-h-screen lg:h-screen lg:overflow-hidden'}`}>
       {/* 1. Topbar nằm full-width trên cùng (chuẩn vị trí Header như Customer) */}
       <Topbar
         currentUser={currentUser}
         onLogout={handleLogout}
       />
 
+      <div className="mx-auto w-full max-w-[1520px] px-4 pt-3 sm:px-6 lg:hidden">
+        <button type="button" aria-controls="workspace-mobile-navigation" aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(open => !open)}
+          className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm font-semibold text-[#795A2D] shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
+          <span className="flex items-center gap-2">{mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} {mobileMenuOpen ? 'Đóng menu chức năng' : 'Mở menu chức năng'}</span>
+          <span className="text-xs font-normal text-[#7D715E]">{currentUser?.role === 'SHOP_MANAGER' ? 'Gian hàng' : currentUser?.role === 'COLLABORATOR' ? 'KOL/KOC' : 'Quản lý'}</span>
+        </button>
+      </div>
+
       {/* 2. Container nội dung căn giữa đồng bộ 100% với Customer (max-w-[1520px]) */}
       <main className="max-w-[1520px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col lg:flex-row gap-5 items-start flex-1 min-h-0">
           {/* Cột trái: Sidebar điều hướng các chức năng của từng vai trò */}
-          <div className="relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]">
+          <div id="workspace-mobile-navigation" onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }} className={`relative w-full lg:w-[250px] lg:shrink-0 lg:h-full lg:flex lg:flex-col ${mobileMenuOpen ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white' : 'hidden'} lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
             <Sidebar currentUser={currentUser} onLogout={handleLogout} />
           </div>
 
           {/* Cột phải: Khung nội dung chính của vai trò */}
-          <div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div ref={pageColumnRef} className={`workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent] ${isKycPage ? '' : 'lg:h-full lg:overflow-y-auto'}`}>
+            <SeedDataNotice user={currentUser} />
             <Suspense
               fallback={
                 <div className="w-full py-20 flex flex-col items-center justify-center text-[#7D715E] gap-3 animate-in fade-in duration-200">

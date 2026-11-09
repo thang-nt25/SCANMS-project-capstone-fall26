@@ -31,6 +31,8 @@ import {
   shipmentSchema,
   simulatePickupSchema,
   shopQueueSchema,
+  shopEscalationSchema,
+  ghnClaimActionSchema,
   warehouseSchema,
   type BookPickupInput,
   type DisputeInput,
@@ -40,6 +42,8 @@ import {
   type ResolveDisputeInput,
   type ShipmentInput,
   type WarehouseInput,
+  type ShopEscalationInput,
+  type GhnClaimActionInput,
 } from './return.schemas';
 
 @ApiTags('Returns')
@@ -192,6 +196,15 @@ export class ReturnController {
     return this.returns.confirmCompletion(userId, role, id);
   }
 
+  @Post(':id/exchange-receipt')
+  async confirmExchangeReceipt(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.confirmExchangeReceipt(userId, role, id);
+  }
+
   @Post(':id/disputes')
   async openDispute(
     @CurrentUser('id') userId: string,
@@ -200,6 +213,16 @@ export class ReturnController {
     @Body(new ReturnZodPipe(disputeSchema)) body: DisputeInput,
   ) {
     return this.returns.openDispute(userId, role, id, body);
+  }
+
+  @Post(':id/shop-escalation')
+  escalateShopRejection(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(shopEscalationSchema)) body: ShopEscalationInput,
+  ) {
+    return this.returns.escalateShopRejection(userId, role, id, body);
   }
 }
 
@@ -228,6 +251,35 @@ export class ReturnDisputeAdminController {
   @Get('active-returns')
   listActive(@CurrentUser('role') role: UserRole) {
     return this.returns.listForOversight(role);
+  }
+
+  @Get('ghn-claims')
+  listGhnClaims(@CurrentUser('role') role: UserRole) {
+    return this.returns.listGhnClaims(role);
+  }
+
+  @Get('rejected')
+  listRejected(@CurrentUser('role') role: UserRole) {
+    return this.returns.listRejectedForReview(role);
+  }
+
+  @Post('rejected/:id/open-review')
+  openRejectedReview(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.returns.openRejectedReview(userId, role, id);
+  }
+
+  @Patch('ghn-claims/:id')
+  updateGhnClaim(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ReturnZodPipe(ghnClaimActionSchema)) body: GhnClaimActionInput,
+  ) {
+    return this.returns.updateGhnClaim(userId, role, id, body);
   }
 
   @Patch('active-returns/:id/liability')

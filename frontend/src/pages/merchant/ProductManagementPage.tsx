@@ -1,6 +1,7 @@
 import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDrawer';
 import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
+import { ProposePromotionModal } from '../../components/promotions/ProposePromotionModal';
 import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -336,6 +337,8 @@ const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => 
   ];
 };
 
+const cachedProductsMap = new Map<string, Product[]>();
+
 export default function ProductManagementPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -350,7 +353,10 @@ export default function ProductManagementPage() {
     (currentUser?.role as string) === 'ADMIN';
   const currentStoreId = localStorage.getItem('current_store_id') || undefined;
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const key = String(currentStoreId || 'all');
+    return cachedProductsMap.get(key) || [];
+  });
   const [storeCategory, setStoreCategory] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -364,6 +370,7 @@ export default function ProductManagementPage() {
   const saveLocked = useRef(false);
   const submittedForm = useRef<HTMLFormElement | null>(null);
   const confirmedIdentity = useRef('');
+  const hasHandledParamsRef = useRef(false);
   const [identityWarning, setIdentityWarning] = useState<{ items: SimilarProduct[]; fingerprint: string } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -464,68 +471,7 @@ export default function ProductManagementPage() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [selectedVideoProduct, rejectionModalMedia]);
 
-  const localKolVideoStorageKey = 'scanms_kol_video_submissions';
-  const readLocalKolVideos = () => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(localKolVideoStorageKey) || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-  const saveLocalKolVideoStatus = (
-    mediaId: string,
-    status: 'APPROVED' | 'REJECTED' | 'HIDDEN',
-    options?: { isFeatured?: boolean; rejectionReason?: string | null },
-  ) => {
-    const localVideos = readLocalKolVideos();
-    const targetProductId = localVideos.find((video: any) => video.id === mediaId)?.productId;
-    const updated = localVideos.map((video: any) =>
-      video.id === mediaId
-        ? {
-            ...video,
-            status,
-            isApproved: status === 'APPROVED',
-            isFeatured: Boolean(options?.isFeatured),
-            rejectionReason: options?.rejectionReason || null,
-          }
-        : options?.isFeatured && video.productId === targetProductId
-          ? { ...video, isFeatured: false }
-          : video,
-    );
-    localStorage.setItem(localKolVideoStorageKey, JSON.stringify(updated));
-  };
-
-  const normalizeLocalKolVideo = (video: any, matchedProduct?: Product) => ({
-    ...video,
-    _localPrototype: true,
-    assetType: 'VIDEO',
-    urlOrContent: video.videoUrl?.startsWith('./assets/')
-      ? `/reference/${video.videoUrl.slice(2)}`
-      : video.videoUrl,
-    posterUrl: video.image?.startsWith('./assets/')
-      ? `/reference/${video.image.slice(2)}`
-      : video.image,
-    caption: video.caption || null,
-    collaborator: video.collaborator || { fullName: 'Trần Văn Nhật' },
-    product: matchedProduct
-      ? {
-          id: matchedProduct.id,
-          sku: matchedProduct.sku,
-          title: matchedProduct.title || (matchedProduct as any).name,
-        }
-      : video.product || {
-          id: video.productId,
-          sku: video.productId,
-          title: video.productName || 'Sản phẩm KOL đã chọn',
-        },
-  });
-
-  const pendingKolVideoCount = new Set(
-    [...readLocalKolVideos(), ...productVideos]
-      .filter((video: any) => video.status === 'PENDING')
-      .map((video: any) => video.id),
-  ).size;
+  const pendingKolVideoCount = productVideos.filter((video: any) => video.status === 'PENDING').length;
 
 
   const [showReviewModeration, setShowReviewModeration] = useState(false);
@@ -558,11 +504,7 @@ export default function ProductManagementPage() {
   const [formBasePrice, setFormBasePrice] = useState<number | ''>('');
   const [formOriginalPrice, setFormOriginalPrice] = useState<number | ''>('');
   const [discountModalProduct, setDiscountModalProduct] = useState<any>(null);
-  const [proposedDiscountPrice, setProposedDiscountPrice] = useState<number | ''>('');
-  const [discountStartDate, setDiscountStartDate] = useState<string>('');
-  const [discountEndDate, setDiscountEndDate] = useState<string>('');
-  const [discountReason, setDiscountReason] = useState<string>('FLASH_SALE');
-  const [discountSubmitting, setDiscountSubmitting] = useState(false);
+  const [bulkDiscountProducts, setBulkDiscountProducts] = useState<any[] | null>(null);
   const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
   const [formStock, setFormStock] = useState<number | ''>('');
   const [formPackageWeight, setFormPackageWeight] = useState<number | ''>('');
@@ -617,26 +559,11 @@ export default function ProductManagementPage() {
     } as Product);
     setLoadingVideos(true);
 
-    const localVideos = readLocalKolVideos().map((video: any) => {
-      const matchedProduct = products.find((product) => {
-        const aliases = new Set([
-          product.id,
-          product.sku,
-          ...(product.sku === 'SR-VTC-15' ? ['SKIN-C15'] : []),
-        ]);
-        return aliases.has(video.productId);
-      });
-      return normalizeLocalKolVideo(video, matchedProduct);
-    });
-
     try {
       const res = await api.get('/media', {
         params: { assetType: 'VIDEO', limit: 100 },
       });
       const merged = [...(res.data?.items || [])];
-      localVideos.forEach((video: any) => {
-        if (!merged.some((item: any) => item.id === video.id)) merged.push(video);
-      });
       merged.sort((a: any, b: any) => {
         if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
         if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
@@ -645,7 +572,7 @@ export default function ProductManagementPage() {
       setProductVideos(merged);
     } catch (err) {
       console.error('Lỗi khi tải toàn bộ video KOL:', err);
-      setProductVideos(localVideos);
+      setProductVideos([]);
     } finally {
       setLoadingVideos(false);
     }
@@ -654,17 +581,10 @@ export default function ProductManagementPage() {
   const handleApproveVideo = async (mediaId: string, isFeatured: boolean) => {
     setReviewingMediaId(mediaId);
     try {
-      const isLocalVideo = Boolean(
-        productVideos.find((video) => video.id === mediaId)?._localPrototype,
-      );
-      if (isLocalVideo) {
-        saveLocalKolVideoStatus(mediaId, 'APPROVED', { isFeatured });
-      } else {
-        await api.patch(`/media/${mediaId}/review`, {
-          status: 'APPROVED',
-          isFeatured,
-        });
-      }
+      await api.patch(`/media/${mediaId}/review`, {
+        status: 'APPROVED',
+        isFeatured,
+      });
       showToast(
         isFeatured
           ? 'Đã duyệt và ghim video làm nổi bật Landing!'
@@ -711,16 +631,10 @@ export default function ProductManagementPage() {
     const mediaId = rejectionModalMedia.id;
     setReviewingMediaId(mediaId);
     try {
-      if (rejectionModalMedia._localPrototype) {
-        saveLocalKolVideoStatus(mediaId, rejectionActionType, {
-          rejectionReason: rejectionReasonInput.trim(),
-        });
-      } else {
-        await api.patch(`/media/${mediaId}/review`, {
-          status: rejectionActionType,
-          rejectionReason: rejectionReasonInput.trim(),
-        });
-      }
+      await api.patch(`/media/${mediaId}/review`, {
+        status: rejectionActionType,
+        rejectionReason: rejectionReasonInput.trim(),
+      });
       showToast(
         rejectionActionType === 'REJECTED'
           ? 'Đã từ chối video review và lưu lý do kiểm duyệt.'
@@ -772,7 +686,10 @@ export default function ProductManagementPage() {
         search: search || undefined,
         storeId: currentStoreId,
       });
-      setProducts(res.items || []);
+      const items = res.items || [];
+      const key = String(currentStoreId || 'all');
+      if (!search) cachedProductsMap.set(key, items);
+      setProducts(items);
     } catch (err) {
       console.error('Lỗi tải sản phẩm:', err);
     }
@@ -939,17 +856,20 @@ export default function ProductManagementPage() {
   };
 
   useEffect(() => {
+    if (hasHandledParamsRef.current) return;
     const shouldReturnToDashboard = searchParams.get('returnTo') === 'dashboard';
     const shouldOpenCreate = searchParams.get('create') === '1' && !isKol;
     if (shouldReturnToDashboard) setReturnToDashboard(true);
     if (shouldOpenCreate) openCreateModal();
-    if (!searchParams.has('create') && !searchParams.has('returnTo')) return;
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.delete('create');
-      next.delete('returnTo');
-      return next;
-    }, { replace: true });
+    if (searchParams.has('create') || searchParams.has('returnTo')) {
+      hasHandledParamsRef.current = true;
+      setSearchParams((previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete('create');
+        next.delete('returnTo');
+        return next;
+      }, { replace: true });
+    }
   }, [searchParams, isKol, setSearchParams]);
 
   const openEditModal = (p: any) => {
@@ -1015,6 +935,7 @@ export default function ProductManagementPage() {
     setFormVariants(existingVariants.map((variant: any) => ({
       id: variant.id,
       sku: variant.sku || '',
+      barcode: variant.barcode || '',
       name: variant.name || '',
       attributes: variant.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes) ? variant.attributes : {},
       price: Number(variant.price ?? p.price) || 0,
@@ -1730,6 +1651,40 @@ export default function ProductManagementPage() {
       </Card>
 
 
+      {/* Bulk Action Bar khi chọn nhiều sản phẩm để giảm giá hàng loạt */}
+      {selectedIds.length > 0 && !isKol && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 mb-3 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs shadow-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-[#C59B58] text-[#1A1612] font-bold text-[11px]">
+              {selectedIds.length}
+            </span>
+            <span className="font-semibold text-[#1A1612]">
+              Đã chọn {selectedIds.length} sản phẩm
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const selected = products.filter((p: any) => selectedIds.includes(p.id));
+                setBulkDiscountProducts(selected);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer shadow-xs"
+            >
+              <Percent className="w-3.5 h-3.5 text-[#1A1612]" />
+              <span>Đề xuất giảm giá hàng loạt ({selectedIds.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612] transition cursor-pointer"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       <Card className="product-table-card p-0 min-w-0 shadow-none">
         <Table className="product-table">
           <colgroup>
@@ -1804,8 +1759,20 @@ export default function ProductManagementPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell data-label="Giá bán" className="font-semibold text-[#1A1612] whitespace-nowrap tabular-nums">
-                    {Number(price).toLocaleString('vi-VN')} ₫
+                  <TableCell data-label="Giá bán" className="whitespace-nowrap tabular-nums">
+                    <div className="font-semibold text-[#1A1612]">
+                      {Number(price).toLocaleString('vi-VN')} ₫
+                    </div>
+                    {p.floorPrice && Number(p.floorPrice) > 0 ? (
+                      <div className="text-[10px] text-[#7D715E] flex items-center gap-1 mt-0.5">
+                        <span className="text-[#8C6226] font-medium">Sàn MAP:</span>
+                        <span className="font-mono">{Number(p.floorPrice).toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-[#A79B89] mt-0.5">
+                        Chưa đặt sàn MAP
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell data-label="Thù lao cơ sở">
                     <Badge variant="amber" className="font-extrabold text-xs">
@@ -1948,6 +1915,18 @@ export default function ProductManagementPage() {
                           >
                             <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
                             <span className="hidden sm:inline">Gợi ý KOC</span>
+                          </button>
+                        )}
+
+                        {moderationStatus === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => setDiscountModalProduct(p)}
+                            className="h-8 px-2.5 rounded-lg border border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0"
+                            title="Đề xuất chiến dịch giảm giá sản phẩm (tuân thủ giá sàn MAP)"
+                          >
+                            <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
+                            <span className="hidden xl:inline">Giảm giá</span>
                           </button>
                         )}
 
@@ -2414,7 +2393,7 @@ export default function ProductManagementPage() {
                     minHeight={195}
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Mô tả chi tiết công dụng nổi bật, thành phần chính, hướng dẫn sử dụng và lưu ý bảo quản..."
+                    placeholder="Mô tả công dụng, thành phần, cách dùng và bảo quản..."
                     className="min-h-[195px] w-full flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#B88E4F] focus:bg-white"
                   />
                 </div>
@@ -2608,7 +2587,8 @@ export default function ProductManagementPage() {
                           <th className="py-2.5 px-3 w-16 text-center">Ảnh</th>
                           <th className="py-2.5 px-3 min-w-[180px]">Thuộc tính</th>
                           <th className="py-2.5 px-3 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã phân loại quy cách">Mã phân loại <span className="text-rose-500">*</span></th>
+                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã phân loại quy cách">Mã phân loại (SKU) <span className="text-rose-500">*</span></th>
+                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã vạch EAN-13 vật lý gắn liền từng SKU">Mã vạch EAN-13</th>
                           <th className="py-2.5 px-3 min-w-[110px]" title="Giá cơ bản tại kho (Giá sàn bảo vệ)">Giá cơ bản kho (₫) <span className="text-rose-500">*</span></th>
                           <th className="py-2.5 px-3 min-w-[110px]" title="Giá niêm yết bán lẻ chính thức">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
                           <th className="py-2.5 px-3 min-w-[100px]">Tồn kho <span className="text-rose-500">*</span></th>
@@ -2695,8 +2675,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.basePrice ?? (variant.price ? Math.round(variant.price * 0.6) : 0)}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: Number(item.basePrice) || 0 } : item))}
                                 placeholder="100.000"
                                 className="h-8 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2.5 text-xs font-bold text-[#8C6226] outline-none focus:border-[#B88E4F]"
                               />
@@ -2707,8 +2688,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.price}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.price === 0 ? '' : (variant.price ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: Number(item.price) || 0 } : item))}
                                 placeholder="200.000"
                                 className={`h-8 w-full rounded-lg border px-2.5 text-xs font-bold outline-none focus:border-[#B88E4F] ${
                                   variant.basePrice && variant.price < variant.basePrice ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-[#EAE4D7] bg-white text-[#1A1612]'
@@ -2724,8 +2706,9 @@ export default function ProductManagementPage() {
                               <input
                                 type="number"
                                 min={0}
-                                value={variant.stockQuantity}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Math.max(0, Number(event.target.value) || 0) } : item))}
+                                value={variant.stockQuantity === 0 ? '' : (variant.stockQuantity ?? '')}
+                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
+                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Number(item.stockQuantity) || 0 } : item))}
                                 className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
                               />
                             </td>
@@ -2806,7 +2789,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageWeight}
-                        onChange={(e) => setFormPackageWeight(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageWeight((prev) => prev === '' ? 250 : Math.max(1, Number(prev)))}
                         placeholder="250"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-6 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2824,7 +2808,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageLength}
-                        onChange={(e) => setFormPackageLength(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageLength(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageLength((prev) => prev === '' ? 15 : Math.max(1, Number(prev)))}
                         placeholder="15"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2842,7 +2827,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageWidth}
-                        onChange={(e) => setFormPackageWidth(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageWidth(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageWidth((prev) => prev === '' ? 10 : Math.max(1, Number(prev)))}
                         placeholder="10"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2860,7 +2846,8 @@ export default function ProductManagementPage() {
                         type="number"
                         min={1}
                         value={formPackageHeight}
-                        onChange={(e) => setFormPackageHeight(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                        onChange={(e) => setFormPackageHeight(e.target.value === '' ? '' : Number(e.target.value))}
+                        onBlur={() => setFormPackageHeight((prev) => prev === '' ? 5 : Math.max(1, Number(prev)))}
                         placeholder="5"
                         required
                         className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
@@ -2943,7 +2930,8 @@ export default function ProductManagementPage() {
                           type="number"
                           min={1}
                           value={formSampleQuota}
-                          onChange={(e) => setFormSampleQuota(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                          onChange={(e) => setFormSampleQuota(e.target.value === '' ? '' : Number(e.target.value))}
+                          onBlur={() => setFormSampleQuota((prev) => prev === '' ? 20 : Math.max(1, Number(prev)))}
                           placeholder="VD: 20"
                           required={formSampleEnabled}
                           className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
@@ -3120,193 +3108,33 @@ export default function ProductManagementPage() {
       )}
 
 
-      {/* Modal Đề xuất Chiến dịch Giảm giá (Kiểm soát Giá Sàn Floor Price & Hạn Định Thời Gian) */}
+      {/* Modal Đề xuất Chiến dịch Giảm giá Đơn lẻ (Kiểm soát Giá Sàn Floor Price & Maker-Checker) */}
       {discountModalProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-lg p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[#EAE4D7]">
-              <div className="flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                  <Percent className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-base font-extrabold text-[#1A1612] m-0">Đề xuất Chiến dịch Giảm giá</h3>
-                  <p className="text-xs text-[#7D715E] m-0 mt-0.5">Kiểm soát Giá sàn bảo vệ biên lãi & thời hạn tự động kết thúc</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDiscountModalProduct(null)}
-                className="w-8 h-8 rounded-lg text-[#7D715E] hover:bg-[#FAF8F5] flex items-center justify-center cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
+        <ProposePromotionModal
+          isOpen={!!discountModalProduct}
+          product={discountModalProduct}
+          catalog={products}
+          onClose={() => setDiscountModalProduct(null)}
+          onSuccess={() => {
+            setDiscountModalProduct(null);
+            showToast('Đã gửi đề xuất giảm giá thành công. Yêu cầu đang chờ thẩm định Maker-Checker!');
+          }}
+        />
+      )}
 
-            {/* Thông tin sản phẩm & 2 Tầng Giá */}
-            <div className="bg-[#FAF8F5] p-3.5 rounded-xl border border-[#EAE4D7] space-y-2 mb-4">
-              <div className="flex items-center gap-3">
-                <img
-                  src={getSafeProductImageUrl(discountModalProduct.imageUrl, discountModalProduct.title, discountModalProduct.categoryName)}
-                  alt=""
-                  className="w-11 h-11 rounded-lg object-cover border border-[#EAE4D7] shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs font-bold text-[#1A1612] truncate">{discountModalProduct.title}</h4>
-                  <span className="text-[11px] font-mono text-[#7D715E]">{discountModalProduct.sku}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#EAE4D7]/80 text-xs">
-                <div className="bg-white p-2 rounded-lg border border-[#EAE4D7]">
-                  <span className="text-[#7D715E] text-[11px] block">Giá niêm yết hiện tại:</span>
-                  <strong className="text-[#1A1612] font-mono text-sm">{Number(discountModalProduct.price || 0).toLocaleString('vi-VN')} ₫</strong>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-[#EEDFC6]">
-                  <span className="text-[#8C6226] text-[11px] font-semibold flex items-center gap-1">
-                    <ShieldCheck size={12} className="text-[#B88E4F]" /> Giá cơ bản kho (Sàn MAP):
-                  </span>
-                  <strong className="text-[#8C6226] font-mono text-sm">
-                    {Number(discountModalProduct.originalPrice || Math.round(Number(discountModalProduct.price || 0) * 0.6)).toLocaleString('vi-VN')} ₫
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Form nhập mức giá giảm đề xuất & Ràng buộc giá sàn */}
-            {(() => {
-              const currentPrice = Number(discountModalProduct.price || 0);
-              const floorPrice = Number(discountModalProduct.originalPrice || Math.round(currentPrice * 0.6));
-              const proposedNum = Number(proposedDiscountPrice) || 0;
-              const isViolatingFloor = proposedNum > 0 && proposedNum < floorPrice;
-              const isViolatingCurrent = proposedNum >= currentPrice;
-              const savings = currentPrice - proposedNum;
-              const marginRemaining = proposedNum - floorPrice;
-
-              return (
-                <div className="space-y-3.5">
-                  <div>
-                    <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                      Mức giá giảm đề xuất (₫) <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={floorPrice}
-                      max={currentPrice - 1000}
-                      value={proposedDiscountPrice}
-                      onChange={(e) => setProposedDiscountPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder={`Tối thiểu: ${floorPrice.toLocaleString('vi-VN')} ₫`}
-                      className={`h-10 w-full rounded-xl border px-3 text-xs font-mono font-bold outline-none transition ${
-                        isViolatingFloor
-                          ? 'border-rose-500 bg-rose-50/50 text-rose-700 ring-2 ring-rose-200'
-                          : 'border-[#EAE4D7] bg-white text-[#1A1612] focus:border-[#B88E4F]'
-                      }`}
-                    />
-
-                    {/* Validation Feedback */}
-                    {isViolatingFloor && (
-                      <div className="mt-1.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-1.5">
-                        <AlertCircle size={14} className="shrink-0 text-rose-600" />
-                        <span>🚨 <strong>Vi phạm Giá sàn bảo vệ!</strong> Giá giảm không được thấp hơn Giá cơ bản tại kho (tối thiểu <strong>{floorPrice.toLocaleString('vi-VN')} ₫</strong>) để tránh bán lỗ chi phí vận hành & hoa hồng KOC.</span>
-                      </div>
-                    )}
-
-                    {!isViolatingFloor && proposedNum > 0 && !isViolatingCurrent && (
-                      <div className="mt-1.5 p-2 rounded-lg bg-[#FAF8F5] border border-[#EEDFC6] text-xs space-y-1">
-                        <div className="flex items-center justify-between text-[#059669] font-bold">
-                          <span>✓ Mức giá giảm hợp lệ</span>
-                          <span>Tiết kiệm cho khách: {savings.toLocaleString('vi-VN')} ₫ (-{Math.round((savings / currentPrice) * 100)}%)</span>
-                        </div>
-                        <div className="text-[11px] text-[#7D715E]">
-                          Biên lãi ròng còn lại: <strong className="text-[#8C6226] font-mono">{marginRemaining.toLocaleString('vi-VN')} ₫</strong> (đủ bù đắp trần thù lao KOC $10\% - 16\%$).
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Thời hạn chiến dịch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                        Thời gian bắt đầu <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={discountStartDate}
-                        onChange={(e) => setDiscountStartDate(e.target.value)}
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                        Thời gian kết thúc <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={discountEndDate}
-                        onChange={(e) => setDiscountEndDate(e.target.value)}
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-[#7D715E] leading-relaxed">
-                    ⏰ <strong>Cơ chế tự động hoàn nguyên:</strong> Khi kết thúc thời gian trên, hệ thống sẽ tự động đưa giá bán về Giá niêm yết ban đầu ({currentPrice.toLocaleString('vi-VN')} ₫), ngăn chặn bán giá thấp kéo dài.
-                  </p>
-
-                  {/* Lý do đề xuất chiến dịch */}
-                  <div>
-                    <label className="text-xs font-bold text-[#1A1612] block mb-1">
-                      Mục đích chiến dịch <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={discountReason}
-                      onChange={(e) => setDiscountReason(e.target.value)}
-                      className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                    >
-                      <option value="FLASH_SALE">Flash Sale Giờ Vàng (Tối đa 72h)</option>
-                      <option value="CLEARANCE">Xả kho hàng tồn cuối quý</option>
-                      <option value="KOL_BOOST">Chiến dịch Mega Live phối hợp Top KOC</option>
-                      <option value="HOLIDAY">Khuyến mãi kích cầu Lễ hội / Ngày đôi</option>
-                    </select>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAE4D7]">
-                    <button
-                      type="button"
-                      onClick={() => setDiscountModalProduct(null)}
-                      className="px-4 py-2 text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-                    >
-                      Hủy bỏ
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isViolatingFloor || !proposedNum || isViolatingCurrent || !discountStartDate || !discountEndDate || discountSubmitting}
-                      onClick={async () => {
-                        setDiscountSubmitting(true);
-                        try {
-                          await new Promise(r => setTimeout(r, 600));
-                          showToast(`Đã gửi Đề xuất giảm giá (${proposedNum.toLocaleString('vi-VN')} ₫) cho sản phẩm "${discountModalProduct.title}". Yêu cầu đang chờ duyệt Maker-Checker!`);
-                          setDiscountModalProduct(null);
-                        } catch (err: any) {
-                          showToast('Lỗi khi gửi đề xuất chiến dịch');
-                        } finally {
-                          setDiscountSubmitting(false);
-                        }
-                      }}
-                      className="px-5 py-2 bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-                    >
-                      <Percent size={13} />
-                      <span>{discountSubmitting ? 'Đang gửi...' : 'Gửi Đề Xuất (Chờ Duyệt)'}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
+      {/* Modal Đề xuất Chiến dịch Giảm giá Hàng loạt (Bulk Multi-Product Promotion) */}
+      {bulkDiscountProducts && (
+        <ProposePromotionModal
+          isOpen={!!bulkDiscountProducts}
+          selectedProducts={bulkDiscountProducts}
+          catalog={products}
+          onClose={() => setBulkDiscountProducts(null)}
+          onSuccess={() => {
+            setBulkDiscountProducts(null);
+            setSelectedIds([]);
+            showToast('Đã gửi đề xuất giảm giá hàng loạt thành công. Yêu cầu đang chờ thẩm định Maker-Checker!');
+          }}
+        />
       )}
 
       {/* Modal Xác nhận Phê duyệt sản phẩm dành cho Admin & Vận hành */}

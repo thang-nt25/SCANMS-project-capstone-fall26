@@ -9,6 +9,11 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
+  @ApiPropertyOptional({ description: 'ID tin nhắn được trả lời trong cùng hội thoại' })
+  @IsOptional()
+  @IsUUID()
+  replyToId?: string;
+
   @ApiProperty({ description: 'ID cuộc hội thoại', example: 'uuid-here' })
   @IsUUID()
   conversationId!: string;

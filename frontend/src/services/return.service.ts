@@ -44,7 +44,8 @@ export interface ReturnDetail {
   reason: string;
   details?: string | null;
   imageUrls: string[];
-  unboxingVideoUrl: string;
+  unboxingVideoUrl?: string | null;
+  preferredResolution?: 'REFUND' | 'EXCHANGE' | null;
   status: ReturnStatus;
   shopResponse?: string | null;
   submittedAt: string;
@@ -57,6 +58,7 @@ export interface ReturnDetail {
   pickupSimulationEnabled?: boolean;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
+  inspectionCompletedAt?: string | null;
   inspectionNotes?: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
   partnerIncome?: {
@@ -65,7 +67,19 @@ export interface ReturnDetail {
     status: 'NOT_POSTED' | 'PENDING' | 'AVAILABLE' | 'REVERSED';
     availableAt?: string | null;
   };
-  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null };
+  ghnClaim?: {
+    status: 'DRAFT' | 'SUBMITTED' | 'NEEDS_MORE_EVIDENCE' | 'ACCEPTED' | 'REJECTED' | 'PAID';
+    originalTrackingNumber: string;
+    replacementTrackingNumber?: string;
+    evidenceUrls: string[];
+    ghnReference?: string;
+    claimedAmount?: number;
+    approvedAmount?: number;
+    notes?: string;
+    proofUrl?: string;
+    updatedAt: string;
+  } | null;
+  order: { id: string; externalOrderSn: string; storeName: string; customerName?: string | null; customerPhone?: string | null; shippingAddress?: string | null; outboundGhnTrackingNumber?: string | null };
   items: Array<{
     id: string;
     quantity: number;
@@ -89,7 +103,7 @@ export interface ReturnDetail {
     ruling?: string | null;
     resolutionNotes?: string | null;
   } | null;
-  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string; source?: string; originalTrackingNumber?: string; replacementTrackingNumber?: string; status?: string } | null }>;
+  events: Array<{ id: string; type: string; createdAt: string; data?: { liability?: string; resolution?: string; notes?: string; details?: string; evidenceUrls?: string[]; source?: string; originalTrackingNumber?: string; replacementTrackingNumber?: string; status?: string } | null }>;
 }
 
 export interface ReturnDisputeRecord {
@@ -140,15 +154,31 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/inspection/result`, data)),
   submitExchangeShipment: async (id: string, data: { carrierName: string; trackingNumber: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
+  confirmExchangeReceipt: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-receipt`)),
   confirmCompletion: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/confirmation`)),
   openDispute: async (id: string, data: { reason: string; details: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/disputes`, data)),
+  escalateShopRejection: async (id: string, data: { details: string; evidenceUrls: string[] }) =>
+    unwrap<ReturnDetail>(await api.post(`/returns/${id}/shop-escalation`, data)),
   getAdminDisputes: async () => unwrap<ReturnDisputeRecord[]>(await api.get('/admin/return-disputes', {
     headers: { 'x-skip-cache': 'true' },
   })),
   getActiveReturns: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/active-returns', {
     headers: { 'x-skip-cache': 'true' },
   })),
+  getGhnClaims: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/ghn-claims', {
+    headers: { 'x-skip-cache': 'true' },
+  })),
+  getRejectedForReview: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/rejected', {
+    headers: { 'x-skip-cache': 'true' },
+  })),
+  openRejectedReview: async (id: string) => unwrap<ReturnDetail>(
+    await api.post(`/admin/return-disputes/rejected/${id}/open-review`)),
+  updateGhnClaim: async (id: string, data: {
+    action: 'SUBMIT' | 'REQUEST_MORE' | 'ACCEPT' | 'REJECT' | 'APPEAL' | 'PAID';
+    ghnReference?: string; claimedAmount?: number; approvedAmount?: number;
+    notes: string; proofUrl?: string;
+  }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/ghn-claims/${id}`, data)),
   assessLiability: async (id: string, data: {
     liability: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
   }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/active-returns/${id}/liability`, data)),

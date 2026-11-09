@@ -6,13 +6,20 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
+  CommissionStatus,
   CouponStatus,
+  DealBonusStatus,
+  ExclusiveDealScope,
   ExclusiveDealStatus,
   Prisma,
+  TransactionType,
   UserRole,
+  WalletBalanceBucket,
 } from '@prisma/client';
+import { WalletsService } from '../wallets/wallets.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import {
   CacheService,
@@ -38,6 +45,7 @@ import {
   KpiDeal,
   validateDealKpi,
 } from './deal-kpi.policy';
+import { tierBonusByName } from '../commissions/commission-policy';
 
 @Injectable()
 export class AffiliateDealsService {
@@ -65,6 +73,7 @@ export class AffiliateDealsService {
     private readonly chatGateway: ChatGateway,
     private readonly referralLinksService: ReferralLinksService,
     private readonly cache: CacheService = NOOP_CACHE_SERVICE,
+    @Optional() private readonly walletsService?: WalletsService,
   ) {}
 
   private isSystemReviewer(role: UserRole) {
@@ -72,12 +81,21 @@ export class AffiliateDealsService {
   }
 
   private async calculateProgress(deal: KpiDeal, db: any = this.prisma) {
+    if (deal.tierBonus === undefined && deal.collaboratorId && typeof db.collaboratorProfile?.findUnique === 'function') {
+      const profile = await db.collaboratorProfile.findUnique({
+        where: { userId: deal.collaboratorId },
+        select: { tier: { select: { name: true, extraBonusPercentage: true } } },
+      });
+      const tier = profile?.tier;
+      const tierBonus = tier?.name ? tierBonusByName(tier.name) : Number(tier?.extraBonusPercentage || 0);
+      deal = { ...deal, tierBonus };
+    }
     if (deal.targetRevenue && (!deal.commitmentStartedAt || !deal.commitmentEndsAt || !deal.settlementEndsAt)) return evaluateRevenueKpi(deal, 0, 0);
     if (deal.targetRevenue && deal.commitmentStartedAt && deal.commitmentEndsAt && deal.settlementEndsAt) {
       if (deal.scopeType === 'SELECTED_PRODUCTS' && !deal.scopeProducts) deal = { ...deal, scopeProducts: await db.exclusiveDealProduct.findMany({ where: { proposalId: deal.id }, select: { productId: true } }) };
       const orders = await db.order.findMany({ where: { ...dealOrderWhere(deal), status: { in: ['COMPLETED', 'PENDING', 'SHIPPING', 'DELIVERED', 'RETURN_REQUESTED', 'DISPUTED'] } }, include: { orderItems: { include: { referralLink: { select: { collaboratorId: true } } } } } });
-      const valid = orders.filter((order: any) => order.status === 'COMPLETED' && Number(order.refundedAmount || 0) === 0 && order.completedAt && order.completedAt <= new Date(Math.min(Date.now(), deal.settlementEndsAt!.getTime())));
-      const pending = orders.filter((order: any) => order.status !== 'COMPLETED');
+      const valid = orders.filter((order: any) => (order.status === 'COMPLETED' || order.status === 'DELIVERED') && Number(order.refundedAmount || 0) === 0 && (order.completedAt || order.deliveredAt) && (order.completedAt || order.deliveredAt) <= new Date(Math.min(Date.now(), deal.settlementEndsAt!.getTime())));
+      const pending = orders.filter((order: any) => !valid.includes(order));
       return evaluateRevenueKpi(deal, valid.reduce((sum: number, order: any) => sum + eligibleRevenue(order, deal), 0), pending.reduce((sum: number, order: any) => sum + eligibleRevenue(order, deal), 0), valid.length, pending.length);
     }
     if (
@@ -88,17 +106,17 @@ export class AffiliateDealsService {
     )
       return evaluateDealKpi(deal, 0, 0);
     const where = dealOrderWhere(deal);
+    const deadline = new Date(Math.min(Date.now(), deal.settlementEndsAt.getTime()));
     const [completed, pending, completedOrdersData] = await Promise.all([
       db.order.count({
         where: {
           ...where,
-          status: 'COMPLETED',
+          status: { in: ['COMPLETED', 'DELIVERED'] },
           refundedAmount: 0,
-          completedAt: {
-            lte: new Date(
-              Math.min(Date.now(), deal.settlementEndsAt.getTime()),
-            ),
-          },
+          OR: [
+            { completedAt: { lte: deadline } },
+            { deliveredAt: { lte: deadline } },
+          ],
         },
       }),
       db.order.count({
@@ -108,7 +126,6 @@ export class AffiliateDealsService {
             in: [
               'PENDING',
               'SHIPPING',
-              'DELIVERED',
               'RETURN_REQUESTED',
               'DISPUTED',
             ],
@@ -119,13 +136,12 @@ export class AffiliateDealsService {
         ? db.order.findMany({
             where: {
               ...where,
-              status: 'COMPLETED',
+              status: { in: ['COMPLETED', 'DELIVERED'] },
               refundedAmount: 0,
-              completedAt: {
-                lte: new Date(
-                  Math.min(Date.now(), deal.settlementEndsAt.getTime()),
-                ),
-              },
+              OR: [
+                { completedAt: { lte: deadline } },
+                { deliveredAt: { lte: deadline } },
+              ],
             },
             select: {
               orderItems: {
@@ -175,6 +191,9 @@ export class AffiliateDealsService {
       proposedCommissionRate: proposal.proposedCommissionRate,
       exceptionNote: proposal.exceptionNote,
       initiatorRole: proposal.initiatedById ? 'SHOP_MANAGER' : 'COLLABORATOR',
+      couponTerms: proposal.initiatedById
+        ? proposal.offerTerms ?? { ...new ApproveExclusiveDealDto() }
+        : proposal.offerTerms,
       shortUrl: shortCode
         ? `${(process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/r/${shortCode}`
         : null,
@@ -264,7 +283,7 @@ export class AffiliateDealsService {
         productId: proposal.productId,
       })),
     );
-    return proposals.map((proposal) => ({
+    const result = proposals.map((proposal) => ({
       ...proposal,
       vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
@@ -286,9 +305,21 @@ export class AffiliateDealsService {
                 .approvedCommissionRate,
             ),
     }));
+    return result;
   }
 
+  private static readonly dealsMemoryCache = new Map<string, { data: any; cachedAt: number }>();
+
   async getShopProposals(userId: string, role: UserRole) {
+    const cacheKey = `deals:shop:${userId}:${role}`;
+    const now = Date.now();
+    const memCached = AffiliateDealsService.dealsMemoryCache.get(cacheKey);
+    if (memCached && now - memCached.cachedAt < 20000) {
+      return memCached.data;
+    }
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const proposals = await this.prisma.exclusiveDealProposal.findMany({
       where: {
         store: this.isSystemReviewer(role)
@@ -337,7 +368,7 @@ export class AffiliateDealsService {
         productId: proposal.productId,
       })),
     );
-    return proposals.map((proposal) => ({
+    const shopProposalsResult = proposals.map((proposal) => ({
       ...proposal,
       vipVoucherCode: proposal.referralLink?.customCouponCode || null,
       proposedCommissionRate: Number(proposal.proposedCommissionRate),
@@ -357,6 +388,11 @@ export class AffiliateDealsService {
               ).approvedCommissionRate,
             ),
     }));
+    AffiliateDealsService.dealsMemoryCache.set(cacheKey, { data: shopProposalsResult, cachedAt: now });
+    if (this.cache?.set) {
+      await this.cache.set(cacheKey, shopProposalsResult, 30);
+    }
+    return shopProposalsResult;
   }
 
   async getShopActivePartners(userId: string, role: UserRole) {
@@ -435,59 +471,68 @@ export class AffiliateDealsService {
     }
     const deals = Array.from(uniqueMap.values());
 
-    const results = await Promise.all(
-      deals.map(async (deal) => {
-        let progress: any = null;
-        try {
-          progress = await this.calculateProgress(deal);
-        } catch {}
+    const chunkSize = 6;
+    const results: any[] = [];
+    for (let i = 0; i < deals.length; i += chunkSize) {
+      const chunk = deals.slice(i, i + chunkSize);
+      const chunkResults = await Promise.all(
+        chunk.map(async (deal) => {
+          let progress: any = null;
+          try {
+            const tierName =
+              deal.collaborator?.collaboratorProfile?.tier?.name || 'BRONZE';
+            const tierBonus = tierBonusByName(tierName);
+            progress = await this.calculateProgress({ ...deal, tierBonus });
+          } catch {}
 
-        const now = new Date();
-        const isExpired = deal.commitmentEndsAt
-          ? new Date(deal.commitmentEndsAt) < now
-          : false;
+          const now = new Date();
+          const isExpired = deal.commitmentEndsAt
+            ? new Date(deal.commitmentEndsAt) < now
+            : false;
 
-        return {
-          id: deal.id,
-          collaboratorId: deal.collaboratorId,
-          collaboratorName: deal.collaborator?.fullName || 'Nhà Sáng Tạo',
-          collaboratorEmail: deal.collaborator?.email,
-          collaboratorAvatar: deal.collaborator?.collaboratorProfile?.avatarUrl,
-          collaboratorTier:
-            deal.collaborator?.collaboratorProfile?.tier?.name || 'KOL VIP',
-          primaryChannel: deal.collaborator?.socialChannels?.[0] || null,
-          productId: deal.productId,
-          productTitle: deal.product?.title,
-          productImage: deal.product?.imageUrl,
-          productPrice: Number(deal.product?.price || 0),
-          dealCommissionRate: Number(
-            deal.approvedCommissionRate || deal.proposedCommissionRate || 10,
-          ),
-          publicCommissionRate: 10,
-          targetOrders: deal.targetOrders || 0,
-          targetRevenue: deal.targetRevenue == null ? null : Number(deal.targetRevenue),
-          scopeType: deal.scopeType,
-          commitmentDays: deal.commitmentDays || 30,
-          commitmentEndsAt: deal.commitmentEndsAt,
-          isExpired,
-          progress: progress || {
-            completedOrders: 0,
-            pendingOrders: 0,
-            validRevenue: 0,
+          return {
+            id: deal.id,
+            collaboratorId: deal.collaboratorId,
+            collaboratorName: deal.collaborator?.fullName || 'Nhà Sáng Tạo',
+            collaboratorEmail: deal.collaborator?.email,
+            collaboratorAvatar: deal.collaborator?.collaboratorProfile?.avatarUrl,
+            collaboratorTier:
+              deal.collaborator?.collaboratorProfile?.tier?.name || 'KOL VIP',
+            primaryChannel: deal.collaborator?.socialChannels?.[0] || null,
+            productId: deal.productId,
+            productTitle: deal.product?.title,
+            productImage: deal.product?.imageUrl,
+            productPrice: Number(deal.product?.price || 0),
+            dealCommissionRate: Number(
+              deal.approvedCommissionRate || deal.proposedCommissionRate || 10,
+            ),
+            publicCommissionRate: 10,
             targetOrders: deal.targetOrders || 0,
-            status: isExpired ? 'EXPIRED' : 'IN_PROGRESS',
-            percentComplete: 0,
-          },
-          referralLink: deal.referralLink
-            ? {
-                shortCode: deal.referralLink.shortCode,
-                totalClicks: deal.referralLink.totalClicks,
-                totalOrders: deal.referralLink.totalOrders,
-              }
-            : null,
-        };
-      }),
-    );
+            targetRevenue: deal.targetRevenue == null ? null : Number(deal.targetRevenue),
+            scopeType: deal.scopeType,
+            commitmentDays: deal.commitmentDays || 30,
+            commitmentEndsAt: deal.commitmentEndsAt,
+            isExpired,
+            progress: progress || {
+              completedOrders: 0,
+              pendingOrders: 0,
+              validRevenue: 0,
+              targetOrders: deal.targetOrders || 0,
+              status: isExpired ? 'EXPIRED' : 'IN_PROGRESS',
+              percentComplete: 0,
+            },
+            referralLink: deal.referralLink
+              ? {
+                  shortCode: deal.referralLink.shortCode,
+                  totalClicks: deal.referralLink.totalClicks,
+                  totalOrders: deal.referralLink.totalOrders,
+                }
+              : null,
+          };
+        }),
+      );
+      results.push(...chunkResults);
+    }
 
     const output = {
       success: true,
@@ -554,27 +599,153 @@ export class AffiliateDealsService {
     };
   }
 
+    async getCollaboratorDealProducts(collaboratorId: string, storeId?: string) {
+    if (!collaboratorId) {
+      throw new BadRequestException('collaboratorId là bắt buộc');
+    }
+    const where: Prisma.ProductWhereInput = {
+      isDeleted: false,
+      isActive: true,
+      isAffiliateEnabled: true,
+      moderationStatus: 'APPROVED',
+      ...(storeId ? { storeId } : {}),
+    };
+    const [products, activeDeals] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          imageUrl: true,
+          price: true,
+          storeId: true,
+          store: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.exclusiveDealProposal.findMany({
+        where: {
+          collaboratorId,
+          ...(storeId ? { storeId } : {}),
+          closedAt: null,
+          status: { in: ['APPROVED', 'PENDING', 'PENDING_ADMIN_APPROVAL'] },
+        },
+        include: {
+          scopeProducts: { select: { productId: true } },
+        },
+      }),
+    ]);
+
+    const now = new Date();
+    return products.map((product) => {
+      const deal = activeDeals.find(
+        (d) =>
+          d.productId === product.id ||
+          d.scopeProducts.some((sp) => sp.productId === product.id)
+      );
+
+      let activeDealInfo: any = null;
+      if (deal) {
+        const isApproved = deal.status === 'APPROVED';
+        const isRunning = isApproved
+          ? !deal.commitmentEndsAt || new Date(deal.commitmentEndsAt) > now
+          : true;
+        const remainingDays =
+          deal.commitmentEndsAt && new Date(deal.commitmentEndsAt) > now
+            ? Math.max(
+                1,
+                Math.ceil(
+                  (new Date(deal.commitmentEndsAt).getTime() - now.getTime()) /
+                    (1000 * 3600 * 24)
+                )
+              )
+            : null;
+
+        activeDealInfo = {
+          id: deal.id,
+          status: deal.status,
+          proposedRate: Number(deal.proposedCommissionRate),
+          approvedRate: deal.approvedCommissionRate
+            ? Number(deal.approvedCommissionRate)
+            : null,
+          effectiveRate: deal.approvedCommissionRate
+            ? Number(deal.approvedCommissionRate)
+            : Number(deal.proposedCommissionRate),
+          commitmentEndsAt: deal.commitmentEndsAt
+            ? deal.commitmentEndsAt.toISOString()
+            : null,
+          isLocked: isRunning,
+          remainingDays,
+        };
+      }
+
+      return {
+        id: product.id,
+        title: product.title,
+        imageUrl: product.imageUrl,
+        price: Number(product.price),
+        storeId: product.storeId,
+        storeName: product.store.name,
+        baseRate: 10,
+        activeDeal: activeDealInfo,
+      };
+    });
+  }
+
   async createShopOffer(
     shopOwnerId: string,
     role: UserRole,
     dto: CreateShopDealOfferDto,
   ) {
-    const product = await this.prisma.product.findFirst({
-      where: { id: dto.productId, moderationStatus: 'APPROVED' },
-      include: { store: true },
-    });
-    if (
-      !product ||
-      product.deletedAt ||
-      !product.isActive ||
-      !product.isAffiliateEnabled ||
-      !product.store ||
-      product.store.deletedAt ||
-      !product.store.isActive
-    ) {
-      throw new BadRequestException('Sản phẩm hiện không nhận tiếp thị liên kết.');
+    const targetProductIds =
+      dto.productIds && dto.productIds.length > 0
+        ? dto.productIds
+        : dto.productId
+        ? [dto.productId]
+        : [];
+    if (targetProductIds.length === 0) {
+      throw new BadRequestException(
+        'Vui lòng chọn ít nhất một sản phẩm áp dụng thỏa thuận.'
+      );
     }
-    await this.assertStoreAccess(product.storeId, shopOwnerId, role);
+
+    const products: any[] = this.prisma.product.findMany
+      ? await this.prisma.product.findMany({
+          where: { id: { in: targetProductIds }, moderationStatus: 'APPROVED' },
+          include: { store: true },
+        })
+      : [
+          await this.prisma.product.findFirst({
+            where: { id: targetProductIds[0] },
+            include: { store: true },
+          }),
+        ].filter(Boolean);
+    if (products.length !== targetProductIds.length) {
+      throw new BadRequestException(
+        'Một hoặc nhiều sản phẩm không hợp lệ hoặc chưa được duyệt.'
+      );
+    }
+    const storeId = products[0].storeId;
+    if (products.some((p) => p.storeId !== storeId)) {
+      throw new BadRequestException(
+        'Tất cả sản phẩm phải thuộc cùng một gian hàng.'
+      );
+    }
+    for (const p of products) {
+      if (
+        p.deletedAt ||
+        !p.isActive ||
+        !p.isAffiliateEnabled ||
+        !p.store ||
+        p.store.deletedAt ||
+        !p.store.isActive
+      ) {
+        throw new BadRequestException(
+          `Sản phẩm "${p.title}" hiện không nhận tiếp thị liên kết.`
+        );
+      }
+    }
+    await this.assertStoreAccess(storeId, shopOwnerId, role);
 
     const collaborator = await this.prisma.user.findUnique({
       where: { id: dto.collaboratorId },
@@ -586,92 +757,150 @@ export class AffiliateDealsService {
       collaborator.deletedAt ||
       collaborator.role !== UserRole.COLLABORATOR
     ) {
-      throw new ForbiddenException('Tài khoản đối tác không tồn tại hoặc không hợp lệ.');
+      throw new ForbiddenException(
+        'Tài khoản đối tác không tồn tại hoặc không hợp lệ.'
+      );
     }
 
     const proposedRate = Number(dto.proposedCommissionRate);
-    if (!Number.isFinite(proposedRate) || proposedRate < 11 || proposedRate > 16) {
-      throw new BadRequestException('Mức thù lao độc quyền phải từ 11% đến 16%.');
+    if (!Number.isFinite(proposedRate) || proposedRate < 11 || proposedRate > 25) {
+      throw new BadRequestException(
+        'Mức thù lao độc quyền phải từ 11% đến 25% (trần toàn hệ thống).'
+      );
+    }
+
+    // Check if any product has an active deal that hasn't finished KPI commitment
+    const now = new Date();
+    const activeDeals = this.prisma.exclusiveDealProposal.findMany
+      ? await this.prisma.exclusiveDealProposal.findMany({
+          where: {
+            collaboratorId: dto.collaboratorId,
+            storeId,
+            closedAt: null,
+            status: { in: ['APPROVED', 'PENDING', 'PENDING_ADMIN_APPROVAL'] },
+            OR: [
+              { productId: { in: targetProductIds } },
+              { scopeProducts: { some: { productId: { in: targetProductIds } } } },
+            ],
+          },
+          include: {
+            product: { select: { id: true, title: true } },
+            scopeProducts: {
+              include: { product: { select: { id: true, title: true } } },
+            },
+          },
+        })
+      : [];
+
+    const activeConflict = activeDeals.find((d) => {
+      if (d.status === 'APPROVED') {
+        return !d.commitmentEndsAt || d.commitmentEndsAt > now;
+      }
+      return true; // PENDING or PENDING_ADMIN_APPROVAL
+    });
+
+    if (activeConflict) {
+      const conflictProduct = products.find(
+        (p) =>
+          p.id === activeConflict.productId ||
+          activeConflict.scopeProducts?.some((sp) => sp.productId === p.id)
+      );
+      throw new BadRequestException(
+        `Sản phẩm "${
+          conflictProduct?.title || 'đã chọn'
+        }" đang có thỏa thuận độc quyền (${
+          activeConflict.status === 'APPROVED'
+            ? 'còn thời hạn KPI'
+            : 'đang chờ duyệt'
+        }). Không thể tạo thỏa thuận mới.`
+      );
     }
 
     const kpi = validateDealKpi(dto.targetOrders, dto.commitmentDays);
     const salesCommitment = (dto.salesCommitment || '').trim();
+    const offerTerms = { ...new ApproveExclusiveDealDto() };
 
     let conversation = await this.prisma.conversation.findFirst({
-      where: { storeId: product.storeId, collaboratorId: dto.collaboratorId },
+      where: { storeId, collaboratorId: dto.collaboratorId },
       select: { id: true },
     });
     if (!conversation) {
       conversation = await this.prisma.conversation.create({
-        data: { storeId: product.storeId, collaboratorId: dto.collaboratorId },
+        data: { storeId, collaboratorId: dto.collaboratorId },
         select: { id: true },
       });
     }
 
+    const firstProduct = products[0];
+    const isMultiProduct = targetProductIds.length > 1;
+    const scopeType = isMultiProduct
+      ? ExclusiveDealScope.SELECTED_PRODUCTS
+      : ExclusiveDealScope.SINGLE_PRODUCT;
+
     const card = {
       type: 'EXCLUSIVE_DEAL_PROPOSAL',
       proposalId: '',
-      productId: product.id,
-      productTitle: product.title,
-      productImage: product.imageUrl,
-      storeId: product.storeId,
-      storeName: product.store.name,
+      productId: firstProduct.id,
+      productTitle: isMultiProduct
+        ? `${firstProduct.title} (+${targetProductIds.length - 1} sản phẩm khác)`
+        : firstProduct.title,
+      productImage: firstProduct.imageUrl,
+      productIds: targetProductIds,
+      productTitles: products.map((p) => p.title),
+      products: products.map((p) => ({
+        id: p.id,
+        title: p.title,
+        imageUrl: p.imageUrl,
+        price: Number(p.price),
+        baseRate: 10,
+      })),
+      scopeType,
+      storeId,
+      storeName: firstProduct.store.name,
       publicCommissionRate: 10,
       proposedCommissionRate: proposedRate,
       targetOrders: dto.targetOrders,
       commitmentDays: dto.commitmentDays,
       salesCommitment,
+      couponTerms: offerTerms,
       offeredBy: 'SHOP',
+      initiatorRole: 'SHOP_MANAGER',
       status: ExclusiveDealStatus.PENDING,
+      requiresAdminApproval: proposedRate > 16,
       createdAt: new Date().toISOString(),
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.exclusiveDealProposal.findFirst({
-        where: {
+      const proposal = await tx.exclusiveDealProposal.create({
+        data: {
           collaboratorId: dto.collaboratorId,
-          productId: product.id,
-          status: ExclusiveDealStatus.PENDING,
+          storeId,
+          productId: firstProduct.id,
+          conversationId: conversation.id,
+          initiatedById: shopOwnerId,
+          proposedCommissionRate: new Prisma.Decimal(proposedRate),
+          salesCommitment,
+          offerTerms,
+          scopeType,
+          ...kpi,
+        },
+        include: {
+          product: {
+            select: { id: true, title: true, imageUrl: true, price: true },
+          },
+          store: { select: { id: true, name: true } },
         },
       });
 
-      let proposal;
-      if (existing) {
-        proposal = await tx.exclusiveDealProposal.update({
-          where: { id: existing.id },
-          data: {
-            proposedCommissionRate: new Prisma.Decimal(proposedRate),
-            salesCommitment,
-            conversationId: conversation.id,
-            ...kpi,
-            updatedAt: new Date(),
-          },
-          include: {
-            product: {
-              select: { id: true, title: true, imageUrl: true, price: true },
-            },
-            store: { select: { id: true, name: true } },
-          },
-        });
-      } else {
-        proposal = await tx.exclusiveDealProposal.create({
-          data: {
-            collaboratorId: dto.collaboratorId,
-            storeId: product.storeId,
-            productId: product.id,
-            conversationId: conversation.id,
-            proposedCommissionRate: new Prisma.Decimal(proposedRate),
-            salesCommitment,
-            ...kpi,
-          },
-          include: {
-            product: {
-              select: { id: true, title: true, imageUrl: true, price: true },
-            },
-            store: { select: { id: true, name: true } },
-          },
+      if (isMultiProduct) {
+        await tx.exclusiveDealProduct.createMany({
+          data: targetProductIds.map((productId) => ({
+            proposalId: proposal.id,
+            productId,
+          })),
         });
       }
+
       const chatMessage = await tx.chatMessage.create({
         data: {
           conversationId: conversation.id,
@@ -692,7 +921,7 @@ export class AffiliateDealsService {
     this.chatGateway.broadcastNewMessage(
       conversation.id,
       result.chatMessage,
-      dto.collaboratorId,
+      dto.collaboratorId
     );
     return {
       ...result.proposal,
@@ -858,6 +1087,31 @@ export class AffiliateDealsService {
         });
         if (claimed.count !== 1)
           throw new BadRequestException('Deal vừa được xử lý ở nơi khác.');
+
+        // Forfeit escrowed deal bonuses on commissions linked to this failed deal
+        const pendingDealCommissions = typeof (tx as any).commission?.findMany === 'function'
+          ? await (tx as any).commission.findMany({
+              where: {
+                dealProposalId: proposalId,
+                dealBonusStatus: 'PENDING_KPI' as any,
+              },
+            })
+          : [];
+        for (const comm of pendingDealCommissions) {
+          if (comm.dealBonusAmount && Number(comm.dealBonusAmount) > 0) {
+            await tx.wallet.updateMany({
+              where: { collaboratorId: proposal.collaboratorId },
+              data: {
+                conditionalDealEscrowBalance: { decrement: comm.dealBonusAmount },
+                version: { increment: 1 },
+              },
+            });
+          }
+          await tx.commission.update({
+            where: { id: comm.id },
+            data: { dealBonusStatus: 'FORFEITED' as any },
+          });
+        }
 
         if (proposal.scopeType && proposal.scopeType !== 'SINGLE_PRODUCT') await tx.referralLink.updateMany({ where: { dealResource: { proposalId } }, data: { status: 'BLOCKED', disabledBy: userId, disabledAt: new Date(), disabledReason: dto.reason } });
         // Deactivate VIP referral link so future orders revert to standard public rate
@@ -1053,4 +1307,168 @@ export class AffiliateDealsService {
     });
     this.chatGateway.broadcastNewMessage(conversationId, message, recipientId);
   }
+
+  async settleSuccessfulDeal(
+    proposalId: string,
+    actorId: string,
+    role: UserRole,
+  ) {
+    const proposal = await this.prisma.exclusiveDealProposal.findUnique({
+      where: { id: proposalId },
+      include: {
+        store: true,
+        collaborator: { select: { id: true, fullName: true } },
+      },
+    });
+    if (!proposal) throw new NotFoundException('Không tìm thấy Deal VIP.');
+    if (proposal.closedAt)
+      throw new BadRequestException('Deal đã được đóng/quyết toán trước đó.');
+
+    if (role === UserRole.COLLABORATOR && actorId !== proposal.collaboratorId) {
+      throw new ForbiddenException('Không có quyền thao tác trên Deal này.');
+    }
+    if (role === UserRole.SHOP_MANAGER) {
+      await this.assertStoreAccess(proposal.storeId, actorId, role);
+    }
+
+    const progress = await this.calculateProgress(proposal);
+    if (progress.state !== 'ACHIEVED' && (progress.percent || 0) < 100) {
+      throw new BadRequestException(
+        `Chưa thể quyết toán: Deal chưa đạt chỉ tiêu KPI cam kết (hiện đạt ${progress.percent}%).`,
+      );
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM collaborator_profiles WHERE user_id = ${proposal.collaboratorId}::uuid FOR UPDATE`;
+      const fresh = await tx.exclusiveDealProposal.findUnique({
+        where: { id: proposalId },
+      });
+      if (!fresh || fresh.closedAt)
+        throw new BadRequestException('Deal đã được đóng trước đó.');
+
+      const finalProgress = await this.calculateProgress(fresh, tx);
+      if (finalProgress.state !== 'ACHIEVED' && (finalProgress.percent || 0) < 100) {
+        throw new BadRequestException('Trạng thái KPI đã thay đổi. Vui lòng thử lại.');
+      }
+
+      await tx.exclusiveDealProposal.update({
+        where: { id: proposalId },
+        data: {
+          closedAt: new Date(),
+          shopResponse: `[ĐÃ QUYẾT TOÁN THÀNH CÔNG]: KOC hoàn thành ${finalProgress.percent}% KPI cam kết. Đã giải phóng toàn bộ Quỹ Ký Quỹ Escrow Deal VIP vào số dư khả dụng.`,
+        },
+      });
+
+      const pendingDealCommissions = typeof (tx as any).commission?.findMany === 'function'
+        ? await (tx as any).commission.findMany({
+            where: {
+              dealProposalId: proposalId,
+              dealBonusStatus: DealBonusStatus.PENDING_KPI,
+            },
+            include: {
+              order: { select: { storeId: true, status: true } },
+            },
+          })
+        : [];
+
+      let totalReleased = new Prisma.Decimal(0);
+      for (const comm of pendingDealCommissions) {
+        if (!comm.dealBonusAmount || Number(comm.dealBonusAmount) <= 0) {
+          continue;
+        }
+
+        // C-04: Only release to availableBalance if order has already cleared 14-day hold (APPROVED/PAID).
+        // If order is still within 14-day hold (PENDING), mark dealBonusStatus as QUALIFIED;
+        // approvePendingCommission will release it when the 14-day return window matures.
+        if (comm.status === CommissionStatus.APPROVED || comm.status === CommissionStatus.PAID) {
+          const storeId = comm.order?.storeId || proposal.storeId;
+          if (this.walletsService) {
+            await this.walletsService.releaseConditionalDealBonus(
+              tx,
+              proposal.collaboratorId,
+              comm.dealBonusAmount,
+              { id: comm.id, type: 'COMMISSION' },
+              storeId,
+            );
+          } else {
+            const wallet = await tx.wallet.findUnique({
+              where: { collaboratorId: proposal.collaboratorId },
+            });
+            if (wallet) {
+              await tx.wallet.update({
+                where: { id: wallet.id },
+                data: {
+                  conditionalDealEscrowBalance: { decrement: comm.dealBonusAmount },
+                  availableBalance: { increment: comm.dealBonusAmount },
+                  version: { increment: 1 },
+                },
+              });
+              if (storeId) {
+                await tx.storeWallet.upsert({
+                  where: { walletId_storeId: { walletId: wallet.id, storeId } },
+                  create: {
+                    walletId: wallet.id,
+                    storeId,
+                    availableBalance: comm.dealBonusAmount,
+                    pendingBalance: new Prisma.Decimal(0),
+                  },
+                  update: {
+                    availableBalance: { increment: comm.dealBonusAmount },
+                  },
+                });
+              }
+              if (typeof (tx as any).financialLedger?.create === 'function') {
+                await (tx as any).financialLedger.create({
+                  data: {
+                    walletId: wallet.id,
+                    referenceId: comm.id,
+                    referenceType: 'COMMISSION',
+                    bucket: WalletBalanceBucket.AVAILABLE,
+                    transactionType: TransactionType.COMMISSION_APPROVED,
+                    amount: comm.dealBonusAmount,
+                    balanceBefore: wallet.availableBalance,
+                    balanceAfter: wallet.availableBalance.plus(comm.dealBonusAmount),
+                    storeId,
+                  },
+                });
+              }
+            }
+          }
+          totalReleased = totalReleased.plus(comm.dealBonusAmount);
+        }
+
+        // C-01: Use DealBonusStatus.QUALIFIED instead of invalid 'RELEASED'
+        await tx.commission.update({
+          where: { id: comm.id },
+          data: { dealBonusStatus: DealBonusStatus.QUALIFIED },
+        });
+      }
+
+      return {
+        proposalId,
+        status: 'ACHIEVED',
+        percent: finalProgress.percent,
+        totalReleased,
+        commissionsCount: pendingDealCommissions.length,
+      };
+    });
+
+    if (proposal.conversationId) {
+      await this.appendDecisionMessage(
+        proposal.conversationId,
+        actorId,
+        proposal.collaboratorId,
+        {
+          type: 'EXCLUSIVE_DEAL_SETTLED',
+          title: 'Quyết toán Deal VIP thành công',
+          content: `🎉 Chúc mừng! Hợp đồng Deal VIP đã hoàn tất xuất sắc (${progress.percent}% KPI). Toàn bộ Quỹ Ký Quỹ Escrow đã được giải phóng vào Số dư Khả dụng của KOC!`,
+          proposalId,
+          percent: progress.percent,
+        },
+      );
+    }
+
+    return result;
+  }
+
 }

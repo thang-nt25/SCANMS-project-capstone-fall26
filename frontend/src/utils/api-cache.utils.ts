@@ -67,13 +67,15 @@ export const apiCache = {
     if (!url) return false;
     // Balances, delivery state, conversations and voucher quotas change outside this tab.
     // Also covers nested endpoints such as /stores/:id/payouts and signed bill URLs.
-    if (/\/(?:wallets|payouts|orders|chat|coupons)(?:\/|\?|$)/.test(url)) return false;
+    // Money, order state, messages and coupon limits can change in another session.
+    if (/\/(?:wallets|payouts|orders|chat\/conversations|coupons)(?:\/|$)/.test(url)) return false;
     // Không cache các endpoint auth hoặc nhạy cảm payment execution
     if (
       url.includes('/auth/') ||
       url.includes('/refresh') ||
       url.includes('/otp') ||
       url.includes('/wallets/top-up-demo') ||
+      url.includes('/wallets/top-up-payos') ||
       url.includes('/payos/') ||
       url.includes('/checkout')
     ) {
@@ -90,6 +92,10 @@ export const apiCache = {
     if (!url) return null;
     // Đọc tin nhắn chat không cần xóa danh sách tin nhắn hoặc cuộc trò chuyện
     if (url.includes('/chat/conversations/') && url.includes('/read')) {
+      return null;
+    }
+    // Heartbeat presence không được xóa cache /stores hay tăng revision bộ nhớ đệm
+    if (url.includes('/presence')) {
       return null;
     }
     // Shipping creates the waybill and changes the purchase order's fulfillment state.
@@ -148,7 +154,21 @@ export const apiCache = {
    * Catalogue data expires after 30 seconds even without a local mutation.
    * Có cơ chế giới hạn MAX_CACHE_ENTRIES = 120 để chống rò rỉ RAM (Zero Memory Leak)
    */
-  set(url: string, params: any, data: any, ttlMs: number = DEFAULT_CACHE_TTL_MS): void {
+  getTTL(url: string): number {
+    if (url.includes('/chat/')) return 20_000;
+    if (url.includes('/payouts')) return 30_000;
+    if (url.includes('/orders')) return 30_000;
+    if (url.includes('/wallets')) return 30_000;
+    if (url.includes('/coupons')) return 60_000;
+    if (url.includes('/sample-requests')) return 30_000;
+    if (url.includes('/products')) return 120_000; // 2 minutes for products
+    if (url.includes('/stores')) return 180_000; // 3 minutes for store details
+    if (url.includes('/dashboard') || url.includes('/analytics')) return 60_000;
+    return DEFAULT_CACHE_TTL_MS;
+  },
+
+  set(url: string, params: any, data: any, ttlMs?: number): void {
+    const effectiveTtl = typeof ttlMs === 'number' ? ttlMs : this.getTTL(url);
     const key = generateKey(url, params);
 
     // Nếu đã chạm trần 120 mục, xóa mục cũ nhất (mục đầu tiên trong Map)
@@ -162,7 +182,7 @@ export const apiCache = {
     memoryCache.set(key, {
       data,
       timestamp: Date.now(),
-      ttlMs,
+      ttlMs: effectiveTtl,
     });
   },
 
@@ -196,9 +216,11 @@ export const apiCache = {
     const domain = this.getAffectedDomain(url);
     this.invalidate(domain);
     if (domain === '/orders' || domain === '/returns') {
-      for (const related of ['/products', '/stores', '/coupons', '/analytics', '/referral-links']) {
-        this.invalidate(related);
-      }
+      this.invalidate('/products');
+      this.invalidate('/stores');
+      this.invalidate('/coupons');
+      this.invalidate('/analytics');
+      this.invalidate('/dashboard');
     }
   },
 };

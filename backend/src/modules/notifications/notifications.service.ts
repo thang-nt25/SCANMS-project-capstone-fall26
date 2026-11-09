@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../core/database/prisma.service';
+import type { Notification, Prisma } from '@prisma/client';
 import { CacheService, NOOP_CACHE_SERVICE } from '../../core/cache/cache.service';
 
 export type NotificationCategory = 'ALL' | 'ORDER' | 'PROMOTION' | 'SYSTEM';
@@ -45,6 +46,89 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService = NOOP_CACHE_SERVICE,
   ) {}
+
+  private async withOrderProductImages(userId: string, items: Notification[]) {
+    const dataOf = (item: Notification): Prisma.JsonObject => {
+      if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) {
+        return item.data as Prisma.JsonObject;
+      }
+      if (typeof item.data === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(item.data);
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Prisma.JsonObject
+            : {};
+        } catch {
+          return {};
+        }
+      }
+      return {};
+    };
+    const orderCodeOf = (item: Notification): string | undefined => {
+      const data = dataOf(item);
+      if (typeof data.externalOrderSn === 'string' && data.externalOrderSn.trim()) {
+        return data.externalOrderSn.trim();
+      }
+      // Older order notices stored the public code only in their text (data = null).
+      if (!ORDER_TYPE_PREFIXES.some(prefix => item.type.startsWith(prefix))) return undefined;
+      return `${item.title} ${item.message}`.match(/\bDH-[A-Z0-9]+(?:-[A-Z0-9]+)*\b/i)?.[0].toUpperCase();
+    };
+    const orderIds = [...new Set(items.map(item => dataOf(item).orderId)
+      .filter((id): id is string => typeof id === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))];
+    const orderCodes = [...new Set(items.map(orderCodeOf)
+      .filter((code): code is string => typeof code === 'string' && code.trim().length > 0))];
+    if (!orderIds.length && !orderCodes.length) return items;
+
+    try {
+      // Resolve old notices by public order code as well as newer notices by UUID.
+      const orders = await this.prisma.order.findMany({
+        where: {
+          AND: [
+            {
+              OR: [
+                ...(orderIds.length ? [{ id: { in: orderIds } }] : []),
+                ...(orderCodes.length ? [{ externalOrderSn: { in: orderCodes } }] : []),
+              ],
+            },
+            {
+              OR: [
+                { customerId: userId },
+                { attributedCollaboratorId: userId },
+                { store: { is: { ownerId: userId } } },
+              ],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          orderItems: {
+            take: 1,
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            select: { product: { select: { title: true, imageUrl: true } }, variant: { select: { imageUrl: true } } },
+          },
+        },
+      });
+      const images = new Map(orders.map(order => {
+        const item = order.orderItems[0];
+        return [order.id, item ? { productImageUrl: item.variant?.imageUrl || item.product.imageUrl, productTitle: item.product.title } : null] as const;
+      }));
+      const ordersByCode = new Map(orders.map(order => [order.externalOrderSn, order.id] as const));
+      return items.map(item => {
+        const data = dataOf(item);
+        const orderId = typeof data.orderId === 'string' && images.has(data.orderId)
+          ? data.orderId
+          : orderCodeOf(item)
+            ? ordersByCode.get(orderCodeOf(item)!)
+            : undefined;
+        const product = orderId ? images.get(orderId) : null;
+        return product?.productImageUrl ? { ...item, data: { ...data, ...product } } : item;
+      });
+    } catch (error) {
+      this.logger.warn('Could not load product thumbnails for notifications: ' + String(error));
+      return items;
+    }
+  }
 
   /**
    * Tự động dọn dẹp các thông báo phiên live đã kết thúc qua Cron Job định kỳ 10 phút
@@ -132,7 +216,7 @@ export class NotificationsService {
     }
 
     const [
-      items,
+      notifications,
       total,
       unreadCount,
       orderUnread,
@@ -157,6 +241,8 @@ export class NotificationsService {
         where: { userId, isRead: false, ...getCategoryFilter('SYSTEM') },
       }),
     ]);
+
+    const items = await this.withOrderProductImages(userId, notifications);
 
     return {
       items,

@@ -49,6 +49,7 @@ export interface KpiDeal {
   settlementEndsAt?: Date | null;
   closedAt?: Date | null;
   approvedCommissionRate?: number | Prisma.Decimal | null;
+  tierBonus?: number | Prisma.Decimal | null;
 }
 
 export function dealOrderWhere(deal: KpiDeal): Prisma.OrderWhereInput {
@@ -158,6 +159,7 @@ export function evaluateRevenueKpi(
     validRevenue >= target ? 1 : 0,
     pendingOrders,
     now,
+    validRevenue,
   );
   return {
     ...legacy,
@@ -210,6 +212,16 @@ export function evaluateDealKpi(
                 : completedOrders >= deal.targetOrders!
                   ? 'ACHIEVED'
                   : 'REVIEW_REQUIRED';
+  const approvedRate =
+    deal.approvedCommissionRate != null
+      ? Number(deal.approvedCommissionRate)
+      : 10;
+  const tierBonus = Math.min(3, Math.max(0, Number(deal.tierBonus || 0)));
+  const tierBaseRate = 10 + tierBonus;
+  const rebateBonusRate = Math.max(0, approvedRate - tierBaseRate);
+  const baseCommissionEarned = Math.round(validSales * (tierBaseRate / 100));
+  const vipRebateEscrow = Math.round(validSales * (rebateBonusRate / 100));
+
   return {
     state,
     targetOrders: deal.targetOrders || null,
@@ -225,11 +237,18 @@ export function evaluateDealKpi(
     serverTime: now,
     canTerminate: state === 'REVIEW_REQUIRED',
     validSales,
-    baseRate: 10,
-    approvedRate: deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10,
-    rebateBonusRate: Math.max(0, (deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10) - 10),
-    baseCommissionEarned: Math.round(validSales * 0.1),
-    vipRebateEscrow: Math.round(validSales * (Math.max(0, (deal.approvedCommissionRate != null ? Number(deal.approvedCommissionRate) : 10) - 10) / 100)),
-    rebateStatus: state === 'ACHIEVED' ? 'UNLOCKED' : (state === 'ACTIVE' || state === 'SETTLING') ? 'ESCROW_LOCKED' : (state === 'REVIEW_REQUIRED' || state === 'CLOSED') ? 'FORFEITED' : 'PENDING',
+    baseRate: tierBaseRate,
+    approvedRate,
+    rebateBonusRate,
+    baseCommissionEarned,
+    vipRebateEscrow,
+    rebateStatus:
+      state === 'ACHIEVED'
+        ? 'UNLOCKED'
+        : state === 'ACTIVE' || state === 'SETTLING'
+          ? 'ESCROW_LOCKED'
+          : state === 'REVIEW_REQUIRED' || state === 'CLOSED'
+            ? 'FORFEITED'
+            : 'PENDING',
   };
 }

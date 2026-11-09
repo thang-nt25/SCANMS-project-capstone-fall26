@@ -30,7 +30,6 @@ import {
   ShieldAlert,
   Copy,
   AlertTriangle,
-  Handshake,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -208,6 +207,13 @@ export default function ShopCollaborationPage() {
   );
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [searchShopQuery, setSearchShopQuery] = useState('');
   const [shopFilter, setShopFilter] = useState<'ALL' | 'CHAT' | 'INVITATIONS' | 'SAMPLES' | 'HIGH_COMM'>('ALL');
@@ -618,6 +624,9 @@ export default function ShopCollaborationPage() {
                 lastMessageText: '',
                 lastMessageAt: undefined,
               };
+              if (!mappedStores.some((s) => s.id === targetNewStore!.id)) {
+                mappedStores.unshift(targetNewStore);
+              }
             }
           } catch {}
         }
@@ -627,6 +636,7 @@ export default function ShopCollaborationPage() {
       cachedTargetNewStore = targetNewStore;
       cachedRawConversations = convList;
 
+      if (!isMountedRef.current) return;
       setStores(mappedStores);
       setActiveTargetStore(targetNewStore);
 
@@ -638,13 +648,14 @@ export default function ShopCollaborationPage() {
       cachedLastSelectedStoreId = targetStoreId;
       if (targetStoreId) {
         setSelectedStoreId(targetStoreId);
-        if (!shopParam && mappedStores.length > 0) {
+        if (!shopParam && mappedStores.length > 0 && isMountedRef.current) {
           updateUrl(mappedStores[0].id, activeTabRef.current);
         }
       } else {
         setSelectedStoreId('');
       }
     } catch {
+      if (!isMountedRef.current) return;
       setStores([]);
       setActiveTargetStore(null);
     }
@@ -655,10 +666,20 @@ export default function ShopCollaborationPage() {
   }, [loadConversationsAndStores]);
 
   const selectedStore = useMemo(() => {
-    if (activeTargetStore && activeTargetStore.id === selectedStoreId) {
-      return activeTargetStore;
+    if (selectedStoreId) {
+      const matchInStores = stores.find((s) => s.id === selectedStoreId);
+      if (matchInStores) return matchInStores;
+      if (activeTargetStore && activeTargetStore.id === selectedStoreId) return activeTargetStore;
+      const matchInCache = cachedPartnerStores.find((s) => s.id === selectedStoreId);
+      if (matchInCache) return matchInCache;
+      return activeTargetStore || ({
+        id: selectedStoreId,
+        name: 'Đang tải gian hàng...',
+        category: 'Gian hàng đối tác',
+        defaultCommissionRate: 10,
+      } as PartnerStore);
     }
-    return stores.find((s) => s.id === selectedStoreId) || stores[0] || activeTargetStore || null;
+    return stores[0] || activeTargetStore || null;
   }, [stores, selectedStoreId, activeTargetStore]);
   const tabScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -764,7 +785,7 @@ export default function ShopCollaborationPage() {
         setProductsLoadError(true);
       }
     } finally {
-      if (sequence === productLoadSequence.current) setLoadingProducts(false);
+      setLoadingProducts(false);
     }
   }, []);
 
@@ -800,7 +821,7 @@ export default function ShopCollaborationPage() {
         setSamplesLoadError(true);
       }
     } finally {
-      if (sequence === sampleLoadSequence.current) setLoadingSamples(false);
+      setLoadingSamples(false);
     }
   }, []);
 
@@ -972,7 +993,7 @@ export default function ShopCollaborationPage() {
 setActiveTab('samples');
       setSampleStatusFilter('ALL');
       if (selectedStore?.id) {
-        updateUrl(selectedStore.id, 'samples');
+        updateUrl(selectedStoreId || selectedStore?.id, 'samples');
         void loadStoreSamples(selectedStore.id);
       }
       toast.success(editingRequest ? 'Đã cập nhật yêu cầu và gửi lại Shop chờ duyệt.' : `Đã gửi yêu cầu nhận mẫu "${requestSampleModalProduct.title}" kèm cam kết video trong 14 ngày sau khi nhận hàng.`);
@@ -983,7 +1004,7 @@ setActiveTab('samples');
         setRequestSampleModalProduct(null);
         setActiveTab('samples');
         setSampleStatusFilter('ALL');
-        if (selectedStore?.id) updateUrl(selectedStore.id, 'samples');
+        if (selectedStore?.id) updateUrl(selectedStoreId || selectedStore?.id, 'samples');
         toast.error(editingRequest ? message : 'Bạn đã có yêu cầu cho sản phẩm này. Xem tại tab Hàng mẫu.');
       } else {
         toast.error(message);
@@ -1093,7 +1114,7 @@ setActiveTab('samples');
       )}
 
       {/* Main Unified Workspace */}
-      <div className="flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
+      <div className="collaboration-split-layout flex-1 min-h-0 bg-white border border-[#EAE4D7] rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-[0_2px_8px_rgba(35,29,21,0.03)]">
         {/* LEFT COLUMN: Danh Sách Gian Hàng Tinh Gọn (Có thể thu nhỏ chỉ hiện icon) */}
         <div
           data-collapsed={isSidebarCollapsed}
@@ -1361,7 +1382,7 @@ setActiveTab('samples');
             <>
               {/* Shop Context Header Bar - Cố định ổn định, không co rút giật layout */}
               <div className="shrink-0 bg-white border-b border-[#EAE4D7] z-20">
-                <div className="px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="collaboration-shop-heading px-4 py-3 border-b border-[#EAE4D7] bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
@@ -1392,11 +1413,17 @@ setActiveTab('samples');
                           <span>Đã xác minh</span>
                         </span>
                       </div>
+                      <div className="collaboration-cooperation-inline">
+                        <StoreCooperationPanel mode="kol" storeId={selectedStoreId || undefined} />
+                      </div>
                     </div>
                   </div>
 
                   {/* Nút Xem Trang Gian Hàng Trên Sàn */}
                   <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => setDealPickerStoreId(selectedStore.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] text-xs font-semibold cursor-pointer hover:bg-[#F3EFE6]">
+                      <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
+                    </button>
                     <a
                       href={selectedStore.slug
                         ? `/shop/${encodeURIComponent(selectedStore.slug)}`
@@ -1413,14 +1440,9 @@ setActiveTab('samples');
                   </div>
                 </div>
 
-                {/* Thanh trạng thái liên kết hợp tác */}
-                <div className="collaboration-context-cooperation">
-                <StoreCooperationPanel mode="kol" storeId={selectedStore.id} />
-                </div>
-
-                {/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
+{/* Sub-Tabs Bar: Cố định 3 Tab (Tin nhắn, Sản phẩm, Hàng mẫu) */}
                 <div
-                  className="px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
+                  className="collaboration-compact-tabs px-3 sm:px-4 py-2 bg-white grid grid-cols-3 items-stretch gap-2 border-t border-[#EAE4D7]"
                   role="tablist"
                   aria-label="Nội dung hợp tác với gian hàng"
                 >
@@ -1428,9 +1450,8 @@ setActiveTab('samples');
                     { id: 'messages', label: 'Tin nhắn', icon: MessageSquare },
                     { id: 'products', label: 'Sản phẩm', icon: Package },
                     { id: 'samples', label: 'Hàng mẫu', icon: Truck },
-                  ].map((tab) => {
+                  ].map((tab, index) => {
                     const isActive = activeTab === tab.id;
-                    const Icon = tab.icon;
                     const count = tabCounts.storeId === selectedStore.id
                         ? tabCounts[tab.id as 'messages' | 'products' | 'samples'] : null;
                     return (
@@ -1443,7 +1464,7 @@ setActiveTab('samples');
                         aria-selected={isActive}
                         onClick={() => {
                           setActiveTab(tab.id as any);
-                          updateUrl(selectedStore.id, tab.id);
+                          updateUrl(selectedStoreId || selectedStore?.id, tab.id);
                         }}
                         className={`flex min-w-0 min-h-[40px] items-center justify-center gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none border ${
                           isActive
@@ -1451,7 +1472,7 @@ setActiveTab('samples');
                             : 'bg-white text-[#7D715E] border-[#EAE4D7] hover:text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#EEDFC6]'
                         }`}
                       >
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
+                        <span className="collaboration-compact-step" aria-hidden="true">{index + 1}</span>
                         <span>{tab.label}</span>
                         <span
                           className="inline-flex min-w-[22px] h-5.5 shrink-0 items-center justify-center rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-1.5 text-[11px] font-bold tabular-nums text-[#795A2D]"
@@ -1469,21 +1490,7 @@ setActiveTab('samples');
           <div data-collaboration-content className="flex-1 min-h-0 relative overflow-hidden flex flex-col bg-white">
             {/* 1. CHAT TAB - Mounted persistently to retain conversation state, socket listeners, and scroll */}
             <div className={`h-full w-full overflow-hidden flex flex-col ${activeTab === 'messages' ? 'flex' : 'hidden'}`}>
-              {/* Thanh Deal Bar Đàm Phán Hoa Hồng VIP */}
-              <div className="bg-white border-b border-[#EAE4D7] px-4 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
-                <div className="flex items-center gap-2 text-[#B88E4F]">
-                  <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0" />
-                  <strong className="text-xs font-bold text-[#1A1612]">Đàm phán deal VIP</strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDealPickerStoreId(selectedStore.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold hover:bg-[#FAF8F5] transition shrink-0 cursor-pointer"
-                >
-                  <Plus size={13} aria-hidden="true" /> Đề xuất deal VIP
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
+              <div className="collaboration-chat-section flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ChatBoxPage
                   embedded
                   targetStoreId={selectedStore.id}
@@ -1697,7 +1704,7 @@ setActiveTab('samples');
                                 </div>
 
                                 {displayedSample && <button type="button"
-                                  onClick={() => { setActiveTab('samples'); updateUrl(selectedStore.id, 'samples'); }}
+                                  onClick={() => { setActiveTab('samples'); updateUrl(selectedStoreId || selectedStore?.id, 'samples'); }}
                                   className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1.5 text-left text-xs font-semibold text-[#795A2D]"
                                   title="Xem yêu cầu trong tab Hàng mẫu">
                                   {sampleStatusLabels[displayedSample.status] || 'Đã từng xin mẫu'} · Xem yêu cầu
@@ -1787,7 +1794,7 @@ setActiveTab('samples');
                           type="button"
                           onClick={() => {
                             setActiveTab('products');
-                            updateUrl(selectedStore.id, 'products');
+                            updateUrl(selectedStoreId || selectedStore?.id, 'products');
                           }}
                           className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[34px] px-2.5 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-[#1A1612] text-xs font-bold hover:bg-[#F3EFE6] hover:border-[#C59B58] transition cursor-pointer"
                         >

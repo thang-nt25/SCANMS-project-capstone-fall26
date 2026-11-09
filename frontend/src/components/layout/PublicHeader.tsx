@@ -1,36 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  ShoppingCart,
-  Package,
   User,
-  LogOut,
-  Store,
-  Handshake,
-  Megaphone,
   Shield,
-  ShieldCheck,
-  Check,
-  Settings,
-  MessageSquare,
-  Wallet,
   ShoppingBag,
-  MapPin,
-  Heart,
-  Camera,
-  Loader2,
+  Store,
+  X,
 } from 'lucide-react';
 import { ProductSearchBox } from './ProductSearchBox';
 import { ScanMSLogo } from '../common/ScanMSLogo';
 import { HeaderAccountButton } from './HeaderAccountButton';
+import { AccountMenu } from './AccountMenu';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
 import { toast } from '../../utils/toast';
 import { useCart } from '../../context/CartContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { AccountConnectionStatus } from './AccountConnectionStatus';
 import { productLoginUrl } from '../../utils/login-return';
+import { HeaderCartPreview } from '../cart/HeaderCartPreview';
 
 export interface PublicHeaderProps {
+  showShoppingActions?: boolean;
+  cartPage?: boolean;
+  navigation?: ReactNode;
+  layout?: 'marketplace' | 'cart' | 'standard' | 'workspace';
   sticky?: boolean;
   cartCount?: number;
   onOpenCart?: () => void;
@@ -41,10 +35,13 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({
+  showShoppingActions = true,
+  cartPage = false,
+  navigation,
+  layout,
   sticky = true,
   cartCount,
   onOpenCart,
-  onOpenTracking,
   defaultSearchQuery = '',
   onSearchSubmit,
   onOpenFilter,
@@ -60,9 +57,23 @@ export function PublicHeader({
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const [searchQuery, setSearchQuery] = useState(defaultSearchQuery);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showOrderLoginModal, setShowOrderLoginModal] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => setIsUserMenuOpen(false), [location.pathname, location.search]);
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+        userMenuRef.current?.querySelector<HTMLButtonElement>('button[aria-controls="public-account-menu"]')?.focus();
+      }
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [isUserMenuOpen]);
 
   useEffect(() => {
     setSearchQuery(defaultSearchQuery);
@@ -108,6 +119,17 @@ export function PublicHeader({
     else navigate('/search?q=' + encodeURIComponent(query));
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (onSearchSubmit) onSearchSubmit('');
+    else if (location.pathname === '/search' || location.pathname === '/marketplace/search') {
+      const params = new URLSearchParams(location.search);
+      params.delete('q');
+      params.delete('page');
+      navigate({ pathname: location.pathname, search: params.toString() });
+    }
+  };
+
   const handleFilterClick = () => {
     if (onOpenFilter) {
       onOpenFilter();
@@ -121,17 +143,27 @@ export function PublicHeader({
     authService.logout(`${location.pathname}${location.search}${location.hash}`);
   };
 
+  const handleOrdersClick = () => {
+    if (currentUser) {
+      navigate('/customer/orders');
+    } else {
+      setShowOrderLoginModal(true);
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
       toast.error('Vui lòng chọn tệp hình ảnh hợp lệ (PNG, JPG, WEBP)');
+      e.target.value = '';
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Kích thước ảnh tối đa 5MB');
+      e.target.value = '';
       return;
     }
 
@@ -151,403 +183,246 @@ export function PublicHeader({
   };
 
   const role = currentUser?.role;
-  const isCustomer = role === 'CUSTOMER';
-  const isKol = role === 'COLLABORATOR';
   const isShop = role === 'SHOP_MANAGER';
-  const isAdmin = role === 'SYSTEM_ADMIN' || role === 'SYSTEM_MANAGER';
-
-  const workspacePath = isCustomer
-    ? '/customer/orders'
-    : isShop
-    ? '/merchant/dashboard'
-    : isAdmin
-    ? '/admin/users'
-    : '/collaborator/dashboard';
-
-  const workspaceLabel = isCustomer
-    ? 'Đơn mua của tôi ↗'
-    : isShop
-    ? 'Vào Quản Lý Shop ↗'
-    : isAdmin
-    ? 'Vào Ban Quản Trị ↗'
-    : 'Vào Không Gian KOL ↗';
-
   const storeName = currentUser?.stores?.[0]?.name || 'Gian Hàng Đối Tác';
-  const [activeWorkspace, setActiveWorkspace] = useState(() => authService.getActiveWorkspace());
+  const displayRoleDetail = isShop
+    ? storeName
+    : role === 'SYSTEM_ADMIN'
+    ? 'Tổng Quản Trị'
+    : role === 'SYSTEM_MANAGER'
+    ? 'Vận Hành & Tuân Thủ'
+    : role === 'COLLABORATOR'
+    ? currentUser?.collaboratorProfile?.tier?.name
+      ? `KOL Hạng ${currentUser.collaboratorProfile.tier.name}`
+      : 'KOL / KOC Đối Tác'
+    : 'Khách mua sắm';
+  const isMarketplace = layout === 'marketplace' || Boolean(navigation);
+  const hasShortcuts = Boolean(navigation);
 
-  useEffect(() => {
-    const syncWorkspace = () => setActiveWorkspace(authService.getActiveWorkspace());
-    window.addEventListener('scanms_workspace_changed', syncWorkspace);
-    window.addEventListener('storage', syncWorkspace);
-    return () => {
-      window.removeEventListener('scanms_workspace_changed', syncWorkspace);
-      window.removeEventListener('storage', syncWorkspace);
-    };
-  }, []);
+  const kocLink = currentUser?.role === 'COLLABORATOR'
+    ? '/collaborator/dashboard'
+    : currentUser?.role === 'CUSTOMER'
+      ? '/customer/portal'
+      : '/login?returnUrl=' + encodeURIComponent('/collaborator/dashboard');
 
-  const workspaces = currentUser ? authService.getUserAvailableWorkspaces(currentUser) : [];
+  const shopLink = (currentUser?.role === 'SHOP_MANAGER' || currentUser?.role === 'SYSTEM_ADMIN')
+    ? '/merchant/dashboard'
+    : '/login?role=shop&returnUrl=' + encodeURIComponent('/merchant/dashboard');
 
-  const getWorkspaceIcon = (key: string, iconClass = 'w-3.5 h-3.5') => {
-    switch (key) {
-      case 'kol':
-        return <Megaphone className={`${iconClass} text-[#B88E4F]`} />;
-      case 'shop':
-        return <Store className={`${iconClass} text-[#B88E4F]`} />;
-      case 'admin':
-        return <ShieldCheck className={`${iconClass} text-[#B88E4F]`} />;
-      default:
-        return <ShoppingBag className={`${iconClass} text-[#B88E4F]`} />;
-    }
+  const renderTopHeader = () => (
+    <div className="h-12 bg-gradient-to-r from-[#3a2a12] via-[#5a3d19] to-[#3a2a12] text-[#fff8ed] hidden sm:flex items-center justify-between px-4 sm:px-10 text-[13px] border-b border-[#d4af70]/30 relative z-50">
+      {/* Left: Ecosystem links */}
+      <div className="flex items-center gap-4 font-medium">
+        <Link to={kocLink} className="flex items-center gap-1.5" title="Bàn làm việc KOC / Cổng Tiếp thị liên kết">
+          <Shield size={14} className="text-[#d4af70]" />
+          <span>Kênh KOC Tiếp Thị</span>
+        </Link>
+        <span className="text-[#d4af70]/40 select-none mx-1">·</span>
+        <Link to={shopLink} className="flex items-center gap-1.5" title="Quản trị gian hàng nội bộ">
+          <Store size={14} className="text-[#d4af70]" />
+          <span>Quản Trị Nhãn Hàng</span>
+        </Link>
+      </div>
+
+      {/* Right: Utilities */}
+      <div className="flex items-center gap-3.5">
+        {showShoppingActions && (
+          <button
+            type="button"
+            onClick={handleOrdersClick}
+            className="inline-flex items-center gap-1.5 cursor-pointer font-medium text-[#fff8ed] hover:text-[#d4af70] transition-colors"
+            title="Xem danh sách và tiến độ đơn hàng"
+          >
+            <ShoppingBag size={14} className="text-[#d4af70]" />
+            <span>Đơn hàng</span>
+          </button>
+        )}
+
+        <span className="text-[#d4af70]/30 select-none">|</span>
+
+        {/* Notifications */}
+        <div className="flex items-center gap-3">
+          <AccountConnectionStatus userId={currentUser?.id} />
+          <NotificationDropdown darkMode={true} />
+        </div>
+
+        <span className="text-[#d4af70]/30 select-none">|</span>
+
+        {/* Account Trigger */}
+        {currentUser ? (
+          <div
+            className="relative z-50 flex items-center"
+            ref={userMenuRef}
+          >
+            <HeaderAccountButton
+              user={currentUser}
+              role={currentUser.role}
+              expanded={isUserMenuOpen}
+              menuId="public-account-menu"
+              detail={displayRoleDetail}
+              darkMode={true}
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            />
+            {isUserMenuOpen && (
+              <AccountMenu
+                id="public-account-menu"
+                user={currentUser}
+                role={currentUser.role}
+                onClose={() => setIsUserMenuOpen(false)}
+                onLogout={handleLogout}
+                inputRef={avatarInputRef}
+                onAvatarUpload={handleAvatarUpload}
+                uploading={uploadingAvatar}
+              />
+            )}
+          </div>
+        ) : (
+          <Link
+            to={loginUrl}
+            className="inline-flex items-center gap-1.5 font-bold text-[#fff8ed] hover:text-[#d4af70] transition-colors"
+          >
+            <User size={14} className="text-[#d4af70]" />
+            <span>Đăng nhập / Đăng ký</span>
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderOrderLoginModal = () => {
+    if (!showOrderLoginModal) return null;
+    return (
+      <div className="fixed inset-0 z-[120] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-[#fffdf9] border border-[#eadbc5] rounded-2xl p-6 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-150">
+          <button
+            type="button"
+            onClick={() => setShowOrderLoginModal(false)}
+            className="absolute top-4 right-4 p-1.5 rounded-full text-[#7d715e] hover:bg-[#f3efe6] transition-colors cursor-pointer"
+            aria-label="Đóng"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-center gap-3.5 mb-3">
+            <div className="w-11 h-11 rounded-full bg-[#fbf5eb] border border-[#eedfc6] flex items-center justify-center text-[#b88e4f] shrink-0">
+              <ShoppingBag size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#1a1612]">Đăng nhập để xem Đơn hàng</h3>
+              <p className="text-xs text-[#7d715e] mt-0.5">Quản lý và theo dõi tiến độ đơn hàng SCANMS</p>
+            </div>
+          </div>
+          <p className="text-sm text-[#5c4d3c] leading-relaxed mb-6 bg-[#faf8f5] p-3.5 rounded-xl border border-[#eae4d7]">
+            Vui lòng đăng nhập tài khoản của bạn để tra cứu lịch sử mua sắm, hành trình vận chuyển bưu tá GHN và yêu cầu bảo hành đổi trả sản phẩm.
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setShowOrderLoginModal(false)}
+              className="px-4 py-2.5 rounded-full text-xs font-semibold text-[#7d715e] hover:bg-[#f3efe6] transition-colors cursor-pointer"
+            >
+              Để sau
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowOrderLoginModal(false);
+                navigate('/login?returnUrl=' + encodeURIComponent('/customer/orders'));
+              }}
+              className="bg-[linear-gradient(135deg,#c99545,#94621f)] text-white border-0 rounded-full py-2.5 px-5 text-xs font-semibold cursor-pointer no-underline inline-flex items-center gap-2 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(160,105,35,0.25)]"
+            >
+              Đăng nhập ngay
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <header className={`scanms-site-header ${sticky ? 'sticky top-0' : 'relative'} z-40 bg-white/95 backdrop-blur-md border-b border-[#EAE4D7] shadow-2xs`}>
-      <div className="max-w-[1520px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-6 relative z-30">
-        {/* Left: Brand Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
-            <span className="sm:hidden"><ScanMSLogo size="sm" showSubtitle={false} className="scanms-header-logo" /></span>
-            <span className="hidden sm:inline-flex"><ScanMSLogo size="md" className="scanms-header-logo" /></span>
-          </Link>
-        </div>
+    <header
+      className={`scanms-site-header public-commerce-header ${cartPage ? 'public-commerce-header--cart' : ''} ${isMarketplace ? 'public-commerce-header--marketplace' : ''} ${sticky ? 'sticky top-0' : 'relative'} z-40`}
+      data-shortcuts={hasShortcuts}
+      data-shopping-actions={showShoppingActions}
+    >
+      {/* TẦNG 1: TOP UTILITY STRIP */}
+      {renderTopHeader()}
 
-        <ProductSearchBox value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch}
-          onClear={() => onSearchSubmit?.('')}
-          className="hidden lg:block min-w-0 w-full flex-1 max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-2" />
+      {/* TẦNG 2: MAIN HEADER */}
+      <div className="bg-[#fffaf3]/96 border-b border-[#eadbc5] py-4 sm:py-[18px] px-4 sm:px-10 shadow-[0_4px_16px_rgba(80,50,20,0.04)] relative z-40">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_180px] items-center gap-4 lg:gap-7 max-w-[1600px] mx-auto">
+          {/* Col 1 (280px): Logo */}
+          <div className="flex items-center gap-3">
+            <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
+              <ScanMSLogo size="md" darkMode={false} className="scanms-header-logo [&_.scanms-logo-subtitle]:hidden sm:[&_.scanms-logo-subtitle]:block" showSubtitle={!cartPage} />
+            </Link>
+            <div className="hidden sm:block h-8 w-[1px] bg-[#d4af70]/40 order-last ml-1" />
+            {cartPage && <h1 className="text-xl font-bold ml-2 text-[#302317]">Giỏ hàng</h1>}
+          </div>
 
-        <div className="flex items-center gap-1 sm:gap-3.5 shrink-0">
-          {/* Quick Tracking Button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (onOpenTracking) {
-                onOpenTracking();
-              } else {
-                navigate('/tracking');
-              }
-            }}
-            className="inline-flex items-center gap-2 px-1.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#1A1612] bg-white border border-[#EAE4D7] hover:border-[#C59B58]/70 hover:bg-[#FAF8F5] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group active:scale-[0.98]"
-            title="Tra cứu lộ trình đơn hàng & vận chuyển"
-            aria-label="Tra cứu đơn hàng"
-          >
-            <span className="w-6 h-6 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] group-hover:bg-[#F3EFE6] group-hover:border-[#C59B58]/40 flex items-center justify-center transition-colors">
-              <Package className="w-3.5 h-3.5 text-[#B88E4F] group-hover:scale-110 transition-transform" />
-            </span>
-            <span className="hidden sm:inline">Tra cứu đơn</span>
-          </button>
+          {/* Col 2 (1fr): Search */}
+          <div className="hidden lg:flex items-center w-full">
+            <ProductSearchBox
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSearch={handleSearch}
+              onClear={handleClearSearch}
+              className="w-full"
+            />
+          </div>
 
-          {/* Quick Cart Button - SCANMS Standard Minimalist Cart Icon */}
-          <button
-            type="button"
-            onClick={handleCartClick}
-            className="relative p-2 sm:p-2.5 text-[#B88E4F] hover:text-[#C59B58] transition-colors duration-200 cursor-pointer group active:scale-95 flex items-center justify-center rounded-full hover:bg-[#FBF5EB]"
-            title="Mở giỏ hàng sàn SCANMS"
-            aria-label="Giỏ hàng"
-          >
-            <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-[#B88E4F] group-hover:text-[#C59B58] transition-transform group-hover:scale-105" />
-            {effectiveCartCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[19px] px-1 rounded-full bg-white border border-[#C59B58] text-[#B88E4F] text-[11px] font-black flex items-center justify-center shadow-xs">
-                {effectiveCartCount > 99 ? '99+' : effectiveCartCount}
-              </span>
+          {/* Col 3 (180px): Cart */}
+          {showShoppingActions && !cartPage && (
+            <div className="hidden lg:flex justify-end items-center">
+              <HeaderCartPreview count={effectiveCartCount} onOpenCart={handleCartClick} />
+            </div>
+          )}
+
+          {/* Mobile cluster */}
+          <div className="flex lg:hidden items-center justify-end gap-2">
+            <NotificationDropdown />
+            {showShoppingActions && !cartPage && (
+              <HeaderCartPreview count={effectiveCartCount} onOpenCart={handleCartClick} />
             )}
-          </button>
-
-          {/* Trung tâm thông báo & Live stream notification cho toàn bộ Khách hàng & Người dùng */}
-          <NotificationDropdown />
-
-          {/* AUTHENTICATION & ROLE SECTION */}
-          {currentUser ? (
-            /* Logged in User Profile & Workspace Link */
-            <div className="flex items-center gap-2">
-              {/* Shared account trigger for every role */}
-              <div className="relative z-50" ref={userMenuRef}>
+            {currentUser ? (
+              <div className="relative" ref={userMenuRef}>
                 <HeaderAccountButton
                   user={currentUser}
                   role={currentUser.role}
                   expanded={isUserMenuOpen}
-                  menuId="public-account-menu"
-                  detail={isShop ? storeName : undefined}
-                  onClick={() => setIsUserMenuOpen((open) => !open)}
+                  menuId="public-account-menu-mobile"
+                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
                 />
-
-                {/* Dropdown Menu */}
-                {isUserMenuOpen && (
-                  <div id="public-account-menu" className="absolute right-0 top-full mt-2 w-72 bg-white border border-[#EAE4D7] rounded-2xl shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
-                    {/* User Identity Box with Avatar Upload */}
-                    <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="relative group shrink-0">
-                          {currentUser.avatarUrl ? (
-                            <img
-                              src={currentUser.avatarUrl}
-                              alt={currentUser.fullName || 'Avatar'}
-                              className="w-10 h-10 rounded-xl object-cover border border-[#E8D4B0] shadow-2xs"
-                            />
-                          ) : (
-                            <span className="w-10 h-10 rounded-xl bg-[#EAE4D7] text-[#B88E4F] flex items-center justify-center font-black text-sm border border-[#EAE4D7]">
-                              {currentUser.fullName?.[0]?.toUpperCase() || 'U'}
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              avatarInputRef.current?.click();
-                            }}
-                            disabled={uploadingAvatar}
-                            title="Bấm để tải ảnh đại diện lên"
-                            className="absolute -bottom-1 -right-1 p-1 rounded-full bg-[#C59B58] hover:bg-[#B88E4F] text-white shadow-xs border-2 border-white transition cursor-pointer"
-                          >
-                            {uploadingAvatar ? (
-                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            ) : (
-                              <Camera className="w-2.5 h-2.5" />
-                            )}
-                          </button>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <strong className="block text-xs font-bold text-[#1A1612] truncate">
-                            {currentUser.fullName || 'Người dùng SCANMS'}
-                          </strong>
-                          <span className="block text-[11px] text-[#7D715E] truncate">
-                            {currentUser.email}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Hidden avatar input */}
-                      <input
-                        type="file"
-                        ref={avatarInputRef}
-                        onChange={handleAvatarUpload}
-                        accept="image/png,image/jpeg,image/webp,image/jpg"
-                        className="hidden"
-                      />
-
-                      {/* Official Role Badge */}
-                      <div className="mt-2 pt-2 border-t border-[#EAE4D7] flex items-center justify-between text-[11px]">
-                        <span className="text-[#7D715E] font-medium">Vai trò:</span>
-                        <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-[#FBF5EB] text-[#B88E4F] border border-[#EAE4D7]">
-                          {isCustomer
-                            ? 'Khách Mua Sắm'
-                            : isKol
-                            ? 'KOL / KOC Đối Tác'
-                            : isShop
-                            ? `Chủ Shop (${storeName})`
-                            : 'Quản Trị Hệ Thống'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Navigation Options */}
-                    <div className="space-y-1 py-1">
-                      {isCustomer && (
-                        <>
-                          <Link
-                            to="/customer/orders"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Đơn mua của tôi</span>
-                          </Link>
-                          <Link
-                            to="/customer/addresses"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <MapPin className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Sổ địa chỉ nhận hàng</span>
-                          </Link>
-                          <Link
-                            to="/customer/wishlist"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <Heart className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Sản phẩm yêu thích</span>
-                          </Link>
-                          <Link
-                            to="/customer/profile"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <Settings className="w-4 h-4 text-[#7D715E]" />
-                            <span>Hồ sơ & Bảo mật</span>
-                          </Link>
-                        </>
-                      )}
-
-                      {!isCustomer && (
-                        <Link
-                          to={workspacePath}
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                        >
-                          {isKol && <Megaphone className="w-4 h-4 text-[#B88E4F]" />}
-                          {isShop && <Store className="w-4 h-4 text-[#B88E4F]" />}
-                          {isAdmin && <Shield className="w-4 h-4 text-[#B88E4F]" />}
-                          <span>{workspaceLabel}</span>
-                        </Link>
-                      )}
-
-                      {!isCustomer && !isShop && !isKol && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            authService.switchWorkspace('customer', navigate);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition text-left cursor-pointer"
-                        >
-                          <ShoppingBag className="w-4 h-4 text-[#B88E4F]" />
-                          <span>Đơn mua cá nhân (Cổng Khách Hàng)</span>
-                        </button>
-                      )}
-
-                      {/* Hợp tác với chúng tôi */}
-                      <Link
-                        to="/customer/upgrade"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center justify-between px-3 py-2.5 text-xs font-bold text-[#B88E4F] bg-gradient-to-r from-[#FBF5EB] to-[#F7EDE0] hover:from-[#F3EFE6] hover:to-[#EAE4D7] rounded-xl border border-[#EEDFC6] transition mt-1 shadow-2xs group"
-                        title="Đăng ký Đối tác Sáng tạo & Tiếp thị liên kết (Creator Network)"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Handshake className="w-4 h-4 text-[#B88E4F] shrink-0 group-hover:scale-105 transition-transform" />
-                          <span className="truncate">Đăng ký Đối tác Tiếp thị</span>
-                        </div>
-                        <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-[#C59B58] text-white shrink-0 shadow-2xs">
-                          MỚI
-                        </span>
-                      </Link>
-
-                      {isKol && (
-                        <>
-                          <Link
-                            to="/collaborator/wallet"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <Wallet className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Ví hoa hồng & Rút tiền</span>
-                          </Link>
-                        </>
-                      )}
-
-                      {isShop && (
-                        <>
-                          <Link
-                            to="/merchant/products"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <Store className="w-4 h-4 text-[#B88E4F]" />
-                            <span>Quản lý kho sản phẩm</span>
-                          </Link>
-                          <Link
-                            to="/merchant/kol-hub?tab=messages"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                          >
-                            <MessageSquare className="w-4 h-4 text-[#B88E4F]" />
-                            <span>KOL Hub & Tin nhắn đối tác</span>
-                          </Link>
-                        </>
-                      )}
-
-                      {!isCustomer && (
-                        <Link
-                          to={isShop ? '/merchant/settings' : isAdmin ? '/admin/users' : '/collaborator/profile'}
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[#1A1612] rounded-xl hover:bg-[#F3EFE6] transition"
-                        >
-                          <Settings className="w-4 h-4 text-[#7D715E]" />
-                          <span>Cài đặt & Hồ sơ tài khoản</span>
-                        </Link>
-                      )}
-                    </div>
-
-                    {/* Chuyển vai trò (Role Switcher) */}
-                    {workspaces.length > 1 && (
-                      <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
-                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#7D715E] flex items-center justify-between">
-                          <span>Chuyển vai trò</span>
-                          <span className="text-[9.5px] font-bold text-[#B88E4F] bg-[#FBF5EB] px-1.5 py-0.2 rounded-full border border-[#EEDFC6]">
-                            {workspaces.length} vai trò
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-1 mt-1">
-                          {workspaces.map((ws) => {
-                            const isActive = ws.key === activeWorkspace;
-                            return (
-                              <button
-                                key={ws.key}
-                                type="button"
-                                onClick={() => {
-                                  setIsUserMenuOpen(false);
-                                  authService.switchWorkspace(ws.key, navigate);
-                                }}
-                                className={`w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-xl transition cursor-pointer text-left ${
-                                  isActive
-                                    ? 'bg-[#FBF5EB] border border-[#C59B58] font-bold text-[#B88E4F] shadow-2xs'
-                                    : 'hover:bg-[#FAF8F5] border border-transparent hover:border-[#EAE4D7] text-[#1A1612] font-medium'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="w-6 h-6 rounded-lg bg-white border border-[#EAE4D7] flex items-center justify-center shrink-0 shadow-2xs">
-                                    {getWorkspaceIcon(ws.key, 'w-3 h-3')}
-                                  </div>
-                                  <span className="truncate text-xs">{ws.label}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                                    {ws.badge}
-                                  </span>
-                                  {isActive && <Check className="w-3.5 h-3.5 text-[#B88E4F]" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Explicit Logout Button */}
-                    <div className="pt-2 mt-1 border-t border-[#EAE4D7]">
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition w-full text-left cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4 text-rose-600" />
-                        <span>Đăng xuất tài khoản</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-          ) : (
-            /* Guest (Not Logged In) Authentication Actions */
-            <div className="flex items-center gap-1.5">
-              <Link
-                to={loginUrl}
-                className="inline-flex items-center gap-2 whitespace-nowrap px-2 sm:px-3 py-2 rounded-xl text-xs font-bold text-[#1A1612] bg-[#FBF5EB] border border-[#EEDFC6] hover:bg-[#F3EFE6] hover:border-[#C59B58] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
-                aria-label="Đăng nhập hoặc đăng ký"
-                title="Đăng nhập hoặc đăng ký"
-              >
-                <User className="h-4 w-4 text-[#B88E4F]" aria-hidden="true" />
-                <span className="hidden sm:inline">Đăng nhập / Đăng ký</span>
+            ) : (
+              <Link to={loginUrl} className="p-2 text-[#302317]" aria-label="Đăng nhập">
+                <User size={20} />
               </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {/* Floating Navigation Capsule — Overlapping 50% outside header */}
+        {navigation && (
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-50 hidden lg:flex justify-center pointer-events-auto">
+            {navigation}
+          </div>
+        )}
       </div>
 
-      <div className="lg:hidden px-4 pb-3 pt-1 border-t border-[#F3EFE6] bg-[#FFFEFC] relative z-10">
-        <ProductSearchBox value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch}
-          onClear={() => onSearchSubmit?.('')} onFilter={handleFilterClick} />
+      {/* Mobile Search Bar & Navigation */}
+      <div className="lg:hidden px-4 pb-3 pt-2 bg-[#fffaf3] border-b border-[#eadbc5] relative z-10">
+        <ProductSearchBox
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          onFilter={onOpenFilter || location.pathname !== '/search' ? handleFilterClick : undefined}
+        />
+        {navigation && <div className="mt-2 flex justify-center">{navigation}</div>}
       </div>
+
+      {/* Modal Popup Yêu Cầu Đăng Nhập Khi Bấm "Đơn hàng" */}
+      {renderOrderLoginModal()}
     </header>
   );
 }

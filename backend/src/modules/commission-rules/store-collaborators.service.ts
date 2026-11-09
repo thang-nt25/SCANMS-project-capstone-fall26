@@ -3,15 +3,63 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
-import { StoreCollaboratorStatus, UserRole } from '@prisma/client';
+import { OrderStatus, StoreCollaboratorStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { InviteStoreCollaboratorDto } from './dto/invite-store-collaborator.dto';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 
 @Injectable()
 export class StoreCollaboratorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly cacheService?: CacheService,
+  ) {}
+
+  private async invalidateStoreTeamCache(storeId: string) {
+    if (this.cacheService) {
+      try {
+        await this.cacheService.del(`store:team:${storeId}`);
+      } catch {
+        // Safe fallback
+      }
+    }
+  }
+
+  async getPartnerPerformance(ownerId: string, collaboratorId: string, range: string, storeId?: string) {
+    if (!['7d', '30d', 'month', 'all'].includes(range)) throw new BadRequestException('Khoảng thời gian không hợp lệ');
+    const store = await this.getOwnedStore(ownerId, storeId);
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit' }).formatToParts(now);
+    const month = parts.find(part => part.type === 'month')!.value;
+    const year = parts.find(part => part.type === 'year')!.value;
+    const start = range === 'all' ? undefined : range === 'month'
+      ? new Date(`${year}-${month}-01T00:00:00+07:00`)
+      : new Date(now.getTime() - Number(range === '7d' ? 7 : 30) * 86400000);
+    const createdAt = { ...(start ? { gte: start } : {}), lte: now };
+    const where = { storeId: store.id, attributedCollaboratorId: collaboratorId, createdAt };
+    const successful = { ...where, status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] } };
+    const [totalOrders, completedOrders, revenue, commission, clicks, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.count({ where: successful }),
+      this.prisma.order.aggregate({ where: successful, _sum: { finalAmount: true } }),
+      this.prisma.commission.aggregate({ where: { collaboratorId, order: { storeId: store.id, createdAt }, status: { in: ['APPROVED', 'PAID'] } }, _sum: { commissionAmount: true } }),
+      this.prisma.clickTrafficLog.count({ where: { referralLink: { storeId: store.id, collaboratorId }, createdAt } }),
+      this.prisma.order.findMany({ where, orderBy: { createdAt: 'desc' }, take: 20,
+        select: { id: true, externalOrderSn: true, createdAt: true, finalAmount: true, status: true,
+          orderItems: { select: { product: { select: { title: true } } } },
+          commissions: { where: { collaboratorId, status: { in: ['APPROVED', 'PAID'] } }, select: { commissionAmount: true } } } }),
+    ]);
+    return { range, totalOrders, completedOrders, revenue: Number(revenue._sum.finalAmount || 0),
+      commission: Number(commission._sum.commissionAmount || 0), clicks,
+      conversionRate: clicks ? totalOrders / clicks * 100 : null,
+      completionRate: totalOrders ? completedOrders / totalOrders * 100 : null,
+      orders: orders.map(order => ({ id: order.id, code: order.externalOrderSn, createdAt: order.createdAt,
+        amount: Number(order.finalAmount), status: order.status, products: order.orderItems.map(item => item.product.title),
+        commission: order.commissions.reduce((sum, item) => sum + Number(item.commissionAmount), 0) })) };
+  }
 
   async requestCooperation(
     collaboratorId: string,
@@ -53,6 +101,7 @@ export class StoreCollaboratorsService {
       });
     }
     try {
+      await this.invalidateStoreTeamCache(storeId);
       return await this.prisma.storeCollaborator.create({
         data: {
           storeId,
@@ -121,6 +170,11 @@ export class StoreCollaboratorsService {
 
   async getShopTeam(ownerId: string, storeId?: string) {
     const store = await this.getOwnedStore(ownerId, storeId);
+    const cacheKey = `store:team:${store.id}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
     const [members, pendingMembers] = await Promise.all([
       this.prisma.storeCollaborator.findMany({
         where: { storeId: store.id, status: StoreCollaboratorStatus.APPROVED },
@@ -154,6 +208,7 @@ export class StoreCollaboratorsService {
               select: {
                 platformName: true,
                 channelName: true,
+                channelUrl: true,
                 followerCount: true,
               },
             },
@@ -263,12 +318,16 @@ export class StoreCollaboratorsService {
       };
     });
 
-    return {
+    const teamResult = {
       store: { id: store.id, name: store.name },
       members: enrichedMembers,
       pendingRequests: pendingMembers,
       pendingCount: pendingMembers.length,
     };
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, teamResult, 60);
+    }
+    return teamResult;
   }
 
   async invite(ownerId: string, dto: InviteStoreCollaboratorDto) {
@@ -384,5 +443,56 @@ export class StoreCollaboratorsService {
       where: { id: invitationId },
       include: { store: { select: { id: true, name: true, logoUrl: true } } },
     });
+  }
+
+  async terminateCooperation(
+    actorId: string,
+    role: UserRole,
+    idOrCollaboratorId: string,
+    storeId?: string,
+  ) {
+    let record = await this.prisma.storeCollaborator.findUnique({
+      where: { id: idOrCollaboratorId },
+    });
+    if (!record && storeId) {
+      record = await this.prisma.storeCollaborator.findUnique({
+        where: {
+          storeId_collaboratorId: {
+            storeId,
+            collaboratorId: idOrCollaboratorId,
+          },
+        },
+      });
+    }
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy bản ghi hợp tác đối tác');
+    }
+
+    if (role === UserRole.COLLABORATOR) {
+      if (record.collaboratorId !== actorId) {
+        throw new ForbiddenException('Bạn không có quyền chấm dứt thỏa thuận này');
+      }
+    } else {
+      await this.getOwnedStore(actorId, record.storeId);
+    }
+
+    await this.prisma.storeCollaborator.update({
+      where: { id: record.id },
+      data: {
+        status: StoreCollaboratorStatus.TERMINATED,
+        terminatedAt: new Date(),
+        terminatedById: actorId,
+      },
+    });
+
+    await this.invalidateStoreTeamCache(record.storeId);
+
+    return {
+      success: true,
+      message: 'Đã chấm dứt quan hệ hợp tác đối tác thành công',
+      terminatedId: record.id,
+      storeId: record.storeId,
+      collaboratorId: record.collaboratorId,
+    };
   }
 }

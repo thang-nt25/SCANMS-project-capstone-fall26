@@ -1,8 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-// Fixed FR-23 project rules, not a general-purpose legal/tax policy engine.
-// Keep the summary contract compatible: zero means every positive withdrawal.
+// Flow 5 blueprint policy. Always deduct 10% withholding tax on payouts (Flat 10%).
 export const PAYOUT_TAX_THRESHOLD = '0.00';
 export const PAYOUT_TAX_RATE = '0.10';
 

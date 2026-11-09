@@ -9,7 +9,7 @@ describe('Gallery limit at both API boundaries', () => {
     'rejects a fifth image in %p before persistence',
     async (Dto) => {
       const issues = await validate(
-        plainToInstance(Dto, {
+        plainToInstance(Dto as any, {
           subImages: Array(5).fill('https://example.test/image.png'),
         }),
         { skipMissingProperties: true },

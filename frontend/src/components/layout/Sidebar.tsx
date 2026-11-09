@@ -14,14 +14,22 @@ import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 export interface SidebarProps {
   currentUser: UserProfile | null;
   onLogout: () => void;
+  className?: string;
 }
 
-export function Sidebar({ currentUser, onLogout }: SidebarProps) {
+// Module-level cache to eliminate redundant background polling on routine page switches
+let cachedPendingOrdersCount: number | null = null;
+let cachedPendingOrdersTime = 0;
+let cachedUnreadNotifs: { ORDER?: number; PROMOTION?: number; SYSTEM?: number } = {};
+let cachedUnreadNotifsTime = 0;
+
+export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState('');
   const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -63,25 +71,38 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
 
   useEffect(() => {
     let mounted = true;
+    const now = Date.now();
     if (role === 'SHOP_MANAGER') {
-      orderService
-        .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+      if (cachedPendingOrdersCount !== null && now - cachedPendingOrdersTime < 30000) {
+        setPendingOrdersCount(cachedPendingOrdersCount);
+      } else {
+        orderService
+          .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+          .then((res) => {
+            if (mounted && res?.pagination?.total !== undefined) {
+              cachedPendingOrdersCount = res.pagination.total;
+              cachedPendingOrdersTime = Date.now();
+              setPendingOrdersCount(res.pagination.total);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    if (Object.keys(cachedUnreadNotifs).length > 0 && now - cachedUnreadNotifsTime < 30000) {
+      setUnreadNotifs(cachedUnreadNotifs);
+    } else {
+      notificationsService
+        .getUnreadDetails()
         .then((res) => {
-          if (mounted && res?.pagination?.total !== undefined) {
-            setPendingOrdersCount(res.pagination.total);
+          if (mounted && res?.categoryUnreadCounts) {
+            cachedUnreadNotifs = res.categoryUnreadCounts;
+            cachedUnreadNotifsTime = Date.now();
+            setUnreadNotifs(res.categoryUnreadCounts);
           }
         })
         .catch(() => {});
     }
-
-    notificationsService
-      .getUnreadDetails()
-      .then((res) => {
-        if (mounted && res?.categoryUnreadCounts) {
-          setUnreadNotifs(res.categoryUnreadCounts);
-        }
-      })
-      .catch(() => {});
 
     const handleOrderUpdate = () => {
       if (role === 'SHOP_MANAGER') {
@@ -184,6 +205,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
     if (path === '/collaborator/collaboration') {
       return (
         currentPath.startsWith('/collaborator/collaboration') ||
+        currentPath.startsWith('/collaborator/sample-requests') ||
         currentPath.startsWith('/collaborator/messages') ||
                 currentPath === '/chat'
       );
@@ -298,7 +320,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
   return (
     <aside
       data-workspace-role={role}
-      className="workspace-sidebar w-full lg:w-[250px] shrink-0 px-3.5 pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30"
+      className={`workspace-sidebar w-full lg:w-[250px] shrink-0 ${className ? className : 'px-3.5'} pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30`}
     >
       {/* Hidden file input for avatar upload */}
       <input
@@ -336,7 +358,7 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
       />
 
       {/* User Identity Header (SCANMS UI Reference Style matching Customer) */}
-      <div className="flex items-center gap-3 px-2 py-1 pb-3 border-b border-[#EAE4D7]/70">
+      <div className={`flex items-center gap-3 ${className.includes('px-0') ? 'px-0' : 'px-2'} py-1 pb-3 border-b border-[#EAE4D7]/70`}>
         <div className="relative shrink-0 group">
           <button
             type="button"
@@ -347,16 +369,12 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
           >
             {uploading ? (
               <Loader2 className="w-4 h-4 text-[#B88E4F] animate-spin" />
-            ) : currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')) ? (
+            ) : (currentUser?.avatarUrl || (role === 'SHOP_MANAGER' && (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'))) && failedAvatar !== `${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}` ? (
               <img
                 src={currentUser?.avatarUrl || (currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png')}
-                alt="Avatar"
+                alt={`Ảnh đại diện ${currentUser?.fullName || 'tài khoản'}`}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  if (role === 'SHOP_MANAGER') {
-                    e.currentTarget.src = '/assets/shops/shop-sora-skin.png';
-                  }
-                }}
+                onError={() => setFailedAvatar(`${currentUser?.id}:${currentUser?.avatarUrl || currentUser?.stores?.[0]?.logoUrl || '/assets/shops/shop-sora-skin.png'}`)}
               />
             ) : (
               <span>
@@ -391,14 +409,12 @@ export function Sidebar({ currentUser, onLogout }: SidebarProps) {
           const active = isLinkActive(item.path);
           const Icon = item.icon;
           const badge = getItemBadge(item.path, item.badge);
-          const isNewSection = item.section && (index === 0 || navConfig.items[index - 1]?.section !== item.section);
+          const isNewGroup = index > 0 && item.group !== undefined && navConfig.items[index - 1]?.group !== item.group;
 
           return (
             <div key={item.path} className="flex flex-col">
-              {isNewSection && (
-                <div className={`px-3 text-[10px] font-bold uppercase tracking-wider text-[#8C6226] select-none ${index === 0 ? 'pt-1 pb-1' : 'pt-2.5 pb-1 border-t border-[#EAE4D7]/50 mt-1'}`}>
-                  {item.section}
-                </div>
+              {isNewGroup && (
+                <div className="my-1.5 h-px bg-[#EAE4D7]/40 mx-2" aria-hidden="true" />
               )}
               <Link
                 to={item.path}

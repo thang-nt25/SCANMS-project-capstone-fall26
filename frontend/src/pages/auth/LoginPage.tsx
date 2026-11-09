@@ -55,7 +55,8 @@ export default function LoginPage() {
     const requestedRole = searchParams.get('role')?.toLowerCase();
     const normalizedRole = requestedRole === 'collaborator' ? 'kol' : requestedRole;
     if (ROLES.some(option => option.id === normalizedRole)) return normalizedRole as RoleType;
-    return registeredEmail ? 'customer' : getRememberedLoginRole();
+    if (registeredEmail || requestedRedirect?.startsWith('/shop') || requestedRedirect?.startsWith('/marketplace') || requestedRedirect === '/') return 'customer';
+    return getRememberedLoginRole();
   });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
@@ -160,17 +161,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       setError(null);
-      const apiRole =
-        role === 'kol'
-          ? 'COLLABORATOR'
-          : role === 'shop'
-          ? 'SHOP_MANAGER'
-          : role === 'customer'
-          ? 'CUSTOMER'
-          : role === 'manager'
-          ? 'SYSTEM_MANAGER'
-          : 'SYSTEM_ADMIN';
-      const res: any = await authService.googleLogin(idToken, apiRole);
+      const res: any = await authService.googleLogin(idToken, 'CUSTOMER');
       const user = res?.data?.user || res?.user;
       toast.success(`Đăng nhập Google thành công! Chào mừng ${user?.fullName || user?.email}`);
       navigateAfterLogin(user?.role);

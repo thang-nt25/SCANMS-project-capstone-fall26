@@ -18,6 +18,11 @@ import {
 import { DiscountType, CouponScope, CouponBenefitType } from '@prisma/client';
 
 export class CreateStoreCouponDto {
+  @ApiPropertyOptional({ description: 'ID của KOC được gán mã định danh độc quyền (Attribution)' })
+  @IsOptional()
+  @IsString()
+  collaboratorId?: string;
+
   @ApiPropertyOptional({ enum: CouponBenefitType })
   @IsOptional() @IsEnum(CouponBenefitType) benefitType?: CouponBenefitType;
   @ApiProperty({

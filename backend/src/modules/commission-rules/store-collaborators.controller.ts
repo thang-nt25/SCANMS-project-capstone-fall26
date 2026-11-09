@@ -5,7 +5,9 @@ import {
   Param,
   Patch,
   Post,
+  Delete,
   Query,
+  ParseUUIDPipe,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +24,14 @@ import { RequestStoreCooperationDto } from './dto/request-store-cooperation.dto'
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StoreCollaboratorsController {
   constructor(private readonly service: StoreCollaboratorsService) {}
+
+  @Get('shop/:collaboratorId/performance')
+  @Roles(UserRole.SHOP_MANAGER)
+  performance(@Req() req: AuthenticatedRequest,
+    @Param('collaboratorId', ParseUUIDPipe) collaboratorId: string,
+    @Query('range') range = '30d', @Query('storeId') storeId?: string) {
+    return this.service.getPartnerPerformance(req.user!.id, collaboratorId, range, storeId);
+  }
 
   @Post('request')
   @Roles(UserRole.COLLABORATOR)
@@ -78,5 +88,25 @@ export class StoreCollaboratorsController {
   @Roles(UserRole.COLLABORATOR)
   reject(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.service.respond(req.user!.id, id, false);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  terminate(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
+  }
+
+  @Post(':id/terminate')
+  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  terminatePost(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.service.terminateCooperation(req.user!.id, req.user!.role, id, storeId);
   }
 }

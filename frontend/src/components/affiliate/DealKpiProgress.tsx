@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, ChevronDown, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
+import { TrendingUp, CheckCircle, ChevronDown, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
 import {
   referralLinksService,
   type DealKpiProgress as Progress,
@@ -67,16 +67,16 @@ export function DealKpiProgress({ id }: { id: string }) {
   }, [id, open, reload]);
 
   return (
-    <div className="border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] overflow-hidden text-xs">
+    <div className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden text-xs">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between p-3 hover:bg-[#F3EFE6] transition-colors text-left font-medium text-[#1A1612]"
+        className="w-full flex min-h-11 items-center justify-between gap-2 px-3 py-2 hover:bg-[#FAF8F5] transition-colors text-left font-medium text-[#1A1612]"
       >
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-[#B88E4F]" />
-          <span>Cam kết KPI &amp; Hạn chót</span>
+          <span>Tiến độ &amp; thời hạn</span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
           <span>{open ? "Thu gọn" : "Xem tiến độ"}</span>
@@ -98,7 +98,7 @@ export function DealKpiProgress({ id }: { id: string }) {
           )}
           {progress && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="font-semibold text-[#1A1612]">
                   {labels[progress.state]}
                 </span>
@@ -107,7 +107,7 @@ export function DealKpiProgress({ id }: { id: string }) {
                 </span>
               </div>
               <div className="space-y-1">
-                <div className="flex justify-between text-[11px] text-[#7D715E]">
+                <div className="flex flex-wrap justify-between gap-1.5 text-[11px] text-[#7D715E]">
                   <span>{progress.targetRevenue ? 'Doanh thu hợp lệ đã chốt' : 'Đơn hàng hợp lệ đã chốt'}</span>
                   <strong className="text-[#1A1612] tabular-nums">
                     {progress.targetRevenue ? `${Number(progress.validRevenue || 0).toLocaleString('vi-VN')} / ${Number(progress.targetRevenue).toLocaleString('vi-VN')} đ` : `${progress.completedOrders} / ${progress.targetOrders ?? '—'} đơn`}
@@ -121,63 +121,40 @@ export function DealKpiProgress({ id }: { id: string }) {
                 </div>
               </div>
 
-              {/* Two-Tier Retrospective KPI Rebate Escrow Breakdown */}
-              <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3.5 text-xs space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 font-bold text-[#1A1612]">
-                    <ShieldAlert className="w-4 h-4 text-[#B88E4F]" />
-                    <span>Cơ Chế Thù Lao Thưởng Cam Kết 2 Tầng</span>
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
-                    progress.rebateStatus === 'UNLOCKED'
-                      ? 'bg-[#FBF5EB] text-[#059669] border-[#A7F3D0]'
-                      : progress.rebateStatus === 'FORFEITED'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-[#F3EFE6] text-[#8C6226] border-[#EEDFC6]'
-                  }`}>
-                    {progress.rebateStatus === 'UNLOCKED'
-                      ? 'Đã mở khóa 100%'
-                      : progress.rebateStatus === 'FORFEITED'
-                      ? 'Không đạt KPI'
-                      : 'Bảo lưu an toàn'}
+              <details className="group rounded-xl border border-[#EAE4D7] bg-white">
+                <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs font-medium text-[#1A1612] [&::-webkit-details-marker]:hidden">
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-[#B88E4F]" />
+                  Chi tiết thù lao
+                  <span className="ml-auto text-[11px] font-normal text-[#7D715E]">
+                    {progress.rebateStatus === 'UNLOCKED' ? 'Đã mở khóa' : progress.rebateStatus === 'FORFEITED' ? 'Không đạt KPI' : 'Đang bảo lưu'}
                   </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="p-2.5 rounded-lg bg-white border border-[#EAE4D7] shadow-2xs">
-                    <div className="text-[#7D715E] font-medium">Tầng 1 (Cơ sở 10%):</div>
-                    <div className="font-black text-[#1A1612] text-xs mt-0.5 tabular-nums">
-                      {formatVnd(progress.baseCommissionEarned || 0)}
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#7D715E] transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="border-t border-[#EAE4D7] p-3">
+                  <div className="grid grid-cols-2 divide-x divide-[#EAE4D7]">
+                    <div className="min-w-0 pr-3">
+                      <p className="m-0 text-[11px] text-[#7D715E]">Hoa hồng cơ sở</p>
+                      <p className="mb-0 mt-1 text-sm font-semibold tabular-nums text-[#1A1612]">{formatVnd(progress.baseCommissionEarned || 0)}</p>
                     </div>
-                    <div className="text-[10px] text-[#059669] mt-0.5 font-semibold">
-                      Tự động vào Ví khả dụng
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-white border border-[#EEDFC6] shadow-2xs">
-                    <div className="text-[#8C6226] font-medium">
-                      Tầng 2 (Thưởng cam kết +{progress.rebateBonusRate || 0}%):
-                    </div>
-                    <div className="font-black text-[#B88E4F] text-xs mt-0.5 tabular-nums">
-                      {formatVnd(progress.vipRebateEscrow || 0)}
-                    </div>
-                    <div className="text-[10px] text-[#7D715E] mt-0.5">
-                      {progress.rebateStatus === 'UNLOCKED'
-                        ? 'Đã giải ngân vào Ví'
-                        : `Mở khóa khi đủ ${progress.targetOrders || 0} đơn`}
+                    <div className="min-w-0 pl-3">
+                      <p className="m-0 text-[11px] text-[#7D715E]">Thưởng cam kết +{progress.rebateBonusRate || 0}%</p>
+                      <p className="mb-0 mt-1 text-sm font-semibold tabular-nums text-[#B88E4F]">{formatVnd(progress.vipRebateEscrow || 0)}</p>
                     </div>
                   </div>
+                  <p className="mb-0 mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-[#7D715E]">
+                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#B88E4F]" />
+                    <span>{progress.rebateStatus === 'UNLOCKED'
+                      ? 'Khoản thưởng cam kết đã được mở khóa.'
+                      : progress.rebateStatus === 'FORFEITED'
+                        ? 'Khoản thưởng không được mở khóa do chưa đạt KPI.'
+                        : progress.targetRevenue
+                          ? `Thưởng được mở khóa khi đạt doanh số hợp lệ ${formatVnd(Number(progress.targetRevenue))} theo cam kết.`
+                          : progress.targetOrders
+                            ? `Thưởng được mở khóa khi đạt ${progress.targetOrders} đơn hợp lệ theo cam kết.`
+                            : 'Chưa có chỉ tiêu mở khóa được ghi nhận.'}</span>
+                  </p>
                 </div>
-
-                <p className="text-[11px] text-[#7D715E] leading-relaxed flex items-start gap-1.5 pt-1">
-                  <Lock className="w-3.5 h-3.5 text-[#B88E4F] shrink-0 mt-0.5" />
-                  <span>
-                    {progress.rebateStatus === 'UNLOCKED'
-                      ? 'Chúc mừng! Bạn đã hoàn thành chỉ tiêu KPI. Toàn bộ khoản thưởng độc quyền đã được kết chuyển trọn vẹn vào Ví của bạn.'
-                      : `Thù lao cơ sở 10% được cộng ngay vào Ví sau mỗi đơn hoàn tất. Khoản thưởng độc quyền +${progress.rebateBonusRate || 0}% được bảo lưu an toàn và tự động giải ngân trọn gói khi đạt đủ ${progress.targetOrders || 0} đơn.`}
-                  </span>
-                </p>
-              </div>
+              </details>
 
               <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-[#7D715E] border-t border-[#EAE4D7]">
                 <div className="flex items-center gap-1">
@@ -203,6 +180,28 @@ export function DealKpiProgress({ id }: { id: string }) {
                   </span>
                 </div>
               </div>
+
+              {progress.state === 'ACHIEVED' && progress.rebateStatus !== 'UNLOCKED' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setBusy(true);
+                      await referralLinksService.settleDeal(id);
+                      setReload((n) => n + 1);
+                    } catch (e: any) {
+                      setError(e?.response?.data?.message || 'Không thể quyết toán Deal');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy}
+                  className="w-full py-2 px-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Quyết toán &amp; Mở khóa Quỹ Escrow ({formatVnd(progress.vipRebateEscrow || 0)})</span>
+                </button>
+              )}
 
               <div className="flex justify-end pt-1">
                 <button
