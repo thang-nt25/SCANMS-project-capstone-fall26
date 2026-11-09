@@ -12,8 +12,6 @@ import {
   Lock,
   Unlock,
   RefreshCw,
-  Plus,
-  Wallet,
 } from 'lucide-react';
 import {
   couponService,
@@ -21,8 +19,6 @@ import {
   type CouponStatus,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
-import { AdminVoucherIssuer } from './AdminVoucherIssuer';
-import { AdminVoucherSettlements } from './AdminVoucherSettlements';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
   ACTIVE: {
@@ -71,28 +67,21 @@ const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: str
 
 export const AdminCouponsPage: React.FC = () => {
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
-  const [platformSubsidies, setPlatformSubsidies] = useState<Awaited<ReturnType<typeof couponService.getPlatformSubsidies>>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [fundingFilter, setFundingFilter] = useState('ALL');
-  const [view, setView] = useState<'coupons' | 'settlements'>('coupons');
-  const [issuerOpen, setIssuerOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [subsidyError, setSubsidyError] = useState('');
 
   const [detailCoupon, setDetailCoupon] = useState<CouponItem | null>(null);
-
 
   const [blockTarget, setBlockTarget] = useState<CouponItem | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockLoading, setBlockLoading] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
 
-
   const [unblockLoading, setUnblockLoading] = useState(false);
 
-  const hasOpenModal = issuerOpen || detailCoupon !== null || blockTarget !== null;
+  const hasOpenModal = detailCoupon !== null || blockTarget !== null;
   useEffect(() => {
     if (!hasOpenModal) return;
     const dismiss = (event: KeyboardEvent) => {
@@ -136,15 +125,16 @@ export const AdminCouponsPage: React.FC = () => {
   }, []);
 
   const fetchCoupons = async () => {
-    setLoading(true); setLoadError(''); setSubsidyError('');
-    const [couponResult, subsidyResult] = await Promise.allSettled([
-      couponService.getAdminCoupons(), couponService.getPlatformSubsidies(),
-    ]);
-    if (couponResult.status === 'fulfilled') setCoupons(couponResult.value.data || []);
-    else setLoadError('Chưa tải được danh sách voucher. Vui lòng bấm Làm mới để thử lại.');
-    if (subsidyResult.status === 'fulfilled') setPlatformSubsidies(subsidyResult.value);
-    else setSubsidyError('Chưa tải được dữ liệu đối soát. Vui lòng bấm Làm mới để thử lại.');
-    setLoading(false);
+    setLoading(true);
+    setLoadError('');
+    try {
+      const result = await couponService.getAdminCoupons();
+      setCoupons(result.data || []);
+    } catch {
+      setLoadError('Chưa tải được danh sách mã ưu đãi độc quyền. Vui lòng bấm Làm mới để thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBlockSubmit = async (e: React.FormEvent) => {
@@ -191,9 +181,8 @@ export const AdminCouponsPage: React.FC = () => {
       (c.collaborator?.fullName && c.collaborator.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (c.collaborator?.email && c.collaborator.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchStatus = statusFilter === 'ALL' ? true : c.status === statusFilter;
-    return matchSearch && matchStatus && (fundingFilter === 'ALL' || c.fundingSource === fundingFilter);
+    return matchSearch && matchStatus;
   });
-
 
   const totalCount = coupons.length;
   const activeCount = coupons.filter((c) => c.status === 'ACTIVE').length;
@@ -203,16 +192,25 @@ export const AdminCouponsPage: React.FC = () => {
   return (
     <div className="admin-voucher-workspace pb-[24px] w-full min-w-0 text-[#1A1612]">
       <div className="grid gap-4 min-w-0">
-
-        <header className="av-workspace-heading flex items-center justify-between gap-[20px] pt-[5px] pb-[8px] px-[2px] [&_h2]:my-[4px] [&_h2]:mx-0 [&_h2]:text-[23px] [&_h2]:font-bold [&_h2]:tracking-[-.025em] [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:mt-[4px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:leading-[1.6] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:flex-col [@media(max-width:760px)]:gap-[13px]">
-          <div><span className="av-eyebrow text-[#B88E4F] text-[10px] font-bold tracking-[.12em]">QUẢN LÝ ƯU ĐÃI</span><h2>Voucher toàn sàn</h2><p>Phát hành ưu đãi, kiểm soát mã và theo dõi khoản tài trợ cho Shop.</p></div>
-          <button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px] av-button-primary [&.av-button-primary]:bg-[#C59B58] [&.av-button-primary]:border-[#C59B58] [&.av-button-primary]:text-[#1A1612] [&.av-button-primary:hover]:bg-[#B88E4F]" onClick={() => setIssuerOpen(true)}><Plus size={17} />Phát hành voucher sàn</button>
-        </header>
+        <div className="flex items-center justify-between gap-2 pb-0.5">
+          <span className="text-xs font-semibold text-[#7D715E]">
+            Mã ưu đãi độc quyền gắn định danh đối tác
+          </span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
+            onClick={() => void fetchCoupons()}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-4 border border-[#EAE4D7] rounded-xl bg-white shadow-2xs min-w-0">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[#7D715E]">Mã giảm giá toàn sàn</span>
+              <span className="text-xs font-medium text-[#7D715E]">Mã ưu đãi độc quyền</span>
               <Tag className="w-4 h-4 text-[#B88E4F]" />
             </div>
             <p className="text-2xl font-bold text-[#1A1612]">{totalCount}</p>
@@ -243,13 +241,7 @@ export const AdminCouponsPage: React.FC = () => {
           </div>
         </div>
 
-
-        <div className="av-workspace-navigation [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-[#B88E4F] [&_button:focus-visible]:outline-offset-[3px] flex items-center justify-between gap-[10px] pt-0 pb-[10px] px-0 border-b border-b-[#EAE4D7] [&_[role=tablist]]:flex [&_[role=tablist]]:flex-wrap [&_[role=tablist]]:gap-[6px] [&_[role=tab]]:inline-flex [&_[role=tab]]:items-center [&_[role=tab]]:gap-[8px] [&_[role=tab]]:py-[10px] [&_[role=tab]]:px-[13px] [&_[role=tab]]:border [&_[role=tab]]:border-[transparent] [&_[role=tab]]:rounded-[9px] [&_[role=tab]]:text-[12px] [&_[role=tab]]:font-semibold [&_[role=tab]]:text-[#7D715E] [&_[role=tab]]:cursor-pointer [&_[role=tab][aria-selected=true]]:bg-[#FBF5EB] [&_[role=tab][aria-selected=true]]:border-[#EEDFC6] [&_[role=tab][aria-selected=true]]:text-[#1A1612] [&_[role=tab]_svg]:text-[#B88E4F] [&_[role=tab]_span]:bg-[#F3EFE6] [&_[role=tab]_span]:text-[10px] [&_[role=tab]_span]:py-[1px] [&_[role=tab]_span]:px-[6px] [&_[role=tab]_span]:rounded-[5px] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:[&_[role=tab]]:p-[8px] [@media(max-width:760px)]:[&_[role=tab]]:text-[11px]"><div role="tablist" aria-label="Quản lý voucher">
-          <button id="av-coupons-tab" type="button" role="tab" aria-selected={view === 'coupons'} aria-controls="av-coupons-panel" onClick={() => setView('coupons')}><Tag size={16} />Danh sách voucher<span>{totalCount}</span></button>
-          <button id="av-settlements-tab" type="button" role="tab" aria-selected={view === 'settlements'} aria-controls="av-settlements-panel" onClick={() => setView('settlements')}><Wallet size={16} />Đối soát với Shop</button>
-        </div><button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px]" onClick={() => void fetchCoupons()} disabled={loading}><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Làm mới</button></div>
-
-        {view === 'settlements' ? <div role="tabpanel" id="av-settlements-panel" aria-labelledby="av-settlements-tab"><AdminVoucherSettlements items={platformSubsidies} loading={loading} error={subsidyError} onUpdated={() => void fetchCoupons()} /></div> : <div role="tabpanel" id="av-coupons-panel" aria-labelledby="av-coupons-tab" className="av-coupon-panel grid gap-[14px] min-w-0">
+        <div className="av-coupon-panel grid gap-[14px] min-w-0">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 border border-[#EAE4D7] rounded-xl bg-white">
           <div className="relative flex-1 min-w-0">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -284,8 +276,6 @@ export const AdminCouponsPage: React.FC = () => {
                 {tab.label}
               </button>
             ))}
-
-            <select aria-label="Lọc nguồn tài trợ" value={fundingFilter} onChange={event => setFundingFilter(event.target.value)} className="av-funding-filter h-[35px] border border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] rounded-[8px] text-[11px] py-0 px-[8px] max-w-full"><option value="ALL">Tất cả nguồn tài trợ</option><option value="SHOP_FUNDED">Shop tài trợ</option><option value="PLATFORM_FUNDED">SCANMS tài trợ</option><option value="CO_FUNDED">Đồng tài trợ</option></select>
           </div>
         </div>
 
@@ -423,10 +413,8 @@ export const AdminCouponsPage: React.FC = () => {
             </div>
           </div>
         )}
-        </div>}
+        </div>
       </div>
-
-      {issuerOpen && <AdminVoucherIssuer onClose={() => setIssuerOpen(false)} onIssued={() => { setIssuerOpen(false); setView('coupons'); toast.success('Đã phát hành voucher sàn.'); void fetchCoupons(); }} />}
 
       {detailCoupon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/35 backdrop-blur-xs">

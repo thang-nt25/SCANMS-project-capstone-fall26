@@ -116,12 +116,16 @@ export default function ProductModerationPage() {
     : [];
 
   return (
-    <main id="product-moderation-page" className="min-h-[calc(100vh-80px)] bg-[#FAF8F5] px-0 py-5 text-[#1A1612]">
-      <div className="mx-0 w-full min-w-0 max-w-none space-y-4">
-        <header className="moderation-page-heading flex flex-wrap items-center justify-between gap-4 px-0.5 pb-1.5 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:leading-snug [&_h1]:sm:text-2xl [&_p]:mt-1 [&_p]:text-xs [&_p]:leading-7 [&_p]:text-[#7D715E]">
-          <div className="moderation-page-heading-main flex min-w-0 items-center gap-3"><span className="moderation-page-icon grid size-12 shrink-0 place-items-center rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F] max-sm:hidden"><ClipboardCheck size={23} /></span><div><h1>Kiểm duyệt sản phẩm</h1><p>Xem hồ sơ, kiểm tra minh chứng và phản hồi cho gian hàng.</p></div></div>
-          <span className="moderation-result-count whitespace-nowrap rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-[11px] font-semibold text-[#8C6226]">{loading ? 'Đang tải hồ sơ…' : `${filteredProducts.length} hồ sơ · ${FILTERS.find(item => item.value === filter)?.label}`}</span>
-        </header>
+    <div id="product-moderation-page" className="w-full min-w-0 text-[#1A1612] pb-6 space-y-3.5">
+      <div className="flex items-center justify-between gap-2 pb-0.5">
+        <span className="text-xs font-semibold text-[#7D715E]">
+          Danh sách sản phẩm nội bộ cần thẩm định
+        </span>
+        <span className="whitespace-nowrap rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-[11px] font-semibold text-[#8C6226]">
+          {loading ? 'Đang tải hồ sơ…' : `${filteredProducts.length} hồ sơ · ${FILTERS.find(item => item.value === filter)?.label}`}
+        </span>
+      </div>
+      <div className="space-y-4">
         <section className="moderation-toolbar rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
           <div className="moderation-toolbar-row flex flex-wrap items-center justify-between gap-3.5">
             <div className="moderation-tabs flex flex-wrap gap-1 rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-1 max-sm:w-full" role="group" aria-label="Lọc trạng thái kiểm duyệt">
@@ -250,7 +254,7 @@ export default function ProductModerationPage() {
           </div>
         </form>
       </Modal>
-    </main>
+    </div>
   );
 }
 

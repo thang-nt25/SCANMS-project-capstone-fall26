@@ -388,9 +388,9 @@ export default function LoginPage() {
 
             {/* Bottom switch link */}
             <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">
-              Chưa có tài khoản đối tác?{' '}
+              Chưa có tài khoản?{' '}
               <Link to={registerUrl} className="font-bold text-[#B88E4F] hover:underline">
-                Đăng ký ngay →
+                Đăng ký tham gia mạng lưới đối tác →
               </Link>
             </div>
           </div>
