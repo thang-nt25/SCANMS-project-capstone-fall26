@@ -98,7 +98,7 @@ test('checkout map fills nationwide address, requotes shipping, saves coordinate
     await page.waitForFunction(() => document.body.innerText.includes('221.001'));
     assert.match(quotes.at(-1).address, /15, Hàng Bạc, Phường Hàng Bạc, Quận Hoàn Kiếm, Thành phố Hà Nội/);
     await clickText('Lưu vào sổ địa chỉ ngay');
-    await page.waitForFunction(() => document.body.innerText.includes('Đang dùng'));
+    await page.waitForFunction(() => document.body.innerText.includes('Đang chọn'));
     assert.equal(writes[0].latitude, 21.033039448);
     assert.equal(writes[0].longitude, 105.850813376);
     assert.equal(writes[0].provinceCode, '1');
