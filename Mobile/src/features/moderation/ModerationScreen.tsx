@@ -1,47 +1,62 @@
-import { useState } from "react";
-import { FlatList, Image, Linking, Pressable, Text, View } from "react-native";
-import { useMobileNavigation } from "../../navigation/router";
-import type { ScreenProps } from "../../navigation/router";
+import { useEffect, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { FlatList, Linking, Text, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMobileNavigation, type ScreenProps } from "../../navigation/router";
 import { moderation } from "../../services/scanms";
 import { api } from "../../services/api";
 import {
   Badge,
   Button,
   Caption,
-  Card,
   Empty,
   ErrorNotice,
   Field,
   Loading,
   Screen,
-  Title,
 } from "../../components/ui";
+import {
+  ExpandableRecord,
+  FilterTabs,
+  InfoLine,
+  RecordRow,
+  SectionTitle,
+} from "../../components/RecordList";
+import { ProductPhoto } from "../../components/ProductPhoto";
 import { useAuth } from "../auth/AuthProvider";
 import { useOperation } from "../../hooks/useOperation";
-import { money, statusText } from "../../types/contracts";
+import { money, ProductSchema, statusText } from "../../types/contracts";
+import { validateInput } from "../../utils/validate-input";
+import { canModerateProduct, ProductDecisionSchema } from "./moderation-policy";
 
 export function ModerationScreen() {
-  const { session } = useAuth(),
-    [status, setStatus] = useState("DRAFT");
+  const { queue, entry } = useLocalSearchParams<{
+    queue?: string;
+    entry?: string;
+  }>();
+  const { session } = useAuth();
+  const [status, setStatus] = useState("DRAFT");
   const navigation = useMobileNavigation();
+  useEffect(() => {
+    if (queue === "pending") setStatus("DRAFT");
+  }, [queue, entry]);
   const result = useQuery({
     queryKey: [session!.user.id, "moderation", status],
     queryFn: ({ signal }) => moderation(status, signal),
   });
   return (
     <Screen>
-      <View
-        style={{ padding: 16, flexDirection: "row", gap: 8, flexWrap: "wrap" }}
-      >
-        {["DRAFT", "APPROVED", "REJECTED"].map((value) => (
-          <Button
-            key={value}
-            title={statusText(value)}
-            secondary={status !== value}
-            onPress={() => setStatus(value)}
-          />
-        ))}
+      <View style={{ padding: 12 }}>
+        <FilterTabs
+          label="Kiểm duyệt sản phẩm"
+          value={status}
+          options={[
+            { value: "DRAFT", label: "Chờ duyệt" },
+            { value: "APPROVED", label: "Đã duyệt" },
+            { value: "REJECTED", label: "Từ chối" },
+          ]}
+          onChange={setStatus}
+        />
       </View>
       <ErrorNotice error={result.error} retry={() => void result.refetch()} />
       {result.isLoading ? (
@@ -49,61 +64,91 @@ export function ModerationScreen() {
       ) : (
         <FlatList
           data={result.data || []}
-          keyExtractor={(row) => row.id}
+          keyExtractor={(item) => item.id}
           refreshing={result.isRefetching}
           onRefresh={() => void result.refetch()}
-          ListEmptyComponent={!result.error ? <Empty /> : undefined}
+          contentContainerStyle={{
+            paddingHorizontal: 12,
+            gap: 8,
+            paddingBottom: 16,
+          }}
+          ListEmptyComponent={
+            !result.error ? (
+              <Empty text="Không có sản phẩm trong trạng thái này." />
+            ) : undefined
+          }
           renderItem={({ item }) => (
-            <Pressable
+            <RecordRow
+              title={item.title}
+              subtitle={item.store?.name}
+              meta={`${item.sku || ""} · ${money(item.price)}`}
+              badge={statusText(item.moderationStatus || "DRAFT")}
+              icon="package"
               onPress={() =>
                 navigation.navigate("ProductReview", { product: item })
               }
-            >
-              <Card>
-                <Caption>{item.store?.name}</Caption>
-                <Title>{item.title}</Title>
-                <Badge>{statusText(item.moderationStatus || "DRAFT")}</Badge>
-                <Caption>
-                  {item.sku} · {money(item.price)}
-                </Caption>
-              </Card>
-            </Pressable>
+            />
           )}
         />
       )}
     </Screen>
   );
 }
+
 export function ProductReviewScreen({
   route,
   navigation,
 }: ScreenProps<"ProductReview">) {
-  const { session } = useAuth(),
-    operation = useOperation(),
-    client = useQueryClient(),
-    [reason, setReason] = useState("");
-  const product = route.params.product;
+  const { session } = useAuth();
+  const operation = useOperation();
+  const client = useQueryClient();
+  const [reason, setReason] = useState("");
+  const detail = useQuery({
+    queryKey: [session!.user.id, "product-review", route.params.product.id],
+    queryFn: async ({ signal }) =>
+      ProductSchema.parse(
+        await api.request(`/products/${route.params.product.id}`, { signal }),
+      ),
+  });
+  const product = detail.data || route.params.product;
   const own = [product.createdById, product.submittedById].includes(
     session!.user.id,
   );
+  const canDecide =
+    Boolean(detail.data) &&
+    !detail.error &&
+    !detail.isFetching &&
+    canModerateProduct(session!.user.role, session!.user.id, product);
   const decide = (approved: boolean) =>
     operation.run(
       async () => {
-        if (own) throw new Error("Người tạo/gửi hồ sơ không được tự duyệt.");
-        if (!approved && reason.trim().length < 5)
-          throw new Error("Nhập lý do từ chối ít nhất 5 ký tự.");
+        // Recheck the server record before sending a decision from a potentially stale list.
+        const latest = await detail.refetch();
+        if (latest.error || !latest.data)
+          throw latest.error || new Error("Chưa tải được hồ sơ mới nhất.");
+        if (
+          !canModerateProduct(session!.user.role, session!.user.id, latest.data)
+        )
+          throw new Error(
+            "Chỉ hồ sơ chờ duyệt và do người khác tạo/gửi mới được xử lý.",
+          );
         await api.request(`/products/${product.id}/moderation`, {
           method: "PATCH",
-          body: {
+          body: validateInput(ProductDecisionSchema, {
             status: approved ? "APPROVED" : "REJECTED",
-            reason: reason.trim(),
-          },
+            reason,
+          }),
         });
       },
       async () => {
-        await client.invalidateQueries({
-          queryKey: [session!.user.id, "moderation"],
-        });
+        await Promise.all([
+          client.invalidateQueries({
+            queryKey: [session!.user.id, "moderation"],
+          }),
+          client.invalidateQueries({
+            queryKey: [session!.user.id, "business", "operations-queue"],
+          }),
+        ]);
         navigation.goBack();
       },
     );
@@ -121,74 +166,95 @@ export function ProductReviewScreen({
       await Linking.openURL(url);
     });
   return (
-    <Screen scroll>
-      <Title>{product.title}</Title>
-      <Badge>{product.store?.name || "Gian hàng"}</Badge>
-      {product.imageUrl && (
-        <Image
-          source={{ uri: product.imageUrl }}
-          style={{ width: "100%", aspectRatio: 1, borderRadius: 20 }}
-        />
+    <Screen scroll compact>
+      <SectionTitle>{product.title}</SectionTitle>
+      <Badge>{statusText(product.moderationStatus || "DRAFT")}</Badge>
+      <Caption>
+        {product.store?.name} · {product.sku}
+      </Caption>
+      {detail.isLoading && <Caption>Đang đối chiếu hồ sơ mới nhất…</Caption>}
+      <ErrorNotice error={detail.error} retry={() => void detail.refetch()} />
+      <ProductPhoto
+        uri={product.imageUrl}
+        resizeMode="contain"
+        style={{ width: "100%", height: 170, borderRadius: 12 }}
+      />
+      <InfoLine label="Giá bán" value={money(product.price)} />
+      <InfoLine label="Danh mục" value={product.categoryName} />
+      <ExpandableRecord title="Mô tả sản phẩm" icon="file-text">
+        <Text>
+          {product.description?.replace(/<[^>]+>/g, " ") || "Chưa có mô tả."}
+        </Text>
+      </ExpandableRecord>
+      <ExpandableRecord title="Hồ sơ & đóng gói" icon="box">
+        <InfoLine label="Thành phần" value={product.ingredients} />
+        <InfoLine label="Xuất xứ" value={product.origin} />
+        <InfoLine label="Nhãn mác" value={product.labelInfo} />
+        <InfoLine label="Barcode" value={product.barcode} />
+        <Caption>
+          {product.packageWeight ?? "—"} g · {product.packageLength ?? "—"} ×{" "}
+          {product.packageWidth ?? "—"} × {product.packageHeight ?? "—"} cm
+        </Caption>
+        {evidence.map((url, index) => (
+          <Button
+            key={`${index}-${url}`}
+            title={`Mở chứng từ ${index + 1}`}
+            secondary
+            disabled={operation.busy}
+            onPress={() => void open(url)}
+          />
+        ))}
+      </ExpandableRecord>
+      {Boolean(product.variants?.length) && (
+        <ExpandableRecord
+          title="Phân loại sản phẩm"
+          subtitle={`${product.variants!.length} phân loại`}
+          icon="grid"
+        >
+          {product.variants?.map((item) => (
+            <InfoLine
+              key={item.id}
+              label={item.name}
+              value={`${item.sku || ""} · ${money(item.price ?? product.price)} · tồn ${item.stockQuantity}`}
+            />
+          ))}
+        </ExpandableRecord>
       )}
-      <Caption>
-        {product.sku} · {product.categoryName}
-      </Caption>
-      <Text>{money(product.price)}</Text>
-      <Text>{product.description?.replace(/<[^>]+>/g, " ")}</Text>
-      <Title>Hồ sơ và đóng gói</Title>
-      <Text>Thành phần: {product.ingredients || "Chưa cung cấp"}</Text>
-      <Text>Xuất xứ: {product.origin || "Chưa cung cấp"}</Text>
-      <Text>Nhãn mác: {product.labelInfo || "Chưa cung cấp"}</Text>
-      <Text>Barcode: {product.barcode || "Chưa cung cấp"}</Text>
-      <Caption>
-        {product.packageWeight ?? "—"} g · {product.packageLength ?? "—"} ×{" "}
-        {product.packageWidth ?? "—"} × {product.packageHeight ?? "—"} cm
-      </Caption>
-      {evidence.map((url, index) => (
-        <Button
-          key={`${index}-${url}`}
-          title={`Mở chứng từ ${index + 1}`}
-          secondary
-          disabled={operation.busy}
-          onPress={() => void open(url)}
-        />
-      ))}
-      {product.variants?.map((item) => (
-        <Card key={item.id}>
-          <Text>{item.name}</Text>
-          <Caption>
-            {item.sku} · {money(item.price)} · tồn {item.stockQuantity}
-          </Caption>
-        </Card>
-      ))}
       {own && (
         <Caption>
-          Bạn là người tạo/gửi hồ sơ; cần một reviewer độc lập quyết định.
+          Bạn là người tạo/gửi hồ sơ; cần người kiểm duyệt độc lập.
         </Caption>
       )}
-      <Field
-        label="Lý do quyết định"
-        value={reason}
-        onChangeText={setReason}
-        multiline
-        maxLength={1000}
-        editable={!operation.busy}
-      />
+      {product.moderationStatus === "DRAFT" ? (
+        <>
+          <Field
+            label="Lý do quyết định (bắt buộc khi từ chối)"
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            maxLength={1000}
+            editable={canDecide && !operation.busy}
+          />
+          <Button
+            title="Duyệt sản phẩm"
+            loading={operation.busy}
+            disabled={!canDecide}
+            onPress={() => void decide(true)}
+          />
+          <Button
+            title="Từ chối hồ sơ"
+            secondary
+            disabled={operation.busy || !canDecide}
+            onPress={() => void decide(false)}
+          />
+        </>
+      ) : (
+        <Caption>
+          Hồ sơ đã được xử lý. Chỉ sản phẩm đang chờ duyệt mới được ra quyết
+          định.
+        </Caption>
+      )}
       <ErrorNotice error={operation.error} />
-      <Button
-        title="Duyệt sản phẩm"
-        loading={operation.busy}
-        disabled={own || product.moderationStatus === "APPROVED"}
-        onPress={() => void decide(true)}
-      />
-      <Button
-        title="Từ chối hồ sơ"
-        secondary
-        disabled={
-          operation.busy || own || product.moderationStatus === "REJECTED"
-        }
-        onPress={() => void decide(false)}
-      />
     </Screen>
   );
 }

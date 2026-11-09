@@ -145,16 +145,13 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
           fundingSource: CouponFundingSource.SHOP_FUNDED,
           products: [],
           categories: [],
-          storeName: 'Sora Skin',
+          storeName: 'Sora Skin', couponType:'KOL_EXCLUSIVE',
         },
       ]);
       expect(mockPrisma.coupon.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              expect.objectContaining({ storeId: 'store-uuid-1', fundingSource: CouponFundingSource.SHOP_FUNDED }),
-              expect.objectContaining({ fundingSource: CouponFundingSource.PLATFORM_FUNDED, benefitType: 'SHIPPING' }),
-            ]),
+            storeId: 'store-uuid-1', fundingSource: CouponFundingSource.SHOP_FUNDED, benefitType: 'GOODS', collaborator: {role:UserRole.COLLABORATOR},
             status: CouponStatus.ACTIVE,
             deletedAt: null,
           }),
@@ -266,7 +263,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         status: 'APPROVED',
       });
       mockPrisma.coupon.count.mockResolvedValue(0);
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'existing-uuid',
         codeNormalized: 'THANGVIP10',
       });
@@ -352,7 +349,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         id: storeId,
         ownerId: userId,
       });
-      mockPrisma.coupon.findFirst.mockResolvedValue({
+      mockPrisma.coupon.findFirst.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: couponId,
         storeId,
         status: CouponStatus.PENDING_APPROVAL,
@@ -377,7 +374,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         id: storeId,
         ownerId: userId,
       });
-      mockPrisma.coupon.findFirst.mockResolvedValue({
+      mockPrisma.coupon.findFirst.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: couponId,
         storeId,
         codeNormalized: 'THANGVIP10',
@@ -420,7 +417,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
         id: storeId,
         ownerId: userId,
       });
-      mockPrisma.coupon.findFirst.mockResolvedValue({
+      mockPrisma.coupon.findFirst.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: couponId,
         storeId,
         status: CouponStatus.PENDING_APPROVAL,
@@ -458,7 +455,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should calculate percentage discount correctly with cap', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-1',
         codeNormalized: 'THANGVIP10',
         displayCode: 'THANGVIP10',
@@ -503,7 +500,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should calculate fixed amount discount correctly', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-2',
         codeNormalized: 'FIXED50K',
         displayCode: 'FIXED50K',
@@ -547,7 +544,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should reject if minimum order amount is not met', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-3',
         codeNormalized: 'MINORDER',
         displayCode: 'MINORDER',
@@ -588,7 +585,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should reject expired coupon', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-expired',
         codeNormalized: 'EXPIRED10',
         displayCode: 'EXPIRED10',
@@ -613,7 +610,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should reject coupon when total usage limit is exhausted', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-limit',
         codeNormalized: 'LIMITOUT',
         displayCode: 'LIMITOUT',
@@ -638,7 +635,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('allows a returning customer to reuse a creator attribution coupon', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-cust',
         codeNormalized: 'CUSTLIMIT',
         displayCode: 'CUSTLIMIT',
@@ -682,7 +679,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     });
 
     it('should reject coupon when not stackable with product discount', async () => {
-      mockPrisma.coupon.findUnique.mockResolvedValue({
+      mockPrisma.coupon.findUnique.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: 'coupon-uuid-nostack',
         codeNormalized: 'NOSTACK',
         displayCode: 'NOSTACK',
@@ -722,7 +719,7 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       const collaboratorId = 'collab-uuid-1';
       const couponId = 'coupon-uuid-1';
 
-      mockPrisma.coupon.findFirst.mockResolvedValue({
+      mockPrisma.coupon.findFirst.mockResolvedValue({ ...{benefitType:'GOODS',fundingSource:CouponFundingSource.SHOP_FUNDED,collaborator:{role:UserRole.COLLABORATOR}},
         id: couponId,
         collaboratorId,
         codeNormalized: 'THANGVIP10',

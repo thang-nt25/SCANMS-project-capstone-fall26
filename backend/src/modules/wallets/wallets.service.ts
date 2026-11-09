@@ -1,9 +1,10 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   Optional,
+  ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import {
   Prisma,
@@ -33,6 +34,7 @@ export class WalletsService {
   constructor(
     private readonly ledgerService: FinancialLedgerService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
 
   /** The caller must create the payout request in this same transaction. */
@@ -56,14 +58,18 @@ export class WalletsService {
     // Competing withdrawals must wait and then see the committed balance.
     const wallet = await this.lockWallet(tx, collaboratorId);
     if (wallet.earningsReviewRequired) {
-      throw new BadRequestException('Số dư cũ cần được kế toán đối soát nguồn tiền trước khi rút');
+      throw new BadRequestException(
+        'Số dư cũ cần được kế toán đối soát nguồn tiền trước khi rút',
+      );
     }
     const stores = await tx.storeWallet.findMany({
       where: { walletId: wallet.id },
       orderBy: { storeId: 'asc' },
     });
     if (walletBalanceConsistency(wallet, stores).requiresReview) {
-      throw new BadRequestException('Số dư tổng và phân bổ gian hàng chưa khớp. Cần đối soát trước khi rút tiền.');
+      throw new BadRequestException(
+        'Số dư tổng và phân bổ gian hàng chưa khớp. Cần đối soát trước khi rút tiền.',
+      );
     }
     if (wallet.availableBalance.lessThan(amount)) {
       throw new BadRequestException(
@@ -260,7 +266,8 @@ export class WalletsService {
   ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, collaboratorId);
-    const conditionalBalance = (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
+    const conditionalBalance =
+      (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
     const releaseAmount = Prisma.Decimal.min(conditionalBalance, amount);
     if (releaseAmount.greaterThan(0)) {
       await tx.wallet.update({
@@ -297,7 +304,8 @@ export class WalletsService {
   ) {
     if (amount.lessThanOrEqualTo(0)) return;
     const wallet = await this.lockWallet(tx, collaboratorId);
-    const conditionalBalance = (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
+    const conditionalBalance =
+      (wallet as any).conditionalDealEscrowBalance ?? new Prisma.Decimal(0);
     const forfeitAmount = Prisma.Decimal.min(conditionalBalance, amount);
     if (forfeitAmount.greaterThan(0)) {
       await tx.wallet.update({
@@ -309,7 +317,6 @@ export class WalletsService {
       });
     }
   }
-
 
   async reverseAvailableBalance(
     tx: Prisma.TransactionClient,
@@ -445,33 +452,59 @@ export class WalletsService {
     const entries: FinancialLedger[] = [];
     for (const [index, change] of changes.entries()) {
       const entry = await this.ledgerService.appendEntry(
-          tx,
-          wallet.id,
-          reference,
-          change,
-          storeBalances[index],
-        );
+        tx,
+        wallet.id,
+        reference,
+        change,
+        storeBalances[index],
+      );
       entries.push(entry);
       // Every earnings movement has a balanced accounting counterpart. The
       // immutable ledger row supplies a unique key for partial refunds/deltas.
       let debit: string | undefined;
       let credit: string | undefined;
       if (change.bucket === WalletBalanceBucket.SHOPPING) {
-        debit = change.amount.gt(0) ? (reference.type === 'ORDER_REFUND' ? 'CUSTOMER_REFUND_CLEARING' : 'CORPORATE_BANK') : 'CUSTOMER_FUNDS';
+        debit = change.amount.gt(0)
+          ? reference.type === 'ORDER_REFUND'
+            ? 'CUSTOMER_REFUND_CLEARING'
+            : 'CORPORATE_BANK'
+          : 'CUSTOMER_FUNDS';
         credit = change.amount.gt(0) ? 'CUSTOMER_FUNDS' : 'SALES_CLEARING';
-      } else if (change.transactionType === TransactionType.COMMISSION_PENDING) {
-        debit = 'AFFILIATE_MARKETING_EXPENSE'; credit = 'AFFILIATE_ESCROW';
+      } else if (
+        change.transactionType === TransactionType.COMMISSION_PENDING
+      ) {
+        debit = 'AFFILIATE_MARKETING_EXPENSE';
+        credit = 'AFFILIATE_ESCROW';
       } else if (change.transactionType === TransactionType.REVERSAL) {
-        debit = change.bucket === WalletBalanceBucket.PENDING ? 'AFFILIATE_ESCROW' : 'PARTNER_EARNINGS_PAYABLE';
+        debit =
+          change.bucket === WalletBalanceBucket.PENDING
+            ? 'AFFILIATE_ESCROW'
+            : 'PARTNER_EARNINGS_PAYABLE';
         credit = 'AFFILIATE_MARKETING_EXPENSE';
-      } else if (change.transactionType === TransactionType.COMMISSION_APPROVED && reference.type !== 'MONTHLY_BONUS') {
+      } else if (
+        change.transactionType === TransactionType.COMMISSION_APPROVED &&
+        reference.type !== 'MONTHLY_BONUS'
+      ) {
         if (change.bucket === WalletBalanceBucket.PENDING) {
-          debit = 'AFFILIATE_ESCROW'; credit = 'PARTNER_EARNINGS_PAYABLE';
-        } else if (!changes.some(c => c.bucket === WalletBalanceBucket.PENDING)) {
-          debit = 'AFFILIATE_MARKETING_EXPENSE'; credit = 'PARTNER_EARNINGS_PAYABLE';
+          debit = 'AFFILIATE_ESCROW';
+          credit = 'PARTNER_EARNINGS_PAYABLE';
+        } else if (
+          !changes.some((c) => c.bucket === WalletBalanceBucket.PENDING)
+        ) {
+          debit = 'AFFILIATE_MARKETING_EXPENSE';
+          credit = 'PARTNER_EARNINGS_PAYABLE';
         }
       }
-      if (debit && credit) await postFinance(tx, entry.id, 'WALLET_MOVEMENT', debit, credit, change.amount.abs(), reference.type);
+      if (debit && credit)
+        await postFinance(
+          tx,
+          entry.id,
+          'WALLET_MOVEMENT',
+          debit,
+          credit,
+          change.amount.abs(),
+          reference.type,
+        );
     }
     return { wallet: updatedWallet, entries };
   }
@@ -656,11 +689,21 @@ export class WalletsService {
     ).wallet;
   }
 
-  async creditShoppingBalance(tx: Prisma.TransactionClient, userId: string, amount: Prisma.Decimal, reference: LedgerReference) {
+  async creditShoppingBalance(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amount: Prisma.Decimal,
+    reference: LedgerReference,
+  ) {
     this.assertPositiveAmount(amount);
     const wallet = await this.lockWallet(tx, userId);
     const result = await this.applyBalanceChanges(tx, wallet, reference, [
-      this.buildChange(WalletBalanceBucket.SHOPPING, TransactionType.COMMISSION_APPROVED, wallet.shoppingBalance, amount),
+      this.buildChange(
+        WalletBalanceBucket.SHOPPING,
+        TransactionType.COMMISSION_APPROVED,
+        wallet.shoppingBalance,
+        amount,
+      ),
     ]);
     return { wallet: result.wallet, ledger: result.entries[0] };
   }
@@ -669,16 +712,31 @@ export class WalletsService {
    * Nạp tiền giả lập Sandbox / Demo (Phục vụ kiểm thử & trải nghiệm thanh toán giỏ hàng)
    */
   demoTopUpAvailability() {
-    return { available: process.env.ALLOW_DEMO_WALLET_TOPUP === 'true' && process.env.NODE_ENV !== 'production' };
+    const environment =
+      this.config?.get<string>('NODE_ENV') ?? process.env.NODE_ENV;
+    const enabled =
+      this.config?.get<string>('ALLOW_DEMO_WALLET_TOPUP') ??
+      process.env.ALLOW_DEMO_WALLET_TOPUP;
+    return {
+      available: environment !== 'production' && enabled === 'true',
+    };
   }
 
   async topUpDemo(userId: string, amountNum: number) {
-    if (!this.demoTopUpAvailability().available)
-      throw new ForbiddenException('Nạp tiền thử nghiệm đã bị vô hiệu hóa');
+    if (!this.demoTopUpAvailability().available) {
+      throw new ForbiddenException(
+        'Nạp ví thử nghiệm chưa được bật hoặc không được phép trong production.',
+      );
+    }
     if (!this.prisma) {
       throw new Error('PrismaService is required for topUpDemo');
     }
-    if (amountNum <= 0 || amountNum > 50000000) {
+    if (
+      !Number.isFinite(amountNum) ||
+      !Number.isInteger(amountNum) ||
+      amountNum <= 0 ||
+      amountNum > 50000000
+    ) {
       throw new BadRequestException(
         'Số tiền nạp thử nghiệm phải lớn hơn 0 và tối đa 50.000.000đ',
       );

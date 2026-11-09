@@ -9,6 +9,6 @@ export function voucherSlot(voucher: {
   return voucher.fundingSource === "PLATFORM_FUNDED" ? "PLATFORM" : "SHOP";
 }
 
-export function voucherProductUrl(productId: string, code: string): string {
-  return `/products/${encodeURIComponent(productId)}?${new URLSearchParams({ voucher: code.trim().toUpperCase() })}`;
+export function voucherProductUrl(productId: string, _code: string): string {
+  return `/products/${encodeURIComponent(productId)}`;
 }

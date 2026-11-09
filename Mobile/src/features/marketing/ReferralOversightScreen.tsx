@@ -1,19 +1,22 @@
+import {
+  ExpandableRecord,
+  FilterTabs,
+  SearchToolbar,
+  InfoLine as DetailLine,
+  SectionTitle as Title,
+} from "../../components/RecordList";
 import { useState } from "react";
 import { z } from "zod";
 import {
   Badge,
   Button,
-  Card,
   Empty,
-  Field,
   PageControls,
   Screen,
-  Title,
 } from "../../components/ui";
 import { statusText } from "../../types/contracts";
 import {
-  CommandForm,
-  DetailLine,
+  CompactCommandForm as CommandForm,
   QueryState,
   confirmAction,
   required,
@@ -22,7 +25,6 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
-import { SelectField } from "../common/SelectField";
 
 const Links = z.object({
   data: z.array(
@@ -62,22 +64,17 @@ export function ReferralOversightScreen() {
     reviewer || Boolean(store),
   );
   return (
-    <Screen scroll>
-      <Title>Giám sát link tiếp thị</Title>
-      <Field
-        label="Tìm mã link hoặc sản phẩm"
+    <Screen scroll compact>
+      <SearchToolbar
         value={draft}
-        onChangeText={setDraft}
-      />
-      <Button
-        title="Tìm kiếm"
-        secondary
-        onPress={() => {
+        onChange={setDraft}
+        placeholder="Tìm mã link hoặc sản phẩm…"
+        onSubmit={() => {
           setSearch(draft.trim());
           setPage(1);
         }}
       />
-      <SelectField
+      <FilterTabs
         label="Trạng thái"
         value={status}
         options={[
@@ -92,12 +89,6 @@ export function ReferralOversightScreen() {
           setPage(1);
         }}
       />
-      <Button
-        title="Làm mới"
-        secondary
-        disabled={result.isFetching}
-        onPress={() => void result.refetch()}
-      />
       <QueryState
         loading={result.isLoading}
         error={result.error || command.error}
@@ -105,7 +96,15 @@ export function ReferralOversightScreen() {
       />
       {result.data?.data.length === 0 && <Empty />}
       {result.data?.data.map((item) => (
-        <Card key={item.id}>
+        <ExpandableRecord
+          key={item.id}
+          title={item.product.title}
+          subtitle={item.store?.name || store?.name}
+          badge={statusText(item.status)}
+          meta={`${item.totalClicks} lượt nhấp · ${item.totalOrders} đơn`}
+          icon="link"
+          disabled={command.busy}
+        >
           <Title>{item.product.title}</Title>
           <Badge>{statusText(item.status)}</Badge>
           <DetailLine
@@ -156,7 +155,7 @@ export function ReferralOversightScreen() {
               }
             />
           )}
-        </Card>
+        </ExpandableRecord>
       ))}
       {result.data && (
         <PageControls

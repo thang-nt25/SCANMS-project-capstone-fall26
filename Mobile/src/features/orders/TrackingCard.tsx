@@ -1,4 +1,9 @@
-import { Text } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Icon } from "../../components/commerce";
+import { BottomSheet } from "../../components/BottomSheet";
+import { colors } from "../../theme/tokens";
+import { latestConfirmedEvent } from "./order-presentation";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { api } from "../../services/api";
@@ -19,10 +24,30 @@ const TrackingSchema = z.object({
   isSimulation: z.boolean().optional(),
   simulationAvailable: z.boolean().optional(),
   timeline: z.array(
-    z.object({ title: z.string(), time: z.string().nullish() }),
+    z.object({
+      title: z.string(),
+      time: z.string().nullish(),
+      completed: z.boolean().optional(),
+    }),
   ),
 });
-export function TrackingCard({ order }: { order: Order }) {
+export function TrackingCard({
+  order,
+  compact = false,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  order: Order;
+  compact?: boolean;
+  open?: boolean;
+  onOpenChange?(value: boolean): void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (value: boolean) => {
+    if (onOpenChange) onOpenChange(value);
+    else setInternalOpen(value);
+  };
   const { session } = useAuth();
   const command = useCommand();
   const code =
@@ -46,9 +71,9 @@ export function TrackingCard({ order }: { order: Order }) {
       ),
     refetchInterval: 15000,
   });
-  if (!code) return null;
-  return (
-    <Card style={{ marginHorizontal: 0 }}>
+  if (!code && !compact) return null;
+  const content = (
+    <>
       <Title>Theo dõi giao hàng</Title>
       <Text selectable>
         {carrier} · {code}
@@ -68,9 +93,11 @@ export function TrackingCard({ order }: { order: Order }) {
           {tracking.data.timeline.map((event, index) => (
             <Caption key={`${index}-${event.title}`}>
               {event.title} ·{" "}
-              {event.time
-                ? new Date(event.time).toLocaleString("vi-VN")
-                : "Chưa có xác nhận"}
+              {event.completed === false
+                ? "Chưa có xác nhận"
+                : event.time
+                  ? new Date(event.time).toLocaleString("vi-VN")
+                  : "Chưa có xác nhận"}
             </Caption>
           ))}
         </>
@@ -120,6 +147,78 @@ export function TrackingCard({ order }: { order: Order }) {
           </>
         )}
       <ErrorNotice error={command.error} />
-    </Card>
+    </>
+  );
+  if (!compact) return <Card style={{ marginHorizontal: 0 }}>{content}</Card>;
+  const last = latestConfirmedEvent(tracking.data?.timeline || []);
+  const placeholder =
+    order.status === "CANCELLED"
+      ? "Đơn đã hủy"
+      : order.status === "PENDING"
+        ? "Shop đang chuẩn bị đơn hàng"
+        : "Shop chưa cập nhật mã vận đơn";
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !code }}
+        disabled={!code}
+        onPress={() => setOpen(true)}
+        style={trackingStyles.summary}
+      >
+        <Icon name="truck" size={20} color={colors.strong} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={trackingStyles.heading}>Thông tin vận chuyển</Text>
+          <Text numberOfLines={1} style={trackingStyles.caption}>
+            {code
+              ? [carrier || "Đơn vị vận chuyển", code].join(" · ")
+              : placeholder}
+          </Text>
+          {code && (
+            <Text style={trackingStyles.status}>
+              {tracking.error
+                ? "Chưa tải được hành trình"
+                : tracking.data?.statusText || "Đang cập nhật hành trình"}
+            </Text>
+          )}
+          {last && (
+            <Text style={trackingStyles.caption}>
+              {last.title} · {new Date(last.time!).toLocaleString("vi-VN")}
+            </Text>
+          )}
+        </View>
+        {!!code && <Icon name="chevron-right" size={16} color={colors.muted} />}
+      </Pressable>
+      {open && !!code && (
+        <BottomSheet
+          title="Theo dõi đơn hàng"
+          close={() => {
+            if (!command.busy) setOpen(false);
+          }}
+        >
+          {content}
+        </BottomSheet>
+      )}
+    </>
   );
 }
+const trackingStyles = StyleSheet.create({
+  summary: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 12,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  heading: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.ink,
+    lineHeight: 18,
+  },
+  caption: { fontSize: 11, color: colors.muted, lineHeight: 16 },
+  status: { fontSize: 12, color: colors.strong, lineHeight: 18 },
+});

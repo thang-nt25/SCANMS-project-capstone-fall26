@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { Image, Text } from "react-native";
+import { Image, Text, View } from "react-native";
 import { z } from "zod";
 import {
   Badge,
   Button,
-  Caption,
   Card,
   Empty,
   ErrorNotice,
-  PageControls,
   Screen,
   Title,
 } from "../../components/ui";
@@ -16,13 +14,16 @@ import { money, ProductSchema } from "../../types/contracts";
 import { useMobileNavigation } from "../../navigation/router";
 import {
   ActionForm,
-  DetailLine,
   QueryState,
-  Sheet,
   required,
   useCommand,
   useResource,
 } from "../common/shared";
+import {
+  InfoLine as DetailLine,
+  SectionTitle,
+} from "../../components/RecordList";
+import { MenuRow, c } from "../../components/commerce";
 import { MediaPicker } from "../common/MediaPicker";
 const Profile = z.object({
   user: z.object({
@@ -51,30 +52,35 @@ export function PersonalScreen() {
   const [form, setForm] = useState<"profile" | "password" | null>(null),
     [saved, setSaved] = useState(false);
   return (
-    <Screen scroll>
-      <Title>Hồ sơ & bảo mật</Title>
+    <Screen scroll compact>
       <QueryState
         loading={result.isLoading}
         error={result.error}
         retry={() => void result.refetch()}
       />
       {result.data && (
-        <>
+        <Card>
+          <SectionTitle>Thông tin cá nhân</SectionTitle>
           <DetailLine label="Họ tên" value={result.data.user.fullName} />
           <DetailLine label="Email" value={result.data.user.email} />
           <DetailLine label="Điện thoại" value={result.data.user.phoneNumber} />
-          <Button
-            title="Sửa thông tin"
-            secondary
-            onPress={() => setForm("profile")}
-          />
-        </>
+        </Card>
       )}
-      <Button
-        title="Đổi mật khẩu"
-        secondary
-        onPress={() => setForm("password")}
-      />
+      <View style={c.panel}>
+        <MenuRow
+          compact
+          icon="edit-2"
+          title="Cập nhật thông tin"
+          onPress={() => setForm("profile")}
+        />
+        <MenuRow
+          compact
+          icon="lock"
+          title="Đổi mật khẩu"
+          last
+          onPress={() => setForm("password")}
+        />
+      </View>
       <MediaPicker
         label="Thay ảnh đại diện"
         disabled={command.busy}
@@ -88,6 +94,7 @@ export function PersonalScreen() {
       <ErrorNotice error={command.error} />
       {form === "profile" && (
         <ActionForm
+          compact
           title="Cập nhật hồ sơ"
           fields={[
             {
@@ -115,6 +122,7 @@ export function PersonalScreen() {
       )}
       {form === "password" && (
         <ActionForm
+          compact
           title="Đổi mật khẩu"
           fields={[
             {
@@ -147,110 +155,6 @@ export function PersonalScreen() {
         />
       )}
     </Screen>
-  );
-}
-const Notification = z.object({
-  id: z.string(),
-  title: z.string(),
-  message: z.string(),
-  isRead: z.boolean(),
-  createdAt: z.string(),
-});
-const Notifications = z.object({
-  items: z.array(Notification),
-  unreadCount: z.number(),
-  totalPages: z.number(),
-});
-export function NotificationsScreen() {
-  const [page, setPage] = useState(1),
-    [category, setCategory] = useState("ALL"),
-    [selected, setSelected] = useState<z.infer<typeof Notification> | null>(
-      null,
-    );
-  const result = useResource(
-      "notifications",
-      `/notifications?page=${page}&limit=20&category=${category}`,
-      Notifications,
-    ),
-    command = useCommand();
-  return (
-    <Screen scroll>
-      <Title>Thông báo · {result.data?.unreadCount ?? "—"} chưa đọc</Title>
-      <Button
-        title="Đọc tất cả"
-        secondary
-        loading={command.busy}
-        onPress={() => void command.execute("/notifications/read-all")}
-      />
-      <SelectCategories
-        value={category}
-        change={(value) => {
-          setCategory(value);
-          setPage(1);
-        }}
-      />
-      <QueryState
-        loading={result.isLoading}
-        error={result.error}
-        retry={() => void result.refetch()}
-      />
-      <ErrorNotice error={command.error} />
-      {result.data?.items.length === 0 && <Empty />}
-      {result.data?.items.map((item) => (
-        <Card key={item.id}>
-          {!item.isRead && <Badge>Mới</Badge>}
-          <Title>{item.title}</Title>
-          <Text>{item.message}</Text>
-          <Caption>{new Date(item.createdAt).toLocaleString("vi-VN")}</Caption>
-          <Button
-            title="Xem thông báo"
-            secondary
-            disabled={command.busy}
-            onPress={() => {
-              setSelected(item);
-              if (!item.isRead)
-                void command.execute(`/notifications/${item.id}/read`);
-            }}
-          />
-        </Card>
-      ))}
-      <PageControls
-        page={page}
-        totalPages={result.data?.totalPages || 1}
-        loading={result.isFetching}
-        onChange={setPage}
-      />
-      {selected && (
-        <Sheet title={selected.title} close={() => setSelected(null)}>
-          <Text>{selected.message}</Text>
-        </Sheet>
-      )}
-    </Screen>
-  );
-}
-function SelectCategories({
-  value,
-  change,
-}: {
-  value: string;
-  change(value: string): void;
-}) {
-  return (
-    <>
-      {[
-        ["ALL", "Tất cả"],
-        ["ORDER", "Đơn hàng"],
-        ["PROMOTION", "Ưu đãi"],
-        ["SYSTEM", "Hệ thống"],
-      ].map(([key, label]) => (
-        <Button
-          key={key}
-          title={label}
-          secondary={value !== key}
-          onPress={() => change(key)}
-        />
-      ))}
-    </>
   );
 }
 const Wishlist = z.array(

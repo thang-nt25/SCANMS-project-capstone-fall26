@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import puppeteer from 'puppeteer-core';
 
 const base = process.env.GHN_UI_TEST_URL;
-const executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const executablePath = process.env.ADDRESS_MAP_UI_BROWSER_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 test('address map recovers from unavailable tiles/geocoder and explains denied device location', { skip: !base || !existsSync(executablePath), timeout: 60000 }, async () => {
   const origin = new URL(base).origin;
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname));
@@ -61,6 +61,64 @@ test('address map recovers from unavailable tiles/geocoder and explains denied d
     assert.equal(result.longitude, 106.6297);
     assert.equal(result.detailAddress, 'Phan Huy Ích');
     await page.waitForSelector('.leaflet-marker-icon');
+    // Picking a location animates from the country/city view to street zoom.
+    // Assert the active tile grid after it settles, not a retiring zoom layer.
+    await page.waitForFunction(() => {
+      const map = document.querySelector('.leaflet-container');
+      if (map.classList.contains('leaflet-zoom-anim')) return false;
+      const bounds = map.getBoundingClientRect();
+      return [...map.querySelectorAll('.leaflet-tile-loaded')].some(tile => {
+        const r = tile.getBoundingClientRect();
+        return r.width === 256 && r.right > bounds.left && r.left < bounds.right
+          && r.bottom > bounds.top && r.top < bounds.bottom;
+      });
+    }).catch(async error => {
+      console.error('Map layout:', await page.evaluate(() => ({
+        map: document.querySelector('.leaflet-container')?.getBoundingClientRect().toJSON(),
+        tiles: [...document.querySelectorAll('.leaflet-tile-loaded')].slice(0, 3).map(tile => ({
+          rect: tile.getBoundingClientRect().toJSON(), style: tile.getAttribute('style'),
+          width: getComputedStyle(tile).width, maxWidth: getComputedStyle(tile).maxWidth,
+          parentStyle: tile.parentElement.getAttribute('style'),
+        })),
+      })));
+      await page.screenshot({ path: process.env.ADDRESS_MAP_QA_SCREENSHOT || join(tmpdir(), 'scanms-address-location-qa.png'), fullPage: true });
+      throw error;
+    });
+    const presentation = await page.evaluate(() => {
+      const map = document.querySelector('.leaflet-container');
+      const marker = document.querySelector('.leaflet-marker-icon');
+      const pane = document.querySelector('.leaflet-marker-pane');
+      const bounds = map.getBoundingClientRect();
+      const tile = [...map.querySelectorAll('.leaflet-tile-loaded')].find(tile => {
+        const r = tile.getBoundingClientRect();
+        return r.width > 0 && r.right > bounds.left && r.left < bounds.right
+          && r.bottom > bounds.top && r.top < bounds.bottom;
+      });
+      const zoom = document.querySelector('.leaflet-control-zoom-in');
+      return {
+        mapOverflow: getComputedStyle(map).overflow,
+        panePosition: getComputedStyle(pane).position,
+        tilePosition: getComputedStyle(tile).position,
+        tileWidth: tile.getBoundingClientRect().width,
+        markerPosition: getComputedStyle(marker).position,
+        markerWidth: marker.getBoundingClientRect().width,
+        markerColor: getComputedStyle(marker.firstElementChild).backgroundColor,
+        zoomClickable: getComputedStyle(zoom.closest('.leaflet-control')).pointerEvents,
+        markerInsideMap: (() => {
+          const m = marker.getBoundingClientRect(), r = map.getBoundingClientRect();
+          return m.left >= r.left && m.right <= r.right && m.top >= r.top && m.bottom <= r.bottom;
+        })(),
+      };
+    });
+    assert.equal(presentation.mapOverflow, 'hidden');
+    assert.equal(presentation.panePosition, 'absolute');
+    assert.equal(presentation.tilePosition, 'absolute');
+    assert.equal(presentation.tileWidth, 256, 'tiles keep their pixel grid instead of image max-width scaling');
+    assert.equal(presentation.markerPosition, 'absolute');
+    assert.equal(presentation.markerWidth, 34);
+    assert.equal(presentation.markerColor, 'rgb(197, 155, 88)');
+    assert.equal(presentation.zoomClickable, 'auto');
+    assert.ok(presentation.markerInsideMap, 'selected location is rendered inside its map');
     await page.evaluate(() => { window.__geoMode = 'denied'; });
     await page.click('.address-location-locate');
     await page.waitForFunction(() => document.querySelector('.address-location-header').textContent.includes('Bạn chưa cho phép'));
@@ -80,6 +138,8 @@ test('address map recovers from unavailable tiles/geocoder and explains denied d
     await page.waitForFunction(() => !document.querySelector('.address-location-header [role=alert]'));
     await page.setViewport({ width: 390, height: 700 });
     assert.ok(await page.$eval('.leaflet-container', el => el.clientWidth > 0 && el.clientHeight >= 224));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
+    assert.equal(await page.$eval('.leaflet-control-attribution', el => el.textContent.includes('OpenStreetMap')), true);
     await page.waitForFunction(() => {
       const map = document.querySelector('.leaflet-container').getBoundingClientRect();
       const visible = [...document.querySelectorAll('.leaflet-tile')].filter(tile => {
@@ -88,7 +148,7 @@ test('address map recovers from unavailable tiles/geocoder and explains denied d
       });
       return visible.length > 0 && visible.every(tile => tile.complete && tile.naturalWidth > 0 && getComputedStyle(tile).opacity === '1' && getComputedStyle(tile.parentElement).opacity === '1');
     });
-    await page.screenshot({ path: join(tmpdir(), 'scanms-address-location-qa.png') });
+    await page.screenshot({ path: process.env.ADDRESS_MAP_QA_SCREENSHOT || join(tmpdir(), 'scanms-address-location-qa.png'), fullPage: true });
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

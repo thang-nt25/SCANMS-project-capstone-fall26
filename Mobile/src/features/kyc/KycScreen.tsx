@@ -1,3 +1,4 @@
+import { CompactEvidence as Evidence } from "../common/CompactEvidence";
 import { useState } from "react";
 import { Text } from "react-native";
 import { z } from "zod";
@@ -5,19 +6,15 @@ import {
   Badge,
   Button,
   Caption,
-  Card,
   ErrorNotice,
   Field,
   Screen,
-  Title,
 } from "../../components/ui";
 import {
   Choice,
-  CommandForm,
-  DetailLine,
-  Evidence,
+  CompactCommandForm as CommandForm,
   QueryState,
-  Sheet,
+  CompactSheet as Sheet,
   https,
   required,
   useActor,
@@ -25,6 +22,12 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
+import {
+  ExpandableRecord,
+  FilterTabs,
+  InfoLine as DetailLine,
+  SectionTitle as Title,
+} from "../../components/RecordList";
 import { MediaPicker } from "../common/MediaPicker";
 import { validateInput } from "../../utils/validate-input";
 const Meta = z.object({
@@ -82,7 +85,10 @@ const Submit = z.object({
   frontCardUrl: https,
   backCardUrl: https,
 });
-export function KycScreen() {
+export function KycScreen({
+  pendingOnly = false,
+}: { pendingOnly?: boolean } = {}) {
+  const [onlyPending, setOnlyPending] = useState(pendingOnly);
   const { reviewer, user } = useActor(),
     command = useCommand(),
     [form, setForm] = useState<CommandFormSpec | null>(null),
@@ -129,9 +135,16 @@ export function KycScreen() {
         note: required.min(10).max(1000),
       }),
     });
+  const kolRows = result.data?.kolApplications.filter(
+    (item) =>
+      !onlyPending ||
+      (item.kycStatus === "UNVERIFIED" && Boolean(item.idCardNumber)),
+  );
+  const shopRows = result.data?.shopApplications.filter(
+    (item) => !onlyPending || item.onboardingStatus === "PENDING_APPROVAL",
+  );
   return (
-    <Screen scroll>
-      <Title>Hồ sơ xác minh KYC</Title>
+    <Screen scroll compact>
       <QueryState
         loading={result.isLoading || own.isLoading || shop.isLoading}
         error={result.error || own.error || shop.error}
@@ -143,11 +156,40 @@ export function KycScreen() {
       />
       {reviewer && (
         <>
+          <FilterTabs
+            label="Danh sách hồ sơ"
+            value={onlyPending ? "pending" : "all"}
+            options={[
+              { value: "pending", label: "Chờ duyệt" },
+              { value: "all", label: "Tất cả" },
+            ]}
+            onChange={(value) => setOnlyPending(value === "pending")}
+          />
           <Title>Nhà sáng tạo</Title>
-          {result.data?.kolApplications.map((item) => (
-            <Card key={item.id}>
-              <Title>{item.user?.fullName || item.user?.email}</Title>
-              <Badge>{item.kycStatus}</Badge>
+          {kolRows?.length === 0 && (
+            <Caption>
+              {onlyPending
+                ? "Không có hồ sơ KOL chờ duyệt."
+                : "Chưa có hồ sơ KOL."}
+            </Caption>
+          )}
+          {kolRows?.map((item) => (
+            <ExpandableRecord
+              key={item.id}
+              title={item.user?.fullName || item.user?.email || "Hồ sơ KOL"}
+              subtitle={item.user?.email}
+              badge={
+                item.kycStatus === "VERIFIED"
+                  ? "Đã xác minh"
+                  : item.kycStatus === "REJECTED"
+                    ? "Đã từ chối"
+                    : item.idCardNumber
+                      ? "Chờ xác minh"
+                      : "Chưa nộp hồ sơ"
+              }
+              icon="user-check"
+              disabled={command.busy}
+            >
               <DetailLine label="CCCD" value={item.idCardNumber} />
               <DetailLine label="Mã số thuế" value={item.taxCode} />
               <Text>{item.bio}</Text>
@@ -161,13 +203,32 @@ export function KycScreen() {
                 title="Duyệt/Từ chối hồ sơ"
                 onPress={() => decision(item.id, "kol")}
               />
-            </Card>
+            </ExpandableRecord>
           ))}
           <Title>Gian hàng</Title>
-          {result.data?.shopApplications.map((item) => (
-            <Card key={item.id}>
-              <Title>{item.name}</Title>
-              <Badge>{item.onboardingStatus}</Badge>
+          {shopRows?.length === 0 && (
+            <Caption>
+              {onlyPending
+                ? "Không có gian hàng chờ duyệt."
+                : "Chưa có hồ sơ gian hàng."}
+            </Caption>
+          )}
+          {shopRows?.map((item) => (
+            <ExpandableRecord
+              key={item.id}
+              title={item.name}
+              badge={
+                item.onboardingStatus === "VERIFIED"
+                  ? "Đã xác minh"
+                  : item.onboardingStatus === "PENDING_APPROVAL"
+                    ? "Chờ duyệt"
+                    : item.onboardingStatus === "NEEDS_INFO"
+                      ? "Cần bổ sung"
+                      : "Đã từ chối"
+              }
+              icon="shopping-bag"
+              disabled={command.busy}
+            >
               <DetailLine
                 label="Mã số thuế"
                 value={item.onboardingData?.taxCode}
@@ -187,7 +248,7 @@ export function KycScreen() {
                 title="Xét duyệt gian hàng"
                 onPress={() => decision(item.id, "shop")}
               />
-            </Card>
+            </ExpandableRecord>
           ))}
         </>
       )}

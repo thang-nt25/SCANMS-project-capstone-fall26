@@ -73,6 +73,7 @@ import { ConfigService } from '@nestjs/config';
 import { WalletsService } from '../wallets/wallets.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { liveVoucherActive, priceVoucherLines } from '../coupons/voucher-pricing';
+import { assertNoRetailVoucherSelection, isKolExclusiveCoupon } from '../coupons/kol-coupon.policy';
 import {
   normalizeCustomerPhone,
   validateOrderMoney,
@@ -587,10 +588,7 @@ export class OrdersService {
       userAgent?: string;
     },
   ) {
-    if (dto.platformCouponCode?.trim() ||
-      Object.values(dto.platformCouponsByStore || {}).some(Boolean)) {
-      throw new BadRequestException('Chỉ mã ưu đãi độc quyền của KOC được áp dụng.');
-    }
+    assertNoRetailVoucherSelection(dto);
     // 0. Kiểm tra thông tin người nhận và giỏ hàng theo chuẩn FR-16
     const customerName = validateCustomerName(dto.customerName);
     const customerPhone = normalizeCustomerPhone(dto.customerPhone);
@@ -1020,6 +1018,7 @@ export class OrdersService {
       clientContext,
     } = params;
 
+    assertNoRetailVoucherSelection(dto);
     const confirmedShippingFee = requireShippingFee(shippingQuote?.totalFee);
     await lockPricingProducts(tx, dto.items.map(item => item.productId));
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
@@ -1153,7 +1152,7 @@ export class OrdersService {
       if (!lockedCoupon) {
         throw new ConflictException('Mã giảm giá không tồn tại');
       }
-      if (lockedCoupon.storeId !== store.id || lockedCoupon.benefitType === 'SHIPPING' || lockedCoupon.fundingSource === 'PLATFORM_FUNDED' || lockedCoupon.collaborator?.role !== UserRole.COLLABORATOR || lockedCoupon.deletedAt) {
+      if (lockedCoupon.storeId !== store.id || !isKolExclusiveCoupon(lockedCoupon) || lockedCoupon.deletedAt) {
         throw new ConflictException('Voucher không thuộc ô tiền hàng của Shop này.');
       }
 
