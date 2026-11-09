@@ -1,5 +1,5 @@
 import { CustomerReviews } from '../../components/product/CustomerReviews';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -30,6 +30,8 @@ import {
   MessageSquare,
   Package,
   Handshake,
+  FileText,
+  Ticket,
 } from 'lucide-react';
 import api from '@/services/api';
 import { GuestCheckoutModal } from '@/components/checkout/GuestCheckoutModal';
@@ -116,6 +118,8 @@ interface ProductVariantItem {
   id: string;
   sku: string;
   name: string;
+  barcode?: string;
+  weight?: number;
   attributes?: Record<string, string>;
   price: number;
   stockQuantity: number;
@@ -405,6 +409,8 @@ export default function ProductDetailPage() {
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantItem | null>(null);
+  const [selectedTier1, setSelectedTier1] = useState<string | null>(null);
+  const [selectedTier2, setSelectedTier2] = useState<string | null>(null);
   const [variantSelectionRequired, setVariantSelectionRequired] = useState(false);
   const variantOptionsRef = useRef<HTMLDivElement | null>(null);
 
@@ -432,6 +438,7 @@ export default function ProductDetailPage() {
   const [couponSuggestions, setCouponSuggestions] = useState<{ key: string; status: 'idle' | 'loading' | 'ready' | 'error'; items: EligibleProductCoupon[] }>({ key: '', status: 'idle', items: [] });
   const [couponRefresh, setCouponRefresh] = useState(0);
   const [selectedExtraVoucher, setSelectedExtraVoucher] = useState<any | null>(null);
+  const [showCreatorInput, setShowCreatorInput] = useState(false);
   const couponRequest = useRef(0);
   const couponContextKey = `${data?.product?.id ?? ''}|${selectedVariant?.id ?? ''}|${quantity}|${selectedVariant?.price ?? data?.product?.price ?? 0}`;
   const couponContextRef = useRef(couponContextKey);
@@ -1164,6 +1171,128 @@ export default function ProductDetailPage() {
     const live = stockSnapshot.variants.find(item => item.id === variant.id);
     return { ...variant, stockQuantity: live?.isActive ? Math.max(0, live.stockQuantity) : 0 };
   }) : [];
+
+  const isTwoTier = useMemo(() => {
+    if (activeVariants.length <= 1) return false;
+    return activeVariants.some(
+      (v) => v.name.includes(',') || Boolean((v.attributes as any)?.color && (v.attributes as any)?.size)
+    );
+  }, [activeVariants]);
+
+  const twoTierData = useMemo(() => {
+    if (!isTwoTier || activeVariants.length === 0) return null;
+
+    const tier1Map = new Map<string, { label: string; imageUrl?: string }>();
+    const tier2Set = new Set<string>();
+
+    activeVariants.forEach((v) => {
+      let t1 = (v.attributes as any)?.color || (v.attributes as any)?.tier1;
+      let t2 = (v.attributes as any)?.size || (v.attributes as any)?.tier2;
+
+      if (!t1 || !t2) {
+        if (v.name.includes(',')) {
+          const parts = v.name.split(',').map((s) => s.trim());
+          t1 = t1 || parts[0];
+          t2 = t2 || parts[1];
+        }
+      }
+
+      if (t1) {
+        if (!tier1Map.has(t1)) {
+          tier1Map.set(t1, { label: t1, imageUrl: v.imageUrl || undefined });
+        } else if (v.imageUrl && !tier1Map.get(t1)?.imageUrl) {
+          tier1Map.set(t1, { label: t1, imageUrl: v.imageUrl });
+        }
+      }
+      if (t2) {
+        tier2Set.add(t2);
+      }
+    });
+
+    const tier1List = Array.from(tier1Map.values());
+    const tier2List = Array.from(tier2Set);
+    if (tier1List.length === 0 || tier2List.length === 0) return null;
+
+    const cat = (data?.product?.categoryName || '').toLowerCase();
+    let g1Title = 'Màu sắc';
+    let g2Title = 'Kích cỡ (Size)';
+    if (cat.includes('mỹ phẩm') || cat.includes('skincare')) {
+      g1Title = 'Mùi hương / Dòng';
+      g2Title = 'Dung tích';
+    } else if (cat.includes('thực phẩm') || cat.includes('dinh dưỡng') || cat.includes('sức khỏe')) {
+      g1Title = 'Hương vị';
+      g2Title = 'Quy cách';
+    } else if (cat.includes('thiết bị') || cat.includes('gia dụng') || cat.includes('điện tử')) {
+      g1Title = 'Phiên bản / Màu sắc';
+      g2Title = 'Dung tích / Công suất';
+    }
+
+    return {
+      g1Title,
+      g2Title,
+      tier1List,
+      tier2List,
+    };
+  }, [isTwoTier, activeVariants, data?.product?.categoryName]);
+
+  const handleSelectTier1 = (t1Val: string) => {
+    setSelectedTier1(t1Val);
+    const matchedWithImage = activeVariants.find((v) => {
+      const vT1 = (v.attributes as any)?.color || (v.name.includes(',') ? v.name.split(',')[0].trim() : v.name);
+      return vT1 === t1Val && v.imageUrl;
+    });
+    if (matchedWithImage?.imageUrl) {
+      setSelectedImage(matchedWithImage.imageUrl);
+      const gIdx = (data?.images || []).indexOf(matchedWithImage.imageUrl);
+      if (gIdx >= 0) setSelectedImageIndex(gIdx);
+    }
+
+    if (selectedTier2) {
+      const match = activeVariants.find((v) => {
+        const vT1 = (v.attributes as any)?.color || (v.name.includes(',') ? v.name.split(',')[0].trim() : v.name);
+        const vT2 = (v.attributes as any)?.size || (v.name.includes(',') ? v.name.split(',')[1].trim() : '');
+        return vT1 === t1Val && vT2 === selectedTier2;
+      });
+      if (match) {
+        setSelectedVariant(match);
+        setVariantSelectionRequired(false);
+      } else {
+        setSelectedVariant(null);
+      }
+    }
+  };
+
+  const handleSelectTier2 = (t2Val: string) => {
+    setSelectedTier2(t2Val);
+
+    if (selectedTier1) {
+      const match = activeVariants.find((v) => {
+        const vT1 = (v.attributes as any)?.color || (v.name.includes(',') ? v.name.split(',')[0].trim() : v.name);
+        const vT2 = (v.attributes as any)?.size || (v.name.includes(',') ? v.name.split(',')[1].trim() : '');
+        return vT1 === selectedTier1 && vT2 === t2Val;
+      });
+      if (match) {
+        setSelectedVariant(match);
+        setVariantSelectionRequired(false);
+        if (match.imageUrl) {
+          setSelectedImage(match.imageUrl);
+          const gIdx = (data?.images || []).indexOf(match.imageUrl);
+          if (gIdx >= 0) setSelectedImageIndex(gIdx);
+        }
+      } else {
+        setSelectedVariant(null);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (selectedVariant && isTwoTier) {
+      const vT1 = (selectedVariant.attributes as any)?.color || (selectedVariant.name.includes(',') ? selectedVariant.name.split(',')[0].trim() : '');
+      const vT2 = (selectedVariant.attributes as any)?.size || (selectedVariant.name.includes(',') ? selectedVariant.name.split(',')[1].trim() : '');
+      if (vT1 && vT1 !== selectedTier1) setSelectedTier1(vT1);
+      if (vT2 && vT2 !== selectedTier2) setSelectedTier2(vT2);
+    }
+  }, [selectedVariant, isTwoTier]);
   const currentPrice =
     selectedVariant?.price !== undefined && selectedVariant?.price !== null
       ? Number(selectedVariant.price)
@@ -1588,6 +1717,122 @@ export default function ProductDetailPage() {
               />
               <LiveSessionDealCard productId={product.id} onApplyCoupon={applyCouponCode} />
 
+              {/* Mã Giảm Giá Của Shop & Voucher Độc Quyền KOL */}
+              <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
+                <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-1">
+                  Mã Giảm Giá Của Shop
+                </span>
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Danh sách ticket coupon của Shop */}
+                    {availableStoreCoupons.length > 0 ? (
+                      availableStoreCoupons.slice(0, 3).map((v: any) => {
+                        const code = v.code || v.displayCode || '';
+                        const isApplied = (appliedCoupon?.code || verifiedCoupon?.code) === code;
+                        return (
+                          <button
+                            key={v.id || code}
+                            type="button"
+                            onClick={() => applyCouponDirectly(code)}
+                            className={`group relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border border-dashed transition cursor-pointer select-none ${
+                              isApplied
+                                ? 'bg-[#C59B58] text-white border-[#B88E4F] shadow-xs'
+                                : 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6226] hover:bg-[#F3EFE6] hover:border-[#B88E4F]'
+                            }`}
+                            title={v.description || `Mã giảm giá ${code}`}
+                          >
+                            <Ticket size={12} className={isApplied ? 'text-white' : 'text-[#B88E4F]'} />
+                            <span>{v.badge || v.title || code}</span>
+                            {isApplied && <span className="text-[10px] font-bold">✓ Đã áp</span>}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <span className="text-xs text-[#7D715E] py-0.5">
+                        Áp dụng mã ưu đãi KOL/Creator để nhận chiết khấu trực tiếp
+                      </span>
+                    )}
+
+                    {/* Nút toggle nhập mã Creator */}
+                    {!showCreatorInput && !appliedCoupon && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatorInput(true)}
+                        className="inline-flex items-center gap-1 text-xs text-[#B88E4F] hover:text-[#8C6226] font-semibold underline cursor-pointer py-0.5"
+                      >
+                        <Tag size={12} />
+                        <span>+ Nhập mã Creator</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Form nhập mã Creator dạng inline khi mở */}
+                  {showCreatorInput && !appliedCoupon && (
+                    <form onSubmit={handleApplyCoupon} className="flex items-center gap-2 max-w-sm pt-1 animate-in fade-in duration-150">
+                      <div className="relative flex-1">
+                        <Tag className="w-3.5 h-3.5 text-[#7D715E] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Mã KOL (VD: THAONHI16)..."
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          className="w-full pl-8 pr-2.5 py-1 bg-white border border-[#EAE4D7] rounded-lg text-xs font-mono uppercase text-[#1A1612] placeholder-[#7D715E]/60 focus:border-[#C59B58] outline-none"
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="px-3 py-1 bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-white text-xs font-bold rounded-lg transition cursor-pointer shrink-0 shadow-xs"
+                      >
+                        {couponLoading ? '...' : 'Áp Dụng'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatorInput(false)}
+                        className="text-xs text-[#7D715E] hover:text-[#1A1612] px-1 py-1 cursor-pointer"
+                        title="Đóng"
+                      >
+                        Hủy
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Thẻ hiển thị mã đã áp dụng thành công */}
+                  {appliedCoupon && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#8C6226]">
+                      <Sparkles className="w-3.5 h-3.5 text-[#B88E4F]" />
+                      <span className="font-semibold">{appliedCoupon.description || `Mã ${appliedCoupon.code}`}</span>
+                      <span className="font-bold text-[#DC2626]">(-{appliedCoupon.discountAmount.toLocaleString('vi-VN')} ₫)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          couponRequest.current++;
+                          setAppliedCoupon(null);
+                          setCouponCode('');
+                          setCouponLoading(false);
+                          const params = new URLSearchParams(searchParams);
+                          params.delete('voucher');
+                          setSearchParams(params, { replace: true });
+                        }}
+                        className="text-[#7D715E] hover:text-[#DC2626] ml-1 p-0.5 rounded cursor-pointer transition"
+                        title="Hủy mã ưu đãi"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Lỗi áp mã nếu có */}
+                  {couponError && (
+                    <div className="text-xs text-[#DC2626] flex items-center gap-1 pt-0.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{couponError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Shipping estimate: realistic fulfillment info & voucher support */}
               <div className="flex items-start gap-4 py-3 border-t border-[#EAE4D7]/80">
                 <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-0.5">
@@ -1626,76 +1871,214 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* SCANMS UI Reference: Phân Loại (Variant Selector with Thumbnails) */}
+              {/* SCANMS UI Reference: Phân Loại (2-Tier Cascading Selector or 1-Tier List) */}
               {activeVariants.length > 0 && (
-              <div ref={variantOptionsRef} className="flex items-start gap-4 py-3.5 border-t border-[#EAE4D7]/80 scroll-mt-24" data-required={variantSelectionRequired}>
-                  <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-1.5">
-                    Phân Loại
-                  </span>
-                  <div className="flex-1">
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                      {activeVariants.map((v) => {
-                        const isSelected = selectedVariant?.id === v.id;
-                        const isOutOfStock = v.stockQuantity <= 0;
-                        const variantImg = v.imageUrl || product.imageUrl || SCANMS_PLACEHOLDER;
-                        const attributeText = Object.values(v.attributes || {}).filter(Boolean).join(' · ');
-                        const isHovered = hoveredImage === variantImg;
-                        return (
-                          <button
-                            key={v.id}
-                            title={attributeText && attributeText !== v.name ? `${v.name} · ${attributeText}` : v.name}
-                            type="button"
-                            disabled={isOutOfStock}
-                            aria-pressed={isSelected}
-                            onMouseEnter={() => {
-                              if (!isOutOfStock) {
-                                setHoveredImage(variantImg);
+                <div ref={variantOptionsRef} className="py-3.5 border-t border-[#EAE4D7]/80 scroll-mt-24" data-required={variantSelectionRequired}>
+                  {twoTierData ? (
+                    <div className="space-y-4">
+                      {/* HÀNG 1: THUỘC TÍNH 1 (MÀU SẮC / DÒNG) */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-2">
+                          {twoTierData.g1Title}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {twoTierData.tier1List.map((item: { label: string; imageUrl?: string }) => {
+                              const isSelected = selectedTier1 === item.label;
+                              const hasStock = activeVariants.some((v) => {
+                                const vT1 = (v.attributes as any)?.color || (v.name.includes(',') ? v.name.split(',')[0].trim() : v.name);
+                                return vT1 === item.label && v.stockQuantity > 0;
+                              });
+                              const isOutOfStock = !hasStock;
+
+                              return (
+                                <button
+                                  key={item.label}
+                                  type="button"
+                                  disabled={isOutOfStock}
+                                  onClick={() => handleSelectTier1(item.label)}
+                                  className={`min-h-[40px] inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all relative cursor-pointer select-none ${
+                                    isSelected
+                                      ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#8C6226] font-bold shadow-xs ring-1.5 ring-[#B88E4F]'
+                                      : isOutOfStock
+                                      ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed opacity-60'
+                                      : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#8C6226]'
+                                  }`}
+                                >
+                                  {item.imageUrl && (
+                                    <img
+                                      src={item.imageUrl}
+                                      alt={item.label}
+                                      className="w-6 h-6 object-cover rounded-md border border-[#EAE4D7]"
+                                    />
+                                  )}
+                                  <span>{item.label}</span>
+                                  {isSelected && (
+                                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* HÀNG 2: THUỘC TÍNH 2 (KÍCH CỠ / QUY CÁCH) */}
+                      <div className="flex items-start gap-4">
+                        <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-2">
+                          {twoTierData.g2Title}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {twoTierData.tier2List.map((item2: string) => {
+                              const isSelected = selectedTier2 === item2;
+                              let isOutOfStock = false;
+                              if (selectedTier1) {
+                                const matched = activeVariants.find((v) => {
+                                  const vT1 = (v.attributes as any)?.color || (v.name.includes(',') ? v.name.split(',')[0].trim() : v.name);
+                                  const vT2 = (v.attributes as any)?.size || (v.name.includes(',') ? v.name.split(',')[1].trim() : '');
+                                  return vT1 === selectedTier1 && vT2 === item2;
+                                });
+                                isOutOfStock = !matched || matched.stockQuantity <= 0;
+                              } else {
+                                isOutOfStock = !activeVariants.some((v) => {
+                                  const vT2 = (v.attributes as any)?.size || (v.name.includes(',') ? v.name.split(',')[1].trim() : '');
+                                  return vT2 === item2 && v.stockQuantity > 0;
+                                });
                               }
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredImage(null);
-                            }}
-                            onClick={() => {
-                              setSelectedVariant(v);
-                              setVariantSelectionRequired(false);
-                              setSelectedImage(variantImg);
-                              setHoveredImage(null);
-                              setQuantity(1);
-                              const gIdx = gallery.indexOf(variantImg);
-                              if (gIdx >= 0) setSelectedImageIndex(gIdx);
-                            }}
-                            className={`min-h-[46px] w-full sm:w-auto inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-all relative cursor-pointer select-none text-left ${
-                              isSelected
-                                ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#8C6226] font-bold shadow-xs ring-1.5 ring-[#B88E4F]'
-                                : isOutOfStock
-                                ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed'
-                                : isHovered
-                                ? 'border-[#B88E4F] text-[#8C6226] bg-white ring-1 ring-[#B88E4F]/40'
-                                : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#8C6226]'
-                            }`}
-                          >
-                            <img
-                              src={variantImg}
-                              alt={v.name}
-                              className="w-7 h-7 object-cover rounded-lg border border-[#EAE4D7] shrink-0"
-                            />
-                            <div className="min-w-0 flex-1 leading-snug">
-                              <span className="block font-semibold truncate">{v.name}</span>
-                              {attributeText && attributeText !== v.name && (
-                                <span className="block text-[10px] text-[#7D715E] font-normal truncate mt-0.5">
-                                  {attributeText}
-                                </span>
-                              )}
-                            </div>
-                            {isSelected && (
-                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
-                            )}
-                          </button>
-                        );
-                      })}
+
+                              return (
+                                <button
+                                  key={item2}
+                                  type="button"
+                                  disabled={isOutOfStock}
+                                  onClick={() => handleSelectTier2(item2)}
+                                  className={`min-h-[40px] min-w-[56px] justify-center inline-flex items-center px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all relative cursor-pointer select-none ${
+                                    isSelected
+                                      ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#8C6226] font-bold shadow-xs ring-1.5 ring-[#B88E4F]'
+                                      : isOutOfStock
+                                      ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed opacity-60'
+                                      : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#8C6226]'
+                                  }`}
+                                >
+                                  <span>{item2}</span>
+                                  {isSelected && (
+                                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {variantSelectionRequired && (
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#DC2626]" role="alert">
+                          <AlertCircle size={14} aria-hidden="true" />
+                          Vui lòng chọn đầy đủ {twoTierData.g1Title} và {twoTierData.g2Title} để tiếp tục.
+                        </p>
+                      )}
+
+                      {/* Chi tiết phân loại 2 cấp đã chọn */}
+                      {selectedVariant && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-[#7D715E] bg-[#FAF8F5] px-3.5 py-2 rounded-xl border border-[#EAE4D7] animate-in fade-in duration-150">
+                          <Package className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                          <span>
+                            Đã chọn: <strong className="text-[#1A1612] font-semibold">{selectedVariant.name}</strong> · Mã SKU: <strong className="font-mono text-[#1A1612]">{selectedVariant.sku}</strong> · Tồn kho: <strong className="text-[#8C6226] font-bold">{selectedVariant.stockQuantity}</strong> chiếc · Kiện GHN: <strong className="text-[#8C6226] font-mono font-bold">{(selectedVariant.attributes as any)?.packageWeight || (selectedVariant as any).packageWeight || (product as any).packageWeight || 180}g</strong>
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {variantSelectionRequired && <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#DC2626]" role="alert"><AlertCircle size={14} aria-hidden="true" />Vui lòng chọn phân loại hàng để tiếp tục.</p>}
-                  </div>
+                  ) : (
+                    /* 1-TIER FALLBACK */
+                    <div className="flex items-start gap-4">
+                      <span className="w-24 sm:w-28 shrink-0 text-xs text-[#7D715E] font-medium pt-1.5">
+                        Phân Loại
+                      </span>
+                      <div className="flex-1">
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                          {activeVariants.map((v) => {
+                            const isSelected = selectedVariant?.id === v.id;
+                            const isOutOfStock = v.stockQuantity <= 0;
+                            const variantImg = v.imageUrl || product.imageUrl || SCANMS_PLACEHOLDER;
+                            const attributeText = Object.values(v.attributes || {}).filter(Boolean).join(' · ');
+                            const isHovered = hoveredImage === variantImg;
+                            return (
+                              <button
+                                key={v.id}
+                                title={attributeText && attributeText !== v.name ? `${v.name} · ${attributeText}` : v.name}
+                                type="button"
+                                disabled={isOutOfStock}
+                                aria-pressed={isSelected}
+                                onMouseEnter={() => {
+                                  if (!isOutOfStock) {
+                                    setHoveredImage(variantImg);
+                                  }
+                                }}
+                                onMouseLeave={() => {
+                                  setHoveredImage(null);
+                                }}
+                                onClick={() => {
+                                  setSelectedVariant(v);
+                                  setVariantSelectionRequired(false);
+                                  setSelectedImage(variantImg);
+                                  setHoveredImage(null);
+                                  setQuantity(1);
+                                  const gIdx = gallery.indexOf(variantImg);
+                                  if (gIdx >= 0) setSelectedImageIndex(gIdx);
+                                }}
+                                className={`min-h-[46px] w-full sm:w-auto inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs transition-all relative cursor-pointer select-none text-left ${
+                                  isSelected
+                                    ? 'border-[#B88E4F] bg-[#FAF8F5] text-[#8C6226] font-bold shadow-xs ring-1.5 ring-[#B88E4F]'
+                                    : isOutOfStock
+                                    ? 'border-[#EAE4D7] bg-[#F3EFE6]/60 text-[#7D715E]/50 line-through cursor-not-allowed'
+                                    : isHovered
+                                    ? 'border-[#B88E4F] text-[#8C6226] bg-white ring-1 ring-[#B88E4F]/40'
+                                    : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:border-[#B88E4F] hover:text-[#8C6226]'
+                                }`}
+                              >
+                                <img
+                                  src={variantImg}
+                                  alt={v.name}
+                                  className="w-7 h-7 object-cover rounded-lg border border-[#EAE4D7] shrink-0"
+                                />
+                                <div className="min-w-0 flex-1 leading-snug">
+                                  <span className="block font-semibold truncate">{v.name}</span>
+                                  {attributeText && attributeText !== v.name && (
+                                    <span className="block text-[10px] text-[#7D715E] font-normal truncate mt-0.5">
+                                      {attributeText}
+                                    </span>
+                                  )}
+                                </div>
+                                {((v.attributes as any)?.packageWeight || (v as any).packageWeight) && (
+                                  <span className="text-[10px] font-mono font-semibold text-[#8C6226] bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EEDFC6] shrink-0">
+                                    {(v.attributes as any)?.packageWeight || (v as any).packageWeight}g
+                                  </span>
+                                )}
+                                {isSelected && (
+                                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {variantSelectionRequired && (
+                          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#DC2626]" role="alert">
+                            <AlertCircle size={14} aria-hidden="true" />
+                            Vui lòng chọn phân loại hàng để tiếp tục.
+                          </p>
+                        )}
+                        {selectedVariant && (
+                          <div className="mt-2.5 flex items-center gap-2 text-xs text-[#7D715E] bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#EAE4D7] animate-in fade-in duration-150">
+                            <Package className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
+                            <span>
+                              Quy cách đóng gói: <strong className="text-[#1A1612] font-semibold">{selectedVariant.name}</strong> · Trọng lượng kiện: <strong className="text-[#8C6226] font-mono font-bold">{(selectedVariant.attributes as any)?.packageWeight || (selectedVariant as any).packageWeight || (product as any).packageWeight || 250}g</strong>/đơn vị (Tiêu chuẩn đóng gói GHN)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1757,56 +2140,6 @@ export default function ProductDetailPage() {
                     )}
                   </span>
                 </div>
-              </div>
-              <div className="py-2.5 border-t border-[#EAE4D7]/80">
-                <form onSubmit={handleApplyCoupon} className="flex w-full items-stretch gap-2">
-                  <div className="relative min-w-0 flex-1">
-                    <Tag className="w-3.5 h-3.5 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Nhập mã ưu đãi độc quyền KOL (VD: THAONHI16)..."
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-[#EAE4D7] rounded text-xs font-mono uppercase text-[#1A1612] placeholder-[#7D715E]/60 focus:outline-hidden focus:border-[#C59B58]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={couponLoading || !couponCode.trim()}
-                    className="shrink-0 whitespace-nowrap px-3 py-1.5 bg-[#C59B58] hover:bg-[#B88E4F] disabled:opacity-50 text-[#1A1612] text-xs font-bold rounded transition cursor-pointer"
-                  >
-                    {couponLoading ? '...' : 'Áp Dụng'}
-                  </button>
-                </form>
-
-                {appliedCoupon && (
-                  <div className="mt-1.5 p-2 rounded bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#B88E4F] flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{appliedCoupon.description} (-{appliedCoupon.discountAmount.toLocaleString('vi-VN')} ₫)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        couponRequest.current++;
-                        setAppliedCoupon(null); setCouponCode(''); setCouponLoading(false);
-                        const params = new URLSearchParams(searchParams);
-                        params.delete('voucher');
-                        setSearchParams(params, { replace: true });
-                      }}
-                      className="text-[#7D715E] hover:text-[#DC2626] font-bold p-1 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-
-                {couponError && (
-                  <div className="mt-1 text-xs text-[#DC2626] flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{couponError}</span>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1917,6 +2250,172 @@ export default function ProductDetailPage() {
 
               <ProductShoppingPolicies storeName={store.name} policies={policies} />
             </div>
+          </div>
+        </div>
+
+        {/* ===================== KHỐI THÔNG SỐ KỸ THUẬT & MÔ TẢ CHI TIẾT SẢN PHẨM ===================== */}
+        <div id="product-details-specs" className="mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-5 sm:p-6 shadow-xs">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* CỘT TRÁI (45%): BẢNG THÔNG SỐ KỸ THUẬT & QUY CÁCH VẬT LÝ (REACTIVE THEO PHÂN LOẠI) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                    <Tag size={16} />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-bold text-[#1A1612]">Thông số kỹ thuật</h3>
+                    <p className="text-[11px] text-[#7D715E]">Chi tiết quy cách & thuộc tính kiểm định</p>
+                  </div>
+                </div>
+                {selectedVariant && (
+                  <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-1 rounded-lg border border-[#EEDFC6] animate-in fade-in flex items-center gap-1">
+                    <Sparkles size={11} /> Theo phân loại đang chọn
+                  </span>
+                )}
+              </div>
+
+              {/* Thông báo phân loại đang chọn */}
+              {selectedVariant ? (
+                <div className="rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] p-3 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#7D715E] block">
+                      Phân loại bạn đang xem:
+                    </span>
+                    <strong className="text-sm font-bold text-[#8C6226]">{selectedVariant.name}</strong>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-[#1A1612] bg-white px-2 py-1 rounded-md border border-[#EAE4D7]">
+                    SKU: {selectedVariant.sku}
+                  </span>
+                </div>
+              ) : activeVariants.length > 0 ? (
+                <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5 text-xs text-[#7D715E] flex items-center gap-2">
+                  <span className="text-base">💡</span>
+                  <span>Bấm chọn một <strong>Phân loại hàng</strong> ở trên để xem thông số & thành phần riêng của loại đó.</span>
+                </div>
+              ) : null}
+
+              {/* Bảng Key-Value Specifications */}
+              <div className="rounded-xl border border-[#EAE4D7] overflow-hidden text-xs">
+                <div className="divide-y divide-[#EAE4D7]">
+                  <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">
+                    <span className="text-[#7D715E] font-medium">Ngành hàng:</span>
+                    <span className="col-span-2 font-bold text-[#1A1612]">{product.categoryName || 'Sản phẩm chính hãng'}</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 p-3 bg-white">
+                    <span className="text-[#7D715E] font-medium">Thương hiệu / Shop:</span>
+                    <span className="col-span-2 font-bold text-[#8C6226]">{store.name}</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">
+                    <span className="text-[#7D715E] font-medium">Xuất xứ:</span>
+                    <span className="col-span-2 font-bold text-[#1A1612]">{(product as any).origin || 'Việt Nam'}</span>
+                  </div>
+
+                  {/* Phù hợp loại da / đối tượng */}
+                  <div className="grid grid-cols-3 p-3 bg-white">
+                    <span className="text-[#7D715E] font-medium">Đặc tính / Phù hợp:</span>
+                    <span className="col-span-2 font-bold text-[#8C6226]">
+                      {(selectedVariant?.attributes as any)?.suitableFor ||
+                        (selectedVariant?.attributes as any)?.['Loại da'] ||
+                        (selectedVariant?.attributes as any)?.['Phân loại da'] ||
+                        'Phù hợp tiêu chuẩn / đa dạng nhu cầu'}
+                    </span>
+                  </div>
+
+                  {/* Thành phần chính / Chất liệu */}
+                  <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">
+                    <span className="text-[#7D715E] font-medium">Thành phần / Chất liệu:</span>
+                    <span className="col-span-2 text-[#1A1612] font-semibold leading-relaxed">
+                      {(selectedVariant?.attributes as any)?.ingredients ||
+                        (product as any).ingredients ||
+                        'Thông tin chi tiết thể hiện trên bao bì sản phẩm'}
+                    </span>
+                  </div>
+
+                  {/* Trọng lượng kiện hàng GHN */}
+                  <div className="grid grid-cols-3 p-3 bg-white">
+                    <span className="text-[#7D715E] font-medium">Khối lượng kiện:</span>
+                    <span className="col-span-2 font-bold text-[#1A1612]">
+                      {(selectedVariant?.weight || (selectedVariant?.attributes as any)?.packageWeight || (selectedVariant as any)?.packageWeight || (product as any).packageWeight || 250)}g / đơn vị
+                      <span className="text-[10.5px] font-normal text-[#7D715E] ml-1">(Tiêu chuẩn GHN)</span>
+                    </span>
+                  </div>
+
+                  {/* Kích thước đóng gói */}
+                  <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">
+                    <span className="text-[#7D715E] font-medium">Kích thước hộp:</span>
+                    <span className="col-span-2 font-mono font-bold text-[#1A1612]">
+                      {((selectedVariant?.attributes as any)?.packageLength || (product as any).packageLength || 15)} × {((selectedVariant?.attributes as any)?.packageWidth || (product as any).packageWidth || 10)} × {((selectedVariant?.attributes as any)?.packageHeight || (product as any).packageHeight || 5)} cm
+                    </span>
+                  </div>
+
+                  {/* Mã vạch EAN-13 */}
+                  {((selectedVariant as any)?.barcode || (product as any).barcode) && (
+                    <div className="grid grid-cols-3 p-3 bg-white">
+                      <span className="text-[#7D715E] font-medium">Mã vạch EAN-13:</span>
+                      <span className="col-span-2 font-mono font-bold text-[#1A1612]">
+                        {(selectedVariant as any)?.barcode || (product as any).barcode}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Nhãn phụ & Bảo quản */}
+                  {(product as any).labelInfo && (
+                    <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">
+                      <span className="text-[#7D715E] font-medium">Hướng dẫn bảo quản:</span>
+                      <span className="col-span-2 text-[#1A1612]">
+                        {(product as any).labelInfo}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* CỘT PHẢI (55%): MÔ TẢ CHI TIẾT SẢN PHẨM & CAM KẾT CHÍNH HÃNG */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                  <FileText size={16} />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-[#1A1612]">Mô tả sản phẩm</h3>
+                  <p className="text-[11px] text-[#7D715E]">Công dụng, tính năng và hướng dẫn sử dụng từ nhà sản xuất</p>
+                </div>
+              </div>
+
+              {/* Nội dung mô tả */}
+              <div className="text-xs sm:text-[13px] leading-relaxed text-[#1A1612] whitespace-pre-line bg-[#FAF8F5] p-4 rounded-xl border border-[#EAE4D7]">
+                {product.description || 'Chưa có mô tả chi tiết cho sản phẩm này.'}
+              </div>
+
+              {/* Cam kết thương hiệu SCANMS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
+                  <ShieldCheck className="h-5 w-5 text-[#B88E4F] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-[#1A1612]">Đổi trả miễn phí 14 ngày</h4>
+                    <p className="text-[11px] text-[#7D715E] mt-0.5">
+                      Bảo đảm quyền lợi 1-1 nếu có lỗi vận chuyển hoặc lỗi sản xuất từ nhãn hàng.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
+                  <Truck className="h-5 w-5 text-[#B88E4F] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-[#1A1612]">Vận chuyển GHN an toàn</h4>
+                    <p className="text-[11px] text-[#7D715E] mt-0.5">
+                      Kiện hàng được đóng gói theo tiêu chuẩn và tra cứu hành trình thời gian thực.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
