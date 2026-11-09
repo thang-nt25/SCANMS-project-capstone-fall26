@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
-import AdminCouponsPage from './AdminCouponsPage';
+import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 
 const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'live-sessions'] as const;
@@ -76,7 +76,7 @@ export default function AdminOversightHubPage() {
 
         {visitedTabs['coupons'] && (
           <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
-            <AdminCouponsPage />
+            <KolCouponManagement shop={false} />
           </div>
         )}
 
