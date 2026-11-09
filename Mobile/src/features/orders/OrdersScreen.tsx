@@ -12,10 +12,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useMobileNavigation, type ScreenProps } from "../../navigation/router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { orders } from "../../services/scanms";
-import { api } from "../../services/api";
 import {
   Badge,
-  Button,
   Caption,
   Card,
   Empty,
@@ -28,13 +26,12 @@ import {
 } from "../../components/ui";
 import { AppBar, Icon, IconButton } from "../../components/commerce";
 import { colors } from "../../theme/tokens";
-import { money, OrderSchema, statusText } from "../../types/contracts";
-import { useOperation } from "../../hooks/useOperation";
+import { money, statusText } from "../../types/contracts";
 import { useAuth } from "../auth/AuthProvider";
 import { useStoreScope } from "../auth/StoreScope";
 import { TrackingCard } from "./TrackingCard";
 import { FulfillmentForm } from "./FulfillmentForm";
-import { CustomerOrderActions } from "./CustomerOrderActions";
+import { CustomerOrderDetailScreen } from "./CustomerOrderDetailScreen";
 import { DetailLine } from "../common/shared";
 import { ProductPhoto } from "../../components/ProductPhoto";
 
@@ -293,22 +290,29 @@ const orderStyles = StyleSheet.create({
   link: { fontSize: 11, color: colors.muted, textAlign: "right" },
 });
 
-export function OrderDetailScreen({
+export function OrderDetailScreen(props: ScreenProps<"OrderDetail">) {
+  const { session } = useAuth();
+  if (session!.user.role === "CUSTOMER")
+    return <CustomerOrderDetailScreen {...props} />;
+  if (!props.route.params.order)
+    return (
+      <Screen scroll>
+        <Caption>Hãy mở đơn hàng từ danh sách quản lý.</Caption>
+      </Screen>
+    );
+  return <ManagedOrderDetailScreen {...props} />;
+}
+
+function ManagedOrderDetailScreen({
   route,
-  navigation,
 }: ScreenProps<"OrderDetail">) {
   const { session } = useAuth(),
     { store } = useStoreScope(),
     client = useQueryClient(),
-    initial = route.params.order,
-    confirm = useOperation();
+    initial = route.params.order!;
   const detail = useQuery({
     queryKey: [session!.user.id, "order-detail", initial.id],
     queryFn: async ({ signal }) => {
-      if (session!.user.role === "CUSTOMER")
-        return OrderSchema.parse(
-          await api.request(`/customer/orders/${initial.id}`, { signal }),
-        );
       const found = (
         await orders(
           session!.user.role,
@@ -325,23 +329,6 @@ export function OrderDetailScreen({
     refetchInterval: 15000,
   });
   const order = detail.data || initial;
-  const confirmReceipt = () =>
-    confirm.run(
-      async () => {
-        const latest = await detail.refetch();
-        if (latest.error || latest.data?.status !== "DELIVERED")
-          throw new Error("Đơn chưa ở trạng thái đã giao. Hãy kiểm tra lại.");
-        await api.request(`/customer/orders/${order.id}/confirm-receipt`, {
-          method: "POST",
-        });
-      },
-      async () => {
-        await client.invalidateQueries({
-          queryKey: [session!.user.id, "orders"],
-        });
-        navigation.goBack();
-      },
-    );
   return (
     <Screen scroll>
       <Title>{order.externalOrderSn}</Title>
@@ -400,18 +387,6 @@ export function OrderDetailScreen({
         </Card>
       ))}
       <ErrorNotice error={detail.error} retry={() => void detail.refetch()} />
-      <ErrorNotice error={confirm.error} />
-      {session!.user.role === "CUSTOMER" && detail.data && !detail.error && (
-        <CustomerOrderActions order={detail.data} />
-      )}
-      {session!.user.role === "CUSTOMER" && order.status === "DELIVERED" && (
-        <Button
-          title="Xác nhận đã nhận hàng"
-          loading={confirm.busy}
-          disabled={!detail.data || Boolean(detail.error)}
-          onPress={() => void confirmReceipt()}
-        />
-      )}
     </Screen>
   );
 }

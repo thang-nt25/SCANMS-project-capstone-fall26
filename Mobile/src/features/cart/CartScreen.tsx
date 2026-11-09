@@ -29,15 +29,23 @@ import {
 import { useOperation } from "../../hooks/useOperation";
 import { useMobileNavigation } from "../../navigation/router";
 import { colors } from "../../theme/tokens";
+import {
+  buyNowSelection,
+  type PurchaseLine,
+} from "../checkout/checkout-contracts";
 
 export function AddToCart({
   product,
   onOpenCart,
   initialVariantId,
+  onBuyNow,
+  onAdded,
 }: {
   product: Product;
   onOpenCart?(): void;
   initialVariantId?: string;
+  onBuyNow?(line: PurchaseLine): void;
+  onAdded?(): void;
 }) {
   const [variantId, setVariantId] = useState(() => {
       const active = (product.variants || []).filter(
@@ -152,7 +160,7 @@ export function AddToCart({
         </>
       )}
       <Button
-        title="Thêm vào giỏ hàng"
+        title={onBuyNow ? "Mua ngay" : "Thêm vào giỏ hàng"}
         loading={operation.busy}
         disabled={(variants.length > 0 && !variantId) || stock < 1}
         onPress={() =>
@@ -160,6 +168,12 @@ export function AddToCart({
             setSuccess(false);
             if (stock < quantity)
               throw new Error("Số lượng vượt quá tồn kho hiện tại.");
+            if (onBuyNow) {
+              onBuyNow(
+                buyNowSelection(product, variantId || undefined, quantity),
+              );
+              return;
+            }
             // Refresh before replacing the cart. Only real SKU IDs are submitted.
             const cart = CartSchema.parse(await api.request("/customer/cart"));
             const items = addCartLine(
@@ -180,6 +194,8 @@ export function AddToCart({
             if (response.warnings?.length)
               throw new Error(response.warnings.join("\n"));
             setSuccess(true);
+            // Close only after the API accepted the cart without warnings.
+            onAdded?.();
           })
         }
       />

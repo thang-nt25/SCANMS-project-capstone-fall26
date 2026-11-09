@@ -7,8 +7,11 @@ export type RootStackParams = {
   Conversations: undefined;
   VipExceptions: undefined;
   ProductDetail: { product: Product };
+  Checkout: { product: Product; variantId?: string; quantity: number };
   ProductEditor: undefined;
-  OrderDetail: { order: Order };
+  OrderDetail:
+    | { order: Order; publicOrderCode?: never }
+    | { publicOrderCode: string; order?: never };
   Chat: { conversation: Conversation };
   Deals: undefined;
   DealEditor:

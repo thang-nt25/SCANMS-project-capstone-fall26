@@ -51,6 +51,9 @@ export default function PrivateLayout() {
                 options={{ title: "Ngoại lệ VIP" }}
               />
             </Stack.Protected>
+            <Stack.Protected guard={role === "CUSTOMER"}>
+              <Stack.Screen name="checkout" options={{ title: "Thanh toán" }} />
+            </Stack.Protected>
             <Stack.Protected guard={!reviewer}>
               <Stack.Screen
                 name="product"
