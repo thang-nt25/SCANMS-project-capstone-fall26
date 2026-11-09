@@ -60,7 +60,7 @@ export const modules = {
   },
   social: { title: "Kênh xã hội & cấp bậc", roles: ["COLLABORATOR"] },
   audit: { title: "Nhật ký vận hành", roles: operations },
-  coupons: { title: "Voucher & Coupon", roles: all },
+  coupons: { title: "Mã ưu đãi KOL", roles: all },
   "manual-orders": {
     title: "Tạo đơn & Import Excel",
     roles: ["SHOP_MANAGER", ...operations],
@@ -83,6 +83,8 @@ export type BusinessParams = {
   orderId?: string;
   productId?: string;
   storeId?: string;
+  pendingOnly?: boolean;
+  returnQueue?: "disputes";
 };
 export function canOpenModule(
   role: Role,

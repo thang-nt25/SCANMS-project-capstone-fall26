@@ -321,12 +321,6 @@ export function buildOrders(data: SeedDataset, context: SeedContext): void {
         voucher.usageCount = (voucher.usageCount ?? 0) + 1;
         voucher.budgetUsed = amount(voucher.budgetUsed) + discount;
       }
-      if (purchase === 1 && coupon)
-        data.savedCoupons.push({
-          userId: customer.id!,
-          couponId: coupon.id!,
-          savedAt: createdAt,
-        });
 
       if (paid)
         data.commissions.push({

@@ -788,6 +788,7 @@ export class ProductsService {
       },
       orderBy: { name: 'asc' },
     });
+    return stores;
   }
 
   /**

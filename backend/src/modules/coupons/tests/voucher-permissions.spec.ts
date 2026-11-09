@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, GoneException } from '@nestjs/common';
 import { CouponStatus, UserRole } from '@prisma/client';
 import { Reflector } from '@nestjs/core';
 import { CouponsService } from '../coupons.service';
@@ -8,7 +8,7 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 describe('Word section 7 voucher ownership and lifecycle', () => {
   function fixture(overrides: any = {}) {
     let clock = 0;
-    const coupon: any = { id: 'coupon', storeId: 'shop', collaboratorId: 'kol', codeNormalized: 'AUDIT5',
+    const coupon: any = { id: 'coupon', storeId: 'shop', collaboratorId: 'kol', collaborator: {role:'COLLABORATOR'}, codeNormalized: 'AUDIT5',
       status: CouponStatus.ACTIVE, fundingSource: 'SHOP_FUNDED', benefitType: 'GOODS', scopeType: 'STORE_WIDE',
       shopFundingRate: 100, platformFundingRate: 0, approvedBy: 'owner', approvedAt: new Date('2026-10-01'),
       updatedAt: new Date('2026-10-01'), statusBeforeBlock: null, expiresAt: new Date('2099-01-01'), ...overrides };
@@ -51,7 +51,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
   it.each(['PLATFORM_FUNDED', 'CO_FUNDED'])('denies Shop policy writes against stored %s funding', async fundingSource => {
     const { service, prisma } = fixture({ fundingSource, platformFundingRate: 100 });
     for (const payload of [{ budgetTotal: 999999999 }, { discountValue: 99 }, { minimumOrderAmount: 0 }, { fundingSource: 'SHOP_FUNDED' }]) {
-      await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', payload)).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', payload)).rejects.toBeInstanceOf(GoneException);
     }
     expect(prisma.coupon.update).not.toHaveBeenCalled();
   });
@@ -65,18 +65,13 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     await expect(service.updateCouponPolicy('shop', 'coupon', 'owner', 'SHOP_MANAGER', { shopFundingRate: 1 })).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('permits Admin financial maintenance of platform vouchers', async () => {
-    const { service, coupon } = fixture({ fundingSource: 'PLATFORM_FUNDED', shopFundingRate: 0, platformFundingRate: 100 });
-    await service.updateCouponPolicy('shop', 'coupon', 'admin', 'SYSTEM_ADMIN', { budgetTotal: 2000000 });
-    expect(Number(coupon.budgetTotal)).toBe(2000000);
-    expect(coupon.fundingSource).toBe('PLATFORM_FUNDED');
-  });
+  it("Admin cannot reactivate platform voucher policy through the legacy edit API", async () => {const {service,coupon}=fixture({fundingSource:'PLATFORM_FUNDED',shopFundingRate:0,platformFundingRate:100});await expect(service.updateCouponPolicy('shop','coupon','admin','SYSTEM_ADMIN',{budgetTotal:2000000})).rejects.toBeInstanceOf(GoneException);expect(coupon.fundingSource).toBe('PLATFORM_FUNDED');});
 
   it.each(['SYSTEM_ADMIN', 'SYSTEM_MANAGER', 'COLLABORATOR', 'CUSTOMER'])(
     'does not let %s approve a KOL proposal or spend Shop budget by issuing a Shop coupon', async role => {
       const { service, prisma } = fixture({ status: 'PENDING_APPROVAL' });
       await expect(service.approveCoupon('shop', 'coupon', 'owner', role, { discountType: 'PERCENTAGE', discountValue: 5 })).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(service.createStoreCoupon('shop', 'owner', role, { code: 'AUDIT5' })).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.createStoreCoupon('shop', 'owner', role, { code: 'AUDIT5' })).rejects.toBeInstanceOf(GoneException);
       expect(prisma.coupon.update).not.toHaveBeenCalled(); expect(prisma.coupon.create).not.toHaveBeenCalled();
     });
 
@@ -163,17 +158,5 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
     }
   });
 
-  it('Customer saved voucher reads and deletion are scoped to the authenticated customer', async () => {
-    const { service, prisma } = fixture();
-    let rows = [{ userId: 'customer-a', couponId: 'voucher-a' }, { userId: 'customer-b', couponId: 'voucher-b' }];
-    prisma.customerSavedCoupon = {
-      findMany: jest.fn(async ({ where }: any) => rows.filter(row => row.userId === where.userId)),
-      deleteMany: jest.fn(async ({ where }: any) => { rows = rows.filter(row => row.userId !== where.userId || row.couponId !== where.couponId); }),
-    };
-    expect(await service.getSavedCouponIds('customer-a')).toEqual(['voucher-a']);
-    await service.removeSavedCoupon('customer-a', 'voucher-b');
-    expect(rows).toHaveLength(2);
-    await service.removeSavedCoupon('customer-a', 'voucher-a');
-    expect(rows).toEqual([{ userId: 'customer-b', couponId: 'voucher-b' }]);
-  });
+  it("Customer cannot retrieve or mutate retired saved voucher inventories", async () => {const {service,prisma}=fixture();prisma.customerSavedCoupon={findMany:jest.fn(),deleteMany:jest.fn()};await expect(service.getSavedCouponIds('customer-a')).resolves.toEqual([]);await expect(service.removeSavedCoupon('customer-a','voucher-a')).rejects.toBeInstanceOf(GoneException);expect(prisma.customerSavedCoupon.findMany).not.toHaveBeenCalled();expect(prisma.customerSavedCoupon.deleteMany).not.toHaveBeenCalled();});
 });

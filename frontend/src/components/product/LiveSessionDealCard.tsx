@@ -23,18 +23,6 @@ type LiveSession = {
   remainingUses: number | null;
 };
 
-function getClaimKey(sessionId: string) {
-  const storageKey = `scanms-live-claim:${sessionId}`;
-  let key = localStorage.getItem(storageKey);
-  if (!key) {
-    key = typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(storageKey, key);
-  }
-  return key;
-}
-
 export function LiveSessionDealCard({
   productId,
   onApplyCoupon,
@@ -100,12 +88,10 @@ export function LiveSessionDealCard({
   const claim = async () => {
     try {
       setLoading(true);
-      const response: any = await api.post(`/live-sessions/${session.id}/claim`, { claimKey: getClaimKey(session.id) });
-      const result = response?.data || response;
-      const applied = await onApplyCoupon(result?.couponCode || session.coupon.displayCode);
-      if (applied) toast.success('Đã nhận và áp dụng voucher livestream.');
+      const applied = await onApplyCoupon(session.coupon.displayCode);
+      if (applied) toast.success('Đã sao chép mã KOL. Hãy tự nhập khi thanh toán.');
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Chưa thể nhận voucher lúc này.');
+      toast.error(error?.response?.data?.message || error?.message || 'Chưa thể sao chép mã lúc này.');
     } finally {
       setLoading(false);
     }
@@ -150,7 +136,7 @@ export function LiveSessionDealCard({
         <div className="flex items-center gap-2">
           {isLive && (
             <button type="button" onClick={claim} disabled={loading} className="inline-flex items-center gap-1.5 rounded-lg bg-[#C59B58] px-3 py-2 text-xs font-extrabold text-white transition hover:bg-[#B88E4F] disabled:opacity-60">
-              <TicketCheck className="h-4 w-4" /> {loading ? 'Đang nhận...' : 'Nhận & áp dụng'}
+              <TicketCheck className="h-4 w-4" /> {loading ? 'Đang sao chép...' : 'Sao chép mã KOL'}
             </button>
           )}
           <button type="button" onClick={copyLink} className="inline-flex items-center gap-1 rounded-lg border border-[#EEDFC6] bg-white px-3 py-2 text-xs font-bold text-[#7D715E] hover:text-[#8C6226]">

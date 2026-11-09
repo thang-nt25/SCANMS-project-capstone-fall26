@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-04",
+  "branch": "thinh",
+  "mobile": { "typecheck": "PASS", "lint": "PASS", "testsPassed": 61, "testsFailed": 0 },
+  "backendCouponCheckout": { "suitesPassed": 17, "testsPassed": 155, "testsFailed": 0, "sharedDbWrites": false },
+  "backendWalletRecheck": { "suitesPassed": 2, "testsPassed": 24, "testsFailed": 0 },
+  "seed": { "unitPassed": 48, "postgresTestsSkipped": 10, "appliedToGroupDatabase": false, "newRevision": "scanms-capstone-2026-v5" },
+  "web": { "unitPassed": 206, "browserSkipped": 76, "build": "PASS" },
+  "androidExport": { "status": "PASS", "bundle": "entry-d9eb7db21f4e7a51e6bb7208d915e255.hbc" },
+  "readOnlyPublicApi": { "availableCoupons": 19, "nonKolGoodsCoupons": 0, "backendHealthHttp": 200 },
+  "nativeVisual": { "role": "CUSTOMER", "home": "PASS", "couponDiscovery": "PASS", "copyCodeFeedback": "PASS", "otherRoleMutationE2e": "NOT_RUN" },
+  "groupDatabaseReset": false,
+  "paymentOrShipmentCreatedForCouponInspection": false,
+  "pushed": false,
+  "deferred": ["Native order checkout/payment", "Native livestream", "Full multi-account acceptance", "Background push", "Standalone ARM APK"]
+}

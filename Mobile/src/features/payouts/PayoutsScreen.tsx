@@ -1,3 +1,10 @@
+import {
+  ExpandableRecord,
+  FilterTabs,
+  InfoLine as DetailLine,
+  SectionTitle as Title,
+} from "../../components/RecordList";
+import { CompactEvidence as Evidence } from "../common/CompactEvidence";
 import { useState } from "react";
 import { Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -11,18 +18,15 @@ import {
   Field,
   PageControls,
   Screen,
-  Title,
 } from "../../components/ui";
 import { api } from "../../services/api";
 import { money, statusText } from "../../types/contracts";
 import { shareExport, XLSX_MIME } from "../../services/exports";
 import { filePart } from "../common/MediaPicker";
 import {
-  CommandForm,
-  DetailLine,
-  Evidence,
+  CompactCommandForm as CommandForm,
   QueryState,
-  Sheet,
+  CompactSheet as Sheet,
   amount,
   confirmAction,
   required,
@@ -31,7 +35,6 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
-import { SelectField } from "../common/SelectField";
 const Payout = z.object({
   id: z.string(),
   status: z.string(),
@@ -85,8 +88,7 @@ export function PayoutsScreen() {
     !reviewer && Boolean(store),
   );
   return (
-    <Screen scroll>
-      <Title>Duyệt rút tiền</Title>
+    <Screen scroll compact>
       <Button
         title="Làm mới yêu cầu và lịch sử lô"
         secondary
@@ -96,7 +98,7 @@ export function PayoutsScreen() {
           if (!reviewer && store) void batches.refetch();
         }}
       />
-      <SelectField
+      <FilterTabs
         label="Trạng thái"
         value={status}
         options={[
@@ -119,8 +121,15 @@ export function PayoutsScreen() {
       />
       <ErrorNotice error={command.error} />
       {result.data?.requests.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.collaboratorName || "Nhà sáng tạo"}</Title>
+        <ExpandableRecord
+          key={item.id}
+          title={item.collaboratorName || "Nhà sáng tạo"}
+          subtitle={item.storeName}
+          badge={statusText(item.status)}
+          meta={`Thực nhận ${money(item.netAmount)}`}
+          icon="credit-card"
+          disabled={command.busy}
+        >
           <Caption>{item.storeName}</Caption>
           <Badge>{statusText(item.status)}</Badge>
           <DetailLine label="Số tiền yêu cầu" value={money(item.amount)} />
@@ -187,7 +196,7 @@ export function PayoutsScreen() {
               }
             />
           )}
-        </Card>
+        </ExpandableRecord>
       ))}
       {!reviewer && selected.length > 0 && (
         <Button

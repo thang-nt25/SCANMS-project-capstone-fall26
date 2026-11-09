@@ -72,13 +72,11 @@ describe('Tuan checkout contracts in seed v3', () => {
 
   it('seeds only creator coupons and calculates remuneration on original goods value, before freight', () => {
     const data = buildDataset(context);
-    expect(data.coupons).toHaveLength(21);
+    expect(data.coupons).toHaveLength(20);
     expect(data.stackedRedemptions).toHaveLength(0);
     expect(data.coupons.filter((row) => row.benefitType !== 'SHIPPING')).toHaveLength(20);
-    expect(data.coupons.find((row) => row.codeNormalized === 'SCANMSFREESHIP')).toMatchObject({
-      benefitType: 'SHIPPING', fundingSource: 'PLATFORM_FUNDED', discountValue: 100,
-    });
-    expect(data.savedCoupons).toHaveLength(30);
+    expect(data.coupons.find(row => row.codeNormalized === 'SCANMSFREESHIP')).toBeUndefined();
+    expect(data.savedCoupons).toHaveLength(0);
     const order = data.orders.find(
       (row) => row.externalOrderSn === 'SEED-DH-02-2',
     )!;

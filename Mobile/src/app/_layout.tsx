@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from "../features/auth/AuthProvider";
 import { queryClient } from "../services/query-client";
 import { Button, ErrorNotice, Loading, Screen } from "../components/ui";
 import { colors } from "../theme/tokens";
+import { useFonts } from "expo-font";
+import Feather from "@expo/vector-icons/Feather";
 
 function SessionRoutes() {
   const { session, restoring, restoreError, restore, logout } = useAuth();
@@ -39,6 +41,15 @@ function SessionRoutes() {
   );
 }
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(Feather.font);
+  if (!fontsLoaded && !fontError)
+    return (
+      <SafeAreaProvider>
+        <Screen>
+          <Loading />
+        </Screen>
+      </SafeAreaProvider>
+    );
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />

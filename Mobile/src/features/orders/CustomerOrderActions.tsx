@@ -4,7 +4,6 @@ import { Button, Caption, ErrorNotice, Field } from "../../components/ui";
 import type { Order } from "../../types/contracts";
 import { useMobileNavigation } from "../../navigation/router";
 import {
-  ActionForm,
   Choice,
   Evidence,
   Sheet,
@@ -15,6 +14,8 @@ import {
 import { MediaPicker } from "../common/MediaPicker";
 import { SelectField } from "../common/SelectField";
 import { validateInput } from "../../utils/validate-input";
+import { CancelOrderSheet } from "./CancelOrderSheet";
+import { orderPayment } from "./order-presentation";
 const ReturnInput = z.object({
   reason: z.enum(["DAMAGED", "WRONG_ITEM", "EXPIRED", "OTHER"]),
   details: z.string().trim().max(1000),
@@ -101,10 +102,8 @@ export function CustomerOrderActions({ order }: { order: Order }) {
         )
       )}
       {mode === "cancel" && (
-        <ActionForm
-          title="Hủy đơn hàng"
-          fields={[{ key: "reason", label: "Lý do hủy", multiline: true }]}
-          schema={z.object({ reason: required.min(5).max(500) })}
+        <CancelOrderSheet
+          paid={orderPayment(order).status === "PAID"}
           submit={(body) =>
             command.execute(
               `/customer/orders/${order.id}/cancel`,

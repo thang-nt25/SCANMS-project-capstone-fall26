@@ -1,3 +1,5 @@
+import { ExpandableRecord, FilterTabs } from "../../components/RecordList";
+import { floorPriceInput, promotionReviewInput } from "./pricing-inputs";
 import { useState } from "react";
 import { Text } from "react-native";
 import { z } from "zod";
@@ -5,15 +7,13 @@ import {
   Badge,
   Button,
   Caption,
-  Card,
   Empty,
   ErrorNotice,
   Screen,
-  Title,
 } from "../../components/ui";
 import { money, statusText } from "../../types/contracts";
 import {
-  CommandForm,
+  CompactCommandForm as CommandForm,
   QueryState,
   amount,
   required,
@@ -50,6 +50,7 @@ const Promotion = z.object({
   store: z.object({ name: z.string() }),
 });
 export function PricingScreen() {
+  const [tab, setTab] = useState("catalog");
   const { reviewer } = useActor(),
     command = useCommand(),
     [form, setForm] = useState<CommandFormSpec | null>(null);
@@ -83,25 +84,7 @@ export function PricingScreen() {
           multiline: true,
         },
       ],
-      schema: z
-        .object({
-          floorPrice: z.coerce.number().positive().max(1e12),
-          reason: required.min(10).max(1000),
-          ...Object.fromEntries(
-            item.variants.map((variant) => [
-              variant.id,
-              z.coerce.number().positive().max(1e12),
-            ]),
-          ),
-        })
-        .transform((body) => ({
-          floorPrice: body.floorPrice,
-          reason: body.reason,
-          variants: item.variants.map((variant) => ({
-            variantId: variant.id,
-            floorPrice: body[variant.id as keyof typeof body],
-          })),
-        })),
+      schema: floorPriceInput(item.variants.map((variant) => variant.id)),
     });
   const promotion = (item: z.infer<typeof Product>) =>
     setForm({
@@ -155,8 +138,16 @@ export function PricingScreen() {
         })),
     });
   return (
-    <Screen scroll>
-      <Title>{reviewer ? "Giá sàn & duyệt khuyến mãi" : "Giá bán & MAP"}</Title>
+    <Screen scroll compact>
+      <FilterTabs
+        label="Quản trị giá"
+        value={tab}
+        options={[
+          { value: "catalog", label: "Giá sản phẩm" },
+          { value: "promotions", label: "Khuyến mãi" },
+        ]}
+        onChange={setTab}
+      />
       <Caption>
         MAP do vận hành cấu hình; mọi đề xuất giảm giá cần thỏa quy tắc và ngân
         sách của hệ thống.
@@ -170,80 +161,88 @@ export function PricingScreen() {
         }}
       />
       <ErrorNotice error={command.error} />
-      {catalog.data?.map((item) => (
-        <Card key={item.id}>
-          <Caption>{item.store.name}</Caption>
-          <Title>{item.title}</Title>
-          <Text>Giá hiện tại: {money(item.price)}</Text>
-          <Text>MAP: {money(item.floorPrice)}</Text>
-          {item.variants.map((variant) => (
-            <Caption key={variant.id}>
-              {variant.name} · {money(variant.price ?? item.price)} · MAP{" "}
-              {money(variant.floorPrice ?? item.floorPrice)}
-            </Caption>
-          ))}
-          <Button
-            title={reviewer ? "Cấu hình MAP" : "Đề xuất khuyến mãi"}
-            secondary
-            onPress={() => (reviewer ? floor(item) : promotion(item))}
-          />
-        </Card>
-      ))}
-      <Title>Yêu cầu khuyến mãi</Title>
-      {promotions.data?.length === 0 && <Empty />}
-      {promotions.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.product.title}</Title>
-          <Caption>{item.store.name}</Caption>
-          <Badge>{statusText(item.status)}</Badge>
-          <Text>
-            {money(item.proposedPrice)} · Ngân sách {money(item.budgetTotal)}
-          </Text>
-          <Text>{item.reason}</Text>
-          {reviewer && item.status === "PENDING" && (
+      {tab === "catalog" &&
+        catalog.data?.map((item) => (
+          <ExpandableRecord
+            key={item.id}
+            title={item.title}
+            subtitle={item.store.name}
+            meta={`${money(item.price)} · MAP ${item.floorPrice == null ? "chưa cấu hình" : money(item.floorPrice)}`}
+            icon="tag"
+          >
+            <Text>Giá hiện tại: {money(item.price)}</Text>
+            <Text>MAP: {money(item.floorPrice)}</Text>
+            {item.variants.map((variant) => (
+              <Caption key={variant.id}>
+                {variant.name} · {money(variant.price ?? item.price)} · MAP{" "}
+                {money(variant.floorPrice ?? item.floorPrice)}
+              </Caption>
+            ))}
             <Button
-              title="Duyệt/Từ chối"
-              onPress={() =>
-                setForm({
-                  title: "Quyết định khuyến mãi",
-                  path: `/pricing/promotions/${item.id}/review`,
-                  fields: [
-                    {
-                      key: "approve",
-                      label: "Quyết định",
-                      options: [
-                        { value: "yes", label: "Duyệt" },
-                        { value: "no", label: "Từ chối" },
-                      ],
-                    },
-                    { key: "note", label: "Căn cứ", multiline: true },
-                  ],
-                  schema: z
-                    .object({
-                      approve: z.enum(["yes", "no"]),
-                      note: required.min(10).max(1000),
-                    })
-                    .transform((body) => ({
-                      ...body,
-                      approve: body.approve === "yes",
-                    })),
-                })
-              }
+              title={reviewer ? "Cấu hình MAP" : "Đề xuất khuyến mãi"}
+              secondary
+              onPress={() => (reviewer ? floor(item) : promotion(item))}
             />
-          )}
-          {!reviewer &&
-            ["PENDING", "APPROVED", "ACTIVE"].includes(item.status) && (
+          </ExpandableRecord>
+        ))}
+
+      {tab === "promotions" && promotions.data?.length === 0 && (
+        <Empty text="Chưa có yêu cầu khuyến mãi." />
+      )}
+      {tab === "promotions" &&
+        promotions.data?.map((item) => (
+          <ExpandableRecord
+            key={item.id}
+            title={item.product.title}
+            subtitle={item.store.name}
+            badge={statusText(item.status)}
+            meta={money(item.proposedPrice)}
+            icon="tag"
+          >
+            <Caption>{item.store.name}</Caption>
+            <Badge>{statusText(item.status)}</Badge>
+            <Text>
+              {money(item.proposedPrice)} · Ngân sách {money(item.budgetTotal)}
+            </Text>
+            <Text>{item.reason}</Text>
+            {reviewer && item.status === "PENDING" && (
               <Button
-                title="Hủy đề xuất"
-                secondary
-                loading={command.busy}
+                title="Duyệt/Từ chối"
                 onPress={() =>
-                  void command.execute(`/pricing/promotions/${item.id}/cancel`)
+                  setForm({
+                    title: "Quyết định khuyến mãi",
+                    path: `/pricing/promotions/${item.id}/review`,
+                    fields: [
+                      {
+                        key: "approve",
+                        label: "Quyết định",
+                        options: [
+                          { value: "yes", label: "Duyệt" },
+                          { value: "no", label: "Từ chối" },
+                        ],
+                      },
+                      { key: "note", label: "Căn cứ", multiline: true },
+                    ],
+                    schema: promotionReviewInput,
+                  })
                 }
               />
             )}
-        </Card>
-      ))}
+            {!reviewer &&
+              ["PENDING", "APPROVED", "ACTIVE"].includes(item.status) && (
+                <Button
+                  title="Hủy đề xuất"
+                  secondary
+                  loading={command.busy}
+                  onPress={() =>
+                    void command.execute(
+                      `/pricing/promotions/${item.id}/cancel`,
+                    )
+                  }
+                />
+              )}
+          </ExpandableRecord>
+        ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
     </Screen>
   );

@@ -12,10 +12,12 @@ import type { RootStackParams } from "./types";
 
 const paths: Record<keyof RootStackParams, string> = {
   Workspace: "/(private)/(tabs)",
+  AccountSettings: "/(private)/account-settings",
   Business: "/(private)/business",
   Conversations: "/(private)/conversations",
   VipExceptions: "/(private)/vip-exceptions",
   ProductDetail: "/(private)/product",
+  Checkout: "/(private)/checkout",
   ProductEditor: "/(private)/product-editor",
   OrderDetail: "/(private)/order",
   Chat: "/(private)/conversation",
