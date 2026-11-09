@@ -1080,7 +1080,7 @@ export default function CustomerPortalPage() {
               <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
                 <div className="customer-orders__filters min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
-                  <div className="customer-orders__tabs flex min-w-0 gap-1 overflow-x-auto border-b border-[#EAE4D7] p-2 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
+                  <div className="customer-orders__tabs flex min-w-0 gap-1.5 overflow-x-auto border-b border-[#EAE4D7] p-2 bg-[#FAF8F5]/50 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
                     {[
                       { key: 'ALL', label: 'Tất cả' },
                       { key: 'PENDING', label: 'Chờ Shop xác nhận' },
@@ -1097,10 +1097,10 @@ export default function CustomerPortalPage() {
                           type="button"
                           onClick={() => setOrderStatusFilter(tab.key as OrderFilterStatus)}
                           aria-pressed={orderStatusFilter === tab.key}
-                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
+                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[14px] @max-[499px]:px-[10px] text-[12px] rounded-xl border transition-all cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
-                              ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[600]'
-                              : 'border-transparent bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] font-[500]'
+                              ? 'border-amber-400/40 bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] text-white font-bold shadow-[0_2px_10px_rgba(234,88,12,0.28)]'
+                              : 'border-transparent bg-transparent text-[#7D715E] hover:text-[#B45309] hover:bg-[#FBF5EB] font-medium'
                           }`}
                         >
                           <span>{tab.label}</span>
@@ -1110,15 +1110,14 @@ export default function CustomerPortalPage() {
                   </div>
 
                   {/* 2. Order Search Bar */}
-                  <div className="customer-orders__search p-3 sm:p-4">
+                  <div className="customer-orders__search p-3 sm:p-4 bg-white">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
-                      {/* Thanh tìm kiếm nhỏ gọn, cân xứng, đẹp mắt */}
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
                           fetchOrders();
                         }}
-                        className="customer-orders__search-form relative flex min-h-11 items-center flex-1 min-w-0 group rounded-xl border border-[#EAE4D7] bg-white px-3 focus-within:border-[#B88E4F] focus-within:ring-1 focus-within:ring-[#B88E4F]"
+                        className="customer-orders__search-form relative flex min-h-11 items-center flex-1 min-w-0 group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/50 px-3.5 focus-within:bg-white focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/20 transition-all"
                       >
                         <Search className="w-4 h-4 text-[#7D715E] group-focus-within:text-[#B88E4F] shrink-0 mr-2.5 transition-colors" />
                         <input
@@ -1144,13 +1143,20 @@ export default function CustomerPortalPage() {
                         )}
                         <button
                           type="submit"
-                          className="px-3.5 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-semibold text-xs transition cursor-pointer active:scale-95 shrink-0 whitespace-nowrap shadow-xs"
+                          className="px-4 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white font-semibold text-xs transition cursor-pointer active:scale-95 shrink-0 whitespace-nowrap shadow-xs"
                         >
                           Tìm kiếm
                         </button>
                       </form>
-                      <button type="button" aria-expanded={showOrderLookup} aria-controls="customer-order-lookup" onClick={() => setShowOrderLookup(value => !value)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-xs font-semibold text-[#B88E4F] hover:bg-[#F3EFE6]">
-                        <Truck size={16} />{showOrderLookup ? 'Thu gọn tra cứu' : 'Tra cứu đơn hàng'}
+                      <button
+                        type="button"
+                        aria-expanded={showOrderLookup}
+                        aria-controls="customer-order-lookup"
+                        onClick={() => setShowOrderLookup((value) => !value)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] px-4 py-2.5 text-xs font-semibold text-[#1A1612] transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Truck size={16} className="text-[#B88E4F]" />
+                        {showOrderLookup ? 'Thu gọn tra cứu' : 'Tra cứu đơn hàng'}
                       </button>
                     </div>
                   </div>
@@ -1241,7 +1247,7 @@ export default function CustomerPortalPage() {
                             revealedCheckoutOrders.current.add(key);
                             if (returnedToOrder || order.externalOrderSn === placedOrderCodes[0]) element.scrollIntoView({ block: 'nearest' });
                           }}
-                          className="customer-order-card group/order min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_4px_18px_rgba(110,84,39,.04)]"
+                          className="customer-order-card group/order min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_2px_12px_rgba(35,29,21,0.04)] hover:shadow-[0_4px_20px_rgba(35,29,21,0.07)] transition-shadow duration-200"
                         >
                           <CustomerOrderSummary order={order} statusLabel={statusLabel} statusIcon={StatusIcon} onChat={() => handleOpenChat(order)} />
 
@@ -1249,33 +1255,51 @@ export default function CustomerPortalPage() {
                             {/* Order Items List */}
                             <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
-                                <div key={item.id} className="customer-order-item grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-[12px] @max-[499px]:gap-[8px_10px] py-[18px] @max-[499px]:py-[12px]">
-                                  {(completedActions || awaitingPayment) && <Link to={awaitingPayment ? `/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}` : `/customer/orders/${encodeURIComponent(order.id)}`} data-order-detail-link className="customer-order-item-detail-link" aria-label={`Xem ${awaitingPayment ? 'thanh toán' : 'chi tiết'} đơn hàng ${order.externalOrderSn}`} />}
-                                  <OrderProductLink plain={completedActions || awaitingPayment} productId={item.productId || item.product?.id} title={item.product?.title} className="w-[80px] h-[80px] @max-[499px]:w-[64px] @max-[499px]:h-[64px] @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-[3px] bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <div key={item.id} className="customer-order-item grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-3.5 py-4">
+                                  {(completedActions || awaitingPayment) && (
+                                    <Link
+                                      to={
+                                        awaitingPayment
+                                          ? `/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`
+                                          : `/customer/orders/${encodeURIComponent(order.id)}`
+                                      }
+                                      data-order-detail-link
+                                      className="customer-order-item-detail-link"
+                                      aria-label={`Xem ${awaitingPayment ? 'thanh toán' : 'chi tiết'} đơn hàng ${order.externalOrderSn}`}
+                                    />
+                                  )}
+                                  <OrderProductLink
+                                    plain={completedActions || awaitingPayment}
+                                    productId={item.productId || item.product?.id}
+                                    title={item.product?.title}
+                                    className="w-20 h-20 @max-[499px]:w-16 @max-[499px]:h-16 @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors"
+                                  >
                                     <img
                                       src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
                                       alt={item.product?.title || 'Sản phẩm'}
-                                      className="w-full h-full object-contain p-[4px]"
+                                      className="w-full h-full object-contain p-0.5"
                                       onError={handleProductImageError}
                                     />
                                   </OrderProductLink>
 
                                   <div className="min-w-0">
-                                    <strong className="block text-[14px] @max-[499px]:text-[13px] font-[550] leading-[1.45] text-[#1A1612] line-clamp-2">
-                                      <OrderProductLink plain={completedActions || awaitingPayment} productId={item.productId || item.product?.id} title={item.product?.title} className="hover:underline">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
+                                    <strong className="block text-sm font-semibold leading-snug text-[#1A1612] line-clamp-2">
+                                      <OrderProductLink plain={completedActions || awaitingPayment} productId={item.productId || item.product?.id} title={item.product?.title} className="hover:text-[#B88E4F] transition-colors">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
                                     </strong>
-                                    {item.variant?.name && (
-                                      <span className="block text-[12px] text-[#7D715E] leading-[1.45] mt-[2px]">
-                                        Phân loại hàng: {item.variant.name}
+                                    <div className="flex items-center flex-wrap gap-2 mt-1.5">
+                                      {item.variant?.name && (
+                                        <span className="inline-block text-[11px] font-medium text-[#7D715E] bg-[#F3EFE6] px-2 py-0.5 rounded-md">
+                                          Phân loại: {item.variant.name}
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-[#7D715E] font-medium">
+                                        ×{item.quantity}
                                       </span>
-                                    )}
-                                    <span className="block text-[12px] text-[#7D715E] leading-[1.45] mt-[2px]">
-                                      x{item.quantity}
-                                    </span>
+                                    </div>
                                   </div>
 
                                   <div className="text-right shrink-0 @max-[499px]:col-start-2">
-                                    <span className="text-[14px] @max-[499px]:text-[13px] font-[550] text-[#1A1612] font-mono tabular-nums whitespace-nowrap">
+                                    <span className="text-sm font-bold text-[#1A1612] font-mono tabular-nums whitespace-nowrap">
                                       {formatMoney(Number(item.unitPrice) * item.quantity)}
                                     </span>
                                   </div>
@@ -1325,7 +1349,7 @@ export default function CustomerPortalPage() {
                                           href={url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="h-[48px] px-[12px] rounded-[8px] bg-[#231D15] text-white text-[11px] font-[600] flex items-center gap-[6px] shrink-0 hover:bg-[#1A1612] transition no-underline"
+                                          className="h-[48px] px-[12px] rounded-[8px] bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] text-white text-[11px] font-bold flex items-center gap-[6px] shrink-0 hover:brightness-105 shadow-xs transition no-underline"
                                           title="Bấm để xem video mở hộp"
                                         >
                                           <span>▶ Xem Video ({idx + 1})</span>
@@ -1338,48 +1362,135 @@ export default function CustomerPortalPage() {
                             )}
 
                             {/* Order Footer: Summary & Action Buttons */}
-                            <div className="customer-order-details-footer flex flex-wrap items-center gap-3 border-t border-[#EAE4D7] p-3 sm:p-4 text-sm [&_a]:inline-flex [&_a]:min-h-9 [&_a]:items-center [&_a]:justify-center [&_a]:rounded-lg [&_a]:border [&_a]:border-[#EEDFC6] [&_a]:px-3 [&_a]:text-[#795A2D] [&_button]:min-h-9 [&_button]:rounded-lg [&_button]:border [&_button]:border-[#EEDFC6] [&_button]:bg-white [&_button]:px-3 [&_button]:text-[#795A2D]">
-                              <CustomerOrderTotals order={order} />
+                            <div className="customer-order-details-footer flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border-t border-[#EAE4D7] p-3.5 sm:p-4 bg-[#FAF8F5]/30">
+                              <div className="flex items-center flex-wrap gap-3">
+                                <div className="text-xs text-[#7D715E]">
+                                  <span>Mã đơn: </span>
+                                  <span className="font-mono font-bold text-[#1A1612]">#{order.externalOrderSn}</span>
+                                </div>
+                                <span className="text-[#EAE4D7] hidden sm:inline">|</span>
+                                <CustomerOrderTotals order={order} />
+                              </div>
 
-                              {isCancelled && <span className="customer-order-cancel-note text-[#7D715E]">Đơn hàng đã hủy</span>}
-                              {completedActions && <div className="customer-order-secondary-links flex flex-wrap items-center gap-2">
-                                <Link to={`/customer/orders/${encodeURIComponent(order.id)}`}>Xem chi tiết</Link>
-                                {canRequestReturn && <button type="button" onClick={() => setReturnOrder(order)}>Trả hàng / Hoàn tiền</button>}
-                              </div>}
+                              {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
-                              {/* Action Buttons Row */}
-                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {awaitingPayment && <Link to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`} className="customer-order-return-link customer-order-return-review">Thanh toán bằng QR</Link>}
-                                {(isCancelled || completedActions) && <button type="button" onClick={() => handleReorder(order)} className="customer-order-rebuy">Mua lại</button>}
-                                {/* Secondary Button: Xem chi tiết */}
-                                {order.returnRequest ? <>
-                                  <Link to={`/customer/returns/${order.returnRequest.id}`} className="customer-order-return-link">Xem yêu cầu đổi trả</Link>
-                                  <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ Shop</button>
-                                  {mayEscalateReturn && <Link to={`/customer/returns/${order.returnRequest.id}?dispute=1`} className="customer-order-return-link customer-order-return-review">Yêu cầu SCANMS xem xét</Link>}
-                                </> : isCancelled ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết hủy đơn</Link> : isShipping ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết</Link> : !completedActions && <button
-                                  type="button"
-                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isDelivered ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
-                                >
-                                  {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
-                                </button>}
+                              {/* Action Buttons Row with clear hierarchy */}
+                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 sm:ml-auto w-full sm:w-auto">
+                                {completedActions && (
+                                  <Link
+                                    to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold transition-colors shadow-2xs"
+                                  >
+                                    Xem chi tiết
+                                  </Link>
+                                )}
+                                {completedActions && canRequestReturn && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReturnOrder(order)}
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-amber-50 hover:border-amber-300 text-amber-800 text-xs font-medium transition-colors cursor-pointer"
+                                  >
+                                    <RotateCcw size={13} />
+                                    <span>Trả hàng / Hoàn tiền</span>
+                                  </button>
+                                )}
 
-                                {(isCancelled || completedActions) && <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ người bán</button>}
+                                {awaitingPayment && (
+                                  <Link
+                                    to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`}
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all animate-pulse"
+                                  >
+                                    Thanh toán bằng QR
+                                  </Link>
+                                )}
+
+                                {(isCancelled || completedActions) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReorder(order)}
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] hover:from-[#C2410C] hover:via-[#B45309] hover:to-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    <RotateCcw size={13} />
+                                    <span>Mua lại</span>
+                                  </button>
+                                )}
+
+                                {order.returnRequest ? (
+                                  <>
+                                    <Link
+                                      to={`/customer/returns/${order.returnRequest.id}`}
+                                      className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-medium transition-colors"
+                                    >
+                                      Xem yêu cầu đổi trả
+                                    </Link>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenChat(order)}
+                                      className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
+                                    >
+                                      <MessageCircle size={13} />
+                                      <span>Liên hệ Shop</span>
+                                    </button>
+                                    {mayEscalateReturn && (
+                                      <Link
+                                        to={`/customer/returns/${order.returnRequest.id}?dispute=1`}
+                                        className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-xs transition-colors"
+                                      >
+                                        Yêu cầu SCANMS xem xét
+                                      </Link>
+                                    )}
+                                  </>
+                                ) : isCancelled ? (
+                                  <Link
+                                    to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors"
+                                    aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
+                                  >
+                                    Chi tiết hủy đơn
+                                  </Link>
+                                ) : isShipping ? (
+                                  <Link
+                                    to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold transition-colors shadow-2xs"
+                                    aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
+                                  >
+                                    Xem chi tiết
+                                  </Link>
+                                ) : (
+                                  !completedActions && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        awaitingPayment
+                                          ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`)
+                                          : isPending || isDelivered
+                                          ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`)
+                                          : setSelectedOrderDetails(order)
+                                      }
+                                      className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                                    >
+                                      {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
+                                    </button>
+                                  )
+                                )}
+
+                                {(isCancelled || completedActions) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenChat(order)}
+                                    className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
+                                  >
+                                    <MessageCircle size={13} />
+                                    <span>Liên hệ Shop</span>
+                                  </button>
+                                )}
 
                                 {/* Cancel Button if Pending */}
                                 {isPending && (
                                   <button
                                     type="button"
                                     onClick={() => setCancellingOrderId(order.id)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#FECACA] hover:border-[#DC2626] rounded-[8px] bg-white hover:bg-[#FEF2F2] text-[#DC2626] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 text-xs font-semibold transition-colors cursor-pointer"
                                   >
                                     Hủy đơn
                                   </button>
@@ -1391,9 +1502,13 @@ export default function CustomerPortalPage() {
                                     type="button"
                                     disabled={confirmingOrderId === order.id}
                                     onClick={() => handleConfirmReceipt(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] disabled:opacity-50 cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
                                   >
-                                    {confirmingOrderId === order.id && <Loader2 className="w-[14px] h-[14px] animate-spin" />}
+                                    {confirmingOrderId === order.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 size={14} />
+                                    )}
                                     <span>Đã nhận hàng</span>
                                   </button>
                                 )}
@@ -1403,9 +1518,9 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReturnOrder(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-amber-50 hover:border-amber-300 text-amber-800 text-xs font-medium transition-colors cursor-pointer"
                                   >
-                                    <RotateCcw className="w-[14px] h-[14px] text-[#B88E4F]" />
+                                    <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
                                     <span>Trả hàng / Hoàn tiền</span>
                                   </button>
                                 )}
@@ -1415,13 +1530,22 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReviewOrder(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8F682E] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                                   >
-                                    <Star className="w-[14px] h-[14px] text-[#B88E4F]" />
-                                    <span>Đánh giá sản phẩm</span>
+                                    <Star className="w-3.5 h-3.5 text-[#B88E4F]" />
+                                    <span>Đánh giá</span>
                                   </button>
                                 )}
-                                {completedActions && Boolean(order.productReviews?.length) && !getCustomerOrderActions(order).review && <button type="button" onClick={() => setViewedReviewOrder(order)} className="customer-order-view-reviews">Xem đánh giá</button>}
+
+                                {completedActions && Boolean(order.productReviews?.length) && !getCustomerOrderActions(order).review && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewedReviewOrder(order)}
+                                    className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] text-xs font-medium transition-colors cursor-pointer"
+                                  >
+                                    Xem đánh giá
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
