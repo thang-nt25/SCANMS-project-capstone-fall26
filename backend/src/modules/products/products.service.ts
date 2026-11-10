@@ -2103,7 +2103,7 @@ export class ProductsService {
     commissionRate: number,
   ) {
     if (commissionRate !== 10) {
-      throw new BadRequestException('Hoa hồng nền cố định 10% theo chuẩn sàn SCANMS.');
+      throw new BadRequestException('Thù lao gốc cố định 10% theo quy chuẩn hệ thống SCANMS.');
     }
     const isSystemAdminOrManager =
       userRole === UserRole.SYSTEM_ADMIN ||

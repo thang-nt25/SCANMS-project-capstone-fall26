@@ -18,7 +18,7 @@ import { managedStoreWhere } from '../../common/policies/store-access.policy';
 @Injectable()
 export class MediaService {
   /**
-   * Danh sách tên miền được phê duyệt lưu trữ media an toàn trên sàn SCANMS (FR-15 Mục 37)
+   * Danh sách tên miền được phê duyệt lưu trữ media an toàn trên hệ thống SCANMS (FR-15 Mục 37)
    */
   private static readonly ALLOWED_HOST_DOMAINS = [
     'scanms.vn',
@@ -681,7 +681,7 @@ export class MediaService {
 
     if (!isAllowed) {
       throw new ForbiddenException(
-        `${fieldName} (${host}) không thuộc danh sách nguồn lưu trữ được sàn SCANMS phê duyệt (CDN SCANMS, Cloudinary, YouTube, TikTok, Vimeo, Supabase).`,
+        `${fieldName} (${host}) không thuộc danh sách nguồn lưu trữ được hệ thống SCANMS phê duyệt (CDN SCANMS, Cloudinary, YouTube, TikTok, Vimeo, Supabase).`,
       );
     }
   }

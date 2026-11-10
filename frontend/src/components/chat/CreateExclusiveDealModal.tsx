@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Handshake,
   X,
@@ -75,9 +76,10 @@ export function CreateExclusiveDealModal({
       .getCollaboratorDealProducts(collaboratorId, storeId)
       .then((items: ProductItem[]) => {
         if (cancelled) return;
-        setProducts(items);
+        const storeItems = storeId ? items.filter((p) => p.storeId === storeId) : items;
+        setProducts(storeItems);
         // Pre-select the first available (unlocked) product
-        const firstUnlocked = items.find((p) => !p.activeDeal?.isLocked);
+        const firstUnlocked = storeItems.find((p) => !p.activeDeal?.isLocked);
         if (firstUnlocked) {
           setSelectedProductIds([firstUnlocked.id]);
         }
@@ -95,10 +97,12 @@ export function CreateExclusiveDealModal({
     };
   }, [collaboratorId, storeId]);
 
-  // Filter products by search
-  const filteredProducts = products.filter((p) =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
+  // Filter products by search and store
+  const filteredProducts = products
+    .filter((p) => (storeId ? p.storeId === storeId : true))
+    .filter((p) =>
+      p.title.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    );
 
   const selectableProducts = products.filter((p) => !p.activeDeal?.isLocked);
 
@@ -178,12 +182,12 @@ export function CreateExclusiveDealModal({
 
   const isEscalation = (Number(commissionRate) || 0) > 16;
 
-  return (
+  const modalContent = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="deal-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-[#1A1612]/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div
         ref={dialogRef}
@@ -377,15 +381,14 @@ export function CreateExclusiveDealModal({
           </section>
 
           {/* RIGHT COLUMN: Điều khoản thỏa thuận */}
-          <section className="md:col-span-6 flex flex-col bg-white overflow-y-auto p-5 space-y-4.5 min-h-0">
+          <section className="md:col-span-6 flex flex-col bg-white overflow-y-auto p-5 space-y-3.5 min-h-0">
             {/* 1. Mức thù lao độc quyền đề xuất */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-bold text-[#1A1612]">
-                    1. Mức thù lao độc quyền (%) <span className="text-[#DC2626]">*</span>
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
+                    1. Mức thù lao độc quyền *
                   </label>
-                  {/* Clean ? Popover Toggle */}
                   <button
                     type="button"
                     onClick={() => setShowHelpPopover((prev) => !prev)}
@@ -397,118 +400,100 @@ export function CreateExclusiveDealModal({
                   </button>
                 </div>
 
-                <span className="text-xs font-bold text-[#B88E4F]">
-                  Đang chọn:{' '}
-                  <strong className="text-sm font-black text-[#1A1612]">
-                    {commissionRate}%
-                  </strong>{' '}
-                  <span className="text-[11px] font-medium text-[#7D715E]">
-                    (+{(Number(commissionRate) || 10) - 10}% so với chuẩn)
-                  </span>
+                <span className="text-xs font-bold text-[#8C6226] bg-[#FBF5EB] border border-[#EEDFC6] px-2 py-0.5 rounded-md tabular-nums whitespace-nowrap">
+                  {commissionRate}% {Number(commissionRate) > 10 ? `(+${Number(commissionRate) - 10}% so với gốc)` : ''}
                 </span>
               </div>
 
               {/* Collapsible Info Popover */}
               {showHelpPopover && (
-                <div className="mb-3 p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed animate-in fade-in space-y-1">
+                <div className="mb-2.5 p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs text-[#7D715E] leading-relaxed animate-in fade-in space-y-1">
                   <div className="font-bold text-[#1A1612] flex items-center gap-1">
                     <Percent className="w-3.5 h-3.5 text-[#B88E4F]" />
                     Quy tắc hạn mức thẩm quyền (Governance):
                   </div>
                   <p>
-                    • <strong>11% – 16%:</strong> Khung tự trị của Giám đốc Nhãn hàng. Kích hoạt ngay khi Đối tác (KOC) chấp thuận.
+                    • <strong>11% – 16%:</strong> Khung tự trị của Quản lý Cửa hàng. Kích hoạt ngay khi Đối tác (KOC) chấp thuận.
                   </p>
                   <p>
-                    • <strong>Trên 16% (17% – 25%):</strong> Cơ chế leo thang thẩm duyệt (Maker-Checker Escalation). Yêu cầu Tổng Giám Đốc (System Admin) phê duyệt ngân sách ngoại lệ trước khi kích hoạt.
+                    • <strong>Trên 16% (17% – 25%):</strong> Cơ chế leo thang thẩm duyệt. Yêu cầu Tổng Giám Đốc (System Admin) phê duyệt ngân sách ngoại lệ trước khi kích hoạt.
                   </p>
                 </div>
               )}
 
-              {/* Free Input & Quick Pills */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min={11}
-                      max={25}
-                      value={commissionRate}
-                      onChange={(e) =>
-                        setCommissionRate(
-                          e.target.value === '' ? '' : Number(e.target.value)
-                        )
-                      }
-                      onBlur={() =>
-                        setCommissionRate((prev) =>
-                          prev === '' ? 14 : Math.min(25, Math.max(11, Number(prev)))
-                        )
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-sm font-black text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
-                      placeholder="11 - 25%"
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs font-bold text-[#7D715E]">
-                      %
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-[#7D715E]">
-                    Tự do điền (11% – 25%)
-                  </div>
+              {/* Rate Input & Quick Presets on the SAME ROW */}
+              <div className="flex items-center gap-2">
+                <div className="relative w-28 shrink-0">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min={11}
+                    max={25}
+                    value={commissionRate}
+                    onChange={(e) =>
+                      setCommissionRate(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    onBlur={() =>
+                      setCommissionRate((prev) =>
+                        prev === '' ? 14 : Math.min(25, Math.max(11, Number(prev)))
+                      )
+                    }
+                    className="w-full px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-sm font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
+                    placeholder="11 - 25%"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
+                    %
+                  </span>
                 </div>
 
                 {/* Quick Selection Pills */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-[#7D715E] font-medium">Gợi ý nhanh:</span>
-                  <div className="flex items-center gap-1.5">
-                    {[12, 14, 16, 18].map((rate) => {
-                      const isActive = commissionRate === rate;
-                      return (
-                        <button
-                          key={rate}
-                          type="button"
-                          onClick={() => setCommissionRate(rate)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            isActive
-                              ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] ring-1 ring-[#C59B58]'
-                              : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] hover:bg-[#F3EFE6]'
-                          }`}
-                        >
-                          {rate}%
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
+                  <span className="text-xs text-[#7D715E] font-medium whitespace-nowrap">Gợi ý:</span>
+                  {[12, 14, 16, 18].map((rate) => {
+                    const isActive = commissionRate === rate;
+                    return (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => setCommissionRate(rate)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap cursor-pointer tabular-nums ${
+                          isActive
+                            ? 'border-[#C59B58] bg-[#C59B58] text-white shadow-xs'
+                            : 'border-[#EAE4D7] bg-white text-[#1A1612] hover:bg-[#F3EFE6]'
+                        }`}
+                      >
+                        {rate}%
+                      </button>
+                    );
+                  })}
                 </div>
-
-                {/* Governance Alert Pill */}
-                {isEscalation ? (
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="font-bold">
-                        Vượt hạn mức tự trị ({commissionRate}% &gt; 16%):
-                      </strong>{' '}
-                      Đề xuất cần <strong>Tổng Giám Đốc (System Admin)</strong> phê duyệt ngoại lệ trước khi kích hoạt phân phối.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E] text-[11px] flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                    <span>
-                      Trong khung tự trị Nhãn hàng (≤16%) — Hiệu lực ngay khi KOC đồng ý.
-                    </span>
-                  </div>
-                )}
               </div>
+
+              {/* Governance Alert Pill */}
+              {isEscalation && (
+                <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    Vượt hạn mức tự trị (<strong>{commissionRate}%</strong> &gt; 16%): Cần Tổng Giám Đốc (Admin) duyệt ngoại lệ.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* 2. Cam kết KPI & Thời hạn */}
             <div>
-              <label className="block text-xs font-bold text-[#1A1612] mb-1.5">
-                2. Cam kết KPI & Thời hạn hợp đồng <span className="text-[#DC2626]">*</span>
-              </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
+                      2. KPI cam kết *
+                    </label>
+                    <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
+                      {targetOrders || 0} đơn
+                    </span>
+                  </div>
                   <div className="relative">
                     <input
                       type="number"
@@ -525,19 +510,24 @@ export function CreateExclusiveDealModal({
                           prev === '' ? 30 : Math.max(1, Number(prev))
                         )
                       }
-                      className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
+                      className="w-full pl-3 pr-12 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
                       placeholder="Ví dụ: 30"
                     />
-                    <span className="absolute right-3 top-2 text-xs text-[#7D715E]">
-                      đơn hàng
+                    <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
+                      đơn
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#7D715E] mt-1 block">
-                    Mục tiêu tối thiểu
-                  </span>
                 </div>
 
                 <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#7D715E] whitespace-nowrap">
+                      3. Thời hạn *
+                    </label>
+                    <span className="text-xs font-semibold text-[#1A1612] tabular-nums whitespace-nowrap">
+                      {commitmentDays || 0} ngày
+                    </span>
+                  </div>
                   <div className="relative">
                     <input
                       type="number"
@@ -554,57 +544,45 @@ export function CreateExclusiveDealModal({
                           prev === '' ? 14 : Math.max(7, Math.min(90, Number(prev)))
                         )
                       }
-                      className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-bold text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none"
+                      className="w-full pl-3 pr-12 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-bold text-[#1A1612] tabular-nums focus:border-[#C59B58] focus:outline-none shadow-2xs"
                       placeholder="Ví dụ: 14"
                     />
-                    <span className="absolute right-3 top-2 text-xs text-[#7D715E]">
+                    <span className="absolute right-3 top-2 text-xs font-bold text-[#7D715E]">
                       ngày
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#7D715E] mt-1 block">
-                    Thời gian thực hiện (7 – 90 ngày)
-                  </span>
                 </div>
               </div>
             </div>
 
-            {/* 3. Ghi chú điều khoản hợp tác */}
+            {/* 4. Ghi chú điều khoản hợp tác */}
             <div>
-              <label className="block text-xs font-bold text-[#1A1612] mb-1">
-                3. Ghi chú điều khoản hợp tác
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#7D715E] mb-1">
+                4. Ghi chú điều khoản
               </label>
               <textarea
                 rows={2}
                 value={salesCommitment}
                 onChange={(e) => setSalesCommitment(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs text-[#1A1612] focus:bg-white focus:border-[#C59B58] focus:outline-none resize-none"
-                placeholder="Ghi chú thêm về video review, livestream hoặc kênh truyền thông dự kiến..."
+                className="w-full px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none resize-none shadow-2xs placeholder-[#7D715E]"
+                placeholder="Ghi chú về video review, livestream hoặc kênh truyền thông..."
               />
             </div>
 
-            {/* 4. Tóm tắt hợp đồng thỏa thuận */}
-            <div className="p-3.5 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] space-y-1 mt-auto">
-              <div className="font-bold text-[#8C6226] flex items-center gap-1.5">
+            {/* 5. Tóm tắt hợp đồng thỏa thuận (Compact 1-Line Metrics) */}
+            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-xs text-[#1A1612] flex items-center justify-between mt-auto">
+              <div className="font-bold text-[#8C6226] flex items-center gap-1.5 shrink-0">
                 <Handshake className="w-3.5 h-3.5 text-[#B88E4F]" />
-                Tóm tắt hợp đồng:
+                <span>Tóm tắt:</span>
               </div>
-              <div className="text-[11px] text-[#7D715E] leading-relaxed">
-                Đề xuất thù lao <strong>{commissionRate}%</strong> cho{' '}
-                <strong>
-                  {selectedProductIds.length === 0
-                    ? '0 sản phẩm'
-                    : selectedProductIds.length === 1
-                    ? `1 sản phẩm ("${selectedProducts[0]?.title || ''}")`
-                    : `${selectedProductIds.length} sản phẩm đã chọn`}
-                </strong>
-                . Đối tác <strong>{collaboratorName}</strong> cam kết tối thiểu{' '}
-                <strong>{targetOrders} đơn hàng</strong> trong vòng{' '}
-                <strong>{commitmentDays} ngày</strong>.
-                {isEscalation && (
-                  <span className="block mt-1 text-amber-800 font-semibold">
-                    * Mức {commissionRate}% &gt; 16% sẽ được gửi trình Tổng Giám Đốc phê duyệt ngoại lệ sau khi KOC chấp thuận.
-                  </span>
-                )}
+              <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
+                <span>Thù lao: <strong className="text-[#8C6226] font-bold tabular-nums">{commissionRate}%</strong></span>
+                <span className="text-[#EEDFC6]">•</span>
+                <span>SP: <strong className="text-[#1A1612] font-bold tabular-nums">{selectedProducts.length}</strong></span>
+                <span className="text-[#EEDFC6]">•</span>
+                <span>KPI: <strong className="text-[#1A1612] font-bold tabular-nums">{targetOrders} đơn</strong></span>
+                <span className="text-[#EEDFC6]">•</span>
+                <span>Thời hạn: <strong className="text-[#1A1612] font-bold tabular-nums">{commitmentDays} ngày</strong></span>
               </div>
             </div>
           </section>
@@ -662,4 +640,6 @@ export function CreateExclusiveDealModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

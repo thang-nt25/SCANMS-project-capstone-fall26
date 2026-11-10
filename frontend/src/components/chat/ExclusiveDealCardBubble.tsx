@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Sparkles, ChevronDown, ExternalLink, Copy, Check, Clock3, AlertTriangle, Package, Layers } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { BadgePercent, ChevronDown, ExternalLink, Copy, Check, Clock3, AlertTriangle, Package, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../services/api';
 import { getChatSocket } from '../../services/chat-socket.service';
@@ -37,6 +37,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   // can have a senderId that does not match the currently signed-in user.
   const canReview = stateReady && !isDecision && status === 'PENDING' && (shopOffer ? !isShop : isShop);
   const waitingForPartner = stateReady && !isDecision && status === 'PENDING' && !canReview;
+  const isNotFoundRef = useRef(false);
 
   useEffect(() => {
     if (!card.proposalId) { setStateReady(true); return; }
@@ -60,11 +61,21 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
       }
     };
     const sync = async () => {
+      if (isNotFoundRef.current) return;
       const version = revision;
       try {
         const response: any = await api.get('/affiliate-deals/' + card.proposalId, { headers: { 'x-skip-cache': '1' } });
         if (active && revision === version) { apply(response?.data?.data || response?.data || response); setError(null); }
-      } catch { if (active && revision === version) setError('Chưa đối soát được trạng thái đề nghị. Bấm làm mới để thử lại.'); }
+      } catch (err: any) {
+        if (active && revision === version) {
+          if (err?.response?.status === 404) {
+            isNotFoundRef.current = true;
+            apply({ status: 'CLOSED' });
+            return;
+          }
+          setError('Chưa đối soát được trạng thái đề nghị. Bấm làm mới để thử lại.');
+        }
+      }
     };
     const socket = getChatSocket();
     const changed = (message: any) => {
@@ -148,7 +159,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
   return (
     <article className={`${compact ? 'w-72' : 'w-80'} max-w-[min(100%,calc(100vw-48px))] overflow-hidden border border-[#EAE4D7] rounded-xl bg-white text-[#1A1612] text-left shadow-[0_2px_8px_rgba(35,29,21,0.02)]`}>
       <header className="flex items-center gap-1.5 px-3 py-2.5 border-b border-[#EAE4D7] bg-white">
-        <span className="w-6 h-6 grid place-items-center shrink-0 rounded-[7px] bg-[#FBF5EB] text-[#B88E4F]"><Sparkles size={14} /></span>
+        <span className="w-6 h-6 grid place-items-center shrink-0 rounded-[7px] bg-[#FBF5EB] text-[#B88E4F]"><BadgePercent size={14} /></span>
         <strong className="text-xs font-semibold text-[#1A1612]">Deal độc quyền</strong>
         <span className={`inline-flex items-center gap-1 shrink-0 ml-auto px-1.5 py-1 border rounded-md text-[9px] leading-tight font-medium ${rejected ? 'bg-white border-[#EAE4D7] text-[#7D715E]' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'}`}>
           {approved ? <Check size={11} className="text-[#059669]" /> : !rejected ? <Clock3 size={11} className="text-[#B88E4F]" /> : null}
@@ -249,7 +260,7 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
         ) : (
           <h3 className="m-0 text-xs leading-relaxed font-semibold break-words text-[#1A1612]">{card.productTitle || 'Sản phẩm'}</h3>
         )}
-        {card.storeName && <p className="m-0 mt-1 text-[#7D715E] text-[10px] leading-relaxed break-words">Gian hàng <strong className="ml-1 text-[#1A1612] font-normal">{card.storeName}</strong></p>}
+        {card.storeName && <p className="m-0 mt-1 text-[#7D715E] text-[10px] leading-relaxed break-words">Cửa hàng <strong className="ml-1 text-[#1A1612] font-normal">{card.storeName}</strong></p>}
         {(card.publicCommissionRate != null || rate != null) && (
           <div className="grid grid-cols-2 mt-2.5 p-2 px-2.5 rounded-lg bg-[#FBF5EB]">
             <div>
@@ -263,11 +274,11 @@ export function ExclusiveDealCardBubble({ card, isMine, isShop, compact = false 
           </div>
         )}
         {card.isRevision && card.currentCommissionRate != null && <p className="mt-2 text-[#7D715E] text-[10px] leading-relaxed">Mức đang áp dụng <strong className="ml-1 text-[#1A1612] font-medium">{card.currentCommissionRate}%</strong></p>}
-        {card.scopeType && <p className="mt-2 text-xs text-[#7D715E]">{card.scopeType === 'STORE_WIDE' ? 'Toàn gian hàng, gồm sản phẩm mới' : card.scopeType === 'SELECTED_PRODUCTS' ? 'Nhóm sản phẩm' : 'Một sản phẩm'}</p>}
+        {card.scopeType && <p className="mt-2 text-xs text-[#7D715E]">{card.scopeType === 'STORE_WIDE' ? 'Toàn cửa hàng, gồm sản phẩm mới' : card.scopeType === 'SELECTED_PRODUCTS' ? 'Nhóm sản phẩm' : 'Một sản phẩm'}</p>}
         {card.targetRevenue && <p className="mt-2 text-xs text-[#7D715E]">KPI: {Number(card.targetRevenue).toLocaleString('vi-VN')} đ / {card.commitmentDays} ngày</p>}
         {!isDecision && card.targetOrders && <p className="mt-2 text-[11px] text-[#7D715E]">Mục tiêu {card.targetOrders} đơn trong {card.commitmentDays} ngày · Cam kết video review</p>}
         {!isDecision && terms && <p className="mt-2 text-[11px] leading-relaxed text-[#7D715E]">Coupon riêng giảm {terms.discountPercent}%, tối đa {Number(terms.maximumDiscountAmount).toLocaleString('vi-VN')} đ cho đơn từ {Number(terms.minimumOrderAmount).toLocaleString('vi-VN')} đ; {terms.usageLimitTotal} lượt trong {terms.validDays} ngày sau khi kích hoạt.</p>}
-        {!isDecision && status === 'PENDING' && card.isRevision && <p className="mt-2 text-[#7D715E] text-[10px] leading-relaxed">{isMine ? 'Mức hiện tại vẫn áp dụng trong lúc gian hàng xem xét đề xuất.' : 'Mức mới áp dụng cho đơn hàng mới sau khi duyệt. Đơn đã tạo giữ nguyên mức cũ.'}</p>}
+        {!isDecision && status === 'PENDING' && card.isRevision && <p className="mt-2 text-[#7D715E] text-[10px] leading-relaxed">{isMine ? 'Mức hiện tại vẫn áp dụng trong lúc cửa hàng xem xét đề xuất.' : 'Mức mới áp dụng cho đơn hàng mới sau khi duyệt. Đơn đã tạo giữ nguyên mức cũ.'}</p>}
         {isDecision && card.message && (
           <details className="mt-2 bg-white text-xs group">
             <summary className="flex items-center justify-between gap-2 py-1 list-none text-[#7D715E] text-[10px] cursor-pointer hover:text-[#1A1612] hover:bg-[#FAF8F5] rounded-md transition-colors select-none">
