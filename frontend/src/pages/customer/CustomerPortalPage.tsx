@@ -1030,14 +1030,16 @@ export default function CustomerPortalPage() {
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
-    <div className="customer-portal-layout min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
-      <MarketplaceHeader
-        showShortcuts={false}
-        onOpenTracking={() => navigate('/tracking')}
-        onOpenLive={() => navigate('/marketplace#live')}
-      />
+    <div className="customer-portal-layout min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+      <div className="shrink-0 z-40">
+        <MarketplaceHeader
+          showShortcuts={false}
+          onOpenTracking={() => navigate('/tracking')}
+          onOpenLive={() => navigate('/marketplace#live')}
+        />
+      </div>
 
-      <div className="mx-auto w-full max-w-[1360px] px-3 pt-3 sm:px-4 lg:hidden">
+      <div className="mx-auto w-full max-w-[1600px] px-3 pt-3 sm:px-4 lg:hidden">
         <button type="button" aria-controls="customer-mobile-navigation" aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen(open => !open)}
           className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm font-semibold text-[#795A2D] shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
@@ -1047,16 +1049,25 @@ export default function CustomerPortalPage() {
       </div>
 
       <main
-        className="w-full max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
+        className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col"
       >
-        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0 lg:h-full">
           {/* ========================================================= */}
           {/* CỘT TRÁI: SIDEBAR DÙNG CHUNG 100% TOÀN SÀN SCANMS */}
           {/* ========================================================= */}
-          <div id="customer-mobile-navigation" onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }} data-order-detail-sidebar={Boolean(detailOrderId)} className={`relative w-full lg:w-[250px] lg:shrink-0 lg:sticky lg:top-[116px] lg:flex lg:flex-col ${mobileMenuOpen ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white' : 'hidden'} lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
+          <div
+            id="customer-mobile-navigation"
+            onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }}
+            data-order-detail-sidebar={Boolean(detailOrderId)}
+            className={`relative w-full lg:w-[265px] lg:shrink-0 lg:h-full lg:flex lg:flex-col ${
+              mobileMenuOpen
+                ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white'
+                : 'hidden'
+            } lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-3 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}
+          >
             <Sidebar
               currentUser={currentUser}
-              className="px-0"
+              className="px-0 lg:h-full lg:overflow-y-auto no-scrollbar"
               onLogout={() => {
                 authService.logout();
                 navigate('/login');
@@ -1067,7 +1078,7 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           {/* RIGHT MAIN PANEL - CONTENT ACCORDING TO ACTIVE TAB */}
           {/* ========================================================= */}
-<div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className="workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}

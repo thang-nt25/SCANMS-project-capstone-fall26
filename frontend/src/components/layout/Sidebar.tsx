@@ -9,7 +9,6 @@ import { orderService } from '../../services/order.service';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from '../../utils/toast';
 import { handleRouteHover, cancelRouteHover, prewarmCoreRoutes } from '../../utils/route-preloader.utils';
-import { useCustomerVouchers } from '../../hooks/useCustomerVouchers';
 import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 
 export interface SidebarProps {
@@ -32,7 +31,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
   const [failedAvatar, setFailedAvatar] = useState('');
-  const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,11 +130,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
     if (path === '/customer/wishlist') {
       return !wishlistInventory.loading && !wishlistInventory.error
         ? { text: String(wishlistInventory.count), isHighlight: false }
-        : null;
-    }
-    if (path === '/customer/vouchers') {
-      return !voucherInventory.loading && !voucherInventory.error
-        ? { text: String(voucherInventory.vouchers.length), isHighlight: false }
         : null;
     }
     if (staticBadge) {
@@ -322,7 +315,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
   return (
     <aside
       data-workspace-role={role}
-      className={`workspace-sidebar w-full lg:w-[250px] shrink-0 ${className ? className : 'px-3.5'} pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30`}
+      className={`workspace-sidebar w-full shrink-0 ${className ? className : 'px-3.5 lg:w-[250px]'} pt-4 sm:pt-5 pb-3.5 lg:h-full text-left select-none flex flex-col gap-2.5 z-30`}
     >
       {/* Hidden file input for avatar upload */}
       <input
@@ -439,7 +432,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                 <span className="flex-1 truncate tracking-tight">{item.label}</span>
                 {badge && (
                   <span
-                    className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
+                    className={`ml-auto text-[10px] font-bold font-mono tabular-nums px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
                       badge.isHighlight
                         ? 'bg-[#C59B58] text-white shadow-2xs animate-pulse'
                         : 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
