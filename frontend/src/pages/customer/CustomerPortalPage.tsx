@@ -504,7 +504,7 @@ export default function CustomerPortalPage() {
     openChat(
       {
         id: order.storeId,
-        name: order.store?.name || 'Gian Hàng Đối Tác',
+        name: order.store?.name || 'Cửa Hàng Đối Tác',
         logoUrl: order.store?.logoUrl || undefined,
       },
       productInfo,
@@ -1116,8 +1116,8 @@ export default function CustomerPortalPage() {
                           aria-pressed={orderStatusFilter === tab.key}
                           className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-11 @max-[499px]:min-h-11 py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
-                              ? 'border-amber-400/40 bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] text-white font-bold shadow-[0_2px_10px_rgba(234,88,12,0.28)]'
-                              : 'border-transparent bg-transparent text-[#7D715E] hover:text-[#B45309] hover:bg-[#FBF5EB] font-medium'
+                              ? 'border-[#231D15] bg-[#231D15] text-[#FAF8F5] font-bold shadow-xs'
+                              : 'border-transparent bg-transparent text-[#7D715E] hover:text-[#1A1612] hover:bg-[#F3EFE6] font-medium'
                           }`}
                         >
                           <span>{tab.label}</span>
@@ -1142,7 +1142,7 @@ export default function CustomerPortalPage() {
                           value={orderSearch}
                           onChange={(e) => setOrderSearch(e.target.value)}
                           aria-label="Tìm đơn mua"
-                          placeholder="Tìm mã đơn, SĐT người nhận, sản phẩm hoặc gian hàng…"
+                          placeholder="Tìm mã đơn, SĐT người nhận, sản phẩm hoặc cửa hàng…"
                           className="min-w-0 flex-1 bg-transparent text-[13px] @max-[499px]:text-[12px] text-[#1A1612] placeholder-[#7D715E]/85 outline-none font-normal"
                         />
                         {orderSearch && (
@@ -1230,7 +1230,7 @@ export default function CustomerPortalPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="grid gap-[12px]">
+                  <div className="grid gap-[12px] pb-16 sm:pb-20">
                     {orders.map((order) => {
                       const isPending = order.status === 'PENDING';
                       const awaitingPayment = isPending && order.rawPayload?.paymentMethod === 'PAYOS' && order.rawPayload?.paymentStatus !== 'PAID';
@@ -1328,7 +1328,7 @@ export default function CustomerPortalPage() {
                                   </div>
 
                                   <div className="text-right shrink-0 relative z-20">
-                                    <span className="text-sm font-bold text-[#1A1612] font-mono tabular-nums whitespace-nowrap">
+                                    <span className="text-sm font-bold text-[#1A1612] tabular-nums whitespace-nowrap">
                                       {formatMoney(Number(item.unitPrice) * item.quantity)}
                                     </span>
                                   </div>
@@ -1350,9 +1350,9 @@ export default function CustomerPortalPage() {
                                     <span className="text-[10px] font-[600] text-[#B88E4F] bg-[#F3EFE6] px-[8px] py-[2px] rounded-[5px]">ĐANG XÉT DUYỆT</span>
                                   </div>
                                   <p className="mt-[4px] text-[#7D715E] leading-relaxed m-0">
-                                    {order.overrideReason || (order.rawPayload?.dispute?.reason ? `Lý do: ${order.rawPayload.dispute.reason}` : 'Hệ thống SCANMS đang chuyển yêu cầu tới gian hàng đối tác và trọng tài sàn.')}
+                                    {order.overrideReason || (order.rawPayload?.dispute?.reason ? `Lý do: ${order.rawPayload.dispute.reason}` : 'Hệ thống SCANMS đang chuyển yêu cầu tới cửa hàng trực thuộc và bộ phận đối soát.')}
                                   </p>
-                                  <span className="text-[11px] text-[#7D715E] font-mono mt-[6px] block">
+                                  <span className="text-[11px] text-[#7D715E] tabular-nums mt-[6px] block">
                                     Số tiền hoàn dự kiến: <strong className="text-[#1A1612] font-[600]">{formatMoney(order.finalAmount)}</strong>
                                   </span>
 
@@ -1378,7 +1378,7 @@ export default function CustomerPortalPage() {
                                           href={url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="h-[48px] px-[12px] rounded-[8px] bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] text-white text-[11px] font-bold flex items-center gap-[6px] shrink-0 hover:brightness-105 shadow-xs transition no-underline"
+                                          className="h-[44px] px-3 rounded-xl bg-[#F3EFE6] text-[#795A2D] hover:bg-[#EAE4D7] border border-[#EAE4D7] text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-2xs transition no-underline"
                                           title="Bấm để xem video mở hộp"
                                         >
                                           <span>▶ Xem Video ({idx + 1})</span>
@@ -1419,7 +1419,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleReorder(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] hover:from-[#C2410C] hover:via-[#B45309] hover:to-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
                                   >
                                     <RotateCcw size={13} />
                                     <span>Mua lại</span>
@@ -1588,7 +1588,7 @@ export default function CustomerPortalPage() {
                     },
                     store: {
                       id: p.store?.id || '',
-                      name: p.store?.name || 'Gian hàng',
+                      name: p.store?.name || 'Cửa hàng',
                     },
                   });
                 }}
@@ -1941,7 +1941,7 @@ export default function CustomerPortalPage() {
               <div className="flex items-center gap-2">
                 <StoreIcon className="w-4 h-4 text-[#C59B58]" />
                 <strong className="text-xs sm:text-sm font-bold text-[#1A1612]">
-                  {selectedOrderDetails.store?.name || 'Gian Hàng Đối Tác'}
+                  {selectedOrderDetails.store?.name || 'Cửa Hàng Đối Tác'}
                 </strong>
               </div>
               <div className="flex items-center gap-2">
@@ -2003,7 +2003,7 @@ export default function CustomerPortalPage() {
                   </span>
                 </div>
                 <p className="text-amber-800/90 leading-relaxed m-0">
-                  {selectedOrderDetails.overrideReason || (selectedOrderDetails.rawPayload?.dispute?.reason ? `Lý do: ${selectedOrderDetails.rawPayload.dispute.reason}` : 'Đang được sàn SCANMS & gian hàng xác minh.')}
+                  {selectedOrderDetails.overrideReason || (selectedOrderDetails.rawPayload?.dispute?.reason ? `Lý do: ${selectedOrderDetails.rawPayload.dispute.reason}` : 'Đang được hệ thống SCANMS & cửa hàng xác minh.')}
                 </p>
                 {selectedOrderDetails.rawPayload?.dispute?.customerNotes && (
                   <p className="text-[#574C3D] bg-white/70 p-2 rounded-lg border border-amber-200/60 m-0">
@@ -2100,7 +2100,7 @@ export default function CustomerPortalPage() {
                         </button>
                       </div>
                     </div>
-                    <strong className="text-xs font-mono font-bold text-[#1A1612] shrink-0">
+                    <strong className="text-xs font-bold text-[#1A1612] tabular-nums shrink-0">
                       {formatMoney(Number(item.unitPrice) * item.quantity)}
                     </strong>
                   </div>
