@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Clock, MapPin, Package, ShoppingBag, Users, Wallet, X } from 'lucide-react';
 import type { StoreOrderItem, StoreOrderRecord } from '../../services/order.service';
 import { getSafeProductImageUrl } from '../../utils/marketplace.utils';
-import './MerchantOrderDetailModal.css';
 
 const amount = (value: number) => `${(value ?? 0).toLocaleString('vi-VN')} ₫`;
 const statusLabels: Record<string, string> = {
@@ -108,7 +107,7 @@ export function MerchantOrderDetailModal({ order, onClose, getItemThumbnail, chi
           </dl>
           {order.isManualOrder && order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && onRequestPayment && <button type="button" onClick={onRequestPayment} className="mt-3 rounded-lg border border-[#EEDFC6] bg-white px-3 py-2 text-xs font-medium hover:bg-[#F3EFE6]">Mở QR / link thanh toán PayOS</button>}
         </div>
-        <div className="order-detail-commission flex items-baseline justify-between gap-3 border-t border-[#EEDFC6] bg-white/70 px-3.5 py-3 text-[11px] sm:px-4"><span className="text-[#7D715E]">Hoa hồng KOL ghi nhận</span><strong className="shrink-0 font-semibold tabular-nums text-[#8C6B32]">{order.totalCommission > 0 ? '+' : ''}{amount(order.totalCommission)}</strong></div>
+        <div className="order-detail-commission flex items-baseline justify-between gap-3 border-t border-[#EEDFC6] bg-white/70 px-3.5 py-3 text-[11px] sm:px-4"><span className="text-[#7D715E]">Thu nhập KOL ghi nhận</span><strong className="shrink-0 font-semibold tabular-nums text-[#8C6B32]">{order.totalCommission > 0 ? '+' : ''}{amount(order.totalCommission)}</strong></div>
       </section>
     </div>
 

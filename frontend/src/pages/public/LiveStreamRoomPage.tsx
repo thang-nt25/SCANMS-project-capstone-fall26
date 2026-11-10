@@ -1156,31 +1156,14 @@ export default function LiveStreamRoomPage() {
     }
   };
 
-  // Claim voucher
+  // Copy-only KOL coupon; live attribution is independent from coupon inventory.
   const handleClaimVoucher = async () => {
-    if (isVoucherClaimed) {
-      toast.success(`Bạn đã nhận mã ${couponCode}.`);
-      return;
-    }
+    if (!couponCode) return;
     setVoucherClaimLoading(true);
-    try {
-      if (sessionData?.id) {
-        await api.post(`/live-sessions/${sessionData.id}/claim`, {
-          claimKey: `claim_${currentUser?.id || 'guest'}_${Date.now()}`,
-        });
-      }
-      if (sessionData?.coupon?.id && currentUser?.role === 'CUSTOMER') {
-        await api.post(`/coupons/saved/${sessionData.coupon.id}`);
-      }
-      setIsVoucherClaimed(true);
-      toast.success(`Đã nhận mã voucher ${couponCode}. Nhập mã khi thanh toán để sử dụng.`);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Chưa lưu được voucher. Vui lòng thử lại.');
-    } finally {
-      setVoucherClaimLoading(false);
-    }
+    try { await navigator.clipboard.writeText(couponCode); setIsVoucherClaimed(true); toast.success('Đã sao chép mã KOL. Hãy tự nhập khi thanh toán.'); }
+    catch { toast.error('Không sao chép được mã. Hãy chọn mã và sao chép thủ công.'); }
+    finally { setVoucherClaimLoading(false); }
   };
-
   // Send live chat comment
   const handleSendComment = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1413,7 +1396,7 @@ export default function LiveStreamRoomPage() {
                   : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] text-white'
               }`}
             >
-              {isStreamEnded ? 'Đã kết thúc' : voucherClaimLoading ? 'Đang lưu…' : isVoucherClaimed ? 'Đã lưu' : 'Lưu mã'}
+              {isStreamEnded ? 'Đã kết thúc' : voucherClaimLoading ? 'Đang sao chép…' : isVoucherClaimed ? 'Đã sao chép' : 'Sao chép mã'}
             </button>
           </div>
         )}
@@ -1572,7 +1555,7 @@ export default function LiveStreamRoomPage() {
         <div role="status" className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs text-[#1A1612]">
           <Ticket size={16} className="text-[#B88E4F]" />
           <span>Vừa tung ưu đãi <strong>{sessionData.voucherDrop.code}</strong> · {sessionData.voucherDrop.quantity} lượt được giới thiệu</span>
-          <button type="button" onClick={() => void handleClaimVoucher()} disabled={voucherClaimLoading || isVoucherClaimed} className="rounded-lg border border-[#EEDFC6] bg-white px-3 py-1 font-semibold text-[#B88E4F] disabled:opacity-50">{isVoucherClaimed ? 'Đã lưu mã' : 'Nhận voucher'}</button>
+          <button type="button" onClick={() => void handleClaimVoucher()} disabled={voucherClaimLoading || isVoucherClaimed} className="rounded-lg border border-[#EEDFC6] bg-white px-3 py-1 font-semibold text-[#B88E4F] disabled:opacity-50">{isVoucherClaimed ? 'Đã sao chép' : 'Sao chép mã KOL'}</button>
         </div>
       )}
 
@@ -2124,7 +2107,7 @@ export default function LiveStreamRoomPage() {
                       : 'bg-gradient-to-r from-[#C59B58] to-[#B88E4F] hover:from-[#B88E4F] text-white shadow-2xs'
                   }`}
                 >
-                  {isVoucherClaimed ? 'Đã lưu' : 'Lưu mã'}
+                  {isVoucherClaimed ? 'Đã sao chép' : 'Sao chép mã'}
                 </button>
               </div>
             )}

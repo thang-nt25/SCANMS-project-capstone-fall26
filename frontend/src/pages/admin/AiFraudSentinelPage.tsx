@@ -25,8 +25,9 @@ import {
   type FraudMitigationAction,
 } from '../../services/ai-fraud.service';
 import { Select } from '../../components/ui/Select';
+import { Modal } from '../../components/ui/Modal';
 import { useRef } from 'react';
-import { WorkspaceHero, workspaceButton } from '@/components/ui/FeatureWorkspace';
+import { workspaceButton } from '@/components/ui/FeatureWorkspace';
 
 export default function AiFraudSentinelPage() {
   const [summary, setSummary] = useState<FraudScanSummary | null>(null);
@@ -38,6 +39,7 @@ export default function AiFraudSentinelPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionNote, setActionNote] = useState('');
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
+  const [showRuleModal, setShowRuleModal] = useState(false);
   const requestSequence = useRef(0);
   const mutationLock = useRef(false);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -185,7 +187,26 @@ export default function AiFraudSentinelPage() {
 
   return (
     <div className="w-full min-w-0 space-y-4 pb-8">
-      <WorkspaceHero eyebrow="SCANMS / AI Anti-Fraud" title="Giám sát traffic & Đối soát rủi ro" description="Số click và đơn được đếm trong kỳ đã chọn. Quy tắc IP/bot phân tích tối đa 100 click gần nhất mỗi link; điểm quy tắc không phải kết luận gian lận. Ngưỡng >5.000 clicks, 0 đơn được gắn AI_FRAUD_FLAG để kiểm tra." />
+      <div className="flex items-center justify-between gap-2 pb-1">
+        <button
+          type="button"
+          onClick={() => setShowRuleModal(true)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
+        >
+          <Info className="w-3.5 h-3.5" />
+          <span>Quy chuẩn đối soát</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={loadData}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? 'animate-spin' : ''}`} />
+          <span>Quét lại toàn sàn</span>
+        </button>
+      </div>
       {/* KPI Metric Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {/* Total Clicks Scanned */}
@@ -729,6 +750,55 @@ export default function AiFraudSentinelPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal tra cứu Quy chuẩn Đối soát Rủi ro & An ninh Traffic */}
+      {showRuleModal && (
+        <Modal
+          isOpen
+          onClose={() => setShowRuleModal(false)}
+          title="Quy chuẩn Đối soát Rủi ro & An ninh Traffic"
+          maxWidth="md"
+        >
+          <div className="space-y-3.5 text-xs text-[#1A1612]">
+            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
+              <span className="font-bold text-[#8C6226] block">
+                1. Cơ chế đối soát traffic & chuyển đổi
+              </span>
+              <p className="text-[#7D715E]">
+                Hệ thống tự động thống kê số lượt click và lượng đơn hàng phát sinh trong kỳ được chọn. Phân tích mô hình hành vi truy cập của người dùng trên các liên kết tiếp thị để bảo vệ tính toàn vẹn của dữ liệu bán hàng.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                2. Mục đích đánh giá rủi ro (Risk Scoring)
+              </span>
+              <p className="text-[#7D715E]">
+                Điểm rủi ro là chỉ số cảnh báo nội bộ hỗ trợ kiểm toán viên đối chiếu, không phải kết luận vi phạm hành chính. Mọi biện pháp tạm ngưng hoặc đóng băng thù lao đều cần sự thẩm định và xác nhận từ Quản trị viên.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                3. Ngưỡng kiểm tra an ninh đặc biệt
+              </span>
+              <p className="text-[#7D715E]">
+                Khi một liên kết tiếp thị ghi nhận lượng truy cập bất thường vượt ngưỡng lớn nhưng không phát sinh bất kỳ chuyển đổi mua hàng nào, hệ thống sẽ đề xuất đưa vào diện thẩm tra để ngăn ngừa rủi ro cho các nhãn hàng nội bộ.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRuleModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

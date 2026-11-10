@@ -18,10 +18,9 @@ import {
 import { money, statusText } from "../../types/contracts";
 import {
   QueryState,
-  DetailLine,
   Evidence,
-  CommandForm,
-  Sheet,
+  CompactCommandForm as CommandForm,
+  CompactSheet as Sheet,
   amount,
   required,
   useActor,
@@ -29,6 +28,10 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
+import {
+  FilterTabs,
+  InfoLine as DetailLine,
+} from "../../components/RecordList";
 import type { BusinessParams } from "../workspace/policy";
 import { ReturnTimeline } from "./ReturnTimeline";
 import {
@@ -187,6 +190,9 @@ const AddressInput = z.object({
   wardName: required.min(2).max(100),
 });
 export function ReturnsScreen({ params }: { params: BusinessParams }) {
+  const [onlyDisputes, setOnlyDisputes] = useState(
+    params.returnQueue === "disputes",
+  );
   const { user, reviewer } = useActor(),
     [selected, setSelected] = useState(params.id || ""),
     [page, setPage] = useState(1);
@@ -207,7 +213,7 @@ export function ReturnsScreen({ params }: { params: BusinessParams }) {
     "return-oversight",
     "/admin/return-disputes/active-returns",
     z.array(ReturnSchema),
-    reviewer && !selected,
+    reviewer && !selected && !onlyDisputes,
   );
   // Disputed/failed/stalled requests are not part of the active queue.
   // Keep their dedicated queues visible so operations can actually reach resolution.
@@ -221,12 +227,12 @@ export function ReturnsScreen({ params }: { params: BusinessParams }) {
     "return-stalled",
     "/admin/return-disputes/overdue-inspections",
     z.array(ReturnSchema),
-    reviewer && !selected,
+    reviewer && !selected && !onlyDisputes,
   );
   const oversightRows = mergeReturnQueues(
-    oversight.data || [],
+    onlyDisputes ? [] : oversight.data || [],
     (disputes.data || []).map((row) => row.returnRequest),
-    stalled.data || [],
+    onlyDisputes ? [] : stalled.data || [],
   );
   const rows = customer
     ? customers.data?.orders
@@ -245,32 +251,39 @@ export function ReturnsScreen({ params }: { params: BusinessParams }) {
       }));
   return (
     <Screen scroll>
+      {reviewer && <FilterTabs label="Bộ lọc" value={onlyDisputes ? "disputes" : "all"} onChange={value => setOnlyDisputes(value === "disputes")} options={[{ value: "all", label: "Tất cả hồ sơ" }, { value: "disputes", label: "Cần phân xử" }]} />}
       <QueryState
         loading={
           customers.isLoading ||
           queue.isLoading ||
-          oversight.isLoading ||
+          (!onlyDisputes && oversight.isLoading) ||
           disputes.isLoading ||
-          stalled.isLoading
+          (!onlyDisputes && stalled.isLoading)
         }
         error={
           customers.error ||
           queue.error ||
-          oversight.error ||
+          (!onlyDisputes && oversight.error) ||
           disputes.error ||
-          stalled.error
+          (!onlyDisputes && stalled.error)
         }
         retry={() => {
           if (customer) void customers.refetch();
           else if (reviewer) {
-            void oversight.refetch();
+            if (!onlyDisputes) void oversight.refetch();
             void disputes.refetch();
-            void stalled.refetch();
+            if (!onlyDisputes) void stalled.refetch();
           } else void queue.refetch();
         }}
       />
       {rows?.length === 0 && (
-        <Empty text="Chưa có hồ sơ đổi trả. Khách tạo yêu cầu từ chi tiết đơn đã giao." />
+        <Empty
+          text={
+            reviewer && onlyDisputes
+              ? "Không có khiếu nại đang chờ phân xử."
+              : "Chưa có hồ sơ đổi trả. Khách tạo yêu cầu từ chi tiết đơn đã giao."
+          }
+        />
       )}
       {rows?.map((item) => (
         <Card key={item.id}>

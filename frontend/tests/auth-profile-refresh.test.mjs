@@ -9,12 +9,13 @@ test('same-account name refresh notifies UI once and ignores an obsolete session
   const events = [];
   let options;
   let next = { id: 'customer', fullName: 'Nguyễn Minh An', role: 'CUSTOMER' };
-  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   globalThis.window = { dispatchEvent: event => events.push(event.type) };
   globalThis.__profileRefreshApi = { get: async (_url, config) => { options = config; return { data: next }; } };
   try {
     const source = readFileSync(new URL('../src/services/auth.service.ts', import.meta.url), 'utf8')
-      .replace("import api from './api';", 'const api = globalThis.__profileRefreshApi;')
+      .replace("import { clearCheckoutAddressCaches } from '../utils/checkout-address-cache';", "const clearCheckoutAddressCaches = () => {};")
+  .replace("import api from './api';", 'const api = globalThis.__profileRefreshApi;')
       .replace("import { productLoginUrl } from '../utils/login-return';", 'const productLoginUrl = value => value;');
     const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
     const { authService } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);

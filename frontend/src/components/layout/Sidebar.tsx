@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
@@ -16,6 +17,13 @@ export interface SidebarProps {
   onLogout: () => void;
   className?: string;
 }
+
+// Module-level cache to eliminate redundant background polling on routine page switches
+let cachedPendingOrdersCount: number | null = null;
+let cachedPendingOrdersTime = 0;
+let cachedUnreadNotifs: { ORDER?: number; PROMOTION?: number; SYSTEM?: number } = {};
+let cachedUnreadNotifsTime = 0;
+registerPrivateCacheReset(() => { cachedPendingOrdersCount = null; cachedPendingOrdersTime = 0; cachedUnreadNotifs = {}; cachedUnreadNotifsTime = 0; });
 
 export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();
@@ -65,25 +73,38 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
 
   useEffect(() => {
     let mounted = true;
+    const now = Date.now();
     if (role === 'SHOP_MANAGER') {
-      orderService
-        .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+      if (cachedPendingOrdersCount !== null && now - cachedPendingOrdersTime < 30000) {
+        setPendingOrdersCount(cachedPendingOrdersCount);
+      } else {
+        orderService
+          .getMyStoreOrders({ status: 'PENDING', limit: 1 })
+          .then((res) => {
+            if (mounted && res?.pagination?.total !== undefined) {
+              cachedPendingOrdersCount = res.pagination.total;
+              cachedPendingOrdersTime = Date.now();
+              setPendingOrdersCount(res.pagination.total);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    if (Object.keys(cachedUnreadNotifs).length > 0 && now - cachedUnreadNotifsTime < 30000) {
+      setUnreadNotifs(cachedUnreadNotifs);
+    } else {
+      notificationsService
+        .getUnreadDetails()
         .then((res) => {
-          if (mounted && res?.pagination?.total !== undefined) {
-            setPendingOrdersCount(res.pagination.total);
+          if (mounted && res?.categoryUnreadCounts) {
+            cachedUnreadNotifs = res.categoryUnreadCounts;
+            cachedUnreadNotifsTime = Date.now();
+            setUnreadNotifs(res.categoryUnreadCounts);
           }
         })
         .catch(() => {});
     }
-
-    notificationsService
-      .getUnreadDetails()
-      .then((res) => {
-        if (mounted && res?.categoryUnreadCounts) {
-          setUnreadNotifs(res.categoryUnreadCounts);
-        }
-      })
-      .catch(() => {});
 
     const handleOrderUpdate = () => {
       if (role === 'SHOP_MANAGER') {
@@ -390,14 +411,12 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
           const active = isLinkActive(item.path);
           const Icon = item.icon;
           const badge = getItemBadge(item.path, item.badge);
-          const isNewSection = item.section && (index === 0 || navConfig.items[index - 1]?.section !== item.section);
+          const isNewGroup = index > 0 && item.group !== undefined && navConfig.items[index - 1]?.group !== item.group;
 
           return (
             <div key={item.path} className="flex flex-col">
-              {isNewSection && (
-                <div className={`px-3 text-[10px] font-bold uppercase tracking-wider text-[#8C6226] select-none ${index === 0 ? 'pt-1 pb-1' : 'pt-2.5 pb-1 border-t border-[#EAE4D7]/50 mt-1'}`}>
-                  {item.section}
-                </div>
+              {isNewGroup && (
+                <div className="my-1.5 h-px bg-[#EAE4D7]/40 mx-2" aria-hidden="true" />
               )}
               <Link
                 to={item.path}

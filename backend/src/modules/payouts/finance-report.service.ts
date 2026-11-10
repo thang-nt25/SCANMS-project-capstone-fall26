@@ -39,6 +39,15 @@ export class FinanceReportService {
     ] = await Promise.all([
       this.prisma.order.findMany({
         where: { storeId, status: 'COMPLETED' },
+        select: {
+          id: true,
+          externalOrderSn: true,
+          subtotalAmount: true,
+          finalAmount: true,
+          couponDiscountAmount: true,
+          discountAmount: true,
+          refundedAmount: true,
+        },
       }),
       this.prisma.commission.aggregate({
         where: { order: { storeId, status: 'COMPLETED' }, status: { not: 'REVERSED' } },
@@ -463,7 +472,7 @@ export class FinanceReportService {
                 deliveredAt: true,
                 orderItems: { select: { quantity: true, unitPrice: true, appliedCommissionRate: true, product: { select: { title: true, imageUrl: true } }, variant: { select: { name: true } } } },
               store: { select: { name: true } },
-              returnRequest: { select: { status: true } },
+               returnRequests: { select: { status: true }, orderBy: { submittedAt: 'desc' }, take: 1 },
               rawPayload: true,
             },
           },
@@ -477,12 +486,13 @@ export class FinanceReportService {
     ]);
     return {
       items: items.map((item) => {
-        const { rawPayload, ...order } = item.order;
+        const { rawPayload, returnRequests, ...order } = item.order;
         const risk = rawPayload as Prisma.JsonObject | null;
         return {
           ...item,
           order: {
             ...order,
+            returnRequest: returnRequests[0] ?? null,
             shopConfirmedAt: typeof risk?.shopConfirmedAt === 'string' ? risk.shopConfirmedAt : null,
             handedToShippingAt: typeof risk?.ghnShippedAt === 'string' ? risk.ghnShippedAt : null,
             referralReviewRequired: risk?.selfReferralReviewRequired === true,

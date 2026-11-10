@@ -108,12 +108,18 @@ export const OrderSchema = z.object({
   status: z.string(),
   finalAmount: MoneySchema,
   totalAmount: MoneySchema.nullish(),
+  subtotalAmount: MoneySchema.nullish(),
   shippingFee: MoneySchema.nullish(),
   discountAmount: MoneySchema.nullish(),
   paymentMethod: z.string().nullish(),
   paymentStatus: z.string().nullish(),
   createdAt: z.string(),
   customerName: z.string().nullish(),
+  customerPhone: z.string().nullish(),
+  customerEmail: z.string().nullish(),
+  deliveredAt: z.string().nullish(),
+  completedAt: z.string().nullish(),
+  couponCodeSnapshot: z.string().nullish(),
   trackingNumber: z.string().nullish(),
   carrierName: z.string().nullish(),
   ghnEnvironment: z.enum(["LIVE", "TEST"]).nullish(),
@@ -125,6 +131,7 @@ export const OrderSchema = z.object({
       ghnEnvironment: z.enum(["LIVE", "TEST"]).nullish(),
       paymentMethod: z.string().nullish(),
       paymentStatus: z.string().nullish(),
+      orderNotes: z.string().nullish(),
     })
     .nullish(),
   shippingAddress: z.string().nullish(),
@@ -143,6 +150,8 @@ export const OrderSchema = z.object({
         imageUrl: z.string().nullish(),
         quantity: z.number(),
         unitPrice: MoneySchema.optional(),
+        variantName: z.string().nullish(),
+        variantId: z.string().nullish(),
       }),
     )
     .optional(),
@@ -153,6 +162,13 @@ export const OrderSchema = z.object({
         quantity: z.number(),
         productId: z.string().optional(),
         unitPrice: MoneySchema.optional(),
+        variant: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            sku: z.string().nullish(),
+          })
+          .nullish(),
         product: z
           .object({
             id: z.string().optional(),
@@ -295,6 +311,8 @@ export const statusLabels: Record<string, string> = {
   APPROVED: "Đã duyệt",
   REJECTED: "Từ chối",
   PENDING: "Chờ xử lý",
+  PENDING_APPROVAL: "Chờ Shop duyệt",
+  DELETED: "Đã xóa",
   SHIPPING: "Đang giao",
   DELIVERED: "Đã giao",
   COMPLETED: "Hoàn thành",

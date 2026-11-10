@@ -1,18 +1,165 @@
-import { CreditCard, QrCode, Wallet } from 'lucide-react';
+import { CreditCard, QrCode, Wallet, CheckCircle2 } from 'lucide-react';
 import { formatMoney } from '../../utils/marketplace.utils';
 
-export function CheckoutPaymentMethods({ method, onChange, balance, loading, total, payosAvailable }: {
-  method: 'WALLET' | 'PAYOS'; onChange: (value: 'WALLET' | 'PAYOS') => void;
-  balance: number; loading: boolean; total: number; payosAvailable: boolean | null;
+export function CheckoutPaymentMethods({
+  method,
+  onChange,
+  balance,
+  loading,
+  total,
+  payosAvailable,
+}: {
+  method: 'WALLET' | 'PAYOS';
+  onChange: (value: 'WALLET' | 'PAYOS') => void;
+  balance: number;
+  loading: boolean;
+  total: number;
+  payosAvailable: boolean | null;
 }) {
   return (
     <div className="checkout-payment-methods">
-      <header className="checkout-section-heading flex items-center justify-between flex-wrap gap-[10px_16px] min-w-0 p-[18px_24px] border-b border-b-[#EAE4D7] [&_h2]:[font-family:inherit]! [&_h2]:text-[16px] [&_h2]:font-[650] [&_h2]:leading-[1.5] [&_h2]:[font-style:inherit] [&_h2]:[font-variant:inherit] [&_h2]:[font-stretch:inherit] [&_h2]:flex [&_h2]:items-center [&_h2]:gap-[9px] [&_h2]:min-w-0 [&_h2]:m-0 [&_h2_>_svg]:shrink-0 [&_h2_>_svg]:text-[color:#B88E4F]! [@media_(max-width:639px)]:p-[16px] [@media_(max-width:639px)]:[&_h2]:text-[15px]"><h2 id="checkout-payment-title"><CreditCard size={19} aria-hidden="true" />Phương thức thanh toán</h2></header>
-      <fieldset className="checkout-payment-options grid grid-cols-[repeat(2,minmax(0,1fr))] gap-[14px] min-w-0 m-0 p-[22px_24px] border-0 [@media_(max-width:639px)]:grid-cols-[minmax(0,1fr)] [@media_(max-width:639px)]:p-[18px_16px]"><legend className="sr-only">Chọn phương thức thanh toán</legend>
-        <label className="checkout-payment-option flex items-start gap-[12px] min-w-0 p-[18px] border border-[#EAE4D7] rounded-[11px] bg-[color:#FFFFFF] cursor-pointer [&[data-selected='true']]:bg-[color:#FBF5EB] [&[data-selected='true']]:border-[#C59B58] [&_>_input]:shrink-0 [&_>_input]:w-[16px] [&_>_input]:h-[16px] [&_>_input]:m-[3px_0_0] [&_>_input]:accent-[#B88E4F] [@media_(max-width:639px)]:gap-[9px] [@media_(max-width:639px)]:p-[14px]" data-selected={method === 'WALLET'}><input type="radio" name="paymentMethod" value="WALLET" checked={method === 'WALLET'} onChange={() => onChange('WALLET')} /><span className="checkout-payment-option-icon grid place-items-center shrink-0 w-[30px] h-[30px] text-[color:#B88E4F]!"><Wallet size={21} aria-hidden="true" /></span><span className="checkout-payment-option-info flex flex-col gap-[6px] min-w-0 [&_>_strong]:text-[13px] [&_>_strong]:font-[600] [&_>_strong]:leading-[1.6] [&_>_span]:text-[color:#7D715E]! [&_>_span]:text-[11px] [&_>_span]:leading-[1.7] [&_>_span]:[overflow-wrap:anywhere] [&_.checkout-wallet-insufficient]:text-[color:#8A642C]!"><strong>Ví SCANMS</strong><span>Số dư khả dụng: {loading ? 'Đang tải…' : formatMoney(balance)}</span>{!loading && balance < total && <span className="checkout-wallet-insufficient">Cần thêm {formatMoney(total - balance)} để thanh toán bằng ví.</span>}</span></label>
-        <label className="checkout-payment-option flex items-start gap-[12px] min-w-0 p-[18px] border border-[#EAE4D7] rounded-[11px] bg-[color:#FFFFFF] cursor-pointer [&[data-selected='true']]:bg-[color:#FBF5EB] [&[data-selected='true']]:border-[#C59B58] [&_>_input]:shrink-0 [&_>_input]:w-[16px] [&_>_input]:h-[16px] [&_>_input]:m-[3px_0_0] [&_>_input]:accent-[#B88E4F] [@media_(max-width:639px)]:gap-[9px] [@media_(max-width:639px)]:p-[14px]" data-selected={method === 'PAYOS'}><input type="radio" name="paymentMethod" value="PAYOS" checked={method === 'PAYOS'} onChange={() => onChange('PAYOS')} /><span className="checkout-payment-option-icon grid place-items-center shrink-0 w-[30px] h-[30px] text-[color:#B88E4F]!"><QrCode size={21} aria-hidden="true" /></span><span className="checkout-payment-option-info flex flex-col gap-[6px] min-w-0 [&_>_strong]:text-[13px] [&_>_strong]:font-[600] [&_>_strong]:leading-[1.6] [&_>_span]:text-[color:#7D715E]! [&_>_span]:text-[11px] [&_>_span]:leading-[1.7] [&_>_span]:[overflow-wrap:anywhere] [&_.checkout-wallet-insufficient]:text-[color:#8A642C]!"><strong>Chuyển khoản PayOS</strong><span>Quét VietQR bằng ứng dụng ngân hàng. Tự động xác nhận khi nhận đủ tiền.</span></span></label>
+      <header className="checkout-section-heading flex items-center justify-between flex-wrap gap-2.5 p-4 sm:p-5 border-b border-[#EAE4D7] bg-white">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+            <CreditCard size={17} aria-hidden="true" />
+          </div>
+          <div>
+            <h2 id="checkout-payment-title" className="text-sm sm:text-base font-bold text-[#1A1612]">
+              Phương thức thanh toán
+            </h2>
+            <p className="text-[11px] text-[#7D715E]">Thanh toán trực tuyến bảo mật, xác nhận đơn tức thì</p>
+          </div>
+        </div>
+      </header>
+
+      <fieldset className="checkout-payment-options grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 sm:p-6 border-0">
+        <legend className="sr-only">Chọn phương thức thanh toán</legend>
+
+        {/* Option 1: Chuyển khoản VietQR / PayOS */}
+        <label
+          className={`checkout-payment-option relative flex items-start gap-3.5 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer ${
+            method === 'PAYOS'
+              ? 'border-2 border-[#C59B58] bg-gradient-to-br from-[#FFFDF9] via-[#FAF6EE] to-[#FFFBEB] shadow-[0_4px_16px_rgba(197,155,88,0.15)] ring-2 ring-[#C59B58]/20'
+              : 'border-[#EAE4D7] bg-white hover:border-[#EEDFC6] hover:bg-[#FAF8F5]'
+          }`}
+          data-selected={method === 'PAYOS'}
+        >
+          <input
+            type="radio"
+            name="paymentMethod"
+            value="PAYOS"
+            checked={method === 'PAYOS'}
+            onChange={() => onChange('PAYOS')}
+            className="sr-only"
+          />
+
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+              method === 'PAYOS'
+                ? 'bg-gradient-to-br from-[#D97706] to-[#C59B58] text-white shadow-xs'
+                : 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]'
+            }`}
+          >
+            <QrCode size={19} aria-hidden="true" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <strong className="text-xs sm:text-[13px] font-bold text-[#1A1612]">
+                Chuyển khoản VietQR (PayOS)
+              </strong>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-[#D97706] to-[#C59B58] text-white shadow-2xs">
+                Khuyên dùng · 24/7
+              </span>
+            </div>
+            <p className="text-[11px] text-[#7D715E] mt-1 leading-relaxed">
+              Quét mã QR bằng mọi App ngân hàng hoặc Ví điện tử. Tự động xác nhận sau 3 giây.
+            </p>
+          </div>
+
+          <div className="shrink-0 mt-0.5">
+            {method === 'PAYOS' ? (
+              <div className="w-5 h-5 rounded-full bg-[#C59B58] text-white flex items-center justify-center shadow-xs">
+                <CheckCircle2 size={13} className="stroke-[3]" />
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border border-[#D5CDBC] bg-white" />
+            )}
+          </div>
+        </label>
+
+        {/* Option 2: Ví SCANMS */}
+        <label
+          className={`checkout-payment-option relative flex items-start gap-3.5 p-4 sm:p-4.5 rounded-2xl border transition-all cursor-pointer ${
+            method === 'WALLET'
+              ? 'border-2 border-[#C59B58] bg-gradient-to-br from-[#FFFDF9] via-[#FAF6EE] to-[#FFFBEB] shadow-[0_4px_16px_rgba(197,155,88,0.15)] ring-2 ring-[#C59B58]/20'
+              : 'border-[#EAE4D7] bg-white hover:border-[#EEDFC6] hover:bg-[#FAF8F5]'
+          }`}
+          data-selected={method === 'WALLET'}
+        >
+          <input
+            type="radio"
+            name="paymentMethod"
+            value="WALLET"
+            checked={method === 'WALLET'}
+            onChange={() => onChange('WALLET')}
+            className="sr-only"
+          />
+
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+              method === 'WALLET'
+                ? 'bg-gradient-to-br from-[#D97706] to-[#C59B58] text-white shadow-xs'
+                : 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]'
+            }`}
+          >
+            <Wallet size={19} aria-hidden="true" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <strong className="text-xs sm:text-[13px] font-bold text-[#1A1612]">
+                Ví mua sắm SCANMS
+              </strong>
+              {!loading && balance >= total && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+                  Thanh toán 1 chạm
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#7D715E] mt-1 leading-relaxed">
+              Số dư khả dụng:{' '}
+              <strong className="text-[#1A1612] font-semibold">
+                {loading ? 'Đang tải…' : formatMoney(balance)}
+              </strong>
+            </p>
+            {!loading && balance < total && (
+              <p className="text-[11px] font-semibold text-[#B45309] mt-1">
+                Cần thêm {formatMoney(total - balance)} để thanh toán bằng ví.
+              </p>
+            )}
+          </div>
+
+          <div className="shrink-0 mt-0.5">
+            {method === 'WALLET' ? (
+              <div className="w-5 h-5 rounded-full bg-[#C59B58] text-white flex items-center justify-center shadow-xs">
+                <CheckCircle2 size={13} className="stroke-[3]" />
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border border-[#D5CDBC] bg-white" />
+            )}
+          </div>
+        </label>
       </fieldset>
-      {method === 'PAYOS' && payosAvailable === false && <p className="checkout-payment-notice m-[0_24px_18px] p-[12px] border border-[#EEDFC6] rounded-[8px] bg-[color:#FBF5EB] text-[color:#7D715E]! text-[12px] leading-[1.6] [@media_(max-width:639px)]:m-[0_16px_16px]" role="status">Chưa kết nối được PayOS. Vui lòng thử lại sau hoặc chọn Ví SCANMS.</p>}
+
+      {method === 'PAYOS' && payosAvailable === false && (
+        <p
+          className="checkout-payment-notice mx-4 sm:mx-6 mb-4 p-3 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B45309] text-xs leading-relaxed"
+          role="status"
+        >
+          Hệ thống PayOS đang bảo trì định kỳ. Quý khách vui lòng thử lại sau giây lát hoặc sử dụng Ví SCANMS.
+        </p>
+      )}
     </div>
   );
 }

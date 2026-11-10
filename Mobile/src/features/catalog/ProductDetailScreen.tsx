@@ -52,6 +52,7 @@ export function ProductDetailScreen({
     lock = useRef(false);
   const [cooperationNote, setCooperationNote] = useState(""),
     [cartOpen, setCartOpen] = useState(false),
+    [purchaseMode, setPurchaseMode] = useState<"CART" | "BUY_NOW">("CART"),
     [previewVariantId, setPreviewVariantId] = useState<string>(),
     [imageIndex, setImageIndex] = useState(0),
     [expanded, setExpanded] = useState(false),
@@ -213,6 +214,7 @@ export function ProductDetailScreen({
                   accessibilityLabel={`Chọn ${item.name}`}
                   onPress={() => {
                     setPreviewVariantId(item.id);
+                    setPurchaseMode("CART");
                     setCartOpen(true);
                   }}
                   style={styles.variantPreview}
@@ -281,7 +283,10 @@ export function ProductDetailScreen({
         {customer && (
           <Pressable
             accessibilityRole="button"
-            onPress={() => setCartOpen(true)}
+            onPress={() => {
+              setPurchaseMode("CART");
+              setCartOpen(true);
+            }}
             style={[styles.section, styles.option]}
           >
             <Icon name="grid" size={16} color={colors.strong} />
@@ -498,14 +503,15 @@ export function ProductDetailScreen({
           <Button
             title={
               customer
-                ? "Thêm vào giỏ hàng"
+                ? "Thêm giỏ hàng"
                 : shop
                   ? "Sửa sản phẩm & tồn kho"
                   : "Tạo link tiếp thị"
             }
+            secondary={customer}
             onPress={() =>
               customer
-                ? setCartOpen(true)
+                ? (setPurchaseMode("CART"), setCartOpen(true))
                 : navigation.navigate(
                     "Business",
                     shop
@@ -515,13 +521,44 @@ export function ProductDetailScreen({
             }
           />
         </View>
+        {customer && (
+          <View style={{ flex: 1 }}>
+            <Button
+              title="Mua ngay"
+              onPress={() => {
+                setPurchaseMode("BUY_NOW");
+                setCartOpen(true);
+              }}
+            />
+          </View>
+        )}
       </View>
       {cartOpen && (
-        <BottomSheet title="Chọn sản phẩm" close={() => setCartOpen(false)}>
+        <BottomSheet
+          title={
+            purchaseMode === "BUY_NOW"
+              ? "Mua ngay · Chọn sản phẩm"
+              : "Chọn sản phẩm"
+          }
+          close={() => setCartOpen(false)}
+        >
           <AddToCart
             product={product}
             initialVariantId={previewVariantId}
             onOpenCart={() => setCartOpen(false)}
+            onAdded={() => setCartOpen(false)}
+            onBuyNow={
+              purchaseMode === "BUY_NOW"
+                ? (line) => {
+                    setCartOpen(false);
+                    navigation.navigate("Checkout", {
+                      product: { ...product, store: store || product.store },
+                      variantId: line.variantId,
+                      quantity: line.quantity,
+                    });
+                  }
+                : undefined
+            }
           />
         </BottomSheet>
       )}
@@ -619,7 +656,7 @@ const styles = StyleSheet.create({
   bottom: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 8,
     padding: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.line,

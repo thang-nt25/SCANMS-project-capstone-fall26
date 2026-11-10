@@ -1,16 +1,14 @@
+import {
+  ExpandableRecord,
+  FilterTabs,
+  SectionTitle as Title,
+} from "../../components/RecordList";
 import { useState } from "react";
 import { Text } from "react-native";
 import { z } from "zod";
+import { Badge, Button, Caption, Screen } from "../../components/ui";
 import {
-  Badge,
-  Button,
-  Caption,
-  Card,
-  Screen,
-  Title,
-} from "../../components/ui";
-import {
-  CommandForm,
+  CompactCommandForm as CommandForm,
   QueryState,
   required,
   useResource,
@@ -36,18 +34,40 @@ const Incidents = z.array(
   }),
 );
 export function FraudScreen() {
-  const result = useResource("fraud", "/ai/fraud/incidents", Incidents),
+  const [status, setStatus] = useState("");
+  const result = useResource(
+      "fraud",
+      `/ai/fraud/incidents${status ? `?status=${status}` : ""}`,
+      Incidents,
+    ),
     [form, setForm] = useState<CommandFormSpec | null>(null);
   return (
-    <Screen scroll>
-      <Title>Giám sát rủi ro</Title>
+    <Screen scroll compact>
+      <FilterTabs
+        label="Trạng thái sự vụ"
+        value={status}
+        options={[
+          { value: "", label: "Tất cả" },
+          { value: "ACTIVE", label: "Cần xử lý" },
+          { value: "FROZEN", label: "Tạm giữ" },
+          { value: "RESOLVED", label: "Đã xử lý" },
+          { value: "DISMISSED", label: "Đã bác" },
+        ]}
+        onChange={setStatus}
+      />
       <QueryState
         loading={result.isLoading}
         error={result.error}
         retry={() => void result.refetch()}
       />
       {result.data?.map((item) => (
-        <Card key={item.id}>
+        <ExpandableRecord
+          key={item.id}
+          title={item.incidentCode}
+          subtitle={item.collaboratorName}
+          badge={`${item.riskLevel} · ${item.riskScore}/100`}
+          icon="alert-triangle"
+        >
           <Title>{item.incidentCode}</Title>
           <Caption>{item.collaboratorName}</Caption>
           <Badge>
@@ -92,7 +112,7 @@ export function FraudScreen() {
               })
             }
           />
-        </Card>
+        </ExpandableRecord>
       ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
     </Screen>

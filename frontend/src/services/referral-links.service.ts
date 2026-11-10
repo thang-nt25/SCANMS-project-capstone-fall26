@@ -1,4 +1,5 @@
 import api from './api';
+import { readDealPages, type DealPage } from '../utils/paged-deals';
 
 export interface EligibleProduct {
   id: string;
@@ -146,10 +147,16 @@ export const referralLinksService = {
     return res.data;
   },
 
+  async settleDeal(id: string): Promise<any> {
+    const res = await api.post(`/affiliate-deals/${id}/settle`);
+    return res.data;
+  },
+
   async getMyExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
-    const res: any = await api.get('/affiliate-deals/mine');
-    const payload = res?.data ?? res;
-    return Array.isArray(payload) ? payload : payload?.data || [];
+    return readDealPages(async (page, after) => {
+      const res: any = await api.get('/affiliate-deals/mine', { params: { page, after }, headers: { 'x-skip-cache': '1' } });
+      return (res?.data ?? res) as DealPage<ExclusiveDealProposal>;
+    });
   },
 
   async createExclusiveDeal(payload: {
@@ -167,9 +174,19 @@ export const referralLinksService = {
     return res?.data?.data || res?.data || res;
   },
 
+  async getCollaboratorDealProducts(collaboratorId: string, storeId?: string): Promise<any[]> {
+    const res: any = await api.get('/affiliate-deals/collaborator-products', {
+      params: { collaboratorId, ...(storeId ? { storeId } : {}) },
+      headers: { 'x-skip-cache': '1' },
+    });
+    const payload = res?.data ?? res;
+    return Array.isArray(payload) ? payload : payload?.data || [];
+  },
+
   async createShopDealOffer(payload: {
     collaboratorId: string;
-    productId: string;
+    productId?: string;
+    productIds?: string[];
     proposedCommissionRate: number;
     salesCommitment: string;
     targetOrders: number;
@@ -180,9 +197,10 @@ export const referralLinksService = {
   },
 
   async getShopExclusiveDeals(): Promise<ExclusiveDealProposal[]> {
-    const res: any = await api.get('/affiliate-deals/shop');
-    const payload = res?.data ?? res;
-    return Array.isArray(payload) ? payload : payload?.data || [];
+    return readDealPages(async (page, after) => {
+      const res: any = await api.get('/affiliate-deals/shop', { params: { page, after }, headers: { 'x-skip-cache': '1' } });
+      return (res?.data ?? res) as DealPage<ExclusiveDealProposal>;
+    });
   },
 
   async approveExclusiveDeal(id: string, voucher: { discountPercent: number; minimumOrderAmount: number; maximumDiscountAmount: number; usageLimitTotal: number; budgetTotal: number; validDays: number }) {

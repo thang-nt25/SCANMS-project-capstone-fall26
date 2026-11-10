@@ -22,7 +22,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ requiredWorkspace }) => {
       if (requiredWorkspace === 'kol') {
         toast.error('Tài khoản của bạn chưa kích hoạt quyền Đối tác KOL Tiếp Thị. Vui lòng hoàn tất đăng ký nâng cấp để truy cập.');
       } else if (requiredWorkspace === 'shop') {
-        toast.error('Tài khoản của bạn chưa kích hoạt quyền Chủ Gian Hàng. Vui lòng hoàn tất đăng ký mở shop để truy cập.');
+        toast.error('Tài khoản của bạn chưa được Admin bổ nhiệm quản lý cửa hàng.');
       } else if (requiredWorkspace === 'admin') {
         toast.error('Bạn không có quyền truy cập khu vực Quản Trị Hệ Thống SCANMS.');
       }

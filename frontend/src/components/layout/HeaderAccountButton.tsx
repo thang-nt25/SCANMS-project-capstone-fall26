@@ -8,6 +8,7 @@ interface HeaderAccountButtonProps {
   expanded: boolean;
   menuId: string;
   detail?: string;
+  darkMode?: boolean;
   onClick: () => void;
 }
 
@@ -19,7 +20,7 @@ const roles = {
   SYSTEM_ADMIN: { label: 'Admin', icon: Shield },
 };
 
-export function HeaderAccountButton({ user, role, expanded, menuId, detail, onClick }: HeaderAccountButtonProps) {
+export function HeaderAccountButton({ user, role, expanded, menuId, detail, darkMode = false, onClick }: HeaderAccountButtonProps) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const { label, icon: RoleIcon } = roles[role];
   const fullName = user?.fullName || user?.email || label;
@@ -41,7 +42,7 @@ export function HeaderAccountButton({ user, role, expanded, menuId, detail, onCl
         if (event.key === 'Escape' && expanded) onClick();
       }}
     >
-      <span className="grid place-items-center shrink-0 w-[30px] h-[30px] overflow-hidden border border-[#EAE4D7] rounded-full bg-[#FBF5EB] text-[#B88E4F] text-[12px] font-[600]" aria-hidden="true">
+      <span className={`grid place-items-center shrink-0 w-[30px] h-[30px] overflow-hidden border rounded-full text-[12px] font-[600] ${darkMode ? "border-[#443828] bg-[#382F22] text-[#DEBE85]" : "border-[#EAE4D7] bg-[#FBF5EB] text-[#B88E4F]"}`} aria-hidden="true">
         {avatarUrl && failedAvatar !== avatarUrl ? (
           <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setFailedAvatar(avatarUrl)} />
         ) : (
@@ -49,9 +50,9 @@ export function HeaderAccountButton({ user, role, expanded, menuId, detail, onCl
         )}
       </span>
       <span className="flex min-w-0 flex-col items-start gap-[1px] max-[639px]:hidden">
-        <strong className="block w-full max-w-full truncate text-[12px] font-[600] text-[#1A1612] leading-[15px]">{name}</strong>
-        <span className="inline-flex items-center gap-[3px] text-[#7D715E] text-[10px] font-[500] leading-[14px] whitespace-nowrap">
-          <RoleIcon className="w-[10px] h-[10px] shrink-0" aria-hidden="true" />
+        <strong className={`block w-full max-w-full truncate text-[12px] font-[600] leading-[15px] ${darkMode ? "text-[#FAF8F5]" : "text-[#1A1612]"}`}>{name}</strong>
+        <span className={`inline-flex items-center gap-[3px] text-[10px] font-[500] leading-[14px] whitespace-nowrap ${darkMode ? "text-[#C4B499]" : "text-[#7D715E]"}`}>
+          <RoleIcon className={`w-[10px] h-[10px] shrink-0 ${darkMode ? "text-[#DEBE85]" : "text-[#B88E4F]"}`} aria-hidden="true" />
           <span>{label}</span>
         </span>
       </span>

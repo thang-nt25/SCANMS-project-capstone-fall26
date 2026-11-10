@@ -30,6 +30,7 @@ import {
 } from "../common/shared";
 import { validateInput } from "../../utils/validate-input";
 import { isSandboxPayout } from "../payouts/gateway-contract";
+import { WalletTopUpPanel } from "./WalletTopUpPanel";
 const Wallet = z.object({
   availableBalance: amount,
   pendingBalance: amount,
@@ -132,6 +133,7 @@ export function WalletScreen() {
   return (
     <Screen scroll>
       {!koc && <Title>Ví SCANMS</Title>}
+      {user.role === "CUSTOMER" && <WalletTopUpPanel />}
       {koc && <View style={{ flexDirection: "row", gap: 8 }}>{([["summary", "Tổng quan"], ["withdraw", "Rút tiền"], ["history", "Lịch sử"]] as const).map(([key, title]) => <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={{ flex: 1, minHeight: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: tab === key ? colors.strong : colors.line, borderRadius: 12, backgroundColor: tab === key ? colors.soft : colors.white }}><Text style={{ fontSize: 12, fontWeight: "600", color: tab === key ? colors.ink : colors.muted }}>{title}</Text></Pressable>)}</View>}
       <QueryState
         loading={wallet.isLoading}

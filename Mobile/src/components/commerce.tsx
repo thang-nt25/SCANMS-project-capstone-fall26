@@ -126,12 +126,14 @@ export function MenuRow({
   detail,
   onPress,
   last = false,
+  compact = false,
 }: {
   icon: IconName;
   title: string;
   detail?: string;
   onPress(): void;
   last?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -139,6 +141,7 @@ export function MenuRow({
       onPress={onPress}
       style={({ pressed }) => [
         c.menuRow,
+        compact && { minHeight: 46, paddingHorizontal: 12, gap: 8 },
         !last && {
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderBottomColor: colors.line,
@@ -149,7 +152,7 @@ export function MenuRow({
       <View style={c.menuIcon}>
         <Icon name={icon} size={19} color={colors.strong} />
       </View>
-      <Text style={c.menuText}>{title}</Text>
+      <Text style={[c.menuText, compact && { fontSize: 13 }]}>{title}</Text>
       {detail && <Text style={c.small}>{detail}</Text>}
       <Icon name="chevron-right" size={17} color={colors.muted} />
     </Pressable>

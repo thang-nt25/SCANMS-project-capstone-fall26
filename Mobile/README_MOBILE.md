@@ -4,6 +4,8 @@
 
 ## Phạm vi hiện tại
 
+Đồng bộ `dev` ngày 10/11: giữ các màn Mobile và menu riêng từng role đã chỉnh trên `tuan`; ghép checkout, nạp ví Customer qua payOS, màn vận hành và chính sách chỉ dùng mã KOL. KOL vẫn dùng thẻ mã/đề xuất đã thiết kế, Shop quản lý mã KOL qua màn theo trạng thái. Xem thêm [luồng checkout](docs/BUY_NOW_2026-11-05.md) và [nạp ví](docs/WALLET_TOPUP_2026-11-04.md). Build và kiểm thử tự động không thay thế nghiệm thu trên thiết bị thật.
+
 Đợt rà soát và bổ sung ngày 04/11: [NATIVE_AUDIT_2026-11-04.md](docs/NATIVE_AUDIT_2026-11-04.md). Có thêm duyệt API/đối soát payout, nhãn Sandbox trong ví KOL, báo cáo thuế theo tháng, sổ cái và Escrow cho vận hành; cấu hình EAS preview APK. Chưa nghiệm thu đầy đủ trên điện thoại thật.
 
 **Giao diện mới 04/11:** Khách mua hàng dùng Trang chủ / Khám phá / Đơn mua / Tin nhắn / Tôi. Các tiện ích ví, voucher, địa chỉ, hồ sơ và đổi trả ở mục Tôi; giỏ nằm trên thanh đầu trang. Các role đối tác/vận hành dùng tab Công cụ. Xem [thiết kế và kịch bản nghiệm thu mới](docs/MARKETPLACE_UI_2026-11-04.md).
@@ -18,7 +20,7 @@ Menu **Nghiệp vụ** tập hợp các màn được phép theo role. Hướng 
 | SYSTEM_MANAGER | Duyệt sản phẩm/KYC, trọng tài hàng mẫu/đổi trả, MAP/promotion, review/report, payout, dashboard/audit/fraud/link/coupon |
 | SYSTEM_ADMIN | Nghiệp vụ vận hành, ngoại lệ VIP, nhân sự và phân công gian hàng, tổng quan toàn sàn |
 
-Thanh toán/checkout và livestream mobile vẫn ở giai đoạn sau. Chưa port toàn bộ web: còn trình thiết kế ma trận SKU, onboarding/nâng role tự phục vụ, analytics chuyên sâu, App Links và push khi app đóng. Native mới cần nghiệm thu mutation nhiều role; không đánh dấu E2E PASS chỉ từ build/test source.
+Checkout đã có luồng native được ghép từ dev; livestream và một số phần như ma trận SKU, analytics chuyên sâu, App Links và push khi app đóng vẫn cần nghiệm thu/bổ sung. Không đánh dấu E2E PASS chỉ từ build/test source.
 
 ## Chạy từ Android Studio / Emulator
 

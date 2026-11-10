@@ -1,3 +1,4 @@
+import { clearCheckoutAddressCaches } from '../utils/checkout-address-cache';
 import api from './api';
 import { productLoginUrl } from '../utils/login-return';
 
@@ -142,6 +143,7 @@ const nextProfile = JSON.stringify(user);
   },
 
   logout(returnTo?: string) {
+    clearCheckoutAddressCaches();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');
@@ -238,13 +240,14 @@ const nextProfile = JSON.stringify(user);
     const user = this.getCurrentUser();
     if (!user) return 'customer';
 
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    if (currentPath.startsWith('/merchant') || currentPath.startsWith('/shop')) return 'shop';
-    if (currentPath.startsWith('/collaborator')) return 'kol';
-    if (currentPath.startsWith('/admin')) return 'admin';
-    if (currentPath.startsWith('/customer')) return 'customer';
-
     const availableWorkspaces = this.getUserAvailableWorkspaces(user).map((w) => w.key);
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    // Route-based priority: Only if the user actually has permission for that workspace
+    if (currentPath.startsWith('/merchant') && availableWorkspaces.includes('shop')) return 'shop';
+    if (currentPath.startsWith('/collaborator') && availableWorkspaces.includes('kol')) return 'kol';
+    if (currentPath.startsWith('/admin') && availableWorkspaces.includes('admin')) return 'admin';
+    if (currentPath.startsWith('/customer') || currentPath.startsWith('/shop') || currentPath.startsWith('/marketplace')) return 'customer';
 
     const stored = localStorage.getItem('scanms-active-workspace') as any;
     if (stored && availableWorkspaces.includes(stored)) {

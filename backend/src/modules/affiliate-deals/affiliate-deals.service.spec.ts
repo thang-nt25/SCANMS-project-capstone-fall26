@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { AffiliateDealsService } from './affiliate-deals.service';
+import { couponTerms } from './exclusive-deal-activation';
 
 describe('AffiliateDealsService', () => {
   const collaboratorId = '11111111-1111-4111-8111-111111111111';
@@ -44,12 +45,14 @@ describe('AffiliateDealsService', () => {
       product: {
         findUnique: productFindMock,
         findFirst: productFindMock,
+        findMany: jest.fn(async () => { const p = await productFindMock(); return p ? [p] : []; }),
       },
       collaboratorProfile: {
         findUnique: jest.fn().mockResolvedValue({ socialLinksJson: {} }),
       },
       exclusiveDealProposal: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
@@ -530,6 +533,8 @@ describe('AffiliateDealsService', () => {
           collaboratorId,
           storeId,
           productId,
+          initiatedById: shopOwnerId,
+          offerTerms: expect.objectContaining({ discountPercent: 5 }),
           proposedCommissionRate: expect.anything(),
         }),
       }),
@@ -539,6 +544,23 @@ describe('AffiliateDealsService', () => {
       expect.objectContaining({ id: 'message-shop-offer' }),
       collaboratorId,
     );
+  });
+
+  it('shows the recipient a legacy Shop offer with default coupon terms', async () => {
+    prisma.exclusiveDealProposal.findUnique.mockResolvedValue({
+      id: proposalId,
+      status: 'PENDING',
+      collaboratorId,
+      storeId,
+      initiatedById: shopOwnerId,
+      offerTerms: null,
+      store: { isDeleted: false },
+      referralLink: null,
+    });
+    const state = await service.getProposalState(proposalId, collaboratorId, 'COLLABORATOR' as any);
+    expect(state.initiatorRole).toBe('SHOP_MANAGER');
+    expect(state.couponTerms).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
+    expect(couponTerms({})).toMatchObject({ discountPercent: 5, usageLimitTotal: 20 });
   });
 
   describe('store staff access', () => {

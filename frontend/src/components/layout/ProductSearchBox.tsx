@@ -11,7 +11,7 @@ interface Suggestion {
 }
 interface Props {
   value: string; onChange: (value: string) => void; onSearch: (value: string) => void;
-  onClear: () => void; onFilter?: () => void; className?: string;
+  onClear: () => void; onFilter?: () => void; className?: string; darkMode?: boolean;
 }
 
 // Public suggestions only; short TTL keeps prices/availability reasonably fresh.
@@ -20,7 +20,7 @@ const CACHE_TTL = 30_000;
 const CACHE_LIMIT = 40;
 const smallButtonClass = 'inline-flex min-h-8 min-w-[30px] shrink-0 cursor-pointer items-center justify-center rounded text-[#7D715E] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#C59B58]';
 
-export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter, className = '' }: Props) {
+export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter, className = '', darkMode = false }: Props) {
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -84,12 +84,13 @@ export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter,
   return <div ref={root} className={`product-search relative min-w-0 ${className}`} onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
   }}>
-    <form onSubmit={submit} className="product-search-form flex w-full items-center gap-1 rounded border border-[#EAE4D7] bg-white p-[3px] focus-within:border-[#C59B58]" role="search">
+    <form onSubmit={submit} className="flex items-center h-[54px] bg-[#fffdf9] border border-[#e5d3b9] rounded-full py-[5px] pr-2 pl-5 shadow-[0_8px_24px_rgba(82,53,20,0.08)] transition-colors focus-within:border-[#b8862f] w-full" role="search">
+      <Search size={17} className="product-search-lead-icon text-[#7D715E] shrink-0 ml-1" aria-hidden="true" />
       <input ref={input} type="search" role="combobox" autoComplete="off" maxLength={80}
         aria-label="Tìm kiếm sản phẩm" aria-autocomplete="list" aria-expanded={visible}
         aria-controls={visible ? listId : undefined} aria-activedescendant={visible && active >= 0 ? `${listId}-${active}` : undefined}
         placeholder="Tìm kiếm sản phẩm, thương hiệu..." value={value}
-        className="min-w-0 w-full flex-1 border-0 bg-transparent px-2.5 py-[7px] text-[13px] leading-normal text-[#1A1612] outline-none placeholder:text-[#7D715E] [&::-webkit-search-cancel-button]:appearance-none max-[480px]:px-[7px] max-[480px]:text-[12px]"
+        className={`min-w-0 w-full flex-1 border-0 bg-transparent px-2.5 py-[7px] text-[13px] leading-normal outline-none [&::-webkit-search-cancel-button]:appearance-none max-[480px]:px-[7px] max-[480px]:text-[12px] ${darkMode ? "text-[#FAF8F5] placeholder:text-[#A89F91]" : "text-[#1A1612] placeholder:text-[#7D715E]"}`}
         onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
         onChange={event => { onChange(event.target.value); setOpen(true); setActive(-1); }}
         onCompositionStart={() => { composing.current = true; }}
@@ -112,7 +113,7 @@ export function ProductSearchBox({ value, onChange, onSearch, onClear, onFilter,
         onChange(''); onClear(); setOpen(false); setActive(-1); input.current?.focus();
       }}><X size={15} /></button>}
       {onFilter && <button type="button" className={`product-search-filter ${smallButtonClass}`} onClick={onFilter} aria-label="Bộ lọc"><SlidersHorizontal size={15} /></button>}
-      <button type="submit" className="product-search-submit inline-flex h-9 w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] hover:border-[#C59B58] hover:bg-[#F3EFE6] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#C59B58] max-[480px]:h-8 max-[480px]:w-10" aria-label="Tìm kiếm" title="Tìm kiếm"><Search size={17} /></button>
+      <button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm" className="w-[42px] h-[42px] border-none rounded-full bg-[#b8862f] hover:bg-[#8b682f] text-white cursor-pointer flex items-center justify-center transition-all duration-200 shrink-0 hover:scale-105 ml-1"><Search size={18} color="#ffffff" /></button>
     </form>
     {visible && <div className="product-search-popup absolute inset-x-0 top-[calc(100%+6px)] z-[60] overflow-hidden rounded-xl border border-[#EAE4D7] bg-white text-left shadow-[0_12px_32px_rgb(35_29_21/14%)]">
       <div className="product-search-heading px-3.5 pt-3 pb-[7px] text-[11px] font-[650] text-[#7D715E]">{items.some(item => item.matchKind === 'related') ? 'Sản phẩm liên quan' : 'Sản phẩm gợi ý'}</div>

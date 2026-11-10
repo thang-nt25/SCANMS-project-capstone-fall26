@@ -121,7 +121,7 @@ export function MarketplaceServices({
         >
           <Icon name="gift" size={22} color={colors.strong} />
           <View style={{ gap: 4, flex: 1 }}>
-            <Text style={styles.utilityTitle}>Kho voucher</Text>
+            <Text style={styles.utilityTitle}>Mã ưu đãi KOL</Text>
             <Text style={styles.utilityDetail}>Khám phá ưu đãi</Text>
           </View>
         </Pressable>
@@ -147,96 +147,6 @@ export function MarketplaceServices({
           </Pressable>
         ))}
       </ScrollView>
-    </View>
-  );
-}
-const Coupon = z.object({
-  id: z.string(),
-  code: z.string().optional(),
-  displayCode: z.string().optional(),
-  discountType: z.string(),
-  discountValue: amount.nullish(),
-  minimumOrderAmount: amount.nullish(),
-  maximumDiscountAmount: amount.nullish(),
-  expiresAt: z.string().nullish(),
-});
-export function MarketplacePromotions({
-  openCoupons,
-  browse,
-}: {
-  openCoupons(): void;
-  browse(): void;
-}) {
-  const coupons = useResource(
-    "home-coupon-summary",
-    "/coupons/available",
-    z.array(Coupon),
-  );
-  const available =
-    coupons.data
-      ?.filter(
-        (item) =>
-          Number(item.discountValue) > 0 &&
-          (!item.expiresAt || Date.parse(item.expiresAt) > Date.now()),
-      )
-      .slice(0, 2) || [];
-  return (
-    <View style={styles.promotion}>
-      <View style={styles.promoHeading}>
-        <Icon name="tag" size={14} color={colors.strong} />
-        <Text style={styles.promoTitle}>ƯU ĐÃI TỪ CÁC GIAN HÀNG</Text>
-      </View>
-      <View style={styles.tickets}>
-        {available.length ? (
-          available.map((item) => (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              onPress={openCoupons}
-              style={styles.ticket}
-            >
-              <Icon name="gift" size={20} color={colors.strong} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.ticketTitle}>
-                  {item.discountType === "PERCENTAGE"
-                    ? `Giảm ${Number(item.discountValue)}%`
-                    : `Giảm ${money(item.discountValue)}`}
-                </Text>
-                <Text numberOfLines={1} style={styles.ticketDetail}>
-                  {Number(item.minimumOrderAmount) > 0
-                    ? `Đơn từ ${money(item.minimumOrderAmount)}`
-                    : "Xem điều kiện áp dụng"}
-                </Text>
-              </View>
-            </Pressable>
-          ))
-        ) : (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              onPress={openCoupons}
-              style={styles.ticket}
-            >
-              <Icon name="gift" size={24} color={colors.strong} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.ticketTitle}>Voucher Shop</Text>
-                <Text style={styles.ticketDetail}>Khám phá kho ưu đãi</Text>
-              </View>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={browse}
-              style={styles.ticket}
-            >
-              <Icon name="shopping-bag" size={24} color={colors.strong} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.ticketTitle}>Hàng mới</Text>
-                <Text style={styles.ticketDetail}>Khám phá sản phẩm</Text>
-              </View>
-            </Pressable>
-          </>
-        )}
-      </View>
     </View>
   );
 }
@@ -317,28 +227,4 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  promotion: { backgroundColor: colors.soft, padding: 12, gap: 10 },
-  promoHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
-  promoTitle: {
-    color: colors.strong,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  tickets: { flexDirection: "row", gap: 8 },
-  ticket: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    minHeight: 63,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: colors.brand,
-    borderRadius: 8,
-    padding: 10,
-    backgroundColor: colors.white,
-  },
-  ticketTitle: { fontSize: 15, fontWeight: "800", color: colors.strong },
-  ticketDetail: { fontSize: 9, color: colors.muted, lineHeight: 13 },
 });

@@ -32,8 +32,8 @@ export function StatCard({
         className
       )}
     >
-      <div className="flex justify-between items-center gap-2">
-        <span className="text-xs font-bold text-[#7D715E] truncate" title={title}>
+      <div className="flex justify-between items-start gap-2">
+        <span className="min-w-0 text-xs font-bold leading-snug text-[#7D715E] line-clamp-2" title={title}>
           {title}
         </span>
         {icon && (

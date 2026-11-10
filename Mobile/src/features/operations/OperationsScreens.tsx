@@ -1,5 +1,13 @@
+import {
+  ExpandableRecord,
+  FilterTabs,
+  SearchToolbar,
+  InfoLine as DetailLine,
+  SectionTitle as Title,
+} from "../../components/RecordList";
+import { CompactEvidence as Evidence } from "../common/CompactEvidence";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
 import { z } from "zod";
 import {
   Badge,
@@ -7,16 +15,12 @@ import {
   Caption,
   Card,
   Empty,
-  Field,
   PageControls,
   Screen,
-  Title,
 } from "../../components/ui";
 import { money, statusText } from "../../types/contracts";
 import {
-  CommandForm,
-  DetailLine,
-  Evidence,
+  CompactCommandForm as CommandForm,
   QueryState,
   required,
   useActor,
@@ -45,16 +49,7 @@ export function DashboardScreen() {
   return (
     <Screen scroll>
       <Title>{user.role === "COLLABORATOR" ? "Hiệu quả tiếp thị" : "Tổng quan hoạt động"}</Title>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        {[7, 30, 90].map((value) => (
-          <Button
-            key={value}
-            title={`${value} ngày`}
-            secondary={days !== value}
-            onPress={() => setDays(value)}
-          />
-        ))}
-      </View>
+      <FilterTabs label="Bộ lọc" value={String(days)} onChange={(value) => setDays(Number(value))} options={[7, 30, 90].map(value => ({ value: String(value), label: `${value} ngày` }))} />
       <QueryState
         loading={result.isLoading}
         error={result.error}
@@ -90,7 +85,7 @@ export function DashboardScreen() {
             />
           </Card>
           <Caption>
-            Chỉ số lấy từ backend theo phạm vi tài khoản và gian hàng.
+            Thống kê trong kỳ đã chọn theo phạm vi tài khoản và gian hàng.
           </Caption>
         </>
       )}
@@ -127,8 +122,7 @@ export function ReviewsScreen() {
     z.array(Review),
   );
   return (
-    <Screen scroll>
-      <Title>Đánh giá & phản hồi</Title>
+    <Screen scroll compact>
       <QueryState
         loading={result.isLoading}
         error={result.error}
@@ -136,8 +130,15 @@ export function ReviewsScreen() {
       />
       {result.data?.length === 0 && <Empty />}
       {result.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.product.title}</Title>
+        <ExpandableRecord
+          key={item.id}
+          title={item.product.title}
+          subtitle={`${item.customerName || "Khách hàng"} · ${item.rating} ★`}
+          badge={statusText(
+            item.status || (item.isApproved ? "APPROVED" : "PENDING"),
+          )}
+          icon="star"
+        >
           <Caption>
             {item.customerName} · {item.rating} ★
           </Caption>
@@ -280,7 +281,7 @@ export function ReviewsScreen() {
               }
             />
           )}
-        </Card>
+        </ExpandableRecord>
       ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
     </Screen>
@@ -309,14 +310,12 @@ export function AuditScreen() {
     Audit,
   );
   return (
-    <Screen scroll>
-      <Title>Nhật ký vận hành</Title>
-      <Field
-        label="Tìm nhật ký"
+    <Screen scroll compact>
+      <SearchToolbar
         value={search}
-        onChangeText={setSearch}
-        returnKeyType="search"
-        onSubmitEditing={() => {
+        onChange={setSearch}
+        placeholder="Tìm nhật ký…"
+        onSubmit={() => {
           setKeyword(search.trim());
           setPage(1);
         }}
@@ -328,15 +327,20 @@ export function AuditScreen() {
       />
       {result.data?.items.length === 0 && <Empty />}
       {result.data?.items.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.actionNameVi}</Title>
+        <ExpandableRecord
+          key={item.id}
+          title={item.actionNameVi}
+          subtitle={`${item.actor?.name || "Hệ thống"} · ${new Date(item.createdAt).toLocaleString("vi-VN")}`}
+          badge={item.severity}
+          icon="file-text"
+        >
           <Badge>{item.severity}</Badge>
           <Text>{item.description}</Text>
           <Caption>
             {item.actor?.name} ·{" "}
             {new Date(item.createdAt).toLocaleString("vi-VN")}
           </Caption>
-        </Card>
+        </ExpandableRecord>
       ))}
       <PageControls
         page={page}

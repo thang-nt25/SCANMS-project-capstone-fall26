@@ -337,7 +337,7 @@ export default function SearchPage() {
             const origNum = Number(item.originalPrice) || 0;
 
             let badge = '';
-            if (rawRate > 0) badge = `Hoa hồng ${rawRate}%`;
+            if (rawRate > 0) badge = `Thù lao ${rawRate}%`;
             else if (item.stockQuantity > 0) badge = 'Sẵn hàng';
 
             const resolvedBrand = item.store?.name || item.brand || 'Gian hàng đối tác';
@@ -730,7 +730,7 @@ export default function SearchPage() {
             setOnlyHasCommission(event.target.checked);
             updateUrlParams({ commission: event.target.checked ? 'true' : null });
           }} className="h-3.5 w-3.5 shrink-0 accent-[#C59B58] focus-visible:outline-[#C59B58]" />
-          <span className={onlyHasCommission ? 'font-bold text-[#B88E4F]' : ''}>Có hoa hồng CTV/KOL</span>
+          <span className={onlyHasCommission ? 'font-bold text-[#B88E4F]' : ''}>Có thù lao CTV/KOL</span>
         </label>}
       </div>
 
@@ -1045,7 +1045,7 @@ export default function SearchPage() {
 
                 {commissionFilterActive && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#EAE4D7] text-[#1A1612] font-medium">
-                    <strong>Có hoa hồng CTV</strong>
+                    <strong>Có thù lao CTV</strong>
                     <button
                       type="button"
                       onClick={() => {
@@ -1135,7 +1135,7 @@ export default function SearchPage() {
                       {/* Optional discreet Chat Shop for KOL partners */}
                       {isKolUser && (
                         <div className="space-y-1 px-2.5 pb-2 pt-2">
-                          {(p.commissionRate || 0) > 0 && <span className="block text-center text-[10px] font-semibold text-[#B88E4F]">Hoa hồng {p.commissionRate}%</span>}
+                          {(p.commissionRate || 0) > 0 && <span className="block text-center text-[10px] font-semibold text-[#B88E4F]">Thù lao {p.commissionRate}%</span>}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1144,7 +1144,7 @@ export default function SearchPage() {
                               handleContactShopFromCard(p);
                             }}
                             className="w-full py-1 px-2 rounded-md bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs active:scale-98"
-                            title="Nhắn tin trực tiếp với Shop về mẫu thử và chính sách hoa hồng"
+                            title="Nhắn tin trực tiếp với Shop về mẫu thử và chính sách thù lao"
                           >
                             <MessageSquare className="w-3 h-3 text-[#B88E4F]" />
                             <span>Liên hệ Shop</span>

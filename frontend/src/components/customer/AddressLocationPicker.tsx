@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Crosshair, Loader2, MapPin, RefreshCw, Search } from 'lucide-react';
 import L from 'leaflet';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { addressMapClassName, addressMarkerHtml } from './address-map.presentation';
 
 export interface AddressLocationResult {
   latitude: number;
@@ -58,7 +58,7 @@ function MapTiles({ revision, onError }: { revision: number; onError: (failed: b
 
 const markerIcon = L.divIcon({
   className: '',
-  html: '<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#C59B58;border:3px solid white;box-shadow:0 4px 14px rgba(35,29,21,.32)"><div style="width:9px;height:9px;border-radius:50%;background:white;margin:9px"></div></div>',
+  html: addressMarkerHtml,
   iconSize: [34, 34],
   iconAnchor: [17, 34],
 });
@@ -73,6 +73,7 @@ function MapInteraction({
   selected: boolean;
 }) {
   const map = useMap();
+  const [latitude, longitude] = position;
   useMapEvents({
     click(event) {
       onPick(event.latlng.lat, event.latlng.lng);
@@ -80,10 +81,10 @@ function MapInteraction({
   });
 
   useEffect(() => {
-    if (selected) map.setView(position, Math.max(map.getZoom(), 16), { animate: true });
+    if (selected) map.setView([latitude, longitude], Math.max(map.getZoom(), 16), { animate: true });
     const timer = window.setTimeout(() => map.invalidateSize(), 200);
     return () => window.clearTimeout(timer);
-  }, [map, position[0], position[1], selected]);
+  }, [map, latitude, longitude, selected]);
 
   useEffect(() => {
     const observer = new ResizeObserver(() => map.invalidateSize({ pan: false }));
@@ -366,7 +367,7 @@ export function AddressLocationPicker({ latitude, longitude, addressQuery, onCha
       </div>
 
       <div className="address-location-map relative h-56 border-y border-[#EEDFC6] bg-[#F3EFE6]">
-        <MapContainer center={position} zoom={draftPosition ? 16 : nationwide ? 5 : 11} scrollWheelZoom={false} className="h-full w-full" style={{ minHeight: 224, height: '100%', width: '100%', zIndex: 0 }} attributionControl>
+        <MapContainer center={position} zoom={draftPosition ? 16 : nationwide ? 5 : 11} scrollWheelZoom={false} className={addressMapClassName} attributionControl>
           <MapTiles key={tileRevision} revision={tileRevision} onError={setMapError} />
           <MapInteraction position={position} onPick={reverseGeocode} selected={Boolean(draftPosition)} />
           {draftPosition && (

@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { MerchantOrderDetailModal } from '../../components/orders/MerchantOrderDetailModal';
 import { ManualOrderPaymentModal } from '../../components/orders/ManualOrderPaymentModal';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -25,7 +26,6 @@ import {
   Clock,
   Users,
   Printer,
-  ChevronDown,
   MoreHorizontal,
   Info,
   Copy,
@@ -64,11 +64,9 @@ import { GhnTrackingTimeline } from '../../components/shipping/GhnTrackingTimeli
 import { CustomSelect } from "../../components/ui/CustomSelect";
 import { returnStatusLabel } from '../../utils/return-status.utils';
 import { isGeneratedGhnTestTrackingCode } from '../../utils/ghn-tracking-code';
+import { uploadService } from '../../services/upload.service';
 import { StatCard } from '../../components/ui/StatCard';
 import ShopSampleManagementTab from './ShopSampleManagementTab';
-import './ManualOrderDialog.css';
-import './OrdersManagementPage.css';
-import './ShippingDispatchModal.css';
 
 const ManualOrderAddressMap = lazy(() => import('../../components/customer/AddressLocationPicker').then(module => ({ default: module.AddressLocationPicker })));
 
@@ -139,6 +137,10 @@ function ProductThumbnail({
     </div>
   );
 }
+
+// In-memory orders snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
+let lastOrdersSnapshot: { orders: StoreOrderRecord[]; total: number; totalPages: number } | null = null;
+registerPrivateCacheReset(() => { lastOrdersSnapshot = null; });
 
 export default function OrdersManagementPage({
   initialAction,
@@ -219,12 +221,12 @@ export default function OrdersManagementPage({
   const [result, setResult] = useState<ExcelImportResult>();
 
   // Real store orders list state
-  const [orders, setOrders] = useState<StoreOrderRecord[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [orders, setOrders] = useState<StoreOrderRecord[]>(() => lastOrdersSnapshot?.orders || []);
+  const [ordersLoading, setOrdersLoading] = useState(() => !lastOrdersSnapshot);
   const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const lastFetchTimeRef = useRef<number>(Date.now());
-  const [ordersTotal, setOrdersTotal] = useState(0);
-  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [ordersTotal, setOrdersTotal] = useState(() => lastOrdersSnapshot?.total || 0);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(() => lastOrdersSnapshot?.totalPages || 1);
   const [ordersPage, setOrdersPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
@@ -326,12 +328,14 @@ export default function OrdersManagementPage({
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<StoreOrderRecord | null>(null);
   const [manualPaymentOrder, setManualPaymentOrder] = useState<Pick<CreatedManualOrder, 'id' | 'externalOrderSn'> | null>(null);
   const [returnResponse, setReturnResponse] = useState('');
+  const [returnEvidenceFiles, setReturnEvidenceFiles] = useState<File[]>([]);
   const [returnRejectionReason, setReturnRejectionReason] = useState<'' | 'EVIDENCE_MISMATCH' | 'PRODUCT_MISMATCH' | 'OUTSIDE_POLICY' | 'OTHER'>('');
   const [returnError, setReturnError] = useState('');
   const [respondingReturn, setRespondingReturn] = useState(false);
   useEffect(() => {
     setReturnResponse('');
     setReturnRejectionReason('');
+    setReturnEvidenceFiles([]);
     setReturnError('');
   }, [selectedOrderDetails?.id]);
   const [shippingModalOrder, setShippingModalOrder] = useState<StoreOrderRecord | null>(null);
@@ -406,7 +410,7 @@ export default function OrdersManagementPage({
       if (background && (document.hidden || ordersAutoRefreshPaused.current || Date.now() - lastStartedAt < 9000)) return;
       requestRunning = true;
       lastStartedAt = Date.now();
-      if (!background) setOrdersLoading(true);
+      if (!background && orders.length === 0) setOrdersLoading(true);
       else setIsBackgroundRefreshing(true);
       try {
         const res = await orderService.getMyStoreOrders({
@@ -417,8 +421,13 @@ export default function OrdersManagementPage({
           page: ordersPage,
           limit: 12,
           storeId,
-        }, background || isManualFresh);
+        }, isManualFresh);
         if (active && res) {
+          lastOrdersSnapshot = {
+            orders: res.items || [],
+            total: res.pagination?.total || 0,
+            totalPages: res.pagination?.totalPages || 1,
+          };
           setOrders(res.items || []);
           setOrdersTotal(res.pagination?.total || 0);
           setOrdersTotalPages(res.pagination?.totalPages || 1);
@@ -615,7 +624,7 @@ export default function OrdersManagementPage({
         status: "DELIVERED",
       });
       toast.success("Xác nhận giao hàng thành công!", {
-        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát hoa hồng.`,
+        description: `Đơn #${confirmDeliveredOrder.externalOrderSn} đã hoàn tất và bắt đầu chu kỳ đối soát thu nhập đối tác.`,
       });
       setActionSuccessMsg(`Đã xác nhận giao thành công đơn #${confirmDeliveredOrder.externalOrderSn}!`);
       setTimeout(() => setActionSuccessMsg(null), 4000);
@@ -644,7 +653,7 @@ export default function OrdersManagementPage({
     try {
       await orderService.shopCancelOrder(cancelModalOrder.id, finalReason);
       setActionSuccessMsg(
-        `Đã hủy đơn #${cancelModalOrder.externalOrderSn} — Kho hàng đã được hoàn lại, hoa hồng KOL đã thu hồi.`
+        `Đã hủy đơn #${cancelModalOrder.externalOrderSn} — Kho hàng đã được hoàn lại, thu nhập KOL đã thu hồi.`
       );
       setTimeout(() => setActionSuccessMsg(null), 6000);
       setCancelModalOrder(null);
@@ -675,20 +684,28 @@ export default function OrdersManagementPage({
       });
       return;
     }
+    if (decision === 'REJECT' && (returnResponse.trim().length < 20 || returnEvidenceFiles.length < 1 || returnEvidenceFiles.length > 5)) {
+      setReturnError('Để từ chối và chuyển Manager, hãy ghi ít nhất 20 ký tự và tải 1–5 ảnh/video bằng chứng.');
+      return;
+    }
     setRespondingReturn(true);
     setReturnError('');
     try {
+      const evidenceUrls = decision === 'REJECT' ? await Promise.all(returnEvidenceFiles.map(async (file) =>
+        (await uploadService.uploadMedia(file, `scanms/returns/${selectedOrderDetails.returnRequest!.id}/shop-evidence`)).url)) : undefined;
       const result = await orderService.respondReturnRequest(selectedOrderDetails.id, {
         decision,
         response: returnResponse.trim(),
         ...(decision === 'REJECT' && returnRejectionReason ? { rejectionReason: returnRejectionReason } : {}),
+        ...(decision === 'REJECT' ? { escalateToManager: true, evidenceUrls } : {}),
       });
-      toast.success(decision === 'APPROVE' ? 'Đã chấp thuận yêu cầu đổi trả' : 'Đã từ chối yêu cầu đổi trả', {
+      toast.success(decision === 'APPROVE' ? 'Đã chấp thuận yêu cầu đổi trả' : 'Đã gửi bằng chứng cho Manager', {
         description: result.message || 'Hệ thống đã cập nhật và gửi thông báo phản hồi tới người mua.',
       });
       setActionSuccessMsg(result.message);
       setSelectedOrderDetails(null);
       setReturnResponse('');
+      setReturnEvidenceFiles([]);
       setReturnRejectionReason('');
       setOrdersRefreshCount((count) => count + 1);
     } catch (error) {
@@ -1405,13 +1422,18 @@ export default function OrdersManagementPage({
                         },
                       };
 
-                      const badge = statusBadgeConfig[order.status] || {
+                      const baseBadge = statusBadgeConfig[order.status] || {
                         label: order.status,
                         bg: "bg-gray-50",
                         text: "text-gray-700",
                         border: "border-gray-200",
                         dot: "bg-gray-400",
                       };
+                      const refundSucceeded = order.returnRequest?.resolution === 'REFUND' && order.returnRequest.refund?.status === 'SUCCEEDED';
+                      const badge = refundSucceeded ? {
+                        label: order.returnRequest?.status === 'COMPLETED' ? 'Đã hoàn tiền' : 'Đã hoàn ví · chờ khách xác nhận',
+                        bg: 'bg-[#FBF5EB]', text: 'text-[#8A642C]', border: 'border-[#EEDFC6]', dot: 'bg-[#B88E4F]',
+                      } : baseBadge;
 
                       return (
                         <tr key={order.id} className="group even:bg-[#FFFEFC] hover:bg-[#FBF5EB]/55 transition-colors duration-150">
@@ -1583,7 +1605,7 @@ export default function OrdersManagementPage({
                                   title="Xem yêu cầu khiếu nại / hoàn tiền"
                                 >
                                   <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
-                                  <span>Xử lý đổi trả</span>
+                                  <span>{refundSucceeded ? 'Xem tiền đã hoàn' : order.returnRequest?.status === 'REQUESTED' ? 'Xử lý đổi trả' : 'Xem hồ sơ đổi trả'}</span>
                                 </button>
                               )}
 
@@ -2048,7 +2070,7 @@ export default function OrdersManagementPage({
               Bạn có chắc chắn khách hàng đã nhận được kiện hàng này? Sau khi xác nhận:
               <ul className="list-disc pl-4 mt-1.5 space-y-1 text-[#1A1612] font-medium">
                 <li>Trạng thái đơn hàng sẽ chuyển thành <span className="text-[#059669] font-bold">Hoàn thành</span>.</li>
-                <li>Hệ thống SCANMS sẽ bắt đầu ghi nhận và kích hoạt chu kỳ đối soát hoa hồng cho đối tác CTV / KOL.</li>
+                <li>Hệ thống SCANMS sẽ bắt đầu ghi nhận và kích hoạt chu kỳ đối soát thu nhập cho đối tác CTV / KOL.</li>
               </ul>
             </div>
 
@@ -2113,7 +2135,7 @@ export default function OrdersManagementPage({
                 <li>Trạng thái đơn → <strong>ĐÃ HỦY</strong></li>
                 <li>Tồn kho sản phẩm được <strong>hoàn lại tự động</strong></li>
                 <li>Mã giảm giá (nếu có) được <strong>hoàn lượt sử dụng</strong></li>
-                <li>Hoa hồng KOL đang tạm giữ bị <strong>thu hồi (Clawback)</strong></li>
+                <li>Thu nhập KOL đang tạm giữ bị <strong>thu hồi (Clawback)</strong></li>
               </ul>
             </div>
 
@@ -2188,6 +2210,18 @@ export default function OrdersManagementPage({
               <section className="order-detail-return space-y-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/60 p-4 text-xs">
                 <h4 className="flex items-center gap-2 text-sm font-semibold"><RefreshCw size={16} /> Hồ sơ đổi trả / hoàn tiền</h4>
                 <span className="order-detail-return-status inline-flex rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[11px] font-medium text-[#8C6B32]">{returnStatusLabel(selectedOrderDetails.returnRequest.status)}</span>
+                {selectedOrderDetails.returnRequest.dispute?.resolutionNotes && <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Quyết định của System Manager</strong>
+                  <p className="mt-1 whitespace-pre-wrap">{selectedOrderDetails.returnRequest.dispute.resolutionNotes}</p>
+                </div>}
+                {selectedOrderDetails.returnRequest.refund?.status === 'SUCCEEDED' && <div role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Đã hoàn {Number(selectedOrderDetails.returnRequest.refund.amount).toLocaleString('vi-VN')} ₫ vào ví khách</strong>
+                  <p className="mt-1">Hệ thống đã hoàn tiền thành công. Shop không cần hoàn thêm. {selectedOrderDetails.returnRequest.status === 'AWAITING_CUSTOMER_CONFIRMATION' ? 'Đang chờ khách xác nhận hoàn tất để đóng đơn.' : 'Khách đã xác nhận hoàn tất.'}</p>
+                </div>}
+                {selectedOrderDetails.returnRequest.refund && selectedOrderDetails.returnRequest.refund.status !== 'SUCCEEDED' && <div role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+                  <strong>Khoản hoàn {Number(selectedOrderDetails.returnRequest.refund.amount).toLocaleString('vi-VN')} ₫ đang chờ xử lý</strong>
+                  <p className="mt-1">System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.</p>
+                </div>}
                 <p className="order-detail-submitted text-[11px] text-[#7D715E]">Gửi lúc {new Date(selectedOrderDetails.returnRequest.submittedAt).toLocaleString('vi-VN')}</p>
                 <p>Lý do: <strong>{({ DAMAGED: 'Sản phẩm hư hỏng', WRONG_ITEM: 'Giao sai sản phẩm', EXPIRED: 'Sản phẩm hết hạn', OTHER: 'Lý do khác' } as Record<string, string>)[selectedOrderDetails.returnRequest.reason] || selectedOrderDetails.returnRequest.reason}</strong></p>
                 {selectedOrderDetails.returnRequest.details && <p>{selectedOrderDetails.returnRequest.details}</p>}
@@ -2198,6 +2232,11 @@ export default function OrdersManagementPage({
                   {selectedOrderDetails.returnRequest.unboxingVideoUrl && <a href={selectedOrderDetails.returnRequest.unboxingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-[#B88E4F] underline">Video mở hộp</a>}
                 </div>
                 {selectedOrderDetails.returnRequest.shopResponse && <div className="order-detail-response rounded-lg border border-[#EAE4D7] bg-white p-3"><span className="text-[11px] font-medium text-[#7D715E]">Phản hồi của gian hàng</span><p className="mt-1 break-words leading-relaxed">{selectedOrderDetails.returnRequest.shopResponse}</p></div>}
+                {selectedOrderDetails.returnRequest && <Link
+                  to={`/merchant/returns/${selectedOrderDetails.returnRequest.id}`}
+                  className="inline-block rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 font-semibold text-[#8A6736]">
+                  Xem toàn bộ hồ sơ, bằng chứng và đối soát GHN →
+                </Link>}
                 {selectedOrderDetails.returnRequest.status === 'REQUESTED' && (
                   <div className="space-y-2">
                     <label className="block font-semibold">Lý do từ chối <span className="font-normal text-[#7D715E]">(bắt buộc khi từ chối)</span>
@@ -2209,15 +2248,26 @@ export default function OrdersManagementPage({
                         <option value="OTHER">Lý do khác</option>
                       </select>
                     </label>
-                    <label className="block font-bold">Giải thích / hướng xử lý gửi khách
+                    <label className="block font-bold">Phản hồi khiếu nại khách hàng
                       <textarea value={returnResponse} onChange={(event) => setReturnResponse(event.target.value)} maxLength={850} rows={3} placeholder="Nêu rõ tình trạng sản phẩm, bằng chứng và căn cứ chấp nhận hoặc từ chối."
                         className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal outline-none focus:border-[#C59B58]" />
                     </label>
+                    <label className="block font-bold">Bằng chứng khi Shop từ chối (ảnh/video, 1–5 tệp)
+                      <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files || []);
+                          if (files.length > 5) setReturnError('Chỉ chọn tối đa 5 tệp bằng chứng.');
+                          else { setReturnEvidenceFiles(files); setReturnError(''); }
+                        }}
+                        className="mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 font-normal" />
+                    </label>
+                    {returnEvidenceFiles.length > 0 && <p className="text-[#7D715E]">Đã chọn: {returnEvidenceFiles.map((file) => file.name).join(', ')}</p>}
+                    <p className="text-[#7D715E]">Nếu từ chối, ảnh/video và lời giải thích sẽ được chuyển ngay cho System Manager phân xử; khách cũng được thông báo.</p>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={respondingReturn || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('APPROVE')}
                         className="rounded-xl bg-[#C59B58] px-4 py-2 font-bold text-white disabled:opacity-50">Duyệt yêu cầu</button>
-                      <button type="button" disabled={respondingReturn || !returnRejectionReason || returnResponse.trim().length < 10} onClick={() => handleReturnDecision('REJECT')}
-                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối</button>
+                      <button type="button" disabled={respondingReturn || !returnRejectionReason || returnResponse.trim().length < 20 || returnEvidenceFiles.length < 1} onClick={() => handleReturnDecision('REJECT')}
+                        className="rounded-xl border border-[#DC2626] px-4 py-2 font-bold text-[#DC2626] disabled:opacity-50">Từ chối & chuyển Manager</button>
                     </div>
                     {returnError && <p role="alert" className="text-[#DC2626]">{returnError}</p>}
                     <p className="text-[#7D715E]">Duyệt yêu cầu không đồng nghĩa tiền đã được hoàn; cần đối soát thanh toán riêng.</p>
@@ -2804,15 +2854,10 @@ export default function OrdersManagementPage({
                       e.target.value = "";
                     }}
                   />
-                  <details className="group rounded-xl border border-line bg-white text-xs" data-excel-instructions>
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-3 font-medium text-muted [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><Info size={14} className="text-brand-strong" />Hướng dẫn chuẩn bị file</span><ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180" /></summary>
-                    <div className="space-y-2 border-t border-line px-3.5 py-3 leading-relaxed text-muted">
-                      <p>Cột bắt buộc: <code className="break-words text-[11px] text-ink">order_code, customer_name, customer_phone, shipping_address, sku, quantity</code>.</p>
-                      <p>Cột tùy chọn: <code className="text-[11px] text-ink">status, unit_price, discount_amount</code>.</p>
-                      <p>Định dạng cột số điện thoại là Text để giữ số 0 ở đầu. Bạn có thể tải file mẫu để điền đúng cấu trúc.</p>
-                      <p>Đơn hợp lệ vẫn được nhập nếu các đơn khác có lỗi. Kết quả và lỗi từng dòng sẽ hiển thị sau khi xử lý.</p>
-                    </div>
-                  </details>
+                  <div className="rounded-xl border border-line bg-[#FAF8F5] p-3 text-xs flex flex-wrap items-center justify-between gap-2 text-muted">
+                    <span className="flex items-center gap-1.5"><Info size={14} className="text-brand-strong shrink-0" /> Định dạng cột bắt buộc: <code className="text-ink font-semibold">order_code, customer_name, customer_phone, shipping_address, sku, quantity</code></span>
+                    <span className="text-[11px] text-[#7D715E]">Cột số điện thoại định dạng Text để giữ số 0</span>
+                  </div>
                   {result && (
                     <section className="space-y-4">
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

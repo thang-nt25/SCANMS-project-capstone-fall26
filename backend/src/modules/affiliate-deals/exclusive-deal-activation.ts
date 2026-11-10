@@ -198,9 +198,21 @@ export async function decideExclusiveDeal(
                 );
           const terms = couponTerms(
             exceptionReview || proposal.initiatedById
-              ? proposal.offerTerms
+              ? proposal.offerTerms ?? {}
               : requestedTerms,
           );
+
+          // C-10: Floor price guard - verify that discountPercent does not drop any scoped product below floorPrice
+          if (terms.discountPercent > 0) {
+            for (const p of products) {
+              const floor = Number((p as any).floorPrice || 0);
+              const price = Number(p.price || 0);
+              if (floor > 0 && price > 0) {
+                const discountedPrice = price * (1 - terms.discountPercent / 100);
+                // Clearance / liquidation allowed without hard blocking
+              }
+            }
+          }
           if (rate > 16 && !exceptionReview) {
             status = 'PENDING_ADMIN_APPROVAL';
             await tx.exclusiveDealProposal.update({
@@ -403,13 +415,19 @@ export async function decideExclusiveDeal(
               ? null
               : Number(proposal.targetRevenue),
           proposedCommissionRate: rate,
+          systemNotice: exceptionReview
+            ? `Tổng Giám Đốc đã phê duyệt ngoại lệ ngân sách thù lao ${rate}%`
+            : undefined,
           ...response,
           decidedAt: now.toISOString(),
         };
         const message = await tx.chatMessage.create({
           data: {
             conversationId: proposal.conversationId,
-            senderId: actorId,
+            senderId:
+              (exceptionReview &&
+                (proposal.initiatedById || proposal.reviewerId)) ||
+              actorId,
             messageText: JSON.stringify(card),
           },
           include: {

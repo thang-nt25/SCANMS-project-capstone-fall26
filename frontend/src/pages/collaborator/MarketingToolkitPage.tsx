@@ -1,27 +1,22 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
-import { Link2, Package, Tag, Video, Plus, Gift, FolderOpen } from 'lucide-react';
+import { Link2, Package, Tag, Video, Plus, Gift } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
+import { useControlledTab } from '../../hooks/useControlledTab';
 import ReferralLinksPage from './ReferralLinksPage';
 import SampleRequestsPage from './SampleRequestsPage';
 import KolCouponsPage from './KolCouponsPage';
-import MediaHubBrowserPage from './MediaHubBrowserPage';
+
+const MARKETING_TOOLKIT_TABS = ['links', 'samples', 'coupons'] as const;
+type MarketingToolkitTab = (typeof MARKETING_TOOLKIT_TABS)[number];
 
 export default function MarketingToolkitPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const rawTab = searchParams.get('tab') || 'links';
-  const activeTab = useMemo(() => ['links', 'samples', 'coupons', 'media'].includes(rawTab) ? rawTab : 'links', [rawTab]);
-  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
-    [activeTab]: true,
+  const { activeTab, setActiveTab, visitedTabs } = useControlledTab<MarketingToolkitTab>({
+    defaultTab: 'links',
+    validTabs: MARKETING_TOOLKIT_TABS,
   });
   const [isSubmitVideoOpen, setIsSubmitVideoOpen] = useState(false);
-
-  const handleTabChange = (tabId: string) => {
-    setVisitedTabs((prev) => ({ ...prev, [tabId]: true }));
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
 
   const tabs: HubTabItem[] = [
     {
@@ -36,14 +31,12 @@ export default function MarketingToolkitPage() {
     },
     {
       id: 'coupons',
-      label: 'Mã giảm giá độc quyền',
+      label: 'Mã ưu đãi (Coupon)',
       icon: Tag,
     },
-    { id: 'media', label: 'Thư viện nội dung', icon: FolderOpen },
   ];
 
   const renderContextualActions = () => {
-    if (activeTab === 'media') return null;
     if (activeTab === 'links') return null;
 
     if (activeTab === 'samples') {
@@ -59,15 +52,14 @@ export default function MarketingToolkitPage() {
             <span>Nộp video review</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/collaborator/collaboration?tab=samples')}
+          <Link
+            to="/marketplace"
             className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs hover:shadow cursor-pointer"
-            title="Khám phá và nhận sản phẩm dùng thử từ Shop"
+            title="Khám phá và nhận sản phẩm dùng thử từ các nhãn hàng"
           >
             <Gift className="w-4 h-4" />
-            <span>Khám phá mẫu thử</span>
-          </button>
+            <span>Khám phá sản phẩm</span>
+          </Link>
         </div>
       );
     }
@@ -102,7 +94,7 @@ export default function MarketingToolkitPage() {
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => setActiveTab(tab.id as MarketingToolkitTab)}
                 className={`inline-flex min-h-[42px] min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
                   selected
                     ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-xs'
@@ -131,9 +123,6 @@ export default function MarketingToolkitPage() {
         <div className={activeTab === 'coupons' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-coupons">
           {visitedTabs['coupons'] && <KolCouponsPage />}
         </div>
-        <div className={activeTab === 'media' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-media">
-          {(visitedTabs['media'] || activeTab === 'media') && <MediaHubBrowserPage />}
-        </div>
       </div>
 
       <SubmitKolVideoModal
@@ -144,4 +133,3 @@ export default function MarketingToolkitPage() {
     </div>
   );
 }
-

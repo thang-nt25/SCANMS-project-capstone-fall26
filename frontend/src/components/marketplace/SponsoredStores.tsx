@@ -8,9 +8,11 @@ import type { MarketplaceStore } from '@/types/marketplace-home.types';
 
 interface Placement { store: MarketplaceStore; headline: string; endsAt: string }
 
+const EMPTY_PLACEMENTS: Placement[] = [];
+
 export function SponsoredStores() {
   const [now, setNow] = useState(Date.now());
-  const { data = [] } = useQuery<Placement[]>({
+  const { data = EMPTY_PLACEMENTS } = useQuery<Placement[]>({
     queryKey: ['marketplace-sponsored-placements'],
     queryFn: async () => {
       const response = await api.get('/stores/public/placements');

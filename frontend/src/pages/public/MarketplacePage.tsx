@@ -238,7 +238,7 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
+    <div className="min-h-screen bg-[#f7f1e8] text-[#302317] flex flex-col font-sans selection:bg-[#F3EFE6] selection:text-[#B88E4F]">
 
       <MarketplaceHeader onOpenTracking={() => navigate('/tracking')} onOpenLive={() => setIsLiveModalOpen(true)} />
 
@@ -253,7 +253,7 @@ export default function MarketplacePage() {
       <LiveNowSection onOpenHub={() => setIsLiveModalOpen(true)} />
 
       {/* Dense commerce catalog with SCANMS affiliate information */}
-      <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-36 bg-[#F3EFE6] py-7 text-left lg:py-9">
+      <section ref={catalogRef} id="catalog-section" className="w-full scroll-mt-36 bg-[#FAF8F5] py-7 text-left lg:py-9">
         <div className="mx-auto w-full max-w-[1248px] px-3 sm:px-4 lg:px-6">
 
         {/* SCANMS Standard "KHÁM PHÁ SẢN PHẨM" Header */}
@@ -265,6 +265,15 @@ export default function MarketplacePage() {
             >
               <span className="sm:hidden">Gợi ý hôm nay</span><span className="hidden sm:inline">ĐƠN HÀNG HÔM NAY</span>
             </h2>
+            <p className="text-xs text-[#7D715E] mt-1 m-0">
+              Sản phẩm chính hãng với thù lao bảo chứng và tài nguyên truyền thông cho Creator.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#EAE4D7] text-[#1A1612] shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-[#059669]" />
+              {items.length} Sản phẩm mở bán
+            </span>
           </div>
         </div>
 
@@ -316,7 +325,7 @@ export default function MarketplacePage() {
         <div className="mt-7 sm:mt-9 flex justify-center">
           <Link
             to="/search"
-            className="w-full max-w-[390px] h-10 sm:h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-[2px] flex items-center justify-center text-sm font-normal text-[#555555] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition shadow-2xs active:scale-[0.99] select-none"
+            className="w-full max-w-[390px] h-10 sm:h-11 bg-white border border-[#EAE4D7] hover:border-[#C59B58] rounded-[2px] flex items-center justify-center text-sm font-normal text-[#555555] hover:text-[#1A1612] hover:bg-[#FAF7F2] transition shadow-2xs active:scale-[0.99] select-none"
           >
             Xem Thêm
           </Link>
@@ -402,10 +411,10 @@ export default function MarketplacePage() {
               SCANMS bảo vệ dữ liệu tài khoản, thông tin đơn hàng và quy trình đối soát đối tác.
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF7F2] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
                 <Shield className="h-3 w-3" /> 256-bit SSL
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#EAE4D7] bg-[#FAF7F2] px-2.5 py-1 text-[10px] font-bold text-[#B88E4F]">
                 <BadgeCheck className="h-3 w-3" /> KYC Verified
               </span>
             </div>
@@ -454,21 +463,21 @@ export default function MarketplacePage() {
             </p>
 
             <div className="space-y-4 text-xs text-[#7D715E] leading-relaxed">
-              <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7]">
+              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE4D7]">
                 <strong className="text-xs font-bold text-[#1A1612] block mb-1">
                   1. Quyền lợi Đồng kiểm tận tay khi nhận hàng
                 </strong>
                 Quý khách được quyền mở gói hàng và kiểm tra ngoại quan cùng bưu tá trước khi thanh toán. Nếu phát hiện sản phẩm vỡ hỏng, sai mô tả hoặc nghi vấn nguồn gốc, quý khách có quyền từ chối nhận hàng không phát sinh bất kỳ khoản phí nào.
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7]">
+              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE4D7]">
                 <strong className="text-xs font-bold text-[#1A1612] block mb-1">
                   2. Bảo hộ đổi trả miễn phí trong vòng 14 ngày
                 </strong>
                 Trong vòng 14 ngày kể từ ngày nhận hàng, quý khách được hỗ trợ đổi sản phẩm mới hoặc hoàn tiền 100% nếu sản phẩm có lỗi từ nhà sản xuất hoặc gây kích ứng đối với dòng mỹ phẩm chính hãng.
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EAE4D7]">
+              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EAE4D7]">
                 <strong className="text-xs font-bold text-[#1A1612] block mb-1">
                   3. Cam kết chính hãng & Tra cứu hành trình minh bạch
                 </strong>

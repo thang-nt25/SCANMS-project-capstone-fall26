@@ -29,7 +29,6 @@ import { DateTimePicker } from '../../components/common/DateTimePicker';
 import { Select } from '../../components/ui/Select';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { liveBroadcastService } from '@/services/live-broadcast.service';
-import './LiveSessionsPage.css';
 
 const getFallbackAvatar = (_id: string, name: string) => {
   const initials = name.trim().split(/\s+/).slice(-2).map(part => Array.from(part)[0] || '').join('').toUpperCase().replace(/[^\p{L}\p{N}]/gu, '') || 'K';

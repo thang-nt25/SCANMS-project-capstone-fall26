@@ -17,6 +17,8 @@ const equalMoney = (left: number, right: number): boolean =>
     .equals(new Prisma.Decimal(right).toDecimalPlaces(2));
 
 export function validateDataset(data: SeedDataset): void {
+  assertSeed(data.savedCoupons.length === 0 && data.stackedRedemptions.length === 0, 'coupon inventory and retail stacking are retired');
+  assertSeed(data.coupons.every(coupon => coupon.fundingSource === 'SHOP_FUNDED' && coupon.benefitType !== 'SHIPPING' && data.users.some(user => user.id === coupon.collaboratorId && user.role === 'COLLABORATOR')), 'only KOL goods attribution coupons may be seeded');
   assertSeed(
     data.stores.length === 4 && data.products.length === 12,
     'expected 4 canonical shops and 12 products',

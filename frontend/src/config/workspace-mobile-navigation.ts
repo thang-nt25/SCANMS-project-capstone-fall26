@@ -1,7 +1,7 @@
 import { ChartNoAxesCombined, Handshake, LayoutDashboard, Link2, ListChecks, MoreHorizontal, Package, ReceiptText, ShieldCheck, ShoppingBag, UserRound, Users, Wallet, MessageSquare } from 'lucide-react';
 export type WorkspaceMobileRole = 'COLLABORATOR' | 'SHOP_MANAGER' | 'SYSTEM_MANAGER' | 'SYSTEM_ADMIN';
 type MobileItem = { label: string; icon: typeof Wallet; to?: string; paths?: string[]; menu?: 'all' | 'review' | 'claims' | 'control' };
-const review = ['/admin/users', '/admin/kyc', '/admin/pricing', '/admin/product-moderation', '/admin/sample-requests'];
+const review = ['/admin/users', '/admin/kyc', '/admin/pricing', '/admin/product-moderation', '/admin/products-pricing', '/admin/sample-requests'];
 const claims = ['/admin/customer-reviews', '/admin/return-disputes', '/admin/returns', '/admin/disputes', '/admin/arbitration'];
 export const WORKSPACE_MOBILE_ITEMS: Record<WorkspaceMobileRole, MobileItem[]> = {
   COLLABORATOR: [
@@ -29,7 +29,7 @@ export const WORKSPACE_MOBILE_ITEMS: Record<WorkspaceMobileRole, MobileItem[]> =
     { label: 'Báo cáo', icon: ChartNoAxesCombined, to: '/admin/analytics' },
     { label: 'Quyết toán', icon: ReceiptText, to: '/admin/finance/payouts', paths: ['/admin/payouts', '/admin/finance'] },
     { label: 'Nhân sự', icon: Users, to: '/admin/personnel', paths: ['/admin/personnel', '/admin/internal-staff'] },
-    { label: 'Kiểm soát', icon: ShieldCheck, menu: 'control', paths: [...review, ...claims, '/admin/affiliate-oversight', '/admin/fraud-sentinel'] },
+    { label: 'Kiểm soát', icon: ShieldCheck, menu: 'control', paths: [...review, ...claims, '/admin/affiliate-oversight', '/admin/fraud-sentinel', '/admin/security-audit'] },
     { label: 'Thêm', icon: MoreHorizontal, menu: 'all' },
   ],
 };

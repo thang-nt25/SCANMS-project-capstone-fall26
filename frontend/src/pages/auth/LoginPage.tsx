@@ -55,7 +55,8 @@ export default function LoginPage() {
     const requestedRole = searchParams.get('role')?.toLowerCase();
     const normalizedRole = requestedRole === 'collaborator' ? 'kol' : requestedRole;
     if (ROLES.some(option => option.id === normalizedRole)) return normalizedRole as RoleType;
-    return registeredEmail ? 'customer' : getRememberedLoginRole();
+    if (registeredEmail || requestedRedirect?.startsWith('/shop') || requestedRedirect?.startsWith('/marketplace') || requestedRedirect === '/') return 'customer';
+    return getRememberedLoginRole();
   });
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [identifier, setIdentifier] = useState(() => {
@@ -387,9 +388,9 @@ export default function LoginPage() {
 
             {/* Bottom switch link */}
             <div className="login-register-link border-t border-line pt-3.5 text-center text-xs leading-[1.7] text-muted [&_a]:text-[#90682F]">
-              Chưa có tài khoản đối tác?{' '}
+              Chưa có tài khoản?{' '}
               <Link to={registerUrl} className="font-bold text-[#B88E4F] hover:underline">
-                Đăng ký ngay →
+                Đăng ký tham gia mạng lưới đối tác →
               </Link>
             </div>
           </div>

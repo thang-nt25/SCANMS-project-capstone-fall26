@@ -186,6 +186,10 @@ export class StoresService {
    * Lấy thông tin cấu hình cửa hàng của Chủ Shop (Store Owner)
    */
   async getMyStore(ownerId: string) {
+    const cacheKey = `store:my-store:${ownerId}`;
+    const cached = this.cache?.get ? await this.cache.get<any>(cacheKey) : null;
+    if (cached) return cached;
+
     const user = this.prisma?.user?.findUnique
       ? await this.prisma.user.findUnique({
           where: { id: ownerId },

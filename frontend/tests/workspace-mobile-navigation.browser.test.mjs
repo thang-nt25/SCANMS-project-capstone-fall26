@@ -8,8 +8,8 @@ const nav='nav[aria-label="Điều hướng không gian làm việc"]';
 const fixtures=[
  {role:'COLLABORATOR',path:'/collaborator/dashboard',labels:['Tổng quan','Tiếp thị','Hợp tác','Ví thù lao','Tôi'],links:['/collaborator/dashboard','/collaborator/marketing','/collaborator/collaboration','/collaborator/wallet'],extra:'/collaborator/live-sessions'},
  {role:'SHOP_MANAGER',path:'/merchant/dashboard',labels:['Tổng quan','Đơn hàng','Sản phẩm','Đối tác','Thêm'],links:['/merchant/dashboard','/merchant/orders','/merchant/products','/merchant/kol-hub'],extra:'/merchant/promotions'},
- {role:'SYSTEM_MANAGER',path:'/admin/analytics',labels:['Tổng quan','Duyệt rút','Kiểm duyệt','Khiếu nại','Tôi'],links:['/admin/analytics','/admin/finance/payouts'],extra:'/admin/audit-logs'},
- {role:'SYSTEM_ADMIN',path:'/admin/analytics',labels:['Báo cáo','Quyết toán','Nhân sự','Kiểm soát','Thêm'],links:['/admin/analytics','/admin/finance/payouts','/admin/personnel'],extra:'/admin/audit-logs'},
+ {role:'SYSTEM_MANAGER',path:'/admin/analytics',labels:['Tổng quan','Duyệt rút','Kiểm duyệt','Khiếu nại','Tôi'],links:['/admin/analytics','/admin/finance/payouts'],extra:'/admin/security-audit'},
+ {role:'SYSTEM_ADMIN',path:'/admin/analytics',labels:['Báo cáo','Quyết toán','Nhân sự','Kiểm soát','Thêm'],links:['/admin/analytics','/admin/finance/payouts','/admin/personnel'],extra:'/admin/security-audit'},
 ];
 test('role-specific mobile navigation, grouped menus, permissions and desktop preservation',{skip:!base||!executablePath,timeout:90000},async()=>{
  const browser=await puppeteer.launch({executablePath,headless:true});
@@ -49,8 +49,8 @@ test('role-specific mobile navigation, grouped menus, permissions and desktop pr
     const index=fixture.role==='SYSTEM_MANAGER'?3:4;
     await page.tap(`${nav}>:nth-child(${index})`);
     await page.waitForSelector('dialog[open][data-workspace-menu]');
-    await page.tap('dialog[open] a[href="/admin/product-moderation"]');
-    await page.waitForFunction(()=>location.pathname==='/admin/product-moderation');
+    await page.tap('dialog[open] a[href="/admin/products-pricing"]');
+    await page.waitForFunction(()=>location.pathname==='/admin/products-pricing');
     await page.waitForSelector(`${nav}>:nth-child(${index})[aria-current="page"]`);
    }
    for(const width of [320,390,412]){
@@ -65,6 +65,7 @@ test('role-specific mobile navigation, grouped menus, permissions and desktop pr
     assert.ok(geometry.width<=width+1&&geometry.scroll<=geometry.client+1);
     await page.tap('dialog[open] button[aria-label="Đóng menu"]');
     await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
    }
    await page.screenshot({path:`artifacts/mobile-layout/workspace-${fixture.role}.png`});
    await page.tap(`${nav}>:last-child`);
@@ -72,6 +73,7 @@ test('role-specific mobile navigation, grouped menus, permissions and desktop pr
    await page.tap(`dialog[open] a[href="${fixture.extra}"]`);
    await page.waitForFunction(path=>location.pathname===path,{},fixture.extra);
    await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
    assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
    await page.setViewport({width:1440,height:900});
    await page.waitForFunction(()=>!document.querySelector('nav[aria-label="Điều hướng không gian làm việc"]'));

@@ -8,6 +8,8 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SampleRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
+import { Optional } from '@nestjs/common';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { MediaService } from '../media/media.service';
 import { GhnService } from '../shipping/ghn.service';
@@ -40,6 +42,7 @@ export class SamplesService {
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
     private readonly ghnService: GhnService,
+    @Optional() private readonly cacheService?: CacheService,
   ) {}
 
   async getMyEligibility(collaboratorId: string) {
@@ -385,16 +388,25 @@ export class SamplesService {
   }
 
   async getRequestsForShop(shopOwnerId: string, status?: SampleRequestStatus, storeId?: string) {
+    const cacheKey = `samples:shop:${shopOwnerId}:${storeId || 'default'}:${status || 'ALL'}`;
+    if (this.cacheService) {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) return cached;
+    }
     const store = await this.prisma.store.findFirst({
       where: { ...managedStoreWhere(shopOwnerId), ...(storeId ? { id: storeId } : {}) },
       select: { id: true },
     });
     if (!store) throw new NotFoundException('Không tìm thấy cửa hàng của bạn');
-    return this.prisma.sampleProductRequest.findMany({
+    const list = await this.prisma.sampleProductRequest.findMany({
       where: { product: { storeId: store.id }, ...(status ? { status } : {}) },
       orderBy: { createdAt: 'desc' },
       include: this.includeRelations(),
     });
+    if (this.cacheService) {
+      await this.cacheService.set(cacheKey, list, 30);
+    }
+    return list;
   }
 
   async getAdminRequests(status?: SampleRequestStatus) {

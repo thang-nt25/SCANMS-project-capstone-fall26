@@ -98,10 +98,12 @@ test('Marketplace uses real stock and cart integration', () => {
 
 test('topbar uses the accessible account menu with the active workspace role', () => {
   const topbar = readFileSync(new URL('../src/components/layout/Topbar.tsx', import.meta.url), 'utf8');
-  assert.match(topbar, /<HeaderAccountButton\s/);
-  assert.match(topbar, /role=\{role\}/);
-  assert.match(topbar, /menuId="topbar-account-menu"/);
-  assert.match(topbar, /scanms_workspace_changed/);
+  assert.match(topbar, /<WorkspaceHeader\s/);
+  const workspaceHeader = readFileSync(new URL('../src/components/layout/WorkspaceHeader.tsx', import.meta.url), 'utf8');
+  assert.match(workspaceHeader, /<HeaderAccountButton\s/);
+  assert.match(workspaceHeader, /role=\{role\}/);
+  assert.match(workspaceHeader, /menuId="workspace-account-menu"/);
+  assert.match(workspaceHeader, /scanms_workspace_changed/);
   const account = readFileSync(new URL('../src/components/layout/HeaderAccountButton.tsx', import.meta.url), 'utf8');
   for (const role of ['CUSTOMER', 'COLLABORATOR', 'SHOP_MANAGER', 'SYSTEM_MANAGER', 'SYSTEM_ADMIN']) {
     assert.ok(account.includes(`${role}:`), `Account menu must display role ${role}`);

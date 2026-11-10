@@ -22,7 +22,6 @@ const ROUTE_LOADERS: Record<string, ComponentLoader> = {
   '/merchant/kol-hub': () => import('@/pages/merchant/ShopKolHubPage'),
   '/merchant/promotions': () => import('@/pages/merchant/ShopPromotionsHubPage'),
   '/merchant/live-sessions': () => import('@/pages/merchant/LiveSessionsPage'),
-  '/merchant/payouts': () => import('@/pages/merchant/PayoutApprovalPage'),
   '/merchant/settings': () => import('@/pages/merchant/ShopSettingsPage'),
 
   // Collaborator / KOL
@@ -53,10 +52,6 @@ const ROUTE_DATA_PREFETCH: Record<string, () => Promise<any>> = {
   '/merchant/products': () => api.get('/products', { params: { page: 1, limit: 10 } }),
   '/merchant/customer-messages': () => api.get('/chat/conversations'),
   '/merchant/kol-hub': () => api.get('/sample-requests/shop'),
-  '/merchant/payouts': () => {
-    const sId = localStorage.getItem('current_store_id');
-    return sId ? api.get(`/stores/${sId}/payouts`, { params: { page: 1, limit: 10 } }) : Promise.resolve();
-  },
   '/collaborator/marketing': () => api.get('/referral-links'),
   '/collaborator/collaboration': () => api.get('/campaigns/my-invitations'),
   '/collaborator/wallet': () => api.get('/wallets/me'),

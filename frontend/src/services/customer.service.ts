@@ -65,6 +65,7 @@ export interface CustomerOrder {
   policyAcceptedAt?: string | null;
   policySnapshot?: Record<string, unknown> | null;
   returnRequest?: CustomerReturnRequest | null;
+  returnRequests?: CustomerReturnRequest[];
   rawPayload?: any;
   createdAt: string;
   updatedAt: string;
@@ -88,11 +89,13 @@ export interface CustomerOrder {
 export interface CustomerReturnRequest {
   id: string;
   orderId: string;
-  reason: 'DAMAGED' | 'WRONG_ITEM' | 'EXPIRED' | 'OTHER';
+  reason: 'DAMAGED' | 'WRONG_ITEM' | 'EXPIRED' | 'CHANGE_OF_MIND' | 'OTHER';
+  preferredResolution?: 'REFUND' | 'EXCHANGE' | null;
   details?: string | null;
   imageUrls: string[];
-  unboxingVideoUrl: string;
+  unboxingVideoUrl?: string | null;
   status: import('./return.service').ReturnStatus;
+  items?: Array<{ orderItemId: string; quantity: number }>;
   deadlineAt: string;
   shipByAt?: string | null;
   pickupContact?: import('./return.service').PickupBookingInput | null;
@@ -265,9 +268,11 @@ export const customerService = {
     orderId: string,
     data: {
       reason: CustomerReturnRequest['reason'];
+      preferredResolution: 'REFUND' | 'EXCHANGE';
+      items: Array<{ orderItemId: string; quantity: number }>;
       details?: string;
       imageUrls: string[];
-      unboxingVideoUrl: string;
+      unboxingVideoUrl?: string;
     },
   ): Promise<{ message: string; returnRequest: CustomerReturnRequest }> {
     const res: any = await api.post(`/customer/orders/${orderId}/return-request`, data);

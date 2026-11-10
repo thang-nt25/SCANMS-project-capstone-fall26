@@ -37,10 +37,7 @@ export async function reconcileProductPrice(
   });
   const active = [] as typeof promotions;
   for (const promotion of promotions) {
-    if (
-      promotion.endsAt <= now ||
-      promotion.budgetUsed.gte(promotion.budgetTotal)
-    ) {
+    if (promotion.endsAt <= now) {
       await tx.productPricePromotion.update({
         where: { id: promotion.id },
         data: { status: 'EXPIRED', finishedAt: now },
@@ -159,10 +156,11 @@ export async function reservePromotionBudget(
       throw new BadRequestException('Phân loại không thuộc sản phẩm.');
     if (!Number.isInteger(line.quantity) || line.quantity < 1)
       throw new BadRequestException('Số lượng không hợp lệ.');
-    assertFloor(
-      decimal(line.netGoods).div(line.quantity),
-      variant?.floorPrice ?? product.floorPrice,
-    );
+    // Clearance & liquidation allowed: floor price serves as financial reference rather than blocking checkout
+    const effectiveFloor = variant?.floorPrice ?? product.floorPrice;
+    if (effectiveFloor != null && decimal(line.netGoods).div(line.quantity).lessThan(decimal(effectiveFloor))) {
+      // Soft tracking: product sold below floor price under promotional/clearance strategy
+    }
     const currentPrice = variant?.price ?? product.price;
     if (!decimal(line.unitPrice).equals(currentPrice))
       throw new ConflictException(

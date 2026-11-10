@@ -17,12 +17,15 @@ export function AttachmentPicker({
   conversationId,
   disabled,
   onSelected,
+  onBusyChange,
 }: {
   conversationId: string;
   disabled: boolean;
   onSelected(value: Attachment): void;
+  onBusyChange?(busy: boolean): void;
 }) {
   const operation = useOperation();
+  useEffect(() => { onBusyChange?.(operation.busy); }, [operation.busy, onBusyChange]);
   const [active, setActive] = useState<"document" | "media" | null>(null);
   const [uploading, setUploading] = useState(false);
   const uploadController = useRef<AbortController | null>(null);

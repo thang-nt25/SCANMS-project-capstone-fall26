@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleAlert, Heart, ShoppingCart, Store } from 'lucide-react';
+import { CircleAlert, Heart, ShoppingCart, Store, ShieldCheck } from 'lucide-react';
 import type { Product } from '@/types/marketplace.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
 import { LiveSessionDealBadge } from '@/components/product/LiveSessionDealBadge';
 import { StoreCooperationAction } from '../affiliate/StoreCooperationAction';
+import { authService } from '@/services/auth.service';
 
 interface Props {
   product: Product;
@@ -41,6 +42,8 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
   const available = variants.length ? variants.some((candidate) => candidate.stockQuantity > 0) : (product.stockQuantity ?? 0) > 0;
   const selectedAvailable = !variant || variant.stockQuantity > 0;
   const needsSelection = choosing && !variant;
+  const user = authService.getCurrentUser();
+  const isAffiliateOrStaff = user?.role === 'COLLABORATOR' || user?.role === 'SHOP_MANAGER' || user?.role === 'SYSTEM_MANAGER' || user?.role === 'SYSTEM_ADMIN';
   const soldCount = Number(product.soldCount ?? 0);
   const soldLabel = Number.isFinite(soldCount)
     ? Math.max(0, Math.trunc(soldCount)).toLocaleString('vi-VN')
@@ -69,7 +72,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
   };
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white text-left transition hover:border-[#C59B58] hover:shadow-[0_8px_24px_rgba(75,57,34,0.10)]">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#DFD6C5] bg-white text-left transition hover:border-[#C59B58] hover:shadow-[0_10px_28px_rgba(196,155,91,0.14)]">
       <div className="relative aspect-square overflow-hidden bg-white">
         <Link to={`/products/${product.sku || product.id}`} className="block h-full w-full">
           <img src={product.image} alt={product.name} loading="lazy" onError={(event) => { if (!event.currentTarget.dataset.fallback) { event.currentTarget.dataset.fallback = 'true'; event.currentTarget.src = getSafeProductImageUrl(null, product.name); } }} className="h-full w-full object-contain p-3 transition motion-safe:group-hover:scale-[1.03]" />
@@ -77,7 +80,7 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
         <LiveSessionDealBadge deal={deal} now={now} />
         {product.origPrice > price && <span className="absolute left-2 top-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-1 text-[10px] font-bold text-[#8C6226]">−{Math.round((product.origPrice - price) / product.origPrice * 100)}%</span>}
         <button type="button" onClick={onWishlist} aria-label={wished ? `Bỏ lưu ${product.name}` : `Lưu ${product.name}`} aria-pressed={wished} className="group/wishlist absolute right-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-full bg-transparent text-[#7D715E] hover:text-[#DC2626] focus-visible:outline-[#C59B58]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EAE4D7] bg-white/95 shadow-[0_1px_4px_rgba(35,29,21,0.05)] transition-colors group-hover/wishlist:border-[#EEDFC6]"><Heart size={15} strokeWidth={1.7} className={wished ? 'fill-[#DC2626] text-[#DC2626]' : ''} /></span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#DFD6C5] bg-white/95 shadow-[0_1px_4px_rgba(35,29,21,0.05)] transition-colors group-hover/wishlist:border-[#EEDFC6]"><Heart size={15} strokeWidth={1.7} className={wished ? 'fill-[#DC2626] text-[#DC2626]' : ''} /></span>
         </button>
       </div>
       <div className="flex flex-1 flex-col p-3 sm:p-4 max-sm:p-2.5">
@@ -89,16 +92,20 @@ export function MarketplaceProductCard({ product, wished, onWishlist, onPurchase
             <span>{available ? 'Sẵn hàng' : 'Tạm hết hàng'}</span>
             <span data-product-sold-count className="whitespace-nowrap tabular-nums">Đã bán {soldLabel}</span>
           </div>
-          {product.commissionRate && product.commissionRate > 0 && (
+          {isAffiliateOrStaff && product.commissionRate && product.commissionRate > 0 ? (
             <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E]">
               Thù lao tiếp thị: {product.commissionRate}%
+            </span>
+          ) : (
+            <span className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F5EFE6] border border-[#DFD6C5] text-[#6B5E4B]">
+              <ShieldCheck className="w-3 h-3 text-[#6B5E4B] inline mr-1" /> Chính hãng 100%
             </span>
           )}
         </div>
         <div className="mt-auto flex flex-wrap items-baseline gap-x-2 border-t border-[#EAE4D7] pt-3 max-sm:min-h-[46px] max-sm:flex-col max-sm:justify-center max-sm:gap-0 max-sm:pt-2"><strong className="text-sm text-[#1A1612] sm:text-base max-sm:text-[16px] max-sm:tabular-nums">{formatMoney(price)}</strong>{product.origPrice > price && <del className="text-[10px] text-[#7D715E]">{formatMoney(product.origPrice)}</del>}</div>
         {variants.length > 0 && (choosing || variantId) && <div ref={choiceRef} className="marketplace-variant-choice [scroll-margin-block:16px] [&[data-required=true]_.marketplace-variant-select]:border-[#DC2626] [&[data-required=true]_.marketplace-variant-select]:bg-[#FBF5EB] [&[data-required=true]_.marketplace-variant-select]:outline-[#DC2626] mt-3" data-required={needsSelection}>
           <label htmlFor={choiceId} className="block text-[10px] text-[#7D715E]">{choiceCopy.label}</label>
-          <select ref={selectRef} id={choiceId} aria-required="true" aria-invalid={needsSelection} aria-describedby={needsSelection ? `${choiceId}-hint` : undefined} value={variantId} onChange={(event) => setVariantId(event.target.value)} className="marketplace-variant-select relative flex h-11 items-center justify-center px-[26px] py-0 text-center [text-align-last:center] leading-[1.4] [&::picker-icon]:absolute [&::picker-icon]:end-2.5 [&::picker-icon]:top-1/2 [&::picker-icon]:[translate:0_-50%] [&::picker-icon]:ms-0 [&::picker-icon]:text-[11px] [&_option]:text-center [@media(max-width:480px)]:px-5 [@media(max-width:480px)]:text-[10px] mt-1 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-xs font-medium text-[#1A1612] outline-[#C59B58]"><option value="">{choiceCopy.prompt}</option>{variants.map((candidate) => <option key={candidate.id} value={candidate.id} disabled={candidate.stockQuantity <= 0}>{candidate.name}{candidate.stockQuantity <= 0 ? ' · Hết hàng' : ''}</option>)}</select>
+          <select ref={selectRef} id={choiceId} aria-required="true" aria-invalid={needsSelection} aria-describedby={needsSelection ? `${choiceId}-hint` : undefined} value={variantId} onChange={(event) => setVariantId(event.target.value)} className="marketplace-variant-select relative flex h-11 items-center justify-center px-[26px] py-0 text-center [text-align-last:center] leading-[1.4] [&::picker-icon]:absolute [&::picker-icon]:end-2.5 [&::picker-icon]:top-1/2 [&::picker-icon]:[translate:0_-50%] [&::picker-icon]:ms-0 [&::picker-icon]:text-[11px] [&_option]:text-center [@media(max-width:480px)]:px-5 [@media(max-width:480px)]:text-[10px] mt-1 w-full rounded-xl border border-[#DFD6C5] bg-[#FAF8F5] text-xs font-medium text-[#1A1612] outline-[#C59B58]"><option value="">{choiceCopy.prompt}</option>{variants.map((candidate) => <option key={candidate.id} value={candidate.id} disabled={candidate.stockQuantity <= 0}>{candidate.name}{candidate.stockQuantity <= 0 ? ' · Hết hàng' : ''}</option>)}</select>
           {needsSelection && <p id={`${choiceId}-hint`} className="marketplace-variant-hint mt-[7px] mb-0 mx-0 flex items-start gap-[5px] text-[11px] leading-[1.5] text-[#DC2626] [overflow-wrap:anywhere] [&_svg]:mt-0.5 [&_svg]:shrink-0" role="alert"><CircleAlert size={13} aria-hidden="true" /><span>Vui lòng {choiceCopy.prompt.toLocaleLowerCase('vi-VN')} để tiếp tục.</span></p>}
         </div>}
         <div className="mt-3 grid grid-cols-[44px_1fr] gap-2 max-sm:mt-2">

@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   Lock,
-  Gift,
   Clock,
   RefreshCw,
 } from 'lucide-react';
@@ -26,7 +25,6 @@ export default function RegisterPage() {
   const [searchParams] = useSearchParams();
 
   const requestedRedirect = searchParams.get('redirect');
-  const initialRef = searchParams.get('ref') || '';
   const returnTo =
     requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\')
       ? requestedRedirect
@@ -40,8 +38,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [referralCode, setReferralCode] = useState(initialRef);
-  const [showReferralInput, setShowReferralInput] = useState(Boolean(initialRef));
   const [agreeTerms, setAgreeTerms] = useState(true);
 
   // OTP Modal states
@@ -146,7 +142,7 @@ export default function RegisterPage() {
         phoneNumber: phone || undefined,
         role: 'CUSTOMER',
         otp: otp.trim(),
-      });
+      } as any);
 
       toast.success('Đăng ký tài khoản thành công! Đang tự động đăng nhập...');
 
@@ -349,32 +345,6 @@ export default function RegisterPage() {
               </div>
               <p className="register-password-note -mt-[3px] text-[11px] leading-[1.6] text-muted" id="register-password-note">Mật khẩu cần tối thiểu 8 ký tự.</p>
 
-              {/* Mã giới thiệu đối tác (Collapsible) */}
-              <div className="pt-0.5">
-                {!showReferralInput ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowReferralInput(true)}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#B88E4F] hover:text-[#C59B58] transition cursor-pointer"
-                  >
-                    <Gift className="w-3.5 h-3.5" />
-                    <span>Có mã giới thiệu đối tác?</span>
-                  </button>
-                ) : (
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      aria-label="Mã giới thiệu đối tác"
-                      value={referralCode}
-                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                      placeholder="Mã giới thiệu đối tác (Tùy chọn)"
-                      className="w-full h-11 register-compact:h-10 bg-[#FBF5EB] border border-[#EEDFC6] hover:border-[#C59B58]/60 focus:border-[#C59B58] focus:bg-white focus:ring-3 focus:ring-[#C59B58]/12 rounded-xl pl-9 pr-3 text-[13px] max-[480px]:text-base font-medium text-ink outline-hidden transition placeholder:text-muted"
-                    />
-                    <Gift className="w-3.5 h-3.5 text-[#C59B58] absolute left-3 pointer-events-none" />
-                  </div>
-                )}
-              </div>
-
               {/* Điều khoản sử dụng */}
               <div className="text-[11px] text-[#7D715E] pt-0.5 flex items-start gap-2">
                 <input
@@ -386,8 +356,8 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="agreeTerms" className="cursor-pointer leading-snug">
                   Tôi đồng ý với{' '}
-                  <Link to="/terms" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
-                  <Link to="/privacy" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
+                  <Link to="/terms" target="_blank" rel="noopener noreferrer" aria-label="Điều khoản (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
+                  <Link to="/privacy" target="_blank" rel="noopener noreferrer" aria-label="Chính sách (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
                 </label>
               </div>
 
@@ -489,13 +459,11 @@ export default function RegisterPage() {
       </Modal>
 
       <footer className="max-w-[1240px] mx-auto mt-0 w-full pt-3 text-center text-[11px] text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
-        <span>© 2026 SCANMS Corporation</span>
+        <span>© 2026 SCANMS — Hệ thống Quản lý Cộng tác viên & Tiếp thị Liên kết</span>
         <span>•</span>
-        <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>
+        <span className="text-[#7D715E]">Bảo mật dữ liệu cá nhân eKYC</span>
         <span>•</span>
-        <Link to="/privacy" className="hover:underline">Chính sách bảo mật</Link>
-        <span>•</span>
-        <Link to="/terms" className="hover:underline">Điều khoản dịch vụ</Link>
+        <span className="text-[#7D715E]">Quy chế hoạt động nội bộ</span>
       </footer>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   X,
   Check,
   ArrowUpRight,
+  Store,
 } from 'lucide-react';
 import { leaderboardService } from '../../services/leaderboard.service';
 import type {
@@ -29,7 +30,6 @@ import { toast } from '../../utils/toast';
 import api from '../../services/api';
 import { authService } from '../../services/auth.service';
 import { WorkspaceMetrics, workspaceButton } from '@/components/ui/FeatureWorkspace';
-import './LeaderboardPage.css';
 
 export default function LeaderboardPage({ alignToContainer = false }: { alignToContainer?: boolean } = {}) {
   const [data, setData] = useState<LeaderboardFullResponse | null>(null);
@@ -56,8 +56,27 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
       const body = response?.data?.data || response?.data || response;
       const list = Array.isArray(body) ? body : Array.isArray(body?.items) ? body.items : [];
       if (!active) return;
-      setStores(list.filter((store: any) => store?.id && store?.name).map((store: any) => ({ id: store.id, name: store.name })));
-      setSelectedStoreId((current) => current || list[0]?.id || '');
+      const OFFICIAL_ORDER = [
+        'sora skincare',
+        'aura activewear',
+        'greenbio',
+        'lumière',
+        'lumiere',
+      ];
+      const validStores = list
+        .filter((store: any) => store?.id && store?.name && !store.name.toLowerCase().includes('fixture'))
+        .map((store: any) => ({ id: store.id, name: store.name }))
+        .sort((a: any, b: any) => {
+          const idxA = OFFICIAL_ORDER.findIndex(n => a.name.toLowerCase().includes(n));
+          const idxB = OFFICIAL_ORDER.findIndex(n => b.name.toLowerCase().includes(n));
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      setStores(validStores);
+      const defaultStoreId = validStores.find((s: any) => s.name.toLowerCase().includes('sora'))?.id || validStores[0]?.id || '';
+      setSelectedStoreId((current) => current || defaultStoreId);
     }).catch((error: any) => {
       if (active) toast.error(error?.message || 'Không tải được danh sách gian hàng.');
     }).finally(() => { if (active) setStoresLoading(false); });
@@ -222,26 +241,78 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
             </div>
           </div>
           <div className="flex items-center flex-wrap gap-2.5">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E] whitespace-nowrap" htmlFor="lb-metric-select"><Filter aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Xếp hạng theo</label>
-            <div className="relative w-[180px] shrink-0">
-              <select id="lb-metric-select" value={metric} onChange={event => setMetric(event.target.value as LeaderboardMetric)} className="leaderboard-centered-select border border-[#EAE4D7] text-[#1A1612] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
-                {Object.entries(metricLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-[#7D715E] whitespace-nowrap">
+              <Filter aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Xếp hạng theo:
+            </span>
+
+            {/* Select Metric */}
+            <div className="relative min-w-[170px] shrink-0">
+              <select
+                id="lb-metric-select"
+                value={metric}
+                onChange={(event) => setMetric(event.target.value as LeaderboardMetric)}
+                className="w-full h-9 rounded-xl border border-[#EAE4D7] bg-white pl-3 pr-8 text-xs font-semibold text-[#1A1612] appearance-none focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58]"
+              >
+                {Object.entries(metricLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
-              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7D715E]"
+              />
             </div>
+
+            {/* Select Scope */}
             {canChangeScope && (
               <>
-                <div className="relative w-[180px] shrink-0">
-                <select aria-label="Phạm vi xếp hạng" value={scope} onChange={event => setScope(event.target.value as LeaderboardScope)} className="leaderboard-centered-select border border-[#EAE4D7] text-[#1A1612] font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B88E4F]">
-                  <option value="GLOBAL">Toàn sàn</option>
-                  <option value="STORE">{isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</option>
-                </select>
-                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
-                </div>
-                {scope === 'STORE' && isAdmin && (
-                  <select aria-label="Chọn gian hàng để xếp hạng" value={selectedStoreId} onChange={event => setSelectedStoreId(event.target.value)} disabled={!stores.length} className="min-h-11 max-w-[200px] rounded-lg border border-[#EAE4D7] bg-white px-3 text-xs text-[#1A1612]">
-                    {stores.length ? stores.map(store => <option key={store.id} value={store.id}>{store.name}</option>) : <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>}
+                <div className="relative min-w-[145px] shrink-0">
+                  <select
+                    aria-label="Phạm vi xếp hạng"
+                    value={scope}
+                    onChange={(event) => setScope(event.target.value as LeaderboardScope)}
+                    className="w-full h-9 rounded-xl border border-[#EAE4D7] bg-white pl-3 pr-8 text-xs font-semibold text-[#1A1612] appearance-none focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58]"
+                  >
+                    <option value="GLOBAL">Toàn sàn</option>
+                    <option value="STORE">{isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</option>
                   </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7D715E]"
+                  />
+                </div>
+
+                {/* Select Specific Store when scope is STORE */}
+                {scope === 'STORE' && isAdmin && (
+                  <div className="relative min-w-[210px] max-w-[280px] shrink-0 animate-in fade-in duration-150">
+                    <Store
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B88E4F]"
+                    />
+                    <select
+                      aria-label="Chọn gian hàng để xếp hạng"
+                      value={selectedStoreId}
+                      onChange={(event) => setSelectedStoreId(event.target.value)}
+                      disabled={!stores.length}
+                      className="w-full h-9 rounded-xl border border-[#EEDFC6] bg-[#FDFBF7] pl-8.5 pr-8 text-xs font-semibold text-[#1A1612] appearance-none focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {stores.length ? (
+                        stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">{storesLoading ? 'Đang tải gian hàng…' : 'Không có gian hàng'}</option>
+                      )}
+                    </select>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7D715E]"
+                    />
+                  </div>
                 )}
               </>
             )}
@@ -252,51 +323,146 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
       {loadError && <div role="alert" className="p-3 sm:px-4 border border-[#EEDFC6] rounded-xl bg-white text-xs sm:text-sm text-[#DC2626]">{loadError}</div>}
 
-      {loading ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white" role="status">Đang tải bảng vinh danh…</div>
-        : loadError ? null : !podiumEntries.length ? <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white space-y-2"><Trophy aria-hidden="true" className="w-7 h-7 mx-auto text-[#B88E4F]" /><h2 className="text-base font-semibold text-[#1A1612]">Chưa có Creator đủ điều kiện vinh danh</h2><p className="max-w-md mx-auto">Kỳ này chưa có kết quả theo tiêu chí {metricLabels[metric].toLowerCase()}. Chọn khoảng thời gian khác để xem thành tích.</p>{timeRange === 'this_month' && <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6]" onClick={() => setTimeRange('last_month')}>Xem tháng trước<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /></button>}</div>
-        : <div className="leaderboard-podium" aria-label="Các nhà sáng tạo dẫn đầu">
-        {podiumEntries.map(({ slot, creator }) => {
-          const rank = creator.rank;
-          return <article key={creator.collaboratorId} data-podium-rank={slot} data-current={creator?.isCurrentUser || undefined}
-            className={`flex flex-col min-h-[220px] p-4 sm:p-4.5 border rounded-xl bg-white shadow-2xs ${rank === 1 ? 'border-[#EEDFC6] bg-[#FDFBF7] md:order-2' : slot === 2 ? 'border-[#EAE4D7] md:order-1' : 'border-[#EAE4D7] md:order-3'}`}
-          >
-            <button className="flex items-center gap-3 w-full text-left bg-transparent border-0 p-0 cursor-pointer min-h-[64px] disabled:cursor-default" type="button" disabled={!creator}
-              aria-label={creator ? `Xem hồ sơ ${creator.fullName}` : 'Hồ sơ chưa có dữ liệu'}
-              onClick={() => creator && handleOpenCreatorModal(creator.collaboratorId)}
+      {loading ? (
+        <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white" role="status">
+          Đang tải bảng vinh danh…
+        </div>
+      ) : loadError ? null : !podiumEntries.length ? (
+        <div className="p-8 text-center text-xs sm:text-sm text-[#7D715E] border border-[#EAE4D7] rounded-[15px] bg-white space-y-2">
+          <Trophy aria-hidden="true" className="w-7 h-7 mx-auto text-[#B88E4F]" />
+          <h2 className="text-base font-semibold text-[#1A1612]">Chưa có Creator đủ điều kiện vinh danh</h2>
+          <p className="max-w-md mx-auto">Kỳ này chưa có kết quả theo tiêu chí {metricLabels[metric].toLowerCase()}. Chọn khoảng thời gian khác để xem thành tích.</p>
+          {timeRange === 'this_month' && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#EEDFC6] rounded-lg bg-[#FBF5EB] text-xs font-semibold text-[#1A1612] hover:bg-[#F3EFE6]"
+              onClick={() => setTimeRange('last_month')}
             >
-              <span className={`relative grid place-items-center w-11 sm:w-12 h-11 sm:h-12 overflow-hidden shrink-0 border rounded-full bg-[#FAF8F5] text-[#B88E4F] text-lg font-semibold ${rank === 1 ? 'border-[#EEDFC6]' : 'border-[#EAE4D7]'}`} aria-hidden="true">
-                {creator?.fullName?.charAt(0) || rank}
-                {creator?.avatarUrl && <img src={creator.avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}
-              </span>
-              <span className="flex flex-1 flex-col gap-1 min-w-0">
-                <span className="text-sm sm:text-[15px] font-semibold text-[#1A1612] hover:text-[#B88E4F] transition-colors truncate">{creator?.fullName || (loading && !data ? 'Đang tải KOL…' : rank === 1 ? 'Chưa có Quán Quân' : 'Chưa có đối tác')}</span>
-                <span className="text-xs text-[#7D715E] leading-tight">{creator.tierName}</span>
-                <span className="flex items-center flex-wrap gap-1.5 mt-0.5">
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 border rounded text-[11px] font-medium leading-none ${rank === 1 ? 'border-[#EEDFC6] text-[#B88E4F] bg-white' : 'border-[#EAE4D7] text-[#7D715E] bg-white'}`}><Crown aria-hidden="true" className={`w-3.5 h-3.5 text-[#B88E4F] ${rank === 1 ? '' : 'hidden'}`} /> Hạng {rank}</span>
-                  {creator?.isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">Bạn</span>}
-                </span>
-              </span>
+              Xem tháng trước<ArrowUpRight aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" />
             </button>
-            <div className="podium-score flex flex-col gap-1.5 mt-auto pt-3.5 border-t border-[#EAE4D7]">
-              <span className="text-xs text-[#7D715E]">{metric === 'REVENUE' ? 'Doanh số GMV' : metricLabels[metric]}</span>
-              <div className="flex items-baseline justify-between flex-wrap gap-1.5">
-                <strong className="text-xl sm:text-2xl font-bold tabular-nums text-[#1A1612]">{formatMetricValue(creator)}</strong>
-              </div>
-            </div>
-            <section className="podium-achievements" aria-label={`Thành tích của ${creator.fullName}`}>
-              <div className="podium-achievements-heading">
-                <h3>Thành tích</h3>
-                {creator.primaryChannelHandle && <span title={creator.primaryChannelHandle}>{creator.primaryChannelHandle}</span>}
-              </div>
-              <dl className="podium-stat-grid">
-                <div><dt>Đơn hàng</dt><dd>{formatNumber(creator.totalOrders)}</dd></div>
-                <div><dt>Lượt click</dt><dd>{formatNumber(creator.totalClicks)}</dd></div>
-                <div><dt>Tỷ lệ chốt</dt><dd>{formatNumber(creator.conversionRate)}%</dd></div>
-              </dl>
-            </section>
-          </article>;
-        })}
-      </div>}
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" aria-label="Các nhà sáng tạo dẫn đầu">
+          {podiumEntries.map(({ slot, creator }) => {
+            const rank = creator.rank;
+            const isRank1 = rank === 1;
+            const isRank2 = rank === 2;
+            const cleanHandle = (creator.primaryChannelHandle || '').replace(/^@+/, '@');
+
+            return (
+              <article
+                key={creator.collaboratorId}
+                data-podium-rank={slot}
+                data-current={creator?.isCurrentUser || undefined}
+                className={`flex flex-col p-4 sm:p-4.5 rounded-2xl transition shadow-2xs ${
+                  isRank1
+                    ? 'order-1 md:order-2 border-2 border-[#C59B58] bg-[#FDFBF7] shadow-sm md:min-h-[290px]'
+                    : isRank2
+                    ? 'order-2 md:order-1 border border-slate-200 bg-white md:min-h-[265px]'
+                    : 'order-3 md:order-3 border border-orange-200 bg-white md:min-h-[255px]'
+                }`}
+              >
+                {/* Header: Avatar, Name, Tier & Rank badge */}
+                <button
+                  className="flex items-center gap-3 w-full text-left bg-transparent border-0 p-0 cursor-pointer min-h-[56px] disabled:cursor-default"
+                  type="button"
+                  disabled={!creator}
+                  aria-label={creator ? `Xem hồ sơ ${creator.fullName}` : 'Hồ sơ chưa có dữ liệu'}
+                  onClick={() => creator && handleOpenCreatorModal(creator.collaboratorId)}
+                >
+                  <span
+                    className={`relative grid place-items-center w-12 h-12 overflow-hidden shrink-0 border-2 rounded-full bg-[#FAF8F5] text-[#B88E4F] text-lg font-bold shadow-2xs ${
+                      isRank1 ? 'border-[#C59B58] ring-2 ring-[#C59B58]/20' : isRank2 ? 'border-slate-300' : 'border-orange-300'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {creator?.fullName?.charAt(0) || rank}
+                    {creator?.avatarUrl && (
+                      <img
+                        src={creator.avatarUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </span>
+                  <span className="flex flex-1 flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-bold text-[#1A1612] hover:text-[#B88E4F] transition-colors truncate">
+                      {creator?.fullName || (loading && !data ? 'Đang tải KOL…' : isRank1 ? 'Chưa có Quán Quân' : 'Chưa có đối tác')}
+                    </span>
+                    <span className="text-xs text-[#7D715E] leading-tight font-medium">{creator.tierName}</span>
+                    <span className="flex items-center flex-wrap gap-1.5 mt-1">
+                      {isRank1 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#FEF08A] rounded-md text-[11px] font-bold bg-[#FEFCE8] text-[#A16207]">
+                          <Crown className="w-3.5 h-3.5 text-[#A16207]" /> Quán Quân • Hạng 1
+                        </span>
+                      ) : isRank2 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-slate-200 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700">
+                          Á Quân • Hạng 2
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-orange-200 rounded-md text-[11px] font-bold bg-orange-50 text-orange-800">
+                          Quý Quân • Hạng 3
+                        </span>
+                      )}
+                      {creator?.isCurrentUser && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">
+                          Bạn
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </button>
+
+                {/* Score */}
+                <div className="mt-auto pt-3 border-t border-[#EAE4D7]">
+                  <span className="text-[11px] text-[#7D715E] block font-medium">
+                    {metric === 'REVENUE' ? 'Doanh số GMV' : metricLabels[metric]}
+                  </span>
+                  <strong className="text-xl sm:text-2xl font-bold tabular-nums text-[#1A1612] block mt-0.5">
+                    {formatMetricValue(creator)}
+                  </strong>
+                </div>
+
+                {/* Achievements (Horizontal 3-Column Grid) */}
+                <div className="mt-2.5 pt-2.5 border-t border-[#EAE4D7]">
+                  <div className="flex items-center justify-between text-xs text-[#7D715E] mb-1.5">
+                    <span className="font-semibold text-[#1A1612] text-[11px]">Thành tích</span>
+                    {cleanHandle && (
+                      <span className="font-mono text-[11px] text-[#B88E4F] truncate max-w-[140px]" title={cleanHandle}>
+                        {cleanHandle}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-center">
+                    <div>
+                      <span className="text-[10px] text-[#7D715E] block font-medium">Đơn hàng</span>
+                      <strong className="text-xs font-bold text-[#1A1612] tabular-nums mt-0.5 block">
+                        {formatNumber(creator.totalOrders)}
+                      </strong>
+                    </div>
+                    <div className="border-x border-[#EAE4D7]">
+                      <span className="text-[10px] text-[#7D715E] block font-medium">Lượt click</span>
+                      <strong className="text-xs font-bold text-[#1A1612] tabular-nums mt-0.5 block">
+                        {formatNumber(creator.totalClicks)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#7D715E] block font-medium">Tỷ lệ chốt</span>
+                      <strong className="text-xs font-bold text-[#B88E4F] tabular-nums mt-0.5 block">
+                        {formatNumber(creator.conversionRate)}%
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       {(loading || loadError || rankings.length > 0) && <section className="leaderboard-ranking-table border border-[#EAE4D7] rounded-[15px] bg-white overflow-hidden" aria-label="Bảng xếp hạng Creator">
         <div className="overflow-x-auto" role="region" aria-label="Danh sách Creator tiếp theo" tabIndex={0}>
@@ -321,7 +487,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
                   </td>
                   <td className="px-3.5 py-3 border-t border-[#EAE4D7]"><div className="flex items-center gap-2.5 max-w-[245px]">
                     <span className="relative grid place-items-center w-8 h-8 rounded-full overflow-hidden shrink-0 bg-[#FAF8F5] border border-[#EAE4D7] text-[#B88E4F] text-xs font-semibold" aria-hidden="true">{item.fullName?.charAt(0) || 'K'}{item.avatarUrl && <img src={item.avatarUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span>
-                    <div className="min-w-0"><div className="flex items-center flex-wrap gap-1"><strong className="text-xs font-semibold text-[#1A1612] truncate">{item.fullName}</strong>{item.isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">Bạn</span>}</div><p className="m-0 mt-0.5 text-[11px] text-[#7D715E] truncate" title={item.primaryChannelHandle || undefined}>{item.primaryChannelHandle || 'Chưa cập nhật kênh'}</p></div>
+                    <div className="min-w-0"><div className="flex items-center flex-wrap gap-1"><strong className="text-xs font-semibold text-[#1A1612] truncate">{item.fullName}</strong>{item.isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 border border-[#EEDFC6] rounded bg-[#FBF5EB] text-[#B88E4F] text-[10px] font-semibold">Bạn</span>}</div><p className="m-0 mt-0.5 text-[11px] text-[#7D715E] truncate" title={item.primaryChannelHandle || undefined}>{item.primaryChannelHandle ? item.primaryChannelHandle.replace(/^@+/, '@') : 'Chưa cập nhật kênh'}</p></div>
                   </div></td>
                   <td className="px-3.5 py-3 border-t border-[#EAE4D7]"><span className="inline-flex items-center px-2 py-0.5 border border-[#EAE4D7] rounded-md bg-white text-[11px] font-medium text-[#7D715E]">{item.tierName}</span></td>
                   <td className="text-right px-3.5 py-3 border-t border-[#EAE4D7] tabular-nums whitespace-nowrap">{formatNumber(item.totalClicks)}</td>

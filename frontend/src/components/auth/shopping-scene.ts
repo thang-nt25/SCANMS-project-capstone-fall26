@@ -229,11 +229,31 @@ export function createShoppingScene(host: HTMLElement, onContextLost: () => void
   function flutterBow(time: number) {
     for (const { geometry, dir } of tails) {
       const pos = geometry.attributes.position as THREE.BufferAttribute;
-      for (let row = 0; row < 2; row++) for (let i = 0; i <= 28; i++) {
-        const u = i / 28;
-        const wave = Math.sin(u * 7 - time * 1.8 + dir) * u * 0.055;
-        pos.setXYZ(row * 29 + i, dir * (u * 0.4 + 0.035) + (row - 0.5) * 0.17,
-          0.14 - u * u * 0.56 + wave, u * 0.7 + Math.sin(u * 4) * 0.07);
+      for (let row = 0; row < 2; row++) {
+        for (let i = 0; i <= 28; i++) {
+          const u = i / 28;
+          // Phân định 2 giai đoạn: u <= 0.62 nằm trên nắp hộp, u > 0.62 rủ trước mặt hộp
+          const uCorner = 0.62;
+          const wave = Math.sin(u * 5.5 - time * 1.5 + dir) * u * 0.006;
+          const x = dir * (u * 0.36 + 0.04) + (row - 0.5) * 0.16;
+          let y: number;
+          let z: number;
+
+          if (u <= uCorner) {
+            const t = u / uCorner;
+            // Nằm hoàn toàn trên mặt nắp hộp và dây ruy-băng vàng (Y luôn >= 0.114, nắp ở 0.095)
+            y = 0.138 - t * 0.022 + wave;
+            z = t * 0.655;
+          } else {
+            const t = (u - uCorner) / (1 - uCorner);
+            // Uốn cong qua gờ nắp và rủ xuống mặt trước (Z luôn >= 0.658, bên ngoài hộp quà)
+            const forwardPush = Math.sin(t * Math.PI) * 0.016;
+            z = 0.655 + t * 0.012 + forwardPush;
+            y = 0.116 - Math.pow(t, 1.4) * 0.28 + wave * (1 - t * 0.5);
+          }
+
+          pos.setXYZ(row * 29 + i, x, y, z);
+        }
       }
       pos.needsUpdate = true;
       geometry.computeVertexNormals();

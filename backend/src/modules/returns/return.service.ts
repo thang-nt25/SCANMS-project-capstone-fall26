@@ -23,11 +23,17 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { CloudinaryService } from '../../core/cloudinary/cloudinary.service';
 import { assertReturnTransition } from './return-state.machine';
 import { PickupGateway } from './pickup.gateway';
-import { warehouseSchema } from './return.schemas';
+import { configuredReturnWarehouse } from './return.schemas';
+import {
+  advanceGhnClaim,
+  latestGhnClaim,
+  type GhnClaimSnapshot,
+} from './ghn-compensation-claim';
 import type {
   BookPickupInput,
   DisputeInput,
@@ -36,6 +42,8 @@ import type {
   LiabilityAssessmentInput,
   ResolveDisputeInput,
   ShipmentInput,
+  ShopEscalationInput,
+  GhnClaimActionInput,
   WarehouseInput,
 } from './return.schemas';
 
@@ -51,9 +59,24 @@ const detailInclude = {
       rawPayload: true,
       finalAmount: true,
       refundedAmount: true,
+      orderItems: { select: { id: true, quantity: true, unitPrice: true } },
       customerId: true,
       store: {
-        select: { id: true, ownerId: true, name: true, returnWarehouse: true, onboardingData: true },
+        select: {
+          id: true,
+          ownerId: true,
+          name: true,
+          returnWarehouse: true,
+          onboardingData: true,
+          staffMembers: {
+            where: {
+              role: UserRole.SHOP_MANAGER,
+              isActive: true,
+              isDeleted: false,
+            },
+            select: { id: true },
+          },
+        },
       },
       paymentTransactions: {
         select: { paymentMethod: true, status: true },
@@ -82,6 +105,19 @@ const SHIP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const INSPECTION_SLA_MS = 48 * 60 * 60 * 1000;
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
+function originalGhnTracking(
+  rawPayload: Prisma.JsonValue | null,
+): string | null {
+  if (
+    !rawPayload ||
+    typeof rawPayload !== 'object' ||
+    Array.isArray(rawPayload)
+  )
+    return null;
+  const code = (rawPayload as Record<string, unknown>).ghnOrderCode;
+  return typeof code === 'string' && code.trim() ? code.trim() : null;
+}
+
 @Injectable()
 export class ReturnService {
   private readonly logger = new Logger(ReturnService.name);
@@ -91,36 +127,63 @@ export class ReturnService {
     private readonly cloudinary: CloudinaryService,
     private readonly pickupGateway: PickupGateway = new PickupGateway(),
     @Optional() private readonly walletsService?: WalletsService,
+    @Optional() private readonly cacheService?: CacheService,
+    @Optional()
     private readonly commissionRulesService?: CommissionRulesService,
   ) {}
 
-  /** A confirmed internal-wallet refund and its income clawback share one DB transaction. */
-  private async reverseIncomeAfterRefund(tx: Prisma.TransactionClient, orderId: string) {
-    const commissions = await tx.commission.findMany({
-      where: { orderId, status: { in: [CommissionStatus.PENDING, CommissionStatus.APPROVED, CommissionStatus.PAID] } },
-      select: { id: true, collaboratorId: true, commissionAmount: true, status: true, storeWalletTracked: true, order: { select: { storeId: true } } },
-    });
-    for (const commission of commissions) {
-      if (commission.commissionAmount.greaterThan(0)) {
-        const reference = { id: commission.id, type: 'COMMISSION' };
-        const storeId = commission.storeWalletTracked ? commission.order.storeId : undefined;
-        if (commission.status === CommissionStatus.PENDING) {
-          await this.walletsService!.reversePendingBalance(tx, commission.collaboratorId, commission.commissionAmount, reference, storeId);
-        } else {
-          await this.walletsService!.reverseAvailableBalance(tx, commission.collaboratorId, commission.commissionAmount, reference, storeId);
-        }
-      }
-      await tx.commission.update({ where: { id: commission.id }, data: { status: CommissionStatus.REVERSED, reversedAt: new Date() } });
-    }
+  /** Allocate the paid order total (including discounts and delivery) across original item value. */
+  private returnAmount(detail: Detail): Prisma.Decimal {
+    const remaining = detail.order.finalAmount.minus(
+      detail.order.refundedAmount,
+    );
+    if (!detail.items?.length) return remaining; // Legacy order-wide requests.
+    const original = detail.order.orderItems.reduce(
+      (sum, item) => sum.add(item.unitPrice.mul(item.quantity)),
+      new Prisma.Decimal(0),
+    );
+    const selected = detail.items.reduce(
+      (sum, item) => sum.add(item.unitPrice.mul(item.quantity)),
+      new Prisma.Decimal(0),
+    );
+    if (
+      original.lessThanOrEqualTo(0) ||
+      selected.greaterThanOrEqualTo(original)
+    )
+      return remaining;
+    return Prisma.Decimal.min(
+      remaining,
+      detail.order.finalAmount
+        .mul(selected)
+        .div(original)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+    );
+  }
+
+  private fullReturn(detail: Detail): boolean {
+    if (!detail.items?.length) return true;
+    return detail.order.orderItems.every((item) =>
+      detail.items.some(
+        (selected) =>
+          selected.orderItemId === item.id &&
+          selected.quantity === item.quantity,
+      ),
+    );
   }
 
   private scope(
     userId: string,
     role: UserRole,
   ): Prisma.ReturnRequestWhereInput {
-    if (role === UserRole.CUSTOMER) return { customerId: userId };
+    if (role === UserRole.CUSTOMER || role === UserRole.COLLABORATOR)
+      return { customerId: userId };
     if (role === UserRole.SHOP_MANAGER)
-      return { order: { store: managedStoreWhere(userId) } };
+      return {
+        OR: [
+          { customerId: userId },
+          { order: { store: managedStoreWhere(userId) } },
+        ],
+      };
     if (role === UserRole.SYSTEM_ADMIN || role === UserRole.SYSTEM_MANAGER)
       return {};
     throw new ForbiddenException('Vai trò không được truy cập hồ sơ đổi trả');
@@ -140,7 +203,13 @@ export class ReturnService {
   }
 
   private requireShop(userId: string, role: UserRole, detail: Detail) {
-    if (role !== UserRole.SHOP_MANAGER) {
+    if (
+      role !== UserRole.SHOP_MANAGER ||
+      (detail.order.store.ownerId !== userId &&
+        !detail.order.store.staffMembers?.some(
+          (member) => member.id === userId,
+        ))
+    ) {
       throw new ForbiddenException('Bạn không quản lý Shop của đơn hàng này');
     }
   }
@@ -193,14 +262,63 @@ export class ReturnService {
     });
   }
 
+  private async openGhnClaim(
+    tx: Prisma.TransactionClient,
+    detail: Detail,
+    actorId: string,
+    replacementTrackingNumber?: string,
+  ) {
+    const originalTrackingNumber = originalGhnTracking(detail.order.rawPayload);
+    if (!originalTrackingNumber || latestGhnClaim(detail.events)) return;
+    const shopEvidence = detail.events.flatMap((event) => {
+      if (
+        event.type !== 'SHOP_EVIDENCE_SUBMITTED' ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+      )
+        return [];
+      const urls = (event.data as Record<string, unknown>).evidenceUrls;
+      return Array.isArray(urls)
+        ? urls.filter((url): url is string => typeof url === 'string')
+        : [];
+    });
+    const snapshot: GhnClaimSnapshot = {
+      status: 'DRAFT',
+      originalTrackingNumber,
+      replacementTrackingNumber,
+      evidenceUrls: [
+        ...new Set(
+          [
+            ...(detail.imageUrls ?? []),
+            detail.unboxingVideoUrl,
+            ...shopEvidence,
+          ].filter((url): url is string => Boolean(url)),
+        ),
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    await tx.returnEvent.create({
+      data: {
+        returnRequestId: detail.id,
+        actorId,
+        type: 'GHN_COMPENSATION_CLAIM_OPENED',
+        data: snapshot as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   private present(item: Detail, showPartnerIncome = false) {
     const { order, shipments, ...rest } = item;
+    const outboundGhnTrackingNumber = originalGhnTracking(order.rawPayload);
     const commissions = order.commissions ?? [];
     const postedIncome = commissions.reduce(
-      (sum, commission) => sum + Number(commission.commissionAmount), 0,
+      (sum, commission) => sum + Number(commission.commissionAmount),
+      0,
     );
     const snapshotIncome = (item.items ?? []).reduce(
-      (sum, line) => sum + Number(line.orderItem.calculatedCommissionAmount), 0,
+      (sum, line) => sum + Number(line.orderItem.calculatedCommissionAmount),
+      0,
     );
     return {
       ...rest,
@@ -211,25 +329,60 @@ export class ReturnService {
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         shippingAddress: order.shippingAddress,
+        outboundGhnTrackingNumber,
       },
-      ...(showPartnerIncome ? { partnerIncome: {
-        amount: Number(order.refundedAmount) > 0 ||
-          (commissions.length > 0 && commissions.every((commission) => commission.status === CommissionStatus.REVERSED))
-          ? 0 : commissions.length ? postedIncome : snapshotIncome,
-        reversedAmount: Number(order.refundedAmount) > 0 ? postedIncome || snapshotIncome :
-          commissions.length > 0 && commissions.every((commission) => commission.status === CommissionStatus.REVERSED) ? postedIncome : 0,
-        status: Number(order.refundedAmount) > 0 ? 'REVERSED' : commissions.length
-          ? commissions.every((commission) => commission.status === CommissionStatus.REVERSED)
-            ? 'REVERSED'
-            : commissions.some((commission) => commission.status === CommissionStatus.PENDING)
-              ? 'PENDING' : 'AVAILABLE'
-          : 'NOT_POSTED',
-        availableAt: commissions.find((commission) => commission.status === CommissionStatus.PENDING)?.availableAt ?? null,
-      } } : {}),
-      returnWarehouse: warehouseSchema.safeParse(order.store.returnWarehouse)
-        .success
-        ? order.store.returnWarehouse
-        : null,
+      ...(showPartnerIncome
+        ? {
+            partnerIncome: {
+              amount:
+                order.refundedAmount.greaterThanOrEqualTo(order.finalAmount) ||
+                (commissions.length > 0 &&
+                  commissions.every(
+                    (commission) =>
+                      commission.status === CommissionStatus.REVERSED,
+                  ))
+                  ? 0
+                  : commissions.length
+                    ? postedIncome
+                    : snapshotIncome,
+              reversedAmount: order.refundedAmount.greaterThanOrEqualTo(
+                order.finalAmount,
+              )
+                ? postedIncome || snapshotIncome
+                : commissions.length > 0 &&
+                    commissions.every(
+                      (commission) =>
+                        commission.status === CommissionStatus.REVERSED,
+                    )
+                  ? postedIncome
+                  : 0,
+              status: order.refundedAmount.greaterThanOrEqualTo(
+                order.finalAmount,
+              )
+                ? 'REVERSED'
+                : commissions.length
+                  ? commissions.every(
+                      (commission) =>
+                        commission.status === CommissionStatus.REVERSED,
+                    )
+                    ? 'REVERSED'
+                    : commissions.some(
+                          (commission) =>
+                            commission.status === CommissionStatus.PENDING,
+                        )
+                      ? 'PENDING'
+                      : 'AVAILABLE'
+                  : 'NOT_POSTED',
+              availableAt:
+                commissions.find(
+                  (commission) =>
+                    commission.status === CommissionStatus.PENDING,
+                )?.availableAt ?? null,
+            },
+          }
+        : {}),
+      returnWarehouse: configuredReturnWarehouse(order.store.returnWarehouse),
+      ...(showPartnerIncome ? { ghnClaim: latestGhnClaim(item.events) } : {}),
       pickupProviderMode: this.pickupGateway.mode(),
       pickupSimulationEnabled:
         process.env.NODE_ENV !== 'production' &&
@@ -247,7 +400,13 @@ export class ReturnService {
   }
 
   async getOne(userId: string, role: UserRole, id: string) {
-    return this.present(await this.scopedDetail(userId, role, id), role !== UserRole.CUSTOMER);
+    const detail = await this.scopedDetail(userId, role, id);
+    return this.present(
+      detail,
+      detail.customerId !== userId &&
+        role !== UserRole.CUSTOMER &&
+        role !== UserRole.COLLABORATOR,
+    );
   }
 
   async listShop(userId: string, role: UserRole, status?: string, page = 1) {
@@ -284,20 +443,26 @@ export class ReturnService {
 
   async listForOversight(role: UserRole) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
-      throw new ForbiddenException('Chỉ vận hành hệ thống được xem hồ sơ đổi trả');
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xem hồ sơ đổi trả',
+      );
     const records = await this.prisma.returnRequest.findMany({
-      where: { status: { in: [
-        ReturnRequestStatus.REQUESTED,
-        ReturnRequestStatus.SHOP_APPROVED,
-        ReturnRequestStatus.PICKUP_BOOKED,
-        ReturnRequestStatus.RETURN_SHIPPED,
-        ReturnRequestStatus.RETURN_RECEIVED,
-        ReturnRequestStatus.INSPECTING,
-        ReturnRequestStatus.EXCHANGE_PENDING,
-        ReturnRequestStatus.REFUND_PENDING,
-        // Failed refunds remain actionable for operations even without a customer dispute.
-        ReturnRequestStatus.REFUND_FAILED,
-      ] } },
+      where: {
+        status: {
+          in: [
+            ReturnRequestStatus.REQUESTED,
+            ReturnRequestStatus.SHOP_APPROVED,
+            ReturnRequestStatus.PICKUP_BOOKED,
+            ReturnRequestStatus.RETURN_SHIPPED,
+            ReturnRequestStatus.RETURN_RECEIVED,
+            ReturnRequestStatus.INSPECTING,
+            ReturnRequestStatus.EXCHANGE_PENDING,
+            ReturnRequestStatus.REFUND_PENDING,
+            // Failed refunds remain actionable for operations even without a customer dispute.
+            ReturnRequestStatus.REFUND_FAILED,
+          ],
+        },
+      },
       include: detailInclude,
       orderBy: { updatedAt: 'desc' },
       take: 100,
@@ -305,16 +470,186 @@ export class ReturnService {
     return records.map((record) => this.present(record, true));
   }
 
-  async assessLiability(userId: string, role: UserRole, id: string, input: LiabilityAssessmentInput) {
+  async listOversightQueue(
+    role: UserRole,
+    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes',
+    page: number,
+  ) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
-      throw new ForbiddenException('Chỉ vận hành hệ thống được xác định trách nhiệm');
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xem hàng đợi đổi trả',
+      );
+    const pageSize = 20;
+    const skip = (page - 1) * pageSize;
+    if (kind === 'disputes') {
+      const where: Prisma.DisputeWhereInput = { status: 'OPEN' };
+      const [total, rows] = await this.prisma.$transaction([
+        this.prisma.dispute.count({ where }),
+        this.prisma.dispute.findMany({
+          where,
+          include: { returnRequest: { include: detailInclude } },
+          orderBy: { openedAt: 'asc' },
+          skip,
+          take: pageSize,
+        }),
+      ]);
+      return {
+        total,
+        page,
+        pageSize,
+        items: rows.map((row) => ({
+          ...row,
+          returnRequest: this.present(row.returnRequest, true),
+        })),
+      };
+    }
+    const where: Prisma.ReturnRequestWhereInput =
+      kind === 'active'
+        ? {
+            status: {
+              in: [
+                ReturnRequestStatus.REQUESTED,
+                ReturnRequestStatus.SHOP_APPROVED,
+                ReturnRequestStatus.PICKUP_BOOKED,
+                ReturnRequestStatus.RETURN_SHIPPED,
+                ReturnRequestStatus.RETURN_RECEIVED,
+                ReturnRequestStatus.INSPECTING,
+                ReturnRequestStatus.EXCHANGE_PENDING,
+                ReturnRequestStatus.REFUND_PENDING,
+                ReturnRequestStatus.REFUND_FAILED,
+              ],
+            },
+          }
+        : kind === 'rejected'
+          ? { status: ReturnRequestStatus.SHOP_REJECTED, dispute: { is: null } }
+          : kind === 'ghn'
+            ? { events: { some: { type: 'GHN_COMPENSATION_CLAIM_OPENED' } } }
+            : {
+                status: {
+                  in: [
+                    ReturnRequestStatus.RETURN_RECEIVED,
+                    ReturnRequestStatus.INSPECTING,
+                  ],
+                },
+                receivedAt: { lte: new Date(Date.now() - INSPECTION_SLA_MS) },
+                inspectionCompletedAt: null,
+              };
+    const orderBy: Prisma.ReturnRequestOrderByWithRelationInput =
+      kind === 'rejected'
+        ? { shopRespondedAt: 'desc' }
+        : kind === 'stalled'
+          ? { receivedAt: 'asc' }
+          : { updatedAt: 'desc' };
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.returnRequest.count({ where }),
+      this.prisma.returnRequest.findMany({
+        where,
+        include: detailInclude,
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+    ]);
+    return {
+      total,
+      page,
+      pageSize,
+      items: rows.map((row) => this.present(row, true)),
+    };
+  }
+
+  async listHistory(role: UserRole, page = 1, query = '') {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xem lịch sử đổi trả',
+      );
+
+    const pageSize = 20;
+    const search = query.trim().slice(0, 80);
+    const where: Prisma.ReturnRequestWhereInput = {
+      status: {
+        in: [
+          ReturnRequestStatus.COMPLETED,
+          ReturnRequestStatus.REFUNDED,
+          ReturnRequestStatus.CLOSED,
+          ReturnRequestStatus.EXPIRED,
+        ],
+      },
+      ...(search
+        ? {
+            order: {
+              OR: [
+                {
+                  externalOrderSn: {
+                    contains: search,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                {
+                  customerName: {
+                    contains: search,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                { customerPhone: { contains: search } },
+                {
+                  store: {
+                    name: { contains: search, mode: 'insensitive' as const },
+                  },
+                },
+              ],
+            },
+          }
+        : {}),
+    };
+    const [total, records] = await this.prisma.$transaction([
+      this.prisma.returnRequest.count({ where }),
+      this.prisma.returnRequest.findMany({
+        where,
+        include: detailInclude,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return {
+      total,
+      page,
+      pageSize,
+      items: records.map((record) => this.present(record, true)),
+    };
+  }
+
+  async assessLiability(
+    userId: string,
+    role: UserRole,
+    id: string,
+    input: LiabilityAssessmentInput,
+  ) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xác định trách nhiệm',
+      );
     const detail = await this.scopedDetail(userId, role, id);
+    if (
+      input.liability === 'LOGISTICS_FAULT' &&
+      !originalGhnTracking(detail.order.rawPayload)
+    )
+      throw new ConflictException(
+        'Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác',
+      );
     const latestAssessment = [...detail.events].reverse().find((event) => {
       const data = event.data as Record<string, unknown> | null;
-      return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
+      return (
+        event.type === 'LIABILITY_ASSESSED' &&
+        data?.source === 'SYSTEM_MANAGER_REVIEW'
+      );
     });
     const latestData = latestAssessment?.data as Record<string, unknown> | null;
-    if (latestData?.liability === input.liability && latestData?.notes === input.notes)
+    if (
+      latestData?.liability === input.liability &&
+      latestData?.notes === input.notes
+    )
       return this.getOne(userId, role, id);
     const assessable: ReturnRequestStatus[] = [
       ReturnRequestStatus.REQUESTED,
@@ -333,21 +668,37 @@ export class ReturnService {
       });
       if (changed.count !== 1)
         throw new ConflictException('Hồ sơ vừa được xử lý; hãy tải lại');
-      await tx.returnEvent.create({ data: {
-        returnRequestId: id,
-        actorId: userId,
-        type: 'LIABILITY_ASSESSED',
-        data: { ...input, source: 'SYSTEM_MANAGER_REVIEW' },
-      } });
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'LIABILITY_ASSESSED',
+          data: {
+            ...input,
+            source: 'SYSTEM_MANAGER_REVIEW',
+            ...(input.liability === 'LOGISTICS_FAULT'
+              ? {
+                  originalTrackingNumber: originalGhnTracking(
+                    detail.order.rawPayload,
+                  ),
+                }
+              : {}),
+          },
+        },
+      });
     });
     return this.getOne(userId, role, id);
   }
 
   async retryPendingRefund(userId: string, role: UserRole, id: string) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
-      throw new ForbiddenException('Chỉ vận hành hệ thống được xử lý lại khoản hoàn tiền');
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xử lý lại khoản hoàn tiền',
+      );
     if (!this.walletsService)
-      throw new ServiceUnavailableException('Dịch vụ ví chưa sẵn sàng để hoàn tiền');
+      throw new ServiceUnavailableException(
+        'Dịch vụ ví chưa sẵn sàng để hoàn tiền',
+      );
 
     await this.prisma.$transaction(async (tx) => {
       // Serialize retries on the refund row before reading its status. A second
@@ -355,34 +706,95 @@ export class ReturnService {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM return_refunds WHERE return_request_id = ${id}::uuid FOR UPDATE
       `;
-      if (locked.length !== 1) throw new NotFoundException('Chưa có khoản hoàn tiền để xử lý lại');
-      const current = await tx.returnRequest.findUnique({ where: { id }, include: detailInclude });
-      if (!current?.refund) throw new NotFoundException('Không tìm thấy hồ sơ hoàn tiền');
+      if (locked.length !== 1)
+        throw new NotFoundException('Chưa có khoản hoàn tiền để xử lý lại');
+      const current = await tx.returnRequest.findUnique({
+        where: { id },
+        include: detailInclude,
+      });
+      if (!current?.refund)
+        throw new NotFoundException('Không tìm thấy hồ sơ hoàn tiền');
       if (current.refund.status === ReturnRefundStatus.SUCCEEDED) return;
-      if (current.resolution !== ReturnResolution.REFUND ||
-          (current.status !== ReturnRequestStatus.REFUND_PENDING && current.status !== ReturnRequestStatus.REFUND_FAILED) ||
-          (current.refund.status !== ReturnRefundStatus.PENDING && current.refund.status !== ReturnRefundStatus.FAILED))
-        throw new ConflictException('Khoản hoàn tiền không ở trạng thái có thể xử lý lại');
+      if (
+        current.resolution !== ReturnResolution.REFUND ||
+        (current.status !== ReturnRequestStatus.REFUND_PENDING &&
+          current.status !== ReturnRequestStatus.REFUND_FAILED) ||
+        (current.refund.status !== ReturnRefundStatus.PENDING &&
+          current.refund.status !== ReturnRefundStatus.FAILED)
+      )
+        throw new ConflictException(
+          'Khoản hoàn tiền không ở trạng thái có thể xử lý lại',
+        );
 
-      const remaining = current.order.finalAmount.minus(current.order.refundedAmount);
-      if (remaining.lessThanOrEqualTo(0) || !remaining.equals(current.refund.amount))
-        throw new ConflictException('Số tiền hoàn không khớp số dư đơn hàng; cần đối soát thủ công');
+      const amount = this.returnAmount(current);
+      if (amount.lessThanOrEqualTo(0) || !amount.equals(current.refund.amount))
+        throw new ConflictException(
+          'Số tiền hoàn không khớp số dư đơn hàng; cần đối soát thủ công',
+        );
 
-      await this.walletsService!.refundToWallet(tx, current.customerId, remaining, current.orderId);
-      await this.reverseIncomeAfterRefund(tx, current.orderId);
-      await tx.order.update({ where: { id: current.orderId }, data: { refundedAmount: { increment: remaining } } });
-      await tx.refund.update({ where: { returnRequestId: id }, data: {
-        status: ReturnRefundStatus.SUCCEEDED, method: 'WALLET', processedAt: new Date(), failureReason: null,
-      } });
-      await this.move(tx, id, current.status, ReturnRequestStatus.REFUND_PROCESSING, userId);
-      await this.move(tx, id, ReturnRequestStatus.REFUND_PROCESSING,
-        ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION, userId);
-      await tx.returnEvent.create({ data: {
-        returnRequestId: id, actorId: userId, type: 'REFUND_RETRY_SUCCEEDED',
-        data: { amount: remaining.toString(), method: 'WALLET' },
-      } });
-      await this.notify(tx, current, current.customerId, 'RETURN_REFUND_SUCCEEDED',
-        'Đã hoàn tiền vào ví SCANMS', `Đơn ${current.order.externalOrderSn}: khoản hoàn tiền đã được ghi vào ví.`);
+      if (!this.commissionRulesService)
+        throw new ConflictException('Chưa cấu hình xử lý thu hồi thu nhập');
+      await this.commissionRulesService.handleRefundAdjustment(
+        current.order.store.id,
+        current.orderId,
+        amount.toFixed(2),
+        'Xử lý lại hoàn tiền đổi trả',
+        userId,
+        undefined,
+        tx,
+        `return:${id}`,
+        current.items.length
+          ? current.items.map((item) => ({
+              orderItemId: item.orderItemId,
+              quantity: item.quantity,
+            }))
+          : undefined,
+      );
+      await this.walletsService!.refundToWallet(
+        tx,
+        current.customerId,
+        amount,
+        current.orderId,
+      );
+      await tx.refund.update({
+        where: { returnRequestId: id },
+        data: {
+          status: ReturnRefundStatus.SUCCEEDED,
+          method: 'WALLET',
+          processedAt: new Date(),
+          failureReason: null,
+        },
+      });
+      await this.move(
+        tx,
+        id,
+        current.status,
+        ReturnRequestStatus.REFUND_PROCESSING,
+        userId,
+      );
+      await this.move(
+        tx,
+        id,
+        ReturnRequestStatus.REFUND_PROCESSING,
+        ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+        userId,
+      );
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'REFUND_RETRY_SUCCEEDED',
+          data: { amount: amount.toString(), method: 'WALLET' },
+        },
+      });
+      await this.notify(
+        tx,
+        current,
+        current.customerId,
+        'RETURN_REFUND_SUCCEEDED',
+        'Đã hoàn tiền vào ví SCANMS',
+        `Đơn ${current.order.externalOrderSn}: khoản hoàn tiền đã được ghi vào ví.`,
+      );
     });
     return this.getOne(userId, role, id);
   }
@@ -463,39 +875,13 @@ export class ReturnService {
     this.requireCustomer(userId, detail);
     if (detail.status === ReturnRequestStatus.PICKUP_BOOKED)
       return this.present(detail);
-    let warehouse = warehouseSchema.safeParse(
+    const effectiveWarehouse = configuredReturnWarehouse(
       detail.order.store.returnWarehouse,
     );
-    if (!warehouse.success) {
-      const ob = ((detail.order.store as any).onboardingData || {}) as Record<string, any>;
-      const fallbackAddress = ob.warehouseAddress || ob.businessAddress || 'Kho hoàn trả hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
-      const cleanPhone = String(ob.contactPhone || '0901234567').replace(/[^0-9+]/g, '');
-      const fallbackRaw = {
-        name: (detail.order.store.name || 'Gian hàng SCANMS').slice(0, 150),
-        phone: cleanPhone.length >= 9 && cleanPhone.length <= 15 ? cleanPhone : '0901234567',
-        address: fallbackAddress.length >= 10 ? fallbackAddress.slice(0, 500) : `${fallbackAddress}, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh`,
-        wardName: ob.wardName || 'Bến Nghé',
-        provinceName: ob.provinceName || 'Hồ Chí Minh',
-        districtName: ob.districtName || 'Quận 1',
-      };
-      warehouse = warehouseSchema.safeParse(fallbackRaw);
-      if (warehouse.success) {
-        await this.prisma.store.update({
-          where: { id: detail.order.store.id },
-          data: { returnWarehouse: warehouse.data },
-        }).catch(() => null);
-      }
-    }
-    const effectiveWarehouse: WarehouseInput = warehouse.success
-      ? warehouse.data
-      : {
-          name: (detail.order.store.name || 'Kho hoàn trả SCANMS').slice(0, 150),
-          phone: '0901234567',
-          address: 'Kho vận chuyển hoàn hàng SCANMS, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-          wardName: 'Bến Nghé',
-          provinceName: 'Hồ Chí Minh',
-          districtName: 'Quận 1',
-        };
+    if (!effectiveWarehouse)
+      throw new ConflictException(
+        'Shop chưa cấu hình kho nhận hàng trả hợp lệ',
+      );
     if (
       detail.status !== ReturnRequestStatus.SHOP_APPROVED ||
       !detail.shipByAt
@@ -593,8 +979,13 @@ export class ReturnService {
     const shipment = detail.shipments.find(
       (item) => item.direction === ReturnShipmentDirection.CUSTOMER_TO_SHOP,
     );
-    if (!shipment?.provider || !['MOCK', 'GHN_STAGING'].includes(shipment.provider))
-      throw new ConflictException('Chỉ mô phỏng vận đơn lấy hàng MOCK hoặc GHN Staging, không hỗ trợ vận đơn Production.');
+    if (
+      !shipment?.provider ||
+      !['MOCK', 'GHN_STAGING'].includes(shipment.provider)
+    )
+      throw new ConflictException(
+        'Chỉ mô phỏng vận đơn lấy hàng MOCK hoặc GHN Staging, không hỗ trợ vận đơn Production.',
+      );
     await this.applyCarrierStatus(
       shipment.trackingNumber,
       status,
@@ -636,7 +1027,8 @@ export class ReturnService {
     }
     if (
       this.pickupGateway.mode() !== 'staging' ||
-      payload.ShopID !== Number(process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID)
+      payload.ShopID !==
+        Number(process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID)
     ) {
       throw new UnauthorizedException(
         'Webhook không thuộc tài khoản GHN Staging',
@@ -887,9 +1279,7 @@ export class ReturnService {
         'Shop chưa cấp hướng dẫn gửi trả hoặc hồ sơ không còn chờ gửi hàng',
       );
     }
-    if (
-      warehouseSchema.safeParse(initial.order.store.returnWarehouse).success
-    ) {
+    if (configuredReturnWarehouse(initial.order.store.returnWarehouse)) {
       throw new ConflictException(
         'Hồ sơ này sử dụng lấy hàng tận nơi; vui lòng đặt lịch lấy hàng',
       );
@@ -1076,13 +1466,25 @@ export class ReturnService {
     this.requireShop(userId, role, detail);
     const managerAssessment = [...detail.events].reverse().find((event) => {
       const data = event.data as Record<string, unknown> | null;
-      return event.type === 'LIABILITY_ASSESSED' && data?.source === 'SYSTEM_MANAGER_REVIEW';
+      return (
+        event.type === 'LIABILITY_ASSESSED' &&
+        data?.source === 'SYSTEM_MANAGER_REVIEW'
+      );
     });
-    const reviewedLiability = (managerAssessment?.data as Record<string, unknown> | null)?.liability;
+    const reviewedLiability = (
+      managerAssessment?.data as Record<string, unknown> | null
+    )?.liability;
     if (reviewedLiability && reviewedLiability !== input.liability)
-      throw new ConflictException('Trách nhiệm phải khớp kết luận của System Manager');
-    if (input.liability === 'LOGISTICS_FAULT' && reviewedLiability !== 'LOGISTICS_FAULT')
-      throw new ConflictException('Lỗi vận chuyển cần System Manager xác minh trước khi Shop xử lý');
+      throw new ConflictException(
+        'Trách nhiệm phải khớp kết luận của System Manager',
+      );
+    if (
+      input.liability === 'LOGISTICS_FAULT' &&
+      reviewedLiability !== 'LOGISTICS_FAULT'
+    )
+      throw new ConflictException(
+        'Lỗi vận chuyển cần System Manager xác minh trước khi Shop xử lý',
+      );
     const target =
       input.resolution === 'REFUND'
         ? ReturnRequestStatus.REFUND_PENDING
@@ -1100,14 +1502,22 @@ export class ReturnService {
           returnRequestId: id,
           actorId: userId,
           type: 'LIABILITY_ASSESSED',
-          data: { liability: input.liability, resolution: input.resolution, notes: input.notes },
+          data: {
+            liability: input.liability,
+            resolution: input.resolution,
+            notes: input.notes,
+          },
         },
       });
+      if (
+        input.liability === 'LOGISTICS_FAULT' &&
+        target !== ReturnRequestStatus.INSPECTION_REJECTED
+      ) {
+        await this.openGhnClaim(tx, detail, userId);
+      }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
-        // Existing requests are order-wide. Amount is server-calculated, never accepted from the browser.
-        const amount = detail.order.finalAmount.minus(
-          detail.order.refundedAmount,
-        );
+        // Amount is calculated from selected items on the server, never accepted from the browser.
+        const amount = this.returnAmount(detail);
         if (amount.lessThanOrEqualTo(0))
           throw new ConflictException('Đơn hàng không còn số tiền có thể hoàn');
         const payment = detail.order.paymentTransactions.find(
@@ -1118,16 +1528,31 @@ export class ReturnService {
           detail.customerId || (detail.order as any).customerId;
         let refundSucceeded = false;
         if (refundTargetUser && this.walletsService) {
-          if (!this.commissionRulesService) throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
-          await this.commissionRulesService.handleRefundAdjustment(detail.order.store.id, detail.orderId,
-            amount.toFixed(2), input.notes, userId, undefined, tx, `return:${id}`);
-            await this.walletsService.refundToWallet(
-              tx,
-              refundTargetUser,
-              amount,
-              detail.orderId,
-            );
-            refundSucceeded = true;
+          if (!this.commissionRulesService)
+            throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
+          await this.commissionRulesService.handleRefundAdjustment(
+            detail.order.store.id,
+            detail.orderId,
+            amount.toFixed(2),
+            input.notes,
+            userId,
+            undefined,
+            tx,
+            `return:${id}`,
+            detail.items.length
+              ? detail.items.map((item) => ({
+                  orderItemId: item.orderItemId,
+                  quantity: item.quantity,
+                }))
+              : undefined,
+          );
+          await this.walletsService.refundToWallet(
+            tx,
+            refundTargetUser,
+            amount,
+            detail.orderId,
+          );
+          refundSucceeded = true;
         }
 
         await tx.refund.create({
@@ -1136,7 +1561,7 @@ export class ReturnService {
             amount,
             method: refundSucceeded
               ? 'WALLET'
-              : (payment?.paymentMethod || 'MANUAL_REVIEW'),
+              : payment?.paymentMethod || 'MANUAL_REVIEW',
             status: refundSucceeded ? 'SUCCEEDED' : 'PENDING',
             processedAt: refundSucceeded ? new Date() : null,
             idempotencyKey: `return:${id}`,
@@ -1144,13 +1569,6 @@ export class ReturnService {
         });
 
         if (refundSucceeded) {
-          await this.reverseIncomeAfterRefund(tx, detail.orderId);
-          await tx.order.update({
-            where: { id: detail.orderId },
-            data: { refundedAmount: { increment: amount } },
-          });
-
-
           await this.move(
             tx,
             id,
@@ -1207,7 +1625,9 @@ export class ReturnService {
             data: { stockQuantity: { decrement: quantity } },
           });
           if (variant.count !== 1) {
-            throw new ConflictException('Biến thể không đủ tồn kho để giao hàng đổi');
+            throw new ConflictException(
+              'Biến thể không đủ tồn kho để giao hàng đổi',
+            );
           }
         }
         const product = await tx.product.updateMany({
@@ -1218,7 +1638,9 @@ export class ReturnService {
           data: { stockQuantity: { decrement: quantity } },
         });
         if (product.count !== 1) {
-          throw new ConflictException('Sản phẩm không đủ tồn kho để giao hàng đổi');
+          throw new ConflictException(
+            'Sản phẩm không đủ tồn kho để giao hàng đổi',
+          );
         }
       }
       await tx.returnShipment.create({
@@ -1234,30 +1656,41 @@ export class ReturnService {
           returnRequestId: id,
           actorId: userId,
           type: 'EXCHANGE_INCOME_PRESERVED',
-          data: { orderId: detail.orderId, replacementItems: detail.items.map((line) => ({
-            productId: line.orderItem.productId,
-            variantId: line.orderItem.variantId,
-            quantity: line.quantity,
-          })) },
+          data: {
+            orderId: detail.orderId,
+            replacementItems: detail.items.map((line) => ({
+              productId: line.orderItem.productId,
+              variantId: line.orderItem.variantId,
+              quantity: line.quantity,
+            })),
+          },
         },
       });
       const logisticsAssessment = [...detail.events].reverse().find((event) => {
         const data = event.data as Record<string, unknown> | null;
-        return event.type === 'LIABILITY_ASSESSED' &&
-          data?.source === 'SYSTEM_MANAGER_REVIEW' && data.liability === 'LOGISTICS_FAULT';
+        return (
+          event.type === 'LIABILITY_ASSESSED' &&
+          ['SYSTEM_MANAGER_REVIEW', 'SYSTEM_MANAGER_ARBITRATION'].includes(
+            String(data?.source),
+          ) &&
+          data?.liability === 'LOGISTICS_FAULT'
+        );
       });
-      if (logisticsAssessment) {
-        const raw = detail.order.rawPayload as Record<string, unknown> | null;
-        await tx.returnEvent.create({ data: {
-          returnRequestId: id,
-          actorId: userId,
-          type: 'GHN_COMPENSATION_CLAIM_OPENED',
+      const claim = latestGhnClaim(detail.events);
+      if (claim && !claim.replacementTrackingNumber) {
+        await tx.returnEvent.create({
           data: {
-            originalTrackingNumber: raw?.ghnOrderCode || raw?.trackingNumber || null,
-            replacementTrackingNumber: input.trackingNumber,
-            status: 'PENDING_RECONCILIATION',
+            returnRequestId: id,
+            actorId: userId,
+            type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+            data: {
+              ...claim,
+              replacementTrackingNumber: input.trackingNumber,
+            },
           },
-        } });
+        });
+      } else if (logisticsAssessment && !claim) {
+        await this.openGhnClaim(tx, detail, userId, input.trackingNumber);
       }
       await this.notify(
         tx,
@@ -1271,15 +1704,65 @@ export class ReturnService {
     return this.getOne(userId, role, id);
   }
 
-  async confirmCompletion(userId: string, role: UserRole, id: string) {
+  async confirmExchangeReceipt(userId: string, role: UserRole, id: string) {
     const detail = await this.scopedDetail(userId, role, id);
     this.requireCustomer(userId, detail);
     if (
-      detail.status !== ReturnRequestStatus.EXCHANGE_SHIPPED &&
-      detail.status !== ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION
+      detail.status !== ReturnRequestStatus.EXCHANGE_SHIPPED ||
+      detail.resolution !== ReturnResolution.EXCHANGE ||
+      !detail.shipments.some(
+        (shipment) =>
+          shipment.direction === ReturnShipmentDirection.SHOP_TO_CUSTOMER,
+      )
     ) {
+      throw new ConflictException('Chưa có hàng đổi đang giao để xác nhận');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      await this.move(
+        tx,
+        id,
+        ReturnRequestStatus.EXCHANGE_SHIPPED,
+        ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+        userId,
+      );
+      const changed = await tx.returnShipment.updateMany({
+        where: {
+          returnRequestId: id,
+          direction: ReturnShipmentDirection.SHOP_TO_CUSTOMER,
+          receivedAt: null,
+        },
+        data: { receivedAt: now },
+      });
+      if (changed.count !== 1)
+        throw new ConflictException('Hàng đổi đã được xác nhận nhận trước đó');
+      await this.notify(
+        tx,
+        detail,
+        detail.order.store.ownerId,
+        'RETURN_EXCHANGE_RECEIVED',
+        'Khách đã nhận hàng đổi',
+        `Đơn ${detail.order.externalOrderSn}: khách xác nhận đã nhận hàng thay thế.`,
+      );
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async confirmCompletion(userId: string, role: UserRole, id: string) {
+    const detail = await this.scopedDetail(userId, role, id);
+    this.requireCustomer(userId, detail);
+    if (detail.status !== ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION) {
       throw new ConflictException('Chưa có kết quả đổi/hoàn để xác nhận');
     }
+    if (
+      detail.resolution === ReturnResolution.EXCHANGE &&
+      !detail.shipments.some(
+        (shipment) =>
+          shipment.direction === ReturnShipmentDirection.SHOP_TO_CUSTOMER &&
+          shipment.receivedAt,
+      )
+    )
+      throw new ConflictException('Khách chưa xác nhận đã nhận hàng đổi');
     if (
       detail.resolution === ReturnResolution.REFUND &&
       detail.refund?.status !== 'SUCCEEDED'
@@ -1301,7 +1784,8 @@ export class ReturnService {
         where: { id: detail.orderId, status: OrderStatus.RETURN_REQUESTED },
         data: {
           status:
-            detail.resolution === ReturnResolution.REFUND
+            detail.resolution === ReturnResolution.REFUND &&
+            this.fullReturn(detail)
               ? OrderStatus.RETURNED
               : OrderStatus.COMPLETED,
         },
@@ -1316,6 +1800,181 @@ export class ReturnService {
         'Khách đã xác nhận hoàn tất đổi trả',
         `Đơn ${detail.order.externalOrderSn} đã hoàn tất.`,
       );
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  /** Wallet refunds are already settled; a missing acknowledgement must not leave the order open forever. */
+  async closeSettledRefundsBatch(limit = 100): Promise<number> {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const records = await this.prisma.returnRequest.findMany({
+      where: {
+        status: ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+        resolution: ReturnResolution.REFUND,
+        refund: {
+          is: {
+            status: ReturnRefundStatus.SUCCEEDED,
+            processedAt: { lte: cutoff },
+          },
+        },
+      },
+      include: detailInclude,
+      take: limit,
+      orderBy: { updatedAt: 'asc' },
+    });
+    for (const record of records) {
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.returnRequest.updateMany({
+          where: {
+            id: record.id,
+            status: ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION,
+          },
+          data: {
+            status: ReturnRequestStatus.COMPLETED,
+            completedAt: new Date(),
+          },
+        });
+        if (changed.count !== 1) return;
+        await tx.order.updateMany({
+          where: { id: record.orderId, status: OrderStatus.RETURN_REQUESTED },
+          data: {
+            status: this.fullReturn(record)
+              ? OrderStatus.RETURNED
+              : OrderStatus.COMPLETED,
+          },
+        });
+        await tx.returnEvent.create({
+          data: {
+            returnRequestId: record.id,
+            type: 'REFUND_AUTO_CLOSED',
+            data: {
+              reason:
+                'Wallet refund settled for 7 days without customer acknowledgement',
+            },
+          },
+        });
+        await this.notify(
+          tx,
+          record,
+          record.customerId,
+          'RETURN_COMPLETED',
+          'Hồ sơ hoàn tiền đã hoàn tất',
+          `Đơn ${record.order.externalOrderSn}: khoản hoàn đã vào Ví SCANMS và hồ sơ được đóng sau 7 ngày.`,
+        );
+      });
+    }
+    return records.length;
+  }
+
+  async escalateShopRejection(
+    userId: string,
+    role: UserRole,
+    id: string,
+    input: ShopEscalationInput,
+  ) {
+    const detail = await this.scopedDetail(userId, role, id);
+    this.requireShop(userId, role, detail);
+    const startDispute =
+      detail.status === ReturnRequestStatus.SHOP_REJECTED && !detail.dispute;
+    const attachToDispute =
+      detail.status === ReturnRequestStatus.DISPUTED &&
+      detail.dispute?.status === 'OPEN';
+    if (!startDispute && !attachToDispute)
+      throw new ConflictException(
+        'Hồ sơ không ở trạng thái có thể gửi bằng chứng cho Manager',
+      );
+    if (
+      detail.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED')
+        .length >= 10
+    )
+      throw new ConflictException(
+        'Hồ sơ đã đạt giới hạn 10 lần bổ sung bằng chứng',
+      );
+    await this.prisma.$transaction(async (tx) => {
+      if (attachToDispute) {
+        const locked = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+        `;
+        if (locked.length !== 1)
+          throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+        const current = await tx.returnRequest.findUnique({
+          where: { id },
+          select: {
+            status: true,
+            dispute: { select: { status: true } },
+            events: {
+              where: { type: 'SHOP_EVIDENCE_SUBMITTED' },
+              select: { id: true },
+            },
+          },
+        });
+        if (
+          current?.status !== ReturnRequestStatus.DISPUTED ||
+          current.dispute?.status !== 'OPEN' ||
+          current.events.length >= 10
+        )
+          throw new ConflictException(
+            'Hồ sơ đã được xử lý hoặc đạt giới hạn bằng chứng; hãy tải lại',
+          );
+      }
+      if (startDispute) {
+        await this.move(
+          tx,
+          id,
+          ReturnRequestStatus.SHOP_REJECTED,
+          ReturnRequestStatus.DISPUTED,
+          userId,
+        );
+        await tx.dispute.create({
+          data: {
+            returnRequestId: id,
+            reason: 'SHOP_REQUESTED_REVIEW',
+            details: input.details,
+          },
+        });
+      }
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'SHOP_EVIDENCE_SUBMITTED',
+          data: { details: input.details, evidenceUrls: input.evidenceUrls },
+        },
+      });
+      if (startDispute) {
+        const changed = await tx.order.updateMany({
+          where: { id: detail.orderId, status: detail.order.status },
+          data: { status: OrderStatus.DISPUTED },
+        });
+        if (changed.count !== 1)
+          throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
+      }
+      await this.notify(
+        tx,
+        detail,
+        detail.customerId,
+        'RETURN_DISPUTED',
+        'Hồ sơ đổi trả được chuyển cho System Manager',
+        `Đơn ${detail.order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager xem xét. Chưa có kết luận bên chịu trách nhiệm.`,
+      );
+      const managers = await tx.user.findMany({
+        where: {
+          role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] },
+          isActive: true,
+          isDeleted: false,
+        },
+        select: { id: true },
+      });
+      for (const manager of managers) {
+        await this.notify(
+          tx,
+          detail,
+          manager.id,
+          'RETURN_DISPUTED',
+          'Shop yêu cầu xác minh hồ sơ đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: kiểm tra bằng chứng Shop và khách trước khi kết luận lỗi vận chuyển hay hàng hóa.`,
+        );
+      }
     });
     return this.getOne(userId, role, id);
   }
@@ -1416,6 +2075,140 @@ export class ReturnService {
     }));
   }
 
+  async listGhnClaims(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xem yêu cầu bồi hoàn GHN',
+      );
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { events: { some: { type: 'GHN_COMPENSATION_CLAIM_OPENED' } } },
+      include: detailInclude,
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async listRejectedForReview(role: UserRole) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được xem hồ sơ Shop đã từ chối',
+      );
+    const rows = await this.prisma.returnRequest.findMany({
+      where: {
+        status: ReturnRequestStatus.SHOP_REJECTED,
+        dispute: { is: null },
+      },
+      include: detailInclude,
+      orderBy: { shopRespondedAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.present(row, true));
+  }
+
+  async openRejectedReview(userId: string, role: UserRole, id: string) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException('Chỉ vận hành hệ thống được mở phân xử');
+    const detail = await this.scopedDetail(userId, role, id);
+    if (detail.status !== ReturnRequestStatus.SHOP_REJECTED || detail.dispute)
+      throw new ConflictException(
+        'Hồ sơ không còn ở trạng thái Shop đã từ chối',
+      );
+    await this.prisma.$transaction(async (tx) => {
+      await this.move(
+        tx,
+        id,
+        ReturnRequestStatus.SHOP_REJECTED,
+        ReturnRequestStatus.DISPUTED,
+        userId,
+      );
+      await tx.dispute.create({
+        data: {
+          returnRequestId: id,
+          reason: 'MANAGER_REVIEW_SHOP_REJECTION',
+          details:
+            detail.shopResponse ||
+            'Manager mở phân xử hồ sơ sau khi Shop từ chối yêu cầu đổi trả.',
+        },
+      });
+      const changed = await tx.order.updateMany({
+        where: { id: detail.orderId, status: detail.order.status },
+        data: { status: OrderStatus.DISPUTED },
+      });
+      if (changed.count !== 1)
+        throw new ConflictException('Đơn hàng đã thay đổi; hãy tải lại');
+      for (const recipient of new Set([
+        detail.customerId,
+        detail.order.store.ownerId,
+      ])) {
+        await this.notify(
+          tx,
+          detail,
+          recipient,
+          'RETURN_DISPUTED',
+          'Manager đang xem xét quyết định đổi trả',
+          `Đơn ${detail.order.externalOrderSn}: hồ sơ Shop từ chối đã được chuyển sang phân xử. Chưa có kết luận trách nhiệm.`,
+        );
+      }
+    });
+    return this.getOne(userId, role, id);
+  }
+
+  async updateGhnClaim(
+    userId: string,
+    role: UserRole,
+    id: string,
+    input: GhnClaimActionInput,
+  ) {
+    if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER)
+      throw new ForbiddenException(
+        'Chỉ vận hành hệ thống được đối soát bồi hoàn GHN',
+      );
+    await this.prisma.$transaction(async (tx) => {
+      // The claim is an event stream. Lock its parent row so two managers cannot advance it twice.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM return_requests WHERE id = ${id}::uuid FOR UPDATE
+      `;
+      if (locked.length !== 1)
+        throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const detail = await tx.returnRequest.findUnique({
+        where: { id },
+        include: detailInclude,
+      });
+      if (!detail) throw new NotFoundException('Không tìm thấy hồ sơ đổi trả');
+      const current = latestGhnClaim(detail.events);
+      if (!current)
+        throw new ConflictException(
+          'Manager chưa kết luận lỗi GHN cho hồ sơ này',
+        );
+      const next = advanceGhnClaim(current, input);
+      await tx.returnEvent.create({
+        data: {
+          returnRequestId: id,
+          actorId: userId,
+          type: 'GHN_COMPENSATION_CLAIM_UPDATED',
+          data: {
+            ...next,
+            action: input.action,
+          },
+        },
+      });
+      await tx.returnRequest.update({
+        where: { id },
+        data: { updatedAt: new Date() },
+      });
+      await this.notify(
+        tx,
+        detail,
+        detail.order.store.ownerId,
+        'GHN_COMPENSATION_UPDATED',
+        'Cập nhật bồi hoàn GHN',
+        `Đơn ${detail.order.externalOrderSn}: yêu cầu GHN ${next.ghnReference || 'chưa gửi'} đang ở trạng thái ${next.status}.`,
+      );
+    });
+    return this.getOne(userId, role, id);
+  }
+
   async listStalledInspections(role: UserRole) {
     if (role !== UserRole.SYSTEM_ADMIN && role !== UserRole.SYSTEM_MANAGER) {
       throw new ForbiddenException(
@@ -1456,6 +2249,17 @@ export class ReturnService {
     if (!dispute || dispute.status !== 'OPEN')
       throw new NotFoundException('Không có khiếu nại đang mở');
     const detail = dispute.returnRequest;
+    if (
+      input.liability === 'LOGISTICS_FAULT' &&
+      !originalGhnTracking(detail.order.rawPayload)
+    )
+      throw new ConflictException(
+        'Chưa có vận đơn GHN gốc để quy trách nhiệm cho GHN; cần đối chiếu chứng cứ hoặc chọn kết luận khác',
+      );
+    if (input.liability === 'LOGISTICS_FAULT' && input.ruling === 'UPHOLD_SHOP')
+      throw new ConflictException(
+        'Đã xác định lỗi GHN thì cần chọn hoàn tiền hoặc đổi hàng cho khách',
+      );
     if (
       input.ruling === 'UPHOLD_SHOP' &&
       detail.shipments.some(
@@ -1508,30 +2312,61 @@ export class ReturnService {
             returnRequestId: detail.id,
             actorId: adminId,
             type: 'LIABILITY_ASSESSED',
-            data: { liability: input.liability, ruling: input.ruling, notes: input.notes, source: 'SYSTEM_MANAGER_ARBITRATION' },
+            data: {
+              liability: input.liability,
+              ruling: input.ruling,
+              notes: input.notes,
+              source: 'SYSTEM_MANAGER_ARBITRATION',
+              ...(input.liability === 'LOGISTICS_FAULT'
+                ? {
+                    originalTrackingNumber: originalGhnTracking(
+                      detail.order.rawPayload,
+                    ),
+                  }
+                : {}),
+            },
           },
         });
       }
+      if (
+        input.liability === 'LOGISTICS_FAULT' &&
+        input.ruling !== 'UPHOLD_SHOP'
+      ) {
+        await this.openGhnClaim(tx, detail, adminId);
+      }
       if (target === ReturnRequestStatus.REFUND_PENDING) {
-        const amount = detail.order.finalAmount.minus(
-          detail.order.refundedAmount,
-        );
+        const amount = this.returnAmount(detail);
         if (amount.lessThanOrEqualTo(0))
           throw new ConflictException('Không còn số tiền có thể hoàn');
         const refundTargetUser =
           detail.customerId || (detail.order as any).customerId;
         let refundSucceeded = false;
         if (refundTargetUser && this.walletsService) {
-          if (!this.commissionRulesService) throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
-          await this.commissionRulesService.handleRefundAdjustment(detail.order.store.id, detail.orderId,
-            amount.toFixed(2), input.notes, adminId, undefined, tx, `return:${detail.id}`);
-            await this.walletsService.refundToWallet(
-              tx,
-              refundTargetUser,
-              amount,
-              detail.orderId,
-            );
-            refundSucceeded = true;
+          if (!this.commissionRulesService)
+            throw new ConflictException('Chưa cấu hình xử lý thu hồi hoa hồng');
+          await this.commissionRulesService.handleRefundAdjustment(
+            detail.order.store.id,
+            detail.orderId,
+            amount.toFixed(2),
+            input.notes,
+            adminId,
+            undefined,
+            tx,
+            `return:${detail.id}`,
+            detail.items.length
+              ? detail.items.map((item) => ({
+                  orderItemId: item.orderItemId,
+                  quantity: item.quantity,
+                }))
+              : undefined,
+          );
+          await this.walletsService.refundToWallet(
+            tx,
+            refundTargetUser,
+            amount,
+            detail.orderId,
+          );
+          refundSucceeded = true;
         }
 
         await tx.refund.upsert({
@@ -1554,13 +2389,6 @@ export class ReturnService {
         });
 
         if (refundSucceeded) {
-          await this.reverseIncomeAfterRefund(tx, detail.orderId);
-          await tx.order.update({
-            where: { id: detail.orderId },
-            data: { refundedAmount: { increment: amount } },
-          });
-
-
           await this.move(
             tx,
             detail.id,

@@ -19,13 +19,14 @@ export function Screen({
   children,
   scroll = false,
   onScrollOffset,
-}: PropsWithChildren<{ scroll?: boolean; onScrollOffset?: (offset: number) => void }>) {
+  compact = false,
+}: PropsWithChildren<{ scroll?: boolean; compact?: boolean; onScrollOffset?: (offset: number) => void }>) {
   return scroll ? (
     <ScrollView
       style={s.screen}
       onScroll={onScrollOffset ? (event) => onScrollOffset(event.nativeEvent.contentOffset.y) : undefined}
       scrollEventThrottle={onScrollOffset ? 32 : undefined}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, compact && { padding: 12, gap: 10 }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
     >

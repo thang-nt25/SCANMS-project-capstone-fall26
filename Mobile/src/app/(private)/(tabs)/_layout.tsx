@@ -71,7 +71,7 @@ export default function TabLayout() {
                 key === "workspace"
                   ? session.user.role === "CUSTOMER"
                     ? "Trang chủ"
-                    : ["COLLABORATOR", "SHOP_MANAGER"].includes(session.user.role) ? "Tổng quan" : "Công cụ"
+                    : "Tổng quan"
                   : key === "account"
                     ? "Tôi"
                     : key === "catalog" && session.user.role === "CUSTOMER"
@@ -84,6 +84,7 @@ export default function TabLayout() {
                 "catalog",
                 "account",
                 "orders",
+                "users",
               ].includes(key),
               tabBarIcon: ({ color }) => (
                 <View

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import {
   Alert,
   Image,
@@ -32,6 +32,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon, IconButton } from "../../components/commerce";
 import { EvidenceViewer, evidenceKind } from "../../components/EvidenceViewer";
 import { ProductPhoto } from "../../components/ProductPhoto";
+import { SelectField } from "./SelectField";
 
 export { amount, https, required } from "./validation";
 import { https } from "./validation";
@@ -153,16 +154,30 @@ export interface CommandFormSpec {
   path: string;
   method?: string;
 }
+function FormChoice({
+  compact,
+  ...props
+}: ComponentProps<typeof Choice> & { compact: boolean }) {
+  return compact ? <SelectField {...props} /> : <Choice {...props} />;
+}
+export function CompactCommandForm(
+  props: Omit<ComponentProps<typeof CommandForm>, "compact">,
+) {
+  return <CommandForm {...props} compact />;
+}
 export function CommandForm({
   spec,
   close,
+  compact = false,
 }: {
   spec: CommandFormSpec;
   close(): void;
+  compact?: boolean;
 }) {
   const command = useCommand();
   return (
     <ActionForm
+      compact={compact}
       title={spec.title}
       fields={spec.fields}
       schema={spec.schema}
@@ -184,6 +199,7 @@ export function ActionForm<T>({
   busy = false,
   error,
   close,
+  compact = false,
 }: {
   title: string;
   fields: readonly FormField[];
@@ -192,6 +208,7 @@ export function ActionForm<T>({
   busy?: boolean;
   error?: unknown;
   close(): void;
+  compact?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.key, f.initial || ""])),
@@ -207,11 +224,13 @@ export function ActionForm<T>({
     >
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <Screen scroll>
-          <Title>{title}</Title>
+        {compact && <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, backgroundColor: colors.white }}><Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: colors.ink }}>{title}</Text><IconButton name="x" label="Đóng biểu mẫu" disabled={busy || local.busy} onPress={close} /></View>}
+        <Screen scroll compact={compact}>
+          {!compact && <Title>{title}</Title>}
           {fields.map((field) =>
             field.options ? (
-              <Choice
+              <FormChoice
+                compact={compact}
                 key={field.key}
                 label={field.label}
                 value={values[field.key]}
@@ -245,12 +264,14 @@ export function ActionForm<T>({
               void local.run(() => submit(validateInput(schema, values)))
             }
           />
-          <Button
-            title="Đóng"
-            secondary
-            disabled={busy || local.busy}
-            onPress={close}
-          />
+          {!compact && (
+            <Button
+              title="Đóng"
+              secondary
+              disabled={busy || local.busy}
+              onPress={close}
+            />
+          )}
         </Screen>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -306,25 +327,32 @@ export function Sheet({
   children,
   close,
   backHeader = false,
+  compact = false,
 }: {
   title: string;
   children: React.ReactNode;
   close(): void;
   backHeader?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Modal visible animationType="slide" onRequestClose={close}>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           {backHeader && <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.line }}><IconButton name="arrow-left" label="Quay lại danh sách đổi trả" onPress={close} /><View style={{ flex: 1 }}><Title>{title}</Title></View></View>}
+          {compact && !backHeader && <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, backgroundColor: colors.white }}><Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: colors.ink }}>{title}</Text><IconButton name="x" label="Đóng chi tiết" onPress={close} /></View>}
         <ScrollView
-          contentContainerStyle={{ padding: 18, gap: 14, paddingBottom: 40 }}
+          contentContainerStyle={{
+            padding: compact ? 12 : 18,
+            gap: compact ? 10 : 14,
+            paddingBottom: 40,
+          }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-            {!backHeader && <Title>{title}</Title>}
+            {!backHeader && !compact && <Title>{title}</Title>}
           {children}
-          <Button title="Quay lại" secondary onPress={close} />
+          {!compact && <Button title="Quay lại" secondary onPress={close} />}
         </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -346,4 +374,9 @@ export function DetailLine({
       </Text>
     </View>
   );
+}
+export function CompactSheet(
+  props: Omit<ComponentProps<typeof Sheet>, "compact">,
+) {
+  return <Sheet {...props} compact />;
 }

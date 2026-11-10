@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { OrderStatus, ReturnRequestStatus, UserRole } from '@prisma/client';
 import { OrdersService } from './orders.service';
 import { ReturnDecision } from './dto/respond-return-request.dto';
@@ -17,7 +17,7 @@ describe('Shop return request workflow', () => {
     externalOrderSn: 'S-001',
     status: OrderStatus.RETURN_REQUESTED,
     store: { ownerId: 'owner-1' },
-    returnRequest: request,
+    returnRequests: [request],
   };
 
   function setup(updatedCount = 1) {
@@ -28,6 +28,8 @@ describe('Shop return request workflow', () => {
       },
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       returnEvent: { create: jest.fn() },
+      dispute: { create: jest.fn() },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'manager-1' }]) },
       notification: { create: jest.fn() },
     };
     const prisma = {
@@ -101,6 +103,45 @@ describe('Shop return request workflow', () => {
     expect(tx.returnRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ shopResponse: 'Lý do: Bằng chứng chưa xác nhận lỗi được phản ánh\nGiải thích: Bằng chứng không khớp sản phẩm' }),
     }));
+  });
+
+  it('rejects and sends Shop evidence to Manager in one transaction', async () => {
+    const { service, tx } = setup();
+    await service.respondReturnRequest(orderId, 'owner-1', UserRole.SHOP_MANAGER, {
+      decision: ReturnDecision.REJECT,
+      rejectionReason: 'OTHER',
+      response: 'Kiện hàng nguyên vẹn khi bàn giao nhưng khách nhận sản phẩm vỡ.',
+      escalateToManager: true,
+      evidenceUrls: ['https://example.test/shop-packing.jpg'],
+    });
+    expect(tx.returnRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: request.id, status: ReturnRequestStatus.SHOP_REJECTED },
+      data: { status: ReturnRequestStatus.DISPUTED },
+    });
+    expect(tx.dispute.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      reason: 'SHOP_REQUESTED_REVIEW', returnRequestId: request.id,
+    }) });
+    expect(tx.returnEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      type: 'SHOP_EVIDENCE_SUBMITTED',
+      data: expect.objectContaining({ evidenceUrls: ['https://example.test/shop-packing.jpg'] }),
+    }) });
+    expect(tx.order.updateMany).toHaveBeenCalledWith({
+      where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
+      data: { status: OrderStatus.DISPUTED },
+    });
+    expect(tx.notification.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('requires evidence before escalating a Shop rejection', async () => {
+    const { service, prisma } = setup();
+    await expect(service.respondReturnRequest(orderId, 'owner-1', UserRole.SHOP_MANAGER, {
+      decision: ReturnDecision.REJECT,
+      rejectionReason: 'OTHER',
+      response: 'Kiện hàng nguyên vẹn khi bàn giao nhưng khách nhận sản phẩm vỡ.',
+      escalateToManager: true,
+      evidenceUrls: [],
+    })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('does not accept a repeated decision', async () => {

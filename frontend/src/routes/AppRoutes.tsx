@@ -1,8 +1,7 @@
-const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage'));
 const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
-const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
+import PlatformInfoPage, { NotFoundPage } from '../pages/public/PlatformInfoPage';
 
 /**
  * Tự động retry dynamic import module nếu gặp lỗi kết nối hoặc Vite HMR reload
@@ -29,8 +28,6 @@ const RegisterPage = lazyRetry(() => import('@/pages/auth/RegisterPage'));
 
 const ProductDetailPage = lazyRetry(() => import('@/pages/public/ProductDetailPage'));
 const RedirectHandlerPage = lazyRetry(() => import('@/pages/public/RedirectHandlerPage'));
-
-const UiReferencePage = lazyRetry(() => import('@/pages/public/UiReferencePage'));
 const MarketplacePage = lazyRetry(() => import('../pages/public/MarketplacePage'));
 const ShoppingDiscoverPage = lazyRetry(() => import('../pages/public/ShoppingDiscoverPage'));
 const ShopPage = lazyRetry(() => import('../pages/public/ShopPage'));
@@ -41,7 +38,6 @@ const CartPage = lazyRetry(() => import('../pages/public/CartPage'));
 
 const ProductManagementPage = lazyRetry(() => import('../pages/merchant/ProductManagementPage'));
 const ShopDashboardPage = lazyRetry(() => import('../pages/merchant/ShopDashboardPage'));
-const ShopCampaignsPage = lazyRetry(() => import('../pages/merchant/ShopCampaignsPage'));
 const ShopSettingsPage = lazyRetry(() => import('../pages/merchant/ShopSettingsPage'));
 const KycApprovalPage = lazyRetry(() => import('../pages/admin/KycApprovalPage'));
 const OrdersManagementPage = lazyRetry(() => import('../pages/merchant/OrdersManagementPage'));
@@ -52,14 +48,12 @@ const OrderTrackingPage = lazyRetry(() => import('../pages/public/OrderTrackingP
 const CustomerPortalPage = lazyRetry(() => import('../pages/customer/CustomerPortalPage'));
 const ShoppingAccountPage = lazyRetry(() => import('../pages/customer/ShoppingAccountPage'));
 const ReturnDetailPage = lazyRetry(() => import('../pages/returns/ReturnDetailPage'));
-const AdminReturnDisputesPage = lazyRetry(() => import('../pages/admin/AdminReturnDisputesPage'));
 const ChatBoxPage = lazyRetry(() => import('../pages/chat/ChatBoxPage'));
 const RealtimeAnalyticsPage = lazyRetry(() => import('../pages/dashboard/RealtimeAnalyticsPage'));
 const LeaderboardPage = lazyRetry(() => import('../pages/dashboard/LeaderboardPage'));
 
 // Consolidated Hub Pages (Tối ưu trải nghiệm gộp Menu)
 const ShopCollaborationPage = lazy(() => import('../pages/collaborator/ShopCollaborationPage'));
-const KolCampaignsPage = lazy(() => import('../pages/collaborator/KolCampaignsPage'));
 const MarketingToolkitPage = lazy(() => import('../pages/collaborator/MarketingToolkitPage'));
 const CreatorProfilePage = lazy(() => import('../pages/collaborator/CreatorProfilePage'));
 const ShopKolHubPage = lazy(() => import('../pages/merchant/ShopKolHubPage'));
@@ -68,24 +62,16 @@ const LiveSessionsPage = lazy(() => import('../pages/merchant/LiveSessionsPage')
 const CollaboratorLiveSessionsPage = lazy(() => import('../pages/collaborator/LiveSessionsPage'));
 const AdminOversightHubPage = lazy(() => import('../pages/admin/AdminOversightHubPage'));
 const AdminAnalyticsHubPage = lazy(() => import('../pages/admin/AdminAnalyticsHubPage'));
-const AdminSampleRequestsPage = lazy(() => import('../pages/admin/AdminSampleRequestsPage'));
 const AdminProfilePage = lazyRetry(() => import('../pages/admin/AdminProfilePage'));
 const CustomerReviewModerationPage = lazy(() => import('../pages/admin/CustomerReviewModerationPage'));
-const ProductModerationPage = lazy(() => import('../pages/admin/ProductModerationPage'));
 const AdminPersonnelPage = lazyRetry(() => import('../pages/admin/AdminPersonnelPage'));
 const AdminFinancePayoutsPage = lazy(() => import('../pages/admin/AdminFinancePayoutsPage'));
-
-// AI Anti-Fraud Sentinel & Traffic Defense
-const AiFraudSentinelPage = lazy(() => import('../pages/admin/AiFraudSentinelPage'));
-
-// Audit Logs & Security Trail
-const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
-
-// Dispute Arbitration Portal
-const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
+const AdminProductPricingHubPage = lazy(() => import('../pages/admin/AdminProductPricingHubPage'));
+const AdminArbitrationHubPage = lazy(() => import('../pages/admin/AdminArbitrationHubPage'));
+const AdminSecurityAuditHubPage = lazy(() => import('../pages/admin/AdminSecurityAuditHubPage'));
 
 // Shop Return Requests (Merchant)
-const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
+const ShopReturnsQueuePage = lazy(() => import('../pages/merchant/ShopReturnsQueuePage'));
 
 import { RouteContent } from './RouteContent';
 import { RoleGuard } from './RoleGuard';
@@ -141,6 +127,9 @@ function AppRoutes() {
             <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
               <Routes>
               <Route path="/" element={<MarketplacePage />} />
+              <Route path="/terms" element={<PlatformInfoPage kind="terms" />} />
+              <Route path="/privacy" element={<PlatformInfoPage kind="privacy" />} />
+              <Route path="*" element={<NotFoundPage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/stores" element={<ShoppingDiscoverPage />} />
               <Route path="/discover/live" element={<ShoppingDiscoverPage />} />
@@ -160,10 +149,10 @@ function AppRoutes() {
               <Route path="/live/:id" element={<LiveStreamRoomPage />} />
               <Route path="/live" element={<LiveStreamRoomPage />} />
 
-        <Route path="/prototype" element={<UiReferencePage />} />
-        <Route path="/ui-reference" element={<UiReferencePage />} />
-        <Route path="/app" element={<UiReferencePage />} />
-        <Route path="/app/:screenId" element={<UiReferencePage />} />
+        <Route path="/prototype" element={<Navigate to="/" replace />} />
+        <Route path="/ui-reference" element={<Navigate to="/" replace />} />
+        <Route path="/app" element={<Navigate to="/" replace />} />
+        <Route path="/app/:screenId" element={<Navigate to="/" replace />} />
 
         <Route path="/tracking" element={<OrderTrackingPage />} />
         <Route path="/order-tracking" element={<OrderTrackingPage />} />
@@ -180,7 +169,7 @@ function AppRoutes() {
         <Route path="/customer/wishlist" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
-        <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
+        <Route path="/customer/upgrade/shop" element={<Navigate to="/customer/upgrade" replace />} />
         <Route path="/customer/returns/:id" element={<ReturnDetailPage mode="customer" />} />
         <Route path="/customer/vouchers" element={<CustomerPortalPage />} />
         <Route path="/customer/notifications" element={<CustomerPortalPage />} />
@@ -203,12 +192,12 @@ function AppRoutes() {
           <Route element={<RoleGuard requiredWorkspace="shop" />}>
             <Route element={<RouteContent />}>
               <Route path="merchant/dashboard" element={<ShopDashboardPage />} />
-              <Route path="merchant/pricing" element={<ProductPricingPage />} />
+              <Route path="merchant/pricing" element={<Navigate to="/merchant/promotions?tab=price-promotions" replace />} />
               <Route path="merchant/products" element={<ProductManagementPage />} />
               <Route path="merchant/orders" element={<OrdersManagementPage />} />
               <Route path="merchant/returns/:id" element={<ReturnDetailPage mode="shop" />} />
               <Route path="merchant/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
-              <Route path="merchant/campaigns-manage" element={<ShopCampaignsPage />} />
+              <Route path="merchant/campaigns-manage" element={<Navigate to="/merchant/promotions" replace />} />
               <Route path="merchant/wallet" element={<ShopRevenueWalletPage />} />
               <Route path="shop/wallet" element={<ShopRevenueWalletPage />} />
               <Route path="stores/:storeId/payouts" element={<Navigate to="/merchant/wallet?tab=commissions" replace />} />
@@ -224,20 +213,21 @@ function AppRoutes() {
               <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />
-              <Route path="merchant/returns" element={<ShopReturnRequestsPage />} />
-              <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
+              <Route path="merchant/returns" element={<ShopReturnsQueuePage />} />
+              <Route path="merchant/return-requests" element={<ShopReturnsQueuePage />} />
 
               {/* Merchant Backward Compatibility Redirects */}
-              <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
-              <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=commission-rules" replace />} />
-              <Route path="merchant/referral-links" element={<Navigate to="/merchant/promotions?tab=referral-links" replace />} />
-              <Route path="stores/:storeId/referral-links" element={<Navigate to="/merchant/promotions?tab=referral-links" replace />} />
-              <Route path="merchant/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
-              <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=coupons" replace />} />
+              <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="merchant/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />
+              <Route path="stores/:storeId/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />
+              <Route path="merchant/coupons" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
+              <Route path="stores/:storeId/coupons" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="merchant/collaborators" element={<Navigate to="/merchant/kol-hub?tab=collaborators" replace />} />
               <Route path="merchant/sample-requests" element={<Navigate to="/merchant/kol-hub?tab=samples" replace />} />
-              <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions?tab=campaigns" replace />} />
-              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?mode=ai-matching" replace />} />
+              <Route path="merchant/campaigns" element={<Navigate to="/merchant/promotions" replace />} />
+              <Route path="merchant/kol-recommendations" element={<Navigate to="/merchant/kol-hub?tab=radar" replace />} />
+              <Route path="merchant/ai-matching" element={<Navigate to="/merchant/kol-hub?tab=radar" replace />} />
               <Route path="merchant/messages" element={<Navigate to="/merchant/kol-hub?tab=messages" replace />} />
               <Route path="merchant/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
               <Route path="shop/collaboration" element={<Navigate to="/merchant/kol-hub" replace />} />
@@ -268,10 +258,10 @@ function AppRoutes() {
               <Route path="kol/referral-links" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
               <Route path="kol/coupons" element={<Navigate to="/collaborator/marketing?tab=coupons" replace />} />
-              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=media" replace />} />
+              <Route path="collaborator/media-hub" element={<Navigate to="/collaborator/marketing?tab=links" replace />} />
               <Route path="collaborator/samples" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
               <Route path="collaborator/sample-requests" element={<Navigate to="/collaborator/marketing?tab=samples" replace />} />
-              <Route path="collaborator/campaigns" element={<KolCampaignsPage />} />
+              <Route path="collaborator/campaigns" element={<Navigate to="/collaborator/collaboration" replace />} />
               <Route path="collaborator/messages" element={<Navigate to="/collaborator/collaboration?tab=messages" replace />} />
               <Route path="collaborator/kyc" element={<Navigate to="/collaborator/profile?tab=kyc" replace />} />
               <Route path="collaborator/social-channels" element={<Navigate to="/collaborator/profile?tab=social" replace />} />
@@ -296,22 +286,30 @@ function AppRoutes() {
               <Route path="admin/internal-staff" element={<AdminPersonnelPage />} />
               <Route path="admin/users" element={<KycApprovalPage />} />
               <Route path="admin/kyc" element={<KycApprovalPage />} />
+              <Route path="admin/kyc-approval" element={<KycApprovalPage />} />
               <Route path="admin/profile" element={<AdminProfilePage />} />
-              <Route path="admin/audit-logs" element={<AuditLogsPage />} />
-              <Route path="admin/internal-traffic-test" element={<InternalTrafficTestPage />} />
-              <Route path="admin/audit" element={<AuditLogsPage />} />
-              <Route path="admin/fraud-sentinel" element={<AiFraudSentinelPage />} />
+
+              {/* Consolidated Hubs */}
+              <Route path="admin/products-pricing" element={<AdminProductPricingHubPage />} />
+              <Route path="admin/arbitration" element={<AdminArbitrationHubPage />} />
+              <Route path="admin/security-audit" element={<AdminSecurityAuditHubPage />} />
+
+              {/* Backward compatibility redirects */}
+              <Route path="admin/pricing" element={<Navigate to="/admin/products-pricing?tab=pricing" replace />} />
+              <Route path="admin/product-moderation" element={<Navigate to="/admin/products-pricing?tab=moderation" replace />} />
+              <Route path="admin/sample-requests" element={<Navigate to="/admin/arbitration?tab=samples" replace />} />
+              <Route path="admin/return-disputes" element={<Navigate to="/admin/arbitration?tab=returns" replace />} />
+              <Route path="admin/disputes" element={<Navigate to="/admin/arbitration?tab=returns" replace />} />
+              <Route path="admin/fraud-sentinel" element={<Navigate to="/admin/security-audit?tab=fraud" replace />} />
+              <Route path="admin/audit-logs" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
+              <Route path="admin/audit" element={<Navigate to="/admin/security-audit?tab=audit" replace />} />
+              <Route path="admin/internal-traffic-test" element={<Navigate to="/admin/security-audit?tab=sandbox" replace />} />
+
+              <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
+              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
+              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
               <Route path="admin/leaderboard" element={<Navigate to="/admin/analytics?tab=leaderboard" replace />} />
               <Route path="admin/kol-recommendations" element={<Navigate to="/admin/analytics?tab=ai-matching" replace />} />
-              <Route path="admin/disputes" element={<DisputeResolutionPage />} />
-              <Route path="admin/return-disputes" element={<AdminReturnDisputesPage />} />
-              <Route path="admin/returns/:id" element={<ReturnDetailPage mode="admin" />} />
-              <Route path="admin/arbitration" element={<DisputeResolutionPage />} />
-              <Route path="admin/sample-requests" element={<AdminSampleRequestsPage />} />
-              <Route path="admin/customer-reviews" element={<CustomerReviewModerationPage />} />
-              <Route path="admin/pricing" element={<ProductPricingPage reviewer />} />
-              <Route path="admin/vip-exceptions" element={<VipExceptionsPage />} />
-              <Route path="admin/product-moderation" element={<ProductModerationPage />} />
               <Route path="admin/referral-links" element={<Navigate to="/admin/affiliate-oversight?tab=links" replace />} />
               <Route path="admin/coupons" element={<Navigate to="/admin/affiliate-oversight?tab=coupons" replace />} />
             </Route>

@@ -101,6 +101,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // All Proposals from backend (including pending & history)
   const [allProposals, setAllProposals] = useState<ExclusiveDealProposal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Filters for active view
@@ -118,6 +119,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [activeRes, proposalsRes] = await Promise.all([
         analyticsService.getShopActivePartners(true),
@@ -133,7 +135,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
       setAllProposals(proposalsRes || []);
     } catch (err) {
-      console.error('Lỗi tải dữ liệu thỏa thuận độc quyền:', err);
+      setLoadError(err instanceof Error ? err.message : 'Không tải được thỏa thuận. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -265,6 +267,10 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
+      {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">
+        {loadError} Dữ liệu đang hiển thị có thể chưa được cập nhật.
+        <button type="button" disabled={loading} onClick={() => void fetchAll()} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
+      </div>}
       {/* 1. Top Priority Alert: PENDING PROPOSALS (If any) */}
       {pendingProposals.length > 0 && activeSubTab !== 'PENDING' && (
         <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 shadow-2xs flex items-center justify-between gap-3">
@@ -464,7 +470,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
             </div>
           ) : filteredActiveDeals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Không có thỏa thuận nào phù hợp với bộ lọc.
+              {loadError ? 'Chưa xác định được danh sách thỏa thuận.' : 'Không có thỏa thuận nào phù hợp với bộ lọc.'}
             </div>
           ) : displayMode === 'CREATOR' ? (
             /* Sub-view 1A: Grouped By Creator */
@@ -791,7 +797,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="space-y-3">
           {pendingProposals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Hiện không có đề xuất nào đang chờ duyệt.
+              {loadError ? 'Chưa tải được đề xuất đang chờ duyệt.' : loading ? 'Đang tải đề xuất…' : 'Hiện không có đề xuất nào đang chờ duyệt.'}
             </div>
           ) : (
             <div className="space-y-3">
@@ -852,11 +858,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1}
                             max={20}
-                            value={terms.discountPercent}
+                            value={terms.discountPercent === 0 ? '' : (terms.discountPercent ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, discountPercent: Number(e.target.value) },
+                                [item.id]: { ...terms, discountPercent: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -869,11 +875,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={0}
                             step={10000}
-                            value={terms.minimumOrderAmount}
+                            value={terms.minimumOrderAmount === 0 ? '' : (terms.minimumOrderAmount ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, minimumOrderAmount: Number(e.target.value) },
+                                [item.id]: { ...terms, minimumOrderAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -886,11 +892,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1000}
                             step={5000}
-                            value={terms.maximumDiscountAmount}
+                            value={terms.maximumDiscountAmount === 0 ? '' : (terms.maximumDiscountAmount ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, maximumDiscountAmount: Number(e.target.value) },
+                                [item.id]: { ...terms, maximumDiscountAmount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -902,11 +908,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                           <input
                             type="number"
                             min={1}
-                            value={terms.usageLimitTotal}
+                            value={terms.usageLimitTotal === 0 ? '' : (terms.usageLimitTotal ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, usageLimitTotal: Number(e.target.value) },
+                                [item.id]: { ...terms, usageLimitTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -919,11 +925,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={10000}
                             step={100000}
-                            value={terms.budgetTotal}
+                            value={terms.budgetTotal === 0 ? '' : (terms.budgetTotal ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, budgetTotal: Number(e.target.value) },
+                                [item.id]: { ...terms, budgetTotal: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -936,11 +942,11 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
                             type="number"
                             min={1}
                             max={365}
-                            value={terms.validDays}
+                            value={terms.validDays === 0 ? '' : (terms.validDays ?? '')}
                             onChange={(e) =>
                               setVoucherTermsById((curr) => ({
                                 ...curr,
-                                [item.id]: { ...terms, validDays: Number(e.target.value) },
+                                [item.id]: { ...terms, validDays: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) },
                               }))
                             }
                             className="rounded border border-[#EAE4D7] bg-white px-2 py-1 text-xs"
@@ -1001,7 +1007,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="space-y-3">
           {historyProposals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Không có lịch sử hợp đồng nào.
+              {loadError ? 'Chưa tải được lịch sử hợp đồng.' : 'Không có lịch sử hợp đồng nào.'}
             </div>
           ) : (
             <div className="rounded-xl border border-[#EAE4D7] bg-white shadow-2xs overflow-hidden">

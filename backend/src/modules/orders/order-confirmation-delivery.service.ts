@@ -16,6 +16,9 @@ export class OrderConfirmationDeliveryService {
 
   @Interval(5000)
   async deliverQueued() {
+    // Shared demo databases may contain another team's queued receipts. Keep
+    // the queue untouched when the local demo explicitly disables delivery.
+    if (process.env.ORDER_CONFIRMATION_EMAIL_WORKER_DISABLED === 'true') return;
     if (this.running) return;
     this.running = true;
     const claimToken = randomUUID();

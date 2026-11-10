@@ -386,7 +386,7 @@ export const DisputeResolutionPage: React.FC = () => {
                         `"${selectedOrder.dispute.storeResponse}"`
                       ) : (
                         <span className="text-[#D97706] italic">
-                          ⚠️ Gian hàng chưa gửi văn bản giải trình. Trọng tài có quyền xử vắng mặt theo quy chế sàn.
+                          Gian hàng chưa gửi văn bản giải trình. Trọng tài có quyền xử vắng mặt theo quy chế sàn.
                         </span>
                       )}
                     </div>
@@ -505,7 +505,7 @@ export const DisputeResolutionPage: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-[11px] text-[#7D715E] text-center">
-                    ⚖️ Phán quyết có hiệu lực ràng buộc ngay lập tức đối với Sổ cái tài chính của SCANMS và gửi thông báo điện tử đến hai bên.
+                    Phán quyết có hiệu lực ràng buộc ngay lập tức đối với Sổ cái tài chính của SCANMS và gửi thông báo điện tử đến hai bên.
                   </p>
                 </div>
               )}

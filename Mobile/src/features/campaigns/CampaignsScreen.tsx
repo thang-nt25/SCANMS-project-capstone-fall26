@@ -1,3 +1,7 @@
+import {
+  ExpandableRecord,
+  SectionTitle as Title,
+} from "../../components/RecordList";
 import { useState } from "react";
 import { Text } from "react-native";
 import { z } from "zod";
@@ -8,11 +12,10 @@ import {
   Card,
   ErrorNotice,
   Screen,
-  Title,
 } from "../../components/ui";
 import { money, statusText } from "../../types/contracts";
 import {
-  CommandForm,
+  CompactCommandForm as CommandForm,
   QueryState,
   amount,
   required,
@@ -67,11 +70,9 @@ export function CampaignsScreen() {
     shop && Boolean(store),
   );
   return (
-    <Screen scroll>
-      <Title>Chiến dịch & thưởng doanh số</Title>
+    <Screen scroll compact>
       <Caption>
-        Hoa hồng và ngân sách do backend kiểm tra, không tự cộng tỷ lệ trên điện
-        thoại.
+        Xem mức thưởng, ngân sách và thời gian áp dụng của từng chiến dịch.
       </Caption>
       {shop && (
         <Button
@@ -170,8 +171,14 @@ export function CampaignsScreen() {
       )}
       <Title>{shop ? "Chiến dịch của Shop" : "Chiến dịch trên sàn"}</Title>
       {list.data?.map((item) => (
-        <Card key={item.id}>
-          <Title>{item.name}</Title>
+        <ExpandableRecord
+          key={item.id}
+          title={item.name}
+          subtitle={item.store?.name}
+          badge={item.isActive ? "Đang hoạt động" : "Tạm dừng"}
+          meta={`Thưởng thêm ${item.bonusCommissionRate}%`}
+          icon="award"
+        >
           <Caption>{item.store?.name}</Caption>
           <Badge>{item.isActive ? "Đang hoạt động" : "Đã tạm ngừng"}</Badge>
           <Text>
@@ -224,7 +231,7 @@ export function CampaignsScreen() {
               }
             />
           )}
-        </Card>
+        </ExpandableRecord>
       ))}
       {form && <CommandForm spec={form} close={() => setForm(null)} />}
     </Screen>

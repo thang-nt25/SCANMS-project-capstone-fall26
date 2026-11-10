@@ -10,7 +10,7 @@ describe('merchant order filters preserve shop, customer and return scope', () =
   const makeService = () => {
     const prisma = { store: { findFirst: jest.fn().mockResolvedValue({ id: storeId }) },
       order: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) } };
-    const service = Object.assign(Object.create(OrdersService.prototype), { prisma }) as OrdersService;
+    const service = Object.assign(Object.create(OrdersService.prototype), { prisma, cacheService: { get: jest.fn().mockResolvedValue(null), set: jest.fn() } }) as OrdersService;
     return { service, prisma };
   };
   it('accepts the RETURNS pseudo-status and v5 customer while rejecting invalid values', () => {
@@ -22,10 +22,13 @@ describe('merchant order filters preserve shop, customer and return scope', () =
     await service.getMyStoreOrders('owner', UserRole.SHOP_MANAGER, { storeId, customerId, status: 'RETURNS', search: 'An', paymentStatus: 'PAID' });
     const where = prisma.order.count.mock.calls[0][0].where;
     expect(where).toMatchObject({ storeId, customerId, rawPayload: { path: ['paymentStatus'], equals: 'PAID' },
-      AND: [{ OR: [{ status: OrderStatus.RETURNED }, { status: OrderStatus.RETURN_REQUESTED }, { status: OrderStatus.DISPUTED }, { returnRequest: { isNot: null } }] }],
+      AND: [{ OR: [{ status: OrderStatus.RETURNED }, { status: OrderStatus.RETURN_REQUESTED }, { status: OrderStatus.DISPUTED }, { returnRequests: { some: {} } }] }],
       OR: expect.arrayContaining([{ customerName: { contains: 'An', mode: 'insensitive' } }]),
     });
     expect(prisma.order.findMany.mock.calls.at(-1)?.[0].where).toEqual(where);
+    expect(prisma.order.findMany.mock.calls.at(-1)?.[0].include.returnRequests).toEqual({
+      include: { refund: true, dispute: true }, orderBy: { submittedAt: 'desc' }, take: 1,
+    });
   });
   it('filters a chat customer by ID even when names collide', async () => {
     const { service, prisma } = makeService();

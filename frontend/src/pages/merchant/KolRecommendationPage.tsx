@@ -18,7 +18,7 @@ import {
   ShoppingBasket,
   SlidersHorizontal,
 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   aiRecommendationService,
@@ -72,6 +72,7 @@ function readMatchingPreferences(): { productId?: string; autoScan?: boolean } {
 }
 
 export default function KolRecommendationPage({ onReturn: _onReturn }: { onReturn?: () => void } = {}) {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [searchParams] = useSearchParams();
   const urlProductId = searchParams.get('productId');
@@ -283,7 +284,7 @@ export default function KolRecommendationPage({ onReturn: _onReturn }: { onRetur
   }, [kols, compareKolIds]);
 
   const handleNegotiateDeal = (kol: KolMatchResult) => {
-    window.location.href = `/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages`;
+    navigate(`/merchant/kol-hub?kol=${kol.collaboratorId}&tab=messages`);
   };
 
   // Handle VIP Invitation Submission

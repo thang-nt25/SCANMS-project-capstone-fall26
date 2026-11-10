@@ -16,6 +16,7 @@ import {
   Headers,
   ParseUUIDPipe,
   Res,
+  GoneException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -171,22 +172,23 @@ export class OrdersController {
   }
 
   @Post('webhook')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.GONE)
   @ApiOperation({
-    summary: 'FR-19: Tiếp nhận đơn hàng từ sàn thương mại điện tử',
+    summary: 'DEPRECATED [GONE 410]: Tiếp nhận đơn hàng từ sàn thương mại điện tử bên ngoài',
     description:
-      'Chuẩn hóa và lưu đơn hàng từ Shopee, TikTok Shop hoặc Shopify theo cơ chế idempotent.',
+      'ĐÃ BÃI BỎ VĨNH VIỄN: SCANMS là Hệ thống Quản trị Nội bộ Doanh nghiệp Đa Nhãn Hàng. Toàn bộ đơn hàng được ghi nhận trực tiếp qua Cổng First-Party Attribution Storefront nội bộ.',
   })
   @ApiResponse({
-    status: 200,
-    description: 'Đơn đã được tiếp nhận hoặc đã tồn tại',
+    status: 410,
+    description: 'Endpoint đã bị bãi bỏ vĩnh viễn (Marketplace Webhook Deprecated)',
   })
-  @ApiResponse({ status: 400, description: 'Payload webhook không hợp lệ' })
   async receiveWebhook(
-    @Body() dto: OrderWebhookDto,
-    @Headers('x-webhook-secret') secret?: string,
+    @Body() _dto: OrderWebhookDto,
+    @Headers('x-webhook-secret') _secret?: string,
   ) {
-    return this.ordersService.receiveWebhook(dto, secret);
+    throw new GoneException(
+      'Webhook sàn thương mại điện tử bên ngoài (Shopee, TikTok Shop, Lazada) đã bị bãi bỏ vĩnh viễn theo Quyết định Đổi mới Kiến trúc Quản lý Nội bộ Doanh nghiệp Đa Nhãn Hàng SCANMS. Toàn bộ đơn hàng được ghi nhận và quy kết độc quyền qua Cổng Bán hàng Doanh nghiệp First-Party.',
+    );
   }
 
   @Post('payment-webhook')

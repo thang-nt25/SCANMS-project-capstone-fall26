@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Eye, Radio, RotateCcw, Play, User } from 'lucide-react';
 import api from '@/services/api';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import './LiveNowSection.css';
 
 interface LiveProduct { id: string; title: string; imageUrl?: string; price?: number | string }
 interface LiveSession {
@@ -45,29 +44,29 @@ export function LiveNowSection({ onOpenHub }: { onOpenHub: () => void }) {
   const sessions = data.filter((session) => session.status === 'LIVE' && Date.parse(session.endsAt) > now);
 
   return (
-    <section id="live" aria-labelledby="live-now-title" className="live-now">
-      <div className="live-now__container">
-        <div className="live-now__panel">
-        <div className="live-now__heading">
-          <div className="live-now__title">
-            <span className="live-now__title-icon" aria-hidden="true"><Radio size={19} /></span>
-            <h2 id="live-now-title">Live cùng nhà sáng tạo</h2>
-            {sessions.length > 0 && <span className="live-now__count">{sessions.length} đang phát</span>}
+    <section id="live" aria-labelledby="live-now-title" className="scroll-mt-36 bg-[#faf8f5] py-3.5 sm:py-5 text-[#1a1612] text-left">
+      <div className="w-full max-w-[1248px] mx-auto px-3 sm:px-4 md:px-6">
+        <div className="p-4 sm:p-5 md:p-[20px_24px_22px] border border-[#eae4d7] rounded-[14px] sm:rounded-[16px] bg-white">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5 flex-wrap min-[381px]:flex-nowrap">
+            <span className="grid w-[34px] sm:w-[38px] h-[34px] sm:h-[38px] shrink-0 place-items-center rounded-[10px] bg-[#fbf5eb] text-[#b88e4f]" aria-hidden="true"><Radio size={19} /></span>
+            <h2 id="live-now-title" className="m-0 text-[16px] sm:text-[19px] font-semibold leading-[1.4] tracking-[-0.3px]">Live cùng nhà sáng tạo</h2>
+            {sessions.length > 0 && <span className="whitespace-nowrap rounded-[6px] bg-[#fbf5eb] px-[7px] py-1 text-[#8c6226] text-[10px] sm:text-[11px] font-semibold max-[380px]:ml-[42px]">{sessions.length} đang phát</span>}
           </div>
-          <button type="button" onClick={onOpenHub} className="live-now__more">Xem lịch Live<ArrowRight size={15} aria-hidden="true" /></button>
+          <button type="button" onClick={onOpenHub} className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1 sm:gap-1.5 border-0 bg-transparent p-0 text-[#7d715e] text-[11px] sm:text-[12px] font-semibold cursor-pointer hover:text-[#9b6f32] focus-visible:outline-2 focus-visible:outline-[#b88e4f] focus-visible:outline-offset-2 focus-visible:rounded-[6px]">Xem lịch Live<ArrowRight size={15} aria-hidden="true" /></button>
         </div>
         {isLoading ? (
-          <div aria-label="Đang tải phiên Live" className="live-now__loading" role="status"><span /></div>
+          <div aria-label="Đang tải phiên Live" className="mt-4 border-t border-[#f0ebe3] pt-4" role="status"><span className="block w-[min(250px,75%)] h-7 rounded-[6px] bg-[#f3efe6] animate-pulse" /></div>
         ) : sessions.length === 0 ? (
-          <div className="live-now__empty" role={isError ? 'alert' : undefined}>
+          <div className="flex items-center justify-between gap-4 mt-3 sm:mt-4 border-t border-[#f0ebe3] pt-3.5 sm:pt-[18px] pb-0.5" role={isError ? 'alert' : undefined}>
             <div>
-              <p className="live-now__empty-title">{isError ? 'Chưa tải được phiên Live' : 'Hiện chưa có phiên Live nào'}</p>
-              <p className="live-now__empty-description">{isError ? 'Vui lòng thử tải lại.' : 'Theo dõi lịch để đón xem những phiên tiếp theo.'}</p>
+              <p className="m-0 text-[#1a1612] text-[14px] font-semibold leading-[1.5]">{isError ? 'Chưa tải được phiên Live' : 'Hiện chưa có phiên Live nào'}</p>
+              <p className="mt-1 mb-0 text-[#7d715e] text-[12px] leading-[1.5]">{isError ? 'Vui lòng thử tải lại.' : 'Theo dõi lịch để đón xem những phiên tiếp theo.'}</p>
             </div>
-            {isError && <button type="button" disabled={isFetching} onClick={() => void refetch()} className="live-now__retry"><RotateCcw size={15} aria-hidden="true" />Thử lại</button>}
+            {isError && <button type="button" disabled={isFetching} onClick={() => void refetch()} className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 border-0 bg-transparent p-0 text-[#7d715e] text-[12px] font-semibold cursor-pointer hover:text-[#9b6f32] disabled:cursor-wait disabled:opacity-60"><RotateCcw size={15} aria-hidden="true" />Thử lại</button>}
           </div>
         ) : (
-          <div className="live-now__grid">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4 mt-4">
             {sessions.slice(0, 6).map((session) => {
               const external = session.platform !== 'SCANMS';
               const safeExternal = session.liveUrl && /^https?:\/\//i.test(session.liveUrl) ? session.liveUrl : null;

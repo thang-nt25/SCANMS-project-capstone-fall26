@@ -34,7 +34,7 @@ export class UploadController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  @ApiOperation({ summary: 'Tải ảnh bìa sản phẩm vuông, tối thiểu 800×800 px' })
+  @ApiOperation({ summary: 'Tải ảnh bìa sản phẩm (hỗ trợ mọi kích thước, tối đa 5MB)' })
   @ApiConsumes('multipart/form-data')
   async uploadProductCover(@UploadedFile() file: Express.Multer.File): Promise<CloudinaryUploadResult> {
     await validateProductCover(file);

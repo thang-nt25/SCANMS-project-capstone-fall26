@@ -92,7 +92,8 @@ const Submit = z.object({
   frontCardUrl: https,
   backCardUrl: https,
 });
-export function KycScreen() {
+export function KycScreen({ pendingOnly = false }: { pendingOnly?: boolean } = {}) {
+  const [onlyPending, setOnlyPending] = useState(pendingOnly);
   const navigation = useMobileNavigation();
   const [bankDetails, setBankDetails] = useState(false);
   const { reviewer, user } = useActor(),
@@ -157,7 +158,8 @@ export function KycScreen() {
       {reviewer && (
         <>
           <Title>Nhà sáng tạo</Title>
-          {result.data?.kolApplications.map((item) => (
+          <Button title={onlyPending ? "Chờ duyệt · Xem tất cả" : "Tất cả · Chỉ xem chờ duyệt"} secondary onPress={() => setOnlyPending(value => !value)} />
+          {result.data?.kolApplications.filter(item => !onlyPending || (item.kycStatus === "UNVERIFIED" && Boolean(item.idCardNumber))).map((item) => (
             <Card key={item.id}>
               <Title>{item.user?.fullName || item.user?.email}</Title>
               <Badge>{item.kycStatus}</Badge>
@@ -177,7 +179,7 @@ export function KycScreen() {
             </Card>
           ))}
           <Title>Gian hàng</Title>
-          {result.data?.shopApplications.map((item) => (
+          {result.data?.shopApplications.filter(item => !onlyPending || item.onboardingStatus === "PENDING_APPROVAL").map((item) => (
             <Card key={item.id}>
               <Title>{item.name}</Title>
               <Badge>{item.onboardingStatus}</Badge>

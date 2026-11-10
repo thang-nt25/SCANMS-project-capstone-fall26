@@ -28,9 +28,16 @@ import { useAuth } from "../auth/AuthProvider";
 import { moduleIcons } from "./module-presentation";
 import { CollaboratorHome } from "./CollaboratorHome";
 import { MerchantHome } from "./MerchantHome";
+import { OperationsWorkspaceScreen } from "./OperationsWorkspaceScreen";
 
 export function WorkspaceScreen() {
   const { session } = useAuth();
+  if (
+    session?.user.role === "SYSTEM_ADMIN" ||
+    session?.user.role === "SYSTEM_MANAGER"
+  ) {
+    return <OperationsWorkspaceScreen />;
+  }
   return session?.user.role === "CUSTOMER" ? (
     <MarketplaceHomeScreen />
   ) : session?.user.role === "COLLABORATOR" ? <CollaboratorHome /> : session?.user.role === "SHOP_MANAGER" ? <MerchantHome /> : (
