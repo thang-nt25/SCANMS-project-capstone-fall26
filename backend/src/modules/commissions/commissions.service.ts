@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-request.interface';
 import {
-  CommissionStatus, DealBonusStatus,
+  CommissionStatus,
+  DealBonusStatus,
   OrderStatus,
   Prisma,
   UserRole,
@@ -111,17 +112,11 @@ export class CommissionsService {
         availableAt: { lte: now },
         order: {
           status: { in: COMMISSION_ELIGIBLE_ORDER_STATUSES },
-          OR: [
-            { returnRequest: { is: null } },
-            {
-              returnRequest: { is: { status: { in: ['CLOSED', 'EXPIRED'] } } },
+          returnRequests: {
+            none: {
+              status: { notIn: ['CLOSED', 'EXPIRED', 'COMPLETED', 'REFUNDED'] },
             },
-            {
-              returnRequest: {
-                is: { status: 'COMPLETED', resolution: 'EXCHANGE' },
-              },
-            },
-          ],
+          },
         },
       },
       select: { id: true },
@@ -253,48 +248,135 @@ export class CommissionsService {
         for (const item of calculation.items) {
           const appliedRate = Number(item.appliedCommissionRate || 0);
           if (appliedRate > tierBaseRateNum) {
-            const originalItem = order.orderItems.find((oi) => oi.id === item.orderItemId);
-            const itemSubtotal = originalItem ? originalItem.unitPrice.times(originalItem.quantity) : new Prisma.Decimal(0);
-            const basePortion = itemSubtotal.times(tierBaseRateNum).dividedBy(100).toDecimalPlaces(2);
-            const dealPortion = item.calculatedCommissionAmount.minus(basePortion);
+            // The snapshot may already exclude refunded quantities before income is posted.
+            const basePortion = item.calculatedCommissionAmount
+              .times(tierBaseRateNum)
+              .dividedBy(appliedRate)
+              .toDecimalPlaces(2);
+            const dealPortion =
+              item.calculatedCommissionAmount.minus(basePortion);
             totalBaseCommission = totalBaseCommission.plus(basePortion);
-            totalDealCommission = totalDealCommission.plus(dealPortion.greaterThan(0) ? dealPortion : new Prisma.Decimal(0));
+            totalDealCommission = totalDealCommission.plus(
+              dealPortion.greaterThan(0) ? dealPortion : new Prisma.Decimal(0),
+            );
           } else {
-            totalBaseCommission = totalBaseCommission.plus(item.calculatedCommissionAmount);
+            totalBaseCommission = totalBaseCommission.plus(
+              item.calculatedCommissionAmount,
+            );
           }
         }
 
-        // Check if there is an active deal proposal to link with exact scope and non-expired window
-        const hasDealProposalModel = typeof (tx as any).exclusiveDealProposal?.findFirst === 'function';
+        // Bind earnings to the agreement at checkout, not to today's active deal.
+        // Legacy orders use the historical purchase window instead of guessing
+        // that an expired agreement's uplift is unconditional income.
+        const purchaseAt =
+          order.createdAt ??
+          order.orderItems.find((item) => item.commissionSnapshotAt)
+            ?.commissionSnapshotAt ??
+          order.updatedAt;
+        const pricing = (order.rawPayload as Record<string, any> | null)
+          ?.goodsPricing;
+        const hasDealSnapshot =
+          Array.isArray(pricing) &&
+          pricing.length > 0 &&
+          pricing.every((line: any) =>
+            Object.prototype.hasOwnProperty.call(line, 'commissionDealId'),
+          );
+        const snapshotDealIds = hasDealSnapshot
+          ? [
+              ...new Set<string>(
+                pricing
+                  .map((line: any) => line.commissionDealId)
+                  .filter(
+                    (id: unknown): id is string => typeof id === 'string',
+                  ),
+              ),
+            ]
+          : [];
+        const hasDealProposalModel =
+          typeof (tx as any).exclusiveDealProposal?.findFirst === 'function';
         if (totalDealCommission.greaterThan(0) && hasDealProposalModel) {
-          const dealEligibleProductIds = order.orderItems.map((oi) => oi.productId);
-          const deal = await (tx as any).exclusiveDealProposal.findFirst({
-            where: {
-              collaboratorId: collaborator.id,
-              storeId: order.storeId,
-              status: 'APPROVED',
-              closedAt: null,
-              OR: [
-                { commitmentEndsAt: null },
-                { commitmentEndsAt: { gt: now } },
-              ],
-              AND: [
-                {
-                  OR: [
-                    { scopeType: 'STORE_WIDE' },
-                    { productId: { in: dealEligibleProductIds } },
-                    { scopeProducts: { some: { productId: { in: dealEligibleProductIds } } } },
+          const dealEligibleProductIds = order.orderItems.map(
+            (oi) => oi.productId,
+          );
+          const deal =
+            hasDealSnapshot && !snapshotDealIds.length
+              ? null
+              : await (tx as any).exclusiveDealProposal.findFirst({
+                  where: {
+                    collaboratorId: collaborator.id,
+                    storeId: order.storeId,
+                    status: 'APPROVED',
+                    ...(hasDealSnapshot ? { id: { in: snapshotDealIds } } : {}),
+                    ...(!hasDealSnapshot
+                      ? { createdAt: { lte: purchaseAt } }
+                      : {}),
+                    AND: [
+                      ...(hasDealSnapshot
+                        ? []
+                        : [
+                            {
+                              OR: [
+                                { commitmentStartedAt: { lte: purchaseAt } },
+                                {
+                                  commitmentStartedAt: null,
+                                  reviewedAt: { lte: purchaseAt },
+                                },
+                              ],
+                            },
+                            {
+                              OR: [
+                                { commitmentEndsAt: null },
+                                { commitmentEndsAt: { gt: purchaseAt } },
+                              ],
+                            },
+                            {
+                              OR: [
+                                { closedAt: null },
+                                { closedAt: { gt: purchaseAt } },
+                              ],
+                            },
+                          ]),
+                      {
+                        OR: [
+                          { scopeType: 'STORE_WIDE' },
+                          { productId: { in: dealEligibleProductIds } },
+                          {
+                            scopeProducts: {
+                              some: {
+                                productId: { in: dealEligibleProductIds },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  orderBy: [
+                    { approvedCommissionRate: 'desc' },
+                    { createdAt: 'desc' },
                   ],
-                },
-              ],
-            },
-            orderBy: [{ approvedCommissionRate: 'desc' }, { createdAt: 'desc' }],
-            select: { id: true, approvedCommissionRate: true, proposedCommissionRate: true },
-          });
+                  select: {
+                    id: true,
+                    approvedCommissionRate: true,
+                    proposedCommissionRate: true,
+                    closedAt: true,
+                  },
+                });
           if (deal) {
+            if (deal.closedAt)
+              throw new ConflictException(
+                'Deal của đơn hàng đã đóng trước khi ghi nhận thu nhập; cần đối soát kết quả KPI, không tự chuyển phần chênh lệch sang thù lao cơ sở.',
+              );
             activeDealProposalId = deal.id;
-            activeDealApprovedRate = Number(deal.approvedCommissionRate || deal.proposedCommissionRate || 0);
+            activeDealApprovedRate = Number(
+              deal.approvedCommissionRate || deal.proposedCommissionRate || 0,
+            );
           } else {
+            if (snapshotDealIds.length)
+              throw new ConflictException(
+                'Không đối chiếu được Deal tại thời điểm mua; cần đối soát thu nhập.',
+              );
             // C-05: No active exclusive deal proposal found. Non-deal commission (e.g. live bonus)
             // must NOT be locked into conditionalDealEscrowBalance!
             totalBaseCommission = calculation.totalCommissionAmount;
@@ -303,16 +385,21 @@ export class CommissionsService {
         }
 
         const hasDealUplift = totalDealCommission.greaterThan(0);
-        const dealBonusStatus = hasDealUplift ? DealBonusStatus.PENDING_KPI : DealBonusStatus.NONE;
+        const dealBonusStatus = hasDealUplift
+          ? DealBonusStatus.PENDING_KPI
+          : DealBonusStatus.NONE;
         const baseRateToRecord = new Prisma.Decimal(tierBaseRateNum);
         // C-07: dealBonusRate is the KPI differential rate (e.g. Deal 16% - Standard 10% = 6.00%),
         // NOT dividing by total commission which produced 37.50%!
         const dealRateToRecord = hasDealUplift
-          ? (activeDealApprovedRate > tierBaseRateNum
-              ? new Prisma.Decimal(activeDealApprovedRate - tierBaseRateNum)
-              : (order.subtotalAmount && Number(order.subtotalAmount) > 0
-                  ? totalDealCommission.dividedBy(order.subtotalAmount).times(100).toDecimalPlaces(2)
-                  : new Prisma.Decimal(0)))
+          ? activeDealApprovedRate > tierBaseRateNum
+            ? new Prisma.Decimal(activeDealApprovedRate - tierBaseRateNum)
+            : order.subtotalAmount && Number(order.subtotalAmount) > 0
+              ? totalDealCommission
+                  .dividedBy(order.subtotalAmount)
+                  .times(100)
+                  .toDecimalPlaces(2)
+              : new Prisma.Decimal(0)
           : new Prisma.Decimal(0);
 
         const commission = await tx.commission.create({
@@ -384,7 +471,7 @@ export class CommissionsService {
               status: true,
               rawPayload: true,
               storeId: true,
-              returnRequest: {
+              returnRequests: {
                 select: {
                   status: true,
                   resolution: true,
@@ -405,18 +492,17 @@ export class CommissionsService {
         return false;
       }
 
-      const claim = commission.order.returnRequest;
       if (
-        claim &&
-        (!(
-          ['CLOSED', 'EXPIRED'].includes(claim.status) ||
-          (claim.status === 'COMPLETED' && claim.resolution === 'EXCHANGE')
-        ) ||
-          claim.dispute?.status === 'OPEN')
+        (commission.order.returnRequests ?? []).some(
+          (claim) =>
+            !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(claim.status) ||
+            claim.dispute?.status === 'OPEN',
+        )
       )
         return false;
 
-      const baseToRelease = commission.baseCommissionAmount ?? commission.commissionAmount;
+      const baseToRelease =
+        commission.baseCommissionAmount ?? commission.commissionAmount;
       if (baseToRelease.greaterThan(0)) {
         await this.walletsService.releasePendingBalance(
           tx,
@@ -552,7 +638,8 @@ export class CommissionsService {
    */
   getEscrowPolicyInfo(sampleDate?: string) {
     const targetDate = sampleDate ? new Date(sampleDate) : new Date();
-    if (!Number.isFinite(targetDate.getTime())) throw new BadRequestException('Ngày kiểm tra Escrow không hợp lệ');
+    if (!Number.isFinite(targetDate.getTime()))
+      throw new BadRequestException('Ngày kiểm tra Escrow không hợp lệ');
     const calculation = {
       startDate: targetDate,
       availableAt: new Date(
@@ -718,7 +805,7 @@ export class CommissionsService {
             updatedAt: true,
             rawPayload: true,
             externalOrderSn: true,
-            returnRequest: {
+            returnRequests: {
               select: {
                 status: true,
                 resolution: true,
@@ -745,19 +832,15 @@ export class CommissionsService {
     const remainingDays = Math.floor(remainingHours / 24);
     const remainingHoursInDay = remainingHours % 24;
 
-    const claim = commission.order.returnRequest;
     const isFrozenDueToDispute =
       requiresReferralReview(commission.order) ||
       [OrderStatus.RETURN_REQUESTED, OrderStatus.DISPUTED].includes(
         commission.order.status as any,
       ) ||
-      Boolean(
-        claim &&
-        (!(
-          ['CLOSED', 'EXPIRED'].includes(claim.status) ||
-          (claim.status === 'COMPLETED' && claim.resolution === 'EXCHANGE')
-        ) ||
-          claim.dispute?.status === 'OPEN'),
+      (commission.order.returnRequests ?? []).some(
+        (claim) =>
+          !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(claim.status) ||
+          claim.dispute?.status === 'OPEN',
       );
     const isReversed = commission.status === CommissionStatus.REVERSED;
     const isReleased = commission.status === CommissionStatus.APPROVED;

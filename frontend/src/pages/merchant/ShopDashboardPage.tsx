@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -189,6 +190,7 @@ let lastDashboardSnapshot: {
   pendingDealsCount: number;
   pendingReturnsCount: number;
 } | null = null;
+registerPrivateCacheReset(() => { lastDashboardSnapshot = null; });
 
 export default function ShopDashboardPage() {
   const [currentStore, setCurrentStore] = useState<StoreSettings | null>(null);

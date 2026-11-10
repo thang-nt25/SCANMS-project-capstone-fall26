@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { ExclusiveOfferModal } from '../../components/chat/ExclusiveOfferModal';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealProductPicker } from '@/components/affiliate/DealProductPicker';
@@ -163,6 +164,7 @@ let cachedPartnerStores: PartnerStore[] = [];
 let cachedTargetNewStore: PartnerStore | null = null;
 let cachedLastSelectedStoreId: string = '';
 let cachedRawConversations: any[] = [];
+registerPrivateCacheReset(() => { cachedPartnerStores = []; cachedTargetNewStore = null; cachedLastSelectedStoreId = ''; cachedRawConversations = []; });
 
 export default function ShopCollaborationPage() {
   const viewer = authService.getCurrentUser();

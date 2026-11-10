@@ -2105,7 +2105,7 @@ export default function ProductDetailPage() {
         {/* ===================== KHỐI THÔNG SỐ KỸ THUẬT & MÔ TẢ CHI TIẾT SẢN PHẨM ===================== */}
         <div id="product-details-specs" className="mt-6 rounded-2xl border border-[#EAE4D7] bg-white p-5 sm:p-6 shadow-xs">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* CỘT TRÁI (45%): BẢNG THÔNG SỐ KỸ THUẬT & QUY CÁCH VẬT LÝ (REACTIVE THEO PHÂN LOẠI) */}
             <div className="lg:col-span-5 space-y-4">
               <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3">

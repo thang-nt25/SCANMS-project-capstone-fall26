@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect } from 'react';
 import {
   UserPlus,
@@ -40,6 +41,7 @@ const DEFAULT_CATEGORIES = [
 
 let cachedStaffList: InternalStaffMember[] = [];
 let cachedStoresList: AdminStoreOption[] = [];
+registerPrivateCacheReset(() => { cachedStaffList = []; cachedStoresList = []; });
 
 export const AdminPersonnelPage: React.FC = () => {
   const [staffList, setStaffList] = useState<InternalStaffMember[]>(() => cachedStaffList);

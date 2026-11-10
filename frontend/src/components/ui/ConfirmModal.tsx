@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 
 export interface ConfirmModalProps {
@@ -24,32 +24,22 @@ export function ConfirmModal({
   variant = 'danger',
   isLoading = false,
 }: ConfirmModalProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !isLoading) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, isLoading, onClose]);
+  const { dialogId, dialog } = useDialogFocus(isOpen, () => { if (!isLoading) onClose(); });
 
   if (!isOpen) return null;
 
   return (
     <div
+      ref={dialog}
+      tabIndex={-1}
+      aria-labelledby={`${dialogId}-title`}
+      aria-describedby={`${dialogId}-description`}
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-[#231D15]/40 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white border border-[#EEDFC6] shadow-xl p-5 sm:p-6 transition-all transform scale-100 animate-in zoom-in-95 duration-200"
+        className="w-full min-w-0 max-w-md max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl bg-white border border-[#EEDFC6] shadow-xl p-4 sm:p-6 transition-all transform scale-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3.5">
@@ -70,10 +60,10 @@ export function ConfirmModal({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-extrabold text-[#1A1612] m-0 leading-snug">
+            <h3 id={`${dialogId}-title`} className="text-base font-extrabold text-[#1A1612] m-0 leading-snug">
               {title}
             </h3>
-            <p className="mt-1.5 text-xs sm:text-[13px] text-[#7D715E] leading-relaxed m-0">
+            <p id={`${dialogId}-description`} className="mt-1.5 text-xs sm:text-[13px] text-[#7D715E] leading-relaxed m-0">
               {message}
             </p>
           </div>
@@ -82,19 +72,20 @@ export function ConfirmModal({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="p-1 rounded-lg text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer shrink-0"
+            className="flex size-11 items-center justify-center rounded-lg text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] transition cursor-pointer shrink-0"
+            aria-label="Đóng"
             title="Đóng"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="mt-5 pt-3.5 border-t border-[#EAE4D7] flex items-center justify-end gap-2.5">
+        <div className="mt-5 flex flex-col gap-2.5 border-t border-[#EAE4D7] pt-3.5 min-[390px]:flex-row min-[390px]:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition shadow-2xs cursor-pointer select-none disabled:opacity-50"
+            className="min-h-11 px-4 py-2 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition shadow-2xs cursor-pointer select-none disabled:opacity-50"
           >
             {cancelText}
           </button>
@@ -103,7 +94,7 @@ export function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-xl text-xs font-bold text-white shadow-2xs transition flex items-center gap-1.5 cursor-pointer select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
               variant === 'danger'
                 ? 'bg-rose-600 hover:bg-rose-700'
                 : variant === 'warning'

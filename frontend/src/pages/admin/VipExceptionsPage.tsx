@@ -30,6 +30,8 @@ type TabType = "pending" | "approved" | "rejected";
 export default function VipExceptionsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("pending");
   const [items, setItems] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<ExceptionStats>({
     pendingCount: 0,
     approvedCount: 0,
@@ -59,13 +61,15 @@ export default function VipExceptionsPage() {
     try {
       const response: any = unwrap(
         await api.get("/affiliate-deals/exceptions", {
-          params: { tab },
+          params: { tab, page },
           headers: { "x-skip-cache": "1" },
         })
       );
 
       if (response && typeof response === "object" && !Array.isArray(response)) {
         setItems(Array.isArray(response.items) ? response.items : []);
+        setTotal(Number(response.total) || 0);
+        if (!response.items?.length && page > 1) setPage(value => value - 1);
         if (response.stats) {
           setStats(response.stats);
         }
@@ -79,7 +83,7 @@ export default function VipExceptionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, page]);
 
   useEffect(() => {
     void loadData(activeTab);
@@ -87,6 +91,7 @@ export default function VipExceptionsPage() {
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
+    setPage(1);
     setSearchQuery("");
     setSelectedStore("ALL");
     setSelectedRateRange("ALL");
@@ -640,6 +645,12 @@ export default function VipExceptionsPage() {
           })}
         </div>
       )}
+
+      {total > 50 && <nav aria-label="Phân trang ngoại lệ VIP" className="flex flex-wrap items-center justify-center gap-3">
+        <button type="button" disabled={loading || busy || page <= 1} onClick={() => setPage(value => value - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang trước</button>
+        <span className="text-sm text-[#7D715E]">Trang {page}/{Math.max(1, Math.ceil(total / 50))} · {total} đề nghị</span>
+        <button type="button" disabled={loading || busy || page * 50 >= total} onClick={() => setPage(value => value + 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang sau</button>
+      </nav>}
 
       {/* 5. Product Quick View Modal */}
       {previewProduct && (

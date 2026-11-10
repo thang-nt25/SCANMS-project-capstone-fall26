@@ -5,6 +5,8 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useCallback,
+  useId,
   type ReactNode,
   type CSSProperties,
 } from 'react';
@@ -100,7 +102,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     },
     ref
   ) => {
-    const options = optionsProp || (children ? extractOptions(children) : []);
+    const options = useMemo(
+      () => optionsProp || (children ? extractOptions(children) : []),
+      [optionsProp, children],
+    );
 
     const [isOpen, setIsOpen] = useState(false);
     const [openDirection, setOpenDirection] = useState<'down' | 'up'>(
@@ -118,10 +123,15 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     const currentValue = value !== undefined ? String(value) : internalValue;
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const generatedId = useId();
+    const triggerId = id || generatedId;
+    const listId = `${triggerId}-options`;
+    const keyboardOpening = useRef<'first' | 'last' | null>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
     const renderMenu = (menu: ReactNode) => portal
-      ? createPortal(menu, containerRef.current?.closest('dialog[open]') || document.body)
+      ? createPortal(menu, containerRef.current?.closest('dialog[open], [role="dialog"]') || document.body)
       : menu;
 
     // Detect open direction (upwards or downwards)
@@ -188,14 +198,27 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       return options.filter((opt) => opt.label.toLowerCase().includes(q));
     }, [options, searchQuery]);
 
+    const focusOption = useCallback((edge: 'first' | 'last') => {
+      const choices = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]:not([disabled])') ?? []);
+      (choices.find(option => option.getAttribute('aria-selected') === 'true') ||
+        (edge === 'last' ? choices.at(-1) : choices[0]))?.focus();
+    }, []);
+
     useEffect(() => {
       if (isOpen) {
         setSearchQuery('');
+        if (keyboardOpening.current) {
+          const edge = keyboardOpening.current;
+          keyboardOpening.current = null;
+          focusOption(edge);
+          return;
+        }
         if (searchable ?? options.length > 7) {
-          setTimeout(() => searchInputRef.current?.focus(), 50);
+          const timer = window.setTimeout(() => searchInputRef.current?.focus(), 50);
+          return () => window.clearTimeout(timer);
         }
       }
-    }, [isOpen, searchable, options.length]);
+    }, [isOpen, searchable, options.length, focusOption]);
 
     // Sync external value when controlled
     useEffect(() => {
@@ -214,22 +237,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
         }
       };
 
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsOpen(false);
-        }
-      };
-
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
 
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
         document.removeEventListener('touchstart', handleClickOutside);
-        document.removeEventListener('keydown', handleKeyDown);
       };
     }, [isOpen]);
 
@@ -244,6 +257,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
         setInternalValue(opt.value);
       }
       setIsOpen(false);
+      triggerRef.current?.focus();
       if (onChange) {
         onChange({
           target: {
@@ -256,6 +270,20 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
     };
 
     const isFullWidth = !className || className.includes('w-full') || className.includes('flex-1');
+    const menuKeyDown = (event: React.KeyboardEvent) => {
+      const choices = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]:not([disabled])') ?? []);
+      const index = choices.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.key === 'Escape') {
+        event.preventDefault(); event.stopPropagation(); setIsOpen(false); triggerRef.current?.focus();
+      } else if (event.key === 'Tab') { triggerRef.current?.focus(); setIsOpen(false); }
+      else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation();
+         if (!choices.length) return;
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1
+          : event.key === 'ArrowDown' ? (index + 1) % choices.length : index < 0 ? choices.length - 1 : (index - 1 + choices.length) % choices.length;
+        choices[next]?.focus();
+      }
+    };
 
     return (
       <div
@@ -267,13 +295,12 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
             (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }
         }}
-        className={cn('relative', isFullWidth ? 'w-full' : 'inline-block')}
+        className={cn('relative min-w-0 max-w-full', isFullWidth ? 'w-full' : 'inline-block')}
         style={style}
       >
         {/* Hidden input for standard forms */}
         <input
           type="hidden"
-          id={id}
           name={name}
           value={currentValue}
           required={required}
@@ -283,14 +310,26 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
         {/* Trigger Button - Tone Sáng Vàng Be Chuẩn SCANMS */}
         <button
           type="button"
-          id={id ? `${id}-trigger` : undefined}
+          ref={triggerRef}
+          id={triggerId}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          aria-controls={isOpen ? listId : undefined}
           aria-label={ariaLabel}
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
+          onKeyDown={event => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              const edge = event.key === 'ArrowUp' ? 'last' : 'first';
+              if (isOpen) focusOption(edge);
+              else { keyboardOpening.current = edge; setIsOpen(true); }
+            } else if (event.key === 'Escape' && isOpen) {
+              event.preventDefault(); event.stopPropagation(); setIsOpen(false);
+            }
+          }}
           className={cn(
-            'w-full flex items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#1A1612] font-medium transition cursor-pointer text-left outline-none shadow-2xs',
+            'w-full min-h-11 min-w-0 flex items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-2.5 text-base sm:text-sm text-[#1A1612] font-medium transition cursor-pointer text-left outline-none shadow-2xs',
             'hover:border-[#C59B58] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20',
             isOpen && 'border-[#C59B58] ring-2 ring-[#C59B58]/20',
             disabled && 'opacity-50 cursor-not-allowed bg-[#FAF8F5]',
@@ -312,11 +351,14 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
         {isOpen && renderMenu(
           <div
             ref={listRef}
+            id={listId}
             role="listbox"
+            aria-labelledby={triggerId}
+            onKeyDown={menuKeyDown}
             tabIndex={-1}
             className={cn(
               'bg-white border border-[#EEDFC6] rounded-2xl shadow-xl py-1.5 max-h-60 flex flex-col overflow-hidden',
-              portal ? 'fixed z-[120]' : cn('absolute z-50 min-w-[200px] w-full animate-in fade-in zoom-in-95 duration-150', align === 'right' ? 'right-0' : 'left-0', openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5')
+              portal ? 'fixed z-[120]' : cn('absolute z-50 min-w-0 w-full animate-in fade-in zoom-in-95 duration-150', align === 'right' ? 'right-0' : 'left-0', openDirection === 'up' ? 'bottom-full mb-1.5' : 'top-full mt-1.5')
             )}
             style={portal ? menuStyle : { colorScheme: 'light' }}
           >
@@ -330,9 +372,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Tìm nhanh..."
-                    className="w-full pl-8 pr-6 py-1.5 text-xs bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
+                    className="w-full min-h-11 pl-8 pr-9 py-1.5 text-base sm:text-sm bg-white border border-[#EAE4D7] rounded-xl text-[#1A1612] placeholder:text-[#A99D8A] focus:border-[#C59B58] focus:ring-2 focus:ring-[#C59B58]/20 outline-none transition"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
+                      menuKeyDown(e);
                       e.stopPropagation();
                       if (e.key === 'Escape') { e.preventDefault(); setIsOpen(false); }
                     }}
@@ -341,7 +384,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setSearchQuery(''); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
+                      aria-label="Xóa tìm kiếm"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 flex size-11 items-center justify-center rounded-lg text-sm text-[#7D715E] hover:text-[#1A1612] cursor-pointer"
                     >
                       ✕
                     </button>
@@ -366,7 +410,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
                       disabled={opt.disabled}
                       onClick={() => handleSelect(opt)}
                       className={cn(
-                        'w-full text-left px-3.5 py-2.5 text-xs sm:text-sm transition flex items-center justify-between cursor-pointer select-none',
+                        'w-full min-h-11 text-left px-3.5 py-2.5 text-sm transition flex items-center justify-between cursor-pointer select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#B88E4F]',
                         isSelected
                           ? 'bg-[#FBF5EB] text-[#B88E4F] font-bold hover:bg-[#F3EFE6]'
                           : 'text-[#1A1612] hover:bg-[#F3EFE6] hover:text-[#B88E4F] font-normal',

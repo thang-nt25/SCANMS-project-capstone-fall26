@@ -20,6 +20,7 @@ globalThis.__scanmsLoginTestApi = {
   },
 };
 const source = (await readFile(new URL('../src/services/auth.service.ts', import.meta.url), 'utf8'))
+  .replace("import { clearCheckoutAddressCaches } from '../utils/checkout-address-cache';", "const clearCheckoutAddressCaches = () => {};")
   .replace("import api from './api';", 'const api = globalThis.__scanmsLoginTestApi;')
   .replace(/import\s*\{[^}]*\}\s*from\s*['"]\.\.\/utils\/login-return['"];?/, 'const productLoginUrl = () => "";');
 const compiled = ts.transpileModule(source, {

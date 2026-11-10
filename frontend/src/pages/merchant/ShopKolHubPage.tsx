@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { CreateExclusiveDealModal } from '../../components/chat/CreateExclusiveDealModal';
 import { normalizePartnerTier } from '../../utils/partner-tier';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -303,6 +304,7 @@ let lastShopKolHubSnapshot: {
   samplesMap: Record<string, SampleRequestItem[]>;
   sampleProgramStats: any;
 } | null = null;
+registerPrivateCacheReset(() => { lastShopKolHubSnapshot = null; });
 
 export default function ShopKolHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();

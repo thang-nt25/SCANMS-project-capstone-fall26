@@ -4,7 +4,7 @@ import { UserRole } from '@prisma/client';
 import { WalletsService } from './wallets.service';
 import { WalletsController } from './wallets.controller';
 
-const configuration = (values: Record<string, string>) =>
+const configuration = (values: Record<string, string | undefined>) =>
   ({ get: (key: string) => values[key] }) as ConfigService;
 describe('Explicitly enabled demo wallet top-up', () => {
   const tx = { wallet: {} };

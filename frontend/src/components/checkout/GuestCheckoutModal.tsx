@@ -1,3 +1,4 @@
+import { readCheckoutAddresses, cacheCheckoutAddresses } from '@/utils/checkout-address-cache';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckoutOrderConfirmation, type CheckoutOrderResult } from './CheckoutOrderConfirmation';
@@ -156,8 +157,8 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   // Khởi tạo sổ địa chỉ từ LocalStorage để render tức thì ngay khi mở modal
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
-      return cached ? JSON.parse(cached) : [];
+      const cached = readCheckoutAddresses();
+      return cached;
     } catch {
       return [];
     }
@@ -165,9 +166,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string>(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           return def?.id || '';
@@ -195,9 +196,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         setCustomerEmail(user.email || '');
         if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
         customerService.getAddresses().then((addrs) => {
-          if (Array.isArray(addrs) && addrs.length > 0) {
+          if (Array.isArray(addrs)) {
             setCustomerAddresses(addrs);
-            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
+            try { cacheCheckoutAddresses(addrs); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
@@ -233,9 +234,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
         setCustomerEmail(user.email || '');
         if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
         customerService.getAddresses().then((addrs) => {
-          if (Array.isArray(addrs) && addrs.length > 0) {
+          if (Array.isArray(addrs)) {
             setCustomerAddresses(addrs);
-            try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs)); } catch {}
+            try { cacheCheckoutAddresses(addrs); } catch {}
             const def = addrs.find((a) => a.isDefault) || addrs[0];
             if (def) {
               setSelectedSavedAddressId(def.id);
@@ -257,9 +258,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   // Khởi tạo các trường thông tin từ địa chỉ mặc định đã lưu nếu có
   const [customerName, setCustomerName] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.fullName) return def.fullName;
@@ -274,9 +275,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [customerPhone, setCustomerPhone] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.phoneNumber) return def.phoneNumber;
@@ -296,9 +297,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [shippingAddress, setShippingAddress] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.detailAddress) return def.detailAddress;
@@ -316,9 +317,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const [shippingQuoteRetry, setShippingQuoteRetry] = useState(0);
   const [provinceCode, setProvinceCode] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.provinceCode) return String(def.provinceCode);
@@ -330,9 +331,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [districtCode, setDistrictCode] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.districtCode) return String(def.districtCode);
@@ -344,9 +345,9 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
 
   const [wardCode, setWardCode] = useState(() => {
     try {
-      const cached = localStorage.getItem('scanms_cached_addresses');
+      const cached = readCheckoutAddresses();
       if (cached) {
-        const list = JSON.parse(cached);
+        const list = cached;
         if (Array.isArray(list) && list.length > 0) {
           const def = list.find((a: any) => a.isDefault) || list[0];
           if (def?.wardCode) return String(def.wardCode);
@@ -708,23 +709,28 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     let active = true;
     if (isOpen) {
       addressDraftEdited.current = false;
+      setCustomerAddresses(readCheckoutAddresses());
+      setSelectedSavedAddressId('');
+      setCustomerName(''); setCustomerPhone(''); setShippingAddress('');
+      setProvinceCode(''); setDistrictCode(''); setWardCode('');
+      setDeliveryLocation(null);
       setPolicyAccepted(true);
       const user = authService.getCurrentUser();
 
       if (user) {
         setCustomerEmail(user.email || '');
-        if (!customerName) setCustomerName(user.fullName || '');
-        if (!customerPhone && user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        setCustomerName(user.fullName || '');
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
 
         // Luôn tải sổ địa chỉ đã lưu cho mọi người dùng đã đăng nhập (không giới hạn role)
         customerService
           .getAddresses()
           .then((addrs) => {
             if (!active) return;
-            if (Array.isArray(addrs) && addrs.length > 0) {
+            if (Array.isArray(addrs)) {
               setCustomerAddresses(addrs);
               try {
-                localStorage.setItem('scanms_cached_addresses', JSON.stringify(addrs));
+                cacheCheckoutAddresses(addrs);
               } catch {}
 
               const def = addrs.find((a) => a.id === selectedSavedAddressId) || addrs.find((a) => a.isDefault) || addrs[0];
@@ -1034,7 +1040,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       const newAddresses = Array.isArray(updated) ? updated : [];
       setCustomerAddresses(newAddresses);
-      try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(newAddresses)); } catch {}
+      try { cacheCheckoutAddresses(newAddresses); } catch {}
 
       // Nếu địa chỉ vừa xóa là địa chỉ đang được chọn
       if (selectedSavedAddressId === addr.id) {
@@ -1110,7 +1116,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
       const updated = await customerService.getAddresses();
       if (Array.isArray(updated)) {
         setCustomerAddresses(updated);
-        try { localStorage.setItem('scanms_cached_addresses', JSON.stringify(updated)); } catch {}
+        try { cacheCheckoutAddresses(updated); } catch {}
         if (newAddr?.id) {
           setSelectedSavedAddressId(newAddr.id);
         }
@@ -1131,6 +1137,28 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const extraVoucherCode = initialExtraVoucher?.code;
   const extraVoucherBenefit = initialExtraVoucher?.benefitType;
   const voucherShippingFee = shippingFeesByStore[targetVoucherStoreId] || 0;
+  const [shippingPromoBusy, setShippingPromoBusy] = useState(false);
+  const [shippingPromoError, setShippingPromoError] = useState('');
+  const shippingPromoAttempt = useRef(0);
+  useEffect(() => { shippingPromoAttempt.current++; setShippingPromoBusy(false); setShippingPromoError(''); }, [isOpen, targetVoucherStoreId, voucherBasisKey, voucherShippingFee, customerPhone]);
+  const applyNewCustomerShipping = async () => {
+    if (shippingPromoBusy || !voucherShippingFee) return;
+    const attempt = ++shippingPromoAttempt.current;
+    setShippingPromoBusy(true); setShippingPromoError('');
+    try {
+      const response: any = await api.post('/coupons/preview-stacked', {
+        code: 'SCANMSFREESHIP', storeId: targetVoucherStoreId, benefitType: 'SHIPPING',
+        goodsSubtotal: targetVoucherSubtotal, shippingFee: voucherShippingFee,
+        shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code,
+        customerPhone: customerPhone.trim() || undefined,
+      });
+      if (attempt !== shippingPromoAttempt.current) return;
+      const data = response?.data || response;
+      setAppliedShippingCoupon({ code: data.code, discountAmount: Number(data.discountAmount) || 0, benefitType: 'SHIPPING', storeId: targetVoucherStoreId });
+    } catch (error: any) {
+      if (attempt === shippingPromoAttempt.current) setShippingPromoError(error?.message || 'Chưa áp dụng được freeship.');
+    } finally { if (attempt === shippingPromoAttempt.current) setShippingPromoBusy(false); }
+  };
   useEffect(() => { setExtraVoucherDismissed(false); }, [isOpen, extraVoucherCode]);
   useEffect(() => {
     if (!isOpen || !extraVoucherCode || !extraVoucherBenefit || !targetVoucherStoreId || extraVoucherDismissed) return;
@@ -1174,7 +1202,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
     setAddressValidationField(null);
-    if (Boolean(couponLoadingStoreId) || extraVoucherBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
+    if (Boolean(couponLoadingStoreId) || extraVoucherBusy || shippingPromoBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -1952,6 +1980,15 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               onClearCouponError={(storeId) => setShopCouponErrors((prev) => ({ ...prev, [storeId]: null }))}
             />
 
+            <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-6" aria-labelledby="new-customer-shipping-title">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0"><h3 id="new-customer-shipping-title" className="font-semibold text-[#1A1612]">Freeship khách mới</h3><p className="mt-1 text-sm text-[#7D715E]">SCANMSFREESHIP · Tối đa 3 lượt mỗi khách. Mỗi đơn áp dụng cho một kiện hàng.</p></div>
+                <button type="button" disabled={shippingPromoBusy || shippingFeeLoading || !voucherShippingFee} onClick={() => appliedShippingCoupon ? setAppliedShippingCoupon(null) : void applyNewCustomerShipping()} className="min-h-11 shrink-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#795A2D] disabled:opacity-50">{shippingPromoBusy ? 'Đang kiểm tra…' : appliedShippingCoupon ? 'Bỏ mã freeship' : 'Áp dụng freeship'}</button>
+              </div>
+              {shippingPromoError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{shippingPromoError}</p>}
+              {appliedShippingCoupon && <p role="status" className="mt-3 text-sm text-[#795A2D]">Đã giảm {formatMoney(shippingDiscount)} phí giao hàng.</p>}
+            </section>
+
             <section
               className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-2xl bg-white text-left shadow-xs overflow-hidden"
               aria-labelledby="checkout-payment-title"
@@ -2014,6 +2051,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   )}
 
+                  {shippingDiscount > 0 && <div className="flex items-center justify-between text-sm text-[#795A2D]"><span>Freeship khách mới</span><strong>−{formatMoney(shippingDiscount)}</strong></div>}
                   <div className="pt-3.5 border-t border-[#EEDFC6] flex items-baseline justify-between">
                     <div>
                       <span className="text-xs font-bold text-[#1A1612] block">Tổng thanh toán:</span>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { returnService, type ReturnAddress, type ReturnDetail } from '../../services/return.service';
 import { useReturnAction, useReturnDetail } from '../../hooks/useReturnDetail';
@@ -14,6 +14,8 @@ import { carrierStatusLabel, returnReasonLabel, returnStatusLabel } from '@/util
 import { customerService, type CustomerOrderItem } from '../../services/customer.service';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
+import { downloadReturnCaseReport } from '../../utils/return-case-report';
+import { analyzeReturnCase } from '../../utils/return-case-audit';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -28,6 +30,31 @@ const ghnClaimLabels: Record<string, string> = {
   NEEDS_MORE_EVIDENCE: 'GHN yêu cầu bổ sung bằng chứng', ACCEPTED: 'GHN đã chấp thuận',
   REJECTED: 'GHN từ chối bồi hoàn', PAID: 'Đã ghi nhận GHN thanh toán',
 };
+
+function ReturnCaseAudit({ request }: { request: ReturnDetail }) {
+  const findings = analyzeReturnCase(request);
+  return <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 sm:p-5" aria-label="Kiểm tra hồ sơ đổi trả">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 className="font-bold text-[#1A1612]">Điểm cần kiểm tra trong hồ sơ</h2>
+      <span className="rounded-full border border-[#EEDFC6] bg-white px-2.5 py-1 text-xs font-semibold text-[#795A2D]">
+        {findings.length} mục
+      </span>
+    </div>
+    <p className="mt-1 text-xs text-[#7D715E]">Gợi ý vận hành từ dữ liệu hiện tại; Manager vẫn phải đối chiếu chứng từ trước khi kết luận.</p>
+    {findings.length === 0 ? <p className="mt-3 text-sm text-[#7D715E]">Chưa phát hiện mục cần xử lý thêm tại thời điểm này.</p> :
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">{findings.map((finding) => <li key={finding.code}
+        className="rounded-xl border border-[#EAE4D7] bg-white p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${finding.severity === 'action'
+            ? 'bg-[#FFF1E6] text-[#A45312]' : 'bg-[#F3EFE6] text-[#795A2D]'}`}>
+            {finding.severity === 'action' ? 'Cần xử lý' : 'Cần đối chiếu'}
+          </span>
+          <strong className="text-sm">{finding.title}</strong>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">{finding.detail}</p>
+      </li>)}</ul>}
+  </section>;
+}
 
 function ReturnProducts({ request, customer }: { request: ReturnDetail; customer: boolean }) {
   const [originalItems, setOriginalItems] = useState<CustomerOrderItem[]>([]);
@@ -333,7 +360,7 @@ function ShopEscalation({ request }: { request: ReturnDetail }) {
   const action = useReturnAction(request.id, returnService.escalateShopRejection);
   const canSend = (request.status === 'SHOP_REJECTED' && !request.dispute) ||
     (request.status === 'DISPUTED' && request.dispute?.status === 'OPEN');
-  if (!canSend || request.events.some((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED')) return null;
+  if (!canSend || request.events.filter((event) => event.type === 'SHOP_EVIDENCE_SUBMITTED').length >= 10) return null;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -513,9 +540,15 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <h1 className="text-base font-bold">Hồ sơ đổi trả</h1>
             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 text-xs sm:text-sm [&_strong]:font-medium [&>*:last-child]:border-l [&>*:last-child]:border-[#EAE4D7] [&>*:last-child]:pl-3 [&>*:last-child]:text-[#B88E4F] [&>*:last-child]:font-semibold"><span>Mã đơn hàng: <strong>{detail.data.order.externalOrderSn}</strong></span><span>{returnStatusLabel(detail.data.status)}</span></div>
           </div>}
-          <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
-            <RefreshCw className="h-4 w-4" /> Tải lại
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {mode === 'admin' && detail.data && <button type="button" onClick={() => downloadReturnCaseReport(detail.data, analyzeReturnCase(detail.data))}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-sm font-semibold text-[#795A2D] hover:bg-[#F3EFE6]">
+              <Download className="h-4 w-4" /> Tải hồ sơ đối soát
+            </button>}
+            <button type="button" onClick={() => void detail.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-sm">
+              <RefreshCw className="h-4 w-4" /> Tải lại
+            </button>
+          </div>
         </div>
         {detail.isLoading && <p role="status">Đang tải hồ sơ đổi trả…</p>}
         {detail.error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-[#DC2626]">
@@ -527,6 +560,7 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <h1 className="mt-1 text-xl font-black">Đơn #{detail.data.order.externalOrderSn}</h1>
             <p className="mt-1 text-sm text-[#7D715E]">Gian hàng: {detail.data.order.storeName}</p>
           </header>}
+          {mode === 'admin' && <ReturnCaseAudit request={detail.data} />}
           <ReturnTimeline request={detail.data} />
 {mode !== 'customer' && detail.data.partnerIncome && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4" aria-label="Thu nhập đối tác của đơn hàng">
             <h2 className="font-bold text-[#1A1612]">Thu nhập đối tác của đơn hàng</h2>

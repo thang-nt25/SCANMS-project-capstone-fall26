@@ -1,5 +1,9 @@
 import { storeOrderSearch } from './store-order-search';
-import { lockPricingProducts, reservePromotionBudget, releasePromotionBudget } from '../pricing/pricing-policy';
+import {
+  lockPricingProducts,
+  reservePromotionBudget,
+  releasePromotionBudget,
+} from '../pricing/pricing-policy';
 import { activeDealMap } from '../affiliate-deals/deal-scope.policy';
 import {
   Injectable,
@@ -15,16 +19,27 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { exclusiveDealBonus } from './exclusive-deal-bonus';
-import { isSelfReferral, referralRiskSignals } from '../commissions/self-referral';
+import {
+  isSelfReferral,
+  referralRiskSignals,
+} from '../commissions/self-referral';
 import { selfReferralReason } from './self-referral';
-import { precedenceCommissionRate, campaignBonusRate, liveBonusRate, tierBonusByName } from '../commissions/commission-policy';
+import {
+  precedenceCommissionRate,
+  campaignBonusRate,
+  liveBonusRate,
+  tierBonusByName,
+} from '../commissions/commission-policy';
 import { PrismaService } from '../../core/database/prisma.service';
 import { managedStoreWhere } from '../../common/policies/store-access.policy';
 import { publicReturnPolicy } from '../stores/store-policy.util';
 import { isGeneratedGhnTestTrackingCode } from '../shipping/ghn-tracking-code';
 import { requireShippingFee } from '../shipping/shipping-fee';
 import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
-import { buildShippingPackage, type ShippingPackage } from '../shipping/shipping-package';
+import {
+  buildShippingPackage,
+  type ShippingPackage,
+} from '../shipping/shipping-package';
 import { CacheService } from '../../core/cache/cache.service';
 import { CreateOrderDto, PaymentMethod } from './dto/create-order.dto';
 import { TrackOrderQueryDto } from './dto/track-order.dto';
@@ -106,7 +121,10 @@ const WEBHOOK_PLATFORM_MAP: Record<ExternalOrderPlatform, OrderSourcePlatform> =
 
 import { MailService } from '../auth/mail.service';
 import { GhnService } from '../shipping/ghn.service';
-import { confirmationEmailState, combinedConfirmationEmailState } from './order-confirmation-email';
+import {
+  confirmationEmailState,
+  combinedConfirmationEmailState,
+} from './order-confirmation-email';
 
 @Injectable()
 export class OrdersService {
@@ -985,7 +1003,12 @@ export class OrdersService {
       customerPhone: string;
       customerEmail: string | null;
       shippingAddress: string;
-      shippingQuote?: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
+      shippingQuote?: {
+        totalFee: number;
+        districtId: number;
+        wardCode: string;
+        shippingPackage?: ShippingPackage;
+      } | null;
       orderNotes?: string | null;
       cleanIdempotencyKey: string;
       currentPayloadHash: string;
@@ -1020,28 +1043,69 @@ export class OrdersService {
 
     assertNoRetailVoucherSelection(dto);
     const confirmedShippingFee = requireShippingFee(shippingQuote?.totalFee);
-    await lockPricingProducts(tx, dto.items.map(item => item.productId));
+    await lockPricingProducts(
+      tx,
+      dto.items.map((item) => item.productId),
+    );
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
     let shopFundedAmount = 0;
-    const requestedLiveIds = [...new Set(dto.items.map((item) => item.liveSessionId).filter((id): id is string => Boolean(id)))];
+    const requestedLiveIds = [
+      ...new Set(
+        dto.items
+          .map((item) => item.liveSessionId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
     // Use the same session -> coupon lock order as an emergency stop. An order
     // already being placed is committed before the session evidence is captured.
     for (const liveId of [...requestedLiveIds].sort()) {
       await tx.$queryRaw`SELECT id FROM live_shopping_sessions WHERE id = ${liveId}::uuid AND store_id = ${store.id}::uuid FOR UPDATE`;
     }
-    const liveSources = requestedLiveIds.length ? await tx.liveShoppingSession.findMany({
-      where: { id: { in: requestedLiveIds }, storeId: store.id, platform: 'SCANMS', inviteStatus: 'ACCEPTED', status: 'LIVE', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
-      select: { id: true, status: true, startsAt: true, endsAt: true, commissionRate: true, products: { select: { productId: true, variantId: true } } },
-    }) : [];
-    const liveSessionIds = liveSources.filter((session) => dto.items.some((item) =>
-      item.liveSessionId === session.id && session.products.some((product) =>
-        product.productId === item.productId && (!product.variantId || product.variantId === item.variantId),
-      ),
-    )).map((session) => session.id);
+    const liveSources = requestedLiveIds.length
+      ? await tx.liveShoppingSession.findMany({
+          where: {
+            id: { in: requestedLiveIds },
+            storeId: store.id,
+            platform: 'SCANMS',
+            inviteStatus: 'ACCEPTED',
+            status: 'LIVE',
+            startsAt: { lte: new Date() },
+            endsAt: { gt: new Date() },
+          },
+          select: {
+            id: true,
+            status: true,
+            startsAt: true,
+            endsAt: true,
+            commissionRate: true,
+            products: { select: { productId: true, variantId: true } },
+          },
+        })
+      : [];
+    const liveSessionIds = liveSources
+      .filter((session) =>
+        dto.items.some(
+          (item) =>
+            item.liveSessionId === session.id &&
+            session.products.some(
+              (product) =>
+                product.productId === item.productId &&
+                (!product.variantId || product.variantId === item.variantId),
+            ),
+        ),
+      )
+      .map((session) => session.id);
     let platformFundedAmount = 0;
     let appliedDiscountAmount = 0;
     const couponEligibleLines = dto.items.map(() => false);
-    const stackedVouchers: Array<{ couponId: string; benefitType: 'GOODS' | 'SHIPPING'; code: string; discount: number; shopFunded: number; platformFunded: number }> = [];
+    const stackedVouchers: Array<{
+      couponId: string;
+      benefitType: 'GOODS' | 'SHIPPING';
+      code: string;
+      discount: number;
+      shopFunded: number;
+      platformFunded: number;
+    }> = [];
 
     // 4.1 Khóa và kiểm tra trạng thái gian hàng trong Transaction
     const lockedStore = await tx.store.findUnique({
@@ -1061,7 +1125,15 @@ export class OrdersService {
     if (shippingQuote?.shippingPackage) {
       // Prevent a concurrent package edit from invalidating the carrier quote at checkout.
       const ids = [...new Set(dto.items.map((item) => item.productId))].sort();
-      const current = await tx.$queryRaw<Array<{ id: string; packageWeight: number | null; packageLength: number | null; packageWidth: number | null; packageHeight: number | null }>>(Prisma.sql`
+      const current = await tx.$queryRaw<
+        Array<{
+          id: string;
+          packageWeight: number | null;
+          packageLength: number | null;
+          packageWidth: number | null;
+          packageHeight: number | null;
+        }>
+      >(Prisma.sql`
         SELECT id, package_weight AS "packageWeight", package_length AS "packageLength",
           package_width AS "packageWidth", package_height AS "packageHeight"
         FROM products WHERE id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
@@ -1169,9 +1241,7 @@ export class OrdersService {
       if (lockedCoupon.expiresAt && now >= lockedCoupon.expiresAt) {
         throw new ConflictException('Mã giảm giá đã hết hạn sử dụng');
       }
-      if (
-        !liveVoucherActive(lockedCoupon.liveSession, now)
-      ) {
+      if (!liveVoucherActive(lockedCoupon.liveSession, now)) {
         throw new ConflictException(
           'Voucher livestream chưa được mở hoặc đã tạm dừng/kết thúc',
         );
@@ -1191,9 +1261,26 @@ export class OrdersService {
 
       let campaignProductIds = new Set<string>();
       if (lockedCoupon.scopeType === 'CAMPAIGN') {
-        if (!lockedCoupon.campaignId) throw new ConflictException('Voucher chưa được gắn với chiến dịch hợp lệ.');
-        const campaign = await tx.campaign.findUnique({ where: { id: lockedCoupon.campaignId }, select: { isActive: true, startDate: true, endDate: true, storeId: true } });
-        if (!campaign || !campaign.isActive || campaign.storeId !== store.id || campaign.startDate > now || campaign.endDate <= now) {
+        if (!lockedCoupon.campaignId)
+          throw new ConflictException(
+            'Voucher chưa được gắn với chiến dịch hợp lệ.',
+          );
+        const campaign = await tx.campaign.findUnique({
+          where: { id: lockedCoupon.campaignId },
+          select: {
+            isActive: true,
+            startDate: true,
+            endDate: true,
+            storeId: true,
+          },
+        });
+        if (
+          !campaign ||
+          !campaign.isActive ||
+          campaign.storeId !== store.id ||
+          campaign.startDate > now ||
+          campaign.endDate <= now
+        ) {
           throw new ConflictException('Chiến dịch của voucher đã kết thúc.');
         }
         const campProds = await tx.campaignProduct.findMany({
@@ -1325,47 +1412,128 @@ export class OrdersService {
     ] as const) {
       if (!code?.trim()) continue;
       const normalized = code.trim().toUpperCase();
-      if (normalized === dto.couponCode?.trim().toUpperCase() || stackedVouchers.some((v) => v.code === normalized)) {
-        throw new BadRequestException('Mỗi voucher chỉ được dùng một lần trong đơn hàng.');
+      if (
+        normalized === dto.couponCode?.trim().toUpperCase() ||
+        stackedVouchers.some((v) => v.code === normalized)
+      ) {
+        throw new BadRequestException(
+          'Mỗi voucher chỉ được dùng một lần trong đơn hàng.',
+        );
       }
-      const found = await tx.coupon.findUnique({ where: { codeNormalized: normalized } });
-      if (!found) throw new ConflictException(`Voucher ${normalized} không tồn tại.`);
+      const found = await tx.coupon.findUnique({
+        where: { codeNormalized: normalized },
+      });
+      if (!found)
+        throw new ConflictException(`Voucher ${normalized} không tồn tại.`);
       await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${found.id}::uuid FOR UPDATE`;
       const voucher = await tx.coupon.findUnique({ where: { id: found.id } });
       const now = new Date();
-      const isGlobalPlatformShipping = voucher?.benefitType === 'SHIPPING' && voucher.fundingSource === 'PLATFORM_FUNDED';
-      if (!voucher || (!isGlobalPlatformShipping && voucher.storeId !== store.id) || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
-          (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
-          voucher.benefitType !== benefitType || voucher.scopeType !== 'STORE_WIDE' ||
-          (benefitType === 'GOODS' && voucher.fundingSource !== 'PLATFORM_FUNDED')) {
-        throw new ConflictException(`Voucher ${normalized} không áp dụng được cho đơn hàng này.`);
+      const isGlobalPlatformShipping =
+        voucher?.codeNormalized === 'SCANMSFREESHIP' &&
+        voucher.benefitType === 'SHIPPING' &&
+        voucher.fundingSource === 'PLATFORM_FUNDED';
+      if (
+        !voucher ||
+        (!isGlobalPlatformShipping && voucher.storeId !== store.id) ||
+        voucher.status !== CouponStatus.ACTIVE ||
+        voucher.deletedAt ||
+        (voucher.startsAt && now < voucher.startsAt) ||
+        (voucher.expiresAt && now >= voucher.expiresAt) ||
+        voucher.benefitType !== benefitType ||
+        voucher.scopeType !== 'STORE_WIDE' ||
+        (benefitType === 'GOODS' && voucher.fundingSource !== 'PLATFORM_FUNDED')
+      ) {
+        throw new ConflictException(
+          `Voucher ${normalized} không áp dụng được cho đơn hàng này.`,
+        );
       }
-      if (voucher.minimumOrderAmount && rawSubtotalAmount < Number(voucher.minimumOrderAmount)) {
-        throw new ConflictException('Đơn hàng chưa đạt giá trị tối thiểu của voucher sàn.');
+      if (
+        voucher.minimumOrderAmount &&
+        rawSubtotalAmount < Number(voucher.minimumOrderAmount)
+      ) {
+        throw new ConflictException(
+          'Đơn hàng chưa đạt giá trị tối thiểu của voucher sàn.',
+        );
       }
       if (voucher.codeNormalized === 'SCANMSFREESHIP') {
         const priorPurchase = await tx.order.count({
           where: {
             customerPhone,
             status: { not: OrderStatus.CANCELLED },
-            NOT: { stackedVoucherRedemptions: { some: { couponId: voucher.id } } },
+            NOT: {
+              stackedVoucherRedemptions: { some: { couponId: voucher.id } },
+            },
           },
         });
-        if (priorPurchase > 0) throw new ConflictException('Mã freeship chỉ dành cho khách hàng mới.');
+        if (priorPurchase > 0)
+          throw new ConflictException(
+            'Mã freeship chỉ dành cho khách hàng mới.',
+          );
       }
-      const base = benefitType === 'SHIPPING' ? confirmedShippingFee : Math.max(0, rawSubtotalAmount - appliedDiscountAmount);
-      if (base <= 0) throw new ConflictException('Không có giá trị đủ điều kiện để áp dụng voucher.');
-      let discount = voucher.discountType === 'PERCENTAGE'
-        ? Math.round(base * Number(voucher.discountValue) / 100)
-        : Number(voucher.discountValue);
-      discount = Math.max(0, Math.min(base, discount, voucher.maximumDiscountAmount === null ? Infinity : Number(voucher.maximumDiscountAmount)));
-      if (voucher.usageLimitTotal !== null && voucher.usageCount >= voucher.usageLimitTotal) throw new ConflictException('Voucher đã hết lượt dùng.');
-      if (voucher.budgetTotal !== null && Number(voucher.budgetUsed) + discount > Number(voucher.budgetTotal)) throw new ConflictException('Voucher đã hết ngân sách.');
-      const usedByCustomer = await tx.stackedVoucherRedemption.count({ where: { couponId: voucher.id, customerPhone, status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.PARTIALLY_REFUNDED] } } });
-      if (usedByCustomer >= voucher.usageLimitPerCustomer) throw new ConflictException('Khách hàng đã dùng hết lượt voucher.');
-      await tx.coupon.update({ where: { id: voucher.id }, data: { usageCount: { increment: 1 }, budgetUsed: { increment: discount } } });
-      const shopFunded = Math.round(discount * Number(voucher.shopFundingRate) / 100);
-      stackedVouchers.push({ couponId: voucher.id, benefitType, code: voucher.displayCode, discount, shopFunded, platformFunded: discount - shopFunded });
+      const base =
+        benefitType === 'SHIPPING'
+          ? confirmedShippingFee
+          : Math.max(0, rawSubtotalAmount - appliedDiscountAmount);
+      if (base <= 0)
+        throw new ConflictException(
+          'Không có giá trị đủ điều kiện để áp dụng voucher.',
+        );
+      let discount =
+        voucher.discountType === 'PERCENTAGE'
+          ? Math.round((base * Number(voucher.discountValue)) / 100)
+          : Number(voucher.discountValue);
+      discount = Math.max(
+        0,
+        Math.min(
+          base,
+          discount,
+          voucher.maximumDiscountAmount === null
+            ? Infinity
+            : Number(voucher.maximumDiscountAmount),
+        ),
+      );
+      if (
+        voucher.usageLimitTotal !== null &&
+        voucher.usageCount >= voucher.usageLimitTotal
+      )
+        throw new ConflictException('Voucher đã hết lượt dùng.');
+      if (
+        voucher.budgetTotal !== null &&
+        Number(voucher.budgetUsed) + discount > Number(voucher.budgetTotal)
+      )
+        throw new ConflictException('Voucher đã hết ngân sách.');
+      const usedByCustomer = await tx.stackedVoucherRedemption.count({
+        where: {
+          couponId: voucher.id,
+          customerPhone,
+          status: {
+            in: [
+              CouponRedemptionStatus.USED,
+              CouponRedemptionStatus.PARTIALLY_REFUNDED,
+            ],
+          },
+        },
+      });
+      if (usedByCustomer >= voucher.usageLimitPerCustomer)
+        throw new ConflictException('Khách hàng đã dùng hết lượt voucher.');
+      await tx.coupon.update({
+        where: { id: voucher.id },
+        data: {
+          usageCount: { increment: 1 },
+          budgetUsed: { increment: discount },
+        },
+      });
+      const shopFunded = Math.round(
+        (discount * Number(voucher.shopFundingRate)) / 100,
+      );
+      stackedVouchers.push({
+        couponId: voucher.id,
+        benefitType,
+        code: voucher.displayCode,
+        discount,
+        shopFunded,
+        platformFunded: discount - shopFunded,
+      });
     }
 
     // 4.2 Nhận diện ứng viên Attribution TRONG TRANSACTION
@@ -1627,7 +1795,10 @@ export class OrdersService {
     }
 
     const attributedCreator = attributedCollaboratorId
-      ? await tx.user.findUnique({ where: { id: attributedCollaboratorId }, select: { phoneNumber: true } })
+      ? await tx.user.findUnique({
+          where: { id: attributedCollaboratorId },
+          select: { phoneNumber: true },
+        })
       : null;
     const selfReferral = selfReferralReason({
       customerId: dto.customerId,
@@ -1643,15 +1814,35 @@ export class OrdersService {
     if (attributedCollaboratorId) {
       const collabProfile = await tx.collaboratorProfile.findUnique({
         where: { userId: attributedCollaboratorId },
-        include: { tier: true, user: { select: { id: true, email: true, phoneNumber: true, customerAddresses: true } } },
+        include: {
+          tier: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              phoneNumber: true,
+              customerAddresses: true,
+            },
+          },
+        },
       });
       extraTierRate = tierBonusByName(collabProfile?.tier?.name);
-      selfReferralDetected = isSelfReferral({ customerId: dto.customerId, customerPhone, customerEmail }, collabProfile?.user);
+      selfReferralDetected = isSelfReferral(
+        { customerId: dto.customerId, customerPhone, customerEmail },
+        collabProfile?.user,
+      );
       if (!selfReferralDetected && collabProfile) {
-        const buyerBank = dto.customerId ? await tx.collaboratorProfile.findUnique({ where: { userId: dto.customerId } }) : null;
-        selfReferralRiskSignals = referralRiskSignals(shippingAddress, collabProfile.user?.customerAddresses ?? [],
+        const buyerBank = dto.customerId
+          ? await tx.collaboratorProfile.findUnique({
+              where: { userId: dto.customerId },
+            })
+          : null;
+        selfReferralRiskSignals = referralRiskSignals(
+          shippingAddress,
+          collabProfile.user?.customerAddresses ?? [],
           collabProfile.kycStatus === 'VERIFIED' ? collabProfile : null,
-          buyerBank?.kycStatus === 'VERIFIED' ? buyerBank : null);
+          buyerBank?.kycStatus === 'VERIFIED' ? buyerBank : null,
+        );
         if (selfReferralRiskSignals.includes('SHARED_VERIFIED_BANK_ACCOUNT')) {
           selfReferralDetected = true;
           overrideReason = 'SELF_REFERRAL_SHARED_VERIFIED_BANK_ACCOUNT';
@@ -1660,12 +1851,18 @@ export class OrdersService {
     }
 
     const subtotalAmount = rawSubtotalAmount;
-    const linePricing = priceVoucherLines(dto.items.map(item => {
-      const product = productMap.get(item.productId)!;
-      const variant = item.variantId ? variantMap.get(item.variantId) : null;
-      return Number(variant?.price ?? product.price) * item.quantity;
-    }), couponEligibleLines, appliedDiscountAmount,
-      stackedVouchers.filter(v => v.benefitType === 'GOODS').reduce((sum, v) => sum + v.discount, 0));
+    const linePricing = priceVoucherLines(
+      dto.items.map((item) => {
+        const product = productMap.get(item.productId)!;
+        const variant = item.variantId ? variantMap.get(item.variantId) : null;
+        return Number(variant?.price ?? product.price) * item.quantity;
+      }),
+      couponEligibleLines,
+      appliedDiscountAmount,
+      stackedVouchers
+        .filter((v) => v.benefitType === 'GOODS')
+        .reduce((sum, v) => sum + v.discount, 0),
+    );
 
     const finalOrderItemsToSave: Array<{
       productId: string;
@@ -1689,11 +1886,29 @@ export class OrdersService {
           include: { exclusiveDeal: true, campaign: true },
         })
       : null;
-    const scopedDeals = await activeDealMap(tx, attributedCollaboratorId ? dto.items.map(item => ({ collaboratorId: attributedCollaboratorId, productId: item.productId, storeId: lockedStore.id })) : []);
-    const currentDealByProduct = new Map(dto.items.map(item => [item.productId, scopedDeals.get(attributedCollaboratorId + ':' + item.productId)]));
+    const scopedDeals = await activeDealMap(
+      tx,
+      attributedCollaboratorId
+        ? dto.items.map((item) => ({
+            collaboratorId: attributedCollaboratorId,
+            productId: item.productId,
+            storeId: lockedStore.id,
+          }))
+        : [],
+    );
+    const currentDealByProduct = new Map(
+      dto.items.map((item) => [
+        item.productId,
+        scopedDeals.get(attributedCollaboratorId + ':' + item.productId),
+      ]),
+    );
 
     const campaignBonusReservations = new Map<string, number>();
-    const campaignLineBonuses = dto.items.map(() => ({ campaignId: null as string | null, campaignBonusRate: 0 }));
+    const commissionDealIds: Array<string | null> = dto.items.map(() => null);
+    const campaignLineBonuses = dto.items.map(() => ({
+      campaignId: null as string | null,
+      campaignBonusRate: 0,
+    }));
     for (const [lineIndex, item] of dto.items.entries()) {
       const prod = productMap.get(item.productId)!;
       let unitPrice = Number(prod.price);
@@ -1708,25 +1923,66 @@ export class OrdersService {
 
       const tierBonus = Math.min(3, Math.max(0, extraTierRate));
       const dealBonus = exclusiveDealBonus(
-        approvedExclusiveDeal, prod.id, attributedCollaboratorId, lockedStore.id,
+        approvedExclusiveDeal,
+        prod.id,
+        attributedCollaboratorId,
+        lockedStore.id,
       );
       const campaign = attributedReferralLink?.campaign;
       const campaignBonus = campaignBonusRate(campaign, lockedStore.id);
-      const fundedCampaignBonus = campaignBonus > Math.max(tierBonus, dealBonus) ? campaignBonus : 0;
-      campaignLineBonuses[lineIndex] = { campaignId: fundedCampaignBonus && campaign ? campaign.id : null, campaignBonusRate: fundedCampaignBonus };
-      const liveSession = item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
-        ? liveSources.find((session) => session.id === item.liveSessionId &&
-            session.products.some((product) => product.productId === prod.id &&
-              (!product.variantId || product.variantId === item.variantId)))
-        : null;
+      const fundedCampaignBonus =
+        campaignBonus > Math.max(tierBonus, dealBonus) ? campaignBonus : 0;
+      campaignLineBonuses[lineIndex] = {
+        campaignId: fundedCampaignBonus && campaign ? campaign.id : null,
+        campaignBonusRate: fundedCampaignBonus,
+      };
+      const liveSession =
+        item.liveSessionId && liveSessionIds.includes(item.liveSessionId)
+          ? liveSources.find(
+              (session) =>
+                session.id === item.liveSessionId &&
+                session.products.some(
+                  (product) =>
+                    product.productId === prod.id &&
+                    (!product.variantId ||
+                      product.variantId === item.variantId),
+                ),
+            )
+          : null;
       const liveBonus = liveBonusRate(liveSession);
-      const isBlockedSelfReferral = Boolean(selfReferral || selfReferralDetected);
-      const finalCommissionRate = isBlockedSelfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, liveBonus);
-      const regularCommissionRate = isBlockedSelfReferral ? 0 : precedenceCommissionRate(tierBonus, 10 + dealBonus, 10 + campaignBonus, 0);
+      const isBlockedSelfReferral = Boolean(
+        selfReferral || selfReferralDetected,
+      );
+      const finalCommissionRate = isBlockedSelfReferral
+        ? 0
+        : precedenceCommissionRate(
+            tierBonus,
+            10 + dealBonus,
+            10 + campaignBonus,
+            liveBonus,
+          );
+      const regularCommissionRate = isBlockedSelfReferral
+        ? 0
+        : precedenceCommissionRate(
+            tierBonus,
+            10 + dealBonus,
+            10 + campaignBonus,
+            0,
+          );
+      if (
+        !isBlockedSelfReferral &&
+        approvedExclusiveDeal &&
+        dealBonus > tierBonus &&
+        dealBonus >= campaignBonus
+      )
+        commissionDealIds[lineIndex] = approvedExclusiveDeal.id;
       const remunerationBase = unitPrice * quantity;
       if (fundedCampaignBonus && campaign) {
-        campaignBonusReservations.set(campaign.id,
-          (campaignBonusReservations.get(campaign.id) || 0) + remunerationBase * fundedCampaignBonus / 100);
+        campaignBonusReservations.set(
+          campaign.id,
+          (campaignBonusReservations.get(campaign.id) || 0) +
+            (remunerationBase * fundedCampaignBonus) / 100,
+        );
       }
       const calculatedCommission =
         remunerationBase * (finalCommissionRate / 100);
@@ -1753,13 +2009,19 @@ export class OrdersService {
           AND bonus_budget_total IS NOT NULL
           AND bonus_budget_used + ${amount} <= bonus_budget_total
       `;
-      if (reserved !== 1) throw new ConflictException('Ngân sách hoa hồng thưởng của chiến dịch đã hết.');
+      if (reserved !== 1)
+        throw new ConflictException(
+          'Ngân sách hoa hồng thưởng của chiến dịch đã hết.',
+        );
     }
 
     const shippingFee = confirmedShippingFee;
     const orderFinalAmount = Math.max(
       0,
-      subtotalAmount - appliedDiscountAmount + shippingFee - stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
+      subtotalAmount -
+        appliedDiscountAmount +
+        shippingFee -
+        stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
     );
 
     const rawCancellationToken = randomUUID();
@@ -1837,10 +2099,26 @@ export class OrdersService {
           selfReferralRiskSignals,
           selfReferralReviewRequired: selfReferralRiskSignals.length > 0,
           liveSessionIds,
-          campaignBonusReservations: Object.fromEntries(campaignBonusReservations),
+          campaignBonusReservations: Object.fromEntries(
+            campaignBonusReservations,
+          ),
           selfReferralReason: selfReferral,
-          stackedVouchers: stackedVouchers.map(({ code, benefitType, discount, shopFunded, platformFunded }) => ({ code, benefitType, discount, shopFunded, platformFunded })),
-          goodsPricing: dto.items.map((item, index) => ({ productId: item.productId, variantId: item.variantId || null, ...linePricing[index], ...campaignLineBonuses[index] })),
+          stackedVouchers: stackedVouchers.map(
+            ({ code, benefitType, discount, shopFunded, platformFunded }) => ({
+              code,
+              benefitType,
+              discount,
+              shopFunded,
+              platformFunded,
+            }),
+          ),
+          goodsPricing: dto.items.map((item, index) => ({
+            productId: item.productId,
+            variantId: item.variantId || null,
+            ...linePricing[index],
+            ...campaignLineBonuses[index],
+            commissionDealId: commissionDealIds[index],
+          })),
           orderNotes: orderNotes || null,
           paymentMethod,
           paymentStatus: isWallet
@@ -1852,7 +2130,9 @@ export class OrdersService {
           requestHash: currentPayloadHash,
           ghnDistrictId: shippingQuote?.districtId || null,
           ghnWardCode: shippingQuote?.wardCode || null,
-          shippingPackage: shippingQuote?.shippingPackage ? { ...shippingQuote.shippingPackage } : null,
+          shippingPackage: shippingQuote?.shippingPackage
+            ? { ...shippingQuote.shippingPackage }
+            : null,
           shippingPackageVersion: shippingQuote?.shippingPackage ? 1 : 0,
         },
         policyAcceptedAt: new Date(),
@@ -1880,7 +2160,11 @@ export class OrdersService {
         clickedAt: clickedAt || null,
         couponId: couponValidationResult?.couponId || null,
         couponCodeSnapshot: couponValidationResult?.code || null,
-        couponDiscountAmount: appliedDiscountAmount + stackedVouchers.filter((v) => v.benefitType === 'GOODS').reduce((sum, v) => sum + v.discount, 0),
+        couponDiscountAmount:
+          appliedDiscountAmount +
+          stackedVouchers
+            .filter((v) => v.benefitType === 'GOODS')
+            .reduce((sum, v) => sum + v.discount, 0),
         overrideReason,
         originalAttributionMethod,
         originalCollaboratorId,
@@ -1890,7 +2174,9 @@ export class OrdersService {
         customerId: dto.customerId || null,
         shippingAddress,
         subtotalAmount,
-        discountAmount: appliedDiscountAmount + stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
+        discountAmount:
+          appliedDiscountAmount +
+          stackedVouchers.reduce((sum, v) => sum + v.discount, 0),
         status: OrderStatus.PENDING,
         orderItems: {
           create: finalOrderItemsToSave.map((item) => ({
@@ -1938,7 +2224,14 @@ export class OrdersService {
       },
     });
 
-    await reservePromotionBudget(tx, order.id, finalOrderItemsToSave.map((item, index) => ({ ...item, netGoods: linePricing[index].netGoods })));
+    await reservePromotionBudget(
+      tx,
+      order.id,
+      finalOrderItemsToSave.map((item, index) => ({
+        ...item,
+        netGoods: linePricing[index].netGoods,
+      })),
+    );
     await notifyCustomerOrderEvent(tx, order, 'ORDER_CREATED', {
       storeName: store.name,
       paymentMethod,
@@ -1971,12 +2264,18 @@ export class OrdersService {
     }
 
     for (const voucher of stackedVouchers) {
-      await tx.stackedVoucherRedemption.create({ data: {
-        orderId: order.id, couponId: voucher.couponId, customerPhone,
-        benefitType: voucher.benefitType, status: CouponRedemptionStatus.USED,
-        discountAmount: voucher.discount, shopFundedAmount: voucher.shopFunded,
-        platformFundedAmount: voucher.platformFunded,
-      } });
+      await tx.stackedVoucherRedemption.create({
+        data: {
+          orderId: order.id,
+          couponId: voucher.couponId,
+          customerPhone,
+          benefitType: voucher.benefitType,
+          status: CouponRedemptionStatus.USED,
+          discountAmount: voucher.discount,
+          shopFundedAmount: voucher.shopFunded,
+          platformFundedAmount: voucher.platformFunded,
+        },
+      });
     }
 
     if (referralLinkId) {
@@ -2143,7 +2442,11 @@ export class OrdersService {
         canRequestCancellationOtp: true,
         cancellationRecovery: 'OTP_VERIFICATION_AVAILABLE',
         trackingUrl: `/tracking?sn=${existingSubOrders[0]?.externalOrderSn}`,
-        ...combinedConfirmationEmailState(existingSubOrders.map(order => confirmationEmailState(order.rawPayload, order.customerEmail))),
+        ...combinedConfirmationEmailState(
+          existingSubOrders.map((order) =>
+            confirmationEmailState(order.rawPayload, order.customerEmail),
+          ),
+        ),
         orders: existingSubOrders.map((o) => {
           const raw = (o.rawPayload as Record<string, any>) || {};
           return {
@@ -2232,7 +2535,12 @@ export class OrdersService {
       subDto: CreateOrderDto;
       subIdempotencyKey: string;
       subPayloadHash: string;
-      shippingQuote: { totalFee: number; districtId: number; wardCode: string; shippingPackage?: ShippingPackage } | null;
+      shippingQuote: {
+        totalFee: number;
+        districtId: number;
+        wardCode: string;
+        shippingPackage?: ShippingPackage;
+      } | null;
     }> = [];
 
     const uuidPattern =
@@ -2328,7 +2636,9 @@ export class OrdersService {
         }
       }
 
-      const effectiveStoreCoupon = couponValidationResult ? storeCoupon : undefined;
+      const effectiveStoreCoupon = couponValidationResult
+        ? storeCoupon
+        : undefined;
       const subIdempotencyKey = `${baseIdempotencyKey}_store_${storeId}`;
       const subDto: CreateOrderDto = {
         ...dto,
@@ -2337,8 +2647,12 @@ export class OrdersService {
         couponCode: effectiveStoreCoupon,
         // An explicit per-shop map is authoritative: never leak the fallback
         // code into another shop's child order during a multi-store checkout.
-        platformCouponCode: dto.platformCouponsByStore ? dto.platformCouponsByStore[storeId] : dto.platformCouponCode,
-        shippingCouponCode: dto.shippingCouponsByStore ? dto.shippingCouponsByStore[storeId] : dto.shippingCouponCode,
+        platformCouponCode: dto.platformCouponsByStore
+          ? dto.platformCouponsByStore[storeId]
+          : dto.platformCouponCode,
+        shippingCouponCode: dto.shippingCouponsByStore
+          ? dto.shippingCouponsByStore[storeId]
+          : dto.shippingCouponCode,
         idempotencyKey: subIdempotencyKey,
       };
       const subPayloadHash = computeOrderPayloadHash(
@@ -2416,7 +2730,9 @@ export class OrdersService {
     }
 
     // Email delivery is handled by the durable post-commit worker.
-    const emailStates = createdResults.map(result => confirmationEmailState(result.order.rawPayload, customerEmail));
+    const emailStates = createdResults.map((result) =>
+      confirmationEmailState(result.order.rawPayload, customerEmail),
+    );
     const createdOrders = createdResults.map((res, index) => ({
       message: 'Đơn hàng đã được tạo.',
       publicOrderCode: res.order.externalOrderSn,
@@ -3056,24 +3372,43 @@ export class OrdersService {
   /**
    * Thực hiện hủy đơn, hoàn lại tồn kho, coupon và thu hồi hoa hồng trong Transaction (FR-16 Mục 31)
    */
+  async cancelCustomerOrder(
+    orderId: string,
+    customerId: string,
+    reason?: string,
+  ) {
+    return this.executeOrderCancellation(
+      orderId,
+      reason || 'Khách hàng yêu cầu hủy đơn',
+      customerId,
+      customerId,
+    );
+  }
+
   private async executeOrderCancellation(
     orderId: string,
     reason?: string,
     actorId?: string,
+    customerId?: string,
   ) {
-    return await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: {
           orderItems: true,
           commissions: true,
           referralLink: true,
+          paymentTransactions: true,
         },
       });
 
       if (!order) {
         throw new NotFoundException('Đơn hàng không tồn tại');
       }
+
+      if (customerId && order.customerId !== customerId)
+        throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này');
 
       // Idempotent cancellation
       if (order.status === OrderStatus.CANCELLED) {
@@ -3089,10 +3424,31 @@ export class OrdersService {
         );
       }
 
+      const payment = (order.paymentTransactions ?? []).find(
+        (entry) => entry.status === 'SUCCESS',
+      );
+      const raw = (order.rawPayload ?? {}) as Record<string, any>;
+      const paid = Boolean(payment) || raw.paymentStatus === 'PAID';
+      if (paid && !order.customerId)
+        throw new BadRequestException(
+          'Đơn đã thanh toán chưa gắn tài khoản nhận hoàn tiền. Vui lòng liên hệ vận hành để đối soát trước khi hủy.',
+        );
+
+      // Checkout locks products before the shopping wallet. Cancellation must
+      // follow the same order, including when variants are restored below.
+      await lockPricingProducts(
+        tx,
+        order.orderItems.map((item) => item.productId),
+      );
+
       // 1. Chuyển trạng thái đơn hàng sang CANCELLED bằng conditional update nguyên tử (Chống race condition - Lỗi 3)
       const updatedResult = await tx.order.updateMany({
         where: { id: orderId, status: OrderStatus.PENDING },
-        data: { status: OrderStatus.CANCELLED, updatedAt: new Date() },
+        data: {
+          status: OrderStatus.CANCELLED,
+          overrideReason: reason?.trim() || 'Yêu cầu hủy đơn hàng',
+          updatedAt: new Date(),
+        },
       });
 
       if (updatedResult.count === 0) {
@@ -3109,6 +3465,29 @@ export class OrdersService {
         throw new BadRequestException(
           `Không thể hủy đơn hàng không ở trạng thái Chờ xử lý (PENDING). Trạng thái hiện tại: ${currentOrder?.status || 'UNKNOWN'}`,
         );
+      }
+
+      if (paid && order.customerId) {
+        const remaining = order.finalAmount.minus(order.refundedAmount);
+        if (remaining.greaterThan(0)) {
+          await this.walletsService.refundToWallet(
+            tx,
+            order.customerId,
+            remaining,
+            orderId,
+          );
+          await tx.order.update({
+            where: { id: orderId },
+            data: {
+              refundedAmount: { increment: remaining },
+              rawPayload: {
+                ...raw,
+                paymentStatus: 'REFUNDED',
+                cancellationRefundMethod: 'WALLET',
+              },
+            },
+          });
+        }
       }
 
       // 2. Hoàn lại tồn kho: hỗ trợ variant hoặc product (Lỗi 4)
@@ -3154,17 +3533,36 @@ export class OrdersService {
         });
       }
 
-      const stackedRedemptions = await tx.stackedVoucherRedemption.findMany({ where: { orderId, status: CouponRedemptionStatus.USED } });
+      const stackedRedemptions = await tx.stackedVoucherRedemption.findMany({
+        where: { orderId, status: CouponRedemptionStatus.USED },
+      });
       for (const stacked of stackedRedemptions) {
-        await tx.stackedVoucherRedemption.update({ where: { orderId_couponId: { orderId, couponId: stacked.couponId } }, data: { status: CouponRedemptionStatus.CANCELLED } });
-        await tx.coupon.update({ where: { id: stacked.couponId }, data: { usageCount: { decrement: 1 }, budgetUsed: { decrement: stacked.discountAmount } } });
+        await tx.stackedVoucherRedemption.update({
+          where: { orderId_couponId: { orderId, couponId: stacked.couponId } },
+          data: { status: CouponRedemptionStatus.CANCELLED },
+        });
+        await tx.coupon.update({
+          where: { id: stacked.couponId },
+          data: {
+            usageCount: { decrement: 1 },
+            budgetUsed: { decrement: stacked.discountAmount },
+          },
+        });
       }
 
-      const campaignReservations = (order.rawPayload as Record<string, any> | null)?.campaignBonusReservations;
+      const campaignReservations = (
+        order.rawPayload as Record<string, any> | null
+      )?.campaignBonusReservations;
       if (campaignReservations && typeof campaignReservations === 'object') {
-        for (const [campaignId, rawAmount] of Object.entries(campaignReservations)) {
+        for (const [campaignId, rawAmount] of Object.entries(
+          campaignReservations,
+        )) {
           const amount = Number(rawAmount);
-          if (/^[0-9a-f-]{36}$/i.test(campaignId) && Number.isFinite(amount) && amount > 0) {
+          if (
+            /^[0-9a-f-]{36}$/i.test(campaignId) &&
+            Number.isFinite(amount) &&
+            amount > 0
+          ) {
             await tx.$executeRaw`
               UPDATE campaigns SET bonus_budget_used = GREATEST(0, bonus_budget_used - ${amount})
               WHERE id = ${campaignId}::uuid
@@ -3217,12 +3615,9 @@ export class OrdersService {
         },
       });
 
-      await notifyCustomerOrderEvent(
-        tx,
-        order,
-        'ORDER_CANCELLED',
-        { reason: reason?.trim() || 'Shop đã hủy đơn hàng' },
-      );
+      await notifyCustomerOrderEvent(tx, order, 'ORDER_CANCELLED', {
+        reason: reason?.trim() || 'Shop đã hủy đơn hàng',
+      });
 
       this.checkoutMetrics.recordCancellation(order.externalOrderSn);
 
@@ -3232,6 +3627,12 @@ export class OrdersService {
         status: OrderStatus.CANCELLED,
       };
     });
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã hủy đơn; cache danh sách sẽ cập nhật khi hết hạn.');
+    }
+    return result;
   }
 
   /**
@@ -3265,30 +3666,53 @@ export class OrdersService {
 
   async trackCustomerOrder(userId: string, inputCode: string, inputPhone = '') {
     const orderSn = inputCode.trim().replace(/^#+\s*/, '');
-    if (!orderSn && !inputPhone.trim()) throw new BadRequestException('Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu.');
-    const recipientPhone = inputPhone.trim() ? normalizeCustomerPhone(inputPhone) : null;
-    if (!userId) throw new ForbiddenException('Vui lòng đăng nhập để tra cứu đơn mua.');
+    if (!orderSn && !inputPhone.trim())
+      throw new BadRequestException(
+        'Vui lòng nhập mã đơn hàng hoặc số điện thoại nhận hàng để tra cứu.',
+      );
+    const recipientPhone = inputPhone.trim()
+      ? normalizeCustomerPhone(inputPhone)
+      : null;
+    if (!userId)
+      throw new ForbiddenException('Vui lòng đăng nhập để tra cứu đơn mua.');
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }, select: { email: true, phoneNumber: true },
+      where: { id: userId },
+      select: { email: true, phoneNumber: true },
     });
     if (!user) throw new ForbiddenException('Tài khoản không còn khả dụng.');
     const guestContacts: Prisma.OrderWhereInput[] = [];
-    if (user.email?.trim()) guestContacts.push({ customerEmail: { equals: user.email.trim(), mode: 'insensitive' } });
-    const phone = user.phoneNumber?.trim().replace(/[()\s-]/g, '').replace(/^\+84/, '0');
+    if (user.email?.trim())
+      guestContacts.push({
+        customerEmail: { equals: user.email.trim(), mode: 'insensitive' },
+      });
+    const phone = user.phoneNumber
+      ?.trim()
+      .replace(/[()\s-]/g, '')
+      .replace(/^\+84/, '0');
     if (phone && /^0\d{9}$/.test(phone)) {
-      guestContacts.push({ customerPhone: { in: [phone, `+84${phone.slice(1)}`] } });
+      guestContacts.push({
+        customerPhone: { in: [phone, `+84${phone.slice(1)}`] },
+      });
     }
     const ownership: Prisma.OrderWhereInput[] = [{ customerId: userId }];
     // Match historical guest purchases too, but never another account's order
     // just because it was sent to the same recipient/contact.
-    if (guestContacts.length) ownership.push({ customerId: null, OR: guestContacts });
+    if (guestContacts.length)
+      ownership.push({ customerId: null, OR: guestContacts });
     const where: Prisma.OrderWhereInput = { OR: ownership };
-    if (orderSn) where.externalOrderSn = { equals: orderSn, mode: 'insensitive' };
-    if (recipientPhone) where.customerPhone = { in: [recipientPhone, `+84${recipientPhone.slice(1)}`] };
+    if (orderSn)
+      where.externalOrderSn = { equals: orderSn, mode: 'insensitive' };
+    if (recipientPhone)
+      where.customerPhone = {
+        in: [recipientPhone, `+84${recipientPhone.slice(1)}`],
+      };
     return this.lookupTrackedOrders(where, true);
   }
 
-  private async lookupTrackedOrders(whereConditions: Prisma.OrderWhereInput, showDetails: boolean) {
+  private async lookupTrackedOrders(
+    whereConditions: Prisma.OrderWhereInput,
+    showDetails: boolean,
+  ) {
     await syncCustomerGhnSimulations(this.prisma, whereConditions);
     const orders = await this.prisma.order.findMany({
       where: whereConditions,
@@ -3369,25 +3793,32 @@ export class OrdersService {
         id: order.id,
         externalOrderSn: order.externalOrderSn,
         customerName: showDetails ? order.customerName : 'Khách hàng',
-        customerPhone:
-          showDetails
-            ? order.customerPhone
-            : order.customerPhone?.replace(/.(?=.{3})/g, '*'),
-        shippingAddress:
-          showDetails
-            ? order.shippingAddress
-            : 'Xác minh mã đơn và SĐT để xem địa chỉ',
-        reviewToken:
-          showDetails
-            ? createReviewToken(this.configService, order.id)
-            : undefined,
+        customerPhone: showDetails
+          ? order.customerPhone
+          : order.customerPhone?.replace(/.(?=.{3})/g, '*'),
+        shippingAddress: showDetails
+          ? order.shippingAddress
+          : 'Xác minh mã đơn và SĐT để xem địa chỉ',
+        reviewToken: showDetails
+          ? createReviewToken(this.configService, order.id)
+          : undefined,
         subtotalAmount: Number(order.subtotalAmount),
         discountAmount: Number(order.discountAmount),
         finalAmount: Number(order.finalAmount),
-        trackingNumber: (order.rawPayload as Record<string, any> | null)?.ghnOrderCode || (order.rawPayload as Record<string, any> | null)?.trackingNumber || null,
-        carrierName: (order.rawPayload as Record<string, any> | null)?.ghnOrderCode ? 'GHN' :
-          (order.rawPayload as Record<string, any> | null)?.carrierName || (order.rawPayload as Record<string, any> | null)?.shippingCarrier || (order.rawPayload as Record<string, any> | null)?.carrier || null,
-        ghnEnvironment: ['LIVE', 'TEST'].includes((order.rawPayload as Record<string, any> | null)?.ghnEnvironment)
+        trackingNumber:
+          (order.rawPayload as Record<string, any> | null)?.ghnOrderCode ||
+          (order.rawPayload as Record<string, any> | null)?.trackingNumber ||
+          null,
+        carrierName: (order.rawPayload as Record<string, any> | null)
+          ?.ghnOrderCode
+          ? 'GHN'
+          : (order.rawPayload as Record<string, any> | null)?.carrierName ||
+            (order.rawPayload as Record<string, any> | null)?.shippingCarrier ||
+            (order.rawPayload as Record<string, any> | null)?.carrier ||
+            null,
+        ghnEnvironment: ['LIVE', 'TEST'].includes(
+          (order.rawPayload as Record<string, any> | null)?.ghnEnvironment,
+        )
           ? (order.rawPayload as Record<string, any>).ghnEnvironment
           : null,
         status: order.status,
@@ -3761,11 +4192,15 @@ export class OrdersService {
         },
       });
 
-      await notifyCustomerOrderEvent(tx, {
-        id: lockedOrder.id,
-        externalOrderSn: lockedOrder.external_order_sn,
-        customerId: lockedOrder.customer_id || null,
-      }, 'ORDER_PAYMENT_CONFIRMED');
+      await notifyCustomerOrderEvent(
+        tx,
+        {
+          id: lockedOrder.id,
+          externalOrderSn: lockedOrder.external_order_sn,
+          customerId: lockedOrder.customer_id || null,
+        },
+        'ORDER_PAYMENT_CONFIRMED',
+      );
 
       await tx.auditLog.create({
         data: {
@@ -3867,7 +4302,10 @@ export class OrdersService {
       if (cached) return cached;
     }
 
-    await syncCustomerGhnSimulations(this.prisma, targetStoreId ? { storeId: targetStoreId } : {});
+    await syncCustomerGhnSimulations(
+      this.prisma,
+      targetStoreId ? { storeId: targetStoreId } : {},
+    );
     const skip = (page - 1) * limit;
 
     const where: Prisma.OrderWhereInput = {};
@@ -3876,12 +4314,16 @@ export class OrdersService {
     }
     if (query.customerId) where.customerId = query.customerId;
     if (query.status === 'RETURNS') {
-      where.AND = [{ OR: [
-        { status: OrderStatus.RETURNED },
-        { status: OrderStatus.RETURN_REQUESTED },
-        { status: OrderStatus.DISPUTED },
-        { returnRequest: { isNot: null } },
-      ] }];
+      where.AND = [
+        {
+          OR: [
+            { status: OrderStatus.RETURNED },
+            { status: OrderStatus.RETURN_REQUESTED },
+            { status: OrderStatus.DISPUTED },
+            { returnRequests: { some: {} } },
+          ],
+        },
+      ];
     } else if (query.status) {
       where.status = query.status;
     }
@@ -3892,7 +4334,10 @@ export class OrdersService {
       };
     }
     if (query.search?.trim()) {
-      const searchCond = storeOrderSearch(query.search.trim(), query.searchField);
+      const searchCond = storeOrderSearch(
+        query.search.trim(),
+        query.searchField,
+      );
       where.OR = searchCond.OR;
     }
 
@@ -3938,7 +4383,11 @@ export class OrdersService {
           commissions: {
             select: { id: true, commissionAmount: true, status: true },
           },
-          returnRequest: { include: { refund: true, dispute: true } },
+          returnRequests: {
+            include: { refund: true, dispute: true },
+            orderBy: { submittedAt: 'desc' },
+            take: 1,
+          },
         },
       }),
     ]);
@@ -3956,13 +4405,25 @@ export class OrdersService {
           status: order.status,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
-          customerEmail: order.customerEmail || (typeof raw.customer?.email === 'string' ? raw.customer.email : null),
+          customerEmail:
+            order.customerEmail ||
+            (typeof raw.customer?.email === 'string'
+              ? raw.customer.email
+              : null),
           note: typeof raw.note === 'string' ? raw.note : null,
           isManualOrder: Boolean(raw.requestFingerprint),
-          deliveryLocation: typeof raw.customer?.latitude === 'number' && typeof raw.customer?.longitude === 'number'
-            && Number.isFinite(raw.customer.latitude) && Number.isFinite(raw.customer.longitude)
-            && Math.abs(raw.customer.latitude) <= 90 && Math.abs(raw.customer.longitude) <= 180
-            ? { latitude: raw.customer.latitude, longitude: raw.customer.longitude } : null,
+          deliveryLocation:
+            typeof raw.customer?.latitude === 'number' &&
+            typeof raw.customer?.longitude === 'number' &&
+            Number.isFinite(raw.customer.latitude) &&
+            Number.isFinite(raw.customer.longitude) &&
+            Math.abs(raw.customer.latitude) <= 90 &&
+            Math.abs(raw.customer.longitude) <= 180
+              ? {
+                  latitude: raw.customer.latitude,
+                  longitude: raw.customer.longitude,
+                }
+              : null,
           shippingAddress: order.shippingAddress,
           subtotalAmount: Number(order.subtotalAmount),
           discountAmount: Number(order.discountAmount),
@@ -3972,36 +4433,51 @@ export class OrdersService {
           paymentStatus: raw.paymentStatus || 'UNPAID',
           trackingNumber: raw.trackingNumber || raw.ghnOrderCode || null,
           shopConfirmedAt: raw.shopConfirmedAt || null,
-          ghnEnvironment: ['LIVE', 'TEST'].includes(raw.ghnEnvironment) ? raw.ghnEnvironment : null,
+          ghnEnvironment: ['LIVE', 'TEST'].includes(raw.ghnEnvironment)
+            ? raw.ghnEnvironment
+            : null,
           carrierName:
             raw.carrierName ||
             (raw.ghnOrderCode ? 'Giao Hàng Nhanh (GHN)' : null),
           store: order.store,
           attributedCollaborator: order.attributedCollaborator,
           attributionFlag: order.overrideReason?.startsWith('SELF_REFERRAL_')
-            ? order.overrideReason : null,
+            ? order.overrideReason
+            : null,
           couponCode:
             order.couponCodeSnapshot || order.coupon?.displayCode || null,
           incomeStatus: order.overrideReason?.startsWith('SELF_REFERRAL_')
             ? 'SELF_REFERRAL_BLOCKED'
-             : order.refundedAmount.greaterThanOrEqualTo(order.finalAmount) ||
-                (order.commissions.length > 0 && order.commissions.every((c) => c.status === CommissionStatus.REVERSED))
+            : order.refundedAmount.greaterThanOrEqualTo(order.finalAmount) ||
+                (order.commissions.length > 0 &&
+                  order.commissions.every(
+                    (c) => c.status === CommissionStatus.REVERSED,
+                  ))
               ? 'REVERSED'
-              : order.commissions.some((c) => c.status === CommissionStatus.PENDING)
+              : order.commissions.some(
+                    (c) => c.status === CommissionStatus.PENDING,
+                  )
                 ? 'PENDING'
-                : order.commissions.length > 0 ? 'AVAILABLE' : 'NOT_POSTED',
-           totalCommission: order.overrideReason?.startsWith('SELF_REFERRAL_') || order.refundedAmount.greaterThanOrEqualTo(order.finalAmount)
-            ? 0
-            : order.commissions.length > 0
-            ? order.commissions.filter((c) => c.status !== CommissionStatus.REVERSED).reduce(
-                (sum, c) => sum + Number(c.commissionAmount || 0),
-                0,
-              )
-            : order.orderItems.reduce(
-                (sum, item) => sum + Number(item.calculatedCommissionAmount || 0),
-                0,
-              ),
-          returnRequest: order.returnRequest,
+                : order.commissions.length > 0
+                  ? 'AVAILABLE'
+                  : 'NOT_POSTED',
+          totalCommission:
+            order.overrideReason?.startsWith('SELF_REFERRAL_') ||
+            order.refundedAmount.greaterThanOrEqualTo(order.finalAmount)
+              ? 0
+              : order.commissions.length > 0
+                ? order.commissions
+                    .filter((c) => c.status !== CommissionStatus.REVERSED)
+                    .reduce(
+                      (sum, c) => sum + Number(c.commissionAmount || 0),
+                      0,
+                    )
+                : order.orderItems.reduce(
+                    (sum, item) =>
+                      sum + Number(item.calculatedCommissionAmount || 0),
+                    0,
+                  ),
+          returnRequest: order.returnRequests[0] ?? null,
           items: order.orderItems.map((item) => ({
             productId: item.productId,
             title: item.product?.title || 'Sản phẩm',
@@ -4045,38 +4521,68 @@ export class OrdersService {
     if (!explanation || explanation.length < 10 || explanation.length > 1000) {
       throw new BadRequestException('Phản hồi phải có từ 10 đến 1000 ký tự');
     }
-    const escalate = dto.decision === ReturnDecision.REJECT && dto.escalateToManager === true;
+    const escalate =
+      dto.decision === ReturnDecision.REJECT && dto.escalateToManager === true;
     if (dto.escalateToManager && dto.decision !== ReturnDecision.REJECT)
-      throw new BadRequestException('Chỉ có thể chuyển Manager khi Shop từ chối');
+      throw new BadRequestException(
+        'Chỉ có thể chuyển Manager khi Shop từ chối',
+      );
     if (escalate && userRole !== UserRole.SHOP_MANAGER)
-      throw new ForbiddenException('Chỉ Shop được gửi bằng chứng để yêu cầu Manager phân xử');
-    if (escalate && (explanation.length < 20 || !dto.evidenceUrls?.length || dto.evidenceUrls.length > 5 ||
-        dto.evidenceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
-      throw new BadRequestException('Cần lý do ít nhất 20 ký tự và 1–5 ảnh/video bằng chứng HTTPS để chuyển Manager');
-    const rejectionLabel = dto.rejectionReason && Object.prototype.hasOwnProperty.call(RETURN_REJECTION_REASONS, dto.rejectionReason)
-      ? RETURN_REJECTION_REASONS[dto.rejectionReason] : null;
+      throw new ForbiddenException(
+        'Chỉ Shop được gửi bằng chứng để yêu cầu Manager phân xử',
+      );
+    if (
+      escalate &&
+      (explanation.length < 20 ||
+        !dto.evidenceUrls?.length ||
+        dto.evidenceUrls.length > 5 ||
+        dto.evidenceUrls.some(
+          (url) => typeof url !== 'string' || !url.startsWith('https://'),
+        ))
+    )
+      throw new BadRequestException(
+        'Cần lý do ít nhất 20 ký tự và 1–5 ảnh/video bằng chứng HTTPS để chuyển Manager',
+      );
+    const rejectionLabel =
+      dto.rejectionReason &&
+      Object.prototype.hasOwnProperty.call(
+        RETURN_REJECTION_REASONS,
+        dto.rejectionReason,
+      )
+        ? RETURN_REJECTION_REASONS[dto.rejectionReason]
+        : null;
     if (dto.decision === ReturnDecision.REJECT && !rejectionLabel) {
       throw new BadRequestException('Vui lòng chọn lý do từ chối cụ thể');
     }
-    const response = dto.decision === ReturnDecision.REJECT
-      ? `Lý do: ${rejectionLabel}\nGiải thích: ${explanation}` : explanation;
-    if (response.length > 1000) throw new BadRequestException('Phản hồi đầy đủ không được vượt quá 1000 ký tự');
+    const response =
+      dto.decision === ReturnDecision.REJECT
+        ? `Lý do: ${rejectionLabel}\nGiải thích: ${explanation}`
+        : explanation;
+    if (response.length > 1000)
+      throw new BadRequestException(
+        'Phản hồi đầy đủ không được vượt quá 1000 ký tự',
+      );
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
         store: { select: { ownerId: true, returnWarehouse: true } },
-        returnRequest: true,
+        returnRequests: { orderBy: { submittedAt: 'desc' }, take: 1 },
       },
     });
-    if (!order?.returnRequest)
+    const returnRequest = order?.returnRequests[0];
+    if (!order || !returnRequest)
       throw new NotFoundException('Không tìm thấy yêu cầu đổi trả');
-    if (userRole !== UserRole.SYSTEM_ADMIN && userRole !== UserRole.SYSTEM_MANAGER &&
-        order.store.ownerId !== userId) {
+    if (
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER &&
+      order.store.ownerId !== userId
+    ) {
       const managed = await this.prisma.store.findFirst({
         where: { id: order.storeId, ...managedStoreWhere(userId) },
         select: { id: true },
       });
-      if (!managed) throw new ForbiddenException('Bạn không quản lý gian hàng của đơn này');
+      if (!managed)
+        throw new ForbiddenException('Bạn không quản lý gian hàng của đơn này');
     }
     if (order.status !== OrderStatus.RETURN_REQUESTED) {
       throw new ConflictException(
@@ -4093,7 +4599,7 @@ export class OrdersService {
     const result = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.returnRequest.updateMany({
         where: {
-          id: order.returnRequest!.id,
+          id: returnRequest.id,
           status: ReturnRequestStatus.REQUESTED,
         },
         data: {
@@ -4116,7 +4622,7 @@ export class OrdersService {
         throw new ConflictException('Yêu cầu đã được xử lý trước đó');
       await tx.returnEvent.create({
         data: {
-          returnRequestId: order.returnRequest!.id,
+          returnRequestId: returnRequest.id,
           actorId: userId,
           type: approved
             ? 'REQUESTED_TO_SHOP_APPROVED'
@@ -4126,71 +4632,101 @@ export class OrdersService {
       });
       if (escalate) {
         const disputed = await tx.returnRequest.updateMany({
-          where: { id: order.returnRequest!.id, status: ReturnRequestStatus.SHOP_REJECTED },
+          where: {
+            id: returnRequest.id,
+            status: ReturnRequestStatus.SHOP_REJECTED,
+          },
           data: { status: ReturnRequestStatus.DISPUTED },
         });
         if (disputed.count !== 1)
-          throw new ConflictException('Hồ sơ đã thay đổi trạng thái; hãy tải lại');
-        await tx.dispute.create({ data: {
-          returnRequestId: order.returnRequest!.id,
-          reason: 'SHOP_REQUESTED_REVIEW',
-          details: response,
-        } });
-        await tx.returnEvent.create({ data: {
-          returnRequestId: order.returnRequest!.id,
-          actorId: userId,
-          type: 'SHOP_EVIDENCE_SUBMITTED',
-          data: { details: response, evidenceUrls: dto.evidenceUrls! },
-        } });
-        await tx.returnEvent.create({ data: {
-          returnRequestId: order.returnRequest!.id,
-          actorId: userId,
-          type: 'SHOP_REJECTED_TO_DISPUTED',
-        } });
+          throw new ConflictException(
+            'Hồ sơ đã thay đổi trạng thái; hãy tải lại',
+          );
+        await tx.dispute.create({
+          data: {
+            returnRequestId: returnRequest.id,
+            reason: 'SHOP_REQUESTED_REVIEW',
+            details: response,
+          },
+        });
+        await tx.returnEvent.create({
+          data: {
+            returnRequestId: returnRequest.id,
+            actorId: userId,
+            type: 'SHOP_EVIDENCE_SUBMITTED',
+            data: { details: response, evidenceUrls: dto.evidenceUrls! },
+          },
+        });
+        await tx.returnEvent.create({
+          data: {
+            returnRequestId: returnRequest.id,
+            actorId: userId,
+            type: 'SHOP_REJECTED_TO_DISPUTED',
+          },
+        });
         const managers = await tx.user.findMany({
-          where: { role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] }, isActive: true, isDeleted: false },
+          where: {
+            role: { in: [UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN] },
+            isActive: true,
+            isDeleted: false,
+          },
           select: { id: true },
         });
         for (const manager of managers) {
-          await tx.notification.create({ data: {
-            userId: manager.id,
-            title: 'Shop yêu cầu xác minh đổi trả',
-            message: `Đơn ${order.externalOrderSn}: Shop đã từ chối và gửi bằng chứng. Cần đối chiếu lỗi hàng hóa hoặc vận chuyển.`,
-            type: 'RETURN_DISPUTED',
-            data: { orderId, returnRequestId: order.returnRequest!.id },
-          } });
+          await tx.notification.create({
+            data: {
+              userId: manager.id,
+              title: 'Shop yêu cầu xác minh đổi trả',
+              message: `Đơn ${order.externalOrderSn}: Shop đã từ chối và gửi bằng chứng. Cần đối chiếu lỗi hàng hóa hoặc vận chuyển.`,
+              type: 'RETURN_DISPUTED',
+              data: { orderId, returnRequestId: returnRequest.id },
+            },
+          });
         }
       }
       if (!approved) {
         const restored = await tx.order.updateMany({
           where: { id: orderId, status: OrderStatus.RETURN_REQUESTED },
-          data: { status: escalate ? OrderStatus.DISPUTED : order.returnRequest!.originalOrderStatus },
+          data: {
+            status: escalate
+              ? OrderStatus.DISPUTED
+              : returnRequest.originalOrderStatus,
+          },
         });
         if (restored.count !== 1)
           throw new ConflictException('Đơn hàng đã thay đổi trạng thái');
       }
       await tx.notification.create({
         data: {
-          userId: order.returnRequest!.customerId,
+          userId: returnRequest.customerId,
           title: approved
             ? 'Shop đã chấp thuận yêu cầu đổi trả'
-            : escalate ? 'Shop đã chuyển hồ sơ đổi trả cho System Manager' : 'Shop đã từ chối yêu cầu đổi trả',
+            : escalate
+              ? 'Shop đã chuyển hồ sơ đổi trả cho System Manager'
+              : 'Shop đã từ chối yêu cầu đổi trả',
           message: approved
             ? `Đơn ${order.externalOrderSn}: Shop đã đồng ý xử lý. ${warehouseAddress ? 'Bạn có thể xác nhận địa chỉ để đặt lấy hàng tại nhà.' : 'Đang chờ Shop cấu hình kho nhận hàng trả.'} Đây chưa phải xác nhận đã hoàn tiền. Phản hồi: ${response}`
-            : escalate ? `Đơn ${order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager phân xử. ${response}`
+            : escalate
+              ? `Đơn ${order.externalOrderSn}: Shop đã gửi bằng chứng để System Manager phân xử. ${response}`
               : `Đơn ${order.externalOrderSn}: ${response}`,
-          type: approved ? 'RETURN_APPROVED' : escalate ? 'RETURN_DISPUTED' : 'RETURN_REJECTED',
-          data: { orderId, returnRequestId: order.returnRequest!.id },
+          type: approved
+            ? 'RETURN_APPROVED'
+            : escalate
+              ? 'RETURN_DISPUTED'
+              : 'RETURN_REJECTED',
+          data: { orderId, returnRequestId: returnRequest.id },
         },
       });
       return tx.returnRequest.findUniqueOrThrow({
-        where: { id: order.returnRequest!.id },
+        where: { id: returnRequest.id },
       });
     });
     return {
       message: approved
         ? 'Đã duyệt yêu cầu; chờ khách đặt lấy hàng trả'
-        : escalate ? 'Đã gửi bằng chứng và chuyển hồ sơ cho System Manager' : 'Đã từ chối yêu cầu',
+        : escalate
+          ? 'Đã gửi bằng chứng và chuyển hồ sơ cho System Manager'
+          : 'Đã từ chối yêu cầu',
       returnRequest: result,
     };
   }
@@ -4201,26 +4737,54 @@ export class OrdersService {
   async confirmOrder(orderId: string, userId: string, userRole: string) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
-      const order = await tx.order.findUnique({ where: { id: orderId }, include: { store: true } });
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { store: true },
+      });
       if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-      if (![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(userRole as any)
-        && !(userRole === UserRole.SHOP_MANAGER && (order.store.ownerId === userId || user?.storeId === order.storeId))) {
-        throw new ForbiddenException('Bạn không có quyền xác nhận đơn hàng này');
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { storeId: true },
+      });
+      if (
+        ![UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER].includes(
+          userRole as any,
+        ) &&
+        !(
+          userRole === UserRole.SHOP_MANAGER &&
+          (order.store.ownerId === userId || user?.storeId === order.storeId)
+        )
+      ) {
+        throw new ForbiddenException(
+          'Bạn không có quyền xác nhận đơn hàng này',
+        );
       }
-      if (order.status !== OrderStatus.PENDING) throw new BadRequestException('Chỉ xác nhận đơn đang chờ xử lý');
+      if (order.status !== OrderStatus.PENDING)
+        throw new BadRequestException('Chỉ xác nhận đơn đang chờ xử lý');
       const raw = (order.rawPayload as Record<string, any>) || {};
-      if (raw.shopConfirmedAt) return { success: true, shopConfirmedAt: raw.shopConfirmedAt };
-      if (raw.paymentMethod && raw.paymentMethod !== 'COD' && raw.paymentStatus !== 'PAID') {
+      if (raw.shopConfirmedAt)
+        return { success: true, shopConfirmedAt: raw.shopConfirmedAt };
+      if (
+        raw.paymentMethod &&
+        raw.paymentMethod !== 'COD' &&
+        raw.paymentStatus !== 'PAID'
+      ) {
         throw new BadRequestException('Đơn hàng chưa thanh toán thành công');
       }
       const shopConfirmedAt = new Date().toISOString();
-      await tx.order.update({ where: { id: orderId }, data: {
-        rawPayload: { ...raw, shopConfirmedAt, shopConfirmedBy: userId },
-      } });
-      await tx.auditLog.create({ data: {
-        userId, action: 'ORDER_CONFIRMED', details: { orderId, shopConfirmedAt },
-      } });
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          rawPayload: { ...raw, shopConfirmedAt, shopConfirmedBy: userId },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: 'ORDER_CONFIRMED',
+          details: { orderId, shopConfirmedAt },
+        },
+      });
       return { success: true, shopConfirmedAt };
     });
   }
@@ -4244,15 +4808,19 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng cần cập nhật');
     }
 
-    if (userRole !== UserRole.SYSTEM_ADMIN && userRole !== UserRole.SYSTEM_MANAGER &&
-        order.store.ownerId !== userId) {
+    if (
+      userRole !== UserRole.SYSTEM_ADMIN &&
+      userRole !== UserRole.SYSTEM_MANAGER &&
+      order.store.ownerId !== userId
+    ) {
       const managed = await this.prisma.store.findFirst({
         where: { id: order.storeId, ...managedStoreWhere(userId) },
         select: { id: true },
       });
-      if (!managed) throw new ForbiddenException(
-        'Bạn không có quyền cập nhật đơn hàng của gian hàng này',
-      );
+      if (!managed)
+        throw new ForbiddenException(
+          'Bạn không có quyền cập nhật đơn hàng của gian hàng này',
+        );
     }
 
     if (
@@ -4269,8 +4837,13 @@ export class OrdersService {
     }
 
     const trackingNumber = dto.trackingNumber?.trim();
-    if (dto.status === OrderStatus.SHIPPING && !(order.rawPayload as Record<string, any> | null)?.shopConfirmedAt) {
-      throw new BadRequestException('Shop cần xác nhận đơn trước khi giao hàng');
+    if (
+      dto.status === OrderStatus.SHIPPING &&
+      !(order.rawPayload as Record<string, any> | null)?.shopConfirmedAt
+    ) {
+      throw new BadRequestException(
+        'Shop cần xác nhận đơn trước khi giao hàng',
+      );
     }
     const carrierName = dto.carrierName?.trim();
     if (
@@ -4296,7 +4869,12 @@ export class OrdersService {
       carrierName: carrierName || currentRaw.carrierName || 'GHTK Express',
       fulfillmentNote: dto.note?.trim() || currentRaw.fulfillmentNote,
       fulfillmentUpdatedAt: new Date().toISOString(),
-      ...(dto.status === OrderStatus.SHIPPING ? { shopConfirmedAt: currentRaw.shopConfirmedAt || new Date().toISOString() } : {}),
+      ...(dto.status === OrderStatus.SHIPPING
+        ? {
+            shopConfirmedAt:
+              currentRaw.shopConfirmedAt || new Date().toISOString(),
+          }
+        : {}),
     };
 
     const updateData: Prisma.OrderUpdateInput = {
@@ -4316,13 +4894,19 @@ export class OrdersService {
         data: updateData,
       });
       if (changed.count !== 1) {
-        throw new ConflictException('Đơn hàng đã thay đổi trạng thái. Vui lòng tải lại.');
+        throw new ConflictException(
+          'Đơn hàng đã thay đổi trạng thái. Vui lòng tải lại.',
+        );
       }
-      const current = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+      const current = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
+      });
       await notifyCustomerOrderEvent(
         tx,
         current,
-        dto.status === OrderStatus.SHIPPING ? 'ORDER_SHIPPED' : 'ORDER_DELIVERED',
+        dto.status === OrderStatus.SHIPPING
+          ? 'ORDER_SHIPPED'
+          : 'ORDER_DELIVERED',
         {
           carrierName: updatedRaw.carrierName,
           trackingNumber: updatedRaw.trackingNumber,
