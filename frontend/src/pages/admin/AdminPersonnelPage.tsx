@@ -539,7 +539,7 @@ export const AdminPersonnelPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#EAE4D7]">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#1A1612] m-0">Quản trị Nhân sự & Gian Hàng Trực Thuộc</h1>
+            <h1 className="text-xl font-bold text-[#1A1612] m-0">Quản trị Nhân sự & Cửa Hàng Trực Thuộc</h1>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
               {staffList.length} nhân sự • {stores.length} nhãn hàng
             </span>
@@ -552,7 +552,7 @@ export const AdminPersonnelPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] hover:bg-[#F3EFE6] text-xs font-semibold transition cursor-pointer shadow-2xs"
           >
             <Store size={14} className="text-[#C59B58]" />
-            <span>Thêm Gian Hàng</span>
+            <span>Thêm Cửa Hàng</span>
           </button>
           <button
             onClick={() => setIsStaffModalOpen(true)}
@@ -607,7 +607,7 @@ export const AdminPersonnelPage: React.FC = () => {
                 : 'text-[#7D715E] hover:text-[#1A1612]'
             }`}
           >
-            Chuyên viên Sàn ({totalSystemManagers})
+            Chuyên viên Vận hành ({totalSystemManagers})
           </button>
           <button
             onClick={() => setRoleFilter('SYSTEM_ADMIN')}
@@ -628,7 +628,7 @@ export const AdminPersonnelPage: React.FC = () => {
             }`}
           >
             <Store size={12} className={roleFilter === 'STORES' ? 'text-[#C59B58]' : ''} />
-            <span>Gian hàng & Kho GHN</span>
+            <span>Cửa hàng & Kho GHN</span>
           </button>
         </div>
       </div>
@@ -637,7 +637,7 @@ export const AdminPersonnelPage: React.FC = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-[#EAE4D7] text-[#7D715E]">
           <RefreshCw className="w-6 h-6 animate-spin text-[#B88E4F] mb-2" />
-          <p className="text-xs">Đang tải dữ liệu nhân sự & gian hàng...</p>
+          <p className="text-xs">Đang tải dữ liệu nhân sự & cửa hàng...</p>
         </div>
       ) : roleFilter === 'STORES' ? (
         /* ================= TAB GIAN HÀNG & KHO GHN (BRAND GRID) ================= */
@@ -879,7 +879,7 @@ export const AdminPersonnelPage: React.FC = () => {
                             </span>
                           ) : staff.role === 'SYSTEM_MANAGER' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">
-                              Chuyên viên Sàn
+                              Chuyên viên Vận hành
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
@@ -889,7 +889,7 @@ export const AdminPersonnelPage: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Gian hàng phụ trách */}
+                        {/* Cửa hàng phụ trách */}
                         <td className="py-3 px-4">
                           {assignedStore ? (
                             <div className="flex items-center gap-1.5">
@@ -900,7 +900,7 @@ export const AdminPersonnelPage: React.FC = () => {
                             </div>
                           ) : (
                             <span className="text-[11px] text-[#7D715E] italic">
-                              {staff.role === 'SHOP_MANAGER' ? 'Chưa gán shop' : 'Toàn sàn'}
+                              {staff.role === 'SHOP_MANAGER' ? 'Chưa gán shop' : 'Toàn hệ thống'}
                             </span>
                           )}
                         </td>
@@ -998,7 +998,7 @@ export const AdminPersonnelPage: React.FC = () => {
                     }`}
                   >
                     <ShieldCheck size={14} />
-                    <span>Chuyên viên Sàn</span>
+                    <span>Chuyên viên Vận hành</span>
                   </button>
                 </div>
               </div>
@@ -1006,7 +1006,7 @@ export const AdminPersonnelPage: React.FC = () => {
               {staffForm.role === 'SHOP_MANAGER' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                    Gian hàng phụ trách <span className="text-[#DC2626]">*</span>
+                    Cửa hàng phụ trách <span className="text-[#DC2626]">*</span>
                   </label>
                   <select
                     value={staffForm.storeId || ''}
