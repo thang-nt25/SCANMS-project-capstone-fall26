@@ -50,7 +50,7 @@ export function CustomerWishlistTab({
   };
 
   return (
-    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1020px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-label="Sản phẩm yêu thích">
+    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-label="Sản phẩm yêu thích">
       <div className="flex items-center justify-between flex-wrap gap-[10px] @max-[599px]:gap-[8px] p-[10px_12px] @max-[599px]:p-[8px_10px] border border-[#EAE4D7] rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)]">
         <div className="flex items-center flex-wrap gap-[8px] min-h-[30px] @max-[599px]:min-h-[26px]" aria-live="polite" aria-atomic="true">
           <span className="grid place-items-center w-[28px] h-[28px] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true">

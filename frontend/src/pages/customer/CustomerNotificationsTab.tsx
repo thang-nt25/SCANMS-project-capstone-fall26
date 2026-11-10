@@ -6,7 +6,6 @@ import {
   CheckCheck,
   Loader2,
   Package,
-  Ticket,
 } from 'lucide-react';
 import type {
   AppNotification,
@@ -39,10 +38,9 @@ interface CustomerNotificationsTabProps {
 const categories = [
   { key: 'ALL', label: 'Tất cả', icon: Bell },
   { key: 'ORDER', label: 'Đơn hàng', icon: Package },
-  { key: 'PROMOTION', label: 'Ưu đãi', icon: Ticket },
-  { key: 'SYSTEM', label: 'SCANMS', icon: Bell },
+  { key: 'SYSTEM', label: 'Hệ thống', icon: Bell },
 ] as const;
-const headings = {
+const headings: Record<string, { title: string }> = {
   ALL: {
     title: 'Thông báo',
   },
@@ -53,7 +51,7 @@ const headings = {
     title: 'Ưu đãi & khuyến mãi',
   },
   SYSTEM: {
-    title: 'Cập nhật SCANMS',
+    title: 'Thông báo hệ thống SCANMS',
   },
 };
 
@@ -97,12 +95,12 @@ export function CustomerNotificationsTab({
 
   return (
     <section
-      className="customer-notifications @container/notifications grid gap-[14px] w-full max-w-[1040px] min-w-0 text-left text-[#1A1612] max-md:pb-[64px]"
+      className="customer-notifications @container/notifications grid gap-[14px] w-full max-w-[1200px] min-w-0 text-left text-[#1A1612] max-md:pb-[64px]"
       aria-label={heading.title}
     >
       <h1 className="sr-only">Thông báo</h1>
       <div className="flex flex-wrap items-center gap-3 min-h-[58px] p-2.5 sm:px-3 border border-[#EAE4D7] rounded-xl bg-white">
-        <nav className="grid flex-1 min-w-0 grid-cols-4 @max-[699px]:basis-full @max-[449px]:grid-cols-2 gap-[6px]" aria-label="Lọc thông báo">
+        <nav className="grid flex-1 min-w-0 grid-cols-3 @max-[699px]:basis-full gap-[6px]" aria-label="Lọc thông báo">
           {categories.map(({ key, label, icon: Icon }) => {
             const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
             const isActive = category === key;
@@ -116,7 +114,7 @@ export function CustomerNotificationsTab({
               >
                 <Icon size={14} className={isActive ? 'text-[#B88E4F]' : ''} />
                 <span>{label}</span>
-                {unread > 0 && <span className="min-w-[16px] px-[4px] py-[1px] rounded-[5px] bg-[#F3EFE6] text-[#B88E4F] text-center text-[9px] leading-[1.4]">{unread}</span>}
+                {unread > 0 && <span className="min-w-[16px] px-[4px] py-[1px] rounded-[5px] bg-[#F3EFE6] text-[#B88E4F] text-center text-[9px] font-mono tabular-nums leading-[1.4]">{unread}</span>}
               </button>
             );
           })}
@@ -124,7 +122,7 @@ export function CustomerNotificationsTab({
         {unreadCount > 0 && (
           <button
             type="button"
-            className="ml-auto inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[40px] px-[12px] py-[8px] border border-[#EEDFC6] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[12px] font-[500] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] transition disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
+            className="ml-auto inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[40px] px-[12px] py-[8px] border border-[#EEDFC6] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[12px] font-[500] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] active:scale-[0.96] transition disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
             disabled={markingAll || loading}
             onClick={() => void markAll()}
           >
@@ -147,7 +145,7 @@ export function CustomerNotificationsTab({
         <div className="flex flex-col items-center gap-[10px] py-[32px] px-[12px] border border-[#EAE4D7] rounded-[12px] bg-white text-center" role="alert">
           <Bell size={25} className="text-[#DC2626]" />
           <p className="m-0 text-[11px] text-[#7D715E] leading-[1.6]">{error}</p>
-          <button type="button" className="inline-flex items-center justify-center gap-[6px] p-[7px_10px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[500] leading-[1.4] hover:border-[#C59B58] transition cursor-pointer" onClick={onRetry}>
+          <button type="button" className="inline-flex items-center justify-center gap-[6px] p-[7px_10px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[11px] font-[500] leading-[1.4] hover:border-[#C59B58] transition cursor-pointer active:scale-[0.96]" onClick={onRetry}>
             Thử tải lại
           </button>
         </div>
@@ -159,18 +157,13 @@ export function CustomerNotificationsTab({
           <h2 className="m-0 font-inherit text-[15px] font-[600] text-[#1A1612]">Chưa có thông báo</h2>
           <p className="m-0 text-[11px] text-[#7D715E] leading-[1.6] break-words">Các cập nhật mới trong mục này sẽ xuất hiện tại đây.</p>
           {category === 'ORDER' && (
-            <Link to="/marketplace" className="inline-flex items-center justify-center gap-[6px] min-h-[30px] p-[6px_9px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[10px] font-[500] hover:border-[#C59B58] transition cursor-pointer mt-1 no-underline">
+            <Link to="/marketplace" className="inline-flex items-center justify-center gap-[6px] min-h-[30px] p-[6px_9px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[10px] font-[500] hover:border-[#C59B58] transition cursor-pointer mt-1 no-underline active:scale-[0.96]">
               Khám phá sản phẩm <ArrowRight size={13} className="text-[#B88E4F]" />
-            </Link>
-          )}
-          {category === 'PROMOTION' && (
-            <Link to="/customer/vouchers" className="inline-flex items-center justify-center gap-[6px] min-h-[30px] p-[6px_9px] border border-[#EEDFC6] rounded-[7px] bg-[#FBF5EB] text-[#1A1612] text-[10px] font-[500] hover:border-[#C59B58] transition cursor-pointer mt-1 no-underline">
-              Xem kho voucher <ArrowRight size={13} className="text-[#B88E4F]" />
             </Link>
           )}
         </div>
       ) : (
-        <div className="grid min-w-0 @container border border-[#EAE4D7] rounded-xl overflow-hidden bg-white">
+        <div className="customer-notification-list grid min-w-0 @container border border-[#EAE4D7] rounded-xl overflow-hidden bg-white shadow-2xs">
           {items.map((item) => (
             <CustomerNotificationCard key={item.id} item={item}
               category={getCategory(item.type)} busy={markingIds.includes(item.id) || markingAll}

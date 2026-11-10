@@ -1082,15 +1082,19 @@ export default function CustomerPortalPage() {
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
-            {currentTab === 'orders' && detailOrderId && <CustomerCompletedOrderDetail
-              key={detailOrderId} orderId={detailOrderId} refreshVersion={detailRefreshVersion}
-              onChat={handleOpenChat} onReorder={handleReorder}
-              onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
-              onCancel={order => setCancellingOrderId(order.id)}
-              onConfirmReceipt={handleConfirmReceipt} confirmingOrderId={confirmingOrderId}
-            />}
+            {currentTab === 'orders' && detailOrderId && (
+              <div className="w-full max-w-[1200px]">
+                <CustomerCompletedOrderDetail
+                  key={detailOrderId} orderId={detailOrderId} refreshVersion={detailRefreshVersion}
+                  onChat={handleOpenChat} onReorder={handleReorder}
+                  onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
+                  onCancel={order => setCancellingOrderId(order.id)}
+                  onConfirmReceipt={handleConfirmReceipt} confirmingOrderId={confirmingOrderId}
+                />
+              </div>
+            )}
             {currentTab === 'orders' && !detailOrderId && (
-              <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
+              <section className="customer-orders @container/orders grid gap-3.5 w-full max-w-[1200px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
                 <div className="customer-orders__filters min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
                   <div className="customer-orders__tabs flex min-w-0 gap-1.5 overflow-x-auto border-b border-[#EAE4D7] p-2 bg-[#FAF8F5]/50 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
@@ -1604,7 +1608,7 @@ export default function CustomerPortalPage() {
             {/* TAB: HỒ SƠ CÁ NHÂN (TÍCH HỢP ĐỊA CHỈ, ĐỊNH DANH CCCD, BẢO MẬT) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
-              <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
+              <section className="@container/profile grid gap-[16px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
                 {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
 <nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
                   <button

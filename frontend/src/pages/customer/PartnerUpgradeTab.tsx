@@ -205,7 +205,7 @@ export const PartnerUpgradeTab: React.FC = () => {
   const isRejected = kolApp?.status === 'REJECTED';
 
   return (
-    <div className="w-full space-y-5 pb-12 text-[#1A1612]">
+    <div className="w-full max-w-[1200px] space-y-5 pb-12 text-[#1A1612]">
       {/* Header chỉ hiển thị khi đã được kích hoạt hoặc đang chờ duyệt */}
       {(isVerified || isPending) && (
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">

@@ -125,7 +125,7 @@ export const CustomerWalletTab: React.FC = () => {
   };
 
   return (
-    <section className="@container/wallet grid gap-[14px] w-full max-w-[1120px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-label="Ví mua sắm">
+    <section className="@container/wallet grid gap-[14px] w-full max-w-[1200px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-label="Ví mua sắm">
 
       <section
         className="relative grid grid-cols-[minmax(0,1fr)_240px] items-center gap-[20px] p-[18px_20px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_3px_12px_#231D1504] before:content-[''] before:absolute before:top-[-1px] before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58] @max-[599px]:grid-cols-[minmax(0,1fr)] @max-[599px]:gap-[14px] @max-[599px]:p-[16px]"
