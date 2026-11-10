@@ -1082,70 +1082,189 @@ export class AffiliateDealsService {
     );
   }
 
-  async listExceptions(role: UserRole, page?: number) {
-    if (role !== UserRole.SYSTEM_ADMIN)
-      throw new ForbiddenException('Chỉ Admin được xem hàng đợi ngoại lệ.');
-    return this.prisma.exclusiveDealProposal.findMany({
-      where: { status: 'PENDING_ADMIN_APPROVAL', closedAt: null },
+  async listExceptions(role: UserRole, tab?: string, page?: number) {
+    if (role !== UserRole.SYSTEM_ADMIN) {
+      throw new ForbiddenException('Chỉ Admin được xem hàng đợi thỏa thuận đặc cách.');
+    }
+
+    const normalizedTab = (tab || 'pending').toLowerCase();
+
+    let whereCondition: Prisma.ExclusiveDealProposalWhereInput = {
+      status: 'PENDING_ADMIN_APPROVAL',
+      closedAt: null,
+    };
+
+    if (normalizedTab === 'approved') {
+      whereCondition = {
+        status: 'APPROVED',
+        OR: [
+          { adminApprovedById: { not: null } },
+          { proposedCommissionRate: { gt: 16 } },
+        ],
+      };
+    } else if (normalizedTab === 'rejected') {
+      whereCondition = {
+        status: 'REJECTED',
+        OR: [
+          { adminApprovedById: { not: null } },
+          { exceptionNote: { not: null } },
+          { proposedCommissionRate: { gt: 16 } },
+        ],
+      };
+    } else if (normalizedTab === 'all') {
+      whereCondition = {
+        OR: [
+          { status: 'PENDING_ADMIN_APPROVAL' },
+          { proposedCommissionRate: { gt: 16 } },
+          { adminApprovedById: { not: null } },
+        ],
+      };
+    }
+
+    const items = await this.prisma.exclusiveDealProposal.findMany({
+      where: whereCondition,
       include: {
-        store: { select: { name: true } },
-        collaborator: { select: { fullName: true } },
-        product: { select: { title: true } },
-        scopeProducts: { include: { product: { select: { title: true } } } },
+        store: { select: { id: true, name: true, slug: true, logoUrl: true } },
+        collaborator: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            avatarUrl: true,
+            collaboratorProfile: {
+              select: {
+                tier: { select: { name: true, extraBonusPercentage: true } },
+              },
+            },
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            sku: true,
+            title: true,
+            price: true,
+            originalPrice: true,
+            floorPrice: true,
+            imageUrl: true,
+            categoryName: true,
+            stockQuantity: true,
+            description: true,
+            origin: true,
+            sampleEnabled: true,
+          },
+        },
+        scopeProducts: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                sku: true,
+                title: true,
+                price: true,
+                originalPrice: true,
+                floorPrice: true,
+                imageUrl: true,
+                categoryName: true,
+                stockQuantity: true,
+                description: true,
+                origin: true,
+                sampleEnabled: true,
+              },
+            },
+          },
+        },
+        exceptionReviewer: { select: { id: true, fullName: true, email: true } },
+        reviewer: { select: { id: true, fullName: true, email: true } },
       },
-      orderBy: [{ recipientAcceptedAt: 'asc' }, { id: 'asc' }],
+      orderBy: normalizedTab === 'pending' ? [{ recipientAcceptedAt: 'asc' }, { id: 'asc' }] : [{ updatedAt: 'desc' }, { id: 'desc' }],
       ...(page ? { skip: (page - 1) * 50, take: 50 } : {}),
     });
+
+    const [pendingCount, approvedCount, rejectedCount, escalatedProposals] =
+      await Promise.all([
+        this.prisma.exclusiveDealProposal.count({
+          where: { status: 'PENDING_ADMIN_APPROVAL', closedAt: null },
+        }),
+        this.prisma.exclusiveDealProposal.count({
+          where: {
+            status: 'APPROVED',
+            OR: [
+              { adminApprovedById: { not: null } },
+              { proposedCommissionRate: { gt: 16 } },
+            ],
+          },
+        }),
+        this.prisma.exclusiveDealProposal.count({
+          where: {
+            status: 'REJECTED',
+            OR: [
+              { adminApprovedById: { not: null } },
+              { exceptionNote: { not: null } },
+              { proposedCommissionRate: { gt: 16 } },
+            ],
+          },
+        }),
+        this.prisma.exclusiveDealProposal.findMany({
+          where: {
+            OR: [
+              { status: 'PENDING_ADMIN_APPROVAL' },
+              { proposedCommissionRate: { gt: 16 } },
+              { adminApprovedById: { not: null } },
+            ],
+          },
+          select: {
+            targetRevenue: true,
+            proposedCommissionRate: true,
+            approvedCommissionRate: true,
+          },
+        }),
+      ]);
+
+    const totalTargetRevenue = escalatedProposals.reduce(
+      (sum, p) => sum + Number(p.targetRevenue || 0),
+      0,
+    );
+    const avgRate =
+      escalatedProposals.length > 0
+        ? escalatedProposals.reduce(
+            (sum, p) =>
+              sum +
+              Number(p.approvedCommissionRate || p.proposedCommissionRate || 0),
+            0,
+          ) / escalatedProposals.length
+        : 18.5;
+
+    return {
+      items,
+      total: await this.prisma.exclusiveDealProposal.count({ where: whereCondition }),
+      page: page ?? 1,
+      pageSize: 50,
+      stats: {
+        pendingCount,
+        approvedCount,
+        rejectedCount,
+        totalTargetRevenue,
+        avgRate: Math.round(avgRate * 10) / 10,
+      },
+    };
   }
 
-  async getProposalPage(
-    kind: 'mine' | 'shop' | 'exceptions',
-    userId: string,
-    role: UserRole,
-    page: number,
-    after?: string,
-  ) {
-    if (!Number.isSafeInteger(page) || page < 1 || page > 1000000)
-      throw new BadRequestException('Trang không hợp lệ');
+  async getProposalPage(kind: 'mine' | 'shop' | 'exceptions', userId: string, role: UserRole, page: number, after?: string, tab?: string) {
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) throw new BadRequestException('Trang không hợp lệ');
     dealCursorWhere(after);
-    if (kind === 'exceptions' && after !== undefined)
-      throw new BadRequestException('Danh sách ngoại lệ sử dụng số trang.');
-    const where: Prisma.ExclusiveDealProposalWhereInput =
-      kind === 'mine'
-        ? { collaboratorId: userId }
-        : kind === 'exceptions'
-          ? { status: 'PENDING_ADMIN_APPROVAL', closedAt: null }
-          : {
-              store: this.isSystemReviewer(role)
-                ? { isDeleted: false }
-                : managedStoreWhere(userId),
-            };
+    if (kind === 'exceptions') {
+      if (after !== undefined) throw new BadRequestException('Danh sách ngoại lệ sử dụng số trang.');
+      return this.listExceptions(role, tab, page);
+    }
+    const where: Prisma.ExclusiveDealProposalWhereInput = kind === 'mine' ? { collaboratorId: userId } : { store: this.isSystemReviewer(role) ? { isDeleted: false } : managedStoreWhere(userId) };
     const [total, items] = await Promise.all([
       this.prisma.exclusiveDealProposal.count({ where }),
       kind === 'mine'
-        ? after === undefined
-          ? this.getMyProposals(userId, page)
-          : this.getMyProposals(userId, page, after)
-        : kind === 'shop'
-          ? after === undefined
-            ? this.getShopProposals(userId, role, page)
-            : this.getShopProposals(userId, role, page, after)
-          : this.listExceptions(role, page),
+        ? after === undefined ? this.getMyProposals(userId, page) : this.getMyProposals(userId, page, after)
+        : after === undefined ? this.getShopProposals(userId, role, page) : this.getShopProposals(userId, role, page, after),
     ]);
-    return {
-      items,
-      total,
-      page,
-      pageSize: 50,
-      ...(kind !== 'exceptions'
-        ? {
-            nextCursor:
-              items.length === 50
-                ? encodeDealCursor(items[items.length - 1])
-                : null,
-          }
-        : {}),
-    };
+    return { items, total, page, pageSize: 50, nextCursor: items.length === 50 ? encodeDealCursor(items[items.length - 1]) : null };
   }
 
   async reviewException(

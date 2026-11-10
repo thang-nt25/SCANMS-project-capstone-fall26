@@ -74,28 +74,9 @@ describe('Word section 6 checkout margin protection', () => {
     expect(Number(tx.order.create.mock.calls[0][0].data.finalAmount)).toBe(450000);
   });
 
-  it('accepts goods + platform + shipping, caps freeship and leaves it out of commission GMV', async () => {
-    const { params, tx, run } = fixture();
-    params.dto.platformCouponCode = 'SAN20'; params.dto.shippingCouponCode = 'SHIP50';
-    await run();
-    const data = tx.order.create.mock.calls[0][0].data;
-    expect(Number(data.finalAmount)).toBe(430000);
-    expect(Number(data.couponDiscountAmount)).toBe(70000);
-    expect(Number(data.discountAmount)).toBe(95000);
-    const pricing = data.rawPayload.goodsPricing;
-    expect(pricing.reduce((sum: number, row: any) => sum + row.netGoods, 0)).toBe(430000);
-    expect(pricing[0].shopDiscount).toBe(50000);
-    expect(pricing[1].shopDiscount).toBe(0);
-    expect(tx.stackedVoucherRedemption.create).toHaveBeenCalledWith({ data: expect.objectContaining({ benefitType: 'SHIPPING', discountAmount: 25000 }) });
-  });
+  it('rejects retired platform and shipping discounts inside the transaction', async () => {const { params, tx, run } = fixture();params.dto.platformCouponCode='SAN20';params.dto.shippingCouponCode='SHIP50';await expect(run()).rejects.toThrow('Chỉ sử dụng mã ưu đãi độc quyền');expect(tx.order.create).not.toHaveBeenCalled();expect(tx.stackedVoucherRedemption.create).not.toHaveBeenCalled();});
 
-  it('rejects placing a second Shop goods voucher in the platform slot even when legacy flags allow stacking', async () => {
-    const { coupons, params, tx, run } = fixture();
-    coupons.platform.fundingSource = 'SHOP_FUNDED'; coupons.platform.stackableWithShopVoucher = true;
-    params.dto.platformCouponCode = 'SAN20';
-    await expect(run()).rejects.toThrow('không áp dụng');
-    expect(tx.order.create).not.toHaveBeenCalled();
-  });
+  it('rejects placing a second Shop goods voucher in the platform slot even when legacy flags allow stacking', async () => {const { coupons, params, tx, run }=fixture();coupons.platform.fundingSource='SHOP_FUNDED';coupons.platform.stackableWithShopVoucher=true;params.dto.platformCouponCode='SAN20';await expect(run()).rejects.toThrow('Chỉ sử dụng mã ưu đãi độc quyền');expect(tx.order.create).not.toHaveBeenCalled();});
 
   it('rejects a shipping voucher in the primary goods slot inside the transaction', async () => {
     const { coupons, tx, run } = fixture(); coupons.shop.benefitType = 'SHIPPING';
@@ -103,14 +84,7 @@ describe('Word section 6 checkout margin protection', () => {
     expect(tx.order.create).not.toHaveBeenCalled();
   });
 
-  it('does not create an order when the locked voucher budget or quota is exhausted', async () => {
-    const first = fixture(); first.coupons.platform.budgetUsed = 999999; first.params.dto.platformCouponCode = 'SAN20';
-    await expect(first.run()).rejects.toThrow('ngân sách');
-    expect(first.tx.order.create).not.toHaveBeenCalled();
-    const second = fixture(); second.coupons.ship.usageCount = 20; second.params.dto.shippingCouponCode = 'SHIP50';
-    await expect(second.run()).rejects.toThrow('lượt');
-    expect(second.tx.order.create).not.toHaveBeenCalled();
-  });
+  it('does not create an order when the locked voucher budget or quota is exhausted', async () => {const first=fixture();first.coupons.shop.budgetUsed=999999;await expect(first.run()).rejects.toThrow('ngân sách');expect(first.tx.order.create).not.toHaveBeenCalled();const second=fixture();second.coupons.shop.usageCount=20;await expect(second.run()).rejects.toThrow('lượt');expect(second.tx.order.create).not.toHaveBeenCalled();});
 
   it('allocates rounding remainders exactly without negative or over-discounted lines', () => {
     for (let count = 1; count <= 20; count++) {

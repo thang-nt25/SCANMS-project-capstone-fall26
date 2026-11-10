@@ -30,9 +30,8 @@ import {
   type AuditSeverity,
 } from '../../services/audit.service';
 import { Select } from '../../components/ui/Select';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
-import { WorkspaceHero } from '@/components/ui/FeatureWorkspace';
+import { Modal } from '../../components/ui/Modal';
 
 export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -41,6 +40,7 @@ export const AuditLogsPage: React.FC = () => {
   const [exporting, setExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState('');
+  const [showComplianceModal, setShowComplianceModal] = useState<boolean>(false);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -400,36 +400,39 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-w-0 text-[#1A1612] flex flex-col gap-4 pb-8">
-      <WorkspaceHero eyebrow="SCANMS / Compliance & Traceability" title="Dấu vết vận hành toàn sàn" description="Tra cứu thao tác theo nghiệp vụ, mức độ, thời gian hoặc mã Log/Event ID. Mật khẩu, OTP và token được che khi ghi, đọc và xuất. CSV giữ nguyên bộ lọc; tối đa 2.000 bản ghi mới nhất mỗi lần xuất." />
-      {/* 1. Page Header Chuẩn Hóa */}
-      <PageHeader
-        title="Nhật ký Kiểm toán Toàn sàn"
-        description="Theo dõi toàn diện các sự kiện hệ thống, lịch sử dòng tiền tiếp thị và biến động bảo mật"
-        icon={<ShieldCheck className="w-5 h-5" />}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={loadLogs}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={exporting || loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-60"
-            >
-              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-              <span>{exporting ? 'Đang xuất CSV...' : 'Xuất file CSV'}</span>
-            </button>
-          </div>
-        }
-      />
+    <div className="w-full min-w-0 text-[#1A1612] flex flex-col gap-3 pb-8">
+      {/* Action & Info Row */}
+      <div className="flex items-center justify-between gap-2 pb-1">
+        <button
+          type="button"
+          onClick={() => setShowComplianceModal(true)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
+        >
+          <Info className="w-3.5 h-3.5" />
+          <span>Quy chuẩn kiểm toán</span>
+        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadLogs}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] hover:border-[#C59B58] transition cursor-pointer disabled:opacity-60"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#B88E4F] ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exporting || loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition shadow-2xs cursor-pointer disabled:opacity-60"
+          >
+            <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce' : ''}`} />
+            <span>{exporting ? 'Đang xuất CSV...' : 'Xuất CSV'}</span>
+          </button>
+        </div>
+      </div>
       {statsError && <p role="alert" className="m-0 text-xs text-[#DC2626]">{statsError}<button className="ml-2 underline" onClick={() => void loadStatsAndActions()}>Thử lại thống kê</button></p>}
 
       <div className="w-full min-w-0">
@@ -921,6 +924,55 @@ export const AuditLogsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Quy chuẩn Bảo mật & Dấu vết Kiểm toán */}
+      {showComplianceModal && (
+        <Modal
+          isOpen
+          onClose={() => setShowComplianceModal(false)}
+          title="Quy chuẩn Bảo mật & Dấu vết Kiểm toán Hệ thống"
+          maxWidth="md"
+        >
+          <div className="space-y-3.5 text-xs text-[#1A1612]">
+            <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-1">
+              <span className="font-bold text-[#8C6226] block">
+                1. Nguyên tắc bất biến của Sổ cái Kiểm toán
+              </span>
+              <p className="text-[#7D715E]">
+                Mọi tác vụ quản trị, thay đổi cấu hình hoa hồng, duyệt giải ngân thù lao, duyệt đổi trả và can thiệp bảo mật đều được ghi nhận tự động vào cơ sở dữ liệu nhật ký bất biến.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                2. Bảo vệ dữ liệu nhạy cảm (Data Masking)
+              </span>
+              <p className="text-[#7D715E]">
+                Các thông tin định danh nhạy cảm bao gồm mật khẩu, mã OTP, token ủy quyền và số tài khoản ngân hàng đều được mã hóa hoặc che tự động trong quá trình lưu trữ, hiển thị và trích xuất.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] space-y-1">
+              <span className="font-bold text-[#1A1612] block">
+                3. Quy chuẩn xuất dữ liệu đối soát CSV
+              </span>
+              <p className="text-[#7D715E]">
+                Tập tin xuất CSV duy trì đồng nhất theo bộ lọc thời gian và danh mục đang chọn, hỗ trợ tối đa 2.000 bản ghi mới nhất cho mỗi lần tải về nhằm đảm bảo hiệu năng và tính tuân thủ.
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowComplianceModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold transition cursor-pointer"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

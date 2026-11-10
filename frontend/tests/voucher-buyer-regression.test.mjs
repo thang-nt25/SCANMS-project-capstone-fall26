@@ -12,7 +12,7 @@ test('a disabled voucher query never reports endless loading and buyer queries u
   const module = { exports: {} };
   vm.runInNewContext(code, { module, exports: module.exports, Date, require: name => {
     if (name === 'react') return { useEffect() {}, useState: fn => [fn(), () => {}] };
-    if (name === '@tanstack/react-query') return { useQuery: options => { config = options; return { isPending: true, isError: false }; }, useQueryClient: () => ({}) };
+    if (name === '@tanstack/react-query') return { useQuery: options => { config = options; return { isLoading: Boolean(options.enabled), isError: false }; }, useQueryClient: () => ({}) };
     if (name === '@/services/api') return { get: async path => { paths.push(path); return []; } };
     return { voucherExpiryState: () => 'active', VOUCHER_SOON_WINDOW_MS: 86400000 };
   } });
@@ -25,5 +25,5 @@ test('a disabled voucher query never reports endless loading and buyer queries u
     assert.equal(config.queryKey[1], buyer);
     await config.queryFn({ signal: undefined });
   }
-  assert.equal(paths.filter(path => path === '/coupons/saved/details').length, 5);
+  assert.equal(paths.filter(path => path === '/coupons/available').length, 5);
 });

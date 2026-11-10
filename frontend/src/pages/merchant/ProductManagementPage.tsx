@@ -2,12 +2,11 @@ import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDra
 import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { ProposePromotionModal } from '../../components/promotions/ProposePromotionModal';
-import { useState, useEffect, useRef, useMemo, useLayoutEffect, type FormEvent, type TextareaHTMLAttributes } from 'react';
+import { useState, useEffect, useRef, useMemo, Fragment, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   PlusCircle,
-  FileText,
   Copy,
   Search,
   Link2,
@@ -17,7 +16,6 @@ import {
   CheckCircle2,
   ImagePlus,
   X,
-  Tag,
   FolderTree,
   Coins,
   Percent,
@@ -35,6 +33,14 @@ import {
   Sparkles,
   RefreshCw,
   Truck,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Loader2,
+  FileText,
+  SlidersHorizontal,
+  Zap,
+  Layers,
 } from 'lucide-react';
 import api from '../../services/api';
 import { productService, type Product } from '../../services/product.service';
@@ -66,39 +72,22 @@ type ProductVariantItem = {
   id?: string;
   sku: string;
   name: string;
+  barcode?: string;
+  packageWeight?: number | '';
+  packageLength?: number | '';
+  packageWidth?: number | '';
+  packageHeight?: number | '';
+  origin?: string;
+  ingredients?: string;
+  labelInfo?: string;
   attributes: VariantAttributes;
-  price: number;
-  basePrice?: number;
-  stockQuantity: number;
+  price: number | '';
+  basePrice?: number | '';
+  stockQuantity: number | '';
   imageUrl: string;
+  tier1Value?: string;
+  tier2Value?: string;
 };
-type AutoGrowTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'rows' | 'value'> & {
-  minHeight: number;
-  value: string;
-};
-
-function AutoGrowTextarea({ minHeight, value, className, ...props }: AutoGrowTextareaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = `${minHeight}px`;
-    if (!value.trim()) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.max(minHeight, textarea.scrollHeight)}px`;
-  }, [minHeight, value]);
-
-  return (
-    <textarea
-      {...props}
-      ref={textareaRef}
-      rows={1}
-      value={value}
-      className={className}
-    />
-  );
-}
 
 type ProductEvidenceEditorProps = {
   title: string;
@@ -114,21 +103,72 @@ type ProductEvidenceEditorProps = {
   onUpload: (files: FileList | null) => void;
 };
 
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <span
+      ref={ref}
+      className="relative inline-flex items-center ml-1.5 align-middle select-none"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((prev) => !prev);
+        }}
+        className={`w-4 h-4 rounded-full text-[10px] font-bold inline-flex items-center justify-center transition cursor-pointer shadow-2xs ${
+          open ? 'bg-[#C59B58] text-white ring-2 ring-[#C59B58]/30' : 'bg-[#F3EFE6] text-[#8C6226] hover:bg-[#C59B58] hover:text-white'
+        }`}
+        title={open ? 'Đóng thông tin' : 'Bấm xem thông tin chi tiết'}
+        aria-label="Thông tin chi tiết"
+      >
+        ?
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-0 top-full mt-1.5 w-64 p-2.5 rounded-xl bg-[#231D15] text-white text-[11px] leading-relaxed shadow-2xl z-50 text-left font-normal border border-white/10 animate-in fade-in zoom-in-95 duration-100 pointer-events-none"
+        >
+          {text}
+          <span className="absolute left-2.5 bottom-full border-4 border-transparent border-b-[#231D15]" />
+        </span>
+      )}
+    </span>
+  );
+}
+
 function ProductEvidenceEditor({
   title, description, required = false, inputId, links, images, uploading, uploadLabel,
   onLinksChange, onImagesChange, onUpload,
 }: ProductEvidenceEditorProps) {
   return (
-    <section className="product-evidence-editor group min-w-0 overflow-hidden rounded-2xl border border-[#E7DDCC] bg-white shadow-[0_4px_16px_rgba(35,29,21,0.045)] transition-shadow hover:shadow-[0_8px_24px_rgba(35,29,21,0.075)] lg:row-span-3 lg:grid lg:grid-rows-subgrid">
-      <header className="flex items-start gap-3 border-b border-[#EEE6D9] bg-gradient-to-br from-[#FBF5EB] via-[#FFFCF7] to-white px-4 py-4">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#EEDFC6] bg-white text-[#B88E4F] shadow-[0_2px_5px_rgba(35,29,21,0.04)]">
-          <ShieldCheck className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </span>
-        <div className="min-w-0 pt-0.5">
-          <h3 className="text-[13px] font-bold leading-5 text-[#231D15] lg:min-h-10">
-            {title}{required && <span className="ml-1 text-[#DC2626]">*</span>}
+    <section className="product-evidence-editor group min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white shadow-[0_2px_10px_rgba(35,29,21,0.03)] lg:row-span-3 lg:grid lg:grid-rows-subgrid">
+      <header className="flex items-center justify-between border-b border-[#EAE4D7] bg-[#FAF8F5] px-4 py-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[#EEDFC6] bg-white text-[#B88E4F]">
+            <ShieldCheck className="h-4 w-4" strokeWidth={1.8} />
+          </span>
+          <h3 className="text-xs font-bold text-[#1A1612] flex items-center">
+            <span>{title}</span>
+            {required && <span className="ml-1 text-[#DC2626]">*</span>}
+            <InfoTooltip text={description} />
           </h3>
-          <p className="mt-1 text-[11px] leading-[1.55] text-[#7D715E]">{description}</p>
         </div>
       </header>
 
@@ -265,7 +305,30 @@ const OTHER_VARIANT_FIELDS: VariantField[] = [
   { key: 'specification', label: 'Kích thước / quy cách', placeholder: '20 cm, 500 g...' },
   { key: 'color', label: 'Màu / phiên bản', placeholder: 'Màu hoặc phiên bản...' },
 ];
-const getVariantFields = (category: string) => VARIANT_FIELDS[category] || OTHER_VARIANT_FIELDS;
+const getVariantFields = (category: string) => {
+  if (!category) return OTHER_VARIANT_FIELDS;
+  if (VARIANT_FIELDS[category]) return VARIANT_FIELDS[category];
+  const lower = category.toLowerCase();
+  if (lower.includes('mỹ phẩm') || lower.includes('skincare') || lower.includes('da') || lower.includes('serum') || lower.includes('cosmetic')) {
+    return VARIANT_FIELDS['Mỹ phẩm & Chăm sóc da'];
+  }
+  if (lower.includes('trang điểm') || lower.includes('làm đẹp') || lower.includes('makeup') || lower.includes('son')) {
+    return VARIANT_FIELDS['Trang điểm & Làm đẹp'];
+  }
+  if (lower.includes('cơ thể') || lower.includes('tóc') || lower.includes('body') || lower.includes('tắm') || lower.includes('gội')) {
+    return VARIANT_FIELDS['Chăm sóc cơ thể & Tóc'];
+  }
+  if (lower.includes('thực phẩm') || lower.includes('dinh dưỡng') || lower.includes('sức khỏe') || lower.includes('thảo mộc') || lower.includes('health') || lower.includes('nutrition')) {
+    return VARIANT_FIELDS['Thực phẩm chức năng & Sức khỏe'];
+  }
+  if (lower.includes('thời trang') || lower.includes('may mặc') || lower.includes('áo') || lower.includes('quần') || lower.includes('thể thao') || lower.includes('activewear') || lower.includes('apparel')) {
+    return VARIANT_FIELDS['Thời trang & Phụ kiện'];
+  }
+  if (lower.includes('gia dụng') || lower.includes('đồ bếp') || lower.includes('thiết bị') || lower.includes('điện tử') || lower.includes('living') || lower.includes('smart')) {
+    return VARIANT_FIELDS['Thiết bị điện tử & Phụ kiện'];
+  }
+  return OTHER_VARIANT_FIELDS;
+};
 const variantDisplayName = (attributes: VariantAttributes, fields: VariantField[]) =>
   fields.map((field) => attributes[field.key]?.trim()).filter(Boolean).join(' · ');
 const inferCategoryFromTitle = (title: string) => {
@@ -279,62 +342,207 @@ const inferCategoryFromTitle = (title: string) => {
   return '';
 };
 
-export interface ProductSpecificationItem {
+interface ProductSpecificationItem {
   id: string;
   key: string;
   value: string;
 }
 
 const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => {
-  if (cat === 'Thời trang & Phụ kiện') {
+  if (!cat) return [
+    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
+    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
+    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
+  ];
+  const lower = cat.toLowerCase();
+  if (lower.includes('thời trang') || lower.includes('may mặc') || lower.includes('thể thao') || lower.includes('activewear') || lower.includes('áo') || lower.includes('quần') || lower.includes('apparel')) {
     return [
       { id: 'spec-1', key: 'Chất liệu vải chính', value: '' },
-      { id: 'spec-2', key: 'Độ co giãn', value: '' },
+      { id: 'spec-2', key: 'Độ co giãn & Form dáng', value: '' },
       { id: 'spec-3', key: 'Xuất xứ nguồn vải', value: '' },
       { id: 'spec-4', key: 'Hướng dẫn giặt ủi', value: '' },
     ];
   }
-  if (cat === 'Mỹ phẩm & Chăm sóc da') {
+  if (lower.includes('mỹ phẩm') || lower.includes('skincare') || lower.includes('da') || lower.includes('serum') || lower.includes('cosmetic')) {
     return [
-      { id: 'spec-1', key: 'Loại da phù hợp', value: '' },
+      { id: 'spec-1', key: 'Loại da / Đối tượng phù hợp', value: '' },
       { id: 'spec-2', key: 'Chỉ số chống nắng (SPF/PA)', value: '' },
       { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
       { id: 'spec-4', key: 'Đặc tính / Công dụng chính', value: '' },
     ];
   }
-  if (cat === 'Trang điểm & Làm đẹp') {
+  if (lower.includes('trang điểm') || lower.includes('làm đẹp') || lower.includes('makeup') || lower.includes('son')) {
     return [
-      { id: 'spec-1', key: 'Loại da phù hợp', value: '' },
+      { id: 'spec-1', key: 'Tone màu / Loại da phù hợp', value: '' },
       { id: 'spec-2', key: 'Độ che phủ / Chống thấm nước', value: '' },
       { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
       { id: 'spec-4', key: 'Đặc tính / Hiệu quả nổi bật', value: '' },
     ];
   }
-  if (cat === 'Chăm sóc cơ thể & Tóc') {
+  if (lower.includes('cơ thể') || lower.includes('tóc') || lower.includes('body') || lower.includes('tắm') || lower.includes('gội')) {
     return [
-      { id: 'spec-1', key: 'Loại da / Loại tóc phù hợp', value: '' },
+      { id: 'spec-1', key: 'Đối tượng / Tình trạng da & tóc', value: '' },
       { id: 'spec-2', key: 'Hạn sử dụng sau mở nắp', value: '' },
       { id: 'spec-3', key: 'Công dụng dưỡng ẩm / Làm sạch', value: '' },
     ];
   }
-  if (cat === 'Thực phẩm chức năng & Sức khỏe') {
+  if (lower.includes('thực phẩm') || lower.includes('dinh dưỡng') || lower.includes('sức khỏe') || lower.includes('thảo mộc') || lower.includes('nutrition') || lower.includes('health')) {
     return [
-      { id: 'spec-1', key: 'Đối tượng sử dụng', value: '' },
+      { id: 'spec-1', key: 'Đối tượng sử dụng phù hợp', value: '' },
       { id: 'spec-2', key: 'Hướng dẫn bảo quản', value: '' },
       { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp', value: '' },
     ];
   }
-  if (cat === 'Thiết bị điện tử & Phụ kiện') {
+  if (lower.includes('thiết bị') || lower.includes('điện tử') || lower.includes('gia dụng') || lower.includes('đồ bếp') || lower.includes('smart') || lower.includes('living')) {
     return [
-      { id: 'spec-1', key: 'Cổng kết nối / Chuẩn sạc', value: '' },
-      { id: 'spec-2', key: 'Thời lượng pin / Nguồn điện', value: '' },
+      { id: 'spec-1', key: 'Cổng kết nối / Nguồn điện', value: '' },
+      { id: 'spec-2', key: 'Công suất / Dung lượng pin', value: '' },
       { id: 'spec-3', key: 'Thời gian bảo hành chính hãng', value: '' },
     ];
   }
   return [
-    { id: 'spec-1', key: 'Chất liệu / Đặc tính kỹ thuật', value: '' },
-    { id: 'spec-2', key: 'Hướng dẫn bảo quản', value: '' },
+    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
+    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
+    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
   ];
+};
+
+interface CategoryContextInfo {
+  titlePlaceholder: string;
+  descriptionPlaceholder: string;
+  group1Name: string;
+  group1Presets: string[];
+  group2Name: string;
+  group2Presets: string[];
+  suitableForLabel: string;
+  suitableForPlaceholder: string;
+  ingredientsLabel: string;
+  ingredientsPlaceholder: string;
+  keyActivesLabel: string;
+  keyActivesPlaceholder: string;
+  shelfLifePlaceholder: string;
+  responsibleEntityPlaceholder: string;
+}
+
+const getCategoryContextPlaceholders = (cat: string): CategoryContextInfo => {
+  const lower = (cat || '').toLowerCase();
+  if (
+    lower.includes('thời trang') ||
+    lower.includes('may mặc') ||
+    lower.includes('thể thao') ||
+    lower.includes('activewear') ||
+    lower.includes('áo') ||
+    lower.includes('quần') ||
+    lower.includes('apparel')
+  ) {
+    return {
+      titlePlaceholder: 'VD: Áo Thun Thể Thao Dry-Fit Thoáng Khí Chạy Bộ',
+      descriptionPlaceholder: 'VD: Chất vải dệt kim cao cấp co giãn 4 chiều, công nghệ dệt thoáng khí kháng khuẩn Silver-Ion, form dáng thể thao năng động...',
+      group1Name: 'Màu sắc',
+      group1Presets: ['Đen', 'Trắng', 'Xanh Navy', 'Xám Tiêu', 'Đỏ Đô'],
+      group2Name: 'Kích cỡ (Size)',
+      group2Presets: ['Size S', 'Size M', 'Size L', 'Size XL'],
+      suitableForLabel: 'Đặc tính / Vóc dáng phù hợp',
+      suitableForPlaceholder: 'VD: Dáng Slim-fit, Oversize, Thể thao...',
+      ingredientsLabel: 'Chất liệu vải / Thành phần cấu tạo',
+      ingredientsPlaceholder: 'VD: 92% Polyester compact, 8% Spandex, 220 GSM...',
+      keyActivesLabel: 'Công nghệ dệt & Tính năng nổi bật',
+      keyActivesPlaceholder: 'VD: Thấm hút Quick-Dry, Kháng khuẩn Silver-Ion, Co giãn 4 chiều...',
+      shelfLifePlaceholder: 'VD: Không áp dụng thời hạn sử dụng',
+      responsibleEntityPlaceholder: 'VD: Công ty TNHH Aura Activewear',
+    };
+  }
+  if (
+    lower.includes('thực phẩm') ||
+    lower.includes('dinh dưỡng') ||
+    lower.includes('sức khỏe') ||
+    lower.includes('thảo mộc') ||
+    lower.includes('nutrition') ||
+    lower.includes('health')
+  ) {
+    return {
+      titlePlaceholder: 'VD: Bột Protein Hữu Cơ Dinh Dưỡng Thực Vật Hạt Bí & Đậu Hà Lan',
+      descriptionPlaceholder: 'VD: Cung cấp 24g đạm thực vật nguyên chất mỗi muỗng, giàu BCAA tự nhiên hỗ trợ phục hồi cơ bắp và duy trì vóc dáng săn chắc...',
+      group1Name: 'Hương vị',
+      group1Presets: ['Socola', 'Vani', 'Trà Xanh Matcha', 'Tự Nhiên'],
+      group2Name: 'Quy cách đóng gói',
+      group2Presets: ['Hũ 500g', 'Hũ 900g', 'Túi 1kg', 'Hộp 30 gói'],
+      suitableForLabel: 'Đối tượng sử dụng phù hợp',
+      suitableForPlaceholder: 'VD: Người tập gym, người ăn kiêng, người lớn tuổi...',
+      ingredientsLabel: 'Bảng thành phần định lượng chi tiết',
+      ingredientsPlaceholder: 'VD: Trong mỗi liều dùng: Whey Isolate 25g, BCAA 5.5g, Glutamine 4g...',
+      keyActivesLabel: 'Hoạt chất dinh dưỡng chính & Công dụng',
+      keyActivesPlaceholder: 'VD: Hỗ trợ phục hồi cơ bắp, Tăng cường đề kháng tự nhiên...',
+      shelfLifePlaceholder: 'VD: 24 tháng kể từ ngày sản xuất',
+      responsibleEntityPlaceholder: 'VD: Công ty Cổ phần Dược phẩm GreenBio Health',
+    };
+  }
+  if (
+    lower.includes('thiết bị') ||
+    lower.includes('điện tử') ||
+    lower.includes('gia dụng') ||
+    lower.includes('đồ bếp') ||
+    lower.includes('smart') ||
+    lower.includes('living')
+  ) {
+    return {
+      titlePlaceholder: 'VD: Nồi Chiên Không Dầu Điện Tử Cảm Ứng Đa Năng 6.5L',
+      descriptionPlaceholder: 'VD: Công nghệ tuần hoàn khí nóng 360 độ Rapid Air giảm 85% lượng dầu mỡ, màn hình LED cảm ứng thông minh 12 chế độ cài đặt sẵn...',
+      group1Name: 'Màu sắc / Phiên bản',
+      group1Presets: ['Trắng Ceramic', 'Đen Nhám', 'Xám Titan'],
+      group2Name: 'Công suất / Dung tích',
+      group2Presets: ['Bản 4.5L (1500W)', 'Bản 6.5L (1800W)', 'Bản Pro 8.0L (2000W)'],
+      suitableForLabel: 'Đặc tính / Không gian sử dụng',
+      suitableForPlaceholder: 'VD: Căn hộ, phòng ngủ, phòng khách, văn phòng...',
+      ingredientsLabel: 'Vật liệu cấu tạo & Linh kiện chính',
+      ingredientsPlaceholder: 'VD: Hợp kim nhôm Anodized, Nhựa ABS chống cháy, Lõi đồng...',
+      keyActivesLabel: 'Thông số kỹ thuật & Công nghệ cốt lõi',
+      keyActivesPlaceholder: 'VD: Động cơ BLDC không chổi than 45W, Cảm biến nhiệt độ NTC...',
+      shelfLifePlaceholder: 'VD: Bảo hành 24 tháng chính hãng',
+      responsibleEntityPlaceholder: 'VD: Công ty TNHH Lumière Smart Living',
+    };
+  }
+  if (
+    lower.includes('mỹ phẩm') ||
+    lower.includes('skincare') ||
+    lower.includes('da') ||
+    lower.includes('serum') ||
+    lower.includes('trang điểm') ||
+    lower.includes('cosmetic')
+  ) {
+    return {
+      titlePlaceholder: 'VD: Serum Dưỡng Trắng Mờ Thâm Vitamin C 15%',
+      descriptionPlaceholder: 'VD: Tinh chất dưỡng sáng mờ thâm chứa 15% Vitamin C tinh khiết kết hợp Hyaluronic Acid đa phân tử giúp phục hồi và làm đều màu da...',
+      group1Name: 'Mùi hương / Dòng',
+      group1Presets: ['Bản Dịu Nhẹ', 'Hương Đào', 'Hương Trà Xanh', 'Hương Hoa Hồng'],
+      group2Name: 'Dung tích',
+      group2Presets: ['30ml', '50ml', '100ml', 'Tuýp 150ml'],
+      suitableForLabel: 'Đặc tính / Loại da phù hợp',
+      suitableForPlaceholder: 'VD: Da dầu mụn, da khô, da nhạy cảm...',
+      ingredientsLabel: 'Bảng thành phần công thức đầy đủ (INCI List)',
+      ingredientsPlaceholder: 'VD: Water/Aqua, Glycerin, Niacinamide, Butylene Glycol, Panthenol, Hyaluronic Acid, Phenoxyethanol...',
+      keyActivesLabel: 'Thành phần hoạt chất nổi bật & Nồng độ',
+      keyActivesPlaceholder: 'VD: Niacinamide 10%, Vitamin B5 2%, Zinc PCA 1%...',
+      shelfLifePlaceholder: 'VD: 36 tháng kể từ ngày sản xuất',
+      responsibleEntityPlaceholder: 'VD: Công ty Cổ phần Thương mại Sora Skincare',
+    };
+  }
+  return {
+    titlePlaceholder: 'VD: Tên sản phẩm chính hãng',
+    descriptionPlaceholder: 'Nhập mô tả chi tiết công dụng nổi bật, giải pháp mang lại cho khách hàng, hướng dẫn sử dụng và bảo quản...',
+    group1Name: 'Phân loại',
+    group1Presets: ['Bản Tiêu chuẩn', 'Bản Nâng cấp Pro'],
+    group2Name: 'Quy cách',
+    group2Presets: ['Mặc định'],
+    suitableForLabel: 'Đặc tính / Đối tượng phù hợp',
+    suitableForPlaceholder: 'VD: Phù hợp đối tượng hoặc mục đích sử dụng riêng...',
+    ingredientsLabel: 'Thành phần / Chất liệu cấu tạo',
+    ingredientsPlaceholder: 'VD: Bảng thành phần nguyên liệu sản phẩm...',
+    keyActivesLabel: 'Đặc tính kỹ thuật / Hoạt chất nổi bật',
+    keyActivesPlaceholder: 'VD: Các tính năng cốt lõi hoặc hoạt chất chính...',
+    shelfLifePlaceholder: 'VD: Theo quy chuẩn nhà sản xuất',
+    responsibleEntityPlaceholder: 'VD: Doanh nghiệp chịu trách nhiệm phân phối',
+  };
 };
 
 const cachedProductsMap = new Map<string, Product[]>();
@@ -490,10 +698,18 @@ export default function ProductManagementPage() {
   const [formSku, setFormSku] = useState('');
   const [formBarcode, setFormBarcode] = useState('');
   const [formTitle, setFormTitle] = useState('');
+  const [formBrand, setFormBrand] = useState('');
+  const [formTags, setFormTags] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formIngredients, setFormIngredients] = useState('');
+  const [formKeyActives, setFormKeyActives] = useState('');
+  const [formShelfLife, setFormShelfLife] = useState('');
+  const [formPao, setFormPao] = useState('');
+  const [formResponsibleEntity, setFormResponsibleEntity] = useState('');
+  const [formNotificationNumber, setFormNotificationNumber] = useState('');
+  const [useCommonShipping, setUseCommonShipping] = useState<boolean>(true);
   const [formOrigin, setFormOrigin] = useState('');
   const [formLabelInfo, setFormLabelInfo] = useState('');
   const [formOriginProofLinks, setFormOriginProofLinks] = useState<string[]>([]);
@@ -522,6 +738,262 @@ export default function ProductManagementPage() {
   const [formVariants, setFormVariants] = useState<ProductVariantItem[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
+
+  // 2-Tier Attribute Matrix States
+  const [attrGroup1Name, setAttrGroup1Name] = useState('Phân loại 1');
+  const [attrGroup1Values, setAttrGroup1Values] = useState<string[]>(['Bản Tiêu chuẩn']);
+  const [attrGroup1Input, setAttrGroup1Input] = useState('');
+
+  const [hasTier2, setHasTier2] = useState(false);
+  const [attrGroup2Name, setAttrGroup2Name] = useState('Kích cỡ (Size)');
+  const [attrGroup2Values, setAttrGroup2Values] = useState<string[]>([]);
+  const [attrGroup2Input, setAttrGroup2Input] = useState('');
+
+  // Batch Fill Bar States
+  const [batchBasePrice, setBatchBasePrice] = useState<string>('');
+  const [batchPrice, setBatchPrice] = useState<string>('');
+  const [batchStock, setBatchStock] = useState<string>('');
+
+  const STEP_TITLES: Record<number, string> = {
+    1: 'Thông tin chung',
+    2: 'Phân loại & Thông số',
+    3: 'Tiếp thị & Gửi duyệt',
+  };
+
+  const isStep1Complete = Boolean(
+    formTitle.trim() &&
+    formSku.trim() &&
+    formCategory.trim() &&
+    (formCategory !== 'Danh mục khác (Tự nhập)' || formCustomCategory.trim()) &&
+    formImage.trim() &&
+    formDescription.trim()
+  );
+
+  const isStep2Complete = Boolean(
+    formVariants.length > 0 &&
+    formVariants.every(
+      (v) =>
+        v.name.trim() &&
+        v.sku.trim() &&
+        (!v.barcode?.trim() || /^\d{8,14}$/.test(v.barcode.trim())) &&
+        Number(v.basePrice) > 0 &&
+        Number(v.price) > 0 &&
+        v.stockQuantity !== '' &&
+        Number(v.stockQuantity) >= 0 &&
+        (useCommonShipping || (
+          Number(v.packageWeight) > 0 &&
+          Number(v.packageLength) > 0 &&
+          Number(v.packageWidth) > 0 &&
+          Number(v.packageHeight) > 0
+        ))
+    ) &&
+    formOrigin.trim() &&
+    (formKeyActives.trim() || formIngredients.trim()) &&
+    (useCommonShipping
+      ? Number(formPackageWeight) > 0 &&
+        Number(formPackageLength) > 0 &&
+        Number(formPackageWidth) > 0 &&
+        Number(formPackageHeight) > 0
+      : true)
+  );
+
+  const isStep3Complete = Boolean(
+    [...formOriginProofLinks, ...formOriginProofImages, ...formLabelProofLinks, ...formLabelProofImages].some((v) => v.trim())
+  );
+
+  const validateStep1 = (): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    if (!formTitle.trim()) errors.push('Vui lòng nhập tên sản phẩm.');
+    if (!formSku.trim()) errors.push('Vui lòng nhập mã SKU sản phẩm.');
+    if (!formCategory.trim()) errors.push('Vui lòng chọn ngành hàng kinh doanh.');
+    if (formCategory === 'Danh mục khác (Tự nhập)' && !formCustomCategory.trim()) {
+      errors.push('Vui lòng nhập tên danh mục tùy chỉnh.');
+    }
+    if (!formImage.trim()) errors.push('Vui lòng tải ảnh bìa chính.');
+    if (!formDescription.trim()) errors.push('Vui lòng nhập mô tả chi tiết sản phẩm.');
+    return { valid: errors.length === 0, errors };
+  };
+
+  const validateStep2 = (): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    if (formVariants.length === 0) {
+      errors.push('Sản phẩm cần có ít nhất 1 phân loại hàng.');
+      return { valid: false, errors };
+    }
+    formVariants.forEach((v, idx) => {
+      const vLabel = formVariants.length === 1 ? 'Phân loại hàng' : `Phân loại #${idx + 1} (${v.name || 'chưa đặt tên'})`;
+      if (!v.name.trim()) errors.push(`${vLabel}: Vui lòng nhập tên phân loại.`);
+      if (!v.sku.trim()) errors.push(`${vLabel}: Vui lòng nhập mã SKU.`);
+      if (v.barcode?.trim() && !/^\d{8,14}$/.test(v.barcode.trim())) {
+        errors.push(`${vLabel}: Mã vạch phải gồm các chữ số (hoặc để trống nếu chưa có).`);
+      }
+      if (v.basePrice === '' || v.basePrice === undefined || Number(v.basePrice) <= 0) {
+        errors.push(`${vLabel}: Nhập giá kho cơ bản (giá sàn bảo vệ) > 0.`);
+      }
+      if (v.price === '' || v.price === undefined || Number(v.price) <= 0) {
+        errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
+      }
+      if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
+        errors.push(`${vLabel}: Nhập tồn kho mở bán là số nguyên >= 0.`);
+      }
+      if (!useCommonShipping) {
+        if (!v.packageWeight || Number(v.packageWeight) <= 0) {
+          errors.push(`${vLabel}: Nhập cân nặng kiện hàng riêng (gram) > 0.`);
+        }
+        if (!v.packageLength || Number(v.packageLength) <= 0 || !v.packageWidth || Number(v.packageWidth) <= 0 || !v.packageHeight || Number(v.packageHeight) <= 0) {
+          errors.push(`${vLabel}: Nhập đầy đủ kích thước kiện riêng Dài × Rộng × Cao (cm) > 0.`);
+        }
+      }
+    });
+
+    const skus = formVariants.map((v) => v.sku.trim().toUpperCase()).filter(Boolean);
+    if (new Set(skus).size !== skus.length) {
+      errors.push('Mã SKU giữa các phân loại không được trùng nhau.');
+    }
+    const barcodes = formVariants.map((v) => v.barcode?.trim()).filter(Boolean);
+    if (new Set(barcodes).size !== barcodes.length) {
+      errors.push('Mã vạch giữa các phân loại không được trùng nhau.');
+    }
+
+    // Thông số kỹ thuật sản phẩm (cấp sản phẩm)
+    if (!formOrigin.trim()) {
+      errors.push('Thông số sản phẩm: Vui lòng nhập nguồn gốc xuất xứ.');
+    }
+    if (!formKeyActives.trim() && !formIngredients.trim()) {
+      errors.push('Thông số sản phẩm: Vui lòng nhập hoạt chất chính hoặc công dụng nổi bật.');
+    }
+
+    // Quy cách đóng gói & vận chuyển GHN (khi dùng chung)
+    if (useCommonShipping) {
+      if (!formPackageWeight || Number(formPackageWeight) <= 0) {
+        errors.push('Đóng gói GHN: Vui lòng nhập cân nặng kiện hàng dùng chung (gram) > 0.');
+      }
+      if (!formPackageLength || Number(formPackageLength) <= 0 || !formPackageWidth || Number(formPackageWidth) <= 0 || !formPackageHeight || Number(formPackageHeight) <= 0) {
+        errors.push('Đóng gói GHN: Vui lòng nhập đầy đủ kích thước kiện dùng chung Dài × Rộng × Cao (cm) > 0.');
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
+  };
+
+  const validateStep3 = (): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const hasAnyProof = [...formOriginProofLinks, ...formOriginProofImages, ...formLabelProofLinks, ...formLabelProofImages].some((v) => v.trim());
+    if (!hasAnyProof) {
+      errors.push('Vui lòng thêm ít nhất 1 minh chứng (hóa đơn VAT, giấy phép công bố hoặc link tra cứu).');
+    }
+    if (formSampleEnabled && (formSampleQuota === '' || !Number.isInteger(Number(formSampleQuota)) || Number(formSampleQuota) <= 0)) {
+      errors.push('Nếu bật cấp sản phẩm mẫu, hãy nhập tổng suất mẫu là số nguyên > 0.');
+    }
+    return { valid: errors.length === 0, errors };
+  };
+
+  const goToNextStep = () => {
+    setSaveError(null);
+    if (modalStep === 1) {
+      const v1 = validateStep1();
+      if (!v1.valid) {
+        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi chuyển bước.');
+        return;
+      }
+      // Đảm bảo Phân loại 1 có SKU từ formSku nếu chưa có
+      if (formVariants.length > 0 && !formVariants[0].sku) {
+        setFormVariants((curr) => curr.map((v, i) => (i === 0 ? { ...v, sku: formSku } : v)));
+      }
+      setModalStep(2);
+    } else if (modalStep === 2) {
+      const v2 = validateStep2();
+      if (!v2.valid) {
+        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi chuyển bước.');
+        return;
+      }
+      // Tự động gán fallback nếu trống để đồng bộ
+      const syncIngredients = formIngredients.trim() || formKeyActives.trim() || 'Thành phần tiêu chuẩn';
+      const syncLabelInfo = formLabelInfo.trim() || formShelfLife.trim() || 'Bảo quản nơi khô ráo, thoáng mát';
+      if (!formIngredients.trim()) setFormIngredients(syncIngredients);
+      if (!formLabelInfo.trim()) setFormLabelInfo(syncLabelInfo);
+
+      // Đồng bộ thông số từ Loại chính ra cấp sản phẩm
+      const primary = formVariants[0];
+      if (primary) {
+        setFormPrice(primary.price);
+        setFormBasePrice(primary.basePrice || Math.round((Number(primary.price) || 0) * 0.6));
+        setFormBarcode(primary.barcode || '');
+      }
+      // Đồng bộ thông số sản phẩm và kiện GHN
+      if (useCommonShipping) {
+        setFormVariants((curr) =>
+          curr.map((v) => ({
+            ...v,
+            origin: formOrigin || v.origin || 'Việt Nam',
+            ingredients: syncIngredients,
+            labelInfo: syncLabelInfo,
+            packageWeight: formPackageWeight || v.packageWeight || 250,
+            packageLength: formPackageLength || v.packageLength || 15,
+            packageWidth: formPackageWidth || v.packageWidth || 10,
+            packageHeight: formPackageHeight || v.packageHeight || 5,
+          }))
+        );
+      } else {
+        if (primary) {
+          setFormPackageWeight(primary.packageWeight || 250);
+          setFormPackageLength(primary.packageLength || 15);
+          setFormPackageWidth(primary.packageWidth || 10);
+          setFormPackageHeight(primary.packageHeight || 5);
+        }
+        setFormVariants((curr) =>
+          curr.map((v) => ({
+            ...v,
+            origin: formOrigin || v.origin || 'Việt Nam',
+            ingredients: syncIngredients,
+            labelInfo: syncLabelInfo,
+          }))
+        );
+      }
+      setModalStep(3);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    setSaveError(null);
+    if (modalStep > 1) {
+      setModalStep((prev) => (prev - 1) as 1 | 2 | 3);
+    }
+  };
+
+  const handleStepClick = (targetStep: 1 | 2 | 3) => {
+    if (targetStep === modalStep) return;
+    setSaveError(null);
+    if (targetStep > modalStep) {
+      if (modalStep === 1 && !validateStep1().valid) {
+        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi chuyển bước.');
+        return;
+      }
+      if (targetStep === 3 && !validateStep2().valid) {
+        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi chuyển bước.');
+        return;
+      }
+    }
+    setModalStep(targetStep);
+  };
+
+  const activeCategory = useMemo(() => {
+    const explicit = (formCategory && formCategory !== 'Danh mục khác (Tự nhập)' ? formCategory : formCustomCategory) || storeCategory;
+    if (explicit) return explicit;
+    // Infer from SKU prefix if explicit category is not yet set
+    const upperSku = (formSku || '').toUpperCase();
+    if (upperSku.startsWith('FASHION-') || upperSku.startsWith('APP-') || upperSku.startsWith('AURA-')) return 'Thời trang & Phụ kiện';
+    if (upperSku.startsWith('HEALTH-') || upperSku.startsWith('BIO-') || upperSku.startsWith('GREEN-')) return 'Thực phẩm chức năng & Sức khỏe';
+    if (upperSku.startsWith('TECH-') || upperSku.startsWith('LUM-') || upperSku.startsWith('SMART-')) return 'Thiết bị điện tử & Phụ kiện';
+    if (upperSku.startsWith('SKIN-') || upperSku.startsWith('COS-') || upperSku.startsWith('SORA-')) return 'Mỹ phẩm & Chăm sóc da';
+    return '';
+  }, [storeCategory, formCategory, formCustomCategory, formSku]);
+
+  const contextPlaceholders = useMemo(
+    () => getCategoryContextPlaceholders(activeCategory),
+    [activeCategory],
+  );
 
   const totalVariantStock = useMemo(() => {
     return formVariants.reduce((sum, v) => sum + (Number(v.stockQuantity) || 0), 0);
@@ -697,20 +1169,37 @@ export default function ProductManagementPage() {
   loadProductsRef.current = loadProducts;
 
   useEffect(() => {
-    if (!isAdminOrManager && !isKol) {
-      storeService
-        .getMyStore()
-        .then((s) => {
-          if (s?.categoryName) {
-            setStoreCategory(s.categoryName);
-          }
-          if (s?.name) {
-            setStoreName(s.name);
-          }
-        })
-        .catch((err) => console.warn('Không thể tải ngành hàng của shop:', err));
+    if (!isKol) {
+      if (currentStoreId) {
+        api.get(`/stores/public/id/${currentStoreId}`)
+          .then((res: any) => {
+            const s = res?.data || res;
+            if (s?.categoryName) setStoreCategory(s.categoryName);
+            if (s?.name) setStoreName(s.name);
+          })
+          .catch(() => {
+            if (!isAdminOrManager) {
+              storeService.getMyStore().then((s) => {
+                if (s?.categoryName) setStoreCategory(s.categoryName);
+                if (s?.name) setStoreName(s.name);
+              }).catch(() => {});
+            }
+          });
+      } else if (!isAdminOrManager) {
+        storeService
+          .getMyStore()
+          .then((s) => {
+            if (s?.categoryName) {
+              setStoreCategory(s.categoryName);
+            }
+            if (s?.name) {
+              setStoreName(s.name);
+            }
+          })
+          .catch((err) => console.warn('Không thể tải ngành hàng của shop:', err));
+      }
     }
-  }, [isAdminOrManager, isKol]);
+  }, [isAdminOrManager, isKol, currentStoreId]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -733,10 +1222,6 @@ export default function ProductManagementPage() {
     }
   };
 
-  const handlePriceChange = (newPrice: number | '') => {
-    setFormPrice(newPrice);
-  };
-
   const handleCategoryChange = (categoryName: string) => {
     setFormCategory(categoryName);
         setFormSpecifications(getDefaultSpecsForCategory(categoryName));
@@ -755,26 +1240,50 @@ export default function ProductManagementPage() {
     }
   };
 
-  const addVariant = (preset?: { key: string; value: string }) => {
+  const addVariant = () => {
     setFormVariants((current) => {
-      if (preset && current.some((item) => item.attributes[preset.key]?.toLowerCase() === preset.value.toLowerCase())) return current;
-      const suffix = preset
-        ? preset.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toUpperCase()
-        : Math.random().toString(36).slice(2, 6).toUpperCase();
-      const baseSku = `${(formSku || 'SKU').slice(0, 70)}-${suffix || 'VAR'}`;
-      const sku = current.some((item) => item.sku === baseSku)
-        ? `${baseSku}-${Math.random().toString(36).slice(2, 5).toUpperCase()}` : baseSku;
-      const attributes = preset ? { [preset.key]: preset.value } : {};
-      return [...current, {
-        sku, name: variantDisplayName(attributes, getVariantFields(formCategory)), attributes,
-        price: Number(formPrice) || 0,
-        stockQuantity: current.length === 0 ? (Number(formStock) || 0) : 0,
-        imageUrl: current.length === 0 ? (formImage || '') : '',
-      }];
+      const primary = current[0];
+      const count = current.length + 1;
+      const baseSku = formSku ? `${formSku}-V${count}` : `SKU-V${count}`;
+      let uniqueSku = baseSku;
+      let counter = 1;
+      while (current.some((item) => item.sku === uniqueSku)) {
+        counter++;
+        uniqueSku = `${baseSku}-${counter}`;
+      }
+      return [
+        ...current,
+        {
+          sku: uniqueSku,
+          name: `Phân loại ${count}`,
+          barcode: '',
+          price: primary?.price || Number(formPrice) || 0,
+          basePrice: primary?.basePrice || Number(formBasePrice) || 0,
+          stockQuantity: 50,
+          imageUrl: '',
+          // Kế thừa thông minh từ Loại 1 để không phải gõ lại
+          origin: primary?.origin || formOrigin || 'Việt Nam',
+          ingredients: primary?.ingredients || formIngredients || '',
+          labelInfo: primary?.labelInfo || formLabelInfo || '',
+          packageWeight: primary?.packageWeight || formPackageWeight || 250,
+          packageLength: primary?.packageLength || formPackageLength || 15,
+          packageWidth: primary?.packageWidth || formPackageWidth || 10,
+          packageHeight: primary?.packageHeight || formPackageHeight || 5,
+          attributes: {},
+        },
+      ];
     });
+    showToast(`Đã thêm Phân loại #${formVariants.length + 1}`);
   };
 
-  
+  const removeVariant = (index: number) => {
+    if (index === 0) {
+      showToast('Phân loại 1 là Loại chính bắt buộc, không thể xóa.');
+      return;
+    }
+    setFormVariants((current) => current.filter((_, idx) => idx !== index));
+    showToast(`Đã xóa phân loại #${index + 1}`);
+  };
 
   const cloneVariant = (index: number) => {
     const target = formVariants[index];
@@ -788,9 +1297,10 @@ export default function ProductManagementPage() {
     }
     const cloned: ProductVariantItem = {
       ...target,
-      id: `var-clone-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      id: undefined,
       sku: uniqueSku,
-      name: target.name ? `${target.name} (Bản sao)` : `Phân loại ${formVariants.length + 1}`,
+      name: `${target.name || 'Phân loại'} (Bản sao)`,
+      barcode: '', // Cần nhập mã vạch mới
       attributes: { ...target.attributes },
     };
     setFormVariants((current) => {
@@ -801,27 +1311,222 @@ export default function ProductManagementPage() {
     showToast(`Đã nhân bản phân loại "${target.name || 'SKU'}".`);
   };
 
+  const copyShippingFromPrimary = (index: number) => {
+    const primary = formVariants[0];
+    if (!primary) return;
+    setFormVariants((curr) =>
+      curr.map((v, i) =>
+        i === index
+          ? {
+              ...v,
+              packageWeight: primary.packageWeight ?? formPackageWeight ?? 250,
+              packageLength: primary.packageLength ?? formPackageLength ?? 15,
+              packageWidth: primary.packageWidth ?? formPackageWidth ?? 10,
+              packageHeight: primary.packageHeight ?? formPackageHeight ?? 5,
+            }
+          : v
+      )
+    );
+    showToast(`Đã sao chép kích thước kiện GHN từ Phân loại 1 sang Phân loại #${index + 1}`);
+  };
+
+  const generateCartesianVariants = (
+    g1Values: string[],
+    g2Values: string[],
+    useTier2: boolean,
+    existingVariants: ProductVariantItem[],
+    baseSku: string,
+  ): ProductVariantItem[] => {
+    const cleanG1 = g1Values.map((v) => v.trim()).filter(Boolean);
+    const cleanG2 = g2Values.map((v) => v.trim()).filter(Boolean);
+
+    if (cleanG1.length === 0) {
+      return [{
+        id: `var-${Date.now()}-def`,
+        name: 'Phân loại tiêu chuẩn',
+        tier1Value: 'Phân loại tiêu chuẩn',
+        sku: baseSku || 'SKU-01',
+        barcode: '',
+        price: 0,
+        basePrice: 0,
+        stockQuantity: 100,
+        imageUrl: '',
+        attributes: { type: 'Phân loại tiêu chuẩn' },
+      }];
+    }
+
+    if (!useTier2 || cleanG2.length === 0) {
+      return cleanG1.map((v1, idx) => {
+        const found = existingVariants.find(
+          (v) => (v.tier1Value && v.tier1Value === v1 && !v.tier2Value) || v.name === v1
+        );
+        if (found) {
+          return { ...found, tier1Value: v1, tier2Value: undefined, name: v1 };
+        }
+        const cleanSlug = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        return {
+          id: `var-${Date.now()}-${idx}-${cleanSlug}`,
+          name: v1,
+          tier1Value: v1,
+          sku: `${baseSku || 'SKU'}-${cleanSlug || String(idx + 1).padStart(2, '0')}`,
+          barcode: '',
+          price: 0,
+          basePrice: 0,
+          stockQuantity: 100,
+          imageUrl: '',
+          attributes: { type: v1 },
+        };
+      });
+    }
+
+    // Nhân tổ hợp Đề-các (Cartesian Product)
+    const result: ProductVariantItem[] = [];
+    cleanG1.forEach((v1, i1) => {
+      cleanG2.forEach((v2, i2) => {
+        const combinedName = `${v1}, ${v2}`;
+        const found = existingVariants.find(
+          (v) => (v.tier1Value === v1 && v.tier2Value === v2) || v.name === combinedName
+        );
+        if (found) {
+          result.push({ ...found, tier1Value: v1, tier2Value: v2, name: combinedName });
+        } else {
+          const s1 = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `V${i1 + 1}`;
+          const s2 = v2.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `S${i2 + 1}`;
+          result.push({
+            id: `var-${Date.now()}-${i1}-${i2}`,
+            name: combinedName,
+            tier1Value: v1,
+            tier2Value: v2,
+            sku: `${baseSku || 'SKU'}-${s1}-${s2}`,
+            barcode: '',
+            price: 0,
+            basePrice: 0,
+            stockQuantity: 100,
+            imageUrl: '',
+            attributes: { color: v1, size: v2, type: combinedName },
+          });
+        }
+      });
+    });
+    return result;
+  };
+
+  const handleAddGroup1Value = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed || attrGroup1Values.includes(trimmed)) return;
+    const newValues = [...attrGroup1Values, trimmed];
+    setAttrGroup1Values(newValues);
+    setAttrGroup1Input('');
+    setFormVariants((curr) =>
+      generateCartesianVariants(newValues, attrGroup2Values, hasTier2, curr, formSku)
+    );
+  };
+
+  const handleRemoveGroup1Value = (val: string) => {
+    if (attrGroup1Values.length <= 1) {
+      showToast('Cần ít nhất một giá trị cho Nhóm phân loại 1.');
+      return;
+    }
+    const newValues = attrGroup1Values.filter((v) => v !== val);
+    setAttrGroup1Values(newValues);
+    setFormVariants((curr) =>
+      generateCartesianVariants(newValues, attrGroup2Values, hasTier2, curr, formSku)
+    );
+  };
+
+  const handleAddGroup2Value = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed || attrGroup2Values.includes(trimmed)) return;
+    const newValues = [...attrGroup2Values, trimmed];
+    setAttrGroup2Values(newValues);
+    setAttrGroup2Input('');
+    setFormVariants((curr) =>
+      generateCartesianVariants(attrGroup1Values, newValues, true, curr, formSku)
+    );
+  };
+
+  const handleRemoveGroup2Value = (val: string) => {
+    if (attrGroup2Values.length <= 1) {
+      showToast('Cần ít nhất một giá trị cho Nhóm phân loại 2 (hoặc bấm Xóa nhóm 2).');
+      return;
+    }
+    const newValues = attrGroup2Values.filter((v) => v !== val);
+    setAttrGroup2Values(newValues);
+    setFormVariants((curr) =>
+      generateCartesianVariants(attrGroup1Values, newValues, true, curr, formSku)
+    );
+  };
+
+  const handleEnableTier2 = () => {
+    setHasTier2(true);
+    const presets = contextPlaceholders.group2Presets;
+    const defaultVals = presets.length >= 2 ? presets.slice(0, 2) : (presets.length ? presets : ['Tiêu chuẩn']);
+    setAttrGroup2Name(contextPlaceholders.group2Name || 'Kích cỡ (Size)');
+    setAttrGroup2Values(defaultVals);
+    setFormVariants((curr) =>
+      generateCartesianVariants(attrGroup1Values, defaultVals, true, curr, formSku)
+    );
+  };
+
+  const handleDisableTier2 = () => {
+    setHasTier2(false);
+    setAttrGroup2Values([]);
+    setFormVariants((curr) =>
+      generateCartesianVariants(attrGroup1Values, [], false, curr, formSku)
+    );
+  };
+
+  const applyBatchValues = () => {
+    const bPrice = batchPrice === '' ? null : Math.max(0, Number(batchPrice));
+    const bBasePrice = batchBasePrice === '' ? null : Math.max(0, Number(batchBasePrice));
+    const bStock = batchStock === '' ? null : Math.max(0, Number(batchStock));
+
+    if (bPrice === null && bBasePrice === null && bStock === null) {
+      showToast('Vui lòng nhập ít nhất một chỉ số (Giá sàn, Giá bán hoặc Tồn kho) để áp dụng.');
+      return;
+    }
+    setFormVariants((curr) =>
+      curr.map((v) => ({
+        ...v,
+        ...(bBasePrice !== null ? { basePrice: bBasePrice } : {}),
+        ...(bPrice !== null ? { price: bPrice } : {}),
+        ...(bStock !== null ? { stockQuantity: bStock } : {}),
+      }))
+    );
+    showToast(`Đã áp dụng hàng loạt cho tất cả ${formVariants.length} phân loại!`);
+  };
+
   const openCreateModal = () => {
     setSaveError(null);
+    setModalStep(1);
 
     setEditingProduct(null);
-    setFormSku('PROD-' + Math.random().toString(36).substring(2, 7).toUpperCase());
-    setFormTitle('');
-    setFormBarcode('');
-    const initialCategory = storeCategory || '';
+    const initialCategory = storeCategory || products[0]?.categoryName || (products[0] as any)?.category || '';
     setFormCategory(initialCategory);
     setFormCustomCategory('');
+    let defaultSku = '';
     if (initialCategory) {
       const cat = STANDARD_CATEGORIES.find((c) => c.name === initialCategory);
-      const prefix = cat?.prefix || 'PROD';
+      const prefix = cat?.prefix || 'SP';
       const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-      setFormSku(`${prefix}-${randomCode}`);
+      defaultSku = `${prefix}-${randomCode}`;
     } else {
-      setFormSku('');
+      defaultSku = 'SP-' + Math.random().toString(36).substring(2, 7).toUpperCase();
     }
+    setFormSku(defaultSku);
+    setFormTitle('');
+    setFormBrand(storeName || '');
+    setFormTags('');
+    setFormBarcode('');
     setFormDescription('');
     setFormIngredients('');
-    setFormOrigin('');
+    setFormKeyActives('');
+    setFormShelfLife('');
+    setFormPao('');
+    setFormResponsibleEntity('');
+    setFormNotificationNumber('');
+    setUseCommonShipping(true);
+    setFormOrigin('Việt Nam');
     setFormLabelInfo('');
     setFormOriginProofLinks([]);
     setFormOriginProofImages([]);
@@ -832,22 +1537,43 @@ export default function ProductManagementPage() {
     setFormOriginalPrice('');
     setFormAffiliateEnabled(true);
     setFormStock('');
-    setFormPackageWeight('');
-    setFormPackageLength('');
-    setFormPackageWidth('');
-    setFormPackageHeight('');
+    setFormPackageWeight(250);
+    setFormPackageLength(15);
+    setFormPackageWidth(10);
+    setFormPackageHeight(5);
     setFormSampleEnabled(false);
     setFormSampleQuota('');
     setFormSpecifications(getDefaultSpecsForCategory(initialCategory));
     setFormImage('');
     setFormSubImages([]);
-    setFormVariants([]);
-                        setShowModal(true);
+
+    const catInfo = getCategoryContextPlaceholders(initialCategory);
+    const g1Name = catInfo.group1Name || 'Màu sắc';
+    const g1Presets = catInfo.group1Presets.slice(0, 2);
+    const g2Name = catInfo.group2Name || 'Kích cỡ (Size)';
+    const g2Presets = catInfo.group2Presets.slice(0, 2);
+
+    setAttrGroup1Name(g1Name);
+    setAttrGroup1Values(g1Presets.length ? g1Presets : ['Mặc định']);
+    setHasTier2(g2Presets.length > 0);
+    setAttrGroup2Name(g2Name);
+    setAttrGroup2Values(g2Presets);
+
+    const initialVariants = generateCartesianVariants(
+      g1Presets.length ? g1Presets : ['Mặc định'],
+      g2Presets,
+      g2Presets.length > 0,
+      [],
+      defaultSku,
+    );
+    setFormVariants(initialVariants);
+    setShowModal(true);
   };
 
   const closeProductModal = () => {
     setIdentityWarning(null);
     confirmedIdentity.current = '';
+    setModalStep(1);
     setShowModal(false);
     if (returnToDashboard) {
       setReturnToDashboard(false);
@@ -870,14 +1596,19 @@ export default function ProductManagementPage() {
         return next;
       }, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, isKol, setSearchParams]);
 
   const openEditModal = (p: any) => {
     setSaveError(null);
+    setModalStep(1);
     setEditingProduct(p);
     setFormSku(p.sku || '');
     setFormBarcode(p.barcode || '');
     setFormTitle(p.title || p.name);
+    const pAttrs = p.attributes && typeof p.attributes === 'object' && !Array.isArray(p.attributes) ? p.attributes : {};
+    setFormBrand(p.brand || pAttrs.brand || storeName || '');
+    setFormTags(p.tags || pAttrs.tags || '');
                     const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
     if (matchedCat) {
       setFormCategory(matchedCat.name);
@@ -913,6 +1644,11 @@ export default function ProductManagementPage() {
     }
     setFormDescription(initialDesc);
     setFormIngredients(p.ingredients || '');
+    setFormKeyActives(pAttrs.keyActives || p.keyActives || '');
+    setFormShelfLife(pAttrs.shelfLife || p.shelfLife || '');
+    setFormPao(pAttrs.pao || p.pao || '');
+    setFormResponsibleEntity(pAttrs.responsibleEntity || p.responsibleEntity || '');
+    setFormNotificationNumber(pAttrs.notificationNumber || p.notificationNumber || '');
     setFormOrigin(p.origin || '');
     setFormLabelInfo(p.labelInfo || '');
     setFormOriginProofLinks(Array.isArray(p.originProofLinks) ? p.originProofLinks : []);
@@ -932,16 +1668,78 @@ export default function ProductManagementPage() {
     setFormSampleQuota(Number(p.sampleQuota) || 0);
     setFormImage(p.imageUrl || '');
     const existingVariants = Array.isArray(p.variants) ? p.variants : [];
-    setFormVariants(existingVariants.map((variant: any) => ({
+    const mappedVariants: ProductVariantItem[] = existingVariants.map((variant: any) => ({
       id: variant.id,
       sku: variant.sku || '',
-      barcode: variant.barcode || '',
-      name: variant.name || '',
+      barcode: variant.barcode || p.barcode || '',
+      packageWeight: variant.packageWeight ?? (variant.attributes?.packageWeight ? Number(variant.attributes.packageWeight) : (p.packageWeight ?? 250)),
+      packageLength: variant.packageLength ?? (variant.attributes?.packageLength ? Number(variant.attributes.packageLength) : (p.packageLength ?? 15)),
+      packageWidth: variant.packageWidth ?? (variant.attributes?.packageWidth ? Number(variant.attributes.packageWidth) : (p.packageWidth ?? 10)),
+      packageHeight: variant.packageHeight ?? (variant.attributes?.packageHeight ? Number(variant.attributes.packageHeight) : (p.packageHeight ?? 5)),
+      origin: variant.origin ?? variant.attributes?.origin ?? (p.origin || 'Việt Nam'),
+      ingredients: variant.ingredients ?? variant.attributes?.ingredients ?? (p.ingredients || ''),
+      labelInfo: variant.labelInfo ?? variant.attributes?.labelInfo ?? (p.labelInfo || ''),
+      name: variant.name || 'Phân loại tiêu chuẩn',
       attributes: variant.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes) ? variant.attributes : {},
       price: Number(variant.price ?? p.price) || 0,
-      stockQuantity: Number(variant.stockQuantity) || 0,
+      basePrice: Number(variant.basePrice ?? p.basePrice ?? Math.round((Number(variant.price ?? p.price) || 0) * 0.6)) || 0,
+      stockQuantity: Number(variant.stockQuantity ?? p.stockQuantity ?? 0),
       imageUrl: variant.imageUrl || '',
-    })));
+    }));
+
+    if (mappedVariants.length === 0) {
+      mappedVariants.push({
+        name: 'Phân loại tiêu chuẩn',
+        sku: p.sku || '',
+        barcode: p.barcode || '',
+        imageUrl: p.imageUrl || '',
+        price: Number(p.price) || 0,
+        basePrice: Number(p.basePrice ?? Math.round((Number(p.price) || 0) * 0.6)) || 0,
+        stockQuantity: Number(p.stockQuantity ?? 0),
+        origin: p.origin || 'Việt Nam',
+        ingredients: p.ingredients || '',
+        labelInfo: p.labelInfo || '',
+        packageWeight: p.packageWeight ?? 250,
+        packageLength: p.packageLength ?? 15,
+        packageWidth: p.packageWidth ?? 10,
+        packageHeight: p.packageHeight ?? 5,
+        attributes: {},
+      });
+    }
+
+    const catInfo = getCategoryContextPlaceholders(p.category || storeCategory || '');
+    const hasComma = mappedVariants.some((v) => v.name.includes(','));
+    if (hasComma) {
+      setHasTier2(true);
+      setAttrGroup1Name(catInfo.group1Name || 'Màu sắc');
+      setAttrGroup2Name(catInfo.group2Name || 'Kích cỡ (Size)');
+      const g1Vals = Array.from(new Set(mappedVariants.map((v) => v.name.split(',')[0].trim()))).filter(Boolean);
+      const g2Vals = Array.from(new Set(mappedVariants.map((v) => v.name.split(',')[1]?.trim()))).filter(Boolean);
+      setAttrGroup1Values(g1Vals.length ? g1Vals : ['Mặc định']);
+      setAttrGroup2Values(g2Vals);
+      mappedVariants.forEach((v) => {
+        const parts = v.name.split(',');
+        v.tier1Value = parts[0]?.trim();
+        v.tier2Value = parts[1]?.trim();
+      });
+    } else {
+      setHasTier2(false);
+      setAttrGroup1Name(catInfo.group1Name || 'Phân loại');
+      const g1Vals = Array.from(new Set(mappedVariants.map((v) => v.name.trim()))).filter(Boolean);
+      setAttrGroup1Values(g1Vals.length ? g1Vals : ['Mặc định']);
+      setAttrGroup2Values([]);
+      mappedVariants.forEach((v) => {
+        v.tier1Value = v.name;
+      });
+    }
+    setFormVariants(mappedVariants);
+    const hasDifferentShipping = mappedVariants.length > 1 && mappedVariants.some((v) =>
+      Number(v.packageWeight || 0) !== Number(mappedVariants[0].packageWeight || 0) ||
+      Number(v.packageLength || 0) !== Number(mappedVariants[0].packageLength || 0) ||
+      Number(v.packageWidth || 0) !== Number(mappedVariants[0].packageWidth || 0) ||
+      Number(v.packageHeight || 0) !== Number(mappedVariants[0].packageHeight || 0)
+    );
+    setUseCommonShipping(!hasDifferentShipping);
 
     // Thu thập danh sách ảnh phụ từ mediaAssets hoặc images
     const subs: string[] = [];
@@ -1174,88 +1972,106 @@ export default function ProductManagementPage() {
     submittedForm.current = e.currentTarget as HTMLFormElement;
     setSaveError(null);
 
+    // Đồng bộ thông số từ Phân loại 1 (Loại chính) ra cấp sản phẩm
+    const primary = formVariants[0];
+    const effectiveBarcode = primary?.barcode || formBarcode || '';
+    const effectiveOrigin = primary?.origin || formOrigin || 'Việt Nam';
+    const effectiveIngredients = primary?.ingredients || formIngredients || '';
+    const effectiveLabelInfo = primary?.labelInfo || formLabelInfo || '';
+    const effectivePackageWeight = Number(
+      useCommonShipping
+        ? (formPackageWeight || primary?.packageWeight || 250)
+        : (primary?.packageWeight || formPackageWeight || 250)
+    );
+    const effectivePackageLength = Number(
+      useCommonShipping
+        ? (formPackageLength || primary?.packageLength || 15)
+        : (primary?.packageLength || formPackageLength || 15)
+    );
+    const effectivePackageWidth = Number(
+      useCommonShipping
+        ? (formPackageWidth || primary?.packageWidth || 10)
+        : (primary?.packageWidth || formPackageWidth || 10)
+    );
+    const effectivePackageHeight = Number(
+      useCommonShipping
+        ? (formPackageHeight || primary?.packageHeight || 5)
+        : (primary?.packageHeight || formPackageHeight || 5)
+    );
+    const effectiveStock = formVariants.length > 0 ? totalVariantStock : Number(formStock || 0);
+    const effectivePrice = formVariants.length > 0 && variantPriceRange.min > 0 ? variantPriceRange.min : Number(formPrice || 0);
+
+    // Chuẩn hóa danh sách phân loại gửi lên API
+    const fields = getVariantFields(formCategory);
+    const primaryAttrKey = fields[0]?.key || 'type';
+    const normalizedVariants = formVariants.map((v) => {
+      const vWeight = useCommonShipping ? effectivePackageWeight : Number(v.packageWeight || effectivePackageWeight);
+      const vLength = useCommonShipping ? effectivePackageLength : Number(v.packageLength || effectivePackageLength);
+      const vWidth = useCommonShipping ? effectivePackageWidth : Number(v.packageWidth || effectivePackageWidth);
+      const vHeight = useCommonShipping ? effectivePackageHeight : Number(v.packageHeight || effectivePackageHeight);
+
+      return {
+        id: v.id,
+        sku: v.sku.trim().toUpperCase(),
+        name: v.name.trim(),
+        barcode: v.barcode?.trim() || effectiveBarcode,
+        imageUrl: v.imageUrl?.trim() || formImage,
+        price: Number(v.price) || effectivePrice,
+        basePrice: Number(v.basePrice) || Math.round((Number(v.price) || effectivePrice) * 0.6),
+        stockQuantity: Number(v.stockQuantity) || 0,
+        attributes: {
+          [primaryAttrKey]: v.attributes?.[primaryAttrKey] || v.name.trim(),
+          origin: v.origin?.trim() || effectiveOrigin,
+          ingredients: v.ingredients?.trim() || effectiveIngredients,
+          labelInfo: v.labelInfo?.trim() || effectiveLabelInfo,
+          packageWeight: String(vWeight),
+          packageLength: String(vLength),
+          packageWidth: String(vWidth),
+          packageHeight: String(vHeight),
+          ...(formBrand.trim() ? { brand: formBrand.trim() } : {}),
+          ...(formTags.trim() ? { tags: formTags.trim() } : {}),
+          ...(formKeyActives.trim() ? { keyActives: formKeyActives.trim() } : {}),
+          ...(formShelfLife.trim() ? { shelfLife: formShelfLife.trim() } : {}),
+          ...(formPao.trim() ? { pao: formPao.trim() } : {}),
+          ...(formResponsibleEntity.trim() ? { responsibleEntity: formResponsibleEntity.trim() } : {}),
+          ...(formNotificationNumber.trim() ? { notificationNumber: formNotificationNumber.trim() } : {}),
+          ...v.attributes,
+        },
+      };
+    });
+
     let packageData: ReturnType<typeof productPackageInput>;
     try {
-      packageData = productPackageInput({ barcode: formBarcode, packageWeight: formPackageWeight,
-        packageLength: formPackageLength, packageWidth: formPackageWidth, packageHeight: formPackageHeight }, editingProduct);
+      packageData = productPackageInput({
+        barcode: effectiveBarcode,
+        packageWeight: effectivePackageWeight,
+        packageLength: effectivePackageLength,
+        packageWidth: effectivePackageWidth,
+        packageHeight: effectivePackageHeight,
+      }, editingProduct);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Thông số đóng gói không hợp lệ.');
       return;
     }
 
     if (!editingProduct) {
-      const issues: string[] = [];
-      if (!formCategory.trim()) issues.push('Chọn danh mục sản phẩm.');
-      if (formCategory === 'Danh mục khác (Tự nhập)' && !formCustomCategory.trim()) {
-        issues.push('Nhập tên danh mục tùy chỉnh.');
-      }
-      if (!formSku.trim()) issues.push('Nhập mã SKU quản lý.');
-      if (!formTitle.trim()) issues.push('Nhập tên sản phẩm.');
-      if (!formImage.trim()) issues.push('Tải ảnh bìa chính của sản phẩm.');
-      if (!Number.isFinite(Number(formPrice)) || Number(formPrice) <= 0) {
-        issues.push('Nhập giá bán sản phẩm lớn hơn 0.');
-      }
-      if (formStock === '' || !Number.isInteger(Number(formStock)) || Number(formStock) < 0) {
-        issues.push('Nhập tồn kho là số nguyên từ 0 trở lên.');
-      }
-      if (formSampleEnabled && (formSampleQuota === '' || !Number.isInteger(Number(formSampleQuota)) || Number(formSampleQuota) <= 0)) {
-        issues.push('Nếu bật cấp sản phẩm mẫu, hãy nhập tổng suất mẫu lớn hơn 0.');
-      }
+      const v1 = validateStep1();
+      const v2 = validateStep2();
+      const v3 = validateStep3();
+      const allErrors = [...v1.errors, ...v2.errors, ...v3.errors];
 
-      if (!formVariants.length) {
-        issues.push('Thêm ít nhất một phân loại SKU.');
-      } else {
-        const fields = getVariantFields(formCategory);
-        formVariants.forEach((variant, index) => {
-          const missingAttributes = fields
-            .filter((field) => !variant.attributes[field.key]?.trim())
-            .map((field) => field.label);
-          if (missingAttributes.length) {
-            issues.push(`Phân loại ${index + 1}: nhập ${missingAttributes.join(', ')}.`);
-          }
-          if (!variant.name.trim()) issues.push(`Phân loại ${index + 1}: nhập tên hiển thị.`);
-          if (!variant.sku.trim()) issues.push(`Phân loại ${index + 1}: nhập mã SKU.`);
-          if (!variant.imageUrl.trim()) issues.push(`Phân loại ${index + 1}: tải ảnh riêng.`);
-          if (!Number.isFinite(variant.price) || variant.price <= 0) {
-            issues.push(`Phân loại ${index + 1}: nhập giá bán lớn hơn 0.`);
-          }
-          if (!Number.isInteger(variant.stockQuantity) || variant.stockQuantity < 0) {
-            issues.push(`Phân loại ${index + 1}: nhập tồn kho là số nguyên từ 0 trở lên.`);
-          }
-        });
-        const variantSkus = formVariants.map((variant) => variant.sku.trim().toLocaleUpperCase('vi-VN')).filter(Boolean);
-        if (new Set(variantSkus).size !== variantSkus.length) {
-          issues.push('Mã SKU của các phân loại phải khác nhau.');
+      if (allErrors.length) {
+        if (!v1.valid) {
+          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi gửi duyệt.');
+          setModalStep(1);
+        } else if (!v2.valid) {
+          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi gửi duyệt.');
+          setModalStep(2);
+        } else {
+          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 3 trước khi gửi duyệt.');
+          setModalStep(3);
         }
-      }
-
-      if (!formIngredients.trim()) issues.push('Nhập thành phần sản phẩm.');
-      if (!formOrigin.trim()) issues.push('Nhập xuất xứ sản phẩm.');
-      if (!formLabelInfo.trim()) issues.push('Nhập thông tin nhãn mác, cảnh báo và hướng dẫn sử dụng.');
-      if (!formDescription.trim()) issues.push('Nhập mô tả chi tiết sản phẩm và điểm nổi bật.');
-
-      const originProof = [...formOriginProofLinks, ...formOriginProofImages]
-        .some((value) => value.trim());
-      if (!originProof) issues.push('Thêm ít nhất một link hoặc ảnh minh chứng nguồn gốc.');
-      const labelProof = [...formLabelProofLinks, ...formLabelProofImages]
-        .some((value) => value.trim());
-      if (!labelProof) issues.push('Thêm ít nhất một link hoặc ảnh minh chứng nhãn mác.');
-
-      const proofLinks = [...formOriginProofLinks, ...formLabelProofLinks]
-        .map((url) => url.trim()).filter(Boolean);
-      if (proofLinks.some((url) => {
-        try { return !['http:', 'https:'].includes(new URL(url).protocol); }
-        catch { return true; }
-      })) {
-        issues.push('Link minh chứng phải là địa chỉ hợp lệ bắt đầu bằng http:// hoặc https://.');
-      }
-
-      if (issues.length) {
-        setSaveError(`Hoàn thiện thông tin bắt buộc trước khi gửi duyệt:\n${issues.map((issue) => `• ${issue}`).join('\n')}`);
-        showToast('Chưa gửi sản phẩm. Vui lòng kiểm tra danh sách thông tin còn thiếu.');
-        window.requestAnimationFrame(() => {
-          document.getElementById('product-save-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
+        showToast('Chưa gửi sản phẩm. Vui lòng kiểm tra các thông tin còn thiếu.');
         return;
       }
     }
@@ -1286,8 +2102,6 @@ export default function ProductManagementPage() {
       return;
     }
 
-    const effectiveStock = formVariants.length > 0 ? totalVariantStock : Number(formStock);
-    const effectivePrice = formVariants.length > 0 && variantPriceRange.min > 0 ? variantPriceRange.min : Number(formPrice);
 
     if (effectivePrice <= 0) {
       const message = 'Giá bán lẻ phải lớn hơn 0 ₫.';
@@ -1311,8 +2125,8 @@ export default function ProductManagementPage() {
       return;
     }
 
-    if (formVariants.some((variant) => !variant.name.trim() || !variant.sku.trim() || !variant.imageUrl.trim())) {
-      const message = 'Mỗi phân loại cần có tên, SKU và ảnh riêng để ảnh hiển thị đúng khi khách chọn.';
+    if (formVariants.some((variant) => !variant.name.trim() || !variant.sku.trim() || (!variant.imageUrl?.trim() && !formImage))) {
+      const message = 'Mỗi phân loại cần có tên và mã SKU riêng (ảnh phân loại tự kế thừa từ ảnh bìa).';
       setSaveError(message);
       showToast(message);
       return;
@@ -1360,6 +2174,17 @@ export default function ProductManagementPage() {
       combinedDescription = specsBlock + combinedDescription;
     }
 
+    const extraDetails: string[] = [];
+    if (formKeyActives.trim()) extraDetails.push(`• Hoạt chất / Đặc tính nổi bật: ${formKeyActives.trim()}`);
+    if (formShelfLife.trim()) extraDetails.push(`• Hạn sử dụng: ${formShelfLife.trim()}`);
+    if (formPao.trim()) extraDetails.push(`• Hạn sau mở nắp (PAO): ${formPao.trim()}`);
+    if (formResponsibleEntity.trim()) extraDetails.push(`• Đơn vị chịu trách nhiệm: ${formResponsibleEntity.trim()}`);
+    if (formNotificationNumber.trim()) extraDetails.push(`• Số công bố / Giấy phép lưu hành: ${formNotificationNumber.trim()}`);
+    if (extraDetails.length > 0 && !combinedDescription.includes('📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:')) {
+      const extraBlock = `\n\n📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:\n` + extraDetails.join('\n') + `\n`;
+      combinedDescription = combinedDescription + extraBlock;
+    }
+
     saveLocked.current = true;
     setSavingProduct(true);
     try {
@@ -1395,7 +2220,7 @@ export default function ProductManagementPage() {
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
         });
-        const variantUpdate = await productService.syncProductVariants(editingProduct.id, formVariants);
+        const variantUpdate = await productService.syncProductVariants(editingProduct.id, normalizedVariants as any);
         showToast(productUpdate?.requiresModeration || variantUpdate?.requiresModeration
           ? 'Đã lưu thay đổi. Sản phẩm tạm ẩn và chờ Ban Quản Trị kiểm duyệt lại.'
           : 'Cập nhật sản phẩm & hoa hồng thành công!');
@@ -1423,7 +2248,7 @@ export default function ProductManagementPage() {
           sampleQuota: Number(formSampleQuota),
           imageUrl: formImage,
           subImages: formSubImages.filter(Boolean),
-          variants: formVariants,
+          variants: normalizedVariants as any,
         });
         if (!created?.product?.id && !created?.id) throw new Error('Không nhận được mã sản phẩm đã tạo');
         showToast('Đã thêm sản phẩm mới vào danh mục gian hàng!');
@@ -1970,266 +2795,271 @@ export default function ProductManagementPage() {
         isOpen={showModal}
         onClose={closeProductModal}
         icon={<Package className="h-4 w-4" />}
-        title={editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
+        title={(
+          <span className="inline-flex items-center gap-3 flex-wrap align-middle">
+            <span>{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</span>
+            {saveError && (
+              <span
+                id="product-save-error"
+                role="alert"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150 shadow-2xs"
+                title={saveError}
+              >
+                <AlertCircle size={13} className="text-rose-600 shrink-0" />
+                <span className="truncate max-w-[360px] sm:max-w-[520px] font-medium">{saveError.split('\n')[0]}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSaveError(null);
+                  }}
+                  className="ml-0.5 text-rose-400 hover:text-rose-700 hover:bg-rose-100 rounded-full p-0.5 transition cursor-pointer"
+                  title="Đóng thông báo"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+          </span>
+        )}
         maxWidth="full"
         stickyHeader
-        className="!max-w-[min(92vw,1200px)] !w-[min(92vw,1200px)] max-h-[min(88dvh,820px)] rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
-        footer={(<div className="product-editor-actions flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={closeProductModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              form="product-editor-form"
-              disabled={uploadingImage || savingProduct}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#231D15] bg-[#C59B58] hover:bg-[#B88E4F] shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {savingProduct ? (
-                <span>Đang lưu sản phẩm...</span>
-              ) : uploadingImage ? (
-                <>
-                  <UploadCloud size={14} className="animate-spin" />
-                  <span>Đang xử lý ảnh...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>{editingProduct ? 'Lưu thay đổi sản phẩm' : 'Gửi duyệt sản phẩm'}</span>
-                </>
-              )}
-            </button>
-          </div>)}
-      >
-        <form id="product-editor-form" noValidate onSubmit={handleSave} className="product-editor-form flex flex-col gap-5">
-          {saveError && (
-            (() => {
-              const missingItems = saveError.split('\n').slice(1)
-                .map((item) => item.replace(/^•\s*/, '').trim()).filter(Boolean);
-              return (
-                <div id="product-save-error" role="alert" className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-rose-900">
-                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-rose-600 ring-1 ring-rose-200">
-                    <AlertCircle className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    {missingItems.length ? (
-                      <>
-                        <p className="text-sm font-semibold leading-5">Chưa thể gửi duyệt</p>
-                        <p className="mt-0.5 text-xs leading-5 text-rose-800">
-                          Còn <strong>{missingItems.length} mục</strong> bắt buộc cần hoàn thiện.
-                        </p>
-                        <details className="mt-1.5">
-                          <summary className="w-fit cursor-pointer text-xs font-semibold text-[#8C6226] marker:text-[#B88E4F] hover:underline">
-                            Xem danh sách cần bổ sung
-                          </summary>
-                          <ul className="mt-2 grid list-disc gap-x-6 gap-y-1 border-t border-rose-200/80 pt-2 pl-5 text-xs leading-5 text-[#6B5142] sm:grid-cols-2">
-                            {missingItems.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
-                          </ul>
-                        </details>
-                      </>
-                    ) : (
-                      <p className="whitespace-pre-line text-sm font-medium leading-5">{saveError}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })()
-          )}
-          {!editingProduct && (
-            <div className="border-l-2 border-[#EEDFC6] px-2.5 py-1 text-[11px] leading-relaxed text-[#7D715E]">
-              Điền các mục có dấu <span className="text-[#DC2626]">*</span> để gửi duyệt. Cấp mẫu và hoa hồng có thể thiết lập sau.
+        className="!w-[min(94vw,1160px)] !max-w-[min(94vw,1160px)] !min-w-[min(94vw,1160px)] !h-[min(90dvh,780px)] !min-h-[min(90dvh,780px)] !max-h-[min(90dvh,780px)] transition-none rounded-3xl border border-[#EAE4D7] bg-white text-[#1A1612] shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+        bodyClassName="!p-4 sm:!p-5 [scrollbar-gutter:stable] flex-1 flex flex-col"
+        belowHeader={(
+          <div className="product-editor-stepper bg-[#FAF8F5] border-b border-[#EAE4D7] px-4 py-2 sm:px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {[
+                { step: 1, title: '1. Thông tin chung & Ảnh', sub: 'Tên, danh mục, mô tả & hình ảnh', isDone: isStep1Complete },
+                { step: 2, title: '2. Phân loại & Thông số', sub: 'Biến thể SKU, thông số & đóng gói GHN', isDone: isStep2Complete },
+                { step: 3, title: '3. Tiếp thị & Gửi duyệt', sub: 'Thù lao, mẫu thử & hồ sơ pháp lý', isDone: isStep3Complete },
+              ].map((s) => {
+                const isActive = modalStep === s.step;
+                return (
+                  <button
+                    key={s.step}
+                    type="button"
+                    onClick={() => handleStepClick(s.step as 1 | 2 | 3)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition cursor-pointer border ${
+                      isActive
+                        ? 'bg-white border-[#C59B58] ring-2 ring-[#C59B58]/20 shadow-xs'
+                        : s.isDone
+                        ? 'bg-white/90 border-[#EEDFC6] hover:border-[#C59B58] hover:bg-white'
+                        : 'bg-[#FAF8F5] border-[#EAE4D7]/70 hover:border-[#C59B58] opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition ${
+                        isActive
+                          ? 'bg-[#C59B58] text-white shadow-xs'
+                          : s.isDone
+                          ? 'bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]'
+                          : 'bg-white text-[#7D715E] border border-[#EAE4D7]'
+                      }`}
+                    >
+                      {s.isDone && !isActive ? <Check size={14} className="text-[#8C6226]" /> : s.step}
+                    </div>
+                    <div className="min-w-0">
+                      <span className={`block text-xs truncate ${isActive ? 'font-bold text-[#1A1612]' : 'font-semibold text-[#574C3D]'}`}>
+                        {s.title}
+                      </span>
+                      <span className="block text-[10.5px] text-[#7D715E] truncate">
+                        {s.sub}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
+        )}
+        footer={(
+          <div className="product-editor-actions flex flex-wrap items-center justify-between gap-3 w-full">
+            <div>
+              {modalStep > 1 && (
+                <button
+                  type="button"
+                  onClick={goToPreviousStep}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-[#574C3D] bg-white border border-[#EAE4D7] hover:bg-[#FAF8F5] hover:border-[#C59B58] transition cursor-pointer shadow-2xs"
+                >
+                  <ChevronLeft size={14} /> Quay lại: {STEP_TITLES[modalStep - 1]}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={closeProductModal}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#7D715E] bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              {modalStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={goToNextStep}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] transition cursor-pointer shadow-xs"
+                >
+                  <span>Tiếp tục: {STEP_TITLES[modalStep + 1]}</span>
+                  <ChevronRight size={14} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form="product-editor-form"
+                  disabled={uploadingImage || savingProduct}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#C59B58] hover:bg-[#B88E4F] shadow-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {savingProduct ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Đang lưu sản phẩm...</span>
+                    </>
+                  ) : uploadingImage ? (
+                    <>
+                      <UploadCloud size={14} className="animate-spin" />
+                      <span>Đang xử lý ảnh...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      <span>{editingProduct ? 'Lưu thay đổi sản phẩm' : 'Gửi duyệt sản phẩm'}</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      >
+        <form id="product-editor-form" noValidate onSubmit={handleSave} className="product-editor-form w-full flex-1 flex flex-col min-h-0">
           {editingProduct?.moderationStatus === 'REJECTED' && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
+            <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
               <strong className="block">Sản phẩm chưa được duyệt</strong>
               <span>{editingProduct.moderationReason || 'Hãy chỉnh sửa thông tin sản phẩm theo yêu cầu của Ban Quản Trị.'}</span>
               <span className="mt-1 block font-semibold">Lưu thay đổi sẽ gửi lại sản phẩm vào hàng đợi kiểm duyệt.</span>
             </div>
           )}
-          {/* Quick anchor navigation */}
-          <div className="product-editor-navigation mb-2 bg-[#FAF8F5] px-3 py-2 rounded-xl border border-[#EAE4D7] flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0" aria-label="Các phần thông tin sản phẩm">
-            {[
-              { id: 'product-section-basic', label: '1. Thông tin cơ bản' },
-              { id: 'product-section-media', label: '2. Hình ảnh' },
-              { id: 'product-section-variants', label: '3. Phân loại hàng' },
-              { id: 'product-section-shipping', label: '4. Vận chuyển' },
-              { id: 'product-section-affiliate', label: '5. Thù lao & Mẫu' },
-              { id: 'product-section-legal', label: '6. Pháp lý' },
-            ].map((sec) => (
-              <button
-                key={sec.id}
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById(sec.id);
-                  const scrollBody = document.getElementById('product-editor-form')?.parentElement;
-                  if (el && scrollBody) {
-                    scrollBody.scrollTo({
-                      top: scrollBody.scrollTop + el.getBoundingClientRect().top - scrollBody.getBoundingClientRect().top - 14,
-                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-                    });
-                  }
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-[#FBF5EB] border border-[#EAE4D7] hover:border-[#C59B58] text-[#7D715E] hover:text-[#B88E4F] whitespace-nowrap transition cursor-pointer shrink-0"
-              >
-                {sec.label}
-              </button>
-            ))}
-          </div>
 
-          {/* PERFECTLY BALANCED 2-COLUMN GRID (ROW BY ROW) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            
-            {/* ===================== HÀNG 1: THÔNG TIN CƠ BẢN ↔ HÌNH ẢNH ===================== */}
-<div id="product-section-basic" className="product-editor-section flex flex-col gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-              <div>
-                <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-3 mb-3.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                    <FolderTree className="h-4 w-4 text-[#B88E4F]" />
-                  </span>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1A1612]">1. Thông tin cơ bản</h4>
-                  </div>
-                </div>
-
-                {/* HÀNG 1: TÊN SẢN PHẨM (TOÀN CHIỀU RỘNG - ƯU TIÊN SỐ 1) */}
-                <div className="mb-3.5">
-                  <label className="text-xs font-semibold text-[#1A1612] block mb-1.5">
-                    Tên sản phẩm <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <Package className="w-3.5 h-3.5 text-[#B88E4F] absolute left-3 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={formTitle}
-                      onChange={(e) => {
-                        const title = e.target.value;
-                        setFormTitle(title);
-                        if (!formCategory && !storeCategory) {
-                          const suggestedCategory = inferCategoryFromTitle(title);
-                          if (suggestedCategory) handleCategoryChange(suggestedCategory);
-                        }
-                      }}
-                      placeholder="VD: Serum Dưỡng Trắng Mờ Thâm Vitamin C 15%"
-                      required
-                      className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-8 pr-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#B88E4F] outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                {/* HÀNG 2: MÃ SẢN PHẨM (TOÀN CHIỀU RỘNG - RÕ RÀNG & CÂN ĐỐI) */}
-                <div className="mb-3.5">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-[#1A1612]">
-                      Mã sản phẩm <span className="text-rose-500">*</span>
-                    </label>
-                    {!editingProduct && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cat = STANDARD_CATEGORIES.find((c) => c.name === formCategory);
-                          const prefix = cat?.prefix || 'SP';
-                          const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-                          setFormSku(`${prefix}-${randomCode}`);
-                        }}
-                        className="text-[11px] font-bold text-[#B88E4F] hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        <Tag size={12} /> Tạo ngẫu nhiên
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative flex items-center">
-                    <Tag className="w-3.5 h-3.5 text-[#B88E4F] absolute left-3 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={formSku}
-                      onChange={(e) => setFormSku(e.target.value.toUpperCase())}
-                      placeholder="VD: SP-SKIN-01"
-                      required
-                      className="w-full bg-white border border-[#EAE4D7] rounded-xl pl-8 pr-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#B88E4F] focus:ring-1 focus:ring-[#B88E4F]/20 outline-none transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* HÀNG 3: THẺ NHÃN HÀNG & PHÂN NGÀNH BẢO CHỨNG (TOÀN CHIỀU RỘNG - KHÔNG BỊ CẮT CHỮ) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-[#1A1612] flex items-center gap-1.5">
-                      <FolderTree className="w-3.5 h-3.5 text-[#B88E4F]" />
-                      Ngành hàng kinh doanh <span className="text-rose-500">*</span>
-                    </label>
-                    {storeCategory && (
-                      <span className="text-[10.5px] font-bold text-[#8C6B32] bg-[#FBF5EB] px-2 py-0.5 rounded-md border border-[#EEDFC6] flex items-center gap-1">
-                        <ShieldCheck size={11} className="text-[#B88E4F]" /> Phân ngành cố định
+          {/* BƯỚC 1: THÔNG TIN CHUNG & HÌNH ẢNH */}
+          {modalStep === 1 && (
+            <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-in fade-in duration-150">
+              {/* CỘT 1: THÔNG TIN CƠ BẢN (7 cột) */}
+              <div id="product-section-basic" className="lg:col-span-7 flex flex-col rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+                {/* Card Header với Ngành hàng kinh doanh đặt ngay cạnh tiêu đề */}
+                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5 shrink-0 gap-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] shrink-0">
+                      <FolderTree className="h-4 w-4 text-[#B88E4F]" />
+                    </span>
+                    <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center shrink-0">
+                      1. Thông tin cơ bản
+                      <InfoTooltip text="Tên gọi, mã SKU và mô tả chi tiết công dụng sản phẩm." />
+                    </h4>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] text-xs font-bold text-[#8C6226] shrink-0">
+                      <ShieldCheck size={13} className="text-[#B88E4F]" />
+                      <span>{storeCategory || formCategory || (activeCategory || 'Thời trang & Phụ kiện')}</span>
+                      <span className="text-[9.5px] font-semibold text-[#8C6226] bg-[#FBF5EB] px-1 py-0.2 rounded border border-[#EEDFC6]">
+                        Cố định
                       </span>
-                    )}
+                    </span>
                   </div>
-
-                  {storeCategory ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#FAF8F5] border border-[#EEDFC6] rounded-xl text-xs">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-8 h-8 rounded-lg bg-white border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0 font-bold">
-                          <ShieldCheck size={16} />
-                        </span>
-                        <div className="min-w-0">
-                          <span className="text-[11px] text-[#7D715E] block font-medium">Ngành hàng được cấp phép:</span>
-                          <strong className="text-sm font-bold text-[#1A1612] truncate block">{storeCategory}</strong>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#EAE4D7] shrink-0 shadow-2xs">
-                        <span className="text-[11px] text-[#7D715E]">Gian hàng trực thuộc:</span>
-                        <span className="text-xs font-bold text-[#8C6226]">{storeName || 'Gian hàng'}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <Select
-                      id="form-category-select"
-                      value={formCategory}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      required
-                      className="w-full text-xs"
-                    >
-                      <option value="" disabled>Chọn danh mục</option>
-                      {STANDARD_CATEGORIES.map((cat) => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
+                  <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6] shrink-0">
+                    Bước 1/3
+                  </span>
                 </div>
 
-                {formCategory === 'Danh mục khác (Tự nhập)' && (
-                  <div className="mt-3.5">
-                    <label className="text-xs font-semibold text-[#1A1612] block mb-1.5">
-                      Tên danh mục tùy chỉnh <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formCustomCategory}
-                      onChange={(e) => setFormCustomCategory(e.target.value)}
-                      placeholder="VD: Chăm sóc răng miệng"
-                      required
-                      className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#B88E4F] outline-none transition"
+                <div className="flex flex-col space-y-3 pt-3.5">
+                  {/* Hàng 1: Tên sản phẩm (col-span-8) + Mã SKU chính (col-span-4) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 shrink-0">
+                    <div className="sm:col-span-8">
+                      <label className="text-xs font-bold text-[#1A1612] block mb-1">
+                        Tên sản phẩm <span className="text-[#DC2626]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={(e) => {
+                          const title = e.target.value;
+                          setFormTitle(title);
+                          if (!formCategory && !storeCategory) {
+                            const suggestedCategory = inferCategoryFromTitle(title);
+                            if (suggestedCategory) handleCategoryChange(suggestedCategory);
+                          }
+                        }}
+                        placeholder={contextPlaceholders.titlePlaceholder}
+                        required
+                        className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-semibold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-[#1A1612]">
+                          Mã SKU chính <span className="text-[#DC2626]">*</span>
+                        </label>
+                        {!editingProduct && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cat = STANDARD_CATEGORIES.find((c) => c.name === (storeCategory || formCategory));
+                              const prefix = cat?.prefix || 'SP';
+                              const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+                              setFormSku(`${prefix}-${randomCode}`);
+                            }}
+                            className="text-[10.5px] font-bold text-[#B88E4F] hover:underline cursor-pointer"
+                            title="Tạo mã SKU ngẫu nhiên"
+                          >
+                            + Ngẫu nhiên
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={formSku}
+                        onChange={(e) => setFormSku(e.target.value.toUpperCase())}
+                        placeholder="SP-SKIN-01"
+                        required
+                        className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-mono font-bold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Mô tả chi tiết sản phẩm (chiều cao gọn gàng, không bị tràn hay cuộn) */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-1.5 shrink-0">
+                      <label className="text-xs font-bold text-[#1A1612] flex items-center">
+                        Mô tả chi tiết sản phẩm <span className="text-[#DC2626]">*</span>
+                        <InfoTooltip text="Mô tả công dụng nổi bật, giải pháp mang lại cho khách hàng, hướng dẫn sử dụng và cách bảo quản..." />
+                      </label>
+                      <span className="text-[10.5px] text-[#7D715E] font-mono">
+                        {formDescription.length} ký tự
+                      </span>
+                    </div>
+                    <textarea
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      placeholder={contextPlaceholders.descriptionPlaceholder}
+                      className="w-full h-[220px] resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#C59B58] focus:bg-white focus:ring-1 focus:ring-[#C59B58]/20"
                     />
                   </div>
-                )}
-</div>
-            </div>
+                </div>
+              </div>
 
-<div id="product-section-media" className="product-editor-section flex flex-col gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3 mb-3.5">
-                  <h4 className="text-sm font-bold text-[#1A1612] flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
+              {/* CỘT 2: HÌNH ẢNH SẢN PHẨM (5 cột) */}
+              <div id="product-section-media" className="lg:col-span-5 flex flex-col rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
+                {/* Card Header */}
+                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB]">
                       <Camera className="h-4 w-4 text-[#B88E4F]" />
                     </span>
-                    2. Hình ảnh sản phẩm
-                  </h4>
-                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
+                      2. Hình ảnh sản phẩm
+                      <InfoTooltip text="Gồm 1 ảnh bìa chính (tối đa 5MB) và tối đa 4 ảnh phụ góc chụp, tem nhãn..." />
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <input
                       id="bulk-images-input"
                       type="file"
@@ -2243,105 +3073,87 @@ export default function ProductManagementPage() {
                       type="button"
                       disabled={uploadingImage}
                       onClick={() => document.getElementById('bulk-images-input')?.click()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] text-[#574C3D] hover:text-[#B88E4F] transition cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold border border-[#EEDFC6] hover:border-[#C59B58] bg-[#FBF5EB] text-[#8C6226] hover:bg-white transition cursor-pointer shadow-2xs"
                     >
-                      <UploadCloud size={14} />
+                      <UploadCloud size={13} />
                       {uploadingSlot === 'bulk' ? 'Đang tải…' : 'Tải nhiều ảnh'}
                     </button>
                   </div>
                 </div>
 
-                {/* Ảnh chính 1:1 */}
-                <div className="mb-3.5">
-                  <label className="text-xs font-bold text-[#1A1612] block mb-1.5">
-                    Ảnh bìa chính (1:1) <span className="text-rose-500">*</span>
-                  </label>
+                <div className="flex flex-col space-y-3 pt-3.5">
+                  {/* Ảnh chính (Cố định h-[160px] rõ ràng, không bị chèn lên các ảnh phụ) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 shrink-0">
+                      <label className="text-xs font-bold text-[#1A1612] flex items-center">
+                        Ảnh bìa chính đại diện <span className="text-[#DC2626]">*</span>
+                        <InfoTooltip text="Ảnh bìa chính hiển thị nổi bật trên gian hàng và công cụ của KOL. Định dạng JPG, PNG, WEBP, tối đa 5MB." />
+                      </label>
+                    </div>
 
-                  <input
-                    id="main-image-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    disabled={uploadingImage}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void handleUploadSingleImage(file, true);
-                      event.target.value = '';
-                    }}
-                  />
+                    <input
+                      id="main-image-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploadingImage}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void handleUploadSingleImage(file, true);
+                        event.target.value = '';
+                      }}
+                    />
 
-                  <div className="relative group w-full h-44 rounded-2xl border-2 border-dashed border-[#EEDFC6] bg-[#FBF5EB] overflow-hidden flex flex-col items-center justify-center transition hover:border-[#C59B58]">
-                    {formImage ? (
-                      <>
-                        <img src={formImage} alt="Ảnh bìa chính" className="w-full h-full object-contain bg-white" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => document.getElementById('main-image-input')?.click()}
-                            className="px-3 py-1.5 rounded-xl bg-white text-xs font-bold text-[#1A1612] hover:bg-slate-100 shadow transition cursor-pointer"
-                          >
-                            Đổi ảnh
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormImage('')}
-                            className="p-1.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow transition cursor-pointer"
-                            title="Xóa ảnh chính"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={uploadingImage}
-                        onClick={() => document.getElementById('main-image-input')?.click()}
-                        className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-[#7D715E] hover:text-[#B88E4F] cursor-pointer"
-                      >
-                        <ImagePlus size={28} className="text-[#B88E4F]" />
-                        <span className="text-xs font-bold">
-                          {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Bấm để tải Ảnh bìa chính'}
-                        </span>
-                        <span className="text-[10.5px] text-[#7D715E]">Ảnh vuông ≥ 800 × 800 px · JPG, PNG, WEBP · Tối đa 5MB</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Danh sách ảnh phụ */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-[#1A1612]">
-                      Thư viện ảnh phụ ({formSubImages.length})
-                    </label>
-                    <span className="text-[10.5px] text-[#7D715E]">Tối đa {MAX_PRODUCT_GALLERY_IMAGES} ảnh phụ</span>
+                    <div className="relative group w-full h-[160px] rounded-2xl border-2 border-dashed border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden flex flex-col items-center justify-center transition hover:border-[#C59B58]">
+                      {formImage ? (
+                        <>
+                          <img src={formImage} alt="Ảnh bìa chính" className="w-full h-full object-contain p-2 bg-white" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById('main-image-input')?.click()}
+                              className="px-3 py-1.5 rounded-xl bg-white text-xs font-bold text-[#1A1612] hover:bg-[#FAF8F5] shadow transition cursor-pointer"
+                            >
+                              Đổi ảnh bìa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormImage('')}
+                              className="p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow transition cursor-pointer"
+                              title="Xóa ảnh chính"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={uploadingImage}
+                          onClick={() => document.getElementById('main-image-input')?.click()}
+                          className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#7D715E] hover:text-[#B88E4F] cursor-pointer p-4"
+                        >
+                          <div className="w-11 h-11 rounded-2xl bg-white border border-[#EEDFC6] flex items-center justify-center shadow-2xs">
+                            <ImagePlus size={22} className="text-[#B88E4F]" />
+                          </div>
+                          <div className="text-center">
+                            <span className="text-xs font-bold text-[#1A1612] block">
+                              {uploadingSlot === 'main' ? 'Đang tải lên…' : 'Bấm để tải Ảnh bìa chính'}
+                            </span>
+                          </div>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2.5 items-center">
-                    {formSubImages.map((subUrl, idx) => (
-                      <div key={idx} className="relative group w-16 h-16 rounded-xl border border-[#EAE4D7] bg-white overflow-hidden shrink-0 shadow-2xs">
-                        <img src={subUrl} alt={`Ảnh phụ ${idx + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            title="Đặt làm ảnh chính"
-                            onClick={() => handleSetAsMain(idx)}
-                            className="p-1 rounded-md bg-white text-[#B88E4F] hover:bg-[#FBF5EB]"
-                          >
-                            <Star size={11} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Xóa ảnh"
-                            onClick={() => handleRemoveSubImage(idx)}
-                            className="p-1 rounded-md bg-rose-600 text-white hover:bg-rose-700"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  {/* Thư viện 4 ảnh phụ dạng 4 Slot Grid - Tách biệt rõ ràng phía dưới */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 shrink-0">
+                      <label className="text-xs font-bold text-[#1A1612] flex items-center">
+                        Thư viện ảnh góc chụp ({formSubImages.length}/4)
+                        <InfoTooltip text="Ảnh góc nghiêng, nhãn phụ tiếng Việt, tem chống hàng giả, bảng thành phần (tối đa 4 ảnh)." />
+                      </label>
+                    </div>
 
                     <input
                       id="sub-image-new-input"
@@ -2355,576 +3167,1193 @@ export default function ProductManagementPage() {
                         event.target.value = '';
                       }}
                     />
-                    <button
-                      type="button"
-                      disabled={uploadingImage || formSubImages.length >= MAX_PRODUCT_GALLERY_IMAGES}
-                      onClick={() => document.getElementById('sub-image-new-input')?.click()}
-                      className="w-16 h-16 rounded-xl border-2 border-dashed border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-[#FBF5EB] flex flex-col items-center justify-center gap-1 text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer shrink-0"
-                    >
-                      <Plus size={16} />
-                      <span className="text-[9.5px] font-bold">Thêm ảnh</span>
-                    </button>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[0, 1, 2, 3].map((slotIdx) => {
+                        const subUrl = formSubImages[slotIdx];
+                        return (
+                          <div
+                            key={slotIdx}
+                            className="relative group h-[64px] rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] overflow-hidden flex flex-col items-center justify-center transition hover:border-[#C59B58]"
+                          >
+                            {subUrl ? (
+                              <>
+                                <img src={subUrl} alt={`Ảnh phụ ${slotIdx + 1}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    title="Đặt làm ảnh chính"
+                                    onClick={() => handleSetAsMain(slotIdx)}
+                                    className="p-1 rounded-lg bg-white text-[#B88E4F] hover:bg-[#FBF5EB] cursor-pointer"
+                                  >
+                                    <Star size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Xóa ảnh"
+                                    onClick={() => handleRemoveSubImage(slotIdx)}
+                                    className="p-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={uploadingImage}
+                                onClick={() => {
+                                  const input = document.getElementById('sub-image-new-input') as HTMLInputElement;
+                                  if (input) input.click();
+                                }}
+                                className="w-full h-full flex flex-col items-center justify-center gap-1 text-[#7D715E] hover:text-[#B88E4F] transition cursor-pointer"
+                              >
+                                <Plus size={15} className="text-[#A79B89]" />
+                                <span className="text-[9.5px] font-semibold">Ảnh #{slotIdx + 1}</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* ===================== HÀNG 1B: MÔ TẢ CHI TIẾT & THÔNG SỐ KỸ THUẬT (CÂN XỨNG 1:1) ===================== */}
-            <div className="lg:col-span-2 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-              <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-3 mb-4">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                  <FileText className="h-4 w-4 text-[#B88E4F]" />
-                </span>
-                <div>
-                  <h4 className="text-sm font-bold text-[#1A1612]">Chi tiết sản phẩm & Thông số kỹ thuật</h4>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-                {/* CỘT TRÁI (60%): MÔ TẢ SẢN PHẨM RỘNG RÃI & KHỚP CHIỀU CAO */}
-                <div className="lg:col-span-7 flex flex-col">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-[#1A1612]">
-                      Mô tả sản phẩm <span className="text-rose-500">*</span>
-                    </label>
-                    <span className="text-[11px] text-[#7D715E]">Công dụng, thành phần, cách dùng</span>
+          {/* BƯỚC 2: PHÂN LOẠI, THÔNG SỐ & VẬN CHUYỂN GHN */}
+          {modalStep === 2 && (
+            <div className="w-full space-y-5 animate-in fade-in duration-150">
+              {/* KHỐI 2.1: THIẾT LẬP BIẾN THỂ & GIÁ BÁN BẢO VỆ */}
+              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] space-y-4">
+                {/* Header 2.1 */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EAE4D7]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <Layers className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1A1612] flex items-center gap-2">
+                        2.1. Thiết lập Ma trận Phân loại 2 Cấp & Giá bán bảo vệ (2-Tier Pricing Guard)
+                        <InfoTooltip text="Tự động tổ hợp ma trận biến thể 2 cấp (Màu sắc × Kích cỡ, Mùi hương × Dung tích). Áp dụng giá sàn bảo vệ và số lượng tồn kho hàng loạt." />
+                        <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6]">
+                          {formVariants.length} phiên bản · Tổng tồn: {totalVariantStock}
+                        </span>
+                        {hasTier2 && (
+                          <span className="text-[10.5px] font-semibold text-[#8C6226] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                            2 Nhóm thuộc tính
+                          </span>
+                        )}
+                      </h4>
+                    </div>
                   </div>
-                  <AutoGrowTextarea
-                    minHeight={195}
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Mô tả công dụng, thành phần, cách dùng và bảo quản..."
-                    className="min-h-[195px] w-full flex-1 resize-none rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-xs leading-relaxed text-[#1A1612] outline-none transition focus:border-[#B88E4F] focus:bg-white"
-                  />
+
+                  <button
+                    type="button"
+                    onClick={addVariant}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>Thêm phân loại</span>
+                  </button>
                 </div>
 
-                {/* CỘT PHẢI (40%): THÔNG SỐ KỸ THUẬT GỌN GÀNG */}
-                <div className="lg:col-span-5 flex flex-col">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-[#1A1612] flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 text-[#B88E4F]" /> Thông số kỹ thuật ({formSpecifications.length})
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormSpecifications((current) => [
-                          ...current,
-                          { id: `spec-${Date.now()}`, key: '', value: '' },
-                        ]);
-                      }}
-                      className="text-xs font-bold text-[#B88E4F] hover:underline cursor-pointer shrink-0 ml-2"
-                    >
-                      + Thêm thông số
-                    </button>
+                {/* TẦNG 1: THIẾT LẬP NHÓM PHÂN LOẠI 2 CẤP (ATTRIBUTE GROUPS BUILDER) */}
+                <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/90 p-3.5 space-y-3.5">
+                  {/* NHÓM PHÂN LOẠI 1 */}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#1A1612]">Nhóm phân loại 1:</span>
+                        <input
+                          type="text"
+                          value={attrGroup1Name}
+                          onChange={(e) => setAttrGroup1Name(e.target.value)}
+                          placeholder="VD: Màu sắc, Mùi hương..."
+                          className="h-7.5 w-36 sm:w-44 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold text-[#8C6226] outline-none focus:border-[#C59B58] transition"
+                        />
+                      </div>
+
+                      {/* Gợi ý nhóm 1 theo ngành hàng */}
+                      {contextPlaceholders.group1Presets.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10.5px] font-semibold text-[#7D715E]">Gợi ý nhanh:</span>
+                          {contextPlaceholders.group1Presets.map((preset) => {
+                            const isAdded = attrGroup1Values.includes(preset);
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                disabled={isAdded}
+                                onClick={() => handleAddGroup1Value(preset)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
+                                  isAdded
+                                    ? 'bg-[#EAE4D7]/50 text-[#A79B89] cursor-not-allowed border border-transparent'
+                                    : 'bg-white border border-[#EEDFC6] text-[#574C3D] hover:bg-[#FBF5EB] hover:text-[#B88E4F] hover:border-[#C59B58]'
+                                }`}
+                                title={isAdded ? 'Đã thêm' : `Thêm "${preset}" vào Nhóm 1`}
+                              >
+                                <Plus size={10} />
+                                <span>{preset}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Danh sách Tags giá trị Nhóm 1 */}
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-[#EAE4D7] bg-white min-h-[42px]">
+                      {attrGroup1Values.map((val) => (
+                        <span
+                          key={val}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226]"
+                        >
+                          <span>{val}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveGroup1Value(val)}
+                            className="p-0.5 text-[#8C6226] hover:text-rose-600 rounded transition cursor-pointer"
+                            title={`Xóa "${val}"`}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={attrGroup1Input}
+                          onChange={(e) => setAttrGroup1Input(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddGroup1Value(attrGroup1Input);
+                            }
+                          }}
+                          placeholder="+ Thêm giá trị (nhấn Enter)..."
+                          className="h-7 w-48 text-xs text-[#1A1612] placeholder-[#A79B89] px-2 outline-none bg-transparent"
+                        />
+                        {attrGroup1Input.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => handleAddGroup1Value(attrGroup1Input)}
+                            className="px-2 py-0.5 text-[11px] font-bold bg-[#C59B58] text-white rounded hover:bg-[#B88E4F] transition cursor-pointer"
+                          >
+                            Thêm
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3.5 flex-1 flex flex-col justify-between">
-                    <div className="space-y-2 max-h-[195px] overflow-y-auto pr-1">
-                      {formSpecifications.map((spec, specIdx) => (
-                        <div key={spec.id || specIdx} className="flex items-center gap-2">
+
+                  {/* NHÓM PHÂN LOẠI 2 (KHI BẬT) HOẶC NÚT THÊM NHÓM 2 */}
+                  {hasTier2 ? (
+                    <div className="space-y-2 pt-2 border-t border-[#EAE4D7]/80">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[#1A1612]">Nhóm phân loại 2:</span>
                           <input
                             type="text"
-                            value={spec.key}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setFormSpecifications((current) =>
-                                current.map((item, idx) => (idx === specIdx ? { ...item, key: val } : item))
-                              );
-                            }}
-                            placeholder="Thuộc tính (VD: Loại da)"
-                            className="h-8 w-2/5 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                          />
-                          <input
-                            type="text"
-                            value={spec.value}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setFormSpecifications((current) =>
-                                current.map((item, idx) => (idx === specIdx ? { ...item, value: val } : item))
-                              );
-                            }}
-                            placeholder="Giá trị (VD: Da dầu mụn)"
-                            className="h-8 flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                            value={attrGroup2Name}
+                            onChange={(e) => setAttrGroup2Name(e.target.value)}
+                            placeholder="VD: Kích cỡ (Size), Dung tích..."
+                            className="h-7.5 w-36 sm:w-44 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold text-[#8C6226] outline-none focus:border-[#C59B58] transition"
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              if (formSpecifications.length <= 1) {
-                                setFormSpecifications([{ id: `spec-${Date.now()}`, key: '', value: '' }]);
-                                return;
-                              }
-                              setFormSpecifications((current) => current.filter((_, idx) => idx !== specIdx));
-                            }}
-                            className="h-8 w-8 rounded-lg text-[#7D715E] hover:text-rose-600 flex items-center justify-center shrink-0 cursor-pointer"
+                            onClick={handleDisableTier2}
+                            className="text-[11px] font-medium text-rose-600 hover:text-rose-700 hover:underline cursor-pointer ml-1"
+                            title="Hủy nhóm phân loại 2 và chuyển về 1 cấp"
                           >
-                            <X size={14} />
+                            (Xóa nhóm 2)
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* ===================== KHỐI 3: BÁN HÀNG & PHÂN LOẠI BIẾN THỂ (TOÀN CHIỀU RỘNG) ===================== */}
-            <div className="lg:col-span-2">
-              <div id="product-section-variants" className="product-editor-section flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-[#FAF8F5] p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)]">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                      <Package className="h-4 w-4 text-[#B88E4F]" />
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-[#1A1612]">
-                        3. Phân loại hàng <span className="text-rose-500">*</span>
-                      </span>
-                      {/* Realtime badges */}
-                      <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-0.5 text-xs font-bold text-[#8C6226]">
-                        Tổng tồn kho: {totalVariantStock.toLocaleString('vi-VN')}
-                      </span>
-                      {variantPriceRange.min > 0 && (
-                        <span className="rounded-full border border-[#EAE4D7] bg-white px-2.5 py-0.5 text-xs font-semibold text-[#1A1612]">
-                          {variantPriceRange.isRange
-                            ? `${variantPriceRange.min.toLocaleString('vi-VN')} ₫ - ${variantPriceRange.max.toLocaleString('vi-VN')} ₫`
-                            : `${variantPriceRange.min.toLocaleString('vi-VN')} ₫`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (!formCategory) {
-                        showToast('Vui lòng chọn danh mục ở Mục 1 trước khi thêm phân loại.');
-                        document.getElementById('form-category-select')?.focus();
-                        return;
-                      }
-                      addVariant();
-                    }}
-                    className="border-[#EEDFC6] bg-white text-[#6F4E20] hover:border-[#C59B58] hover:bg-[#FBF5EB] text-xs font-bold cursor-pointer"
-                  >
-                    <PlusCircle size={14} /> Thêm phân loại mới
-                  </Button>
-                </div>
-
-                {/* BẢNG MA TRẬN BIẾN THỂ (TABLE MATRIX) */}
-                {formVariants.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-[#D8C7A8] bg-white p-5 text-center text-xs text-[#7D715E]">
-                    <Package className="h-8 w-8 text-[#B88E4F] mx-auto mb-2 opacity-60" />
-                    <p className="font-bold text-[#1A1612] text-sm">Chưa có phân loại hàng</p>
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                      <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EEDFC6] rounded-xl px-3 py-1.5 text-left" title="Giá cơ bản tại kho (Giá sàn bảo vệ biên lãi)">
-                        <label className="text-xs font-semibold text-[#8C6226]">Giá cơ bản kho (₫):</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={formBasePrice}
-                          onChange={(e) => setFormBasePrice(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-                          placeholder="VD: 100.000"
-                          className="w-28 text-xs font-bold text-[#8C6226] bg-white border border-[#EEDFC6] rounded-lg px-2 py-1 outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-left" title="Giá niêm yết bán lẻ chính thức tại cửa hàng">
-                        <label className="text-xs font-semibold text-[#1A1612]">Giá niêm yết (₫):</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={formPrice}
-                          onChange={(e) => handlePriceChange(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-                          placeholder="VD: 200.000"
-                          className="w-28 text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] rounded-lg px-2 py-1 outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl px-3 py-1.5 text-left">
-                        <label className="text-xs font-semibold text-[#7D715E]">Tồn kho mở bán:</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={formStock}
-                          onChange={(e) => setFormStock(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-                          placeholder="VD: 100"
-                          className="w-24 text-xs font-bold text-[#1A1612] bg-white border border-[#EAE4D7] rounded-lg px-2 py-1 outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!formCategory) {
-                            showToast('Vui lòng chọn danh mục ở Mục 1 trước khi thêm phân loại.');
-                            document.getElementById('form-category-select')?.focus();
-                            return;
-                          }
-                          addVariant();
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59B58] text-[#231D15] font-bold hover:bg-[#B88E4F] transition cursor-pointer shadow-xs"
-                      >
-                        <PlusCircle size={14} /> + Thêm phân loại
-                      </button>
-                    </div>
-
-                    {Number(formPrice || 0) > 0 && (
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={15} className="text-[#B88E4F] shrink-0" />
-                          <span>Giá sàn bảo vệ biên lãi: <strong className="text-[#8C6226] font-mono">{Number(formBasePrice || Math.round(Number(formPrice) * 0.6)).toLocaleString('vi-VN')} ₫</strong> — Chặn mọi chiến dịch giảm giá dưới mức này.</span>
-                        </div>
-                        {Number(formBasePrice || 0) > 0 && Number(formPrice) >= Number(formBasePrice) && (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                            Biên độ vận hành & thù lao: +{(Number(formPrice) - Number(formBasePrice)).toLocaleString('vi-VN')} ₫ ({Math.round(((Number(formPrice) - Number(formBasePrice)) / Number(formPrice)) * 100)}%)
-                          </span>
+                        {/* Gợi ý nhóm 2 theo ngành hàng */}
+                        {contextPlaceholders.group2Presets.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10.5px] font-semibold text-[#7D715E]">Gợi ý nhanh:</span>
+                            {contextPlaceholders.group2Presets.map((preset) => {
+                              const isAdded = attrGroup2Values.includes(preset);
+                              return (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  disabled={isAdded}
+                                  onClick={() => handleAddGroup2Value(preset)}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
+                                    isAdded
+                                      ? 'bg-[#EAE4D7]/50 text-[#A79B89] cursor-not-allowed border border-transparent'
+                                      : 'bg-white border border-[#EEDFC6] text-[#574C3D] hover:bg-[#FBF5EB] hover:text-[#B88E4F] hover:border-[#C59B58]'
+                                  }`}
+                                  title={isAdded ? 'Đã thêm' : `Thêm "${preset}" vào Nhóm 2`}
+                                >
+                                  <Plus size={10} />
+                                  <span>{preset}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
-                    )}
 
+                      {/* Danh sách Tags giá trị Nhóm 2 */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-[#EAE4D7] bg-white min-h-[42px]">
+                        {attrGroup2Values.map((val) => (
+                          <span
+                            key={val}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FBF5EB] border border-[#EEDFC6] text-[#8C6226]"
+                          >
+                            <span>{val}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGroup2Value(val)}
+                              className="p-0.5 text-[#8C6226] hover:text-rose-600 rounded transition cursor-pointer"
+                              title={`Xóa "${val}"`}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={attrGroup2Input}
+                            onChange={(e) => setAttrGroup2Input(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddGroup2Value(attrGroup2Input);
+                              }
+                            }}
+                            placeholder="+ Thêm giá trị (nhấn Enter)..."
+                            className="h-7 w-48 text-xs text-[#1A1612] placeholder-[#A79B89] px-2 outline-none bg-transparent"
+                          />
+                          {attrGroup2Input.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => handleAddGroup2Value(attrGroup2Input)}
+                              className="px-2 py-0.5 text-[11px] font-bold bg-[#C59B58] text-white rounded hover:bg-[#B88E4F] transition cursor-pointer"
+                            >
+                              Thêm
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={handleEnableTier2}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-[#C59B58] bg-white hover:bg-[#FBF5EB] text-[#8C6226] text-xs font-bold transition cursor-pointer shadow-2xs"
+                      >
+                        <Plus size={13} className="text-[#C59B58]" />
+                        <span>+ Thêm nhóm phân loại 2 (Kích cỡ / Dung tích / Quy cách)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* TẦNG 2: THANH ÁP DỤNG HÀNG LOẠT (BATCH FILL BAR) */}
+                <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]/80 p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white border border-[#EEDFC6] text-[#B88E4F]">
+                      <Zap size={14} />
+                    </span>
+                    <span className="text-xs font-bold text-[#8C6226]">
+                      Áp dụng đồng loạt cho tất cả {formVariants.length} phân loại:
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={batchBasePrice}
+                      onChange={(e) => setBatchBasePrice(e.target.value)}
+                      placeholder="Giá sàn (₫)..."
+                      className="h-8 w-28 rounded-lg border border-[#EEDFC6] bg-white px-2.5 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] transition"
+                      title="Nhập giá sàn cơ bản bảo vệ để áp dụng cho mọi phân loại"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={batchPrice}
+                      onChange={(e) => setBatchPrice(e.target.value)}
+                      placeholder="Giá niêm yết (₫)..."
+                      className="h-8 w-28 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold tabular-nums text-[#1A1612] outline-none focus:border-[#C59B58] transition"
+                      title="Nhập giá niêm yết bán lẻ để áp dụng cho mọi phân loại"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={batchStock}
+                      onChange={(e) => setBatchStock(e.target.value)}
+                      placeholder="Tồn kho..."
+                      className="h-8 w-20 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold tabular-nums text-[#1A1612] outline-none focus:border-[#C59B58] transition"
+                      title="Nhập tồn kho mở bán để áp dụng cho mọi phân loại"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyBatchValues}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                    >
+                      <Zap size={13} />
+                      <span>Áp dụng tất cả</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* TẦNG 3: MA TRẬN BIẾN THỂ DẠNG BẢNG (ENTERPRISE 2-TIER VARIANT TABLE) */}
+                <div className="overflow-x-auto rounded-xl border border-[#EAE4D7] bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#FAF8F5] text-[11px] font-bold text-[#574C3D] border-b border-[#EAE4D7]">
+                      <tr>
+                        <th className="py-2.5 px-2 text-center w-12">Ảnh</th>
+                        {hasTier2 && attrGroup2Values.length > 0 ? (
+                          <>
+                            <th className="py-2.5 px-2.5 min-w-[120px]">{attrGroup1Name || 'Nhóm 1'} <span className="text-rose-500">*</span></th>
+                            <th className="py-2.5 px-2.5 min-w-[120px]">{attrGroup2Name || 'Nhóm 2'} <span className="text-rose-500">*</span></th>
+                          </>
+                        ) : (
+                          <th className="py-2.5 px-2.5 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
+                        )}
+                        <th className="py-2.5 px-2.5 min-w-[110px]">Mã SKU <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">Mã vạch EAN-13</th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá sàn (₫) <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2.5 w-20">Tồn kho <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2 text-center w-16">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EAE4D7]">
+                      {formVariants.map((variant, index) => {
+                        const isPrimary = index === 0;
+                        const isBelowFloor = Number(variant.basePrice) > 0 && Number(variant.price) < Number(variant.basePrice);
+                        const isBarcodeInvalid = Boolean(variant.barcode && variant.barcode.length !== 13);
+
+                        return (
+                          <Fragment key={variant.id || `variant-${index}`}>
+                            <tr className={`hover:bg-[#FBF5EB]/30 transition ${isPrimary ? 'bg-[#FAF8F5]/40' : ''}`}>
+                              {/* 1. Ảnh riêng SKU */}
+                              <td className="py-2 px-2 text-center align-middle">
+                                <input
+                                  id={`variant-image-input-${index}`}
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="hidden"
+                                  disabled={uploadingImage}
+                                  onChange={(event) => {
+                                    void handleUploadVariantImage(index, event.target.files?.[0]);
+                                    event.target.value = '';
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => document.getElementById(`variant-image-input-${index}`)?.click()}
+                                  className="relative group w-8.5 h-8.5 rounded-lg border border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5] hover:bg-white overflow-hidden flex items-center justify-center cursor-pointer transition mx-auto"
+                                  title="Tải ảnh riêng cho phân loại này"
+                                >
+                                  {variant.imageUrl ? (
+                                    <>
+                                      <img src={variant.imageUrl} alt="Ảnh SKU" className="w-full h-full object-cover" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                        <ImagePlus size={12} />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <ImagePlus size={14} className="text-[#A79B89] group-hover:text-[#C59B58]" />
+                                  )}
+                                </button>
+                              </td>
+
+                              {/* 2. Cột tên phân loại (1 cấp hoặc 2 cấp) */}
+                              {hasTier2 && attrGroup2Values.length > 0 ? (
+                                <>
+                                  <td className="py-2 px-2.5 align-middle">
+                                    <input
+                                      type="text"
+                                      value={variant.tier1Value || variant.name.split(',')[0]?.trim() || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormVariants((curr) =>
+                                          curr.map((v, i) => {
+                                            if (i !== index) return v;
+                                            const t2 = v.tier2Value || (v.name.includes(',') ? v.name.split(',')[1]?.trim() : '') || '';
+                                            return {
+                                              ...v,
+                                              tier1Value: val,
+                                              name: t2 ? `${val}, ${t2}` : val,
+                                            };
+                                          })
+                                        );
+                                      }}
+                                      placeholder={attrGroup1Name || 'Giá trị 1'}
+                                      className="h-8.5 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                    />
+                                  </td>
+                                  <td className="py-2 px-2.5 align-middle">
+                                    <input
+                                      type="text"
+                                      value={variant.tier2Value || (variant.name.includes(',') ? variant.name.split(',')[1]?.trim() : '') || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormVariants((curr) =>
+                                          curr.map((v, i) => {
+                                            if (i !== index) return v;
+                                            const t1 = v.tier1Value || variant.name.split(',')[0]?.trim() || '';
+                                            return {
+                                              ...v,
+                                              tier2Value: val,
+                                              name: t1 ? `${t1}, ${val}` : val,
+                                            };
+                                          })
+                                        );
+                                      }}
+                                      placeholder={attrGroup2Name || 'Giá trị 2'}
+                                      className="h-8.5 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                    />
+                                  </td>
+                                </>
+                              ) : (
+                                <td className="py-2 px-2.5 align-middle">
+                                  <input
+                                    type="text"
+                                    value={variant.name}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, name: val, tier1Value: val } : v)));
+                                    }}
+                                    placeholder={index === 0 ? 'VD: Bản Tiêu chuẩn, 50ml, Size M...' : 'VD: 100ml, Hũ 30g...'}
+                                    className="h-8.5 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-medium text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                  />
+                                </td>
+                              )}
+
+                              {/* 3. Mã SKU */}
+                              <td className="py-2 px-2.5 align-middle">
+                                <input
+                                  type="text"
+                                  value={variant.sku}
+                                  onChange={(e) => {
+                                    const val = e.target.value.toUpperCase();
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, sku: val } : v)));
+                                  }}
+                                  placeholder="SKU-01"
+                                  className="h-8.5 w-full rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-mono font-bold text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                />
+                              </td>
+
+                              {/* 4. Mã vạch EAN-13 */}
+                              <td className="py-2 px-2.5 align-middle">
+                                <input
+                                  type="text"
+                                  value={variant.barcode || ''}
+                                  inputMode="numeric"
+                                  maxLength={13}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, barcode: val } : v)));
+                                  }}
+                                  placeholder="13 số (tùy chọn)"
+                                  className={`h-8.5 w-full rounded-lg border px-2 text-xs font-mono font-medium outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
+                                    isBarcodeInvalid
+                                      ? 'border-rose-400 bg-rose-50/60 text-rose-700 ring-1 ring-rose-200'
+                                      : 'border-[#EAE4D7] bg-white text-[#1A1612]'
+                                  }`}
+                                  title={isBarcodeInvalid ? `Đã nhập ${variant.barcode?.length}/13 chữ số` : undefined}
+                                />
+                              </td>
+
+                              {/* 5. Giá sàn (₫) */}
+                              <td className="py-2 px-2.5 align-middle">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, basePrice: val as number } : v)));
+                                  }}
+                                  placeholder="100.000"
+                                  className="h-8.5 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                  title="Giá sàn tối thiểu bảo vệ, không thể giảm thấp hơn"
+                                />
+                              </td>
+
+                              {/* 6. Giá niêm yết (₫) */}
+                              <td className="py-2 px-2.5 align-middle">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={variant.price === 0 ? '' : (variant.price ?? '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, price: val as number } : v)));
+                                  }}
+                                  placeholder="200.000"
+                                  className={`h-8.5 w-full rounded-lg border px-2 text-xs font-bold tabular-nums outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
+                                    isBelowFloor
+                                      ? 'border-rose-400 bg-rose-50 text-rose-700 ring-1 ring-rose-300'
+                                      : 'border-[#EAE4D7] bg-white text-[#1A1612]'
+                                  }`}
+                                  title={isBelowFloor ? 'Cảnh báo: Giá niêm yết không được thấp hơn giá sàn bảo vệ!' : 'Giá bán niêm yết'}
+                                />
+                              </td>
+
+                              {/* 7. Tồn kho */}
+                              <td className="py-2 px-2.5 align-middle">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={variant.stockQuantity === 0 ? '' : (variant.stockQuantity ?? '')}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, stockQuantity: val as number } : v)));
+                                  }}
+                                  placeholder="100"
+                                  className="h-8.5 w-full rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-bold tabular-nums text-[#1A1612] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
+                                />
+                              </td>
+
+                              {/* 8. Thao tác */}
+                              <td className="py-2 px-2 text-center align-middle">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => cloneVariant(index)}
+                                    className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition cursor-pointer"
+                                    title="Nhân bản phân loại này"
+                                  >
+                                    <Copy size={13} />
+                                  </button>
+                                  {formVariants.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => removeVariant(index)}
+                                      className="p-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 transition cursor-pointer"
+                                      title="Xóa phân loại này"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Sub-row khi đóng gói riêng theo từng SKU (!useCommonShipping) */}
+                            {!useCommonShipping && (
+                              <tr className="bg-[#FAF8F5]/80 border-b border-[#EAE4D7]">
+                                <td colSpan={hasTier2 && attrGroup2Values.length > 0 ? 9 : 8} className="py-2 px-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-[#8C6226] flex items-center gap-1">
+                                        <Truck size={13} className="text-[#C59B58]" />
+                                        Đóng gói SKU {variant.sku || `#${index + 1}`}:
+                                      </span>
+                                      {index > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => copyShippingFromPrimary(index)}
+                                          className="text-[10.5px] font-semibold text-[#8C6226] hover:text-[#B88E4F] underline cursor-pointer"
+                                        >
+                                          Sao chép từ Loại 1
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[11px] text-[#7D715E]">Cân nặng:</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={variant.packageWeight === 0 ? '' : (variant.packageWeight ?? '')}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                                            setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, packageWeight: val as number } : v)));
+                                          }}
+                                          placeholder="250"
+                                          className="h-7 w-16 rounded border border-[#EAE4D7] bg-white px-1.5 text-xs font-bold text-center outline-none focus:border-[#B88E4F]"
+                                        />
+                                        <span className="text-[10px] text-[#7D715E]">g</span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[11px] text-[#7D715E]">D×R×C:</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={variant.packageLength === 0 ? '' : (variant.packageLength ?? '')}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                                            setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, packageLength: val as number } : v)));
+                                          }}
+                                          placeholder="15"
+                                          className="h-7 w-12 rounded border border-[#EAE4D7] bg-white px-1 text-xs font-bold text-center outline-none focus:border-[#B88E4F]"
+                                        />
+                                        <span className="text-[#7D715E]">×</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={variant.packageWidth === 0 ? '' : (variant.packageWidth ?? '')}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                                            setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, packageWidth: val as number } : v)));
+                                          }}
+                                          placeholder="10"
+                                          className="h-7 w-12 rounded border border-[#EAE4D7] bg-white px-1 text-xs font-bold text-center outline-none focus:border-[#B88E4F]"
+                                        />
+                                        <span className="text-[#7D715E]">×</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={variant.packageHeight === 0 ? '' : (variant.packageHeight ?? '')}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                                            setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, packageHeight: val as number } : v)));
+                                          }}
+                                          placeholder="5"
+                                          className="h-7 w-12 rounded border border-[#EAE4D7] bg-white px-1 text-xs font-bold text-center outline-none focus:border-[#B88E4F]"
+                                        />
+                                        <span className="text-[10px] text-[#7D715E]">cm</span>
+                                      </div>
+
+                                      {(() => {
+                                        const vActG = Number(variant.packageWeight) || 0;
+                                        const vL = Number(variant.packageLength) || 0;
+                                        const vW = Number(variant.packageWidth) || 0;
+                                        const vH = Number(variant.packageHeight) || 0;
+                                        const vConvG = vL > 0 && vW > 0 && vH > 0 ? Math.round((vL * vW * vH) / 5) : 0;
+                                        const vBillG = Math.max(vActG, vConvG);
+                                        return (
+                                          <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2 py-0.5 rounded border border-[#EEDFC6]">
+                                            Cước tính: {vBillG.toLocaleString('vi-VN')} g ({(vBillG / 1000).toFixed(2)} kg)
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Nút thêm phân loại */}
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="w-full py-2.5 rounded-xl border border-dashed border-[#EAE4D7] hover:border-[#C59B58] bg-[#FAF8F5]/60 hover:bg-[#FBF5EB] flex items-center justify-center gap-1.5 text-[#574C3D] hover:text-[#B88E4F] font-semibold text-xs transition cursor-pointer"
+                >
+                  <Plus size={13} />
+                  <span>Thêm phân loại hàng mới</span>
+                </button>
+              </div>
+
+              {/* KHỐI 2.2: THÔNG SỐ KỸ THUẬT SẢN PHẨM (SPECIFICATIONS) */}
+              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] space-y-3.5">
+                {/* Header 2.2 */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EAE4D7]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <FileText className="h-4.5 w-4.5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1A1612] flex items-center gap-2">
+                        2.2. Thông số kỹ thuật sản phẩm (Specifications)
+                        <InfoTooltip text="3 thông số cốt lõi mô tả nguồn gốc xuất xứ, hoạt chất công dụng và thời hạn sử dụng sản phẩm." />
+                        <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6]">
+                          {storeCategory || formCategory || 'Ngành hàng chuẩn'}
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 Thông số cốt lõi tinh gọn */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                      Nguồn gốc xuất xứ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formOrigin}
+                      onChange={(e) => setFormOrigin(e.target.value)}
+                      placeholder="VD: Việt Nam, Hàn Quốc, Nhật Bản..."
+                      className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                      Hoạt chất chính & Công dụng nổi bật <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formKeyActives}
+                      onChange={(e) => {
+                        setFormKeyActives(e.target.value);
+                        if (!formIngredients) setFormIngredients(e.target.value);
+                      }}
+                      placeholder={contextPlaceholders.keyActivesPlaceholder || 'VD: Niacinamide 10%, B5 2% - Mờ thâm sáng da'}
+                      className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                      Hạn sử dụng <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formShelfLife}
+                      onChange={(e) => {
+                        setFormShelfLife(e.target.value);
+                        if (!formLabelInfo) setFormLabelInfo(`Bảo quản nơi khô ráo, HSD: ${e.target.value}`);
+                      }}
+                      placeholder={contextPlaceholders.shelfLifePlaceholder || 'VD: 36 tháng kể từ NSX'}
+                      className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Tùy chọn nâng cao (Collapsible) cho catalog chuyên sâu */}
+                <details className="group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/80 overflow-hidden">
+                  <summary className="flex items-center justify-between p-3 text-xs font-bold text-[#8C6226] cursor-pointer hover:bg-[#FBF5EB] select-none transition">
+                    <span className="flex items-center gap-1.5">
+                      <SlidersHorizontal size={13} className="text-[#8C6226]" />
+                      <span>Thông số chuyên sâu bổ sung (INCI, Tem nhãn, PAO & Đơn vị chịu trách nhiệm)</span>
+                    </span>
+                    <span className="text-[10px] text-[#7D715E] font-normal group-open:hidden">Bấm để mở rộng</span>
+                  </summary>
+
+                  <div className="p-3 border-t border-[#EAE4D7] space-y-3 bg-white">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          {contextPlaceholders.ingredientsLabel || 'Bảng thành phần đầy đủ'}
+                        </label>
+                        <input
+                          type="text"
+                          value={formIngredients}
+                          onChange={(e) => setFormIngredients(e.target.value)}
+                          placeholder={contextPlaceholders.ingredientsPlaceholder}
+                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Đơn vị chịu trách nhiệm đưa SP ra thị trường
+                        </label>
+                        <input
+                          type="text"
+                          value={formResponsibleEntity}
+                          onChange={(e) => setFormResponsibleEntity(e.target.value)}
+                          placeholder={contextPlaceholders.responsibleEntityPlaceholder}
+                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Hạn sau mở nắp (PAO)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={formPao}
+                            onChange={(e) => setFormPao(e.target.value)}
+                            placeholder="PAO (VD: 12M)"
+                            className="h-8 flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                          />
+                          {['6M', '12M', '24M'].map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setFormPao(p)}
+                              className={`px-1.5 py-1 rounded text-[9.5px] font-bold border transition cursor-pointer ${
+                                formPao === p
+                                  ? 'bg-[#C59B58] text-white border-[#C59B58]'
+                                  : 'bg-[#FAF8F5] text-[#8C6226] border-[#EEDFC6] hover:bg-[#FBF5EB]'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                        Nhãn mác, Cảnh báo & Hướng dẫn bảo quản
+                      </label>
+                      <input
+                        type="text"
+                        value={formLabelInfo}
+                        onChange={(e) => setFormLabelInfo(e.target.value)}
+                        placeholder="VD: Tem phụ tiếng Việt, bảo quản nhiệt độ phòng, tránh ánh nắng..."
+                        className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                      />
+                    </div>
+
+                    {/* Thuộc tính mở rộng ngành hàng (formSpecifications) */}
+                    <div className="pt-2 border-t border-[#EAE4D7]/70 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11.5px] font-bold text-[#1A1612] flex items-center gap-1">
+                          Thuộc tính chi tiết theo ngành hàng:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newId = `spec-${Date.now()}`;
+                            setFormSpecifications((prev) => [...prev, { id: newId, key: '', value: '' }]);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold text-[#8C6226] bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] transition cursor-pointer"
+                        >
+                          <Plus size={11} />
+                          <span>Thêm thuộc tính</span>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {formSpecifications.map((spec, specIdx) => (
+                          <div key={spec.id || `spec-${specIdx}`} className="flex items-center gap-1.5 p-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
+                            <input
+                              type="text"
+                              value={spec.key}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, key: val } : s));
+                              }}
+                              placeholder="Tên thuộc tính"
+                              className="h-7 w-2/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                            />
+                            <input
+                              type="text"
+                              value={spec.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, value: val } : s));
+                              }}
+                              placeholder="Giá trị"
+                              className="h-7 w-3/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setFormSpecifications((prev) => prev.filter((_, idx) => idx !== specIdx))}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
+                              title="Xóa thuộc tính này"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              {/* KHỐI 2.3: QUY CÁCH ĐÓNG GÓI & VẬN CHUYỂN GHN */}
+              <div className="rounded-2xl border border-[#EAE4D7] bg-white p-4.5 sm:p-5 shadow-[0_2px_12px_rgba(35,29,21,0.03)] space-y-3.5">
+                {/* Header 2.3 */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EAE4D7]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <Truck className="h-4.5 w-4.5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1A1612] flex items-center gap-2">
+                        2.3. Quy cách đóng gói kiện hàng (GHN Logistics)
+                        <InfoTooltip text="Thiết lập khối lượng thực tế và kích thước kiện carton để hệ thống GHN tự động tính cước vận chuyển." />
+                        <span className="text-[11px] font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-full border border-[#EEDFC6]">
+                          GHN Express
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Segmented Switch Control */}
+                  <div className="flex items-center p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setUseCommonShipping(true)}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        useCommonShipping
+                          ? 'bg-white text-[#1A1612] shadow-2xs font-bold'
+                          : 'text-[#7D715E] hover:text-[#1A1612]'
+                      }`}
+                    >
+                      📦 Dùng chung 1 quy cách
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseCommonShipping(false)}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        !useCommonShipping
+                          ? 'bg-white text-[#1A1612] shadow-2xs font-bold'
+                          : 'text-[#7D715E] hover:text-[#1A1612]'
+                      }`}
+                    >
+                      📐 Cấu hình riêng từng SKU
+                    </button>
+                  </div>
+                </div>
+
+                {/* Khi dùng chung: 4 ô nhập kích thước & khối lượng chung */}
+                {useCommonShipping ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Cân nặng thực tế (gram) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formPackageWeight === 0 ? '' : (formPackageWeight ?? '')}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                            setFormPackageWeight(val as number);
+                          }}
+                          placeholder="250"
+                          className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Chiều Dài (cm) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formPackageLength === 0 ? '' : (formPackageLength ?? '')}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                            setFormPackageLength(val as number);
+                          }}
+                          placeholder="15"
+                          className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Chiều Rộng (cm) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formPackageWidth === 0 ? '' : (formPackageWidth ?? '')}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                            setFormPackageWidth(val as number);
+                          }}
+                          placeholder="10"
+                          className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
+                          Chiều Cao (cm) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={formPackageHeight === 0 ? '' : (formPackageHeight ?? '')}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.max(1, Number(e.target.value));
+                            setFormPackageHeight(val as number);
+                          }}
+                          placeholder="5"
+                          className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bảng tính cước GHN tự động gọn gàng (Single-line live bar) */}
+                    {(() => {
+                      const actG = Number(formPackageWeight) || 0;
+                      const l = Number(formPackageLength) || 0;
+                      const w = Number(formPackageWidth) || 0;
+                      const h = Number(formPackageHeight) || 0;
+                      const convG = l > 0 && w > 0 && h > 0 ? Math.round((l * w * h) / 5) : 0;
+                      const billG = Math.max(actG, convG);
+
+                      return (
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF8F5] border border-[#EEDFC6] text-xs">
+                          <div className="flex items-center gap-2">
+                            <Package size={14} className="text-[#C59B58]" />
+                            <span className="font-bold text-[#1A1612]">Cước GHN ước tính:</span>
+                            <span className="font-mono text-[#7D715E]">
+                              Thực tế: <strong>{actG.toLocaleString('vi-VN')}g</strong> · Thể tích ({l}×{w}×{h}/5000): <strong>{convG.toLocaleString('vi-VN')}g</strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-[#7D715E]">Khối lượng tính cước:</span>
+                            <span className="font-mono text-xs font-bold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-0.5 rounded-lg border border-[#EEDFC6]">
+                              {billG.toLocaleString('vi-VN')} g ({(billG / 1000).toFixed(2)} kg)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
-                    <table className="w-full text-left text-xs text-[#1A1612]">
-                      <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[#7D715E] font-bold text-[10.5px] uppercase tracking-wider">
-                        <tr>
-                          <th className="py-2.5 px-3 w-16 text-center">Ảnh</th>
-                          <th className="py-2.5 px-3 min-w-[180px]">Thuộc tính</th>
-                          <th className="py-2.5 px-3 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã phân loại quy cách">Mã phân loại (SKU) <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[130px]" title="Mã vạch EAN-13 vật lý gắn liền từng SKU">Mã vạch EAN-13</th>
-                          <th className="py-2.5 px-3 min-w-[110px]" title="Giá cơ bản tại kho (Giá sàn bảo vệ)">Giá cơ bản kho (₫) <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[110px]" title="Giá niêm yết bán lẻ chính thức">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-3 min-w-[100px]">Tồn kho <span className="text-rose-500">*</span></th>
-                          <th className="py-2.5 px-2 w-20 text-center">Thao tác</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#EAE4D7]">
-                        {formVariants.map((variant, index) => (
-                          <tr key={variant.id || `var-${index}`} className="hover:bg-[#FCFAF6] transition">
-                            {/* Ảnh SKU */}
-                            <td className="py-2 px-3 text-center align-middle">
-                              <input
-                                id={`variant-image-input-${index}`}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                className="hidden"
-                                disabled={uploadingImage}
-                                onChange={(event) => {
-                                  void handleUploadVariantImage(index, event.target.files?.[0]);
-                                  event.target.value = '';
-                                }}
-                              />
-                              <div
-                                onClick={() => document.getElementById(`variant-image-input-${index}`)?.click()}
-                                className="group relative h-11 w-11 mx-auto rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] overflow-hidden flex items-center justify-center cursor-pointer hover:border-[#C59B58] transition"
-                                title="Bấm để tải ảnh phân loại này"
-                              >
-                                {variant.imageUrl ? (
-                                  <>
-                                    <img src={variant.imageUrl} alt="Ảnh SKU" className="h-full w-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                                      <Camera size={13} />
-                                    </div>
-                                  </>
-                                ) : (
-                                  <Camera size={16} className="text-[#B88E4F] group-hover:scale-110 transition" />
-                                )}
-                              </div>
-                            </td>
+                  /* Khi tùy biến riêng: Hiển thị ma trận tổng hợp các phân loại */
+                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-[#8C6226]">
+                        <Package size={14} className="text-[#C59B58]" />
+                        <span>Ma trận quy cách đóng gói theo từng phân loại SKU:</span>
+                      </span>
+                      <span className="text-[11px] text-[#7D715E]">
+                        (Chỉnh sửa trực tiếp tại bảng 2.1 ở trên)
+                      </span>
+                    </div>
 
-                            {/* Thuộc tính theo danh mục */}
-                            <td className="py-2 px-3 align-middle">
-                              <div className="flex flex-col gap-1.5 min-w-[180px]">
-                                {getVariantFields(formCategory).map((field) => (
-                                  <div key={field.key} className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-semibold text-[#7D715E] w-20 shrink-0 truncate" title={field.label}>{field.label}:</span>
-                                    <input
-                                      value={variant.attributes[field.key] || ''}
-                                      onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => {
-                                        if (itemIndex !== index) return item;
-                                        const attributes = { ...item.attributes, [field.key]: event.target.value };
-                                        return { ...item, attributes, name: variantDisplayName(attributes, getVariantFields(formCategory)) || item.name };
-                                      }))}
-                                      placeholder={field.placeholder}
-                                      className="h-7 min-w-0 flex-1 rounded-md border border-[#EAE4D7] bg-[#FAF8F5] px-2 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-
-                            {/* Tên hiển thị */}
-                            <td className="py-2 px-3 align-middle">
-                              <input
-                                value={variant.name}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))}
-                                placeholder="VD: 30ml · Serum lỏng"
-                                className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                              />
-                            </td>
-
-                            {/* Mã SKU con */}
-                            <td className="py-2 px-3 align-middle">
-                              <input
-                                value={variant.sku}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sku: event.target.value.toUpperCase() } : item))}
-                                placeholder="SKU-01"
-                                className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-mono font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                              />
-                            </td>
-
-                            {/* Giá cơ bản tại kho */}
-                            <td className="py-2 px-3 align-middle">
-                              <input
-                                type="number"
-                                min={0}
-                                value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
-                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, basePrice: Number(item.basePrice) || 0 } : item))}
-                                placeholder="100.000"
-                                className="h-8 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2.5 text-xs font-bold text-[#8C6226] outline-none focus:border-[#B88E4F]"
-                              />
-                            </td>
-
-                            {/* Giá niêm yết bán lẻ */}
-                            <td className="py-2 px-3 align-middle">
-                              <input
-                                type="number"
-                                min={0}
-                                value={variant.price === 0 ? '' : (variant.price ?? '')}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
-                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: Number(item.price) || 0 } : item))}
-                                placeholder="200.000"
-                                className={`h-8 w-full rounded-lg border px-2.5 text-xs font-bold outline-none focus:border-[#B88E4F] ${
-                                  variant.basePrice && variant.price < variant.basePrice ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-[#EAE4D7] bg-white text-[#1A1612]'
-                                }`}
-                              />
-                              {variant.basePrice && variant.price < variant.basePrice && (
-                                <span className="text-[9.5px] text-rose-600 font-medium block mt-0.5">Dưới giá kho</span>
-                              )}
-                            </td>
-
-                            {/* Tồn kho */}
-                            <td className="py-2 px-3 align-middle">
-                              <input
-                                type="number"
-                                min={0}
-                                value={variant.stockQuantity === 0 ? '' : (variant.stockQuantity ?? '')}
-                                onChange={(event) => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: event.target.value === '' ? 0 : Math.max(0, Number(event.target.value)) } : item))}
-                                onBlur={() => setFormVariants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stockQuantity: Number(item.stockQuantity) || 0 } : item))}
-                                className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                              />
-                            </td>
-
-                            {/* Thao tác Nhân bản & Xóa */}
-                            <td className="py-2 px-2 text-center align-middle">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => cloneVariant(index)}
-                                  className="p-1.5 rounded-lg border border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#B88E4F] hover:border-[#C59B58] hover:bg-[#FBF5EB] transition cursor-pointer"
-                                  title="Nhân bản (Clone) phân loại này"
-                                >
-                                  <Copy size={13} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setFormVariants((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                                  className="p-1.5 rounded-lg border border-transparent text-[#7D715E] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition cursor-pointer"
-                                  title="Xóa phân loại này"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
+                    <div className="overflow-x-auto rounded-lg border border-[#EAE4D7] bg-white">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-[#FAF8F5] text-[11px] font-bold text-[#574C3D] border-b border-[#EAE4D7]">
+                          <tr>
+                            <th className="py-2 px-3">Phân loại SKU</th>
+                            <th className="py-2 px-3">Khối lượng thực</th>
+                            <th className="py-2 px-3">Kích thước (D × R × C)</th>
+                            <th className="py-2 px-3">Khối lượng quy đổi GHN</th>
+                            <th className="py-2 px-3">Khối lượng tính cước</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-[#EAE4D7]">
+                          {formVariants.map((v, i) => {
+                            const act = Number(v.packageWeight) || 0;
+                            const vl = Number(v.packageLength) || 0;
+                            const vw = Number(v.packageWidth) || 0;
+                            const vh = Number(v.packageHeight) || 0;
+                            const conv = vl > 0 && vw > 0 && vh > 0 ? Math.round((vl * vw * vh) / 5) : 0;
+                            const bill = Math.max(act, conv);
+                            return (
+                              <tr key={v.id || i} className="hover:bg-[#FBF5EB]/40 transition">
+                                <td className="py-2 px-3 font-semibold text-[#1A1612]">
+                                  {v.name || `Phân loại #${i + 1}`}
+                                  <span className="block text-[10px] font-mono text-[#7D715E]">{v.sku}</span>
+                                </td>
+                                <td className="py-2 px-3 font-mono">
+                                  {act > 0 ? `${act.toLocaleString('vi-VN')} g` : <span className="text-rose-500 font-bold">Chưa nhập</span>}
+                                </td>
+                                <td className="py-2 px-3 font-mono">
+                                  {vl > 0 && vw > 0 && vh > 0 ? `${vl} × ${vw} × ${vh} cm` : <span className="text-rose-500 font-bold">Chưa nhập</span>}
+                                </td>
+                                <td className="py-2 px-3 font-mono text-[#7D715E]">
+                                  {conv.toLocaleString('vi-VN')} g
+                                </td>
+                                <td className="py-2 px-3 font-mono font-bold text-[#8C6226]">
+                                  {bill.toLocaleString('vi-VN')} g ({(bill / 1000).toFixed(2)} kg)
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
+          )}
 
-            {/* ===================== KHỐI 4: QUY CÁCH ĐÓNG GÓI & VẬN CHUYỂN ===================== */}
-            <div id="product-section-shipping" className="product-editor-section flex flex-col justify-between gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3 mb-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                      <Truck className="h-4 w-4 text-[#B88E4F]" />
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-[#1A1612]">4. Vận chuyển & Đóng gói</h4>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-semibold text-[#8C6226] bg-[#FBF5EB] px-2.5 py-1 rounded-lg border border-[#EEDFC6]">
-                    Quy đổi cước: {formPackageLength && formPackageWidth && formPackageHeight
-                      ? `${((Number(formPackageLength) * Number(formPackageWidth) * Number(formPackageHeight)) / 5000).toFixed(2)} kg`
-                      : '0.00 kg'}
-                  </span>
-                </div>
-
-                <div className="mb-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
-                  <label htmlFor="product-ean13" className="mb-1.5 block text-xs font-semibold text-[#1A1612]">
-                    Mã vạch (Barcode) {!editingProduct && <span className="text-rose-500">*</span>}
-                  </label>
-                  <input
-                    id="product-ean13"
-                    value={formBarcode}
-                    inputMode="numeric"
-                    maxLength={13}
-                    onChange={(event) => setFormBarcode(event.target.value.replace(/\D/g, ''))}
-                    placeholder="13 chữ số trên bao bì sản phẩm"
-                    required={!editingProduct}
-                    className="h-10 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-mono font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                  />
-                  
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-[11px] font-semibold text-[#1A1612] block mb-1">
-                      Cân nặng <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min={1}
-                        value={formPackageWeight}
-                        onChange={(e) => setFormPackageWeight(e.target.value === '' ? '' : Number(e.target.value))}
-                        onBlur={() => setFormPackageWeight((prev) => prev === '' ? 250 : Math.max(1, Number(prev)))}
-                        placeholder="250"
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-6 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
-                      />
-                      <span className="absolute right-2 text-xs font-semibold text-[#7D715E]">g</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-[#1A1612] block mb-1">
-                      Chiều Dài <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min={1}
-                        value={formPackageLength}
-                        onChange={(e) => setFormPackageLength(e.target.value === '' ? '' : Number(e.target.value))}
-                        onBlur={() => setFormPackageLength((prev) => prev === '' ? 15 : Math.max(1, Number(prev)))}
-                        placeholder="15"
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
-                      />
-                      <span className="absolute right-2 text-xs font-semibold text-[#7D715E]">cm</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-[#1A1612] block mb-1">
-                      Chiều Rộng <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min={1}
-                        value={formPackageWidth}
-                        onChange={(e) => setFormPackageWidth(e.target.value === '' ? '' : Number(e.target.value))}
-                        onBlur={() => setFormPackageWidth((prev) => prev === '' ? 10 : Math.max(1, Number(prev)))}
-                        placeholder="10"
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
-                      />
-                      <span className="absolute right-2 text-xs font-semibold text-[#7D715E]">cm</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-[#1A1612] block mb-1">
-                      Chiều Cao <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min={1}
-                        value={formPackageHeight}
-                        onChange={(e) => setFormPackageHeight(e.target.value === '' ? '' : Number(e.target.value))}
-                        onBlur={() => setFormPackageHeight((prev) => prev === '' ? 5 : Math.max(1, Number(prev)))}
-                        placeholder="5"
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-2.5 pr-7 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F] focus:bg-white"
-                      />
-                      <span className="absolute right-2 text-xs font-semibold text-[#7D715E]">cm</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-            </div>
-
-            {/* ===================== KHỐI 5: CHÍNH SÁCH THÙ LAO & MẪU THỬ ===================== */}
-            <div id="product-section-affiliate" className="product-editor-section flex flex-col justify-between gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-              <div>
-                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-3 mb-3.5">
-                  <span className="flex items-center gap-2.5 text-sm font-bold text-[#1A1612]">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                      <Percent className="h-4 w-4 text-[#B88E4F]" />
-                    </span>
-                    5. Thù lao tiếp thị & Mẫu trải nghiệm
-                  </span>
-                  <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1 text-xs font-bold text-[#8C6226]">
-                    10.0% Thù lao cơ sở (Hạng Đồng)
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs flex items-center justify-between mb-3.5">
+          {/* BƯỚC 3: TIẾP THỊ & GỬI DUYỆT (THÙ LAO, MẪU & PHÁP LÝ) */}
+          {modalStep === 3 && (
+            <div className="w-full space-y-4 animate-in fade-in duration-150">
+              {/* Card 1: Chính sách thù lao & Hàng mẫu */}
+              <div id="product-section-affiliate" className="product-editor-section flex flex-col gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
+                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5">
                   <div className="flex items-center gap-2">
-                    <Coins className="h-4 w-4 text-[#B88E4F]" />
-                    <span className="text-[#1A1612] font-semibold">Ước tính thù lao cơ sở mỗi đơn:</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <Percent size={15} />
+                    </span>
+                    <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
+                      3.1. Thù lao Tiếp thị & Hàng mẫu
+                      <InfoTooltip text="Cấu hình chính sách thù lao cho CTV/KOL và cấp phát hàng mẫu trải nghiệm cam kết SLA 14 ngày." />
+                    </h4>
                   </div>
-                  <strong className="text-[#B88E4F] text-sm">
-                    {variantPriceRange.min > 0
-                      ? `${Math.round((variantPriceRange.min * 10) / 100).toLocaleString('vi-VN')} ₫`
-                      : '—'}
-                  </strong>
+                  <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-0.5 text-[11px] font-bold text-[#8C6226]">
+                    10.0% Gốc + Bậc KOL
+                  </span>
                 </div>
 
-                <div className="mb-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formAffiliateEnabled}
-                      onChange={(e) => setFormAffiliateEnabled(e.target.checked)}
-                      className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
-                    />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+                  {/* Cột 1: Ước tính thù lao */}
+                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 flex flex-col justify-between">
                     <div>
-                      <span className="text-xs font-bold text-[#1A1612] block">
-                        Kích hoạt kênh Tiếp thị Liên kết (Affiliate Network)
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs text-[#8C6226] font-bold mb-0.5">
+                        <Coins className="h-3.5 w-3.5 text-[#B88E4F]" />
+                        <span className="flex items-center">
+                          Ước tính thù lao cơ sở / đơn:
+                          <InfoTooltip text="10% cơ sở + Bậc KOL (Đồng 0%, Bạc +1%, Vàng +2%, Kim Cương +3%). Được giải ngân sau 14 ngày đối soát không đổi trả." />
+                        </span>
+                      </div>
                     </div>
-                  </label>
-                </div>
+                    <strong className="text-[#B88E4F] text-base font-mono tabular-nums block mt-1.5 font-bold">
+                      {variantPriceRange.min > 0
+                        ? `${Math.round((variantPriceRange.min * 10) / 100).toLocaleString('vi-VN')} ₫`
+                        : '—'}
+                    </strong>
+                  </div>
 
-                {/* Cấp sản phẩm mẫu cho KOL */}
-                <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formSampleEnabled}
-                      onChange={(e) => setFormSampleEnabled(e.target.checked)}
-                      className="rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-[#1A1612] block">
-                        Cấp sản phẩm mẫu cho KOL (Sample)
-                      </span>
-                    </div>
-                  </label>
-
-                  {formSampleEnabled && (
-                    <div className="mt-3 pt-3 border-t border-[#EAE4D7] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Cột 2: Kích hoạt kênh Tiếp thị liên kết */}
+                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col justify-center">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formAffiliateEnabled}
+                        onChange={(e) => setFormAffiliateEnabled(e.target.checked)}
+                        className="mt-0.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
+                      />
                       <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Số suất mẫu <span className="text-rose-500">*</span>
+                        <span className="text-xs font-bold text-[#1A1612] flex items-center">
+                          Kích hoạt Tiếp thị Liên kết (Affiliate)
+                          <InfoTooltip text="Cho phép CTV/KOL sinh Link, QR và đề xuất Deal độc quyền cho sản phẩm này." />
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Cột 3: Hàng mẫu cho KOL */}
+                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-col justify-center">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formSampleEnabled}
+                        onChange={(e) => setFormSampleEnabled(e.target.checked)}
+                        className="mt-0.5 rounded border-[#EAE4D7] text-[#C59B58] focus:ring-[#C59B58] h-4 w-4 cursor-pointer"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-bold text-[#1A1612] flex items-center">
+                          Cấp sản phẩm mẫu cho KOL (Sample)
+                          <InfoTooltip text="KOL nhận mẫu 0đ cam kết đăng bài review và trả link trong thời hạn SLA 14 ngày." />
+                        </span>
+                      </div>
+                    </label>
+
+                    {formSampleEnabled && (
+                      <div className="mt-2 pt-2 border-t border-[#EAE4D7] flex items-center gap-2">
+                        <label className="text-[11px] font-semibold text-[#1A1612] shrink-0">
+                          Số suất mẫu mở cấp:
                         </label>
                         <input
                           type="number"
@@ -2932,128 +4361,164 @@ export default function ProductManagementPage() {
                           value={formSampleQuota}
                           onChange={(e) => setFormSampleQuota(e.target.value === '' ? '' : Number(e.target.value))}
                           onBlur={() => setFormSampleQuota((prev) => prev === '' ? 20 : Math.max(1, Number(prev)))}
-                          placeholder="VD: 20"
+                          placeholder="20"
                           required={formSampleEnabled}
-                          className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
+                          className="h-7 w-20 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-mono font-bold text-[#1A1612] outline-none focus:border-[#C59B58]"
                         />
                       </div>
-                      
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
-
-            </div>
-
-            {/* ===================== KHỐI 6: PHÁP LÝ & KIỂM DUYỆT SÀN (TOÀN CHIỀU RỘNG) ===================== */}
-            <div className="lg:col-span-2">
-              <div id="product-section-legal" className="product-editor-section flex flex-col gap-4 rounded-2xl border border-[#EAE4D7] bg-white p-5 shadow-[0_2px_12px_rgba(35,29,21,0.035)]">
-                <div className="flex items-center gap-2.5 border-b border-[#EAE4D7] pb-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB]">
-                    <ShieldCheck className="h-4 w-4 text-[#B88E4F]" />
+              {/* Card 2: Hồ sơ Pháp lý & Chứng từ */}
+              <div id="product-section-legal" className="product-editor-section flex flex-col gap-3.5 rounded-2xl border border-[#EAE4D7] bg-white p-4.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)]">
+                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
+                      <ShieldCheck size={15} />
+                    </span>
+                    <h4 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
+                      3.2. Hồ sơ Pháp lý & Chứng từ Kiểm duyệt
+                      <InfoTooltip text="Mã tiếp nhận phiếu công bố và tài liệu chứng minh xuất xứ hợp pháp phục vụ kiểm duyệt." />
+                    </h4>
+                  </div>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+                    isStep3Complete
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8C6226]'
+                  }`}>
+                    {isStep3Complete ? '✓ Đã có minh chứng' : 'Tối thiểu 1 minh chứng'}
                   </span>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1A1612]">6. Pháp lý & Chứng từ</h4>
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-                  {/* Cột 1: Xuất xứ & Hóa đơn chứng từ */}
-                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 flex flex-col gap-3">
-                    <h5 className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5 border-b border-[#EAE4D7] pb-2">
-                      <ShieldCheck size={14} className="text-[#B88E4F]" />
-                      Xuất xứ & Thành phần
-                    </h5>
+                {/* Số tiếp nhận Phiếu công bố / Giấy phép lưu hành */}
+                <div className="p-3 rounded-xl border border-[#EEDFC6] bg-[#FAF8F5] space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5">
+                      <FileText size={13} className="text-[#C59B58]" />
+                      <span>Số tiếp nhận Phiếu công bố sản phẩm / Giấy phép lưu hành</span>
+                      <InfoTooltip text="Theo Thông tư 06/2011/TT-BYT & Nghị định 15/2018/NĐ-CP. Tra cứu từ Cổng Dịch vụ công Quốc gia." />
+                    </label>
+                    <span className="text-[10px] text-[#8C6226] font-semibold bg-[#FBF5EB] px-2 py-0.5 rounded-full border border-[#EEDFC6]">
+                      Cổng Dịch vụ công Quốc gia
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={formNotificationNumber}
+                    onChange={(e) => setFormNotificationNumber(e.target.value)}
+                    placeholder="VD: 12345/24/CBMP-QLD hoặc 01/2024/DKSP"
+                    className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-mono font-bold text-[#1A1612] outline-none focus:border-[#C59B58] transition"
+                  />
+                </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Xuất xứ <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formOrigin}
-                          onChange={(e) => setFormOrigin(e.target.value)}
-                          placeholder="VD: Việt Nam, Hàn Quốc..."
-                          required
-                          className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Thành phần chính <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formIngredients}
-                          onChange={(e) => setFormIngredients(e.target.value)}
-                          placeholder="VD: Nước tinh khiết, Vitamin C..."
-                          required
-                          className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <ProductEvidenceEditor
-                        title="Minh chứng xuất xứ & Hóa đơn"
-                        description="Link tra cứu hoặc ảnh hóa đơn chứng từ nguồn gốc"
-                        required
-                        inputId="origin-proof-images"
-                        links={formOriginProofLinks}
-                        images={formOriginProofImages}
-                        uploading={uploadingImage}
-                        uploadLabel={uploadingSlot === 'origin-proof' ? 'Đang tải…' : 'Tải ảnh'}
-                        onLinksChange={setFormOriginProofLinks}
-                        onImagesChange={setFormOriginProofImages}
-                        onUpload={(files) => { void handleUploadProofImages(files, 'origin'); }}
-                      />
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                  <div>
+                    <ProductEvidenceEditor
+                      title="Minh chứng xuất xứ & Hóa đơn"
+                      description="Link tra cứu hoặc ảnh hóa đơn VAT, tờ khai hải quan, chứng nhận xuất xứ"
+                      required={!isStep3Complete}
+                      inputId="origin-proof-images"
+                      links={formOriginProofLinks}
+                      images={formOriginProofImages}
+                      uploading={uploadingImage}
+                      uploadLabel={uploadingSlot === 'origin-proof' ? 'Đang tải…' : 'Tải ảnh'}
+                      onLinksChange={setFormOriginProofLinks}
+                      onImagesChange={setFormOriginProofImages}
+                      onUpload={(files) => { void handleUploadProofImages(files, 'origin'); }}
+                    />
                   </div>
 
-                  {/* Cột 2: Nhãn mác & Công bố lưu hành */}
-                  <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-4 flex flex-col gap-3">
-                    <h5 className="text-xs font-bold text-[#1A1612] flex items-center gap-1.5 border-b border-[#EAE4D7] pb-2">
-                      <ShieldCheck size={14} className="text-[#B88E4F]" />
-                      Nhãn mác & Giấy phép công bố
+                  <div>
+                    <ProductEvidenceEditor
+                      title="Minh chứng nhãn mác & Giấy phép"
+                      description="Ảnh chụp tem nhãn phụ, phiếu công bố mỹ phẩm / chứng nhận ATTP"
+                      required={!isStep3Complete}
+                      inputId="label-proof-images"
+                      links={formLabelProofLinks}
+                      images={formLabelProofImages}
+                      uploading={uploadingImage}
+                      uploadLabel={uploadingSlot === 'label-proof' ? 'Đang tải…' : 'Tải ảnh'}
+                      onLinksChange={setFormLabelProofLinks}
+                      onImagesChange={setFormLabelProofImages}
+                      onUpload={(files) => { void handleUploadProofImages(files, 'label'); }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Summary Review Card (Bảng kiểm tra tổng quan trước khi gửi) */}
+              <div className="rounded-2xl border border-[#EEDFC6] bg-white p-4.5 shadow-[0_2px_10px_rgba(35,29,21,0.03)] space-y-3">
+                <div className="flex items-center justify-between border-b border-[#EAE4D7] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-[#C59B58] text-white">
+                      <CheckCircle2 size={15} />
+                    </span>
+                    <h5 className="text-xs font-bold text-[#1A1612] uppercase tracking-wide flex items-center">
+                      Tổng quan hồ sơ gửi duyệt
+                      <InfoTooltip text="Đối soát thông số trước khi chuyển chuyên viên kiểm duyệt mở bán sản phẩm." />
                     </h5>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    isStep1Complete && isStep2Complete && isStep3Complete
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    {isStep1Complete && isStep2Complete && isStep3Complete
+                      ? '✓ Hồ sơ đầy đủ, sẵn sàng gửi duyệt'
+                      : 'Cần hoàn thiện các mục còn thiếu'}
+                  </span>
+                </div>
 
-                    <div>
-                      <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                        Nhãn mác, Cảnh báo & Hướng dẫn sử dụng <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formLabelInfo}
-                        onChange={(e) => setFormLabelInfo(e.target.value)}
-                        placeholder="Thông tin thể hiện trên bao bì, nhãn phụ, cách bảo quản..."
-                        required
-                        className="h-9 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+                  <div className="p-2.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
+                    <span className="text-[10.5px] text-[#7D715E] block font-medium">Sản phẩm & Danh mục:</span>
+                    <strong className="text-[#1A1612] truncate block mt-0.5 font-bold">{formTitle || 'Chưa đặt tên'}</strong>
+                    <span className="text-[10.5px] text-[#8C6226] block mt-0.5 font-mono">{formCategory} · SKU: {formSku}</span>
+                  </div>
 
-                    <div>
-                      <ProductEvidenceEditor
-                        title="Minh chứng nhãn mác & Giấy phép"
-                        description="Ảnh chụp nhãn phụ, phiếu công bố mỹ phẩm / chứng nhận ATTP"
-                        required
-                        inputId="label-proof-images"
-                        links={formLabelProofLinks}
-                        images={formLabelProofImages}
-                        uploading={uploadingImage}
-                        uploadLabel={uploadingSlot === 'label-proof' ? 'Đang tải…' : 'Tải ảnh'}
-                        onLinksChange={setFormLabelProofLinks}
-                        onImagesChange={setFormLabelProofImages}
-                        onUpload={(files) => { void handleUploadProofImages(files, 'label'); }}
-                      />
-                    </div>
+                  <div className="p-2.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
+                    <span className="text-[10.5px] text-[#7D715E] block font-medium">Quy cách & Giá bán:</span>
+                    <strong className="text-[#1A1612] block mt-0.5 font-bold">
+                      {formVariants.length > 0 ? `${formVariants.length} phân loại hàng` : 'Sản phẩm đơn'}
+                    </strong>
+                    <span className="text-[10.5px] text-[#8C6226] block mt-0.5 font-mono tabular-nums">
+                      {variantPriceRange.min > 0
+                        ? `Giá: ${variantPriceRange.min.toLocaleString('vi-VN')} ₫${variantPriceRange.isRange ? ' ~ ' + variantPriceRange.max.toLocaleString('vi-VN') + ' ₫' : ''}`
+                        : 'Chưa nhập giá'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
+                    <span className="text-[10.5px] text-[#7D715E] block font-medium">Đóng gói kiện GHN:</span>
+                    <strong className="text-[#1A1612] block mt-0.5 font-bold">
+                      {useCommonShipping
+                        ? (formPackageWeight ? `${formPackageWeight} g (Dùng chung)` : 'Chưa nhập g')
+                        : `${formVariants.length} phân loại riêng`}
+                    </strong>
+                    <span className="text-[10.5px] text-[#8C6226] block mt-0.5 font-mono">
+                      {useCommonShipping
+                        ? (formPackageLength && formPackageWidth && formPackageHeight
+                            ? `${formPackageLength} × ${formPackageWidth} × ${formPackageHeight} cm`
+                            : 'Chưa có kích thước')
+                        : 'Khai báo theo từng SKU'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7]">
+                    <span className="text-[10.5px] text-[#7D715E] block font-medium">Hồ sơ pháp lý:</span>
+                    <strong className="text-[#1A1612] block mt-0.5 font-bold">
+                      {isStep3Complete ? 'Đã đủ chứng từ' : 'Chưa đủ chứng từ'}
+                    </strong>
+                    <span className="text-[10.5px] text-[#8C6226] block mt-0.5 truncate font-mono" title={formNotificationNumber ? `Số CB: ${formNotificationNumber}` : undefined}>
+                      {formNotificationNumber ? `Số CB: ${formNotificationNumber}` : `${formOriginProofLinks.length + formOriginProofImages.length} xuất xứ · ${formLabelProofLinks.length + formLabelProofImages.length} nhãn mác`}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-
-          </div>
+          )}
 
         </form>
       </Modal>

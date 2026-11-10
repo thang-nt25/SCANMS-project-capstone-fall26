@@ -38,10 +38,11 @@ export class AffiliateDealsController {
     @CurrentUser('role') role: UserRole,
     @CurrentUser('id') userId: string,
     @Query('page') page?: string,
+    @Query('tab') tab?: string,
   ) {
     return page !== undefined
-      ? this.service.getProposalPage('exceptions', userId, role, Number(page))
-      : this.service.listExceptions(role);
+      ? this.service.getProposalPage('exceptions', userId, role, Number(page), undefined, tab)
+      : this.service.listExceptions(role, tab);
   }
 
   @Patch(':id/exception-review')

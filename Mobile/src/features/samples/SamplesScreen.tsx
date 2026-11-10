@@ -1,3 +1,4 @@
+import { CompactEvidence as Evidence } from "../common/CompactEvidence";
 import { useState } from "react";
 import { Switch, Text, View } from "react-native";
 import { z } from "zod";
@@ -10,16 +11,13 @@ import {
   ErrorNotice,
   Field,
   Screen,
-  Title,
 } from "../../components/ui";
 import { ProductSchema, statusText } from "../../types/contracts";
 import { AddressSchema, type Address } from "../customer/customer-contracts";
 import {
-  CommandForm,
-  DetailLine,
-  Evidence,
+  CompactCommandForm as CommandForm,
   QueryState,
-  Sheet,
+  CompactSheet as Sheet,
   https,
   required,
   useActor,
@@ -27,6 +25,12 @@ import {
   useResource,
   type CommandFormSpec,
 } from "../common/shared";
+import {
+  FilterTabs,
+  InfoLine as DetailLine,
+  RecordRow,
+  SectionTitle as Title,
+} from "../../components/RecordList";
 import { SelectField } from "../common/SelectField";
 import { useMobileNavigation } from "../../navigation/router";
 import { validateInput } from "../../utils/validate-input";
@@ -147,8 +151,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
     />
   );
   return (
-    <Screen scroll>
-      <Title>Hàng mẫu & video review</Title>
+    <Screen scroll compact>
       {koc && (
         <>
           <QueryState
@@ -169,7 +172,7 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
           />
         </>
       )}
-      <SelectField
+      <FilterTabs
         label="Trạng thái"
         value={status}
         options={[
@@ -190,23 +193,21 @@ export function SamplesScreen({ params }: { params: BusinessParams }) {
       {result.data
         ?.filter((item) => !status || item.status === status)
         .map((item) => (
-          <Card key={item.id}>
-            <Caption>{item.product.store.name}</Caption>
-            <Title>{item.product.title}</Title>
-            <Badge>{statusText(item.status)}</Badge>
-            <Caption>{item.collaborator?.fullName}</Caption>
-            {item.deadlineAt && (
-              <Caption>
-                Hạn nộp video:{" "}
-                {new Date(item.deadlineAt).toLocaleString("vi-VN")}
-              </Caption>
-            )}
-            <Button
-              title="Xem và xử lý"
-              secondary
-              onPress={() => setSelected(item.id)}
-            />
-          </Card>
+          <RecordRow
+            key={item.id}
+            title={item.product.title}
+            subtitle={[item.product.store.name, item.collaborator?.fullName]
+              .filter(Boolean)
+              .join(" · ")}
+            meta={
+              item.deadlineAt
+                ? `Hạn video: ${new Date(item.deadlineAt).toLocaleString("vi-VN")}`
+                : undefined
+            }
+            badge={statusText(item.status)}
+            icon="package"
+            onPress={() => setSelected(item.id)}
+          />
         ))}
       {row && (
         <Sheet

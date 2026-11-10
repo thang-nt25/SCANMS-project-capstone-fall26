@@ -107,7 +107,7 @@ integration('Prisma seeder on isolated PostgreSQL', () => {
     await prisma.$transaction((tx) => verifyPersistedCounts(tx, target, data));
     expect(await prisma.productReview.count()).toBe(66);
     expect(await prisma.coupon.count()).toBe(70);
-    expect(await prisma.customerSavedCoupon.count()).toBe(30);
+    expect(await prisma.customerSavedCoupon.count()).toBe(0);
     expect(await prisma.stackedVoucherRedemption.count()).toBe(
       data.stackedRedemptions.length,
     );

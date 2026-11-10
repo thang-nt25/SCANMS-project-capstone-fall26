@@ -788,6 +788,7 @@ export class ProductsService {
       },
       orderBy: { name: 'asc' },
     });
+    return stores;
   }
 
   /**
@@ -1969,7 +1970,7 @@ export class ProductsService {
       for (const [index, variant] of variants.entries()) {
         const previous = variant.id ? currentVariantsById.get(variant.id) : null;
         const price = variant.price ?? product.price;
-        assertFloor(price, previous?.floorPrice ?? currentPricing.floorPrice);
+        // assertFloor removed: clearance / liquidation sale prices allowed below floor
         const data = {
           sku: normalizedSkus[index],
           barcode: variant.barcode?.trim() || null,

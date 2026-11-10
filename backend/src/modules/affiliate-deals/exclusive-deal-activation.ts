@@ -209,11 +209,7 @@ export async function decideExclusiveDeal(
               const price = Number(p.price || 0);
               if (floor > 0 && price > 0) {
                 const discountedPrice = price * (1 - terms.discountPercent / 100);
-                if (discountedPrice < floor) {
-                  throw new BadRequestException(
-                    `Mã ưu đãi Deal (${terms.discountPercent}%) làm giá bán sản phẩm "${p.title}" giảm xuống ${Math.round(discountedPrice).toLocaleString('vi-VN')}₫, vi phạm Giá sàn thấp nhất (${Math.round(floor).toLocaleString('vi-VN')}₫).`,
-                  );
-                }
+                // Clearance / liquidation allowed without hard blocking
               }
             }
           }

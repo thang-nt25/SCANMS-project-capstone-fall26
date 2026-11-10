@@ -344,15 +344,12 @@ export default function KycApprovalPage() {
       )}
 
       {/* Header Chuẩn Mực */}
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-4 sm:px-6 shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 sm:px-6 shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid place-items-center shrink-0 w-11 h-11 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
+          <span className="grid place-items-center shrink-0 w-10 h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
             <ShieldCheck className="h-5 w-5" />
           </span>
-          <div>
-            <h1 className="m-0 text-base font-bold tracking-tight text-[#1A1612]">Thẩm định Đối tác</h1>
-            <p className="mb-0 mt-0.5 text-xs text-[#7D715E]">Xác minh danh tính và kênh truyền thông đối tác tiếp thị.</p>
-          </div>
+          <h1 className="m-0 text-base font-bold tracking-tight text-[#1A1612]">Duyệt hồ sơ đối tác</h1>
         </div>
         <div className="flex items-center gap-2">
           <button

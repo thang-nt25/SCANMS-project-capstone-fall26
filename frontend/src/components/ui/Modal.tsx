@@ -14,6 +14,7 @@ export interface ModalProps {
   belowHeader?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  bodyClassName?: string;
   stickyHeader?: boolean;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
 }
@@ -28,6 +29,7 @@ export function Modal({
   belowHeader,
   footer,
   className,
+  bodyClassName,
   stickyHeader = false,
   maxWidth = 'md',
 }: ModalProps) {
@@ -98,7 +100,7 @@ export function Modal({
 
         {belowHeader}
         {stickyHeader ? (
-          <div className="modal-scroll-body min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-7">
+          <div className={cn('modal-scroll-body min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-7', bodyClassName)}>
             {children}
           </div>
         ) : children}

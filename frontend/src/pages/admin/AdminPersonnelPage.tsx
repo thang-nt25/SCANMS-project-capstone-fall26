@@ -32,7 +32,7 @@ import {
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { toast } from '../../utils/toast';
 
-const LOCKED_CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',
   'Thời trang & May mặc thể thao năng động',
   'Dinh dưỡng, Thảo mộc & Sức khỏe thiên nhiên',
@@ -50,6 +50,16 @@ export const AdminPersonnelPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'SHOP_MANAGER' | 'SYSTEM_MANAGER' | 'SYSTEM_ADMIN' | 'STORES'>('ALL');
   const [storeStatusFilter, setStoreStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'>('ALL');
+
+  // 4 Core Locked Categories (Enterprise In-House Governance)
+  const categories = DEFAULT_CATEGORIES;
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('scanms_all_categories');
+      localStorage.removeItem('scanms_custom_categories');
+    } catch {}
+  }, []);
 
   // Shipping addresses (Provinces / Districts / Wards - standard like Customer address)
   const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
@@ -73,7 +83,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [storeForm, setStoreForm] = useState({
     name: '',
-    categoryName: LOCKED_CATEGORIES[0],
+    categoryName: DEFAULT_CATEGORIES[0],
     description: '',
     logoUrl: '',
     defaultCommissionRate: 10,
@@ -274,7 +284,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const handleOpenCreateStoreModal = () => {
     setStoreForm({
       name: '',
-      categoryName: LOCKED_CATEGORIES[0],
+      categoryName: DEFAULT_CATEGORIES[0],
       description: '',
       logoUrl: '',
       defaultCommissionRate: 10,
@@ -360,7 +370,7 @@ export const AdminPersonnelPage: React.FC = () => {
     const wh = store.returnWarehouse || {};
     setEditStoreForm({
       name: store.name,
-      categoryName: store.categoryName || LOCKED_CATEGORIES[0],
+      categoryName: store.categoryName || DEFAULT_CATEGORIES[0],
       description: store.description || '',
       logoUrl: store.logoUrl || '',
       warehouseName: wh.warehouseName || `Kho Tổng ${store.name}`,
@@ -1187,22 +1197,18 @@ export const AdminPersonnelPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Locked Category Selection */}
+                  {/* Category Selection (Locked to 4 In-House Core Categories) */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold text-[#1A1612]">
-                        Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
-                      </label>
-                      <span className="text-[10px] text-[#8F682E] font-medium bg-[#FBF5EB] px-1.5 py-0.5 rounded border border-[#EEDFC6]">
-                        Khóa danh mục
-                      </span>
-                    </div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                    </label>
+
                     <select
                       value={storeForm.categoryName}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
                     >
-                      {LOCKED_CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
@@ -1564,6 +1570,25 @@ export const AdminPersonnelPage: React.FC = () => {
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, name: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
                         />
+                      </div>
+
+                      {/* Edit Store Category (Locked to 4 In-House Core Categories) */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                        </label>
+
+                        <select
+                          value={editStoreForm.categoryName}
+                          onChange={(e) => setEditStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                        >
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div>

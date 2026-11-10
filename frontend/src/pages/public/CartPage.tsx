@@ -1,30 +1,8 @@
-import api from '@/services/api';
-import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ShoppingBag,
-  Store,
-  Trash2,
-  Minus,
-  Plus,
-  Ticket,
-  ChevronRight,
-  ArrowRight,
-  RefreshCw,
-  ShieldCheck,
-  Truck,
-  MessageCircle,
-  Tag,
-} from 'lucide-react';
+import { ShoppingBag, Store, Trash2, Minus, Plus, ChevronRight, ArrowRight, RefreshCw, ShieldCheck, Truck, MessageCircle } from 'lucide-react';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
-import {
-  ScanmsCheckoutVoucherModal,
-  type AppliedShopVoucher,
-  type AppliedPlatformVoucher,
-} from '@/components/checkout/ScanmsCheckoutVoucherModal';
-import type { CheckoutShopGroup } from '@/components/checkout/CheckoutItemsSection';
 import { useScanmsChat } from '@/context/ScanmsChatContext';
 import { toast } from '@/utils/toast';
 
@@ -51,115 +29,21 @@ export default function CartPage() {
 
   const { openChat } = useScanmsChat();
 
-  // Voucher state for 3-tier discounts
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [appliedShopCoupons, setAppliedShopCoupons] = useState<Record<string, AppliedShopVoucher>>({});
-  const [appliedPlatformCoupon, setAppliedPlatformCoupon] = useState<AppliedPlatformVoucher | null>(null);
-  const [appliedShippingCoupon, setAppliedShippingCoupon] = useState<AppliedPlatformVoucher | null>(null);
-  const [partnerCodeInput, setPartnerCodeInput] = useState('');
-  const [partnerCodeLoading, setPartnerCodeLoading] = useState(false);
-  const [partnerCodeMsg, setPartnerCodeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const handleApplyPartnerCodeCart = async () => {
-    const code = partnerCodeInput.trim().toUpperCase();
-    if (!code) return;
-    if (selected.length === 0) {
-      setPartnerCodeMsg({ type: 'error', text: 'Vui lòng chọn ít nhất 1 sản phẩm để áp dụng mã.' });
-      return;
-    }
-    const targetStoreId = selected[0]?.store?.id;
-    if (!targetStoreId) {
-      setPartnerCodeMsg({ type: 'error', text: 'Không xác định được gian hàng sản phẩm.' });
-      return;
-    }
-    setPartnerCodeLoading(true);
-    setPartnerCodeMsg(null);
-    try {
-      const res: any = await api.post('/coupons/validate', {
-        code,
-        storeId: targetStoreId,
-        items: selected.filter((i) => i.store?.id === targetStoreId).map((i) => ({
-          productId: i.productId,
-          variantId: i.variantId,
-          quantity: i.quantity,
-          unitPrice: i.price,
-        })),
-        hasProductDiscount: false,
-        hasShopVoucher: false,
-        hasPlatformVoucher: false,
-      });
-      const data = res?.data || res;
-      setAppliedShopCoupons({
-        [targetStoreId]: {
-          storeId: targetStoreId,
-          code: data.code || code,
-          discountAmount: Number(data.discountAmount) || 0,
-          discountType: data.discountType,
-        },
-      });
-      setPartnerCodeMsg({
-        type: 'success',
-        text: `Đã áp dụng mã ${data.code || code}, giảm ${formatMoney(Number(data.discountAmount) || 0)}.`,
-      });
-    } catch (err: any) {
-      setPartnerCodeMsg({
-        type: 'error',
-        text: err?.response?.data?.message || 'Mã ưu đãi không hợp lệ cho sản phẩm đã chọn.',
-      });
-    } finally {
-      setPartnerCodeLoading(false);
-    }
-  };
-
-  const handleRemovePartnerCodeCart = (storeId: string) => {
-    setAppliedShopCoupons((prev) => {
-      const next = { ...prev };
-      delete next[storeId];
-      return next;
-    });
-    setPartnerCodeInput('');
-    setPartnerCodeMsg(null);
-  };
-
   const selectable = cart.filter(isAvailable);
   const selected = selectable.filter((item) => selectedItemIds.includes(item.cartItemId));
   const allSelected = selectable.length > 0 && selectable.every((item) => selectedItemIds.includes(item.cartItemId));
   const selectedCount = selected.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = selected.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Convert cart grouped by store to the CheckoutShopGroup[] format
-  const itemsGroupedByShop: CheckoutShopGroup[] = useMemo(() => {
-    return groupedByStore.map((g) => {
-      const items = g.items.filter((item) => isAvailable(item) && selectedItemIds.includes(item.cartItemId));
-      const groupSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      return {
-        store: {
-          id: g.storeId,
-          name: g.storeName,
-          slug: g.storeSlug,
-        },
-        items,
-        subtotal: groupSubtotal,
-      };
-    });
-  }, [groupedByStore, selectedItemIds]);
-
-  // Calculate discounts
-  const totalShopDiscount = useMemo(() => {
-    return Object.values(appliedShopCoupons).reduce((sum, v) => sum + (v.discountAmount || 0), 0);
-  }, [appliedShopCoupons]);
-
-  const platformDiscount = appliedPlatformCoupon ? appliedPlatformCoupon.discountAmount : 0;
-  const shippingDiscount = appliedShippingCoupon ? appliedShippingCoupon.discountAmount : 0;
-  const estimatedTotal = Math.max(0, subtotal - totalShopDiscount - platformDiscount);
+  const estimatedTotal = subtotal;
 
   const handleCheckout = () => {
     if (selected.length === 0) {
       toast.error('Vui lòng chọn ít nhất 1 sản phẩm để tiếp tục thanh toán');
       return;
     }
-    // Pass selected items and any preselected coupon to the checkout flow
-    startCheckout(selected, Object.values(appliedShopCoupons)[0]?.code || appliedPlatformCoupon?.code || '');
+    // Codes are entered explicitly in checkout; the cart does not preselect one.
+    startCheckout(selected);
   };
 
   const handleRemoveSelected = () => {
@@ -279,7 +163,7 @@ export default function CartPage() {
                   (item) => isAvailable(item) && selectedItemIds.includes(item.cartItemId),
                 );
                 const groupSubtotal = groupSelected.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                const shopVoucher = appliedShopCoupons[group.storeId];
+
 
                 return (
                   <div
@@ -489,24 +373,7 @@ export default function CartPage() {
 
                     {/* Shop Footer: Shop Voucher Row & Subtotal */}
                     <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/80 border-t border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      {/* Shop Voucher Trigger */}
-                      <div
-                        onClick={() => setIsVoucherModalOpen(true)}
-                        className="flex items-center gap-2 cursor-pointer group"
-                      >
-                        <Ticket size={16} className="text-[#B88E4F]" />
-                        <span className="font-semibold text-[#1A1612]">Voucher của Shop:</span>
-                        {shopVoucher ? (
-                          <span className="px-2 py-0.5 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] font-bold">
-                            {shopVoucher.code} (-{formatMoney(shopVoucher.discountAmount)})
-                          </span>
-                        ) : (
-                          <span className="text-[#B88E4F] group-hover:underline font-medium">
-                            Chọn hoặc nhập mã ưu đãi của Shop &gt;
-                          </span>
-                        )}
-                      </div>
-
+                      <p className="text-[#7D715E]">Nhập mã KOL ở bước thanh toán.</p>
                       {/* Store Subtotal */}
                       {group.items.length > 0 && (
                         <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
@@ -551,84 +418,7 @@ export default function CartPage() {
 
             {/* Right Column: Sticky Summary & SCANMS Voucher Card (4 cols) */}
             <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
-              {/* Mã Ưu Đãi Đối Tác Tiếp Thị */}
-              <div className="bg-white rounded-2xl border border-[#EAE4D7] p-4 sm:p-5 shadow-xs">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                    <Tag size={16} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[#1A1612]">Mã Ưu Đãi Đối Tác Tiếp Thị</h3>
-                    <p className="text-[11px] text-[#7D715E]">Nhập mã giới thiệu của KOC để nhận giá ưu đãi</p>
-                  </div>
-                </div>
-
-                {totalShopDiscount > 0 ? (
-                  <div className="p-3 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] space-y-2">
-                    {Object.values(appliedShopCoupons).map((v) => (
-                      <div key={v.code} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-[#8F682E] bg-white px-2 py-0.5 rounded border border-[#EEDFC6]">
-                            {v.code}
-                          </span>
-                          <span className="font-semibold text-[#1A1612]">
-                            -{formatMoney(v.discountAmount)}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePartnerCodeCart(v.storeId)}
-                          className="text-[11px] font-semibold text-[#7D715E] hover:text-[#DC2626] transition-colors cursor-pointer"
-                        >
-                          Hủy mã
-                        </button>
-                      </div>
-                    ))}
-                    <p className="text-[11px] text-[#7D715E]">
-                      Đã ghi nhận ưu đãi từ Đối tác tiếp thị.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={partnerCodeInput}
-                        onChange={(e) => setPartnerCodeInput(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            void handleApplyPartnerCodeCart();
-                          }
-                        }}
-                        placeholder="Nhập mã (Ví dụ: THAONHI16)"
-                        className="flex-1 min-h-[38px] px-3 py-1.5 text-xs font-mono font-bold uppercase rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] text-[#1A1612] placeholder:text-[#7D715E] placeholder:font-sans placeholder:normal-case focus:bg-white focus:border-[#C59B58] focus:outline-none transition-all"
-                      />
-                      <button
-                        type="button"
-                        disabled={partnerCodeLoading || !partnerCodeInput.trim()}
-                        onClick={() => void handleApplyPartnerCodeCart()}
-                        className="min-h-[38px] px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        {partnerCodeLoading ? 'Đang kiểm tra...' : 'Áp dụng'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {partnerCodeMsg && (
-                  <div
-                    className={`mt-2.5 text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
-                      partnerCodeMsg.type === 'error'
-                        ? 'bg-red-50 text-[#DC2626] border border-red-200'
-                        : 'bg-[#FBF5EB] text-[#8C6B32] border border-[#EEDFC6]'
-                    }`}
-                  >
-                    <span>{partnerCodeMsg.text}</span>
-                  </div>
-                )}
-              </div>
-
+              <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm text-[#7D715E]">Bạn có mã độc quyền KOL? Hãy sao chép và tự nhập ở bước thanh toán.</p>
               {/* Order Summary & Checkout Card */}
               <div className="bg-white rounded-2xl border border-[#EAE4D7] p-5 sm:p-6 shadow-xs">
                 <h3 className="font-bold text-base text-[#1A1612] mb-4">
@@ -643,32 +433,11 @@ export default function CartPage() {
                     </strong>
                   </div>
 
-                  {totalShopDiscount > 0 && (
-                    <div className="flex items-center justify-between text-[#B88E4F]">
-                      <span>Ưu đãi đối tác tiếp thị:</span>
-                      <strong className="font-bold tabular-nums">
-                        -{formatMoney(totalShopDiscount)}
-                      </strong>
-                    </div>
-                  )}
 
-                  {platformDiscount > 0 && (
-                    <div className="flex items-center justify-between text-[#B88E4F]">
-                      <span>Mã giảm giá sàn SCANMS:</span>
-                      <strong className="font-bold tabular-nums">
-                        -{formatMoney(platformDiscount)}
-                      </strong>
-                    </div>
-                  )}
 
-                  {shippingDiscount > 0 && (
-                    <div className="flex items-center justify-between text-[#059669]">
-                      <span>Ước tính giảm phí vận chuyển:</span>
-                      <strong className="font-bold tabular-nums">
-                        -{formatMoney(shippingDiscount)}
-                      </strong>
-                    </div>
-                  )}
+
+
+
 
                   <div className="pt-3 border-t border-[#EAE4D7] flex items-baseline justify-between">
                     <div>
@@ -718,34 +487,7 @@ export default function CartPage() {
       </main>
 
       {/* SCANMS Checkout Voucher Modal Component */}
-      <ScanmsCheckoutVoucherModal
-        isOpen={isVoucherModalOpen}
-        onClose={() => setIsVoucherModalOpen(false)}
-        groups={itemsGroupedByShop}
-        shippingFeesByStore={{}}
-        totalShippingFee={30000} // Cước tạm tính giả định cho trang giỏ hàng
-        rawGoodsSubtotal={subtotal}
-        appliedShopCoupons={appliedShopCoupons}
-        appliedPlatformCoupon={appliedPlatformCoupon}
-        appliedShippingCoupon={appliedShippingCoupon}
-        onApplyShopCoupon={(storeId, v) => {
-          setAppliedShopCoupons((prev) => ({
-            ...prev,
-            [storeId]: { ...v, storeId },
-          }));
-        }}
-        onRemoveShopCoupon={(storeId) => {
-          setAppliedShopCoupons((prev) => {
-            const next = { ...prev };
-            delete next[storeId];
-            return next;
-          });
-        }}
-        onApplyPlatformCoupon={(v) => setAppliedPlatformCoupon(v)}
-        onRemovePlatformCoupon={() => setAppliedPlatformCoupon(null)}
-        onApplyShippingCoupon={(v) => setAppliedShippingCoupon(v)}
-        onRemoveShippingCoupon={() => setAppliedShippingCoupon(null)}
-      />
+
     </div>
   );
 }
