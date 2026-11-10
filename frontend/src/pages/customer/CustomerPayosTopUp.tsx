@@ -190,7 +190,7 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
           )}
           {!open && (
             <>
-              <div className="grid grid-cols-6 gap-[7px] @max-[599px]:grid-cols-3" role="group" aria-label="Chọn mức nạp payOS">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" role="group" aria-label="Chọn mức nạp payOS">
                 {AMOUNTS.map((value) => (
                   <button
                     type="button"
@@ -198,23 +198,30 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                     disabled={creating}
                     aria-pressed={amount === String(value)}
                     onClick={() => setAmount(String(value))}
-                    className={`min-h-[34px] p-[6px] border rounded-[7px] text-[12px] font-[550] cursor-pointer transition ${amount === String(value) ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]' : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FBF5EB]'}`}
+                    className={`min-h-[38px] p-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition ${
+                      amount === String(value)
+                        ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] font-bold shadow-2xs'
+                        : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]'
+                    }`}
                   >
                     +{value >= 1000000 ? value / 1000000 + 'M' : value / 1000 + 'k'}
                   </button>
                 ))}
               </div>
-              <div className="flex items-end gap-[10px] @max-[599px]:flex-wrap">
-                <div className="flex-1 min-w-0 @max-[599px]:basis-full">
-                  <div className="flex items-center justify-between mb-[5px]">
-                    <label htmlFor="cw-payos-amount" className="block text-[11px] text-[#7D715E]">Số tiền muốn nạp</label>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="cw-payos-amount" className="block text-xs font-semibold text-[#1A1612]">
+                      Số tiền muốn nạp
+                    </label>
                     {amount && Number(amount) > 0 && (
-                      <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
+                      <span className="text-xs font-bold font-mono text-[#B88E4F]">
                         {Number(amount).toLocaleString('vi-VN')} ₫
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-[8px] min-h-[38px] px-[12px] border border-[#EAE4D7] focus-within:border-[#C59B58] rounded-[8px] bg-white">
+                  <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
                     <input
                       id="cw-payos-amount"
                       type="text"
@@ -222,22 +229,28 @@ export default function CustomerPayosTopUp({ onPaid }: { onPaid: () => Promise<v
                       value={amount}
                       disabled={creating}
                       onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550] font-mono"
+                      placeholder="Tối thiểu 10.000"
+                      className="w-full min-w-0 py-2 border-0 outline-none bg-transparent text-[#1A1612] text-base font-bold font-mono"
                     />
-                    <span className="text-[11px] text-[#7D715E]">VNĐ</span>
+                    <span className="text-xs font-bold text-[#7D715E] shrink-0">VNĐ</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[16px] py-[8px] border border-[#C59B58] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[600] cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait @max-[599px]:w-full @max-[599px]:text-[12px]"
-                  disabled={creating || available !== true}
-                  onClick={() => void createPayment()}
-                >
-                  {creating ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
-                  {creating ? 'Đang tạo mã...' : 'Tạo mã payOS'}
-                </button>
+
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <p className="text-[11px] text-[#7D715E] leading-normal m-0">
+                    Quét mã bằng ứng dụng ngân hàng để nạp tiền vào ví SCANMS.
+                  </p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait active:scale-[0.96] transition-all shrink-0"
+                    disabled={creating || available !== true}
+                    onClick={() => void createPayment()}
+                  >
+                    {creating ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
+                    <span>{creating ? 'Đang tạo mã...' : 'Tạo mã payOS'}</span>
+                  </button>
+                </div>
               </div>
-              <p className="m-0 text-[11px] text-[#7D715E]">Quét mã bằng ứng dụng ngân hàng để nạp tiền vào ví SCANMS.</p>
             </>
           )}
           {open && request && (

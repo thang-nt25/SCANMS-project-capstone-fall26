@@ -269,7 +269,7 @@ export class MailService {
         <div style="max-width: 500px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border: 1px solid #EAE4D7; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
           <div style="text-align: center; margin-bottom: 24px;">
             <span style="font-size: 26px; font-weight: 800; color: #C59B58; letter-spacing: -0.5px;">SCANMS</span>
-            <p style="font-size: 11px; color: #7D715E; margin: 4px 0 0; text-transform: uppercase; font-weight: 700;">Sàn Thương Mại Tiếp Thị Liên Kết</p>
+            <p style="font-size: 11px; color: #7D715E; margin: 4px 0 0; text-transform: uppercase; font-weight: 700;">Hệ Thống Quản Lý Tiếp Thị Liên Kết & Bán Hàng</p>
           </div>
 
           <h2 style="font-size: 18px; font-weight: 800; margin: 0 0 12px; text-align: center; color: #1A1612;">

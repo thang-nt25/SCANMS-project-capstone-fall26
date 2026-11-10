@@ -41,8 +41,8 @@ export function AccountConnectionStatus({ userId }: { userId?: string }) {
   const status = connection.userId === userId && connection.token === token ? connection.status : 'connecting';
   const label = status === 'online' ? 'Đang trực tuyến' : status === 'offline' ? 'Mất kết nối' : 'Đang kết nối';
   return <span role="status" aria-label={`Trạng thái tài khoản: ${label}`} data-account-connection={status}
-    className="hidden h-8 items-center gap-2 whitespace-nowrap rounded-[10px] border border-[#EAE4D7] bg-white px-2.5 text-[11px] font-medium text-[#7D715E] lg:inline-flex">
-    <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${status === 'online' ? 'bg-[#059669]' : status === 'connecting' ? 'bg-[#C59B58]' : 'bg-[#7D715E]'}`} />
+    className="hidden h-7 items-center gap-2 whitespace-nowrap rounded-full border border-[#D4AF70]/25 bg-black/25 backdrop-blur-xs px-3 text-[11px] font-medium text-[#EEDFC6] transition-colors lg:inline-flex shadow-xs">
+    <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${status === 'online' ? 'bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.6)]' : status === 'connecting' ? 'bg-[#C59B58] animate-pulse' : 'bg-[#8C7A65]'}`} />
     <span>{label}</span>
   </span>;
 }

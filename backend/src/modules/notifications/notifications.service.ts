@@ -176,20 +176,11 @@ export class NotificationsService {
           data: [
             {
               userId,
-              title: 'Chào mừng bạn đến với Hệ sinh thái Sàn SCANMS',
+              title: 'Chào mừng bạn đến với Hệ thống SCANMS',
               message:
-                'Khám phá hàng ngàn sản phẩm chính hãng với ưu đãi độc quyền trên Sàn thương mại tiếp thị liên kết SCANMS!',
+                'Khám phá các sản phẩm chính hãng từ các nhãn hàng trực thuộc hệ thống tiếp thị liên kết SCANMS!',
               type: 'WELCOME',
               data: { actionUrl: '/marketplace' },
-              isRead: false,
-            },
-            {
-              userId,
-              title: 'Tặng bạn voucher giảm giá 15% bạn mới',
-              message:
-                'Chào mừng bạn đến với SCANMS! Khám phá kho voucher để nhận các ưu đãi hấp dẫn áp dụng toàn sàn.',
-              type: 'PROMOTION_COUPON',
-              data: { discount: '15%', actionUrl: '/customer/vouchers' },
               isRead: false,
             },
           ],

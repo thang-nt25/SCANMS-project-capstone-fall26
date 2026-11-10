@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, ExternalLink, Minus, Plus, RefreshCw, ShoppingBag, Store, Ticket, Trash2, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, Minus, Plus, RefreshCw, ShoppingBag, Store, Trash2, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import type { CartItem } from '@/types/cart.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -178,28 +178,7 @@ export function CartDrawer() {
             <div><span>Tạm tính tiền hàng</span><small>Đã chọn {selectedCount} sản phẩm</small></div>
             <strong aria-live="polite" aria-atomic="true">{formatMoney(subtotal)}</strong>
           </div>
-          {/* Thanh SCANMS Voucher Trigger Banner */}
-          <div
-            onClick={() => {
-              if (selected.length > 0) {
-                startCheckout(selected);
-              }
-            }}
-            className={`my-3 p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between transition-colors ${
-              selected.length > 0 ? 'cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB]' : 'opacity-60 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
-                <Ticket size={14} />
-              </div>
-              <span className="text-xs font-bold text-[#1A1612]">SCANMS Voucher</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
-              <span>Chọn hoặc nhập mã</span>
-              <ChevronRight size={14} />
-            </div>
-          </div>
+          <div className="my-3" />
 
           <button type="button" onClick={() => startCheckout(selected)} disabled={!selected.length || isValidatingStock || isCartSyncing} className="scanms-cart-primary scanms-cart-checkout inline-flex items-center justify-center gap-[12px] min-h-[48px] p-[12px_20px] border border-[#C59B58] rounded-[12px] bg-[color:#FBF5EB] text-[color:#1A1612]! [font-family:inherit]! text-[13px] font-[700] [transition:background_150ms,border-color_150ms] w-full border-[#EEDFC6] [&:hover:not(:disabled)]:bg-[color:#F3EFE6] [&:hover:not(:disabled)]:border-[#C59B58] [&:disabled]:bg-[color:#F3EFE6] [&:disabled]:border-[#EAE4D7] [&:disabled]:text-[color:#7D715E]!">
             <span>Thanh toán{selectedCount > 0 ? ` (${selectedCount})` : ''}</span><ArrowRight size={18} />
