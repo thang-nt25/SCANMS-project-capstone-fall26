@@ -118,7 +118,7 @@ export function CustomerOrderSummary({
               <Store size={15} />
             </span>
             <strong className="truncate font-bold text-sm text-[#1A1612]">
-              {order.store?.name || 'Gian hàng chính hãng'}
+              {order.store?.name || 'Cửa hàng chính hãng'}
             </strong>
             <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
               Chính hãng

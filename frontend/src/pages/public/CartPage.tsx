@@ -371,13 +371,11 @@ export default function CartPage() {
                       })}
                     </div>
 
-                    {/* Shop Footer: Shop Voucher Row & Subtotal */}
-                    <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/80 border-t border-[#EAE4D7] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <p className="text-[#7D715E]">Nhập mã KOL ở bước thanh toán.</p>
-                      {/* Store Subtotal */}
+                    {/* Shop Footer: Store Subtotal */}
+                    <div className="p-3.5 sm:p-4 bg-[#FAF8F5]/80 border-t border-[#EAE4D7] flex items-center justify-end gap-2 text-xs">
                       {group.items.length > 0 && (
-                        <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
-                          <span className="text-[#7D715E]">Tiền hàng gian hàng đã chọn:</span>
+                        <div className="flex items-center justify-end gap-2 text-xs">
+                          <span className="text-[#7D715E]">Tiền hàng cửa hàng đã chọn:</span>
                           <strong className="text-sm font-bold text-[#1A1612] tabular-nums">
                             {formatMoney(groupSubtotal)}
                           </strong>

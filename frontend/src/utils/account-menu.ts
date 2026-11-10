@@ -20,7 +20,7 @@ export function accountMenuLinks(role: Role, accountRole: Role = role): AccountM
     );
   } else if (role === 'SHOP_MANAGER') {
     items.push(
-      { label: 'Tổng quan gian hàng', to: '/merchant/dashboard', icon: 'shop' },
+      { label: 'Tổng quan cửa hàng', to: '/merchant/dashboard', icon: 'shop' },
       { label: 'Quản lý đơn hàng', to: '/merchant/orders', icon: 'orders' },
       { label: 'Quản lý sản phẩm', to: '/merchant/products', icon: 'products' },
       { label: 'Tin nhắn đối tác', to: '/merchant/kol-hub?tab=messages', icon: 'chat' },
@@ -34,7 +34,7 @@ export function accountMenuLinks(role: Role, accountRole: Role = role): AccountM
     );
   }
   const profile = role === 'CUSTOMER' ? '/customer/profile' : role === 'COLLABORATOR' ? '/collaborator/profile' : role === 'SHOP_MANAGER' ? '/merchant/settings' : '/admin/profile';
-  if (role !== 'CUSTOMER') items.push({ label: role === 'SHOP_MANAGER' ? 'Cài đặt gian hàng' : 'Hồ sơ & cài đặt', to: profile, icon: 'settings' });
+  if (role !== 'CUSTOMER') items.push({ label: role === 'SHOP_MANAGER' ? 'Cài đặt cửa hàng' : 'Hồ sơ & cài đặt', to: profile, icon: 'settings' });
   if (role !== 'CUSTOMER') items.push({ label: 'Đơn mua cá nhân', to: '/customer/orders', icon: 'orders' });
   // Buyers keep a route back to their own workspace without exposing a role switcher.
   if (role === 'CUSTOMER' && accountRole !== 'CUSTOMER') {

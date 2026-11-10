@@ -32,7 +32,7 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
       logoUrl: assetUrl(context, logo),
       description:
         SHOP_DESCRIPTIONS[shop.slug] ||
-        `${shop.name} — Thương hiệu chính hãng hợp tác cùng sàn SCANMS, cam kết nguồn gốc xuất xứ và dịch vụ hậu mãi uy tín.`,
+        `${shop.name} — Thương hiệu chính hãng trực thuộc hệ thống SCANMS, cam kết nguồn gốc xuất xứ và dịch vụ hậu mãi uy tín.`,
       defaultCommissionRate: 10,
       isActive: true,
       isVerified: true,
@@ -89,7 +89,7 @@ export function buildCatalog(data: SeedDataset, context: SeedContext): void {
         description:
           template.description ||
           `<h2>${template.name}</h2><p>Bộ dữ liệu minh họa Capstone SCANMS chuẩn TMĐT.</p>`,
-        labelInfo: `EAN-13 nội bộ demo: ${demoEan13(index)}. Kiện mẫu: 500 g; 20 × 15 × 10 cm. Chứng nhận công bố sản phẩm đạt chuẩn sàn SCANMS.`,
+        labelInfo: `EAN-13 nội bộ demo: ${demoEan13(index)}. Kiện mẫu: 500 g; 20 × 15 × 10 cm. Chứng nhận công bố sản phẩm đạt chuẩn hệ thống SCANMS.`,
         barcode: demoEan13(index),
         packageWeight: 500,
         packageLength: 20,

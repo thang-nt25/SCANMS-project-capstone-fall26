@@ -234,7 +234,7 @@ export const CustomerWalletTab: React.FC = () => {
                           Số tiền muốn nạp
                         </label>
                         {customAmount && Number(customAmount) > 0 && (
-                          <span className="text-xs font-bold font-mono text-[#B88E4F]">
+                          <span className="text-xs font-bold tabular-nums text-[#B88E4F]">
                             {Number(customAmount).toLocaleString('vi-VN')} ₫
                           </span>
                         )}
@@ -247,7 +247,7 @@ export const CustomerWalletTab: React.FC = () => {
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
                           placeholder="Tối thiểu 10.000"
-                          className="w-full min-w-0 py-2 border-0 outline-none bg-transparent text-[#1A1612] text-base font-bold font-mono"
+                          className="w-full min-w-0 py-2 border-0 outline-none bg-transparent text-[#1A1612] text-base font-bold tabular-nums"
                         />
                         <span className="text-xs font-bold text-[#7D715E] shrink-0">VNĐ</span>
                       </div>
@@ -350,13 +350,13 @@ export const CustomerWalletTab: React.FC = () => {
                             {badge.label}
                           </span>
                         </td>
-                        <td className={`p-[11px_16px] text-right font-mono font-semibold whitespace-nowrap ${badge.colorClass}`}>
+                        <td className={`p-[11px_16px] text-right tabular-nums font-semibold whitespace-nowrap ${badge.colorClass}`}>
                           {badge.sign}{formatMoney(Math.abs(Number(entry.amount)))}
                         </td>
-                        <td className="p-[11px_16px] text-right text-[#7D715E] font-mono whitespace-nowrap">
+                        <td className="p-[11px_16px] text-right text-[#7D715E] tabular-nums whitespace-nowrap">
                           {formatMoney(Number(entry.balanceBefore))}
                         </td>
-                        <td className="p-[11px_16px] text-right text-[#1A1612] font-mono font-semibold whitespace-nowrap">
+                        <td className="p-[11px_16px] text-right text-[#1A1612] tabular-nums font-semibold whitespace-nowrap">
                           {formatMoney(Number(entry.balanceAfter))}
                         </td>
                         <td className="p-[11px_16px] text-center text-[#7D715E] font-mono text-[11px]">

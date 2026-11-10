@@ -152,7 +152,7 @@ export class AdminPayoutsController {
           request.collaborator.collaboratorProfile?.taxCode ?? null,
         kycStatus:
           request.collaborator.collaboratorProfile?.kycStatus ?? 'UNVERIFIED',
-        storeName: request.store?.name ?? 'Sàn SCANMS (Toàn hệ thống)',
+        storeName: request.store?.name ?? 'Toàn hệ thống SCANMS',
         approvedByName: request.approvedBy?.fullName ?? null,
         risk: evaluatePayoutRisk({
           ...request,

@@ -204,7 +204,7 @@ export default function AiFraudSentinelPage() {
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? 'animate-spin' : ''}`} />
-          <span>Quét lại toàn sàn</span>
+          <span>Quét toàn hệ thống</span>
         </button>
       </div>
       {/* KPI Metric Cards - Nhỏ gọn, cân xứng, chuẩn 4 cột trên desktop */}
@@ -379,11 +379,11 @@ export default function AiFraudSentinelPage() {
                 type="button"
                 onClick={loadData}
                 disabled={loading}
-                aria-label={loading ? 'Đang quét lại toàn sàn' : 'Quét lại toàn sàn'}
+                aria-label={loading ? 'Đang quét toàn hệ thống' : 'Quét toàn hệ thống'}
                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-[#8C6226] transition hover:text-[#B88E4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58]/40 disabled:cursor-wait disabled:opacity-50"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                Quét lại toàn sàn
+                Quét toàn hệ thống
               </button>
             </div>
           </div>

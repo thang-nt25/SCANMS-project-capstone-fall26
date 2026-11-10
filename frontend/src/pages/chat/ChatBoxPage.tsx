@@ -585,18 +585,21 @@ function CustomerCouponModal({ storeId, isCollaborator = false, collaboratorName
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [storeId]);
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={close}>
-    <section role="dialog" aria-modal="true" aria-label="Chia sẻ mã KOL" onClick={event => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-auto rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612]">
-      <header className="flex items-center justify-between"><h3 className="font-bold">{isCollaborator ? 'Mã KOL · ' + (collaboratorName || 'Đối tác') : 'Chia sẻ mã ưu đãi KOL'}</h3><button type="button" aria-label="Đóng" disabled={sendingCouponId !== null} onClick={close}><X size={18} /></button></header>
-      <p className="text-sm text-[#7D715E]">Chỉ chia sẻ mã độc quyền KOL đã được duyệt. Khách tự sao chép và nhập mã khi thanh toán.</p>
-      {loading && <p>Đang tải mã KOL...</p>}{error && <p role="alert" className="text-sm text-[#DC2626]">{error}</p>}
-      {!loading && !error && !coupons.length && <p className="text-sm text-[#7D715E]">Chưa có mã KOL đang hoạt động. KOL cần đề xuất mã và Shop duyệt trước.</p>}
-      {coupons.map(coupon => <div key={coupon.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
-        <div><strong>{coupon.displayCode || coupon.code}</strong><p className="text-sm text-[#7D715E]">{coupon.discountType === 'PERCENTAGE' ? 'Giảm ' + coupon.discountValue + '%' : 'Giảm ' + Number(coupon.discountValue).toLocaleString('vi-VN') + ' đ'}</p></div>
-        <button type="button" disabled={sendingCouponId !== null} className="rounded-lg bg-[#C59B58] px-3 py-2 text-sm text-white disabled:opacity-50" onClick={() => void send(coupon)}>{sendingCouponId === coupon.id ? 'Đang gửi…' : 'Gửi mã'}</button>
-      </div>)}
-    </section>
-  </div>;
+  const modalContent = (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" onClick={close}>
+      <section role="dialog" aria-modal="true" aria-label="Chia sẻ mã KOL" onClick={event => event.stopPropagation()} className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-auto rounded-2xl border border-[#EAE4D7] bg-white p-5 text-[#1A1612]">
+        <header className="flex items-center justify-between"><h3 className="font-bold">{isCollaborator ? 'Mã KOL · ' + (collaboratorName || 'Đối tác') : 'Chia sẻ mã ưu đãi KOL'}</h3><button type="button" aria-label="Đóng" disabled={sendingCouponId !== null} onClick={close}><X size={18} /></button></header>
+        <p className="text-sm text-[#7D715E]">Chỉ chia sẻ mã độc quyền KOL đã được duyệt. Khách tự sao chép và nhập mã khi thanh toán.</p>
+        {loading && <p>Đang tải mã KOL...</p>}{error && <p role="alert" className="text-sm text-[#DC2626]">{error}</p>}
+        {!loading && !error && !coupons.length && <p className="text-sm text-[#7D715E]">Chưa có mã KOL đang hoạt động. KOL cần đề xuất mã và Shop duyệt trước.</p>}
+        {coupons.map(coupon => <div key={coupon.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3">
+          <div><strong>{coupon.displayCode || coupon.code}</strong><p className="text-sm text-[#7D715E]">{coupon.discountType === 'PERCENTAGE' ? 'Giảm ' + coupon.discountValue + '%' : 'Giảm ' + Number(coupon.discountValue).toLocaleString('vi-VN') + ' đ'}</p></div>
+          <button type="button" disabled={sendingCouponId !== null} className="rounded-lg bg-[#C59B58] px-3 py-2 text-sm text-white disabled:opacity-50" onClick={() => void send(coupon)}>{sendingCouponId === coupon.id ? 'Đang gửi…' : 'Gửi mã'}</button>
+        </div>)}
+      </section>
+    </div>
+  );
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 function CustomerProductModal({
@@ -639,8 +642,8 @@ function CustomerProductModal({
     return () => { active = false; clearTimeout(timer); };
   }, [storeId, search, page, attempt]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={() => { if (!pending.current) onClose(); }}>
+  const modalContent = (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={() => { if (!pending.current) onClose(); }}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="customer-product-title" className="w-full max-w-lg max-h-[calc(100dvh-32px)] overflow-y-auto bg-white rounded-2xl border border-[#EAE4D7] shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[#EAE4D7] px-5 py-4 bg-[#FAF8F5]">
           <div className="flex items-center gap-2.5">
@@ -728,6 +731,7 @@ function CustomerProductModal({
       </div>
     </div>
   );
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 function CustomerOrdersDrawer({
@@ -801,8 +805,8 @@ function CustomerOrdersDrawer({
     return <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${isDanger ? 'border-red-200 bg-red-50 text-red-700' : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C]'}`}>{labels[status] || status}</span>;
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 sm:p-6 bg-[#231D15]/35 backdrop-blur-[3px]" onClick={onClose}>
+  const modalContent = (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto p-4 sm:p-6 bg-[#231D15]/35 backdrop-blur-[3px]" onClick={onClose}>
       <div
         ref={dialog}
         role="dialog"
@@ -899,6 +903,7 @@ function CustomerOrdersDrawer({
       </div>
     </div>
   );
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 function CustomerQuickRepliesModal({
@@ -910,8 +915,8 @@ function CustomerQuickRepliesModal({
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   useChatDialog(dialog, onClose);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={onClose}>
+  const modalContent = (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#231D15]/40 backdrop-blur-xs" onClick={onClose}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="customer-quick-replies-title" className="w-full max-w-lg overflow-hidden rounded-[20px] border border-[#EAE4D7] bg-white shadow-[0_24px_72px_rgba(35,29,21,0.22)] animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
         <div className="max-h-[min(86dvh,760px)] overflow-y-auto">
           <div className="sticky top-0 z-20 flex h-0 justify-end px-4 pointer-events-none">
@@ -955,6 +960,7 @@ function CustomerQuickRepliesModal({
       </div>
     </div>
   );
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 
@@ -3006,7 +3012,7 @@ export default function ChatBoxPage({
         <ExclusiveOfferModal
           key={activeConv.id}
           collaborator={{ id: activeConv.collaboratorId, fullName: getOtherParty(activeConv) }}
-          storeId={activeConv.storeId || activeConv.store?.id}
+          storeId={activeConv.storeId || activeConv.store?.id || effectiveTargetStoreId}
           productId={pinnedProduct?.id}
           onClose={() => setShowExclusiveOffer(false)}
           onSuccess={async (conversationId: any) => {
@@ -3027,7 +3033,7 @@ export default function ChatBoxPage({
         <CreateExclusiveDealModal
           collaboratorId={activeConv.collaboratorId || targetCollaboratorId || ''}
           collaboratorName={activeConv.collaborator?.fullName || targetCollaboratorName || 'Đối tác'}
-          storeId={activeConv.storeId || activeConv.store?.id || currentUser?.stores?.[0]?.id || ''}
+          storeId={activeConv.storeId || activeConv.store?.id || effectiveTargetStoreId || currentUser?.stores?.[0]?.id || ''}
           onClose={() => setShowExclusiveDealModal(false)}
           onSuccess={() => {
             setShowExclusiveDealModal(false);
@@ -3044,7 +3050,7 @@ export default function ChatBoxPage({
         <ExclusiveOfferModal
           key={activeConv.id + '_koc'}
           mode="proposal"
-          storeId={activeConv.storeId || activeConv.store?.id || ''}
+          storeId={activeConv.storeId || activeConv.store?.id || effectiveTargetStoreId || ''}
           productId={pinnedProduct?.id}
           onClose={() => setShowKocDealModal(false)}
           onSuccess={async (conversationId: any) => {

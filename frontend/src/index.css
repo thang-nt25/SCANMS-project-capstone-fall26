@@ -309,6 +309,17 @@ img {
   @apply [background:var(--action-hover,_#F3EFE6)];
 }
 
+.btn.primary {
+  @apply [background:#C59B58];
+  @apply [border-color:#B88E4F];
+  @apply [color:#FFFFFF];
+  @apply [box-shadow:0_2px_8px_rgba(184,142,79,0.25)];
+}
+
+.btn.primary:hover {
+  @apply [background:#B88E4F];
+}
+
 .btn.secondary {
   @apply [background:var(--surface)];
   @apply [color:var(--ink)];
@@ -337,25 +348,24 @@ img {
   @apply items-center;
   @apply justify-center;
   @apply [border-radius:9999px];
-  @apply [background:var(--action-bg,_#FBF5EB)];
-  @apply [border:1px_solid_var(--action-border,_#EEDFC6)];
-  box-shadow: none;
-  @apply [color:var(--action-ink,_#1A1612)];
+  @apply [background:linear-gradient(135deg,_#C59B58_0%,_#B88E4F_100%)];
+  @apply [border:1px_solid_#B88E4F];
+  @apply [box-shadow:0_2px_8px_rgba(184,142,79,0.25)];
+  @apply [color:#FFFFFF];
   @apply [font-weight:600];
   @apply [font-size:14.5px];
   @apply [letter-spacing:0.01em];
-  @apply [transition:all_0.25s_cubic-bezier(0.16,_1,_0.3,_1)];
+  @apply [transition:all_0.2s_cubic-bezier(0.16,_1,_0.3,_1)];
   @apply cursor-pointer;
 }
 
 .btn-gold-glossy:hover {
-  @apply [background:var(--action-hover,_#F3EFE6)];
-  @apply [border-color:var(--action-border-hover,_#C59B58)];
+  @apply [background:#B88E4F];
+  @apply [box-shadow:0_4px_14px_rgba(184,142,79,0.35)];
 }
 
 .btn-gold-glossy:active {
-  @apply [transform:scale(0.988)];
-  box-shadow: none;
+  @apply [transform:scale(0.98)];
 }
 
 .btn-gold-glossy:disabled {
@@ -516,19 +526,13 @@ input[type="range"] {
   @apply [accent-color:#C59B58]!;
 }
 
-/* Keep labels readable on the lighter gold primary and hover fills. */
+/* Keep labels readable on pale sand pill surfaces */
 [class~="bg-[#EBD08C]"][class~="text-white"],
 [class~="bg-[#DEC07A]"][class~="text-white"] {
   @apply [color:#231D15]!;
 }
 
 [class~="hover:bg-[#DEC07A]"]:hover {
-  @apply [color:#231D15]!;
-}
-
-/* Match branded gradients and token buttons to the light warm-gold palette. */
-[class*="from-[#EBD08C]"][class~="text-white"],
-[class*="bg-brand"][class~="text-white"] {
   @apply [color:#231D15]!;
 }
 
@@ -1281,109 +1285,69 @@ html[data-theme="dark"] .bg-neutral-900 { @apply [background-color:var(--surface
 html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!; }
 
 /* ==========================================================================
-   GLOBAL BRAND ACTIONS & BUTTON HIGHLIGHT OVERRIDES (Merged from brand-actions.css)
+   GLOBAL BRAND ACTIONS & BUTTON HIGHLIGHT STANDARDS (SCANMS WARM SAND & GOLD)
    ========================================================================== */
 
-/* Shared bright SCANMS actions, including legacy utilities and modal actions. */
+/* Standard brand CTA tokens */
 :root {
-  --action-bg: #FBF5EB;
-  --action-hover: #F3EFE6;
-  --action-border: #EEDFC6;
-  --action-border-hover: #C59B58;
-  --action-ink: #1A1612;
+  --action-primary-bg: #C59B58;
+  --action-primary-hover: #B88E4F;
+  --action-primary-active: #A87D38;
+  --action-primary-ink: #FFFFFF;
+  --action-soft-bg: #FBF5EB;
+  --action-soft-hover: #F3EFE6;
+  --action-soft-border: #EEDFC6;
+  --action-soft-ink: #8C6226;
 }
 
-/* Important base rules also override legacy Tailwind !bg / !text utilities. */
 @layer base {
-/* Match base classes only: inactive tabs keep their existing white surface. */
-:root :is(button, a, input[type='submit'], input[type='button'], [role='button'], [role='tab'], label):is(
+  /* SCANMS Primary Brand Buttons: Rich Brand Gold fill with crisp white text & tactile elevation */
   .scanms-brand-action,
-  .btn-gold-glossy,
-  .btn:not(.secondary):not(.danger),
-  [class~='bg-brand'], [class~='!bg-brand'],
-  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
-  [class~='bg-amber-600'],
-  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
-  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
-  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
-  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
-  [class~='bg-[#CB9B40]' i],
-  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
-  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
-  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
-  [class~='from-brand'], [class~='from-brand-strong']
-) {
-  @apply [background-color:var(--action-bg)]!;
-  @apply [background-image:none]!;
-  @apply [border:1px_solid_var(--action-border)]!;
-  @apply [color:var(--action-ink)]!;
-  box-shadow: none !important;
-  @apply [filter:none]!;
-}
+  .btn-gold-glossy {
+    background: linear-gradient(135deg, #C59B58 0%, #B88E4F 100%) !important;
+    background-color: #C59B58 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #B88E4F !important;
+    box-shadow: 0 2px 8px rgba(184, 142, 79, 0.25) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
 
-:root :is(button, a, input[type='submit'], input[type='button'], [role='button'], [role='tab'], label):is(
-  .scanms-brand-action,
-  .btn-gold-glossy,
-  .btn:not(.secondary):not(.danger),
-  [class~='bg-brand'], [class~='!bg-brand'],
-  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
-  [class~='bg-amber-600'],
-  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
-  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
-  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
-  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
-  [class~='bg-[#CB9B40]' i],
-  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
-  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
-  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
-  [class~='from-brand'], [class~='from-brand-strong'],
-  [class~='hover:bg-brand-strong'], [class~='hover:!bg-brand-strong'],
-  [class~='hover:bg-amber-700'],
-  [class~='hover:bg-[#C59B58]' i], [class~='hover:bg-[#B88E4F]' i],
-  [class~='hover:bg-[#DEC07A]' i], [class~='hover:bg-[#EBD08C]' i],
-  [class~='hover:bg-[#CB9B40]' i],
-  [class~='hover:from-[#B88E4F]' i], [class~='hover:from-[#DEC07A]' i]
-):hover:not(:disabled):not([aria-disabled='true']) {
-  @apply [background-color:var(--action-hover)]!;
-  @apply [background-image:none]!;
-  @apply [border-color:var(--action-border-hover)]!;
-  @apply [color:var(--action-ink)]!;
-  box-shadow: none !important;
-  @apply [filter:none]!;
-}
+  .scanms-brand-action:hover:not(:disabled):not([aria-disabled='true']),
+  .btn-gold-glossy:hover:not(:disabled):not([aria-disabled='true']) {
+    background: #B88E4F !important;
+    background-color: #B88E4F !important;
+    border-color: #A87D38 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(184, 142, 79, 0.35) !important;
+  }
 
-/* Legacy white icons/text must stay legible on the new bright action surface. */
-:root :is(button, a, [role='button'], [role='tab'], label):is(
-  .scanms-brand-action, .btn-gold-glossy,
-  .btn:not(.secondary):not(.danger),
-  [class~='bg-brand'], [class~='!bg-brand'],
-  [class~='bg-brand-strong'], [class~='!bg-brand-strong'],
-  [class~='bg-amber-600'],
-  [class~='bg-[#C59B58]' i], [class~='bg-[#B88E4F]' i],
-  [class~='bg-[#EBD08C]' i], [class~='bg-[#E5C783]' i],
-  [class~='bg-[#DEC07A]' i], [class~='bg-[#DEBE85]' i],
-  [class~='bg-[#CFA75D]' i], [class~='bg-[#D8AC55]' i],
-  [class~='bg-[#CB9B40]' i],
-  [class~='!bg-[#C59B58]' i], [class~='!bg-[#B88E4F]' i],
-  [class~='from-[#C59B58]' i], [class~='from-[#B88E4F]' i],
-  [class~='from-[#EBD08C]' i], [class~='from-[#DEBE85]' i],
-  [class~='from-brand'], [class~='from-brand-strong']
-) :is([class~='text-white'], [class~='!text-white'], [class~='text-white/90']) {
-  @apply [color:var(--action-ink)]!;
-}
+  .scanms-brand-action:active:not(:disabled):not([aria-disabled='true']),
+  .btn-gold-glossy:active:not(:disabled):not([aria-disabled='true']) {
+    transform: scale(0.98) !important;
+    background-color: #A87D38 !important;
+    box-shadow: 0 1px 4px rgba(184, 142, 79, 0.2) !important;
+  }
 
-:root :is(button, a, [role='button'], [role='tab']):is(
-  [class~='hover:bg-[#C59B58]' i], [class~='hover:bg-[#B88E4F]' i],
-  [class~='hover:bg-[#DEC07A]' i], [class~='hover:bg-[#EBD08C]' i],
-  [class~='hover:bg-brand-strong'], [class~='hover:!bg-brand-strong']
-):hover :is([class~='hover:text-white'], [class~='group-hover:text-white']) {
-  @apply [color:var(--action-ink)]!;
-}
+  .scanms-brand-action:disabled,
+  .scanms-brand-action[aria-disabled='true'],
+  .btn-gold-glossy:disabled,
+  .btn-gold-glossy[aria-disabled='true'] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    filter: grayscale(0.2) !important;
+  }
 
-.scanms-brand-action:focus-visible {
-  @apply [outline:2px_solid_#B88E4F]!;
-  @apply [outline-offset:3px]!;
-}
+  .scanms-brand-action :is([class~='text-white'], [class~='!text-white'], [class~='text-white/90']),
+  .btn-gold-glossy :is([class~='text-white'], [class~='!text-white'], [class~='text-white/90']) {
+    color: #FFFFFF !important;
+  }
+
+  .scanms-brand-action:focus-visible,
+  .btn-gold-glossy:focus-visible {
+    outline: 2px solid #B88E4F !important;
+    outline-offset: 3px !important;
+  }
 }
 
 
@@ -2318,14 +2282,16 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
   .dashboard-wallet-modal #kol-wallet-page .wallet-withdraw-inputs { @apply [grid-template-columns:minmax(0,_1fr)]!; }
 }
 #kol-wallet-page .wallet-withdraw-actions > .wallet-withdraw-submit {
-  @apply [background:#FBF5EB]!;
-  @apply [border:1px_solid_#EEDFC6]!;
-  @apply [color:#1A1612]!;
-  box-shadow: none;
+  @apply [background:linear-gradient(135deg,_#C59B58_0%,_#B88E4F_100%)]!;
+  @apply [border:1px_solid_#B88E4F]!;
+  @apply [color:#FFFFFF]!;
+  @apply [box-shadow:0_2px_8px_rgba(184,142,79,0.25)]!;
+  @apply [font-weight:600]!;
 }
 #kol-wallet-page .wallet-withdraw-actions > .wallet-withdraw-submit:not(:disabled):hover {
-  @apply [background:#F3EFE6]!;
-  @apply [border-color:#C59B58]!;
+  @apply [background:#B88E4F]!;
+  @apply [border-color:#A87D38]!;
+  @apply [box-shadow:0_4px_14px_rgba(184,142,79,0.35)]!;
 }
 #kol-wallet-page .wallet-withdraw-actions > .wallet-withdraw-submit:focus-visible {
   @apply [outline:2px_solid_#C59B58];
@@ -2582,12 +2548,12 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
 .merchant-live-workspace a:focus-visible { @apply [outline:2px_solid_#b88e4f]; @apply [outline-offset:3px]; }
 .merchant-live-workspace button[class*="bg-[#C59B58]"],
 .merchant-live-workspace button[class*="bg-[#C59B58]"][aria-pressed="true"] {
-  @apply [background:#fbf5eb];
-  @apply [color:#805e2d];
-  @apply [border:1px_solid_#eedfc6];
-  box-shadow: none;
+  @apply [background:#C59B58];
+  @apply [color:#FFFFFF];
+  @apply [border:1px_solid_#B88E4F];
+  @apply [box-shadow:0_2px_8px_rgba(184,142,79,0.25)];
 }
-.merchant-live-workspace button[class*="bg-[#C59B58]"]:hover { @apply [background:#f3efe6]; }
+.merchant-live-workspace button[class*="bg-[#C59B58]"]:hover { @apply [background:#B88E4F]; }
 .merchant-live-workspace .live-empty {
   @apply [padding:44px_20px];
   @apply [border-style:solid];
@@ -2795,18 +2761,15 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
   .merchant-orders-data td[data-label="Thao tác"] { @apply [grid-column:1_/_-1]; @apply [grid-row:4]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; }
   .merchant-orders-data td[data-label="Khách hàng"] > div { @apply [max-width:none]; }
 }
-.merchant-orders-toolbar { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply items-stretch; @apply [gap:8px]; }
-.merchant-orders-view-tabs, .merchant-orders-toolbar-actions { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:8px]; @apply [min-width:0]; }
-.merchant-orders-toolbar :is(button, a) { @apply [width:100%]; @apply [min-width:0]; @apply [min-height:40px]; @apply [padding:9px_12px]; @apply [border-radius:10px]; @apply [font-size:12px]; @apply [line-height:20px]; @apply whitespace-normal; @apply text-center; }
+.merchant-orders-toolbar { @apply flex; @apply flex-wrap; @apply items-center; @apply justify-between; @apply [gap:10px]; }
+.merchant-orders-view-tabs { @apply inline-flex; @apply items-center; @apply [gap:4px]; @apply p-[4px]; @apply [border-radius:12px]; @apply [background:#FAF8F5]; @apply [border:1px_solid_#EAE4D7]; }
+.merchant-orders-toolbar-actions { @apply flex; @apply flex-wrap; @apply items-center; @apply [gap:8px]; }
+.merchant-orders-toolbar :is(button, a) { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:38px]; @apply [padding:7px_14px]; @apply [border-radius:10px]; @apply [font-size:12px]; @apply [font-weight:600]; @apply whitespace-nowrap; @apply [transition:all_150ms]; }
 .merchant-orders-toolbar :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
-.merchant-orders-page .merchant-orders-toolbar { @apply [grid-template-columns:repeat(5,minmax(0,1fr))]; @apply [gap:10px]; }
-.merchant-orders-page .merchant-orders-toolbar:has(.merchant-orders-toolbar-actions) > .merchant-orders-view-tabs,
-.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-toolbar-actions { @apply [display:contents]; }
-.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-view-tabs { @apply [grid-column:1_/_-1]; }
-.merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [min-height:46px]; @apply [height:46px]; @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [margin:0]; }
 @media(max-width:760px) {
-  .merchant-orders-page .merchant-orders-toolbar { @apply flex; @apply [overflow-x:auto]; }
-  .merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [flex:1_0_150px]; }
+  .merchant-orders-page .merchant-orders-toolbar { @apply flex-col; @apply items-stretch; }
+  .merchant-orders-view-tabs { @apply w-full; @apply justify-center; }
+  .merchant-orders-toolbar-actions { @apply w-full; @apply justify-center; }
 }
 
 /* Keep the list readable without squeezing names or fulfillment actions. */

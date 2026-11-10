@@ -154,7 +154,7 @@ export function CheckoutItemsSection({
             <h2 id="checkout-products-title" className="text-sm sm:text-base font-bold text-[#1A1612]">
               Sản phẩm đặt mua
             </h2>
-            <p className="text-[11px] text-[#7D715E]">Kiểm tra danh sách và mức giảm giá theo từng gian hàng</p>
+            <p className="text-[11px] text-[#7D715E]">Kiểm tra danh sách và mức giảm giá theo từng cửa hàng</p>
           </div>
         </div>
         <div className="checkout-products-actions flex items-center flex-wrap gap-2">
@@ -323,7 +323,7 @@ export function CheckoutItemsSection({
       {/* Order Notes */}
       <div className="checkout-notes grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)] items-center gap-2 sm:gap-4 p-4 sm:p-5 border-t border-[#EAE4D7] bg-[#FAF8F5]/30">
         <label htmlFor="checkout-order-notes" className="text-xs font-semibold text-[#7D715E]">
-          {groups.length > 1 ? 'Lời nhắn cho các gian hàng:' : 'Lời nhắn cho shop:'}
+          {groups.length > 1 ? 'Lời nhắn cho các cửa hàng:' : 'Lời nhắn cho shop:'}
         </label>
         <input
           id="checkout-order-notes"
@@ -334,7 +334,7 @@ export function CheckoutItemsSection({
         />
         {groups.length > 1 && (
           <p className="sm:col-start-2 text-[11px] text-[#7D715E] -mt-1">
-            Lời nhắn này được gửi đồng thời tới tất cả gian hàng trong đơn.
+            Lời nhắn này được gửi đồng thời tới tất cả cửa hàng trong đơn.
           </p>
         )}
       </div>
