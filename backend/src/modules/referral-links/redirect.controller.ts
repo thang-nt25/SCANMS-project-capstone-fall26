@@ -351,7 +351,7 @@ export class RedirectController {
         const product = result.link?.product;
         const store = result.link?.store;
         const title = product?.title || 'Sản phẩm đối tác - SCANMS';
-        const description = `Khám phá ${product?.title || 'sản phẩm'} chính hãng phân phối bởi ${store?.name || 'gian hàng đối tác'} trên sàn SCANMS.`;
+        const description = `Khám phá ${product?.title || 'sản phẩm'} chính hãng phân phối bởi ${store?.name || 'cửa hàng trực thuộc'} trên hệ thống SCANMS.`;
         const imageUrl =
           product?.imageUrl || `${publicAppUrl}/assets/product-placeholder.svg`;
         const price = product?.price ? Number(product.price) : 0;
@@ -362,7 +362,7 @@ export class RedirectController {
   <meta charset="utf-8">
   <title>${escapeHtml(title)} - SCANMS</title>
   <meta name="description" content="${escapeHtml(description)}">
-  <meta property="og:site_name" content="SCANMS - Sàn Thương Mại Tiếp Thị Liên Kết">
+  <meta property="og:site_name" content="SCANMS - Hệ Thống Quản Lý Tiếp Thị Liên Kết">
   <meta property="og:type" content="product">
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
