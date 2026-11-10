@@ -99,8 +99,8 @@ export function CustomerNotificationsTab({
       aria-label={heading.title}
     >
       <h1 className="sr-only">Thông báo</h1>
-      <div className="flex flex-wrap items-center gap-3 min-h-[58px] p-2.5 sm:px-3 border border-[#EAE4D7] rounded-xl bg-white">
-        <nav className="grid flex-1 min-w-0 grid-cols-3 @max-[699px]:basis-full gap-[6px]" aria-label="Lọc thông báo">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 sm:px-4 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
+        <nav className="inline-flex items-center gap-1.5 p-1 bg-[#FAF8F5] border border-[#EAE4D7] rounded-xl" aria-label="Lọc thông báo">
           {categories.map(({ key, label, icon: Icon }) => {
             const unread = key === 'ALL' ? unreadCount : categoryUnread[key];
             const isActive = category === key;
@@ -109,12 +109,20 @@ export function CustomerNotificationsTab({
                 type="button"
                 key={key}
                 aria-pressed={isActive}
-                className={`inline-flex items-center justify-center min-w-0 gap-[6px] min-h-[40px] px-[10px] @max-[449px]:px-[6px] py-[8px] border rounded-[8px] text-[12px] font-[500] leading-[1.4] cursor-pointer transition focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2 ${isActive ? 'bg-[#FBF5EB] border-[#EEDFC6] text-[#1A1612] font-[600]' : 'bg-white border-transparent text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'}`}
+                className={`inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  isActive
+                    ? 'bg-white text-[#1A1612] border border-[#EEDFC6] shadow-2xs font-bold'
+                    : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-white/50 border border-transparent'
+                }`}
                 onClick={() => onSelectCategory(key)}
               >
-                <Icon size={14} className={isActive ? 'text-[#B88E4F]' : ''} />
+                <Icon size={14} className={isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'} />
                 <span>{label}</span>
-                {unread > 0 && <span className="min-w-[16px] px-[4px] py-[1px] rounded-[5px] bg-[#F3EFE6] text-[#B88E4F] text-center text-[9px] font-mono tabular-nums leading-[1.4]">{unread}</span>}
+                {unread > 0 && (
+                  <span className="min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#F3EFE6] text-[#B88E4F] text-center text-[10px] font-mono tabular-nums font-bold">
+                    {unread}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -122,7 +130,7 @@ export function CustomerNotificationsTab({
         {unreadCount > 0 && (
           <button
             type="button"
-            className="ml-auto inline-flex items-center justify-center shrink-0 gap-[6px] min-h-[40px] px-[12px] py-[8px] border border-[#EEDFC6] rounded-[8px] bg-[#FAF8F5] text-[#1A1612] text-[12px] font-[500] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] active:scale-[0.96] transition disabled:opacity-55 disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-[#B88E4F] focus-visible:outline-offset-2"
+            className="ml-auto inline-flex items-center justify-center shrink-0 gap-1.5 min-h-[38px] px-3.5 py-1.5 border border-[#EEDFC6] rounded-xl bg-[#FAF8F5] text-[#1A1612] text-xs font-semibold whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB] active:scale-[0.96] transition-all shadow-2xs"
             disabled={markingAll || loading}
             onClick={() => void markAll()}
           >
@@ -131,7 +139,7 @@ export function CustomerNotificationsTab({
             ) : (
               <CheckCheck size={14} className="text-[#B88E4F]" aria-hidden="true" />
             )}
-            Đọc tất cả
+            <span>Đọc tất cả</span>
           </button>
         )}
       </div>

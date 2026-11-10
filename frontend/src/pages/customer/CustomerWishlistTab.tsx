@@ -121,7 +121,7 @@ export function CustomerWishlistTab({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 @max-[899px]:grid-cols-1 items-stretch gap-[12px] min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-stretch gap-3.5 sm:gap-4 min-w-0">
               {filteredItems.map(({ wishlistId, product: p }) => {
                 const discount =
                   p.originalPrice && Number(p.originalPrice) > Number(p.price)
@@ -133,7 +133,7 @@ export function CustomerWishlistTab({
                 const busy = removing.includes(p.id);
                 const productUrl = `/products/${p.sku || p.id}`;
                 return (
-                  <article className="grid grid-cols-[112px_minmax(0,1fr)] @max-[599px]:grid-cols-[96px_minmax(0,1fr)] @max-[339px]:grid-cols-[78px_minmax(0,1fr)] gap-[12px] @max-[599px]:gap-[10px] @max-[339px]:gap-[8px] p-[12px] @max-[599px]:p-[10px] @max-[339px]:p-[8px] @max-[899px]:max-w-[680px] min-w-0 border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] transition-colors" key={wishlistId}>
+                  <article className="grid grid-cols-[100px_minmax(0,1fr)] sm:grid-cols-[112px_minmax(0,1fr)] gap-3 p-3 min-w-0 border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-2xl bg-white shadow-2xs hover:shadow-xs transition-all" key={wishlistId}>
                     <div className="relative self-stretch rounded-[9px] border border-[#EAE4D7] overflow-hidden bg-[#FAF8F5]">
                       <Link
                         to={productUrl}

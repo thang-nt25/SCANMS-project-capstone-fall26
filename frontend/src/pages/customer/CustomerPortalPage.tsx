@@ -1270,9 +1270,12 @@ export default function CustomerPortalPage() {
 
                           <div className="border-t border-[#EAE4D7]">
                             {/* Order Items List */}
-                            <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
+                            <div className="min-w-0 divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
-                                <div key={item.id} className="customer-order-item grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-3.5 py-4">
+                                <div
+                                  key={item.id}
+                                  className="customer-order-item relative flex items-center justify-between gap-3 sm:gap-4 py-3.5 sm:py-4 px-3.5 sm:px-4 hover:bg-[#FAF8F5]/60 transition-colors"
+                                >
                                   {(completedActions || awaitingPayment) && (
                                     <Link
                                       to={
@@ -1281,41 +1284,50 @@ export default function CustomerPortalPage() {
                                           : `/customer/orders/${encodeURIComponent(order.id)}`
                                       }
                                       data-order-detail-link
-                                      className="customer-order-item-detail-link"
+                                      className="absolute inset-0 z-10"
                                       aria-label={`Xem ${awaitingPayment ? 'thanh toán' : 'chi tiết'} đơn hàng ${order.externalOrderSn}`}
                                     />
                                   )}
-                                  <OrderProductLink
-                                    plain={completedActions || awaitingPayment}
-                                    productId={item.productId || item.product?.id}
-                                    title={item.product?.title}
-                                    className="w-20 h-20 @max-[499px]:w-16 @max-[499px]:h-16 @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors"
-                                  >
-                                    <img
-                                      src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
-                                      alt={item.product?.title || 'Sản phẩm'}
-                                      className="w-full h-full object-contain p-0.5"
-                                      onError={handleProductImageError}
-                                    />
-                                  </OrderProductLink>
+                                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                    <OrderProductLink
+                                      plain={completedActions || awaitingPayment}
+                                      productId={item.productId || item.product?.id}
+                                      title={item.product?.title}
+                                      className="w-18 h-18 sm:w-20 sm:h-20 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors relative z-20"
+                                    >
+                                      <img
+                                        src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
+                                        alt={item.product?.title || 'Sản phẩm'}
+                                        className="w-full h-full object-contain p-0.5"
+                                        onError={handleProductImageError}
+                                      />
+                                    </OrderProductLink>
 
-                                  <div className="min-w-0">
-                                    <strong className="block text-sm font-semibold leading-snug text-[#1A1612] line-clamp-2">
-                                      <OrderProductLink plain={completedActions || awaitingPayment} productId={item.productId || item.product?.id} title={item.product?.title} className="hover:text-[#B88E4F] transition-colors">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
-                                    </strong>
-                                    <div className="flex items-center flex-wrap gap-2 mt-1.5">
-                                      {item.variant?.name && (
-                                        <span className="inline-block text-[11px] font-medium text-[#7D715E] bg-[#F3EFE6] px-2 py-0.5 rounded-md">
-                                          Phân loại: {item.variant.name}
+                                    <div className="min-w-0 flex-1 text-left">
+                                      <strong className="block text-sm font-semibold leading-snug text-[#1A1612] line-clamp-2">
+                                        <OrderProductLink
+                                          plain={completedActions || awaitingPayment}
+                                          productId={item.productId || item.product?.id}
+                                          title={item.product?.title}
+                                          className="hover:text-[#B88E4F] transition-colors relative z-20"
+                                        >
+                                          {item.product?.title || 'Sản phẩm trong đơn hàng'}
+                                        </OrderProductLink>
+                                      </strong>
+                                      <div className="flex items-center flex-wrap gap-2 mt-1.5">
+                                        {item.variant?.name && (
+                                          <span className="inline-block text-[11px] font-medium text-[#7D715E] bg-[#F3EFE6] px-2 py-0.5 rounded-md">
+                                            Phân loại: {item.variant.name}
+                                          </span>
+                                        )}
+                                        <span className="text-xs text-[#7D715E] font-medium">
+                                          ×{item.quantity}
                                         </span>
-                                      )}
-                                      <span className="text-xs text-[#7D715E] font-medium">
-                                        ×{item.quantity}
-                                      </span>
+                                      </div>
                                     </div>
                                   </div>
 
-                                  <div className="text-right shrink-0 @max-[499px]:col-start-2">
+                                  <div className="text-right shrink-0 relative z-20">
                                     <span className="text-sm font-bold text-[#1A1612] font-mono tabular-nums whitespace-nowrap">
                                       {formatMoney(Number(item.unitPrice) * item.quantity)}
                                     </span>
@@ -1392,29 +1404,7 @@ export default function CustomerPortalPage() {
                               {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
                               {/* Action Buttons Row */}
-                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {awaitingPayment && <Link to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`} className="customer-order-return-link customer-order-return-review">Thanh toán bằng QR</Link>}
-                                {(isCancelled || completedActions) && <button type="button" onClick={() => handleReorder(order)} className="customer-order-rebuy">Mua lại</button>}
-                                {/* Secondary Button: Xem chi tiết */}
-                                {order.returnRequest ? <>
-                                  {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link key={request.id} to={`/customer/returns/${request.id}`} className="customer-order-return-link">Hồ sơ đổi trả {index + 1}</Link>)}
-                                  <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ Shop</button>
-                                  {mayEscalateReturn && <Link to={`/customer/returns/${order.returnRequest.id}?dispute=1`} className="customer-order-return-link customer-order-return-review">Yêu cầu SCANMS xem xét</Link>}
-                                </> : isCancelled ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết hủy đơn</Link> : isShipping ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết</Link> : !completedActions && <button
-                                  type="button"
-                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isDelivered ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
-                                >
-                                  {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
-                                </button>}
+                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 ml-auto">
 
                                 {awaitingPayment && (
                                   <Link
@@ -1609,14 +1599,14 @@ export default function CustomerPortalPage() {
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
               <section className="@container/profile grid gap-[16px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
-                {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
-<nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
+                {/* Sub-tabs Navigation Bar - Segmented pill bar gọn gàng */}
+                <nav className="inline-flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs w-fit" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'info'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1627,9 +1617,9 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('addresses')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'addresses'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1649,9 +1639,9 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('security')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'security'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1663,7 +1653,7 @@ export default function CustomerPortalPage() {
                 {/* SubTab 1: Thông tin cá nhân */}
                 {activeProfileSubTab === 'info' && (
                   <div className="grid grid-cols-[minmax(0,1fr)_220px] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
-                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
+                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
                       <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
                         <div className="flex items-center gap-[10px] p-[10px_12px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]">
                           <span className="grid place-items-center shrink-0 w-[34px] h-[36px] rounded-[8px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={16} /></span>
@@ -1732,9 +1722,17 @@ export default function CustomerPortalPage() {
                           </div>
                         </div>
 
-                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
-                          <button type="submit" disabled={updatingProfile || profileLoading} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait">
-                            {(updatingProfile || profileLoading) ? <Loader2 size={14} className="animate-spin text-[#B88E4F]" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F]" aria-hidden="true" />}
+                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-4 sm:px-6 border-t border-[#EAE4D7] rounded-b-2xl bg-[#FAF8F5]/60">
+                          <button
+                            type="submit"
+                            disabled={updatingProfile || profileLoading}
+                            className="inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer transition-all shadow-xs active:scale-[0.96] disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            {(updatingProfile || profileLoading) ? (
+                              <Loader2 size={15} className="animate-spin text-white" aria-hidden="true" />
+                            ) : (
+                              <CheckCircle2 size={15} className="text-white" aria-hidden="true" />
+                            )}
                             <span>{updatingProfile ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
                           </button>
                         </div>

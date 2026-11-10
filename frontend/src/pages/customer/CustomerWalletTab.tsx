@@ -9,6 +9,7 @@ import {
   ChevronRight,
   QrCode,
   Check,
+  ShieldCheck,
 } from 'lucide-react';
 import { walletService, type WalletSummary, type LedgerEntry, type LedgerHistory } from '../../services/wallet.service';
 import CustomerPayosTopUp from './CustomerPayosTopUp';
@@ -128,126 +129,172 @@ export const CustomerWalletTab: React.FC = () => {
     <section className="@container/wallet grid gap-[14px] w-full max-w-[1200px] min-w-0 text-left text-[#1A1612] max-[767px]:pb-[64px]" aria-label="Ví mua sắm">
 
       <section
-        className="relative grid grid-cols-[minmax(0,1fr)_240px] items-center gap-[20px] p-[18px_20px] border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_3px_12px_#231D1504] before:content-[''] before:absolute before:top-[-1px] before:left-[20px] before:w-[36px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58] @max-[599px]:grid-cols-[minmax(0,1fr)] @max-[599px]:gap-[14px] @max-[599px]:p-[16px]"
+        className="relative grid grid-cols-1 md:grid-cols-[1fr_260px] items-center gap-5 p-5 sm:p-6 border border-[#EAE4D7] rounded-2xl bg-white shadow-[0_2px_12px_rgba(35,29,21,0.03)]"
         aria-label="Số dư ví"
         aria-busy={loading}
       >
-        <div className="flex items-center gap-[14px] min-w-0 @max-[599px]:gap-[12px]">
-          <div className="grid gap-[5px] min-w-0">
-            <span className="flex items-center gap-[6px] text-[11px] font-[450] text-[#7D715E]">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-12 h-12 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0 shadow-2xs">
+            <Wallet className="w-6 h-6 text-[#C59B58]" />
+          </div>
+          <div className="grid gap-1 min-w-0">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E]">
               Số dư khả dụng
             </span>
-            <strong className="text-[32px] leading-[1.2] tracking-[-0.8px] font-[650] tabular-nums break-words text-[#1A1612] @max-[599px]:text-[28px]">
+            <strong className="text-2xl sm:text-3xl leading-tight tracking-tight font-bold tabular-nums break-words text-[#1A1612]">
               {loading && !wallet ? '—' : formatMoney(Number(wallet?.shoppingBalance || 0))}
             </strong>
           </div>
         </div>
-        <div className="grid gap-[6px] min-w-0 pl-[20px] border-l border-[#EAE4D7] @max-[599px]:gap-[8px] @max-[599px]:p-[12px_0_0] @max-[599px]:border-l-0 @max-[599px]:border-t @max-[599px]:border-[#EAE4D7]">
-          <span className="flex items-center order-2 justify-self-start gap-[5px] text-[#7D715E] text-[10px] whitespace-nowrap">
-            <Check size={12} className="text-[#059669]" /> Đang hoạt động
+        <div className="grid gap-2 min-w-0 md:pl-6 md:border-l border-[#EAE4D7] pt-3 md:pt-0 border-t md:border-t-0">
+          <span className="flex items-center gap-1.5 text-[#059669] text-xs font-semibold">
+            <Check size={14} className="text-[#059669]" /> Đang hoạt động
           </span>
-          <div className="grid gap-[5px] min-w-0 @max-[599px]:flex @max-[599px]:items-center @max-[599px]:justify-between @max-[599px]:gap-[12px]">
-            <span className="flex items-center gap-[6px] text-[11px] font-[450] text-[#7D715E] whitespace-nowrap">
+          <div className="flex items-center justify-between md:grid md:gap-1 min-w-0">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#7D715E] whitespace-nowrap">
               <Clock size={13} /> Chờ xử lý
             </span>
-            <strong className="text-[22px] font-[600] tabular-nums break-words text-left text-[#1A1612] @max-[599px]:text-[18px] @max-[599px]:text-right">
+            <strong className="text-lg sm:text-xl font-bold tabular-nums break-words text-[#1A1612]">
               {loading && !wallet ? '—' : formatMoney(Number(wallet?.pendingBalance || 0))}
             </strong>
           </div>
         </div>
       </section>
 
-      <section aria-labelledby="customer-topup-title" className="block min-w-0 border border-[#EAE4D7] rounded-[12px] bg-white overflow-hidden">
-        <header className="flex items-center gap-[11px] min-h-[64px] p-[12px_16px] border-b border-[#EAE4D7] @max-[599px]:gap-[9px] @max-[599px]:p-[13px_12px]">
-          <span className="inline-flex items-center justify-center shrink-0 w-[34px] h-[34px] rounded-[10px] bg-[#FBF5EB] text-[#B88E4F]">
-            <Plus size={17} />
+      <section aria-labelledby="customer-topup-title" className="block min-w-0 border border-[#EAE4D7] rounded-2xl bg-white overflow-hidden shadow-2xs">
+        <header className="flex items-center gap-3 p-4 sm:px-6 border-b border-[#EAE4D7] bg-[#FAF8F5]/40">
+          <span className="inline-flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] shadow-2xs">
+            <Plus size={18} />
           </span>
-          <span className="grid gap-[3px] min-w-0 text-left">
-            <strong id="customer-topup-title" className="text-[14px] font-[600] text-[#1A1612] @max-[599px]:text-[13px]">Nạp tiền vào ví</strong>
-            <small className="text-[11px] text-[#7D715E] @max-[599px]:text-[10px] @max-[599px]:max-w-[185px]">Chọn số tiền và phương thức nạp</small>
+          <span className="grid gap-0.5 min-w-0 text-left">
+            <strong id="customer-topup-title" className="text-sm sm:text-base font-bold text-[#1A1612]">Nạp tiền vào ví</strong>
+            <small className="text-xs text-[#7D715E]">Chọn số tiền và phương thức nạp tiện lợi, an toàn</small>
           </span>
         </header>
-        <div className="grid gap-[12px] p-[16px] max-w-[860px] text-left @max-[599px]:p-[14px_12px]">
-          {demoAvailable && <div className="flex gap-[4px] w-fit max-w-full p-[3px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5] @max-[599px]:w-full" role="group" aria-label="Phương thức nạp tiền">
-            <button
-              type="button"
-              aria-pressed={topUpTab === 'SANDBOX'}
-              onClick={() => setTopUpTab('SANDBOX')}
-              className={`inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[12px] py-[6px] border rounded-[6px] text-[12px] font-[500] cursor-pointer transition @max-[599px]:flex-1 @max-[599px]:px-[8px] @max-[599px]:py-[6px] @max-[599px]:text-[11px] ${topUpTab === 'SANDBOX' ? 'bg-white text-[#1A1612] border-[#EEDFC6] shadow-xs' : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'}`}
-            >
-              Sandbox (Demo)
-            </button>
-            <button
-              type="button"
-              aria-pressed={topUpTab === 'PAYOS'}
-              onClick={() => setTopUpTab('PAYOS')}
-              className={`inline-flex items-center justify-center gap-[6px] min-h-[32px] px-[12px] py-[6px] border rounded-[6px] text-[12px] font-[500] cursor-pointer transition @max-[599px]:flex-1 @max-[599px]:px-[8px] @max-[599px]:py-[6px] @max-[599px]:text-[11px] ${topUpTab === 'PAYOS' ? 'bg-white text-[#1A1612] border-[#EEDFC6] shadow-xs' : 'border-transparent text-[#7D715E] hover:text-[#1A1612]'}`}
-            >
-              <QrCode size={14} />payOS ngân hàng
-            </button>
-          </div>}
-          {demoAvailable && topUpTab === 'SANDBOX' ? (
-            <div className="grid gap-[12px]">
-              <p className="m-0 text-[11px] text-[#7D715E]">Nạp thử nghiệm · Số dư được cộng ngay sau khi nạp.</p>
-              <div className="grid grid-cols-6 gap-[7px] @max-[599px]:grid-cols-3" role="group" aria-label="Chọn mức nạp nhanh">
-                {QUICK_AMOUNTS.map((amt) => (
+
+        <div className="p-4 sm:p-6 text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-6 items-start">
+            {/* Cột trái: Form nạp tiền */}
+            <div className="space-y-4 min-w-0">
+              {demoAvailable && (
+                <div className="inline-flex gap-1 p-1 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5]" role="group" aria-label="Phương thức nạp tiền">
                   <button
-                    key={amt}
                     type="button"
-                    aria-pressed={customAmount === String(amt)}
-                    onClick={() => setCustomAmount(String(amt))}
-                    className={`min-h-[34px] p-[6px] border rounded-[7px] text-[12px] font-[550] cursor-pointer transition ${customAmount === String(amt) ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F]' : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FBF5EB]'}`}
+                    aria-pressed={topUpTab === 'SANDBOX'}
+                    onClick={() => setTopUpTab('SANDBOX')}
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                      topUpTab === 'SANDBOX'
+                        ? 'bg-white text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
+                        : 'text-[#7D715E] hover:text-[#1A1612]'
+                    }`}
                   >
-                    +{amt >= 1000000 ? (amt / 1000000) + 'M' : (amt / 1000) + 'k'}
+                    Sandbox (Demo)
                   </button>
-                ))}
-              </div>
-              <div className="flex items-end gap-[10px] @max-[599px]:flex-wrap">
-                <div className="flex-1 min-w-0 @max-[599px]:basis-full">
-                  <div className="flex items-center justify-between mb-[5px]">
-                    <label htmlFor="cw-demo-amount" className="block text-[11px] text-[#7D715E]">Số tiền nạp</label>
-                    {customAmount && Number(customAmount) > 0 && (
-                      <span className="text-[11px] font-bold font-mono text-[#B88E4F]">
-                        {Number(customAmount).toLocaleString('vi-VN')} ₫
-                      </span>
-                    )}
+                  <button
+                    type="button"
+                    aria-pressed={topUpTab === 'PAYOS'}
+                    onClick={() => setTopUpTab('PAYOS')}
+                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                      topUpTab === 'PAYOS'
+                        ? 'bg-white text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
+                        : 'text-[#7D715E] hover:text-[#1A1612]'
+                    }`}
+                  >
+                    <QrCode size={14} />
+                    <span>payOS Ngân hàng</span>
+                  </button>
+                </div>
+              )}
+
+              {demoAvailable && topUpTab === 'SANDBOX' ? (
+                <div className="space-y-4">
+                  <p className="m-0 text-xs text-[#7D715E]">Nạp thử nghiệm · Số dư được cộng ngay sau khi nạp.</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" role="group" aria-label="Chọn mức nạp nhanh">
+                    {QUICK_AMOUNTS.map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        aria-pressed={customAmount === String(amt)}
+                        onClick={() => setCustomAmount(String(amt))}
+                        className={`min-h-[38px] p-1.5 border rounded-xl text-xs font-semibold cursor-pointer transition ${
+                          customAmount === String(amt)
+                            ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] font-bold shadow-2xs'
+                            : 'bg-white border-[#EAE4D7] text-[#1A1612] hover:bg-[#FAF8F5]'
+                        }`}
+                      >
+                        +{amt >= 1000000 ? amt / 1000000 + 'M' : amt / 1000 + 'k'}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-[8px] min-h-[38px] px-[12px] border border-[#EAE4D7] focus-within:border-[#C59B58] rounded-[8px] bg-white">
-                    <input
-                      id="cw-demo-amount"
-                      type="text"
-                      inputMode="numeric"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Tối thiểu 10.000"
-                      className="w-full min-w-0 py-[8px] border-0 outline-none bg-transparent text-[#1A1612] text-[14px] font-[550] font-mono"
-                    />
-                    <span className="text-[11px] text-[#7D715E]">VNĐ</span>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="cw-demo-amount" className="block text-xs font-semibold text-[#1A1612]">
+                          Số tiền muốn nạp
+                        </label>
+                        {customAmount && Number(customAmount) > 0 && (
+                          <span className="text-xs font-bold font-mono text-[#B88E4F]">
+                            {Number(customAmount).toLocaleString('vi-VN')} ₫
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 min-h-[44px] px-3.5 border border-[#EAE4D7] focus-within:border-[#C59B58] focus-within:ring-2 focus-within:ring-[#C59B58]/15 rounded-xl bg-white transition-all">
+                        <input
+                          id="cw-demo-amount"
+                          type="text"
+                          inputMode="numeric"
+                          value={customAmount}
+                          onChange={(e) => setCustomAmount(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Tối thiểu 10.000"
+                          className="w-full min-w-0 py-2 border-0 outline-none bg-transparent text-[#1A1612] text-base font-bold font-mono"
+                        />
+                        <span className="text-xs font-bold text-[#7D715E] shrink-0">VNĐ</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <p className="text-[11px] text-[#7D715E] leading-normal m-0">
+                        Nạp trực tiếp vào số dư ví để kiểm thử đặt hàng.
+                      </p>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait active:scale-[0.96] transition-all shrink-0"
+                        disabled={topUpLoading}
+                        onClick={() => handleTopUp(Number(customAmount))}
+                      >
+                        {topUpLoading ? <RefreshCw size={15} className="animate-spin" /> : <Plus size={15} />}
+                        <span>{topUpLoading ? 'Đang xử lý...' : 'Nạp tiền (Demo)'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[16px] py-[8px] border border-[#C59B58] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[600] cursor-pointer whitespace-nowrap shadow-xs disabled:opacity-50 disabled:cursor-wait @max-[599px]:w-full @max-[599px]:text-[12px]"
-                  disabled={topUpLoading}
-                  onClick={() => handleTopUp(Number(customAmount))}
-                >
-                  {topUpLoading ? <RefreshCw size={15} className="animate-spin" /> : <Plus size={15} />}
-                  {topUpLoading ? 'Đang xử lý...' : 'Nạp tiền (Demo)'}
-                </button>
-              </div>
-              <details className="border-t border-[#EAE4D7] pt-[10px] [&[open]>summary_svg]:rotate-180">
-                <summary className="flex items-center gap-[7px] w-fit text-[11px] text-[#7D715E] cursor-pointer list-none select-none">
-                  <span>Thông tin nạp thử nghiệm</span>
-                  <ChevronDown size={13} className="transition-transform duration-200" />
-                </summary>
-                <p className="m-[8px_0_0] text-[12px] leading-[1.6] text-[#7D715E]">
-                  Nạp trực tiếp vào số dư ví để kiểm thử đặt hàng và luân chuyển dòng tiền. Chính sách hoàn tiền đổi trả áp dụng trong 14 ngày (ORDER_REFUND).
-                </p>
-              </details>
+              ) : (
+                <CustomerPayosTopUp onPaid={fetchWalletData} />
+              )}
             </div>
-          ) : (
-            <CustomerPayosTopUp onPaid={fetchWalletData} />
-          )}
+
+            {/* Cột phải: Hướng dẫn an toàn & Chính sách (Option A) */}
+            <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB]/60 p-4 sm:p-5 space-y-3.5 text-xs text-[#7D715E] leading-relaxed">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#1A1612]">
+                <ShieldCheck className="w-4 h-4 text-[#B88E4F]" />
+                <span>Nạp Tiền An Toàn & Bảo Mật</span>
+              </div>
+              <p>
+                Hệ thống SCANMS kết nối trực tiếp cổng thanh toán VietQR / payOS chuẩn Napas 24/7. Số dư được cộng vào ví ngay lập tức sau khi giao dịch chuyển khoản thành công.
+              </p>
+              <div className="pt-2 border-t border-[#EEDFC6]/60 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <Check className="w-3.5 h-3.5 text-[#059669] shrink-0 mt-0.5" />
+                  <span><strong>Miễn phí giao dịch:</strong> 100% không thu phí nạp đối với tất cả ứng dụng ngân hàng nội địa.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="w-3.5 h-3.5 text-[#059669] shrink-0 mt-0.5" />
+                  <span><strong>Bảo vệ hoàn tiền 14 ngày:</strong> Mọi giao dịch đặt mua từ ví đều tuân thủ chính sách đổi trả / hoàn tiền trong vòng 14 ngày.</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
