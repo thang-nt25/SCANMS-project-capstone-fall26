@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
@@ -22,6 +23,7 @@ let cachedPendingOrdersCount: number | null = null;
 let cachedPendingOrdersTime = 0;
 let cachedUnreadNotifs: { ORDER?: number; PROMOTION?: number; SYSTEM?: number } = {};
 let cachedUnreadNotifsTime = 0;
+registerPrivateCacheReset(() => { cachedPendingOrdersCount = null; cachedPendingOrdersTime = 0; cachedUnreadNotifs = {}; cachedUnreadNotifsTime = 0; });
 
 export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();

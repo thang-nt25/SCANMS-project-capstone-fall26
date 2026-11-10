@@ -54,22 +54,14 @@ export class RegisterDto {
   @ApiPropertyOptional({
     enum: UserRole,
     default: UserRole.COLLABORATOR,
-    description: 'Vai trò tài khoản: COLLABORATOR, SHOP_MANAGER, hoặc CUSTOMER',
+    description: 'Vai trò tài khoản: COLLABORATOR hoặc CUSTOMER',
   })
   @IsOptional()
   @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  @IsIn([UserRole.CUSTOMER, UserRole.COLLABORATOR, UserRole.SHOP_MANAGER], {
-    message: 'Không thể đăng ký tài khoản quản trị qua API công khai',
+  @IsIn([UserRole.CUSTOMER, UserRole.COLLABORATOR], {
+    message: 'Chỉ có thể đăng ký Khách hàng hoặc Cộng tác viên qua API công khai',
   })
   role?: UserRole = UserRole.COLLABORATOR;
-
-  @ApiPropertyOptional({
-    example: 'Tech Store Official',
-    description: 'Tên cửa hàng (Bắt buộc nếu đăng ký vai trò SHOP_MANAGER)',
-  })
-  @IsOptional()
-  @IsString()
-  storeName?: string;
 
   @ApiPropertyOptional({
     example:
@@ -81,11 +73,4 @@ export class RegisterDto {
   @IsString({ message: 'Ảnh đại diện không hợp lệ' })
   avatarUrl?: string;
 
-  @ApiPropertyOptional({
-    example: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400',
-    description: 'Logo đại diện gian hàng (Bắt buộc khi đăng ký SHOP_MANAGER)',
-  })
-  @IsOptional()
-  @IsString({ message: 'Logo gian hàng không hợp lệ' })
-  logoUrl?: string;
 }

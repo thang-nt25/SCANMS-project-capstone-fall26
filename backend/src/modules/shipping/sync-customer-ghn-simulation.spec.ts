@@ -54,7 +54,7 @@ describe('Sandbox order delivery reconciliation', () => {
     };
     const service = Object.assign(Object.create(CustomerService.prototype), { prisma }) as CustomerService;
     expect((await service.getOrders('customer', { status: 'SHIPPING' })).orders).toEqual([]);
-    expect((await service.getOrders('customer', { status: 'DELIVERED' })).orders).toEqual([{ id: 'order', status: 'DELIVERED' }]);
+    expect((await service.getOrders('customer', { status: 'DELIVERED' })).orders).toEqual([{ id: 'order', status: 'DELIVERED', returnRequest: null }]);
     expect(prisma.order.updateMany).toHaveBeenCalledTimes(1);
   });
 });

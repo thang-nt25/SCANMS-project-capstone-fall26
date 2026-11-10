@@ -1522,7 +1522,7 @@ model Order {
   refunds                OrderRefund[]
   attributionAdjustments AttributionAdjustment[]
   paymentTransactions    PaymentTransaction[]
-  returnRequest          ReturnRequest?
+  returnRequests         ReturnRequest[]
   promotionUsages        ProductPromotionUsage[]
 
   @@unique([storeId, sourcePlatform, externalOrderSn], map: "idx_unique_store_platform_external_order")
@@ -2025,7 +2025,7 @@ model CustomerCartItem {
 
 model ReturnRequest {
   id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId             String              @unique @map("order_id") @db.Uuid
+  orderId             String              @map("order_id") @db.Uuid
   customerId          String              @map("customer_id") @db.Uuid
   reason              ReturnReason
   details             String?             @db.VarChar(1000)
@@ -2061,6 +2061,7 @@ model ReturnRequest {
 
   @@index([customerId, submittedAt], map: "idx_return_requests_customer")
   @@index([status, submittedAt], map: "idx_return_requests_status")
+  @@index([orderId, submittedAt], map: "idx_return_requests_order_submitted")
   @@index([status, shipByAt], map: "idx_return_requests_ship_deadline")
   @@index([status, receivedAt], map: "idx_return_requests_inspection_sla")
   @@map("return_requests")

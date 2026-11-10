@@ -13,22 +13,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div
         className={cn(
-          'relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus-within:bg-white focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all',
+          'relative flex min-h-11 min-w-0 items-center rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3.5 text-sm text-[#1A1612] transition-all focus-within:border-[#C59B58] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#C59B58]/20',
           className
         )}
       >
-        {icon && <span className="text-slate-400 text-base mr-2.5 shrink-0 flex items-center">{icon}</span>}
+        {icon && <span className="mr-2.5 flex shrink-0 items-center text-base text-[#7D715E]">{icon}</span>}
         <input
           ref={ref}
           value={value}
-          className="w-full bg-transparent border-none outline-none text-xs sm:text-sm text-slate-800 placeholder-slate-400 font-normal p-0"
+          className="min-w-0 flex-1 border-none bg-transparent p-0 text-base font-normal text-[#1A1612] outline-none placeholder:text-[#7D715E] sm:text-sm"
           {...props}
         />
         {clearable && value && (
           <button
             type="button"
             onClick={onClear}
-            className="text-slate-400 hover:text-slate-600 p-0.5 ml-1 cursor-pointer shrink-0"
+            aria-label="Xóa nội dung"
+            className="-mr-2 ml-1 flex size-11 shrink-0 items-center justify-center rounded-lg text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F] cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>

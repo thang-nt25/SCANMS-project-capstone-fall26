@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { EscrowFinanceReport } from '../../components/wallet/FinanceReports';
 import { FinanceOperations } from '../../components/wallet/FinanceOperations';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -65,6 +66,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 };
 
 let lastAdminPayoutsSnapshot: { payouts: PayoutItem[]; stats: PayoutStats | null; total: number } | null = null;
+registerPrivateCacheReset(() => { lastAdminPayoutsSnapshot = null; });
 
 export default function AdminFinancePayoutsPage() {
   const [activeTab, setActiveTab] = useState<'kol' | 'escrow' | 'operations'>('kol');

@@ -1551,8 +1551,8 @@ export default function ProductManagementPage() {
       <Card className="product-toolbar relative z-20 overflow-visible p-3 bg-white border border-[#EAE4D7] rounded-xl shadow-none">
         <div className="product-toolbar-layout grid grid-cols-[minmax(280px,1fr)_minmax(0,1.3fr)] @max-[900px]/product-management:grid-cols-1 items-stretch gap-3 @max-[900px]/product-management:gap-2.5">
           {/* Left: Compact search input & filter controls */}
-          <div className="product-filter-controls grid grid-cols-[minmax(0,1fr)_160px] items-stretch min-w-0 gap-2">
-            <div className="product-search flex items-center gap-2 bg-white border border-[#EAE4D7] rounded-lg px-3 h-9 text-xs text-[#1A1612] w-full sm:w-64 focus-within:border-[#C59B58] transition">
+          <div className="product-filter-controls grid grid-cols-1 min-[480px]:grid-cols-[minmax(0,1fr)_160px] items-stretch min-w-0 gap-2">
+            <div className="product-search flex min-w-0 items-center gap-2 bg-white border border-[#EAE4D7] rounded-lg px-3 min-h-11 text-xs text-[#1A1612] w-full focus-within:border-[#C59B58] transition">
               <Search className="w-3.5 h-3.5 text-[#7D715E] shrink-0" />
               <input
                 type="text"
@@ -1560,13 +1560,13 @@ export default function ProductManagementPage() {
                 placeholder="Tìm tên hoặc SKU sản phẩm..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-xs text-[#1A1612] placeholder-[#7D715E]/60"
+                className="w-full min-w-0 bg-transparent border-none outline-none text-base sm:text-sm text-[#1A1612] placeholder-[#7D715E]/60"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="text-[#7D715E] hover:text-[#1A1612] text-xs font-bold cursor-pointer"
+                  aria-label="Xóa tìm kiếm sản phẩm" className="flex size-11 shrink-0 items-center justify-center text-[#7D715E] hover:text-[#1A1612] text-xs font-bold cursor-pointer"
                 >
                   ✕
                 </button>

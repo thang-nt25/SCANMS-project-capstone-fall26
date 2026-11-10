@@ -101,6 +101,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
   // All Proposals from backend (including pending & history)
   const [allProposals, setAllProposals] = useState<ExclusiveDealProposal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Filters for active view
@@ -118,6 +119,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [activeRes, proposalsRes] = await Promise.all([
         analyticsService.getShopActivePartners(true),
@@ -133,7 +135,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
       setAllProposals(proposalsRes || []);
     } catch (err) {
-      console.error('Lỗi tải dữ liệu thỏa thuận độc quyền:', err);
+      setLoadError(err instanceof Error ? err.message : 'Không tải được thỏa thuận. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -265,6 +267,10 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
 
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
+      {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">
+        {loadError} Dữ liệu đang hiển thị có thể chưa được cập nhật.
+        <button type="button" disabled={loading} onClick={() => void fetchAll()} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
+      </div>}
       {/* 1. Top Priority Alert: PENDING PROPOSALS (If any) */}
       {pendingProposals.length > 0 && activeSubTab !== 'PENDING' && (
         <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 shadow-2xs flex items-center justify-between gap-3">
@@ -464,7 +470,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
             </div>
           ) : filteredActiveDeals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Không có thỏa thuận nào phù hợp với bộ lọc.
+              {loadError ? 'Chưa xác định được danh sách thỏa thuận.' : 'Không có thỏa thuận nào phù hợp với bộ lọc.'}
             </div>
           ) : displayMode === 'CREATOR' ? (
             /* Sub-view 1A: Grouped By Creator */
@@ -791,7 +797,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="space-y-3">
           {pendingProposals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Hiện không có đề xuất nào đang chờ duyệt.
+              {loadError ? 'Chưa tải được đề xuất đang chờ duyệt.' : loading ? 'Đang tải đề xuất…' : 'Hiện không có đề xuất nào đang chờ duyệt.'}
             </div>
           ) : (
             <div className="space-y-3">
@@ -1001,7 +1007,7 @@ export default function ShopActiveDealsTab({ onSelectKolForChat }: Props) {
         <div className="space-y-3">
           {historyProposals.length === 0 ? (
             <div className="rounded-xl border border-[#EAE4D7] bg-white py-12 px-6 text-center text-xs text-[#7D715E]">
-              Không có lịch sử hợp đồng nào.
+              {loadError ? 'Chưa tải được lịch sử hợp đồng.' : 'Không có lịch sử hợp đồng nào.'}
             </div>
           ) : (
             <div className="rounded-xl border border-[#EAE4D7] bg-white shadow-2xs overflow-hidden">

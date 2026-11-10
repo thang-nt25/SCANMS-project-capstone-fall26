@@ -12,7 +12,6 @@ import {
   Lock,
   Unlock,
   RefreshCw,
-  Plus,
   Wallet,
 } from 'lucide-react';
 import {
@@ -21,7 +20,6 @@ import {
   type CouponStatus,
 } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
-import { AdminVoucherIssuer } from './AdminVoucherIssuer';
 import { AdminVoucherSettlements } from './AdminVoucherSettlements';
 
 const STATUS_LABELS: Record<CouponStatus, { label: string; bg: string; text: string; border: string }> = {
@@ -77,7 +75,6 @@ export const AdminCouponsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [fundingFilter, setFundingFilter] = useState('ALL');
   const [view, setView] = useState<'coupons' | 'settlements'>('coupons');
-  const [issuerOpen, setIssuerOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [subsidyError, setSubsidyError] = useState('');
 
@@ -92,7 +89,7 @@ export const AdminCouponsPage: React.FC = () => {
 
   const [unblockLoading, setUnblockLoading] = useState(false);
 
-  const hasOpenModal = issuerOpen || detailCoupon !== null || blockTarget !== null;
+  const hasOpenModal = detailCoupon !== null || blockTarget !== null;
   useEffect(() => {
     if (!hasOpenModal) return;
     const dismiss = (event: KeyboardEvent) => {
@@ -205,8 +202,7 @@ export const AdminCouponsPage: React.FC = () => {
       <div className="grid gap-4 min-w-0">
 
         <header className="av-workspace-heading flex items-center justify-between gap-[20px] pt-[5px] pb-[8px] px-[2px] [&_h2]:my-[4px] [&_h2]:mx-0 [&_h2]:text-[23px] [&_h2]:font-bold [&_h2]:tracking-[-.025em] [&_p]:text-[#7D715E] [&_p]:text-[12px] [&_p]:mt-[4px] [&_p]:mb-0 [&_p]:mx-0 [&_p]:leading-[1.6] [@media(max-width:760px)]:items-start [@media(max-width:760px)]:flex-col [@media(max-width:760px)]:gap-[13px]">
-          <div><span className="av-eyebrow text-[#B88E4F] text-[10px] font-bold tracking-[.12em]">QUẢN LÝ ƯU ĐÃI</span><h2>Voucher toàn sàn</h2><p>Phát hành ưu đãi, kiểm soát mã và theo dõi khoản tài trợ cho Shop.</p></div>
-          <button type="button" className="av-button min-h-[38px] inline-flex items-center justify-center gap-[7px] border border-[#EAE4D7] bg-white py-[8px] px-[13px] rounded-[9px] text-[#1A1612] text-[12px] font-semibold cursor-pointer whitespace-nowrap hover:bg-[#FBF5EB] hover:border-[#C59B58] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-[#B88E4F] focus-visible:outline-offset-[3px] av-button-primary [&.av-button-primary]:bg-[#C59B58] [&.av-button-primary]:border-[#C59B58] [&.av-button-primary]:text-[#1A1612] [&.av-button-primary:hover]:bg-[#B88E4F]" onClick={() => setIssuerOpen(true)}><Plus size={17} />Phát hành voucher sàn</button>
+          <div><span className="av-eyebrow text-[#B88E4F] text-[10px] font-bold tracking-[.12em]">QUẢN LÝ ƯU ĐÃI</span><h2>Ưu đãi hệ thống</h2><p>Theo dõi SCANMSFREESHIP và đối soát mã lịch sử; mã tiền hàng mới được cấp qua deal KOL.</p></div>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -426,7 +422,6 @@ export const AdminCouponsPage: React.FC = () => {
         </div>}
       </div>
 
-      {issuerOpen && <AdminVoucherIssuer onClose={() => setIssuerOpen(false)} onIssued={() => { setIssuerOpen(false); setView('coupons'); toast.success('Đã phát hành voucher sàn.'); void fetchCoupons(); }} />}
 
       {detailCoupon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#231D15]/35 backdrop-blur-xs">

@@ -7,6 +7,8 @@ import {
 import { Modal } from "../../components/ui/Modal";
 export default function VipExceptionsPage() {
   const [items, setItems] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -17,19 +19,21 @@ export default function VipExceptionsPage() {
     setLoading(true);
     setError("");
     try {
-      setItems(
-        unwrap(
+      const data = unwrap(
           await api.get("/affiliate-deals/exceptions", {
+            params: { page },
             headers: { "x-skip-cache": "1" },
           }),
-        ),
-      );
+        ) as { items: any[]; total: number };
+      setItems(data.items);
+      setTotal(data.total);
+      if (!data.items.length && page > 1) setPage(value => value - 1);
     } catch (caught) {
       setError(requestError(caught));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -77,7 +81,7 @@ export default function VipExceptionsPage() {
       )}
       {loading ? (
         <p role="status">Đang tải đề nghị…</p>
-      ) : !items.length ? (
+      ) : !items.length && !error ? (
         <p className="text-[#7D715E]">Không có đề nghị chờ duyệt ngoại lệ.</p>
       ) : (
         items.map((item) => (
@@ -133,6 +137,11 @@ export default function VipExceptionsPage() {
           </article>
         ))
       )}
+      {total > 50 && <nav aria-label="Phân trang ngoại lệ VIP" className="flex flex-wrap items-center justify-center gap-3">
+        <button type="button" disabled={loading || busy || page <= 1} onClick={() => setPage(value => value - 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang trước</button>
+        <span className="text-sm text-[#7D715E]">Trang {page}/{Math.max(1, Math.ceil(total / 50))} · {total} đề nghị</span>
+        <button type="button" disabled={loading || busy || page * 50 >= total} onClick={() => setPage(value => value + 1)} className="min-h-11 rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm disabled:opacity-50">Trang sau</button>
+      </nav>}
       {selected && (
         <Modal
           isOpen

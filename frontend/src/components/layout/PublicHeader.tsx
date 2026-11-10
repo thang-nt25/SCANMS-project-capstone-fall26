@@ -418,7 +418,7 @@ export function PublicHeader({
           onClear={handleClearSearch}
           onFilter={onOpenFilter || location.pathname !== '/search' ? handleFilterClick : undefined}
         />
-        {navigation && <div className="mt-2 flex justify-center">{navigation}</div>}
+        {navigation && <div className="mt-2 flex w-full min-w-0 max-w-full justify-start overflow-x-auto overscroll-x-contain pb-1 sm:justify-center">{navigation}</div>}
       </div>
 
       {/* Modal Popup Yêu Cầu Đăng Nhập Khi Bấm "Đơn hàng" */}

@@ -72,5 +72,5 @@ export function useCustomerVouchers(userId?: string) {
     } : previous);
     void queryClient.invalidateQueries({ queryKey, exact: true });
   };
-  return { vouchers, expiredVouchers, now: currentTime, savedIds, savedCount: vouchers.filter(v => savedIds.includes(v.id)).length, loading: query.isPending, error: query.isError, toggleSaved };
+  return { vouchers, expiredVouchers, now: currentTime, savedIds, savedCount: vouchers.filter(v => savedIds.includes(v.id)).length, loading: Boolean(userId) && query.isPending, error: query.isError, toggleSaved };
 }

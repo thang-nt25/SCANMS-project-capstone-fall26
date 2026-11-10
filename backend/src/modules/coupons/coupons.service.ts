@@ -104,7 +104,7 @@ export class CouponsService {
   async previewStackedVoucher(dto: PreviewStackedVoucherDto) {
     const voucher = await this.prisma.coupon.findUnique({ where: { codeNormalized: dto.code.trim().toUpperCase() } });
     const now = new Date();
-    const isGlobalPlatformShipping = voucher?.benefitType === 'SHIPPING' && voucher.fundingSource === CouponFundingSource.PLATFORM_FUNDED;
+    const isGlobalPlatformShipping = voucher?.codeNormalized === 'SCANMSFREESHIP' && voucher.benefitType === 'SHIPPING' && voucher.fundingSource === CouponFundingSource.PLATFORM_FUNDED;
     if (!voucher || (!isGlobalPlatformShipping && voucher.storeId !== dto.storeId) || voucher.benefitType !== dto.benefitType ||
         voucher.scopeType !== CouponScope.STORE_WIDE || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
         (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
@@ -210,8 +210,10 @@ export class CouponsService {
     const coupons = await this.prisma.coupon.findMany({
       where: {
         ...(ids ? { id: { in: ids } } : {}),
-        fundingSource: CouponFundingSource.SHOP_FUNDED,
-        collaborator: { role: UserRole.COLLABORATOR },
+        OR: [
+          { fundingSource: CouponFundingSource.SHOP_FUNDED, collaborator: { role: UserRole.COLLABORATOR } },
+          { codeNormalized: 'SCANMSFREESHIP', fundingSource: CouponFundingSource.PLATFORM_FUNDED, benefitType: 'SHIPPING' },
+        ],
         status: CouponStatus.ACTIVE,
         deletedAt: null,
         store: { isActive: true, isDeleted: false },
@@ -359,6 +361,7 @@ export class CouponsService {
           {
             fundingSource: CouponFundingSource.PLATFORM_FUNDED,
             benefitType: 'SHIPPING',
+            codeNormalized: 'SCANMSFREESHIP',
             scopeType: CouponScope.STORE_WIDE,
           },
         ],
@@ -630,8 +633,13 @@ export class CouponsService {
     const stores = storeCollabs
       .map((sc) => sc.store)
       .filter((s): s is NonNullable<typeof s> => Boolean(s));
-
-    return stores;
+    if (!stores.length) return [];
+    const deals = await this.prisma.exclusiveDealProposal.findMany({
+      where: { collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE', storeId: { in: stores.map(store => store.id) } },
+      select: { storeId: true },
+    });
+    const dealStores = new Set(deals.map(deal => deal.storeId));
+    return stores.filter(store => dealStores.has(store.id));
   }
 
   /**
@@ -687,6 +695,14 @@ export class CouponsService {
         'Bạn chưa được Gian hàng phê duyệt hợp tác để tạo mã giảm giá riêng',
       );
     }
+    if (dto.campaignId || (dto.scopeType && dto.scopeType !== 'STORE_WIDE'))
+      throw new ForbiddenException('Mã mới chỉ được cấp theo deal toàn Shop đã duyệt.');
+    const approvedDeal = await this.prisma.exclusiveDealProposal.findFirst({
+      where: { storeId: dto.storeId, collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE' },
+      select: { id: true },
+    });
+    if (!approvedDeal)
+      throw new ForbiddenException('Bạn cần có deal toàn Shop được duyệt trước khi đề xuất mã độc quyền.');
 
     // 5.1 Kiểm tra Shop có chính sách hoa hồng đang hiệu lực không
     const hasActiveRules = await this.prisma.commissionRule.findFirst({
@@ -1262,6 +1278,15 @@ export class CouponsService {
   ) {
     if (role !== UserRole.SHOP_MANAGER) throw new ForbiddenException('Chỉ chủ Shop được phát hành voucher từ ngân sách Shop.');
     await this.verifyStoreAccess(storeId, userId, role);
+    if (!dto.collaboratorId || (dto.benefitType ?? 'GOODS') !== 'GOODS' ||
+        (dto.scopeType ?? CouponScope.STORE_WIDE) !== CouponScope.STORE_WIDE) {
+      throw new ForbiddenException('Chỉ được cấp mã độc quyền cho KOL có deal toàn Shop đã duyệt.');
+    }
+    const approvedDeal = await this.prisma.exclusiveDealProposal.findFirst({
+      where: { storeId, collaboratorId: dto.collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE' },
+      select: { id: true },
+    });
+    if (!approvedDeal) throw new ForbiddenException('KOL chưa có deal toàn Shop được duyệt. Hãy hoàn tất thỏa thuận trước khi cấp mã.');
 
     // Rate limit: 10 requests / minute
     await this.checkRateLimit(`shop_create_min_${storeId}`, 10, 60 * 1000);
@@ -1897,6 +1922,11 @@ export class CouponsService {
   }
 
   async createPlatformCoupon(adminId: string, dto: CreatePlatformCouponDto) {
+    if (dto.code.trim().toUpperCase() !== 'SCANMSFREESHIP' || dto.benefitType !== 'SHIPPING' ||
+        dto.discountType !== DiscountType.PERCENTAGE || dto.discountValue !== 100 ||
+        dto.usageLimitPerCustomer !== 3) {
+      throw new ForbiddenException('Chỉ được phát hành lại mã SCANMSFREESHIP cho khách mới, tối đa 3 lượt mỗi khách.');
+    }
     const store = await this.prisma.store.findFirst({ where: { id: dto.storeId, isActive: true, isDeleted: false }, select: { id: true } });
     if (!store) throw new NotFoundException('Gian hàng không hoạt động.');
     if (dto.discountType === DiscountType.PERCENTAGE && dto.discountValue > 100) throw new BadRequestException('Mức giảm không được vượt quá 100%.');

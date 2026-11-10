@@ -18,6 +18,7 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
         findFirst: jest.fn(async ({ where }: any) => (!where.collaboratorId || where.collaboratorId === coupon.collaboratorId) ? { ...coupon } : null),
         findUnique: jest.fn(async ({ where }: any) => where.id ? { ...coupon } : null),
         create: jest.fn(async ({ data }: any) => ({ id: 'new-coupon', ...data })),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         update: jest.fn(async ({ where, data }: any) => {
           for (const [key, value] of Object.entries(where)) {
             if (value === undefined) continue;
@@ -151,9 +152,24 @@ describe('Word section 7 voucher ownership and lifecycle', () => {
       [StoreCouponsController, 'createStoreCoupon', [UserRole.SHOP_MANAGER]],
       [StoreCouponsController, 'approveCoupon', [UserRole.SHOP_MANAGER]],
       [CollaboratorCouponsController, 'proposeCoupon', [UserRole.COLLABORATOR]],
-      [AdminCouponsController, 'createPlatformCoupon', [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER]],
-      [PublicCouponsController, 'getSavedAvailableCoupons', [UserRole.CUSTOMER]],
-      [PublicCouponsController, 'getSavedExpiredCoupons', [UserRole.CUSTOMER]],
+      [
+        AdminCouponsController,
+        'createPlatformCoupon',
+        [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER],
+      ],
+      [PublicCouponsController, 'getSavedCouponIds', Object.values(UserRole)],
+      [
+        PublicCouponsController,
+        'getSavedAvailableCoupons',
+        Object.values(UserRole),
+      ],
+      [
+        PublicCouponsController,
+        'getSavedExpiredCoupons',
+        Object.values(UserRole),
+      ],
+      [PublicCouponsController, 'saveCoupon', Object.values(UserRole)],
+      [PublicCouponsController, 'removeSavedCoupon', Object.values(UserRole)],
     ];
     for (const [Controller, method, permitted] of matrix) for (const role of Object.values(UserRole)) {
       const context: any = { getClass: () => Controller, getHandler: () => Controller.prototype[method],

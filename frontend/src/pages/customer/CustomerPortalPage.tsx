@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect, useRef } from 'react';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { returnStatusLabel } from '../../utils/return-status.utils';
@@ -90,6 +91,7 @@ type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED'
 export type ProfileSubTab = 'info' | 'addresses' | 'security';
 
 let cachedCustomerOrders: CustomerOrder[] = [];
+registerPrivateCacheReset(() => { cachedCustomerOrders = []; });
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -1097,7 +1099,7 @@ export default function CustomerPortalPage() {
                           type="button"
                           onClick={() => setOrderStatusFilter(tab.key as OrderFilterStatus)}
                           aria-pressed={orderStatusFilter === tab.key}
-                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
+                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-11 @max-[499px]:min-h-11 py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
                               ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612] font-[600]'
                               : 'border-transparent bg-white text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] font-[500]'
@@ -1353,7 +1355,7 @@ export default function CustomerPortalPage() {
                                 {(isCancelled || completedActions) && <button type="button" onClick={() => handleReorder(order)} className="customer-order-rebuy">Mua lại</button>}
                                 {/* Secondary Button: Xem chi tiết */}
                                 {order.returnRequest ? <>
-                                  <Link to={`/customer/returns/${order.returnRequest.id}`} className="customer-order-return-link">Xem yêu cầu đổi trả</Link>
+                                  {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link key={request.id} to={`/customer/returns/${request.id}`} className="customer-order-return-link">Hồ sơ đổi trả {index + 1}</Link>)}
                                   <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ Shop</button>
                                   {mayEscalateReturn && <Link to={`/customer/returns/${order.returnRequest.id}?dispute=1`} className="customer-order-return-link customer-order-return-review">Yêu cầu SCANMS xem xét</Link>}
                                 </> : isCancelled ? <Link
@@ -1367,7 +1369,7 @@ export default function CustomerPortalPage() {
                                 >Xem chi tiết</Link> : !completedActions && <button
                                   type="button"
                                   onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isDelivered ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                  className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                 >
                                   {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
                                 </button>}
@@ -1379,7 +1381,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setCancellingOrderId(order.id)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#FECACA] hover:border-[#DC2626] rounded-[8px] bg-white hover:bg-[#FEF2F2] text-[#DC2626] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#FECACA] hover:border-[#DC2626] rounded-[8px] bg-white hover:bg-[#FEF2F2] text-[#DC2626] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     Hủy đơn
                                   </button>
@@ -1391,7 +1393,7 @@ export default function CustomerPortalPage() {
                                     type="button"
                                     disabled={confirmingOrderId === order.id}
                                     onClick={() => handleConfirmReceipt(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] disabled:opacity-50 cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] disabled:opacity-50 cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     {confirmingOrderId === order.id && <Loader2 className="w-[14px] h-[14px] animate-spin" />}
                                     <span>Đã nhận hàng</span>
@@ -1403,7 +1405,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReturnOrder(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     <RotateCcw className="w-[14px] h-[14px] text-[#B88E4F]" />
                                     <span>Trả hàng / Hoàn tiền</span>
@@ -1415,7 +1417,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReviewOrder(order)}
-                                    className="inline-flex items-center justify-center gap-[5px] min-h-[34px] px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     <Star className="w-[14px] h-[14px] text-[#B88E4F]" />
                                     <span>Đánh giá sản phẩm</span>
@@ -1540,7 +1542,7 @@ export default function CustomerPortalPage() {
                             <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
                             <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
                               <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
-                              <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')} aria-label="Thay đổi email"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                              <span className="text-xs text-[#7D715E]">Email đăng nhập</span>
                             </div>
                           </div>
 
@@ -1554,7 +1556,7 @@ export default function CustomerPortalPage() {
                             ) : (
                               <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
                                 <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
-                                <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                                <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-11 px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
                               </div>
                             )}
                           </div>
@@ -1623,7 +1625,7 @@ export default function CustomerPortalPage() {
                 {activeProfileSubTab === 'addresses' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
                     <div className="flex items-center justify-end flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
-                      <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
+                      <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-11 px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
                         <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
                         <span>Thêm địa chỉ</span>
                       </button>
@@ -1786,7 +1788,7 @@ export default function CustomerPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                aria-label="Đóng chi tiết đơn hàng" className="shrink-0 w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
+                aria-label="Đóng chi tiết đơn hàng" className="shrink-0 w-11 h-11 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
               >
                 ✕
               </button>
@@ -2037,7 +2039,7 @@ export default function CustomerPortalPage() {
                 <h2 id="delete-address-title" className="m-0 font-inherit text-[15px] max-[419px]:text-[14px] font-[650] leading-[1.45] tracking-[-0.3px] text-[#1A1612]">Xóa địa chỉ nhận hàng?</h2>
                 <p id="delete-address-description" className="m-0 mt-[5px] text-[#7D715E] text-[11px] leading-[1.6]">Địa chỉ sẽ bị xóa khỏi sổ. Thao tác này không thể hoàn tác.</p>
               </div>
-              <button type="button" className="grid place-items-center shrink-0 w-[26px] h-[26px] p-0 border-0 rounded-[7px] bg-[#FAF8F5] text-[#7D715E] cursor-pointer hover:bg-[#F3EFE6] transition-colors" aria-label="Đóng xác nhận xóa địa chỉ" disabled={isDeletingAddress} onClick={() => setAddressPendingDeletion(null)}><X size={16} aria-hidden="true" /></button>
+              <button type="button" className="grid place-items-center shrink-0 size-11 p-0 border-0 rounded-[7px] bg-[#FAF8F5] text-[#7D715E] cursor-pointer hover:bg-[#F3EFE6] transition-colors" aria-label="Đóng xác nhận xóa địa chỉ" disabled={isDeletingAddress} onClick={() => setAddressPendingDeletion(null)}><X size={16} aria-hidden="true" /></button>
             </div>
             <div className="p-[14px_16px_16px] max-[419px]:p-[12px]">
               <div className="flex gap-[10px] p-[12px] border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]">

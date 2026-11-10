@@ -387,8 +387,8 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="agreeTerms" className="cursor-pointer leading-snug">
                   Tôi đồng ý với{' '}
-                  <Link to="/terms" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
-                  <Link to="/privacy" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
+                  <Link to="/terms" target="_blank" rel="noopener noreferrer" aria-label="Điều khoản (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Điều khoản</Link> và{' '}
+                  <Link to="/privacy" target="_blank" rel="noopener noreferrer" aria-label="Chính sách (mở tab mới)" className="text-[#B88E4F] hover:underline font-semibold">Chính sách</Link> của SCANMS.
                 </label>
               </div>
 

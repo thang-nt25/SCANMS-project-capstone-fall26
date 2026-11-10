@@ -689,10 +689,10 @@ function CustomerCouponModal({
             </div>
             <div>
               <h3 id="customer-coupon-title" className="text-sm font-bold text-[#1A1612]">
-                {isCollaborator ? `Cấp Voucher Cho ${collaboratorName || 'Đối Tác'}` : 'Chia sẻ mã giảm giá'}
+                {isCollaborator ? `Mã độc quyền của ${collaboratorName || 'Đối Tác'}` : 'Chia sẻ mã giảm giá'}
               </h3>
               <p className="text-[11px] text-[#7D715E]">
-                {isCollaborator ? 'Chọn mã ưu đãi có sẵn hoặc tạo mã riêng cấp quyền cho KOL' : 'Chọn mã giảm giá đang hoạt động của gian hàng'}
+                {isCollaborator ? 'Mã mới được cấp theo deal đã duyệt. Chọn mã hiện có để gửi trong chat.' : 'Chọn mã giảm giá đang hoạt động của gian hàng'}
               </p>
             </div>
           </div>
@@ -715,18 +715,6 @@ function CustomerCouponModal({
             >
               <Ticket className="w-3.5 h-3.5 text-[#B88E4F]" />
               <span>Chọn mã có sẵn ({coupons.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalTab('CREATE')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                modalTab === 'CREATE'
-                  ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EAE4D7]'
-                  : 'text-[#7D715E] hover:text-[#1A1612]'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5 text-[#B88E4F]" />
-              <span>Tạo mã mới cho đối tác</span>
             </button>
           </div>
         )}
@@ -753,13 +741,7 @@ function CustomerCouponModal({
                   <p className="font-semibold text-[#1A1612]">Chưa có mã giảm giá khả dụng</p>
                   <p className="text-[11px]">Gian hàng hiện chưa có mã giảm giá nào ở trạng thái Đang hoạt động.</p>
                   {isCollaborator && (
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('CREATE')}
-                      className="px-4 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition cursor-pointer"
-                    >
-                      + Tạo mã mới ngay tại đây
-                    </button>
+                    <p className="text-[11px] text-[#7D715E]">Hoàn tất deal độc quyền để cấp mã cho KOL.</p>
                   )}
                 </div>
               ) : (
@@ -806,14 +788,7 @@ function CustomerCouponModal({
 
             <div className="flex items-center justify-between border-t border-[#EAE4D7] px-4 py-2.5 bg-[#FAF8F5]">
               {isCollaborator ? (
-                <button
-                  type="button"
-                  onClick={() => setModalTab('CREATE')}
-                  className="text-xs font-bold text-[#B88E4F] hover:text-[#1A1612] flex items-center gap-1 transition cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tạo mã mới riêng cho KOL này</span>
-                </button>
+                <span className="text-[11px] text-[#7D715E]">Mã mới được cấp theo deal đã duyệt.</span>
               ) : (
                 <span className="text-[11px] text-[#7D715E]">Cần tạo mã mới?</span>
               )}

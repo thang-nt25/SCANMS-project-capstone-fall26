@@ -54,13 +54,18 @@ describe('Voucher slots and platform funding', () => {
     await expect(service.previewStackedVoucher({ code: 'SHIP30', storeId, benefitType: 'SHIPPING', goodsSubtotal: 300000, shippingFee: 30000, shopDiscount: 0 })).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('issues an Admin voucher with 100% platform funding and a hard budget', async () => {
+  it('only reissues the approved new-customer freeship exception', async () => {
     prisma.coupon.findUnique.mockResolvedValue(null);
     await service.createPlatformCoupon('11111111-1111-4111-8111-111111111111', {
+      storeId, code: 'SCANMSFREESHIP', benefitType: 'SHIPPING', discountType: 'PERCENTAGE',
+      discountValue: 100, maximumDiscountAmount: 100000, usageLimitPerCustomer: 3,
+      budgetTotal: 500000, usageLimitTotal: 10,
+    });
+    expect(prisma.coupon.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fundingSource: 'PLATFORM_FUNDED', benefitType: 'SHIPPING', usageLimitPerCustomer: 3, shopFundingRate: 0, platformFundingRate: 100, budgetTotal: 500000 }) }));
+    await expect(service.createPlatformCoupon('11111111-1111-4111-8111-111111111111', {
       storeId, code: 'SAN50', benefitType: 'GOODS', discountType: 'FIXED_AMOUNT',
       discountValue: 50000, budgetTotal: 500000, usageLimitTotal: 10,
-    });
-    expect(prisma.coupon.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ fundingSource: 'PLATFORM_FUNDED', shopFundingRate: 0, platformFundingRate: 100, budgetTotal: 500000 }) }));
+    })).rejects.toThrow();
   });
 
   it('reconciles platform funding from both goods and shipping slots per Shop', async () => {

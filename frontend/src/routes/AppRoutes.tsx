@@ -2,6 +2,7 @@ const ProductPricingPage = lazy(() => import('../pages/shared/ProductPricingPage
 const VipExceptionsPage = lazy(() => import('../pages/admin/VipExceptionsPage'));
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ComponentType } from 'react';
+import PlatformInfoPage, { NotFoundPage } from '../pages/public/PlatformInfoPage';
 const InternalTrafficTestPage = lazy(() => import('@/pages/admin/InternalTrafficTestPage'));
 
 /**
@@ -79,7 +80,7 @@ const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage').then(m =
 const DisputeResolutionPage = lazy(() => import('../pages/admin/DisputeResolutionPage').then(m => ({ default: m.DisputeResolutionPage })));
 
 // Shop Return Requests (Merchant)
-const ShopReturnRequestsPage = lazy(() => import('../pages/merchant/ShopReturnRequestsPage').then(m => ({ default: m.ShopReturnRequestsPage })));
+const ShopReturnsQueuePage = lazy(() => import('../pages/merchant/ShopReturnsQueuePage'));
 
 import { RouteContent } from './RouteContent';
 import { RoleGuard } from './RoleGuard';
@@ -134,6 +135,9 @@ function AppRoutes() {
             <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5] grid place-items-center text-[#7D715E]">Đang tải SCANMS...</div>}>
               <Routes>
               <Route path="/" element={<MarketplacePage />} />
+              <Route path="/terms" element={<PlatformInfoPage kind="terms" />} />
+              <Route path="/privacy" element={<PlatformInfoPage kind="privacy" />} />
+              <Route path="*" element={<NotFoundPage />} />
               <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/shops/:shopId" element={<ShopPage />} />
               <Route path="/search" element={<SearchPage />} />
@@ -170,7 +174,7 @@ function AppRoutes() {
         <Route path="/customer/wishlist" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
-        <Route path="/customer/upgrade/shop" element={<CustomerPortalPage />} />
+        <Route path="/customer/upgrade/shop" element={<Navigate to="/customer/upgrade" replace />} />
         <Route path="/customer/returns/:id" element={<ReturnDetailPage mode="customer" />} />
         <Route path="/customer/vouchers" element={<CustomerPortalPage />} />
         <Route path="/customer/notifications" element={<CustomerPortalPage />} />
@@ -214,8 +218,8 @@ function AppRoutes() {
               <Route path="merchant/fraud-sentinel" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/ai-fraud" element={<Navigate to="/admin/fraud-sentinel" replace />} />
               <Route path="merchant/audit-logs" element={<Navigate to="/admin/audit-logs" replace />} />
-              <Route path="merchant/returns" element={<ShopReturnRequestsPage />} />
-              <Route path="merchant/return-requests" element={<ShopReturnRequestsPage />} />
+              <Route path="merchant/returns" element={<ShopReturnsQueuePage />} />
+              <Route path="merchant/return-requests" element={<ShopReturnsQueuePage />} />
 
               {/* Merchant Backward Compatibility Redirects */}
               <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />

@@ -71,6 +71,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan', icon: Store, group: 1 },
       { path: '/merchant/orders', label: 'Quản lý đơn hàng', icon: ShoppingBag, group: 1 },
+      { path: '/merchant/returns', label: 'Hồ sơ đổi trả', icon: RotateCcw, group: 1 },
       { path: '/merchant/products', label: 'Sản phẩm', icon: Box, group: 1 },
       { path: '/merchant/kol-hub', label: 'Mạng lưới Đối tác', icon: Users, group: 2 },
       { path: '/merchant/promotions', label: 'Khuyến mại & Đãi ngộ', icon: Tag, group: 2 },

@@ -149,14 +149,13 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
 
-    // Public registration cannot create administrative accounts, even with a valid OTP.
+    // Public registration is limited to customers and collaborators.
     if (
       dto.role &&
       !(
         [
           UserRole.CUSTOMER,
           UserRole.COLLABORATOR,
-          UserRole.SHOP_MANAGER,
         ] as UserRole[]
       ).includes(dto.role)
     ) {
@@ -166,9 +165,6 @@ export class AuthService {
     }
     this.assertOtp(normalizedEmail, dto.otp);
 
-    // Xóa OTP sau khi dùng thành công
-    this.otpCache.delete(normalizedEmail);
-
     // Kiểm tra email trùng
     const existing = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -177,97 +173,62 @@ export class AuthService {
       throw new ConflictException('Email này đã được sử dụng');
     }
 
-    // Băm mật khẩu bằng Argon2id
+    const role = dto.role || UserRole.COLLABORATOR;
+    const avatarUrl = dto.avatarUrl?.trim();
+    if (role === UserRole.COLLABORATOR && !avatarUrl) {
+      throw new BadRequestException(
+        'Ảnh đại diện cho Nhà sáng tạo (KOL/KOC) là bắt buộc khi đăng ký',
+      );
+    }
+    // Băm mật khẩu bằng Argon2id sau khi hoàn tất kiểm tra dữ liệu.
     const passwordHash = await this.hashPassword(dto.password);
-    const requestedShopRole = dto.role === UserRole.SHOP_MANAGER;
-    const role = requestedShopRole
-      ? UserRole.CUSTOMER
-      : dto.role || UserRole.COLLABORATOR;
 
-    // Tạo User
-    const user = await this.prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        passwordHash,
-        fullName: dto.fullName.trim(),
-        phoneNumber: dto.phoneNumber?.trim() || null,
-        role,
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        phoneNumber: true,
-        createdAt: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          fullName: dto.fullName.trim(),
+          phoneNumber: dto.phoneNumber?.trim() || null,
+          role,
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          phoneNumber: true,
+          createdAt: true,
+        },
+      });
+
+      if (role === UserRole.COLLABORATOR) {
+        const bronzeTier = await tx.collaboratorTier.findFirst({
+          where: { name: 'Đồng' },
+        });
+
+        await tx.collaboratorProfile.create({
+          data: {
+            userId: created.id,
+            tierId: bronzeTier?.id || null,
+            avatarUrl,
+            bankName: '',
+            bankAccountNumber: '',
+            bankAccountName: created.fullName,
+          },
+        });
+
+        await tx.wallet.create({
+          data: {
+            collaboratorId: created.id,
+            availableBalance: 0,
+            pendingBalance: 0,
+          },
+        });
+      }
+      return created;
     });
-
-    // Nếu là KOL / Collaborator: Tạo Profile và Ví tiền mặc định
-    if (role === UserRole.COLLABORATOR) {
-      const avatarUrl = dto.avatarUrl?.trim();
-      if (!avatarUrl) {
-        throw new BadRequestException(
-          'Ảnh đại diện cho Nhà sáng tạo (KOL/KOC) là bắt buộc khi đăng ký',
-        );
-      }
-
-      const bronzeTier = await this.prisma.collaboratorTier.findFirst({
-        where: { name: 'Đồng' },
-      });
-
-      await this.prisma.collaboratorProfile.create({
-        data: {
-          userId: user.id,
-          tierId: bronzeTier?.id || null,
-          avatarUrl,
-          bankName: '',
-          bankAccountNumber: '',
-          bankAccountName: user.fullName,
-        },
-      });
-
-      await this.prisma.wallet.create({
-        data: {
-          collaboratorId: user.id,
-          availableBalance: 0,
-          pendingBalance: 0,
-        },
-      });
-    }
-
-    // Nếu là Shop: Tạo Cửa hàng mặc định
-    if (requestedShopRole) {
-      const logoUrl = dto.logoUrl?.trim();
-      if (!logoUrl) {
-        throw new BadRequestException(
-          'Ảnh logo đại diện cho Cửa hàng (Shop) là bắt buộc khi đăng ký',
-        );
-      }
-
-      const storeName = dto.storeName?.trim() || `${user.fullName} Store`;
-      const slug =
-        storeName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') +
-        '-' +
-        Date.now().toString().slice(-4);
-
-      await this.prisma.store.create({
-        data: {
-          ownerId: user.id,
-          name: storeName,
-          slug,
-          logoUrl,
-          defaultCommissionRate: 10.0,
-          attributionWindowDays: 30,
-          isActive: false,
-          isVerified: false,
-          onboardingStatus: 'DRAFT',
-        },
-      });
-    }
+    this.otpCache.delete(normalizedEmail);
 
     // Gửi email chào mừng
     console.log('\n======================================================');

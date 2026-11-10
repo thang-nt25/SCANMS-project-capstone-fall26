@@ -13,11 +13,11 @@ export function notificationTarget(notification: Notification, role: Role): stri
     if (role === 'SHOP_MANAGER') return '/merchant/kol-hub?tab=messages' + (param(data.collaboratorId) ? '&kol=' + param(data.collaboratorId) : '');
     if (admin) return '/admin/affiliate-oversight';
   }
-  if (type.startsWith('KYC_')) return admin ? '/admin/users' : role === 'SHOP_MANAGER' ? '/customer/upgrade/shop' : role === 'CUSTOMER' ? '/customer/upgrade' : '/collaborator/profile?tab=kyc';
+  if (type.startsWith('KYC_')) return admin ? '/admin/users' : role === 'SHOP_MANAGER' ? '/merchant/dashboard' : role === 'CUSTOMER' ? '/customer/upgrade' : '/collaborator/profile?tab=kyc';
   if (type === 'KOL_APPROVED') return '/collaborator/dashboard';
   if (type === 'KOL_REJECTED' || type === 'KOL_NEEDS_INFO') return '/customer/upgrade/kol';
   if (type === 'SHOP_APPROVED') return '/merchant/dashboard';
-  if (type === 'SHOP_REJECTED' || type === 'SHOP_NEEDS_INFO') return '/customer/upgrade/shop';
+  if (type === 'SHOP_REJECTED' || type === 'SHOP_NEEDS_INFO') return '/customer/upgrade';
   if (type.startsWith('SAMPLE_')) {
     if (admin) return '/admin/sample-requests';
     if (role === 'SHOP_MANAGER') return '/merchant/kol-hub?tab=samples';

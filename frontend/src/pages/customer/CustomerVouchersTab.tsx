@@ -9,7 +9,7 @@ import { voucherExpiryState } from '../../utils/voucher-expiry.utils';
 
 export function CustomerVouchersTab() {
   const user = authService.getCurrentUser();
-  const { vouchers, expiredVouchers, now, savedIds, loading, error, toggleSaved: toggleInventorySaved } = useCustomerVouchers(user?.role === 'CUSTOMER' ? user.id : undefined);
+  const { vouchers, expiredVouchers, now, savedIds, loading, error, toggleSaved: toggleInventorySaved } = useCustomerVouchers(user?.id);
   const [copiedCode, setCopiedCode] = useState('');
   const [savingId, setSavingId] = useState('');
   const [filter, setFilter] = useState<'available' | 'saved'>('available');
