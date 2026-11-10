@@ -120,6 +120,12 @@ const unwrap = <T,>(response: unknown): T => {
 };
 
 export const returnService = {
+  getOversightQueue: async <T extends ReturnDetail | ReturnDisputeRecord>(
+    kind: 'active' | 'rejected' | 'ghn' | 'stalled' | 'disputes', page = 1,
+  ) => unwrap<{ total: number; page: number; pageSize: number; items: T[] }>(
+    await api.get('/admin/return-disputes/queue', {
+      params: { kind, page }, headers: { 'x-skip-cache': 'true' },
+    })),
   getOne: async (id: string) => unwrap<ReturnDetail>(await api.get(`/returns/${id}`, {
     headers: { 'x-skip-cache': 'true' },
   })),
@@ -187,6 +193,11 @@ export const returnService = {
   getAdminStalled: async () => unwrap<ReturnDetail[]>(await api.get('/admin/return-disputes/overdue-inspections', {
     headers: { 'x-skip-cache': 'true' },
   })),
+  getAdminHistory: async (page = 1, query = '') => unwrap<{ total: number; page: number; pageSize: number; items: ReturnDetail[] }>(
+    await api.get('/admin/return-disputes/history', {
+      params: { page, query },
+      headers: { 'x-skip-cache': 'true' },
+    })),
   resolveDispute: async (id: string, data: {
     ruling: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP'; liability?: 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'; notes: string;
   }) => unwrap<ReturnDetail>(await api.patch(`/admin/return-disputes/${id}/resolve`, data)),

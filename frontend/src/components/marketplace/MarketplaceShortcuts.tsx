@@ -7,7 +7,7 @@ export function MarketplaceShortcuts({ onOpenLive }: { onOpenLive: () => void; c
   const discountsActive = location.pathname === '/search' && new URLSearchParams(location.search).get('discount') === 'true';
 
   return (
-    <nav aria-label="Khám phá SCANMS" className="inline-flex items-center gap-0 py-[3px] px-2 bg-[#FAF5EC] rounded-full border border-[#E6D8C2] shadow-[0_4px_14px_rgba(70,45,15,0.06),0_1px_3px_rgba(0,0,0,0.02)]">
+    <nav aria-label="Khám phá SCANMS" className="inline-flex shrink-0 items-center gap-0 py-[3px] px-2 bg-[#FAF5EC] rounded-full border border-[#E6D8C2] shadow-[0_4px_14px_rgba(70,45,15,0.06),0_1px_3px_rgba(0,0,0,0.02)]">
       <Link
         to="/marketplace#featured-stores"
         aria-current={storesActive ? 'location' : undefined}

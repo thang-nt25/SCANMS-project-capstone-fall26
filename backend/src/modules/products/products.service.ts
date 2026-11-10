@@ -1086,7 +1086,7 @@ export class ProductsService {
             dto.status === 'APPROVED'
               ? 'Sản phẩm "' +
                 product.title +
-                '" đã được SCANMS phê duyệt và có thể hiển thị trên sàn.'
+                '" đã được SCANMS phê duyệt và có thể hiển thị trên hệ thống.'
               : 'Sản phẩm "' +
                 product.title +
                 '" chưa được duyệt. Lý do: ' +
@@ -2611,7 +2611,7 @@ export class ProductsService {
         categoryName: product.categoryName || 'Sản phẩm tiêu dùng',
         description:
           product.description ||
-          'Sản phẩm chính hãng chất lượng cao được phân phối bởi gian hàng đối tác trên hệ thống sàn SCANMS.',
+          'Sản phẩm chính hãng chất lượng cao phân phối bởi các nhãn hàng trực thuộc hệ thống tiếp thị liên kết SCANMS.',
         price: Number(product.price),
         originalPrice: product.originalPrice
           ? Number(product.originalPrice)

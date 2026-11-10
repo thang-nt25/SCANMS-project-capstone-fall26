@@ -25,7 +25,7 @@ export function CustomerVouchersTab() {
     }
   };
   return (
-    <section className="space-y-4 text-[#1A1612]">
+    <section className="space-y-4 text-[#1A1612] w-full max-w-[1200px]">
       <div>
         <h1 className="text-xl font-bold">Mã ưu đãi độc quyền KOL</h1>
         <p className="mt-2 text-sm text-[#7D715E]">

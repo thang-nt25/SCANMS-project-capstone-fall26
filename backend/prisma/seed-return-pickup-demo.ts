@@ -57,10 +57,9 @@ async function main() {
     orderId: order.id, productId: product.id, quantity: 1, unitPrice: 120000,
     appliedCommissionRate: 0, calculatedCommissionAmount: 0,
   } });
-  const request = await prisma.returnRequest.upsert({
-    where: { orderId: order.id },
-    update: {}, // Re-running the seed must not reset progress made while testing.
-    create: {
+  const request = await prisma.returnRequest.findFirst({ where: { orderId: order.id }, orderBy: { submittedAt: 'asc' } })
+    ?? await prisma.returnRequest.create({
+    data: {
       orderId: order.id, customerId: customer.id, reason: ReturnReason.WRONG_ITEM,
       details: 'Hồ sơ demo: Shop đã duyệt, chờ cấu hình kho nhận hàng trả.',
       imageUrls: ['http://localhost:5173/assets/cica-mask-product.jpg'],

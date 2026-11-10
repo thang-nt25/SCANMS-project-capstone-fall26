@@ -9,8 +9,10 @@ New customer requests select order lines and quantities, a preferred outcome
 is required; unboxing video is required for damaged goods and optional for
 other reasons. The paid order total is allocated to selected lines in proportion
 to original line value, including the paid delivery amount and discounts.
-The current data model still permits only one return request per order; select
-all relevant lines in that request.
+An order can have separate return cases for remaining lines or quantities within
+the 14-day delivery window. Only one case may be active at a time, so settlement
+and order status cannot race. Quantities already refunded or exchanged cannot be
+reused; an expired or denied case does not consume the quantity.
 
 ## Reverse pickup (new customer flow)
 

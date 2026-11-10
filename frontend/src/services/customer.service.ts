@@ -65,6 +65,7 @@ export interface CustomerOrder {
   policyAcceptedAt?: string | null;
   policySnapshot?: Record<string, unknown> | null;
   returnRequest?: CustomerReturnRequest | null;
+  returnRequests?: CustomerReturnRequest[];
   rawPayload?: any;
   createdAt: string;
   updatedAt: string;
@@ -94,6 +95,7 @@ export interface CustomerReturnRequest {
   imageUrls: string[];
   unboxingVideoUrl?: string | null;
   status: import('./return.service').ReturnStatus;
+  items?: Array<{ orderItemId: string; quantity: number }>;
   deadlineAt: string;
   shipByAt?: string | null;
   pickupContact?: import('./return.service').PickupBookingInput | null;

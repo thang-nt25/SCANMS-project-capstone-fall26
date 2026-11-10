@@ -762,8 +762,13 @@ export class CouponsService {
     const stores = storeCollabs
       .map((sc) => sc.store)
       .filter((s): s is NonNullable<typeof s> => Boolean(s));
-
-    return stores;
+    if (!stores.length) return [];
+    const deals = await this.prisma.exclusiveDealProposal.findMany({
+      where: { collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE', storeId: { in: stores.map(store => store.id) } },
+      select: { storeId: true },
+    });
+    const dealStores = new Set(deals.map(deal => deal.storeId));
+    return stores.filter(store => dealStores.has(store.id));
   }
 
   /**
@@ -819,6 +824,14 @@ export class CouponsService {
         'Bạn chưa được Gian hàng phê duyệt hợp tác để tạo mã giảm giá riêng',
       );
     }
+    if (dto.campaignId || (dto.scopeType && dto.scopeType !== 'STORE_WIDE'))
+      throw new ForbiddenException('Mã mới chỉ được cấp theo deal toàn Shop đã duyệt.');
+    const approvedDeal = await this.prisma.exclusiveDealProposal.findFirst({
+      where: { storeId: dto.storeId, collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE' },
+      select: { id: true },
+    });
+    if (!approvedDeal)
+      throw new ForbiddenException('Bạn cần có deal toàn Shop được duyệt trước khi đề xuất mã độc quyền.');
 
     // 5.1 Kiểm tra Shop có chính sách hoa hồng đang hiệu lực không
     const hasActiveRules = await this.prisma.commissionRule.findFirst({

@@ -66,10 +66,10 @@ describe('KOL-only coupon HTTP compatibility', () => {
       .delete(`/coupons/saved/${id}`)
       .expect(410);
   });
-  it('keeps the Customer role guard on compatibility routes', async () => {
+  it('keeps buyer compatibility for KOL without restoring retired inventory', async () => {
     role = UserRole.COLLABORATOR;
-    await request(app.getHttpServer()).get('/coupons/saved').expect(403);
-    await request(app.getHttpServer()).post(`/coupons/saved/${id}`).expect(403);
+    await request(app.getHttpServer()).get('/coupons/saved').expect(200, []);
+    await request(app.getHttpServer()).post(`/coupons/saved/${id}`).expect(410);
   });
   it('rejects retail stacking through the old public API', async () => {
     await request(app.getHttpServer())

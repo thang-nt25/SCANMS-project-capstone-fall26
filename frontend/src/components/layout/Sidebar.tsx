@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
@@ -8,7 +9,6 @@ import { orderService } from '../../services/order.service';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from '../../utils/toast';
 import { handleRouteHover, cancelRouteHover, prewarmCoreRoutes } from '../../utils/route-preloader.utils';
-import { useCustomerVouchers } from '../../hooks/useCustomerVouchers';
 import { useCustomerWishlist } from '../../hooks/useCustomerWishlist';
 
 export interface SidebarProps {
@@ -22,6 +22,7 @@ let cachedPendingOrdersCount: number | null = null;
 let cachedPendingOrdersTime = 0;
 let cachedUnreadNotifs: { ORDER?: number; PROMOTION?: number; SYSTEM?: number } = {};
 let cachedUnreadNotifsTime = 0;
+registerPrivateCacheReset(() => { cachedPendingOrdersCount = null; cachedPendingOrdersTime = 0; cachedUnreadNotifs = {}; cachedUnreadNotifsTime = 0; });
 
 export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps) {
   const location = useLocation();
@@ -30,7 +31,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
   const [activeWs, setActiveWs] = useState(() => authService.getActiveWorkspace());
   const [uploading, setUploading] = useState(false);
   const [failedAvatar, setFailedAvatar] = useState('');
-  const voucherInventory = useCustomerVouchers(currentPath.startsWith('/customer') && currentUser?.role === 'CUSTOMER' ? currentUser.id : undefined);
   const wishlistInventory = useCustomerWishlist(currentPath.startsWith('/customer') ? currentUser?.id : undefined);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,11 +130,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
     if (path === '/customer/wishlist') {
       return !wishlistInventory.loading && !wishlistInventory.error
         ? { text: String(wishlistInventory.count), isHighlight: false }
-        : null;
-    }
-    if (path === '/customer/vouchers') {
-      return !voucherInventory.loading && !voucherInventory.error
-        ? { text: String(voucherInventory.vouchers.length), isHighlight: false }
         : null;
     }
     if (staticBadge) {
@@ -320,7 +315,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
   return (
     <aside
       data-workspace-role={role}
-      className={`workspace-sidebar w-full lg:w-[250px] shrink-0 ${className ? className : 'px-3.5'} pt-4 sm:pt-5 pb-3.5 lg:h-full self-start text-left select-none flex flex-col gap-2.5 z-30`}
+      className={`workspace-sidebar w-full shrink-0 ${className ? className : 'px-3.5 lg:w-[250px]'} pt-4 sm:pt-5 pb-3.5 lg:h-full text-left select-none flex flex-col gap-2.5 z-30`}
     >
       {/* Hidden file input for avatar upload */}
       <input
@@ -437,7 +432,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                 <span className="flex-1 truncate tracking-tight">{item.label}</span>
                 {badge && (
                   <span
-                    className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
+                    className={`ml-auto text-[10px] font-bold font-mono tabular-nums px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
                       badge.isHighlight
                         ? 'bg-[#C59B58] text-white shadow-2xs animate-pulse'
                         : 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
@@ -456,16 +451,16 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
       <div className="mt-auto pt-3 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px] shrink-0">
         {currentUser ? (
           <>
-            {/* Sàn Mua Sắm Link */}
+            {/* Cổng Mua Sắm Link */}
             <Link
               to="/marketplace"
               className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[44px] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
-              title="Quay lại Sàn Mua Sắm SCANMS"
-              aria-label="Quay lại Sàn Mua Sắm SCANMS"
+              title="Quay lại Cổng Mua Sắm SCANMS"
+              aria-label="Quay lại Cổng Mua Sắm SCANMS"
             >
               <ArrowLeft className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
               <Store className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
-              <span className="flex-1 truncate tracking-tight">Sàn Mua Sắm</span>
+              <span className="flex-1 truncate tracking-tight">Cổng Mua Sắm</span>
             </Link>
 
             {/* Đăng xuất */}

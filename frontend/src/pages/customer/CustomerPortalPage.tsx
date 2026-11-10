@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect, useRef } from 'react';
 import { canRequestReturnReview } from '../../utils/return-actions';
 import { returnStatusLabel } from '../../utils/return-status.utils';
@@ -90,6 +91,7 @@ type OrderFilterStatus = 'ALL' | 'UNPAID' | 'PENDING' | 'SHIPPING' | 'DELIVERED'
 export type ProfileSubTab = 'info' | 'addresses' | 'security';
 
 let cachedCustomerOrders: CustomerOrder[] = [];
+registerPrivateCacheReset(() => { cachedCustomerOrders = []; });
 
 export default function CustomerPortalPage() {
   const navigate = useNavigate();
@@ -1028,14 +1030,16 @@ export default function CustomerPortalPage() {
   const selectedDistrict = selectedProvince?.districts.find((d) => String(d.code) === String(addressForm.districtCode));
 
   return (
-    <div className="customer-portal-layout min-h-screen bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
-      <MarketplaceHeader
-        showShortcuts={false}
-        onOpenTracking={() => navigate('/tracking')}
-        onOpenLive={() => navigate('/marketplace#live')}
-      />
+    <div className="customer-portal-layout min-h-screen lg:h-screen lg:overflow-hidden bg-[#FAF8F5] text-[#1A1612] flex flex-col font-sans">
+      <div className="shrink-0 z-40">
+        <MarketplaceHeader
+          showShortcuts={false}
+          onOpenTracking={() => navigate('/tracking')}
+          onOpenLive={() => navigate('/marketplace#live')}
+        />
+      </div>
 
-      <div className="mx-auto w-full max-w-[1360px] px-3 pt-3 sm:px-4 lg:hidden">
+      <div className="mx-auto w-full max-w-[1600px] px-3 pt-3 sm:px-4 lg:hidden">
         <button type="button" aria-controls="customer-mobile-navigation" aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen(open => !open)}
           className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#EAE4D7] bg-white px-4 text-sm font-semibold text-[#795A2D] shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]">
@@ -1045,16 +1049,25 @@ export default function CustomerPortalPage() {
       </div>
 
       <main
-        className="w-full max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 pt-0 pb-8 flex-1 min-h-0 flex flex-col"
+        className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-0 flex-1 min-h-0 flex flex-col"
       >
-        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start flex-1 min-h-0 lg:h-full">
           {/* ========================================================= */}
           {/* CỘT TRÁI: SIDEBAR DÙNG CHUNG 100% TOÀN SÀN SCANMS */}
           {/* ========================================================= */}
-          <div id="customer-mobile-navigation" onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }} data-order-detail-sidebar={Boolean(detailOrderId)} className={`relative w-full lg:w-[250px] lg:shrink-0 lg:sticky lg:top-[116px] lg:flex lg:flex-col ${mobileMenuOpen ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white' : 'hidden'} lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-2.5 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}>
+          <div
+            id="customer-mobile-navigation"
+            onClick={event => { if ((event.target as HTMLElement).closest('a')) setMobileMenuOpen(false); }}
+            data-order-detail-sidebar={Boolean(detailOrderId)}
+            className={`relative w-full lg:w-[265px] lg:shrink-0 lg:h-full lg:flex lg:flex-col ${
+              mobileMenuOpen
+                ? 'max-h-[70vh] overflow-y-auto rounded-xl border border-[#EAE4D7] bg-white'
+                : 'hidden'
+            } lg:!max-h-none lg:!overflow-visible lg:!rounded-none lg:!border-0 lg:!bg-transparent after:content-[''] after:pointer-events-none after:absolute after:left-3 after:right-3 after:-bottom-2.5 after:h-px after:bg-[linear-gradient(90deg,transparent,#EEDFC6_12%,#EAE4D7_88%,transparent)] lg:after:top-7 lg:after:bottom-5 lg:after:left-auto lg:after:-right-3 lg:after:w-px lg:after:h-auto lg:after:bg-[linear-gradient(180deg,transparent,#EEDFC6_32px,#EAE4D7_calc(100%-32px),transparent)]`}
+          >
             <Sidebar
               currentUser={currentUser}
-              className="px-0"
+              className="px-0 lg:h-full lg:overflow-y-auto no-scrollbar"
               onLogout={() => {
                 authService.logout();
                 navigate('/login');
@@ -1065,19 +1078,23 @@ export default function CustomerPortalPage() {
           {/* ========================================================= */}
           {/* RIGHT MAIN PANEL - CONTENT ACCORDING TO ACTIVE TAB */}
           {/* ========================================================= */}
-<div className="workspace-page-column w-full flex-1 min-w-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
+          <div className="workspace-page-column w-full flex-1 min-w-0 min-h-0 pt-4 sm:pt-5 pb-5 lg:h-full lg:overflow-y-auto [scrollbar-gutter:stable] flex flex-col gap-4 text-left [scrollbar-width:thin] [scrollbar-color:rgba(180,140,75,0.45)_transparent]">
             {/* ------------------------------------------------------------- */}
             {/* TAB 1: ĐƠN MUA CỦA TÔI (SCANMS Standard - IMAGE 1) */}
             {/* ------------------------------------------------------------- */}
-            {currentTab === 'orders' && detailOrderId && <CustomerCompletedOrderDetail
-              key={detailOrderId} orderId={detailOrderId} refreshVersion={detailRefreshVersion}
-              onChat={handleOpenChat} onReorder={handleReorder}
-              onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
-              onCancel={order => setCancellingOrderId(order.id)}
-              onConfirmReceipt={handleConfirmReceipt} confirmingOrderId={confirmingOrderId}
-            />}
+            {currentTab === 'orders' && detailOrderId && (
+              <div className="w-full max-w-[1200px]">
+                <CustomerCompletedOrderDetail
+                  key={detailOrderId} orderId={detailOrderId} refreshVersion={detailRefreshVersion}
+                  onChat={handleOpenChat} onReorder={handleReorder}
+                  onReview={setReviewOrder} onViewReviews={setViewedReviewOrder} onReturn={setReturnOrder}
+                  onCancel={order => setCancellingOrderId(order.id)}
+                  onConfirmReceipt={handleConfirmReceipt} confirmingOrderId={confirmingOrderId}
+                />
+              </div>
+            )}
             {currentTab === 'orders' && !detailOrderId && (
-              <section className="customer-orders @container/orders grid gap-3.5 w-full min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
+              <section className="customer-orders @container/orders grid gap-3.5 w-full max-w-[1200px] min-w-0 text-[#1A1612] pb-[64px] md:pb-0" aria-label="Đơn mua của tôi">
                 {/* 1. Status Filter Tabs & Search Controls */}
                 <div className="customer-orders__filters min-w-0 overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
                   <div className="customer-orders__tabs flex min-w-0 gap-1.5 overflow-x-auto border-b border-[#EAE4D7] p-2 bg-[#FAF8F5]/50 [scrollbar-width:thin]" role="group" aria-label="Lọc trạng thái đơn mua">
@@ -1097,7 +1114,7 @@ export default function CustomerPortalPage() {
                           type="button"
                           onClick={() => setOrderStatusFilter(tab.key as OrderFilterStatus)}
                           aria-pressed={orderStatusFilter === tab.key}
-                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-[38px] @max-[499px]:min-h-[34px] py-[8px] @max-[499px]:py-[7px] px-[14px] @max-[499px]:px-[10px] text-[12px] rounded-xl border transition-all cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
+                          className={`relative flex-1 @max-[849px]:flex-none @max-[849px]:shrink-0 min-h-11 @max-[499px]:min-h-11 py-[8px] @max-[499px]:py-[7px] px-[12px] @max-[499px]:px-[9px] text-[12px] rounded-[8px] border transition-colors cursor-pointer text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B58] focus-visible:ring-inset ${
                             isActive
                               ? 'border-amber-400/40 bg-gradient-to-r from-[#EA580C] via-[#D97706] to-[#C59B58] text-white font-bold shadow-[0_2px_10px_rgba(234,88,12,0.28)]'
                               : 'border-transparent bg-transparent text-[#7D715E] hover:text-[#B45309] hover:bg-[#FBF5EB] font-medium'
@@ -1253,9 +1270,12 @@ export default function CustomerPortalPage() {
 
                           <div className="border-t border-[#EAE4D7]">
                             {/* Order Items List */}
-                            <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
+                            <div className="min-w-0 divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
-                                <div key={item.id} className="customer-order-item grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-3.5 py-4">
+                                <div
+                                  key={item.id}
+                                  className="customer-order-item relative flex items-center justify-between gap-3 sm:gap-4 py-3.5 sm:py-4 px-3.5 sm:px-4 hover:bg-[#FAF8F5]/60 transition-colors"
+                                >
                                   {(completedActions || awaitingPayment) && (
                                     <Link
                                       to={
@@ -1264,41 +1284,50 @@ export default function CustomerPortalPage() {
                                           : `/customer/orders/${encodeURIComponent(order.id)}`
                                       }
                                       data-order-detail-link
-                                      className="customer-order-item-detail-link"
+                                      className="absolute inset-0 z-10"
                                       aria-label={`Xem ${awaitingPayment ? 'thanh toán' : 'chi tiết'} đơn hàng ${order.externalOrderSn}`}
                                     />
                                   )}
-                                  <OrderProductLink
-                                    plain={completedActions || awaitingPayment}
-                                    productId={item.productId || item.product?.id}
-                                    title={item.product?.title}
-                                    className="w-20 h-20 @max-[499px]:w-16 @max-[499px]:h-16 @max-[499px]:row-span-2 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors"
-                                  >
-                                    <img
-                                      src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
-                                      alt={item.product?.title || 'Sản phẩm'}
-                                      className="w-full h-full object-contain p-0.5"
-                                      onError={handleProductImageError}
-                                    />
-                                  </OrderProductLink>
+                                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                    <OrderProductLink
+                                      plain={completedActions || awaitingPayment}
+                                      productId={item.productId || item.product?.id}
+                                      title={item.product?.title}
+                                      className="w-18 h-18 sm:w-20 sm:h-20 border border-[#EAE4D7] rounded-xl bg-[#FAF8F5] p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover/order:border-[#C59B58]/40 transition-colors relative z-20"
+                                    >
+                                      <img
+                                        src={getSafeProductImageUrl(item.product?.imageUrl, item.product?.title)}
+                                        alt={item.product?.title || 'Sản phẩm'}
+                                        className="w-full h-full object-contain p-0.5"
+                                        onError={handleProductImageError}
+                                      />
+                                    </OrderProductLink>
 
-                                  <div className="min-w-0">
-                                    <strong className="block text-sm font-semibold leading-snug text-[#1A1612] line-clamp-2">
-                                      <OrderProductLink plain={completedActions || awaitingPayment} productId={item.productId || item.product?.id} title={item.product?.title} className="hover:text-[#B88E4F] transition-colors">{item.product?.title || 'Sản phẩm trong đơn hàng'}</OrderProductLink>
-                                    </strong>
-                                    <div className="flex items-center flex-wrap gap-2 mt-1.5">
-                                      {item.variant?.name && (
-                                        <span className="inline-block text-[11px] font-medium text-[#7D715E] bg-[#F3EFE6] px-2 py-0.5 rounded-md">
-                                          Phân loại: {item.variant.name}
+                                    <div className="min-w-0 flex-1 text-left">
+                                      <strong className="block text-sm font-semibold leading-snug text-[#1A1612] line-clamp-2">
+                                        <OrderProductLink
+                                          plain={completedActions || awaitingPayment}
+                                          productId={item.productId || item.product?.id}
+                                          title={item.product?.title}
+                                          className="hover:text-[#B88E4F] transition-colors relative z-20"
+                                        >
+                                          {item.product?.title || 'Sản phẩm trong đơn hàng'}
+                                        </OrderProductLink>
+                                      </strong>
+                                      <div className="flex items-center flex-wrap gap-2 mt-1.5">
+                                        {item.variant?.name && (
+                                          <span className="inline-block text-[11px] font-medium text-[#7D715E] bg-[#F3EFE6] px-2 py-0.5 rounded-md">
+                                            Phân loại: {item.variant.name}
+                                          </span>
+                                        )}
+                                        <span className="text-xs text-[#7D715E] font-medium">
+                                          ×{item.quantity}
                                         </span>
-                                      )}
-                                      <span className="text-xs text-[#7D715E] font-medium">
-                                        ×{item.quantity}
-                                      </span>
+                                      </div>
                                     </div>
                                   </div>
 
-                                  <div className="text-right shrink-0 @max-[499px]:col-start-2">
+                                  <div className="text-right shrink-0 relative z-20">
                                     <span className="text-sm font-bold text-[#1A1612] font-mono tabular-nums whitespace-nowrap">
                                       {formatMoney(Number(item.unitPrice) * item.quantity)}
                                     </span>
@@ -1374,26 +1403,8 @@ export default function CustomerPortalPage() {
 
                               {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
-                              {/* Action Buttons Row with clear hierarchy */}
-                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 sm:ml-auto w-full sm:w-auto">
-                                {completedActions && (
-                                  <Link
-                                    to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold transition-colors shadow-2xs"
-                                  >
-                                    Xem chi tiết
-                                  </Link>
-                                )}
-                                {completedActions && canRequestReturn && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setReturnOrder(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-amber-50 hover:border-amber-300 text-amber-800 text-xs font-medium transition-colors cursor-pointer"
-                                  >
-                                    <RotateCcw size={13} />
-                                    <span>Trả hàng / Hoàn tiền</span>
-                                  </button>
-                                )}
+                              {/* Action Buttons Row */}
+                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 ml-auto">
 
                                 {awaitingPayment && (
                                   <Link
@@ -1490,7 +1501,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setCancellingOrderId(order.id)}
-                                    className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 text-xs font-semibold transition-colors cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#FECACA] hover:border-[#DC2626] rounded-[8px] bg-white hover:bg-[#FEF2F2] text-[#DC2626] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     Hủy đơn
                                   </button>
@@ -1502,7 +1513,7 @@ export default function CustomerPortalPage() {
                                     type="button"
                                     disabled={confirmingOrderId === order.id}
                                     onClick={() => handleConfirmReceipt(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-4 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold shadow-xs active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#C59B58] hover:bg-[#B88E4F] text-white text-[12px] font-[500] leading-[1.5] disabled:opacity-50 cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     {confirmingOrderId === order.id ? (
                                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1518,7 +1529,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReturnOrder(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-amber-50 hover:border-amber-300 text-amber-800 text-xs font-medium transition-colors cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
                                     <span>Trả hàng / Hoàn tiền</span>
@@ -1530,7 +1541,7 @@ export default function CustomerPortalPage() {
                                   <button
                                     type="button"
                                     onClick={() => setReviewOrder(order)}
-                                    className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8F682E] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EAE4D7] hover:border-[#C59B58] rounded-[8px] bg-white text-[#B88E4F] text-[12px] font-[500] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
                                   >
                                     <Star className="w-3.5 h-3.5 text-[#B88E4F]" />
                                     <span>Đánh giá</span>
@@ -1587,15 +1598,15 @@ export default function CustomerPortalPage() {
             {/* TAB: HỒ SƠ CÁ NHÂN (TÍCH HỢP ĐỊA CHỈ, ĐỊNH DANH CCCD, BẢO MẬT) */}
             {/* ------------------------------------------------------------- */}
             {currentTab === 'profile' && (
-              <section className="@container/profile grid gap-[16px] w-full max-w-[1040px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
-                {/* Sub-tabs Navigation Bar - Trải đều full-width cân đối */}
-<nav className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-white rounded-xl border border-[#EAE4D7] shadow-[0_2px_6px_rgba(35,29,21,0.02)] w-full" aria-label="Phân mục hồ sơ cá nhân">
+              <section className="@container/profile grid gap-[16px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left pb-[64px] md:pb-0" aria-label="Hồ sơ cá nhân">
+                {/* Sub-tabs Navigation Bar - Segmented pill bar gọn gàng */}
+                <nav className="inline-flex flex-wrap items-center gap-1.5 p-1 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs w-fit" aria-label="Phân mục hồ sơ cá nhân">
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('info')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'info'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1606,9 +1617,9 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('addresses')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'addresses'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1628,9 +1639,9 @@ export default function CustomerPortalPage() {
                   <button
                     type="button"
                     onClick={() => handleSelectProfileSubTab('security')}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all w-full cursor-pointer select-none ${
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
                       activeProfileSubTab === 'security'
-                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold'
+                        ? 'bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] font-bold shadow-2xs'
                         : 'text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] border border-transparent'
                     }`}
                   >
@@ -1642,7 +1653,7 @@ export default function CustomerPortalPage() {
                 {/* SubTab 1: Thông tin cá nhân */}
                 {activeProfileSubTab === 'info' && (
                   <div className="grid grid-cols-[minmax(0,1fr)_220px] @max-[719px]:grid-cols-1 items-start gap-[14px] min-w-0">
-                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-[13px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] before:content-[''] before:absolute before:-top-px before:left-[20px] before:w-[34px] before:h-[3px] before:rounded-b-[3px] before:bg-[#C59B58]">
+                    <div className="relative min-w-0 border border-[#EAE4D7] rounded-2xl bg-white shadow-2xs">
                       <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[16px] @max-[519px]:gap-[14px] min-w-0 p-[20px_20px_0] @max-[519px]:p-[16px_16px_0]">
                         <div className="flex items-center gap-[10px] p-[10px_12px] border border-[#EAE4D7] rounded-[9px] bg-[#FAF8F5]">
                           <span className="grid place-items-center shrink-0 w-[34px] h-[36px] rounded-[8px] bg-white text-[#B88E4F]" aria-hidden="true"><User size={16} /></span>
@@ -1664,7 +1675,7 @@ export default function CustomerPortalPage() {
                             <span className="text-[12px] font-[550] leading-[1.5] text-[#1A1612]">Email</span>
                             <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
                               <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{maskEmail(profileData?.user.email || currentUser?.email)}</span>
-                              <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => toast.info('Email đã được bảo mật theo chuẩn định danh')} aria-label="Thay đổi email"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                              <span className="text-xs text-[#7D715E]">Email đăng nhập</span>
                             </div>
                           </div>
 
@@ -1678,7 +1689,7 @@ export default function CustomerPortalPage() {
                             ) : (
                               <div className="flex items-center justify-between flex-wrap gap-[4px_8px] min-h-[40px] p-[5px_8px_5px_10px] border border-[#EAE4D7] rounded-[8px] bg-[#FAF8F5]">
                                 <span className="min-w-0 text-[#7D715E] text-[12px] leading-[1.5] break-words">{phoneInput ? maskPhone(phoneInput) : 'Chưa cập nhật'}</span>
-                                <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-[24px] px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
+                                <button type="button" className="inline-flex items-center justify-center shrink-0 gap-[4px] min-h-11 px-[5px] py-[3px] border-0 rounded-[5px] bg-transparent text-[#B88E4F] text-[11px] font-[550] whitespace-nowrap cursor-pointer hover:bg-[#FBF5EB] transition-colors" onClick={() => setIsEditingPhone(true)} aria-label="Thay đổi số điện thoại"><Edit2 size={12} aria-hidden="true" />Thay đổi</button>
                               </div>
                             )}
                           </div>
@@ -1711,9 +1722,17 @@ export default function CustomerPortalPage() {
                           </div>
                         </div>
 
-                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-[14px_20px] @max-[519px]:p-[14px_16px] border-t border-[#EAE4D7] rounded-b-[13px] bg-[#FAF8F5]">
-                          <button type="submit" disabled={updatingProfile || profileLoading} className="inline-flex items-center justify-center gap-[6px] min-h-[40px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] cursor-pointer hover:border-[#C59B58] transition-colors disabled:opacity-60 disabled:cursor-wait">
-                            {(updatingProfile || profileLoading) ? <Loader2 size={14} className="animate-spin text-[#B88E4F]" aria-hidden="true" /> : <CheckCircle2 size={14} className="text-[#B88E4F]" aria-hidden="true" />}
+                        <div className="flex justify-end -mx-[20px] @max-[519px]:-mx-[16px] p-4 sm:px-6 border-t border-[#EAE4D7] rounded-b-2xl bg-[#FAF8F5]/60">
+                          <button
+                            type="submit"
+                            disabled={updatingProfile || profileLoading}
+                            className="inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold cursor-pointer transition-all shadow-xs active:scale-[0.96] disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            {(updatingProfile || profileLoading) ? (
+                              <Loader2 size={15} className="animate-spin text-white" aria-hidden="true" />
+                            ) : (
+                              <CheckCircle2 size={15} className="text-white" aria-hidden="true" />
+                            )}
                             <span>{updatingProfile ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
                           </button>
                         </div>
@@ -1747,7 +1766,7 @@ export default function CustomerPortalPage() {
                 {activeProfileSubTab === 'addresses' && (
                   <div className="flex flex-col gap-[14px] min-w-0">
                     <div className="flex items-center justify-end flex-wrap gap-[12px] pb-[12px] border-b border-[#EAE4D7]">
-                      <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-[38px] px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
+                      <button type="button" onClick={openAddAddressModal} className="inline-flex items-center justify-center gap-[6px] min-h-11 px-[12px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] text-[#1A1612] text-[12px] font-[600] leading-[1.4] whitespace-nowrap cursor-pointer hover:border-[#C59B58] hover:bg-[#F3EFE6] transition-colors">
                         <Plus size={15} className="text-[#B88E4F]" aria-hidden="true" />
                         <span>Thêm địa chỉ</span>
                       </button>
@@ -1910,7 +1929,7 @@ export default function CustomerPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedOrderDetails(null)}
-                aria-label="Đóng chi tiết đơn hàng" className="shrink-0 w-8 h-8 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
+                aria-label="Đóng chi tiết đơn hàng" className="shrink-0 w-11 h-11 rounded-full bg-[#FAF8F5] hover:bg-[#F3EFE6] text-[#7D715E] flex items-center justify-center transition cursor-pointer"
               >
                 ✕
               </button>
@@ -2161,7 +2180,7 @@ export default function CustomerPortalPage() {
                 <h2 id="delete-address-title" className="m-0 font-inherit text-[15px] max-[419px]:text-[14px] font-[650] leading-[1.45] tracking-[-0.3px] text-[#1A1612]">Xóa địa chỉ nhận hàng?</h2>
                 <p id="delete-address-description" className="m-0 mt-[5px] text-[#7D715E] text-[11px] leading-[1.6]">Địa chỉ sẽ bị xóa khỏi sổ. Thao tác này không thể hoàn tác.</p>
               </div>
-              <button type="button" className="grid place-items-center shrink-0 w-[26px] h-[26px] p-0 border-0 rounded-[7px] bg-[#FAF8F5] text-[#7D715E] cursor-pointer hover:bg-[#F3EFE6] transition-colors" aria-label="Đóng xác nhận xóa địa chỉ" disabled={isDeletingAddress} onClick={() => setAddressPendingDeletion(null)}><X size={16} aria-hidden="true" /></button>
+              <button type="button" className="grid place-items-center shrink-0 size-11 p-0 border-0 rounded-[7px] bg-[#FAF8F5] text-[#7D715E] cursor-pointer hover:bg-[#F3EFE6] transition-colors" aria-label="Đóng xác nhận xóa địa chỉ" disabled={isDeletingAddress} onClick={() => setAddressPendingDeletion(null)}><X size={16} aria-hidden="true" /></button>
             </div>
             <div className="p-[14px_16px_16px] max-[419px]:p-[12px]">
               <div className="flex gap-[10px] p-[12px] border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]">

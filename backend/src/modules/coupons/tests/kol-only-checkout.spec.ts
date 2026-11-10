@@ -38,6 +38,10 @@ describe('KOL exclusive coupon policy', () => {
   it('accepts checkout with no retail voucher selection', () => {
     expect(() => assertNoRetailVoucherSelection({})).not.toThrow();
   });
+  it('rejects any retail platform or shipping voucher selection', () => {
+    expect(() => assertNoRetailVoucherSelection({ platformCouponCode: 'SCANMSFREESHIP' })).toThrow();
+    expect(() => assertNoRetailVoucherSelection({ shippingCouponCode: 'SCANMSFREESHIP' })).toThrow();
+  });
   it('cannot reactivate a blocked legacy retail coupon through Admin oversight', async () => {
     const db = {
       coupon: {

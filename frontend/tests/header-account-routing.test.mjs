@@ -16,7 +16,7 @@ const registered = new Set([...routes.matchAll(/path="([^"]+)"/g)].map(match => 
 
 test('each role has relevant links with registered destinations and no duplicate entries', () => {
   const expected = {
-    CUSTOMER: ['/customer/orders', '/customer/wishlist', '/customer/vouchers', '/customer/wallet'],
+    CUSTOMER: ['/customer/orders', '/customer/wishlist', '/customer/wallet'],
     COLLABORATOR: ['/collaborator/dashboard', '/collaborator/wallet', '/collaborator/collaboration'],
     SHOP_MANAGER: ['/merchant/dashboard', '/merchant/orders', '/merchant/products'],
     SYSTEM_MANAGER: ['/admin/users', '/admin/product-moderation', '/admin/disputes'],
@@ -53,7 +53,7 @@ test('invitations open the correct partner conversation; identifiers remain quer
 test('verification and finance notifications respect the recipient workspace', () => {
   assert.equal(notificationTarget({ type: 'KYC_PENDING' }, 'SYSTEM_MANAGER'), '/admin/users');
   assert.equal(notificationTarget({ type: 'KYC_REJECTED' }, 'COLLABORATOR'), '/collaborator/profile?tab=kyc');
-  assert.equal(notificationTarget({ type: 'SHOP_NEEDS_INFO' }, 'CUSTOMER'), '/customer/upgrade/shop');
+  assert.equal(notificationTarget({ type: 'SHOP_NEEDS_INFO' }, 'CUSTOMER'), '/customer/upgrade');
   assert.equal(notificationTarget({ type: 'KOL_REJECTED' }, 'CUSTOMER'), '/customer/upgrade/kol');
   assert.equal(notificationTarget({ type: 'PAYOUT_APPROVED', data: { payoutId: 'pay-1' } }, 'COLLABORATOR'), '/collaborator/wallet?payoutId=pay-1');
   assert.equal(notificationTarget({ type: 'PAYOUT_PENDING' }, 'SYSTEM_ADMIN'), '/admin/finance');

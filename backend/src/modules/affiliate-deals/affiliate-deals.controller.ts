@@ -36,15 +36,30 @@ export class AffiliateDealsController {
   @Roles(UserRole.SYSTEM_ADMIN)
   exceptions(
     @CurrentUser('role') role: UserRole,
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: string,
     @Query('tab') tab?: string,
   ) {
-    return this.service.listExceptions(role, tab);
+    return page !== undefined
+      ? this.service.getProposalPage('exceptions', userId, role, Number(page), undefined, tab)
+      : this.service.listExceptions(role, tab);
   }
 
   @Patch(':id/exception-review')
   @Roles(UserRole.SYSTEM_ADMIN)
-  exceptionReview(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') actorId: string, @CurrentUser('role') role: UserRole, @Body() dto: ReviewExceptionDto) {
-    return this.service.reviewException(id, actorId, role, dto.approve, dto.note);
+  exceptionReview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') actorId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: ReviewExceptionDto,
+  ) {
+    return this.service.reviewException(
+      id,
+      actorId,
+      role,
+      dto.approve,
+      dto.note,
+    );
   }
 
   @Get('mine')
@@ -52,8 +67,21 @@ export class AffiliateDealsController {
   @ApiOperation({
     summary: 'KOL xem trạng thái các đề xuất deal riêng của mình',
   })
-  getMine(@CurrentUser('id') userId: string) {
-    return this.service.getMyProposals(userId);
+  getMine(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Query('page') page?: string,
+    @Query('after') after?: string,
+  ) {
+    return page !== undefined || after !== undefined
+      ? this.service.getProposalPage(
+          'mine',
+          userId,
+          role,
+          Number(page ?? 1),
+          after,
+        )
+      : this.service.getMyProposals(userId);
   }
 
   @Get('my-status')
@@ -90,9 +118,17 @@ export class AffiliateDealsController {
     return this.service.createShopOffer(userId, role, dto);
   }
 
-    @Get('collaborator-products')
-  @Roles(UserRole.SHOP_MANAGER, UserRole.COLLABORATOR, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
-  @ApiOperation({ summary: 'Lấy danh sách sản phẩm kèm trạng thái Deal độc quyền hiện hành của KOL' })
+  @Get('collaborator-products')
+  @Roles(
+    UserRole.SHOP_MANAGER,
+    UserRole.COLLABORATOR,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
+  @ApiOperation({
+    summary:
+      'Lấy danh sách sản phẩm kèm trạng thái Deal độc quyền hiện hành của KOL',
+  })
   getCollaboratorDealProducts(
     @Query('collaboratorId') collaboratorId: string,
     @Query('storeId') storeId?: string,
@@ -106,8 +142,18 @@ export class AffiliateDealsController {
   getShopProposals(
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: UserRole,
+    @Query('page') page?: string,
+    @Query('after') after?: string,
   ) {
-    return this.service.getShopProposals(userId, role);
+    return page !== undefined || after !== undefined
+      ? this.service.getProposalPage(
+          'shop',
+          userId,
+          role,
+          Number(page ?? 1),
+          after,
+        )
+      : this.service.getShopProposals(userId, role);
   }
 
   @Post('offers')
@@ -183,7 +229,12 @@ export class AffiliateDealsController {
   }
 
   @Patch(':id/approve')
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
   @ApiOperation({
     summary: 'Shop chấp thuận deal và tự tạo link VIP riêng cho KOL',
   })
@@ -197,7 +248,12 @@ export class AffiliateDealsController {
   }
 
   @Patch(':id/reject')
-  @Roles(UserRole.COLLABORATOR, UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
+  @Roles(
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_MANAGER,
+  )
   @ApiOperation({ summary: 'Shop từ chối đề xuất deal và phản hồi qua Chat' })
   reject(
     @Param('id', ParseUUIDPipe) id: string,
@@ -208,7 +264,6 @@ export class AffiliateDealsController {
     return this.service.rejectProposal(id, userId, role, dto.reason);
   }
 
-  
   @Post(':id/settle')
   @Roles(
     UserRole.COLLABORATOR,
@@ -228,7 +283,7 @@ export class AffiliateDealsController {
     return this.service.settleSuccessfulDeal(id, userId, role);
   }
 
-@Post(':id/terminate')
+  @Post(':id/terminate')
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
     summary:

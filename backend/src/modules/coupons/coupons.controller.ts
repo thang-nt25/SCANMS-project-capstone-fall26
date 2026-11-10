@@ -78,38 +78,76 @@ export class PublicCouponsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @Get('saved')
   getSavedCouponIds(@CurrentUser('id') userId: string) {
     return this.service.getSavedCouponIds(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @Get('saved/details')
   getSavedAvailableCoupons(@CurrentUser('id') userId: string) {
     return this.service.getSavedAvailableCoupons(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @Get('saved/expired')
-  @ApiOperation({ summary: 'Voucher đã lưu của tài khoản đã quá thời hạn sử dụng' })
+  @ApiOperation({
+    summary: 'Voucher đã lưu của tài khoản đã quá thời hạn sử dụng',
+  })
   getSavedExpiredCoupons(@CurrentUser('id') userId: string) {
     return this.service.getSavedExpiredCoupons(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @Post('saved/:couponId')
-  saveCoupon(@CurrentUser('id') userId: string, @Param('couponId', ParseUUIDPipe) couponId: string) {
+  saveCoupon(
+    @CurrentUser('id') userId: string,
+    @Param('couponId', ParseUUIDPipe) couponId: string,
+  ) {
     return this.service.saveCoupon(userId, couponId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.COLLABORATOR,
+    UserRole.SHOP_MANAGER,
+    UserRole.SYSTEM_MANAGER,
+    UserRole.SYSTEM_ADMIN,
+  )
   @Delete('saved/:couponId')
-  removeSavedCoupon(@CurrentUser('id') userId: string, @Param('couponId', ParseUUIDPipe) couponId: string) {
+  removeSavedCoupon(
+    @CurrentUser('id') userId: string,
+    @Param('couponId', ParseUUIDPipe) couponId: string,
+  ) {
     return this.service.removeSavedCoupon(userId, couponId);
   }
 
@@ -124,7 +162,8 @@ export class PublicCouponsController {
   })
   async getAvailableStoreCoupons(
     @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Query('productId', new ParseUUIDPipe({ optional: true })) productId?: string,
+    @Query('productId', new ParseUUIDPipe({ optional: true }))
+    productId?: string,
   ) {
     return this.service.getPublicStoreCoupons(storeId, productId);
   }

@@ -95,7 +95,7 @@ export function WorkspaceHeader({
     BadgeIcon = Store;
   } else if (role === 'SYSTEM_ADMIN') {
     badgeTitle = 'Tổng Quản Trị Hệ Thống';
-    badgeSub = 'Ban Quản Trị Toàn Sàn';
+    badgeSub = 'Ban Quản Trị Hệ Thống';
     BadgeIcon = ShieldCheck;
   } else if (role === 'SYSTEM_MANAGER') {
     badgeTitle = 'Vận Hành & Tuân Thủ';
@@ -166,7 +166,7 @@ export function WorkspaceHeader({
           <Link
             to="/marketplace"
             className="flex items-center gap-2 group transition-transform hover:scale-[1.02]"
-            title="Về trang chủ Sàn SCANMS"
+            title="Về trang chủ Hệ Thống SCANMS"
           >
             <ScanMSLogo size="sm" darkMode={true} showSubtitle={false} className="items-center" />
           </Link>
@@ -191,16 +191,16 @@ export function WorkspaceHeader({
         {/* CENTER: CLEAN BREATHING ROOM (NO PUBLIC CONSUMER SEARCH BAR) */}
         <div className="flex-1 min-w-0" />
 
-        {/* RIGHT: SHORTCUT "SÀN MUA SẮM" + SOCKET + NOTIFICATIONS + ACCOUNT */}
+        {/* RIGHT: SHORTCUT "CỔNG MUA SẮM" + SOCKET + NOTIFICATIONS + ACCOUNT */}
         <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
           {/* Quick link to Storefront */}
           <Link
             to="/marketplace"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-[#FFF8ED] hover:text-white text-xs font-semibold border border-[#D4AF70]/30 transition shadow-xs cursor-pointer"
-            title="Xem trang bán hàng công khai của Sàn SCANMS"
+            title="Xem trang bán hàng công khai của Hệ Thống SCANMS"
           >
             <ShoppingBag size={13} className="text-[#D4AF70]" />
-            <span className="hidden md:inline">Sàn Mua Sắm</span>
+            <span className="hidden md:inline">Cổng Mua Sắm</span>
           </Link>
 
           <span className="text-[#D4AF70]/30 select-none hidden sm:inline">|</span>
