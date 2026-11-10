@@ -1246,7 +1246,7 @@ export default function ProductDetailPage() {
           Đang tải sản phẩm & video review...
         </h2>
         <p className="text-sm text-[#7D715E] mt-1">
-          Kết nối sàn thương mại điện tử SCANMS
+          Kết nối hệ thống tiếp thị liên kết SCANMS
         </p>
       </div>
     );
@@ -1264,7 +1264,7 @@ export default function ProductDetailPage() {
         </h1>
         <p className="text-sm text-[#7D715E] max-w-md mb-6 leading-relaxed">
           {error ||
-            'Sản phẩm này có thể đã bị gỡ, hết hạn hoặc gian hàng tạm đóng. Tuyệt đối không hiển thị sai sản phẩm theo quy chuẩn sàn SCANMS.'}
+            'Sản phẩm này có thể đã bị gỡ, hết hạn hoặc gian hàng tạm đóng. Tuyệt đối không hiển thị sai sản phẩm theo quy chuẩn hệ thống SCANMS.'}
         </p>
         <div className="flex gap-3">
           <button

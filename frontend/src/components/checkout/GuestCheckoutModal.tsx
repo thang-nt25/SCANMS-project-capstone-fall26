@@ -1137,28 +1137,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
   const extraVoucherCode = initialExtraVoucher?.code;
   const extraVoucherBenefit = initialExtraVoucher?.benefitType;
   const voucherShippingFee = shippingFeesByStore[targetVoucherStoreId] || 0;
-  const [shippingPromoBusy, setShippingPromoBusy] = useState(false);
-  const [shippingPromoError, setShippingPromoError] = useState('');
-  const shippingPromoAttempt = useRef(0);
-  useEffect(() => { shippingPromoAttempt.current++; setShippingPromoBusy(false); setShippingPromoError(''); }, [isOpen, targetVoucherStoreId, voucherBasisKey, voucherShippingFee, customerPhone]);
-  const applyNewCustomerShipping = async () => {
-    if (shippingPromoBusy || !voucherShippingFee) return;
-    const attempt = ++shippingPromoAttempt.current;
-    setShippingPromoBusy(true); setShippingPromoError('');
-    try {
-      const response: any = await api.post('/coupons/preview-stacked', {
-        code: 'SCANMSFREESHIP', storeId: targetVoucherStoreId, benefitType: 'SHIPPING',
-        goodsSubtotal: targetVoucherSubtotal, shippingFee: voucherShippingFee,
-        shopDiscount: discountAmount, shopCouponCode: appliedCoupon?.code,
-        customerPhone: customerPhone.trim() || undefined,
-      });
-      if (attempt !== shippingPromoAttempt.current) return;
-      const data = response?.data || response;
-      setAppliedShippingCoupon({ code: data.code, discountAmount: Number(data.discountAmount) || 0, benefitType: 'SHIPPING', storeId: targetVoucherStoreId });
-    } catch (error: any) {
-      if (attempt === shippingPromoAttempt.current) setShippingPromoError(error?.message || 'Chưa áp dụng được freeship.');
-    } finally { if (attempt === shippingPromoAttempt.current) setShippingPromoBusy(false); }
-  };
   useEffect(() => { setExtraVoucherDismissed(false); }, [isOpen, extraVoucherCode]);
   useEffect(() => {
     if (!isOpen || !extraVoucherCode || !extraVoucherBenefit || !targetVoucherStoreId || extraVoucherDismissed) return;
@@ -1202,7 +1180,7 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
     setAddressValidationField(null);
-    if (Boolean(couponLoadingStoreId) || extraVoucherBusy || shippingPromoBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
+    if (Boolean(couponLoadingStoreId) || extraVoucherBusy) { setErrorMessage('Đang kiểm tra voucher. Vui lòng đợi một chút rồi đặt hàng.'); return; }
 
     if (!currentUser && (!localStorage.getItem('token') || !authService.getCurrentUser())) {
       setErrorMessage(
@@ -1980,15 +1958,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
               onClearCouponError={(storeId) => setShopCouponErrors((prev) => ({ ...prev, [storeId]: null }))}
             />
 
-            <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-6" aria-labelledby="new-customer-shipping-title">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0"><h3 id="new-customer-shipping-title" className="font-semibold text-[#1A1612]">Freeship khách mới</h3><p className="mt-1 text-sm text-[#7D715E]">SCANMSFREESHIP · Tối đa 3 lượt mỗi khách. Mỗi đơn áp dụng cho một kiện hàng.</p></div>
-                <button type="button" disabled={shippingPromoBusy || shippingFeeLoading || !voucherShippingFee} onClick={() => appliedShippingCoupon ? setAppliedShippingCoupon(null) : void applyNewCustomerShipping()} className="min-h-11 shrink-0 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-sm font-semibold text-[#795A2D] disabled:opacity-50">{shippingPromoBusy ? 'Đang kiểm tra…' : appliedShippingCoupon ? 'Bỏ mã freeship' : 'Áp dụng freeship'}</button>
-              </div>
-              {shippingPromoError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{shippingPromoError}</p>}
-              {appliedShippingCoupon && <p role="status" className="mt-3 text-sm text-[#795A2D]">Đã giảm {formatMoney(shippingDiscount)} phí giao hàng.</p>}
-            </section>
-
             <section
               className="checkout-section checkout-payment min-w-0 border border-[#EAE4D7] rounded-2xl bg-white text-left shadow-xs overflow-hidden"
               aria-labelledby="checkout-payment-title"
@@ -2051,7 +2020,6 @@ export const GuestCheckoutModal: React.FC<GuestCheckoutModalProps> = ({
                     </div>
                   )}
 
-                  {shippingDiscount > 0 && <div className="flex items-center justify-between text-sm text-[#795A2D]"><span>Freeship khách mới</span><strong>−{formatMoney(shippingDiscount)}</strong></div>}
                   <div className="pt-3.5 border-t border-[#EEDFC6] flex items-baseline justify-between">
                     <div>
                       <span className="text-xs font-bold text-[#1A1612] block">Tổng thanh toán:</span>

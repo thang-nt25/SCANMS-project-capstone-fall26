@@ -10,7 +10,6 @@ export function accountMenuLinks(role: Role, accountRole: Role = role): AccountM
     items.push(
       { label: 'Đơn mua', to: '/customer/orders', icon: 'orders' },
       { label: 'Yêu thích', to: '/customer/wishlist', icon: 'heart' },
-      { label: 'Kho voucher', to: '/customer/vouchers', icon: 'voucher' },
       { label: 'Ví SCANMS', to: '/customer/wallet', icon: 'wallet' },
     );
   } else if (role === 'COLLABORATOR') {

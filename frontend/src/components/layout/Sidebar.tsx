@@ -451,16 +451,16 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
       <div className="mt-auto pt-3 border-t border-[#EAE4D7] flex flex-col gap-1 text-xs sm:text-[13px] shrink-0">
         {currentUser ? (
           <>
-            {/* Sàn Mua Sắm Link */}
+            {/* Cổng Mua Sắm Link */}
             <Link
               to="/marketplace"
               className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-[13px] min-h-[44px] font-medium text-[#4A3F33] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition-all duration-150 cursor-pointer"
-              title="Quay lại Sàn Mua Sắm SCANMS"
-              aria-label="Quay lại Sàn Mua Sắm SCANMS"
+              title="Quay lại Cổng Mua Sắm SCANMS"
+              aria-label="Quay lại Cổng Mua Sắm SCANMS"
             >
               <ArrowLeft className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
               <Store className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
-              <span className="flex-1 truncate tracking-tight">Sàn Mua Sắm</span>
+              <span className="flex-1 truncate tracking-tight">Cổng Mua Sắm</span>
             </Link>
 
             {/* Đăng xuất */}

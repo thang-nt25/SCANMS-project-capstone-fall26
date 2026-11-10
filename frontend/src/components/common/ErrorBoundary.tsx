@@ -113,7 +113,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-5 py-2.5 text-xs sm:text-sm font-semibold text-[#1A1612] hover:bg-[#F3EFE6] transition active:scale-95 cursor-pointer"
               >
                 <Home className="h-4 w-4 text-[#7D715E]" />
-                <span>Về Sàn SCANMS</span>
+                <span>Về Trang Chủ SCANMS</span>
               </button>
             </div>
           </div>
