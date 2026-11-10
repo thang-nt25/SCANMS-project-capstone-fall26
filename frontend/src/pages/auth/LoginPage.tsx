@@ -184,7 +184,7 @@ export default function LoginPage() {
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
-          <span>Sàn mua sắm</span>
+          <span>Cổng mua sắm</span>
         </Link>
       </header>
 
@@ -193,7 +193,7 @@ export default function LoginPage() {
           <section className="login-showcase relative flex min-w-0 flex-col overflow-hidden rounded-none bg-transparent max-[760px]:grid max-[760px]:min-h-[175px] max-[760px]:grid-cols-[1.05fr_1fr]" aria-label="Kết nối mua sắm cùng SCANMS">
             <div className="login-showcase-copy relative z-1 px-[42px] pt-10 pb-0 animate-[login-content-enter_600ms_both] min-[1500px]:px-[38px] min-[1500px]:pt-[34px] max-[1050px]:px-[22px] max-[1050px]:pt-[26px] login-compact:pt-6 max-[760px]:self-center max-[760px]:pt-6 max-[760px]:pr-0 max-[760px]:pb-[22px] max-[760px]:pl-[22px] [&_h1]:mt-[19px] [&_h1]:mb-0 [&_h1]:pb-[5px] [&_h1]:text-[clamp(30px,3vw,40px)] [&_h1]:font-semibold [&_h1]:italic [&_h1]:leading-[1.2] [&_h1]:tracking-[-1px] [&_h1_span]:text-brand-strong max-[1050px]:[&_h1]:text-[32px] max-[1050px]:[&_h1]:tracking-[-1.1px] max-[760px]:[&_h1]:mt-2.5 max-[760px]:[&_h1]:text-[clamp(20px,4.3vw,29px)] max-[760px]:[&_h1]:tracking-[-.7px] max-[760px]:[&_h1]:leading-[1.25] max-[760px]:[&_p]:hidden">
               <div className="login-showcase-eyebrow inline-flex items-center gap-[9px] rounded-full border border-brand-border bg-white/90 px-4 py-2 text-xs font-bold leading-[1.5] text-ink shadow-[0_2px_6px_rgb(125_113_94/6%)] [&_svg]:shrink-0 [&_svg]:text-brand-strong max-[760px]:gap-1 max-[760px]:px-2 max-[760px]:py-[5px] max-[760px]:text-[9px] max-[760px]:[&_svg]:hidden"><Sparkles size={14} /><span>Mạng Lưới Nhãn Hàng & Tiếp Thị</span></div>
-              <h1 className="font-display">Kết nối gian hàng,<br /><span>lan tỏa giá trị.</span></h1>
+              <h1 className="font-display">Kết nối nhãn hàng,<br /><span>lan tỏa giá trị.</span></h1>
             </div>
             <ShoppingScene quiet={isForgotPasswordOpen} />
           </section>

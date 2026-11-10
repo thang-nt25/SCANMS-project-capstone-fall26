@@ -1,7 +1,7 @@
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
+import { LogIn, LogOut, Store, Camera, Loader2, Edit2 } from 'lucide-react';
 import { NAVIGATION_BY_ROLE } from '../../config/navigation.config';
 import { authService, type UserProfile } from '../../services/auth.service';
 import { uploadService } from '../../services/upload.service';
@@ -420,8 +420,8 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                 aria-current={active ? 'page' : undefined}
                 className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-[13px] transition-all duration-150 cursor-pointer min-h-[38px] ${
                   active
-                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6] shadow-2xs'
-                    : 'text-[#4A3F33] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium'
+                    ? 'bg-[#FAF5EB] text-[#B88E4F] font-bold border-l-[3px] border-l-[#C59B58] border-y border-r border-[#EEDFC6] shadow-2xs'
+                    : 'text-[#4A3F33] hover:bg-[#FAF8F5] hover:text-[#B88E4F] font-medium border-l-[3px] border-l-transparent'
                 }`}
               >
                 <Icon
@@ -434,7 +434,7 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
                   <span
                     className={`ml-auto text-[10px] font-bold font-mono tabular-nums px-1.5 py-0.5 rounded-full shrink-0 transition-transform ${
                       badge.isHighlight
-                        ? 'bg-[#C59B58] text-white shadow-2xs animate-pulse'
+                        ? 'bg-[#C59B58] text-white shadow-2xs'
                         : 'bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]'
                     }`}
                   >
@@ -458,7 +458,6 @@ export function Sidebar({ currentUser, onLogout, className = '' }: SidebarProps)
               title="Quay lại Cổng Mua Sắm SCANMS"
               aria-label="Quay lại Cổng Mua Sắm SCANMS"
             >
-              <ArrowLeft className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
               <Store className="w-4 h-4 shrink-0 text-[#7D715E] group-hover:text-[#B88E4F] transition-colors" aria-hidden="true" />
               <span className="flex-1 truncate tracking-tight">Cổng Mua Sắm</span>
             </Link>
