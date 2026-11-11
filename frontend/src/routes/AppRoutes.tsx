@@ -165,7 +165,7 @@ function AppRoutes() {
         <Route path="/customer/upgrade/kol" element={<CustomerPortalPage />} />
         <Route path="/customer/upgrade/shop" element={<Navigate to="/customer/upgrade" replace />} />
         <Route path="/customer/returns/:id" element={<ReturnDetailPage mode="customer" />} />
-        <Route path="/customer/vouchers" element={<CustomerPortalPage />} />
+        <Route path="/customer/vouchers" element={<Navigate to="/customer/orders" replace />} />
         <Route path="/customer/notifications" element={<CustomerPortalPage />} />
         <Route path="/customer/security" element={<CustomerPortalPage />} />
         <Route path="/customer/wallet" element={<CustomerPortalPage />} />

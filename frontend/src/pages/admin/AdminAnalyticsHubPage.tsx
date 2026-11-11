@@ -32,27 +32,20 @@ export default function AdminAnalyticsHubPage() {
 
   const headerTabs = (
     <div className="grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 text-sm sm:grid-cols-3">
-      {tabs.map((tab, index) => {
+      {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
         return (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as AdminAnalyticsTab)}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2 transition-colors cursor-pointer ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
               isActive
-                ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] font-semibold shadow-2xs'
+                ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-2xs'
                 : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
             }`}
           >
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                isActive ? 'border-[#C59B58] bg-[#C59B58] text-white' : 'border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E]'
-              }`}
-            >
-              {index + 1}
-            </span>
-            <Icon className="hidden h-4 w-4 shrink-0 lg:block" />
+            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
             <span>{tab.label}</span>
           </button>
         );

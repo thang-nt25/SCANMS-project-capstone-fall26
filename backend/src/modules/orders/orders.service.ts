@@ -1475,13 +1475,9 @@ export class OrdersService {
       await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${found.id}::uuid FOR UPDATE`;
       const voucher = await tx.coupon.findUnique({ where: { id: found.id } });
       const now = new Date();
-      const isGlobalPlatformShipping =
-        voucher?.codeNormalized === 'SCANMSFREESHIP' &&
-        voucher.benefitType === 'SHIPPING' &&
-        voucher.fundingSource === 'PLATFORM_FUNDED';
       if (
         !voucher ||
-        (!isGlobalPlatformShipping && voucher.storeId !== store.id) ||
+        voucher.storeId !== store.id ||
         voucher.status !== CouponStatus.ACTIVE ||
         voucher.deletedAt ||
         (voucher.startsAt && now < voucher.startsAt) ||
@@ -1501,21 +1497,6 @@ export class OrdersService {
         throw new ConflictException(
           'Đơn hàng chưa đạt giá trị tối thiểu của voucher sàn.',
         );
-      }
-      if (voucher.codeNormalized === 'SCANMSFREESHIP') {
-        const priorPurchase = await tx.order.count({
-          where: {
-            customerPhone,
-            status: { not: OrderStatus.CANCELLED },
-            NOT: {
-              stackedVoucherRedemptions: { some: { couponId: voucher.id } },
-            },
-          },
-        });
-        if (priorPurchase > 0)
-          throw new ConflictException(
-            'Mã freeship chỉ dành cho khách hàng mới.',
-          );
       }
       const base =
         benefitType === 'SHIPPING'

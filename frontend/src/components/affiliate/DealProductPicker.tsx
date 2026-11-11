@@ -47,7 +47,7 @@ export function DealProductPicker({ storeId, storeName, onSelect, onClose }: {
         const payload = response?.data?.data ?? response?.data ?? response;
         const list = Array.isArray(payload) ? payload : payload?.items;
         if (!Array.isArray(list)) throw new Error('Invalid product response');
-        const eligible = list.filter((product: DealProduct) => product.isAffiliateEnabled !== false && (!product.storeId || product.storeId === storeId));
+        const eligible = list.filter((product: DealProduct) => product.isAffiliateEnabled !== false && (!storeId || product.storeId === storeId));
         setProducts((old) => [...new Map((page === 1 ? eligible : [...old, ...eligible]).map((product: DealProduct) => [product.id, product])).values()]);
         setHasMore(typeof payload?.pagination?.totalPages === 'number' ? page < payload.pagination.totalPages : list.length === 50);
       })

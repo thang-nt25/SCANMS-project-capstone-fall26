@@ -19,10 +19,10 @@ export function CustomerVoucherCard({
     <article className="space-y-3 rounded-2xl border border-[#EEDFC6] bg-white p-5">
       <div className="flex items-center gap-2 text-sm text-[#7D715E]">
         <Store size={16} />
-        {voucher.benefitType === "SHIPPING" ? "Freeship toàn hệ thống" : voucher.store.name}
+        {voucher.store.name}
       </div>
       <h2 className="font-semibold">
-        {voucher.benefitType === "SHIPPING" ? "Freeship khách mới · Tối đa 3 lượt" : voucher.collaborator?.fullName
+        {voucher.collaborator?.fullName
           ? `Mã của ${voucher.collaborator.fullName}`
           : "Mã độc quyền KOL"}
       </h2>

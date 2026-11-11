@@ -47,7 +47,7 @@ export default function KolProductCommissionTable({ items, loading }: Props) {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5] text-[#7D715E] font-bold text-[11px] uppercase tracking-wider">
-                <th className="p-3.5 pl-5">Sản phẩm & Gian hàng</th>
+                <th className="p-3.5 pl-5">Sản phẩm & Cửa hàng</th>
                 <th className="p-3.5 text-center">Đã bán</th>
                 <th className="p-3.5 text-right">Doanh số (GMV)</th>
                 <th className="p-3.5 text-center">Tỷ lệ hoa hồng & Nguồn</th>
@@ -127,7 +127,7 @@ export default function KolProductCommissionTable({ items, loading }: Props) {
                             </div>
                             <div className="py-2 space-y-1.5 text-[11px]">
                               <div className="flex justify-between items-center text-[#7D715E]">
-                                <span>1. Gốc chuẩn sàn SCANMS:</span>
+                                <span>1. Thù lao gốc hệ thống:</span>
                                 <strong className="text-[#1A1612]">{b.baseRate}%</strong>
                               </div>
                               {b.tierBonus > 0 && (

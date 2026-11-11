@@ -352,7 +352,7 @@ export function PublicHeader({
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_180px] items-center gap-4 lg:gap-7 max-w-[1600px] mx-auto">
           {/* Col 1 (280px): Logo */}
           <div className="flex items-center gap-3">
-            <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Sàn SCANMS">
+            <Link to="/marketplace" className="flex items-center gap-2 group" title="Về trang chủ Hệ Thống SCANMS">
               <ScanMSLogo size="md" darkMode={false} className="scanms-header-logo [&_.scanms-logo-subtitle]:hidden sm:[&_.scanms-logo-subtitle]:block" showSubtitle={!cartPage} />
             </Link>
             <div className="hidden sm:block h-8 w-[1px] bg-[#d4af70]/40 order-last ml-1" />

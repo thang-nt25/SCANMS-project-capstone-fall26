@@ -55,12 +55,12 @@ export function CheckoutOrderConfirmation({ order, customerEmail, onClose, onPay
         <span className="checkout-confirmation-emblem grid place-items-center w-[60px] h-[60px] border border-[#EEDFC6] rounded-full bg-[color:#FBF5EB] text-[color:#B88E4F]! [@container_confirmation_(max-width:430px)]:w-[54px] [@container_confirmation_(max-width:430px)]:h-[54px]" aria-hidden="true">{awaitingPayment ? <Clock3 size={30} strokeWidth={1.6} /> : <CheckCircle2 size={30} strokeWidth={1.6} />}</span>
         <h2 id="guest-checkout-title" aria-live="polite">{awaitingPayment ? 'Hoàn tất thanh toán để xác nhận đơn' : isPayos ? 'Thanh toán thành công' : 'Đặt hàng thành công'}</h2>
         <p>{awaitingPayment
-          ? order.isMultiStore ? `Đã thanh toán ${paidCount}/${order.orders.length} đơn. Quét mã QR của từng gian hàng để hoàn tất.` : 'Đơn đã được tạo. Quét mã QR bên dưới để hoàn tất thanh toán.'
-          : isPayos ? 'PayOS đã xác nhận nhận đủ tiền. Đơn hàng được gửi tới gian hàng để xử lý.' : 'Đơn hàng của bạn đã được ghi nhận và gửi tới gian hàng để xử lý.'}</p>
+          ? order.isMultiStore ? `Đã thanh toán ${paidCount}/${order.orders.length} đơn. Quét mã QR của từng cửa hàng để hoàn tất.` : 'Đơn đã được tạo. Quét mã QR bên dưới để hoàn tất thanh toán.'
+          : isPayos ? 'PayOS đã xác nhận nhận đủ tiền. Đơn hàng được gửi tới cửa hàng để xử lý.' : 'Đơn hàng của bạn đã được ghi nhận và gửi tới cửa hàng để xử lý.'}</p>
       </header>
 
       <div className="checkout-confirmation-total flex items-center justify-between flex-wrap gap-[10px_20px] m-[0_28px] p-[18px_20px] border border-[#EAE4D7] rounded-[12px] bg-[color:#FAF8F5] [&_>_div_>_span]:text-[12px] [&_>_div_>_span]:font-[550] [&_p]:m-[4px_0_0] [&_p]:text-[color:#7D715E]! [&_p]:text-[11px] [&_p]:leading-[1.6] [&_>_strong]:min-w-0 [&_>_strong]:[overflow-wrap:anywhere] [&_>_strong]:text-[28px] [&_>_strong]:font-[700] [&_>_strong]:tracking-[-.6px]! [&_>_strong]:leading-[1.3] [&_>_strong]:tabular-nums [@container_confirmation_(430px_<_width_<=_680px)]:[&_>_strong]:text-[25px] [@container_confirmation_(max-width:430px)]:m-[0_16px] [@container_confirmation_(max-width:430px)]:p-[14px] [@container_confirmation_(max-width:430px)]:[&_>_strong]:text-[24px]">
-        <div><span>Tổng giá trị đơn hàng</span><p>{order.orders.length} đơn hàng{order.isMultiStore ? ' từ các gian hàng đối tác' : ''}</p></div>
+        <div><span>Tổng giá trị đơn hàng</span><p>{order.orders.length} đơn hàng{order.isMultiStore ? ' từ các cửa hàng trực thuộc' : ''}</p></div>
         <strong>{formatMoney(order.totalAmount)}</strong>
       </div>
 
@@ -69,7 +69,7 @@ export function CheckoutOrderConfirmation({ order, customerEmail, onClose, onPay
           <h3 id="confirmation-orders-title">Thông tin đơn hàng</h3>
           {order.orders.map((item, index) => (
             <article className="checkout-confirmation-order [&_+_.checkout-confirmation-order]:mt-[18px] [&_+_.checkout-confirmation-order]:pt-[18px] [&_+_.checkout-confirmation-order]:border-t [&_+_.checkout-confirmation-order]:border-t-[#EAE4D7]" key={item.publicOrderCode || index}>
-              <div className="checkout-confirmation-store flex items-center gap-[8px] min-w-0 [&_>_span]:grid [&_>_span]:place-items-center [&_>_span]:shrink-0 [&_>_span]:w-[30px] [&_>_span]:h-[30px] [&_>_span]:rounded-[8px] [&_>_span]:bg-[color:#FBF5EB] [&_>_span]:text-[color:#B88E4F]! [&_h4]:[font-family:inherit]! [&_h4]:text-[13px] [&_h4]:font-[600] [&_h4]:leading-[1.6] [&_h4]:[font-style:inherit] [&_h4]:[font-variant:inherit] [&_h4]:[font-stretch:inherit] [&_h4]:min-w-0 [&_h4]:[overflow-wrap:anywhere] [&_h4]:m-0"><span aria-hidden="true"><Store size={17} /></span><h4>{item.storeName || 'Gian hàng đối tác'}</h4></div>
+              <div className="checkout-confirmation-store flex items-center gap-[8px] min-w-0 [&_>_span]:grid [&_>_span]:place-items-center [&_>_span]:shrink-0 [&_>_span]:w-[30px] [&_>_span]:h-[30px] [&_>_span]:rounded-[8px] [&_>_span]:bg-[color:#FBF5EB] [&_>_span]:text-[color:#B88E4F]! [&_h4]:[font-family:inherit]! [&_h4]:text-[13px] [&_h4]:font-[600] [&_h4]:leading-[1.6] [&_h4]:[font-style:inherit] [&_h4]:[font-variant:inherit] [&_h4]:[font-stretch:inherit] [&_h4]:min-w-0 [&_h4]:[overflow-wrap:anywhere] [&_h4]:m-0"><span aria-hidden="true"><Store size={17} /></span><h4>{item.storeName || 'Cửa hàng trực thuộc'}</h4></div>
               <div className="checkout-confirmation-code flex items-center gap-[10px] mt-[12px] [&_>_div]:grid [&_>_div]:gap-[4px] [&_>_div]:min-w-0 [&_>_div_>_span]:text-[color:#7D715E]! [&_>_div_>_span]:text-[11px] [&_strong]:[overflow-wrap:anywhere] [&_strong]:text-[12px] [&_strong]:font-[550] [&_strong]:leading-[1.5] [&_button]:grid [&_button]:place-items-center [&_button]:shrink-0 [&_button]:w-[40px] [&_button]:h-[44px] [&_button]:p-0 [&_button]:border [&_button]:border-[#EAE4D7] [&_button]:rounded-[8px] [&_button]:bg-[color:#FFFFFF] [&_button]:text-[color:#B88E4F]! [&_button]:cursor-pointer [&_button:hover]:border-[#EEDFC6] [&_button:hover]:bg-[color:#FBF5EB]">
                 <div><span>Mã đơn hàng</span><strong>{item.publicOrderCode}</strong></div>
                 <button type="button" onClick={() => void copyCode(item.publicOrderCode)} aria-label={`Sao chép mã đơn ${item.publicOrderCode}`} title={copied === item.publicOrderCode ? 'Đã sao chép' : 'Sao chép mã đơn'} data-copied={copied === item.publicOrderCode}>
@@ -94,13 +94,13 @@ export function CheckoutOrderConfirmation({ order, customerEmail, onClose, onPay
           </dl>
           <p>{wallet && paid ? 'Số tiền đã được trừ từ số dư ví khả dụng. Theo dõi tiến độ xử lý trong đơn mua của bạn.'
             : awaitingPayment ? 'Thanh toán được xác nhận tự động khi PayOS nhận đủ tiền.'
-            : paid ? 'Thanh toán đã được ghi nhận. Bạn có thể theo dõi đơn mua để xem cập nhật từ gian hàng.'
+            : paid ? 'Thanh toán đã được ghi nhận. Bạn có thể theo dõi đơn mua để xem cập nhật từ cửa hàng.'
             : order.paymentMethod === 'COD' ? 'Bạn sẽ thanh toán khi nhận hàng.' : 'Bạn có thể kiểm tra trạng thái thanh toán trong đơn mua của mình.'}</p>
         </aside>
       </div>
 
       {isPayos && <div className="checkout-confirmation-payos grid gap-[14px] min-w-0 p-[0_28px_20px] [&_>_p]:m-0 [&_>_p]:text-[color:#7D715E]! [&_>_p]:text-[12px] [&_>_p]:leading-[1.7] [@container_confirmation_(max-width:430px)]:p-[0_16px_20px]">
-        {order.isMultiStore && awaitingPayment && <p>Mỗi gian hàng có một mã thanh toán riêng. Vui lòng thanh toán các đơn còn chờ bên dưới.</p>}
+        {order.isMultiStore && awaitingPayment && <p>Mỗi cửa hàng có một mã thanh toán riêng. Vui lòng thanh toán các đơn còn chờ bên dưới.</p>}
         {order.orders.map(item => <PayosOrderPayment key={item.publicOrderCode} orderCode={item.publicOrderCode} storeName={item.storeName} showOrderHeading={Boolean(order.isMultiStore)} onPaid={() => onPayosPaid(item.publicOrderCode)} />)}
       </div>}
 
