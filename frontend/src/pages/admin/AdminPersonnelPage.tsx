@@ -341,8 +341,8 @@ export const AdminPersonnelPage: React.FC = () => {
         description: storeForm.description.trim() || undefined,
         logoUrl: storeForm.logoUrl.trim() || undefined,
         warehouseName: storeForm.warehouseName.trim() || `Kho Tổng ${storeForm.name.trim()}`,
-        contactName: storeForm.contactName.trim() || 'Bộ phận kho vận',
-        contactPhone: storeForm.contactPhone.trim() || '0901234567',
+        contactName: `Bộ phận kho vận - ${storeForm.name.trim()}`,
+        contactPhone: storeForm.contactPhone?.trim() || '0901234567',
         warehouseAddress: fullAddress,
         provinceCode: storeForm.provinceCode,
         provinceName: storeForm.provinceName,
@@ -1252,33 +1252,6 @@ export const AdminPersonnelPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Người phụ trách & SĐT */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        Người phụ trách kho
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nguyễn Quản Kho"
-                        value={storeForm.contactName || ''}
-                        onChange={(e) => setStoreForm((prev) => ({ ...prev, contactName: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        SĐT kho xuất
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="0901234567"
-                        value={storeForm.contactPhone || ''}
-                        onChange={(e) => setStoreForm((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                      />
-                    </div>
-                  </div>
 
                   {/* Tỉnh / Thành phố */}
                   <div>

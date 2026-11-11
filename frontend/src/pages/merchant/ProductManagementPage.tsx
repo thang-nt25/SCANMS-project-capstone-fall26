@@ -806,7 +806,10 @@ export default function ProductManagementPage() {
     const errors: string[] = [];
     if (!formTitle.trim()) errors.push('Vui lòng nhập tên sản phẩm.');
     if (!formSku.trim()) errors.push('Vui lòng nhập mã SKU sản phẩm.');
-    if (!formCategory.trim()) errors.push('Vui lòng chọn ngành hàng kinh doanh.');
+    if (!formCategory.trim()) {
+      const fallbackCat = storeCategory || STANDARD_CATEGORIES[0].name;
+      setFormCategory(fallbackCat);
+    }
     if (formCategory === 'Danh mục khác (Tự nhập)' && !formCustomCategory.trim()) {
       errors.push('Vui lòng nhập tên danh mục tùy chỉnh.');
     }
@@ -825,8 +828,8 @@ export default function ProductManagementPage() {
       const vLabel = formVariants.length === 1 ? 'Phân loại hàng' : `Phân loại #${idx + 1} (${v.name || 'chưa đặt tên'})`;
       if (!v.name.trim()) errors.push(`${vLabel}: Vui lòng nhập tên phân loại.`);
       if (!v.sku.trim()) errors.push(`${vLabel}: Vui lòng nhập mã SKU.`);
-      if (v.barcode?.trim() && !/^\d{8,14}$/.test(v.barcode.trim())) {
-        errors.push(`${vLabel}: Mã vạch phải gồm các chữ số (hoặc để trống nếu chưa có).`);
+      if (v.barcode?.trim() && v.barcode.trim().length > 50) {
+        errors.push(`${vLabel}: Mã vạch không được vượt quá 50 ký tự.`);
       }
       if (v.basePrice === '' || v.basePrice === undefined || Number(v.basePrice) <= 0) {
         errors.push(`${vLabel}: Nhập giá kho cơ bản (giá sàn bảo vệ) > 0.`);
@@ -1501,7 +1504,7 @@ export default function ProductManagementPage() {
     setModalStep(1);
 
     setEditingProduct(null);
-    const initialCategory = storeCategory || products[0]?.categoryName || (products[0] as any)?.category || '';
+    const initialCategory = storeCategory || products[0]?.categoryName || (products[0] as any)?.category || STANDARD_CATEGORIES[0].name;
     setFormCategory(initialCategory);
     setFormCustomCategory('');
     let defaultSku = '';
@@ -2012,9 +2015,9 @@ export default function ProductManagementPage() {
 
       return {
         id: v.id,
-        sku: v.sku.trim().toUpperCase(),
+        sku: v.sku.trim().toUpperCase() || formSku.trim().toUpperCase(),
         name: v.name.trim(),
-        barcode: v.barcode?.trim() || effectiveBarcode,
+        barcode: v.barcode?.trim() || effectiveBarcode || null,
         imageUrl: v.imageUrl?.trim() || formImage,
         price: Number(v.price) || effectivePrice,
         basePrice: Number(v.basePrice) || Math.round((Number(v.price) || effectivePrice) * 0.6),
@@ -3005,7 +3008,11 @@ export default function ProductManagementPage() {
                               const cat = STANDARD_CATEGORIES.find((c) => c.name === (storeCategory || formCategory));
                               const prefix = cat?.prefix || 'SP';
                               const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-                              setFormSku(`${prefix}-${randomCode}`);
+                              const newSku = `${prefix}-${randomCode}`;
+                              setFormSku(newSku);
+                              if (formVariants.length === 1) {
+                                setFormVariants((curr) => curr.map((v, i) => (i === 0 ? { ...v, sku: newSku } : v)));
+                              }
                             }}
                             className="text-[10.5px] font-bold text-[#B88E4F] hover:underline cursor-pointer"
                             title="Tạo mã SKU ngẫu nhiên"
@@ -3017,7 +3024,13 @@ export default function ProductManagementPage() {
                       <input
                         type="text"
                         value={formSku}
-                        onChange={(e) => setFormSku(e.target.value.toUpperCase())}
+                        onChange={(e) => {
+                          const sku = e.target.value.toUpperCase();
+                          setFormSku(sku);
+                          if (formVariants.length === 1) {
+                            setFormVariants((curr) => curr.map((v, i) => (i === 0 ? { ...v, sku } : v)));
+                          }
+                        }}
                         placeholder="SP-SKIN-01"
                         required
                         className="w-full bg-white border border-[#EAE4D7] rounded-xl px-3 py-2 text-xs text-[#1A1612] font-mono font-bold focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 outline-none transition uppercase"
@@ -3535,7 +3548,7 @@ export default function ProductManagementPage() {
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
                         const isBelowFloor = Number(variant.basePrice) > 0 && Number(variant.price) < Number(variant.basePrice);
-                        const isBarcodeInvalid = Boolean(variant.barcode && variant.barcode.length !== 13);
+                        const isBarcodeInvalid = Boolean(variant.barcode && variant.barcode.trim().length > 50);
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
@@ -3649,24 +3662,23 @@ export default function ProductManagementPage() {
                                 />
                               </td>
 
-                              {/* 4. Mã vạch EAN-13 */}
+                              {/* 4. Mã vạch */}
                               <td className="py-2 px-2.5 align-middle">
                                 <input
                                   type="text"
                                   value={variant.barcode || ''}
-                                  inputMode="numeric"
-                                  maxLength={13}
+                                  maxLength={50}
                                   onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '');
+                                    const val = e.target.value.trim();
                                     setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, barcode: val } : v)));
                                   }}
-                                  placeholder="13 số (tùy chọn)"
+                                  placeholder="Mã vạch (tùy chọn)"
                                   className={`h-8.5 w-full rounded-lg border px-2 text-xs font-mono font-medium outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
                                     isBarcodeInvalid
                                       ? 'border-rose-400 bg-rose-50/60 text-rose-700 ring-1 ring-rose-200'
                                       : 'border-[#EAE4D7] bg-white text-[#1A1612]'
                                   }`}
-                                  title={isBarcodeInvalid ? `Đã nhập ${variant.barcode?.length}/13 chữ số` : undefined}
+                                  title={isBarcodeInvalid ? `Mã vạch không được quá 50 ký tự` : undefined}
                                 />
                               </td>
 

@@ -16,7 +16,6 @@ type PackageForm = { barcode: string; packageWeight: number | ''; packageLength:
 export function productPackageInput(form: PackageForm, previous?: PackageValues | null): PackageValues {
   const result: PackageValues = {};
   if (form.barcode.trim()) {
-    if (!isValidEan13(form.barcode.trim())) throw new Error('Nhập barcode EAN-13 gồm 13 chữ số, đúng số kiểm tra trên bao bì.');
     result.barcode = form.barcode.trim();
   } else if (previous?.barcode) {
     result.barcode = null;
