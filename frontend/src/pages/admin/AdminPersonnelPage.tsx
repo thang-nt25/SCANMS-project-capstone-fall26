@@ -513,7 +513,7 @@ export const AdminPersonnelPage: React.FC = () => {
     const matchQuery =
       st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (st.categoryName && st.categoryName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (st.owner?.fullName && st.owner.fullName.toLowerCase().includes(searchQuery.toLowerCase()));
+      (st.owner?.role === 'SHOP_MANAGER' && st.owner.fullName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     let matchStatus = true;
     if (storeStatusFilter === 'ACTIVE') {
@@ -769,7 +769,7 @@ export const AdminPersonnelPage: React.FC = () => {
                         <div className="flex items-center justify-between text-[#7D715E]">
                           <span>Quản lý phụ trách:</span>
                           <span className="font-semibold text-[#1A1612] truncate max-w-[150px]">
-                            {st.owner?.fullName || 'Chưa phân công'}
+                            {st.owner?.role === 'SHOP_MANAGER' ? st.owner.fullName : 'Chưa phân công'}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[#7D715E]">
@@ -1015,11 +1015,14 @@ export const AdminPersonnelPage: React.FC = () => {
                   >
                     {stores
                       .filter((st) => !st.isDeleted)
-                      .map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.name} {st.owner ? `(${st.owner.fullName})` : '(Chưa có quản lý)'}
-                        </option>
-                      ))}
+                      .map((st) => {
+                        const hasRealManager = st.owner && st.owner.role === 'SHOP_MANAGER';
+                        return (
+                          <option key={st.id} value={st.id}>
+                            {st.name} {hasRealManager ? `(${st.owner?.fullName})` : '(Chưa có quản lý)'}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
               )}
@@ -1778,14 +1781,14 @@ export const AdminPersonnelPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-white border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-sm">
-                          {selectedStore.owner?.fullName?.[0] || 'Q'}
+                          {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.fullName?.[0] || 'Q') : '—'}
                         </div>
                         <div>
                           <div className="font-bold text-xs text-[#1A1612]">
-                            {selectedStore.owner?.fullName || 'Chưa phân công'}
+                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.fullName : 'Chưa phân công'}
                           </div>
                           <div className="text-[11px] text-[#7D715E] font-mono">
-                            {selectedStore.owner?.email || 'N/A'}
+                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.email || 'N/A') : 'Chờ bổ nhiệm Shop Manager'}
                           </div>
                         </div>
                       </div>

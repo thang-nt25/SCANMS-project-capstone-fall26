@@ -710,6 +710,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
@@ -793,6 +794,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
