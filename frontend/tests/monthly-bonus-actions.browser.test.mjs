@@ -39,7 +39,14 @@ test('monthly bonus uses configured amounts and confirms each financial action',
     await page.goto(`${base}/qa-monthly`);
     await page.waitForFunction(() => document.body.innerText.includes('345.678'));
     assert.equal(calls.length, 0);
-    await page.$eval('input[type=month]', el => { const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(el, '2025-09'); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.click('button[aria-label="Chọn kỳ thưởng"]');
+    await page.waitForSelector('[role=dialog]');
+    while (await page.$eval('[role=dialog]', el => !el.innerText.includes('Năm 2025'))) {
+      await page.click('button[aria-label="Năm trước"]');
+    }
+    await page.$$eval('[role=dialog] button', buttons => buttons.find(b => b.textContent.trim() === 'Tháng 9').click());
+    await page.waitForFunction(() => !document.querySelector('[role=dialog]'));
+    assert.ok(await page.$eval('button[aria-label="Chọn kỳ thưởng"]', el => el.innerText.includes('Tháng 9/2025')));
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent.includes('Quyết toán') && !b.disabled));
     const clickText = async text => { const el = await page.waitForSelector(`::-p-text(${text})`); await el.click(); };
     for (const label of ['Quyết toán mốc thưởng tháng', 'Duyệt thưởng', 'Cộng vào ví']) {

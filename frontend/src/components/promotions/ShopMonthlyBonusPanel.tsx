@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { commissionRulesService as service, type CommissionRule, type SettlementHistoryItem } from '../../services/commission-rules.service';
 import { Modal } from '../ui/Modal';
+import { VietnamMonthPicker } from '../ui/VietnamMonthPicker';
 
 interface Member {
   collaboratorId: string;
@@ -33,11 +34,23 @@ export function ShopMonthlyBonusPanel({ storeId }: { storeId: string }) {
     let active = true;
     setLoading(true); setError(''); setTeam(null); setHistory([]); setRules([]);
     if (!storeId || !/^\d{4}-\d{2}$/.test(month)) { setLoading(false); return; }
-    Promise.all([service.getRules(storeId), service.getTeamProgress(storeId, month), service.getSettlementHistory(storeId, month)])
+    Promise.all([
+      service.getRules(storeId).then((nextRules) => {
+        if (!Array.isArray(nextRules)) throw new Error('Dữ liệu chính sách thưởng chưa đúng cấu trúc.');
+        if (active) setRules(nextRules);
+        return nextRules;
+      }),
+      service.getTeamProgress(storeId, month),
+      service.getSettlementHistory(storeId, month),
+    ])
       .then(([nextRules, nextTeam, nextHistory]) => {
         if (!Array.isArray(nextRules) || !Array.isArray(nextTeam?.members) || !Array.isArray(nextHistory)) throw new Error('Dữ liệu thưởng tháng chưa đúng cấu trúc.');
         if (active) { setRules(nextRules); setTeam(nextTeam); setHistory(nextHistory); }
-      }).catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : 'Không tải được kỳ thưởng.'); })
+      }).catch((err: unknown) => {
+        if (!active) return;
+        const timedOut = err instanceof Error && /timeout/i.test(err.message);
+        setError(timedOut ? 'Máy chủ phản hồi chậm khi tính kỳ thưởng. Vui lòng tải lại.' : err instanceof Error ? err.message : 'Không tải được kỳ thưởng.');
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [storeId, month, revision]);
@@ -61,7 +74,7 @@ export function ShopMonthlyBonusPanel({ storeId }: { storeId: string }) {
     <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3"><Trophy className="text-[#B88E4F]" /><div><h3 className="font-bold">Thưởng mốc tháng · FR-09</h3><p className="mt-1 text-xs text-[#7D715E]">Theo doanh số sạch và chính sách đã lưu của từng kỳ.</p></div></div>
-        <label className="flex items-center gap-2 rounded-xl border border-[#EAE4D7] p-2 text-sm"><CalendarDays size={18} className="text-[#B88E4F]" /><span className="sr-only">Kỳ thưởng</span><input aria-label="Kỳ thưởng" type="month" value={month} max={vnMonth()} disabled={busy} onChange={(e) => { setResult(''); setMonth(e.target.value); }} /></label>
+        <VietnamMonthPicker value={month} max={vnMonth()} disabled={busy} onChange={(next) => { setResult(''); setMonth(next); }} />
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#EAE4D7] pt-4">
         <p className="max-w-2xl text-xs leading-relaxed text-[#7D715E]">Tự động xử lý từ ngày 15 tháng kế tiếp. Chốt thủ công chỉ dành cho kỳ đã kết thúc; duyệt thưởng rồi cộng ví là hai bước riêng.</p>
@@ -69,11 +82,11 @@ export function ShopMonthlyBonusPanel({ storeId }: { storeId: string }) {
       </div>
       {month >= vnMonth() && <p className="mt-2 text-xs text-[#7D715E]">Kỳ chưa kết thúc: đang theo dõi, chưa được chốt.</p>}
     </div>
-    {loading && <p role="status" className="p-4 text-sm text-[#7D715E]">Đang tải chính sách và dữ liệu kỳ thưởng…</p>}
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{rules.filter((r) => r.isActive).map((r) => <div key={r.id} className="rounded-2xl border border-[#EAE4D7] bg-white p-4"><h4 className="font-semibold">{r.name}</h4><p className="mt-3 text-xs text-[#7D715E]">Doanh số từ {money(r.minMonthlyRevenue)}</p><p className="mt-1 font-bold tabular-nums text-[#8C6226]">{Number(r.bonusPercentage) > 0 ? `${r.bonusPercentage}% doanh số sạch` : money(r.achievementBonus)}</p></div>)}</div>
+    {loading && <p role="status" className="p-4 text-sm text-[#7D715E]">Đang tính tiến độ KOL và tải lịch sử kỳ thưởng…</p>}
     {error && <div role="alert" className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-600">{error} <button className="ml-2 underline" onClick={() => setRevision((n) => n + 1)}>Tải lại</button></div>}
     {result && <p role="status" className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">{result}</p>}
     {!loading && !error && <>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{rules.filter((r) => r.isActive).map((r) => <div key={r.id} className="rounded-2xl border border-[#EAE4D7] bg-white p-4"><h4 className="font-semibold">{r.name}</h4><p className="mt-3 text-xs text-[#7D715E]">Doanh số từ {money(r.minMonthlyRevenue)}</p><p className="mt-1 font-bold tabular-nums text-[#8C6226]">{Number(r.bonusPercentage) > 0 ? `${r.bonusPercentage}% doanh số sạch` : money(r.achievementBonus)}</p></div>)}</div>
       {!rules.some((r) => r.isActive) && <p className="text-sm text-[#7D715E]">Shop chưa có mốc thưởng đang áp dụng.</p>}
       <div className="overflow-hidden rounded-2xl border border-[#EAE4D7] bg-white">
         <h4 className="border-b border-[#EAE4D7] p-4 font-bold">Đối soát KOL · {month}</h4>

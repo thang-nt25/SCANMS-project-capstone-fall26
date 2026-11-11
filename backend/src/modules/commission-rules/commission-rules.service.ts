@@ -2984,17 +2984,30 @@ export class CommissionRulesService {
     let eligibleCount = 0;
     let settledCount = 0;
 
-    for (const c of [
+    const collaborators = [
       ...storeCollabs.map((row) => row.collaborator),
       ...additionalMembers,
-    ]) {
+    ].filter(Boolean);
+    // Bound read concurrency to avoid both serial network round trips and an
+    // unbounded burst against the small database connection pool.
+    const progressResults = new Map<string, { progress?: any; error?: unknown }>();
+    for (let offset = 0; offset < collaborators.length; offset += 3) {
+      await Promise.all(collaborators.slice(offset, offset + 3).map(async (c) => {
+        try {
+          const progress = await this.getKolProgress(storeId, c.id, targetYearMonth);
+          progressResults.set(c.id, { progress });
+        } catch (error) {
+          progressResults.set(c.id, { error });
+        }
+      }));
+    }
+
+    for (const c of collaborators) {
       if (!c) continue;
       try {
-        const progress = await this.getKolProgress(
-          storeId,
-          c.id,
-          targetYearMonth,
-        );
+        const outcome = progressResults.get(c.id)!;
+        if ('error' in outcome) throw outcome.error;
+        const progress = outcome.progress;
         const rev = new Prisma.Decimal(progress.validRevenue || 0);
         const bonus = new Prisma.Decimal(progress.estimatedTotalBonus || 0);
         totalRevenue = totalRevenue.add(rev);
