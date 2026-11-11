@@ -50,7 +50,7 @@ export function CustomerWishlistTab({
   };
 
   return (
-    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1020px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-label="Sản phẩm yêu thích">
+    <section className="@container/wishlist grid gap-[14px] w-full max-w-[1200px] min-w-0 text-[#1A1612] text-left max-md:pb-[64px]" aria-label="Sản phẩm yêu thích">
       <div className="flex items-center justify-between flex-wrap gap-[10px] @max-[599px]:gap-[8px] p-[10px_12px] @max-[599px]:p-[8px_10px] border border-[#EAE4D7] rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)]">
         <div className="flex items-center flex-wrap gap-[8px] min-h-[30px] @max-[599px]:min-h-[26px]" aria-live="polite" aria-atomic="true">
           <span className="grid place-items-center w-[28px] h-[28px] rounded-[8px] bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true">
@@ -121,7 +121,7 @@ export function CustomerWishlistTab({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 @max-[899px]:grid-cols-1 items-stretch gap-[12px] min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-stretch gap-3.5 sm:gap-4 min-w-0">
               {filteredItems.map(({ wishlistId, product: p }) => {
                 const discount =
                   p.originalPrice && Number(p.originalPrice) > Number(p.price)
@@ -133,7 +133,7 @@ export function CustomerWishlistTab({
                 const busy = removing.includes(p.id);
                 const productUrl = `/products/${p.sku || p.id}`;
                 return (
-                  <article className="grid grid-cols-[112px_minmax(0,1fr)] @max-[599px]:grid-cols-[96px_minmax(0,1fr)] @max-[339px]:grid-cols-[78px_minmax(0,1fr)] gap-[12px] @max-[599px]:gap-[10px] @max-[339px]:gap-[8px] p-[12px] @max-[599px]:p-[10px] @max-[339px]:p-[8px] @max-[899px]:max-w-[680px] min-w-0 border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-[12px] bg-white shadow-[0_2px_5px_rgba(35,29,21,0.02)] transition-colors" key={wishlistId}>
+                  <article className="grid grid-cols-[100px_minmax(0,1fr)] sm:grid-cols-[112px_minmax(0,1fr)] gap-3 p-3 min-w-0 border border-[#EAE4D7] hover:border-[#EEDFC6] rounded-2xl bg-white shadow-2xs hover:shadow-xs transition-all" key={wishlistId}>
                     <div className="relative self-stretch rounded-[9px] border border-[#EAE4D7] overflow-hidden bg-[#FAF8F5]">
                       <Link
                         to={productUrl}

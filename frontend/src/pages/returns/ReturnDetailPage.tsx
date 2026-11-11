@@ -12,10 +12,12 @@ import { MarketplaceHeader } from '../../components/marketplace/MarketplaceHeade
 import { Sidebar } from '../../components/layout/Sidebar';
 import { carrierStatusLabel, returnReasonLabel, returnStatusLabel } from '@/utils/return-status.utils';
 import { customerService, type CustomerOrderItem } from '../../services/customer.service';
-import { canRequestReturnReview } from '../../utils/return-actions';
+import { canConfirmReturnCompletion, canRequestReturnReview } from '../../utils/return-actions';
 import { getSafeProductImageUrl, handleProductImageError } from '../../utils/marketplace.utils';
 import { downloadReturnCaseReport } from '../../utils/return-case-report';
 import { analyzeReturnCase } from '../../utils/return-case-audit';
+import { ExchangeShipmentPanel } from '../../components/returns/ExchangeShipmentPanel';
+import { ShopReturnDecisionForm } from '../../components/returns/ShopReturnDecisionForm';
 
 const field = 'mt-1 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]';
 const liabilityLabels: Record<string, string> = {
@@ -102,8 +104,8 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
   const exchangeReceipt = useReturnAction(request.id, returnService.confirmExchangeReceipt);
   const inspectionOverdue = ['RETURN_RECEIVED', 'INSPECTING'].includes(request.status) &&
     Boolean(request.receivedAt) && new Date(request.receivedAt!).getTime() <= Date.now() - 48 * 60 * 60 * 1000;
-  const mayComplete = request.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
-    (request.refund?.status === 'SUCCEEDED' || Boolean(request.exchangeShipment?.receivedAt));
+  const mayComplete = canConfirmReturnCompletion(request);
+  const awaitingRefund = mayComplete && request.resolution === 'REFUND' && request.refund?.status !== 'SUCCEEDED';
 
   async function correct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -171,15 +173,20 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
         ? 'Đã hoàn tiền vào Ví SCANMS'
         : request.refund.status === 'FAILED' ? 'Hoàn tiền gặp lỗi; đang cần xử lý'
           : request.refund.status === 'PROCESSING' ? 'Đang xử lý tại bên thanh toán'
-            : 'Chưa chuyển tiền · đang chờ đối soát'}</p>
+            : awaitingRefund ? 'Chưa chuyển tiền · chờ bạn xác nhận đồng ý hoàn tiền' : 'Chưa chuyển tiền · đang chờ đối soát'}</p>
+      {awaitingRefund && <p className="mt-2 text-sm leading-relaxed text-[#7D715E]">Kiểm tra kết quả xử lý bên dưới. Chỉ khi bạn bấm “Xác nhận đồng ý · Nhận tiền hoàn”, hệ thống mới cộng tiền vào Ví SCANMS và hoàn tất hồ sơ. Nếu xử lý gặp lỗi, bạn có thể thử xác nhận lại.</p>}
       {request.refund.failureReason && <p className="mt-1 text-sm text-[#DC2626]">{request.refund.failureReason}</p>}
       {request.refund.status === 'SUCCEEDED' && request.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
         <p className="mt-1 text-xs text-[#7D715E]">Bạn có thể xác nhận hoàn tất. Sau 7 ngày, hồ sơ đã hoàn tiền sẽ tự đóng.</p>}
     </section>}
 
     {request.exchangeShipment && <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Hàng đổi Shop đã gửi</h3>
+      <h3 className="font-bold">Vận đơn giao sản phẩm thay thế</h3>
       <p className="mt-2 text-sm">{request.exchangeShipment.carrierName} · {request.exchangeShipment.trackingNumber}</p>
+      {request.exchangeShipment.providerStatus && <p className="mt-1 text-sm text-[#7D715E]">{carrierStatusLabel(request.exchangeShipment.providerStatus)}</p>}
+      {request.exchangeShipment.provider === 'MOCK' && <p className="mt-1 text-xs text-[#7D715E]">Vận đơn mô phỏng để test; không có chuyến giao thật.</p>}
+      {request.exchangeShipment.provider === 'GHN_STAGING' && <p className="mt-1 text-xs text-[#7D715E]">Vận đơn GHN Staging dùng để thử tích hợp; không có chuyến giao thật.</p>}
+      {request.exchangeShipment.provider && request.exchangeShipment.providerStatus !== 'delivered' && <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Hãng vận chuyển chưa báo giao thành công nên chưa thể xác nhận nhận hàng đổi. Nếu bạn đã nhận, liên hệ Shop để đồng bộ trạng thái vận đơn.</p>}
       {!request.exchangeShipment.receivedAt && <p className="mt-1 text-xs text-[#7D715E]">Chỉ xác nhận đã nhận hàng đổi khi kiện thực sự đến tay bạn. Nếu chưa nhận hoặc hàng có vấn đề, giữ hồ sơ mở và liên hệ hỗ trợ.</p>}
     </section>}
 
@@ -191,14 +198,14 @@ function CustomerActions({ request }: { request: ReturnDetail }) {
 
     <div className="flex flex-wrap gap-2">
       {request.status === 'EXCHANGE_SHIPPED' && request.exchangeShipment &&
-        <button type="button" disabled={exchangeReceipt.isPending}
-          onClick={() => void exchangeReceipt.mutateAsync(undefined).catch(() => undefined)} className={primary}>
+        <button type="button" disabled={exchangeReceipt.isPending || Boolean(request.exchangeShipment.provider && request.exchangeShipment.providerStatus !== 'delivered')}
+          onClick={() => void exchangeReceipt.mutateAsync(undefined).catch(() => undefined)} className={`${primary} min-h-11`}>
           {exchangeReceipt.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận hàng đổi'}
         </button>}
       <ErrorText error={exchangeReceipt.error} />
       {mayComplete && <button type="button" disabled={completion.isPending}
-        onClick={() => void completion.mutateAsync(undefined).catch(() => undefined)} className={primary}>
-        {completion.isPending ? 'Đang xác nhận…' : 'Tôi đã nhận kết quả · Hoàn tất'}
+        onClick={() => void completion.mutateAsync(undefined).catch(() => undefined)} className={`${primary} min-h-11 max-w-full`}>
+        {completion.isPending ? 'Đang xác nhận…' : awaitingRefund ? 'Xác nhận đồng ý · Nhận tiền hoàn' : 'Tôi đã nhận kết quả · Hoàn tất'}
       </button>}
       {mayDispute && <button type="button" onClick={() => setShowDispute(true)}
         className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2.5 text-sm font-semibold text-[#8A6736]">Yêu cầu SCANMS xem xét</button>}
@@ -215,20 +222,19 @@ function ShopActions({ request }: { request: ReturnDetail }) {
     name: request.order.storeName, phone: '', address: '', wardName: '', provinceName: '', districtName: '',
   });
   const [editingWarehouse, setEditingWarehouse] = useState(!request.returnWarehouse);
+  const mayEditWarehouse = request.status === 'SHOP_APPROVED' ||
+    (request.status === 'EXCHANGE_PENDING' && !request.exchangeBooking?.pending);
   const [resolution, setResolution] = useState<'REFUND' | 'EXCHANGE' | 'REJECT'>(request.preferredResolution || 'REFUND');
   const [liability, setLiability] = useState<'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON'>(
     (managerAssessment?.data?.liability as 'LOGISTICS_FAULT' | 'SHOP_FAULT' | 'CUSTOMER_REASON') ||
       (request.reason === 'CHANGE_OF_MIND' ? 'CUSTOMER_REASON' : 'SHOP_FAULT'));
   const [notes, setNotes] = useState('');
-  const [carrierName, setCarrierName] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
   const warehouseAction = useReturnAction(request.id, returnService.saveWarehouse);
   const simulateAction = useReturnAction(request.id, returnService.simulatePickup);
   const syncAction = useReturnAction(request.id, returnService.syncPickup);
   const receiptAction = useReturnAction(request.id, returnService.confirmReceipt);
   const startAction = useReturnAction(request.id, returnService.startInspection);
   const inspectAction = useReturnAction(request.id, returnService.submitInspection);
-  const exchangeAction = useReturnAction(request.id, returnService.submitExchangeShipment);
 
   async function submit<T>(event: FormEvent<HTMLFormElement>, action: { mutateAsync: (value: T) => Promise<unknown> }, value: T) {
     event.preventDefault();
@@ -252,15 +258,13 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       <p role="alert" className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm font-semibold text-[#8A6736]">
         Hồ sơ đã quá 48 giờ kiểm tra và được thông báo cho Admin. Vui lòng cập nhật kết quả sớm.
       </p>}
-    {request.status === 'REQUESTED' && <div className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
-      Hồ sơ đang chờ duyệt. <Link to="/merchant/orders" className="font-bold text-[#B88E4F] underline">Mở quản lý đơn hàng để duyệt/từ chối</Link>.
-    </div>}
-    {request.status === 'SHOP_APPROVED' && !editingWarehouse && request.returnWarehouse && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
+    {request.status === 'REQUESTED' && <ShopReturnDecisionForm key={request.id} orderId={request.orderId} request={request} />}
+    {mayEditWarehouse && !editingWarehouse && request.returnWarehouse && <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
       <p className="font-bold">Kho nhận hàng trả: {request.returnWarehouse.address}</p>
-      <p className="mt-1 text-[#7D715E]">Khách sẽ xác nhận địa chỉ lấy hàng để đặt shipper. Shop không phải cấp địa chỉ theo từng đơn.</p>
+      <p className="mt-1 text-[#7D715E]">{request.status === 'EXCHANGE_PENDING' ? 'Đây là kho gửi sản phẩm thay thế cho khách. Kiểm tra thông tin trước khi tạo vận đơn.' : 'Khách sẽ xác nhận địa chỉ lấy hàng để đặt shipper. Shop không phải cấp địa chỉ theo từng đơn.'}</p>
       <button type="button" onClick={() => setEditingWarehouse(true)} className="mt-2 font-semibold text-[#8A6736] underline">Sửa kho nhận hàng</button>
     </section>}
-    {request.status === 'SHOP_APPROVED' && editingWarehouse && <form
+    {mayEditWarehouse && editingWarehouse && <form
       onSubmit={(event) => { event.preventDefault(); void warehouseAction.mutateAsync({
         ...warehouse, name: warehouse.name.trim(), phone: warehouse.phone.trim(), address: warehouse.address.trim(),
         wardName: warehouse.wardName.trim(), provinceName: warehouse.provinceName.trim(), districtName: warehouse.districtName?.trim() || undefined,
@@ -334,21 +338,11 @@ function ShopActions({ request }: { request: ReturnDetail }) {
       {managerAssessment && <p className="text-xs text-[#7D715E]">System Manager đã xác định trách nhiệm; Shop xử lý theo kết luận này.</p>}
       <textarea required minLength={10} maxLength={2000} rows={4} value={notes}
         onChange={(event) => setNotes(event.target.value)} placeholder="Nêu tình trạng hàng và căn cứ quyết định" className={field} />
-      <p className="text-xs text-[#7D715E]">Hoàn vào ví khi chuyển tiền nội bộ thành công; nếu chưa thể chuyển, hồ sơ tiếp tục chờ đối soát.</p>
+      <p className="text-xs text-[#7D715E]">Hoàn tiền chỉ chuyển vào ví sau khi khách xác nhận đồng ý trong đơn. Nếu đổi sản phẩm, Shop tạo vận đơn giao hàng thay thế sau khi duyệt.</p>
       <button disabled={inspectAction.isPending} className={primary}>Lưu kết quả kiểm tra</button>
       <ErrorText error={inspectAction.error} />
     </form>}
-    {request.status === 'EXCHANGE_PENDING' && <form
-      onSubmit={(event) => void submit(event, exchangeAction, { carrierName: carrierName.trim(), trackingNumber: trackingNumber.trim() })}
-      className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4">
-      <h3 className="font-bold">Gửi sản phẩm thay thế</h3>
-      <input required minLength={2} maxLength={100} value={carrierName} onChange={(event) => setCarrierName(event.target.value)}
-        placeholder="Đơn vị vận chuyển" className={field} />
-      <input required minLength={5} maxLength={100} value={trackingNumber} onChange={(event) => setTrackingNumber(event.target.value)}
-        placeholder="Mã vận đơn" className={field} />
-      <button disabled={exchangeAction.isPending} className={primary}>Xác nhận đã gửi hàng đổi</button>
-      <ErrorText error={exchangeAction.error} />
-    </form>}
+    <ExchangeShipmentPanel key={request.id} request={request} />
   </div>;
 }
 
@@ -509,10 +503,11 @@ function AdminRefundRetry({ request }: { request: ReturnDetail }) {
   return <section className="rounded-2xl border border-[#EEDFC6] bg-[#FBF5EB] p-4 text-sm">
     <h2 className="font-bold">Hoàn tiền đang chờ xử lý</h2>
     <p className="mt-2 text-[#7D715E]">Số tiền {money(request.refund.amount)} chưa vào ví khách. Thu nhập KOL chỉ bị thu hồi sau khi hoàn tiền thành công.</p>
-    <button type="button" disabled={retry.isPending}
+    {!request.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED') && <p className="mt-2 text-[#7D715E]">Khách cần mở hồ sơ trong đơn hàng và xác nhận đồng ý hoàn tiền. Manager không thể chuyển tiền trước bước này.</p>}
+    {request.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED') && <button type="button" disabled={retry.isPending}
       onClick={() => void retry.mutateAsync(undefined).catch(() => undefined)} className={`${primary} mt-3`}>
       {retry.isPending ? 'Đang xử lý…' : 'Thử hoàn tiền vào ví khách'}
-    </button>
+    </button>}
     <ErrorText error={retry.error} />
   </section>;
 }
@@ -601,7 +596,9 @@ export default function ReturnDetailPage({ mode }: { mode: 'customer' | 'shop' |
             <h2 className="font-bold">Khoản hoàn cho khách: {money(detail.data.refund.amount)}</h2>
             <p className="mt-2">{detail.data.refund.status === 'SUCCEEDED'
               ? 'Đã hoàn vào ví khách thành công. Shop không hoàn thêm lần nữa.'
-              : 'Chưa hoàn thành. System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.'}</p>
+              : ['AWAITING_CUSTOMER_CONFIRMATION', 'REFUND_PENDING', 'REFUND_FAILED'].includes(detail.data.status) && !detail.data.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED')
+                ? 'Đã duyệt phương án, chưa chuyển tiền. Khách cần mở hồ sơ trong đơn hàng và xác nhận đồng ý để nhận tiền vào ví. Shop không tạo khoản hoàn thứ hai.'
+                : 'Chưa hoàn thành. System Manager cần đối soát hoặc thử hoàn lại; Shop không tạo khoản hoàn thứ hai.'}</p>
             {detail.data.refund.status === 'SUCCEEDED' && detail.data.status === 'AWAITING_CUSTOMER_CONFIRMATION' &&
               <p className="mt-1 text-[#7D715E]">Khách cần mở hồ sơ đổi trả và xác nhận đã nhận kết quả để đóng đơn.</p>}
           </section>}

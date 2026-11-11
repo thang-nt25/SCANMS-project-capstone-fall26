@@ -38,30 +38,9 @@ describe('KOL exclusive coupon policy', () => {
   it('accepts checkout with no retail voucher selection', () => {
     expect(() => assertNoRetailVoucherSelection({})).not.toThrow();
   });
-  it('preserves only the explicitly approved new-customer shipping exception', () => {
-    expect(() => assertNoRetailVoucherSelection({
-      shippingCouponCode: 'SCANMSFREESHIP',
-      shippingCouponsByStore: { shop: 'SCANMSFREESHIP' },
-    })).not.toThrow();
+  it('rejects any retail platform or shipping voucher selection', () => {
     expect(() => assertNoRetailVoucherSelection({ platformCouponCode: 'SCANMSFREESHIP' })).toThrow();
-  });
-  it.each([0, 2, 3])('validates global freeship against the three-use limit: %s uses', async (used) => {
-    const db = {
-      coupon: { findUnique: jest.fn(async () => ({
-        id: 'shipping', storeId: 'original-store', codeNormalized: 'SCANMSFREESHIP', displayCode: 'SCANMSFREESHIP',
-        benefitType: 'SHIPPING', fundingSource: 'PLATFORM_FUNDED', scopeType: 'STORE_WIDE', status: 'ACTIVE',
-        usageLimitTotal: null, usageLimitPerCustomer: 3, usageCount: used,
-        discountType: 'PERCENTAGE', discountValue: 100, maximumDiscountAmount: 100000,
-        minimumOrderAmount: 0, budgetTotal: null,
-      })) },
-      order: { count: jest.fn(async () => 0) },
-      stackedVoucherRedemption: { count: jest.fn(async () => used) },
-    };
-    const service = new CouponsService(db as never);
-    const attempt = service.previewStackedVoucher({ code: 'SCANMSFREESHIP', storeId: 'another-store',
-      benefitType: 'SHIPPING', goodsSubtotal: 100000, shippingFee: 25000, shopDiscount: 0, customerPhone: '0903000001' });
-    if (used < 3) await expect(attempt).resolves.toMatchObject({ code: 'SCANMSFREESHIP', discountAmount: 25000 });
-    else await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
+    expect(() => assertNoRetailVoucherSelection({ shippingCouponCode: 'SCANMSFREESHIP' })).toThrow();
   });
   it('cannot reactivate a blocked legacy retail coupon through Admin oversight', async () => {
     const db = {

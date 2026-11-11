@@ -447,7 +447,7 @@ export default function LiveStreamRoomPage() {
       sender: 'Hệ Thống SCANMS',
       role: 'SYSTEM',
       avatar: '/favicon.ico',
-      text: 'Chào mừng bạn đến với phiên Livestream chính thức trên Sàn SCANMS! Hãy tương tác tích cực, săn deal trợ giá độc quyền và lưu voucher phiên live.',
+      text: 'Chào mừng bạn đến với phiên Livestream chính thức trên Hệ thống SCANMS! Hãy tương tác tích cực, săn deal trợ giá độc quyền và lưu voucher phiên live.',
       time: 'Bắt đầu',
     },
   ]);

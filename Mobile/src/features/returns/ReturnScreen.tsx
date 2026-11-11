@@ -64,6 +64,7 @@ const ReturnSchema = z.object({
     id: z.string().optional(), quantity: z.number(),
     orderItem: z.object({ product: z.object({ title: z.string(), imageUrl: z.string().nullish() }).nullish() }),
   })).optional(),
+  resolution: z.enum(["REFUND", "EXCHANGE"]).nullish(),
   reason: z.string(),
   details: z.string().nullish(),
   imageUrls: z.array(z.string()),
@@ -649,13 +650,32 @@ function ReturnDetail({ id }: { id: string }) {
         />
       )}
       {item.refund && (
-        <View style={r.panel}><View style={r.row}><Icon name="credit-card" size={20} color={colors.strong} /><Text style={[r.heading, { flex: 1 }]}>Hoàn tiền</Text><Text style={r.heading}>{money(item.refund.amount)}</Text></View><View style={[r.row, { justifyContent: "space-between" }]}><Text style={r.meta}>{({ WALLET: "Ví mua sắm", BANK_TRANSFER: "Chuyển khoản ngân hàng", ORIGINAL_PAYMENT: "Phương thức ban đầu" } as Record<string, string>)[item.refund.method] || "Theo phương thức đã ghi nhận"}</Text><Badge>{statusText(item.refund.status)}</Badge></View>{!!item.refund.failureReason && <Text style={r.meta}>{item.refund.failureReason}</Text>}</View>
+        <View style={r.panel}>
+          <View style={r.row}>
+            <Icon name="credit-card" size={20} color={colors.strong} />
+            <Text style={[r.heading, { flex: 1 }]}>Hoàn tiền</Text>
+            <Text style={r.heading}>{money(item.refund.amount)}</Text>
+          </View>
+          <View style={[r.row, { justifyContent: "space-between" }]}>
+            <Text style={r.meta}>{({ WALLET: "Ví mua sắm", BANK_TRANSFER: "Chuyển khoản ngân hàng", ORIGINAL_PAYMENT: "Phương thức ban đầu" } as Record<string, string>)[item.refund.method] || "Theo phương thức đã ghi nhận"}</Text>
+            <Badge>{statusText(item.refund.status)}</Badge>
+          </View>
+          {!!item.refund.failureReason && <Text style={r.meta}>{item.refund.failureReason}</Text>}
+          {item.refund.status === 'PENDING' && item.status === 'AWAITING_CUSTOMER_CONFIRMATION' && (
+            <Text style={r.meta}>Chưa chuyển tiền. Bạn cần xác nhận đồng ý hoàn tiền để nhận vào Ví SCANMS.</Text>
+          )}
+        </View>
       )}
       {customer &&
-        (item.status === "EXCHANGE_SHIPPED" ||
-          (item.status === "AWAITING_CUSTOMER_CONFIRMATION" &&
-            item.refund?.status === "SUCCEEDED")) &&
-        action("confirmation", "Xác nhận hoàn tất", "POST")}
+        item.status === "EXCHANGE_SHIPPED" && item.exchangeShipment &&
+        (!item.exchangeShipment.provider || item.exchangeShipment.providerStatus === "delivered") &&
+        action("exchange-receipt", "Tôi đã nhận hàng đổi", "POST")}
+      {customer &&
+        ((item.status === "AWAITING_CUSTOMER_CONFIRMATION" && item.resolution === "EXCHANGE" && item.exchangeShipment?.receivedAt) ||
+          (["AWAITING_CUSTOMER_CONFIRMATION", "REFUND_PENDING", "REFUND_FAILED"].includes(item.status) &&
+            item.resolution === "REFUND" && item.refund &&
+            ["PENDING", "FAILED", "SUCCEEDED"].includes(item.refund.status))) &&
+        action("confirmation", item.resolution === "REFUND" && item.refund?.status !== "SUCCEEDED" ? "Xác nhận đồng ý · Nhận tiền hoàn" : "Xác nhận hoàn tất", "POST")}
       {customer && mayDispute && (
         <Button
           title="Gửi khiếu nại"
@@ -739,6 +759,7 @@ function ReturnDetail({ id }: { id: string }) {
         />
       )}
       {reviewer &&
+        item.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED') &&
         ["REFUND_PENDING", "REFUND_FAILED"].includes(item.status) && (
           <Button
             title="Thử lại hoàn tiền"

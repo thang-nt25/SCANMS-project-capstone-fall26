@@ -25,9 +25,9 @@ export function CustomerVouchersTab() {
     }
   };
   return (
-    <section className="space-y-4 text-[#1A1612]">
+    <section className="space-y-4 text-[#1A1612] w-full max-w-[1200px]">
       <div>
-        <h1 className="text-xl font-bold">Mã KOL & freeship khách mới</h1>
+        <h1 className="text-xl font-bold">Mã ưu đãi độc quyền KOL</h1>
         <p className="mt-2 text-sm text-[#7D715E]">
           Sao chép mã từ KOL và tự nhập khi thanh toán. Mã không được lưu vào
           tài khoản hoặc tự động áp dụng.
@@ -48,7 +48,7 @@ export function CustomerVouchersTab() {
       )}
       {!loading && !error && !vouchers.length && (
         <p className="rounded-xl border border-[#EAE4D7] bg-white p-6 text-[#7D715E]">
-          Chưa có mã ưu đãi đang khả dụng.
+          Chưa có mã KOL đang khả dụng.
         </p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

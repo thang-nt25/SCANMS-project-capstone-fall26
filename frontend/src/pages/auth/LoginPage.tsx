@@ -184,7 +184,7 @@ export default function LoginPage() {
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[#EAE4D7] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:border-[#C59B58] transition shadow-2xs"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-[#C59B58]" />
-          <span>Sàn mua sắm</span>
+          <span>Cổng mua sắm</span>
         </Link>
       </header>
 
@@ -192,8 +192,8 @@ export default function LoginPage() {
         <div className="login-experience relative isolate grid grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] overflow-clip rounded-[30px] border-2 border-brand-border p-0 bg-[linear-gradient(to_right,transparent_72%,#FAF8F0_91%),radial-gradient(ellipse_at_20%_18%,#FFFDF7_2%,transparent_55%),linear-gradient(135deg,#EEDFC6,#FBF5EB_52%,#EEDFC6)] shadow-[0_20px_65px_-30px_rgb(125_113_94/28%),0_2px_6px_rgb(125_113_94/3%)] before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:content-[''] before:[background:url('/assets/auth_luxury_card_inner.jpg')_center/100%_100%_no-repeat] before:[mask:url('/assets/login-gold-curve-mask.svg')_center/100%_100%_no-repeat] before:[transform:scaleX(.8)] before:origin-[55%_center] after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-[''] after:bg-[linear-gradient(to_right,transparent_86%,#FAF8F0_91%)] max-[760px]:grid-cols-[minmax(0,1fr)] max-[760px]:rounded-[22px] max-[760px]:before:bg-[linear-gradient(160deg,transparent_10%,#FFFEF9_65%,#FBF5EB)] max-[760px]:before:[mask:none] max-[760px]:before:[transform:none] max-[760px]:after:hidden">
           <section className="login-showcase relative flex min-w-0 flex-col overflow-hidden rounded-none bg-transparent max-[760px]:grid max-[760px]:min-h-[175px] max-[760px]:grid-cols-[1.05fr_1fr]" aria-label="Kết nối mua sắm cùng SCANMS">
             <div className="login-showcase-copy relative z-1 px-[42px] pt-10 pb-0 animate-[login-content-enter_600ms_both] min-[1500px]:px-[38px] min-[1500px]:pt-[34px] max-[1050px]:px-[22px] max-[1050px]:pt-[26px] login-compact:pt-6 max-[760px]:self-center max-[760px]:pt-6 max-[760px]:pr-0 max-[760px]:pb-[22px] max-[760px]:pl-[22px] [&_h1]:mt-[19px] [&_h1]:mb-0 [&_h1]:pb-[5px] [&_h1]:text-[clamp(30px,3vw,40px)] [&_h1]:font-semibold [&_h1]:italic [&_h1]:leading-[1.2] [&_h1]:tracking-[-1px] [&_h1_span]:text-brand-strong max-[1050px]:[&_h1]:text-[32px] max-[1050px]:[&_h1]:tracking-[-1.1px] max-[760px]:[&_h1]:mt-2.5 max-[760px]:[&_h1]:text-[clamp(20px,4.3vw,29px)] max-[760px]:[&_h1]:tracking-[-.7px] max-[760px]:[&_h1]:leading-[1.25] max-[760px]:[&_p]:hidden">
-              <div className="login-showcase-eyebrow inline-flex items-center gap-[9px] rounded-full border border-brand-border bg-white/90 px-4 py-2 text-xs font-bold leading-[1.5] text-ink shadow-[0_2px_6px_rgb(125_113_94/6%)] [&_svg]:shrink-0 [&_svg]:text-brand-strong max-[760px]:gap-1 max-[760px]:px-2 max-[760px]:py-[5px] max-[760px]:text-[9px] max-[760px]:[&_svg]:hidden"><Sparkles size={14} /><span>Sàn Thương Mại Đối Tác</span></div>
-              <h1 className="font-display">Kết nối gian hàng,<br /><span>lan tỏa giá trị.</span></h1>
+              <div className="login-showcase-eyebrow inline-flex items-center gap-[9px] rounded-full border border-brand-border bg-white/90 px-4 py-2 text-xs font-bold leading-[1.5] text-ink shadow-[0_2px_6px_rgb(125_113_94/6%)] [&_svg]:shrink-0 [&_svg]:text-brand-strong max-[760px]:gap-1 max-[760px]:px-2 max-[760px]:py-[5px] max-[760px]:text-[9px] max-[760px]:[&_svg]:hidden"><Sparkles size={14} /><span>Mạng Lưới Nhãn Hàng & Tiếp Thị</span></div>
+              <h1 className="font-display">Kết nối nhãn hàng,<br /><span>lan tỏa giá trị.</span></h1>
             </div>
             <ShoppingScene quiet={isForgotPasswordOpen} />
           </section>
@@ -400,7 +400,7 @@ export default function LoginPage() {
       <footer className="max-w-[1240px] mx-auto w-full pt-0 text-center text-[11px] leading-4 max-[760px]:text-[10px] max-[760px]:gap-x-3 max-[760px]:gap-y-2 text-[#7D715E] font-medium flex flex-wrap items-center justify-center gap-4">
         <span>© 2026 SCANMS Corporation</span>
         <span>•</span>
-        <Link to="/marketplace" className="hover:underline">Sàn Thương Mại</Link>
+        <Link to="/marketplace" className="hover:underline">Cổng Mua Sắm</Link>
         <span>•</span>
         <Link to="/privacy" className="hover:underline">Chính sách bảo mật</Link>
         <span>•</span>

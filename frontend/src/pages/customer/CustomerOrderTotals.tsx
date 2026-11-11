@@ -12,11 +12,11 @@ export function CustomerOrderTotals({ order }: { order: CustomerOrder }) {
       <span className="text-xs text-[#7D715E] font-medium">Thành tiền:</span>
       <div className="inline-flex items-baseline gap-2">
         {hasDiscount && subtotal > Number(order.finalAmount) && (
-          <span className="text-xs text-[#7D715E] line-through font-mono tabular-nums">
+          <span className="text-xs text-[#7D715E] line-through tabular-nums">
             {formatMoney(subtotal)}
           </span>
         )}
-        <strong className="text-base sm:text-lg font-bold font-mono text-[#1A1612] tabular-nums tracking-tight">
+        <strong className="text-base sm:text-lg font-bold text-[#1A1612] tabular-nums tracking-tight">
           {formatMoney(order.finalAmount)}
         </strong>
       </div>

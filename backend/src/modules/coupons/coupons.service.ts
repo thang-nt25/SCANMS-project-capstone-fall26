@@ -161,39 +161,7 @@ export class CouponsService {
   }
 
   async previewStackedVoucher(dto: PreviewStackedVoucherDto) {
-    if (dto.code?.trim().toUpperCase() !== 'SCANMSFREESHIP' || dto.benefitType !== 'SHIPPING') return retiredVoucherFeature();
-    const voucher = await this.prisma.coupon.findUnique({ where: { codeNormalized: dto.code.trim().toUpperCase() } });
-    const now = new Date();
-    const isGlobalPlatformShipping = voucher?.codeNormalized === 'SCANMSFREESHIP' && voucher.benefitType === 'SHIPPING' && voucher.fundingSource === CouponFundingSource.PLATFORM_FUNDED;
-    if (!voucher || !isGlobalPlatformShipping || (!isGlobalPlatformShipping && voucher.storeId !== dto.storeId) || voucher.benefitType !== dto.benefitType ||
-        voucher.scopeType !== CouponScope.STORE_WIDE || voucher.status !== CouponStatus.ACTIVE || voucher.deletedAt ||
-        (voucher.startsAt && now < voucher.startsAt) || (voucher.expiresAt && now >= voucher.expiresAt) ||
-        (voucher.usageLimitTotal !== null && voucher.usageCount >= voucher.usageLimitTotal)) {
-      throw new BadRequestException('Voucher không áp dụng được cho đơn này.');
-    }
-    if (voucher.minimumOrderAmount && dto.goodsSubtotal < Number(voucher.minimumOrderAmount)) throw new BadRequestException('Chưa đạt giá trị đơn tối thiểu.');
-    if (voucher.codeNormalized === 'SCANMSFREESHIP') {
-      const phone = dto.customerPhone?.trim();
-      if (!phone) throw new BadRequestException('Mã freeship dành cho khách hàng mới; vui lòng nhập số điện thoại để kiểm tra.');
-      const priorPurchase = await this.prisma.order.count({
-        where: {
-          customerPhone: phone,
-          status: { not: 'CANCELLED' },
-          NOT: { stackedVoucherRedemptions: { some: { couponId: voucher.id } } },
-        },
-      });
-      if (priorPurchase > 0) throw new BadRequestException('Mã freeship chỉ dành cho khách hàng mới.');
-    }
-    const base = dto.benefitType === 'SHIPPING' ? dto.shippingFee : Math.max(0, dto.goodsSubtotal - dto.shopDiscount);
-    if (base <= 0) throw new BadRequestException('Không có giá trị áp dụng voucher.');
-    const raw = voucher.discountType === DiscountType.PERCENTAGE ? Math.round(base * Number(voucher.discountValue) / 100) : Number(voucher.discountValue);
-    const discountAmount = Math.max(0, Math.min(base, raw, voucher.maximumDiscountAmount === null ? Infinity : Number(voucher.maximumDiscountAmount)));
-    if (voucher.budgetTotal !== null && Number(voucher.budgetUsed) + discountAmount > Number(voucher.budgetTotal)) throw new BadRequestException('Voucher đã hết ngân sách.');
-    if (dto.customerPhone?.trim()) {
-      const used = await this.prisma.stackedVoucherRedemption.count({ where: { couponId: voucher.id, customerPhone: dto.customerPhone.trim(), status: { in: [CouponRedemptionStatus.USED, CouponRedemptionStatus.PARTIALLY_REFUNDED] } } });
-      if (used >= voucher.usageLimitPerCustomer) throw new BadRequestException('Bạn đã dùng hết lượt voucher này.');
-    }
-    return { code: voucher.displayCode, benefitType: voucher.benefitType, discountAmount };
+    return retiredVoucherFeature();
   }
 
   async getSavedCouponIds(userId: string) {
@@ -221,10 +189,9 @@ export class CouponsService {
     const coupons = await this.prisma.coupon.findMany({
       where: {
         ...(ids ? { id: { in: ids } } : {}),
-        OR: [
-          { fundingSource: CouponFundingSource.SHOP_FUNDED, benefitType: 'GOODS', collaborator: { role: UserRole.COLLABORATOR } },
-          { codeNormalized: 'SCANMSFREESHIP', fundingSource: CouponFundingSource.PLATFORM_FUNDED, benefitType: 'SHIPPING' },
-        ],
+        fundingSource: CouponFundingSource.SHOP_FUNDED,
+        benefitType: 'GOODS',
+        collaborator: { role: UserRole.COLLABORATOR },
         status: CouponStatus.ACTIVE,
         deletedAt: null,
         store: { isActive: true, isDeleted: false },
@@ -278,7 +245,7 @@ export class CouponsService {
               coupon.campaign.endDate > now)),
       )
       .map((coupon) => ({
-        couponType: coupon.benefitType === 'SHIPPING' ? 'NEW_CUSTOMER_SHIPPING' : 'KOL_EXCLUSIVE',
+        couponType: 'KOL_EXCLUSIVE',
         id: coupon.id,
         code: coupon.displayCode,
         discountType: coupon.discountType,
@@ -407,7 +374,7 @@ export class CouponsService {
           );
           if (evaluated.discountAmount <= 0) return null;
           return {
-            couponType: coupon.benefitType === 'SHIPPING' ? 'NEW_CUSTOMER_SHIPPING' : 'KOL_EXCLUSIVE',
+            couponType: 'KOL_EXCLUSIVE',
             id: coupon.id,
             displayCode: coupon.displayCode,
             code: coupon.displayCode,
@@ -502,20 +469,10 @@ export class CouponsService {
         status: CouponStatus.ACTIVE,
         deletedAt: null,
         liveSessionId: null,
-        OR: [
-          {
-            storeId,
-            fundingSource: CouponFundingSource.SHOP_FUNDED,
-            benefitType: 'GOODS',
-            collaborator: { role: UserRole.COLLABORATOR },
-          },
-          {
-            fundingSource: CouponFundingSource.PLATFORM_FUNDED,
-            benefitType: 'SHIPPING',
-            codeNormalized: 'SCANMSFREESHIP',
-            scopeType: CouponScope.STORE_WIDE,
-          },
-        ],
+        storeId,
+        fundingSource: CouponFundingSource.SHOP_FUNDED,
+        benefitType: 'GOODS',
+        collaborator: { role: UserRole.COLLABORATOR },
         store: {
           isDeleted: false,
           isActive: true,
@@ -588,7 +545,7 @@ export class CouponsService {
               coupon.campaign.endDate > now)),
       )
       .map((coupon) => ({
-        couponType: coupon.benefitType === 'SHIPPING' ? 'NEW_CUSTOMER_SHIPPING' : 'KOL_EXCLUSIVE',
+        couponType: 'KOL_EXCLUSIVE',
         id: coupon.id,
         code: coupon.displayCode,
         displayCode: coupon.displayCode,
@@ -2227,37 +2184,7 @@ export class CouponsService {
   }
 
   async createPlatformCoupon(adminId: string, dto: CreatePlatformCouponDto) {
-    if (dto.code?.trim().toUpperCase() !== 'SCANMSFREESHIP') return retiredVoucherFeature();
-    if (dto.code.trim().toUpperCase() !== 'SCANMSFREESHIP' || dto.benefitType !== 'SHIPPING' ||
-        dto.discountType !== DiscountType.PERCENTAGE || dto.discountValue !== 100 ||
-        dto.usageLimitPerCustomer !== 3) {
-      throw new ForbiddenException('Chỉ được phát hành lại mã SCANMSFREESHIP cho khách mới, tối đa 3 lượt mỗi khách.');
-    }
-    const store = await this.prisma.store.findFirst({ where: { id: dto.storeId, isActive: true, isDeleted: false }, select: { id: true } });
-    if (!store) throw new NotFoundException('Gian hàng không hoạt động.');
-    if (dto.discountType === DiscountType.PERCENTAGE && dto.discountValue > 100) throw new BadRequestException('Mức giảm không được vượt quá 100%.');
-    const startsAt = dto.startsAt ? new Date(dto.startsAt) : new Date();
-    const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
-    if (expiresAt && expiresAt <= startsAt) throw new BadRequestException('Hạn dùng phải sau ngày bắt đầu.');
-    const codeNormalized = dto.code.trim().toUpperCase();
-    if (await this.prisma.coupon.findUnique({ where: { codeNormalized }, select: { id: true } })) throw new ConflictException('Mã voucher đã tồn tại.');
-    return this.prisma.$transaction(async (tx) => {
-      const coupon = await tx.coupon.create({ data: {
-        storeId: dto.storeId, collaboratorId: adminId, codeNormalized, displayCode: codeNormalized,
-        status: CouponStatus.ACTIVE, benefitType: dto.benefitType,
-        discountType: dto.discountType, discountValue: dto.discountValue,
-        minimumOrderAmount: dto.minimumOrderAmount ?? null,
-        maximumDiscountAmount: dto.maximumDiscountAmount ?? null,
-        usageLimitTotal: dto.usageLimitTotal, usageLimitPerCustomer: dto.usageLimitPerCustomer ?? 1,
-        budgetTotal: dto.budgetTotal, budgetUsed: 0, startsAt, expiresAt,
-        scopeType: CouponScope.STORE_WIDE, fundingSource: CouponFundingSource.PLATFORM_FUNDED,
-        shopFundingRate: 0, platformFundingRate: 100,
-        stackableWithProductDiscount: true, stackableWithShopVoucher: dto.benefitType === 'GOODS',
-        stackableWithPlatformVoucher: true, approvedBy: adminId, approvedAt: new Date(),
-      } });
-      await tx.auditLog.create({ data: { userId: adminId, action: 'ADMIN_PLATFORM_COUPON_CREATED', details: { couponId: coupon.id, storeId: dto.storeId, benefitType: dto.benefitType, budgetTotal: dto.budgetTotal } } });
-      return coupon;
-    });
+    return retiredVoucherFeature();
   }
 
   async getAdminCoupons(query: QueryCouponsDto) {

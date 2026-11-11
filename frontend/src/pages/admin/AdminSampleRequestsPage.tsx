@@ -714,7 +714,7 @@ export default function AdminSampleRequestsPage() {
               <div><span>Trạng thái</span><strong>{STATUS_CONFIGS[resolution.request.status]?.label || resolution.request.status}</strong></div>
               {(resolution.request.revisionDeadlineAt || resolution.request.deadlineAt) && <div><span>Hạn video</span><strong>{new Date(resolution.request.revisionDeadlineAt || resolution.request.deadlineAt).toLocaleString('vi-VN', { timeZone:'Asia/Ho_Chi_Minh' })}</strong></div>}
               {getPendingSampleReport(resolution.request) && <p><span><strong>Báo cáo từ Shop:</strong> {getPendingSampleReport(resolution.request)?.details?.reason}</span></p>}
-              <p><ShieldAlert size={15} /><span>{resolution.action === 'BLOCK_SAMPLE_REQUESTS' ? 'KOL sẽ không thể xin hoặc được cấp mẫu mới trên toàn sàn. KOL vẫn được nộp video cho các yêu cầu hiện có. Chỉ Admin được mở khóa.' : 'Báo cáo được đóng và quyền nhận mẫu của KOL giữ nguyên. Lý do quyết định được gửi cho Shop và KOL.'}</span></p>
+              <p><ShieldAlert size={15} /><span>{resolution.action === 'BLOCK_SAMPLE_REQUESTS' ? 'KOL sẽ không thể xin hoặc được cấp mẫu mới trên toàn hệ thống. KOL vẫn được nộp video cho các yêu cầu hiện có. Chỉ Admin được mở khóa.' : 'Báo cáo được đóng và quyền nhận mẫu của KOL giữ nguyên. Lý do quyết định được gửi cho Shop và KOL.'}</span></p>
             </div>}
             {resolution.action === 'CANCEL_OBLIGATION' && (
               <div className="sample-waiver-summary">

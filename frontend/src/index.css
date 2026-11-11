@@ -2795,18 +2795,15 @@ html[data-theme="dark"] .border-neutral-900 { @apply [border-color:var(--line)]!
   .merchant-orders-data td[data-label="Thao tác"] { @apply [grid-column:1_/_-1]; @apply [grid-row:4]; @apply [padding-top:10px]; @apply [border-top:1px_solid_#EAE4D7]; }
   .merchant-orders-data td[data-label="Khách hàng"] > div { @apply [max-width:none]; }
 }
-.merchant-orders-toolbar { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply items-stretch; @apply [gap:8px]; }
-.merchant-orders-view-tabs, .merchant-orders-toolbar-actions { @apply grid; @apply [grid-template-columns:repeat(2,_minmax(0,_1fr))]; @apply [gap:8px]; @apply [min-width:0]; }
-.merchant-orders-toolbar :is(button, a) { @apply [width:100%]; @apply [min-width:0]; @apply [min-height:40px]; @apply [padding:9px_12px]; @apply [border-radius:10px]; @apply [font-size:12px]; @apply [line-height:20px]; @apply whitespace-normal; @apply text-center; }
+.merchant-orders-toolbar { @apply flex; @apply flex-wrap; @apply items-center; @apply justify-between; @apply [gap:10px]; }
+.merchant-orders-view-tabs { @apply inline-flex; @apply items-center; @apply [gap:4px]; @apply p-[4px]; @apply [border-radius:12px]; @apply [background:#FAF8F5]; @apply [border:1px_solid_#EAE4D7]; }
+.merchant-orders-toolbar-actions { @apply flex; @apply flex-wrap; @apply items-center; @apply [gap:8px]; }
+.merchant-orders-toolbar :is(button, a) { @apply inline-flex; @apply items-center; @apply justify-center; @apply [gap:6px]; @apply [min-height:38px]; @apply [padding:7px_14px]; @apply [border-radius:10px]; @apply [font-size:12px]; @apply [font-weight:600]; @apply whitespace-nowrap; @apply [transition:all_150ms]; }
 .merchant-orders-toolbar :is(button, a):focus-visible { @apply [outline:2px_solid_#C59B58]; @apply [outline-offset:2px]; }
-.merchant-orders-page .merchant-orders-toolbar { @apply [grid-template-columns:repeat(5,minmax(0,1fr))]; @apply [gap:10px]; }
-.merchant-orders-page .merchant-orders-toolbar:has(.merchant-orders-toolbar-actions) > .merchant-orders-view-tabs,
-.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-toolbar-actions { @apply [display:contents]; }
-.merchant-orders-page .merchant-orders-toolbar > .merchant-orders-view-tabs { @apply [grid-column:1_/_-1]; }
-.merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [min-height:46px]; @apply [height:46px]; @apply flex; @apply items-center; @apply justify-center; @apply [gap:8px]; @apply [margin:0]; }
 @media(max-width:760px) {
-  .merchant-orders-page .merchant-orders-toolbar { @apply flex; @apply [overflow-x:auto]; }
-  .merchant-orders-page .merchant-orders-toolbar :is(button,a) { @apply [flex:1_0_150px]; }
+  .merchant-orders-page .merchant-orders-toolbar { @apply flex-col; @apply items-stretch; }
+  .merchant-orders-view-tabs { @apply w-full; @apply justify-center; }
+  .merchant-orders-toolbar-actions { @apply w-full; @apply justify-center; }
 }
 
 /* Keep the list readable without squeezing names or fulfillment actions. */

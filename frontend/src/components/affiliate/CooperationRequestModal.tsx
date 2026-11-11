@@ -21,15 +21,15 @@ export function CooperationRequestModal({ storeId, storeName, onClose, onSuccess
       setError(Array.isArray(message) ? message.join('. ') : message || 'Không gửi được đề xuất. Vui lòng thử lại.');
     } finally { locked.current = false; setBusy(false); }
   }
-  return <Modal isOpen title={storeName ? `Đề xuất hợp tác với ${storeName}` : 'Đề xuất hợp tác với gian hàng'} subtitle="Shop sẽ xem hồ sơ KOC và phản hồi đề xuất của bạn." onClose={() => { if (!busy) onClose(); }} maxWidth="lg">
+  return <Modal isOpen title={storeName ? `Đề xuất hợp tác với ${storeName}` : 'Đề xuất hợp tác với cửa hàng'} subtitle="Shop sẽ xem hồ sơ KOC và phản hồi đề xuất của bạn." onClose={() => { if (!busy) onClose(); }} maxWidth="lg">
     <form onSubmit={submit} className="space-y-4 text-sm text-[#1A1612]" aria-busy={busy}>
       <label className="block">Kế hoạch nội dung và cam kết hợp tác
-        <textarea aria-label="Kế hoạch hợp tác với gian hàng" value={note} onChange={event => setNote(event.target.value)} maxLength={255} rows={4} disabled={busy} placeholder="Ví dụ: Kênh chuyên chăm sóc da, dự kiến thực hiện 2 video review mỗi tháng…" className="mt-2 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 focus:border-[#C59B58] focus:outline-none" />
+        <textarea aria-label="Kế hoạch hợp tác với cửa hàng" value={note} onChange={event => setNote(event.target.value)} maxLength={255} rows={4} disabled={busy} placeholder="Ví dụ: Kênh chuyên chăm sóc da, dự kiến thực hiện 2 video review mỗi tháng…" className="mt-2 w-full rounded-xl border border-[#EAE4D7] bg-white p-3 focus:border-[#C59B58] focus:outline-none" />
         <span className="mt-1 block text-right text-xs text-[#7D715E]">{note.length}/255</span>
       </label>
       <p className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 text-xs text-[#7D715E]">Shop xem kênh xã hội và lượng người theo dõi từ hồ sơ của bạn. Đề xuất hợp tác này chưa cấp mức thù lao VIP hoặc coupon.</p>
       {error && <p role="alert" className="text-[#DC2626]">{error}</p>}
-      <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-[#EAE4D7] px-4 py-2">Hủy</button><button type="submit" disabled={busy} className="rounded-xl bg-[#C59B58] px-4 py-2 font-semibold hover:bg-[#B88E4F] disabled:opacity-50">{busy ? 'Đang gửi…' : 'Gửi đề xuất hợp tác'}</button></div>
+      <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-[#EAE4D7] px-4 py-2">Hủy</button><button type="submit" disabled={busy} className="rounded-xl bg-[#C59B58] text-white px-4 py-2 font-semibold hover:bg-[#B88E4F] disabled:opacity-50 cursor-pointer active:scale-[0.98] transition-all">{busy ? 'Đang gửi…' : 'Gửi đề xuất hợp tác'}</button></div>
     </form>
   </Modal>;
 }

@@ -302,17 +302,19 @@ export const RealtimeAnalyticsPage: React.FC<RealtimeAnalyticsPageProps> = ({ he
       <div className="flex w-full min-w-0 flex-col gap-3 pt-1 pb-1">
         {/* Right Action Controls: Tab Switcher + Date Dropdown + Refresh + Export */}
         {headerTabs && <div className="w-full min-w-0">{headerTabs}</div>}
-        <div className="grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:grid-cols-2">
-          <DateRangeDropdown
-            range={range}
-            setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
-            onOpenCustom={() => setIsCustomOpen(true)}
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-3 shadow-2xs">
+          <div className="flex-1 min-w-[240px]">
+            <DateRangeDropdown
+              range={range}
+              setRange={(r) => { setRange(r); setIsCustomOpen(false); }}
+              onOpenCustom={() => setIsCustomOpen(true)}
+            />
+          </div>
 
           <button
             onClick={handleExportCsv}
             disabled={loading || !!error || !timeSeries.length}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 py-2.5 text-sm font-semibold text-[#8F682E] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 py-2 text-xs font-bold text-[#8F682E] transition-all hover:border-[#C59B58] hover:bg-[#F3EFE6] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer shrink-0"
           >
             <Download className="w-3.5 h-3.5 text-[#B88E4F]" />
             <span>Xuất báo cáo</span>

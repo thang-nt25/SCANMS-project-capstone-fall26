@@ -286,7 +286,7 @@ export default function OrderTrackingPage({ embedded = false }: { embedded?: boo
           {!embedded && <nav aria-label="Breadcrumb" className="flex items-center justify-center gap-2 text-xs text-[#7D715E] mb-1">
             <Link to="/marketplace" className="hover:text-[#B88E4F] font-bold flex items-center gap-1 transition">
               <ArrowLeft className="w-3 h-3 text-[#B88E4F]" />
-              <span>Trang chủ Sàn SCANMS</span>
+              <span>Trang chủ Hệ Thống SCANMS</span>
             </Link>
             <span className="text-[#D8D0C3]">/</span>
             <span className="text-[#1A1612] font-extrabold">Theo dõi hành trình đơn hàng</span>

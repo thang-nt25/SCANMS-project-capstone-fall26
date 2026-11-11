@@ -18,6 +18,8 @@ export interface StoreReturnRequest {
   shopResponse: string | null;
   shopRespondedAt: string | null;
   resolution?: 'REFUND' | 'EXCHANGE' | null;
+  preferredResolution?: 'REFUND' | 'EXCHANGE' | null;
+  exchangeShipment?: import('./return.service').ReturnShipment | null;
   refund?: { amount: number | string; method: string; status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'; processedAt?: string | null } | null;
   dispute?: { status: 'OPEN' | 'RESOLVED'; ruling?: 'APPROVE_REFUND' | 'APPROVE_EXCHANGE' | 'UPHOLD_SHOP' | null; resolutionNotes?: string | null } | null;
 }

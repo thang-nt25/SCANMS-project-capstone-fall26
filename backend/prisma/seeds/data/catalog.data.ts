@@ -50,7 +50,7 @@ export const PRODUCT_TEMPLATES = [
     sku: 'SKIN-VTC15',
     ingredients: 'Pure Vitamin C 15% (3-O-Ethyl Ascorbic Acid), Hyaluronic Acid đa phân tử, Niacinamide 2%, Chiết xuất mận Kakadu hữu cơ.',
     origin: 'Hàn Quốc (Nhập khẩu & Phân phối độc quyền)',
-    description: '<h2>Serum Dưỡng Trắng Mờ Thâm Vitamin C 15% — Sora Skin</h2><p>Công thức chống oxy hóa chuyên sâu giúp làm mờ đốm nâu, sạm nám và kích thích tổng hợp collagen tự nhiên. Kết cấu mỏng nhẹ, thẩm thấu nhanh không gây bết dính.</p><p>Sản phẩm đạt chuẩn phân phối chính hãng trên sàn SCANMS, cam kết 100% nguồn gốc xuất xứ và kiểm định an toàn da liễu.</p>',
+    description: '<h2>Serum Dưỡng Trắng Mờ Thâm Vitamin C 15% — Sora Skin</h2><p>Công thức chống oxy hóa chuyên sâu giúp làm mờ đốm nâu, sạm nám và kích thích tổng hợp collagen tự nhiên. Kết cấu mỏng nhẹ, thẩm thấu nhanh không gây bết dính.</p><p>Sản phẩm đạt chuẩn phân phối chính hãng trên hệ thống SCANMS, cam kết 100% nguồn gốc xuất xứ và kiểm định an toàn da liễu.</p>',
   },
   {
     name: 'Kem Chống Nắng Phổ Rộng Kiềm Dầu SPF50+ PA++++',
@@ -206,4 +206,4 @@ export const PRODUCT_TEMPLATES = [
 export const RETURN_POLICY =
   'Yêu cầu đổi trả trong 14 ngày kể từ khi giao hàng; cung cấp ảnh và video mở hộp. Shop kiểm tra hồ sơ trước khi xử lý đổi sản phẩm hoặc hoàn tiền.';
 export const WARRANTY_POLICY =
-  'Tiếp nhận phản ánh về chất lượng, bao bì và nguồn gốc theo chính sách gian hàng.';
+  'Tiếp nhận phản ánh về chất lượng, bao bì và nguồn gốc theo chính sách cửa hàng trực thuộc.';

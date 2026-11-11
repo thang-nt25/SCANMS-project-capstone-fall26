@@ -46,8 +46,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Khách Mua Sắm',
     items: [
       { path: '/customer/orders', label: 'Đơn hàng', icon: ShoppingBag, group: 1 },
-      { path: '/customer/wallet', label: 'Ví mua sắm', icon: Wallet, badge: 'Ví', group: 1 },
-      { path: '/customer/vouchers', label: 'Mã ưu đãi', icon: Tag, group: 1 },
+      { path: '/customer/wallet', label: 'Ví mua sắm', icon: Wallet, group: 1 },
       { path: '/customer/wishlist', label: 'Yêu thích', icon: Heart, group: 1 },
       { path: '/customer/notifications', label: 'Thông báo', icon: Bell, group: 1 },
       { path: '/customer/profile', label: 'Tài khoản', icon: User, group: 2 },

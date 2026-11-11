@@ -5,7 +5,7 @@ import { voucherExpiryState } from "@/utils/voucher-expiry.utils";
 export interface CustomerVoucher {
   id: string;
   code: string;
-  couponType: "KOL_EXCLUSIVE" | "NEW_CUSTOMER_SHIPPING";
+  couponType: "KOL_EXCLUSIVE";
   discountType: "PERCENTAGE" | "FIXED_AMOUNT";
   discountValue: number;
   minimumOrderAmount: number;
@@ -39,8 +39,9 @@ export function useCustomerVouchers(userId?: string) {
   const now = Date.now();
   const vouchers = (query.data || []).filter(
     (row) =>
-      ((row.couponType === "KOL_EXCLUSIVE" && row.benefitType === "GOODS" && row.fundingSource === "SHOP_FUNDED") ||
-       (row.code === "SCANMSFREESHIP" && row.benefitType === "SHIPPING" && row.fundingSource === "PLATFORM_FUNDED")) &&
+      row.couponType === "KOL_EXCLUSIVE" &&
+      row.benefitType === "GOODS" &&
+      row.fundingSource === "SHOP_FUNDED" &&
       voucherExpiryState(row.expiresAt, now) !== "expired",
   );
   return {

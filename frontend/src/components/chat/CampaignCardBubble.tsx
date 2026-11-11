@@ -102,7 +102,7 @@ export function CampaignCardBubble({ card, isMine, participantId, onRespond, can
       </header>
       <div className="p-3.5">
         <h3 className="m-0 text-[15px] font-semibold leading-snug break-words text-[#1A1612]">{card.campaignName || card.title}</h3>
-        {card.storeName && <p className="m-0 mt-1 text-[11px] text-[#7D715E] leading-relaxed break-words">Gian hàng <strong className="font-medium text-[#1A1612] ml-1">{card.storeName}</strong></p>}
+        {card.storeName && <p className="m-0 mt-1 text-[11px] text-[#7D715E] leading-relaxed break-words">Cửa hàng <strong className="font-medium text-[#1A1612] ml-1">{card.storeName}</strong></p>}
         <div className="flex items-center justify-between gap-2.5 my-3 p-3 border border-[#EEDFC6] bg-[#FBF5EB] rounded-[10px]">
           <span className="flex items-center gap-2 text-[11px] font-medium text-[#1A1612]">
             <Gift size={16} className="shrink-0 text-[#B88E4F]" />

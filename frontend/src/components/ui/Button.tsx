@@ -40,13 +40,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       gold:
         'scanms-brand-action focus:ring-[#B88E4F]',
       secondary:
-        'bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7] border border-[#EAE4D7] focus:ring-[#B88E4F]',
+        'bg-[#F3EFE6] text-[#1A1612] hover:bg-[#EAE4D7] border border-[#EAE4D7] active:scale-[0.98] focus:ring-[#B88E4F]',
       outline:
-        'bg-white text-[#1A1612] hover:bg-[#FAF8F5] border border-[#EAE4D7] shadow-xs focus:ring-[#B88E4F]',
+        'bg-white text-[#1A1612] hover:bg-[#FAF8F5] hover:border-[#C59B58] border border-[#EAE4D7] shadow-xs active:scale-[0.98] focus:ring-[#B88E4F]',
       ghost:
-        'bg-transparent text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] focus:ring-[#EAE4D7]',
+        'bg-transparent text-[#7D715E] hover:bg-[#F3EFE6] hover:text-[#1A1612] active:scale-[0.98] focus:ring-[#EAE4D7]',
       danger:
-        'bg-rose-600 text-white hover:bg-rose-700 shadow-xs focus:ring-rose-500',
+        'bg-rose-600 text-white hover:bg-rose-700 shadow-xs active:scale-[0.98] focus:ring-rose-500',
       amber:
         'scanms-brand-action focus:ring-[#C59B58]',
       dark:

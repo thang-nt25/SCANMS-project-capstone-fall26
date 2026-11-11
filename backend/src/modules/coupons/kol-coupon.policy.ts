@@ -23,13 +23,19 @@ export function isKolExclusiveCoupon(
     coupon.collaborator?.role === UserRole.COLLABORATOR,
   );
 }
-/** Only the explicitly approved three-use shipping benefit survives retail retirement. */
 export function assertNoRetailVoucherSelection(dto: {
-  platformCouponCode?: unknown; shippingCouponCode?: unknown;
-  platformCouponsByStore?: unknown; shippingCouponsByStore?: unknown;
+  platformCouponCode?: unknown;
+  shippingCouponCode?: unknown;
+  platformCouponsByStore?: unknown;
+  shippingCouponsByStore?: unknown;
 }) {
-  const codes = (value: unknown): unknown[] => value == null || value === '' ? [] : typeof value === 'object' && !Array.isArray(value) ? Object.values(value) : [value];
-  if ([...codes(dto.platformCouponCode), ...codes(dto.platformCouponsByStore)].some(Boolean) ||
-      [...codes(dto.shippingCouponCode), ...codes(dto.shippingCouponsByStore)].some(code => code != null && code !== '' && (typeof code !== 'string' || code.trim().toUpperCase() !== 'SCANMSFREESHIP')))
-    throw new BadRequestException(KOL_COUPON_MESSAGE);
+  for (const value of [
+    dto.platformCouponCode,
+    dto.shippingCouponCode,
+    dto.platformCouponsByStore,
+    dto.shippingCouponsByStore,
+  ]) {
+    if (value != null && value !== '')
+      throw new BadRequestException(KOL_COUPON_MESSAGE);
+  }
 }

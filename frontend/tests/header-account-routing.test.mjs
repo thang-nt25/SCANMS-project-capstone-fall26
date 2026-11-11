@@ -16,7 +16,7 @@ const registered = new Set([...routes.matchAll(/path="([^"]+)"/g)].map(match => 
 
 test('each role has relevant links with registered destinations and no duplicate entries', () => {
   const expected = {
-    CUSTOMER: ['/customer/orders', '/customer/wishlist', '/customer/vouchers', '/customer/wallet'],
+    CUSTOMER: ['/customer/orders', '/customer/wishlist', '/customer/wallet'],
     COLLABORATOR: ['/collaborator/dashboard', '/collaborator/wallet', '/collaborator/collaboration'],
     SHOP_MANAGER: ['/merchant/dashboard', '/merchant/orders', '/merchant/products'],
     SYSTEM_MANAGER: ['/admin/users', '/admin/product-moderation', '/admin/disputes'],

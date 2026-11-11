@@ -453,7 +453,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
               <span className="scanms-notifications-heading-icon" aria-hidden="true"><Bell size={18} /></span>
               <h3 className="m-0 text-[14px] leading-[1.5] font-[600] text-[#1A1612]">Thông báo</h3>
               {unreadCount > 0 && (
-                <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] leading-[1.3]">
+                <span className="p-[3px_6px] border border-[#EEDFC6] rounded-[6px] bg-[#FBF5EB] text-[#B88E4F] text-[9px] font-mono tabular-nums leading-[1.3]">
                   {unreadCount} mới
                 </span>
               )}
@@ -464,7 +464,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
                 onClick={toggleSound}
                 aria-label={soundOn ? 'Tắt âm báo tin nhắn' : 'Bật âm báo tin nhắn'}
                 title={soundOn ? 'Tắt âm báo tin nhắn' : 'Bật âm báo tin nhắn'}
-                className="grid place-items-center w-[28px] h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F]"
+                className="grid place-items-center w-[28px] h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#B88E4F] active:scale-[0.96] transition-transform"
               >
                 {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
               </button>
@@ -473,7 +473,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
                   type="button"
                   onClick={handleMarkAllRead}
                   disabled={markingRead}
-                  className="inline-flex items-center justify-center gap-[4px] min-h-[28px] p-[5px_6px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                  className="inline-flex items-center justify-center gap-[4px] min-h-[28px] p-[5px_6px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-all active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
                 >
                   <CheckCheck size={13} className="text-[#B88E4F]" />
                   <span>Đọc tất cả</span>
@@ -482,7 +482,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
               <button
                 type="button"
                 aria-label="Đóng thông báo"
-                className="inline-flex items-center justify-center w-[26px] min-h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
+                className="inline-flex items-center justify-center w-[26px] min-h-[28px] rounded-[6px] text-[#7D715E] hover:bg-[#FBF5EB] hover:text-[#1A1612] text-[10px] font-[500] cursor-pointer transition-all active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px]"
                 onClick={() => { setIsOpen(false); bellRef.current?.focus(); }}
               >
                 <X size={15} />
@@ -496,11 +496,10 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
             </button>
           )}
 
-          <div className="scanms-notifications-tabs grid grid-cols-[repeat(4,minmax(0,1fr))] gap-[3px] shrink-0 p-[0_10px_8px] border-b border-b-[#EAE4D7] bg-[color:#FFFFFF] [&_>_button]:min-w-0 [&_>_button]:min-h-[32px]" role="group" aria-label="Loại thông báo">
+          <div className="scanms-notifications-tabs grid grid-cols-3 gap-[3px] shrink-0 p-[0_10px_8px] border-b border-b-[#EAE4D7] bg-[color:#FFFFFF] [&_>_button]:min-w-0 [&_>_button]:min-h-[32px]" role="group" aria-label="Loại thông báo">
             {([
               { id: 'ALL', label: 'Tất cả' },
               { id: 'ORDER', label: 'Đơn hàng' },
-              { id: 'PROMOTION', label: 'Live & ưu đãi' },
               { id: 'SYSTEM', label: 'Hệ thống' },
             ] as const).map(tab => {
               const isActive = activeTab === tab.id;
@@ -510,7 +509,7 @@ export const NotificationDropdown: React.FC<{ darkMode?: boolean }> = ({ darkMod
                   key={tab.id}
                   aria-pressed={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`min-h-[32px] p-[6px_4px] border rounded-[7px] text-[10px] font-[500] leading-[1.4] whitespace-nowrap cursor-pointer transition-colors hover:bg-[#FBF5EB] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] ${
+                  className={`min-h-[32px] p-[6px_4px] border rounded-[7px] text-[10px] font-[500] leading-[1.4] whitespace-nowrap cursor-pointer transition-all hover:bg-[#FBF5EB] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-[#C59B58] focus-visible:outline-offset-[-2px] ${
                     isActive
                       ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#1A1612]'
                       : 'border-transparent bg-white text-[#7D715E]'

@@ -8,7 +8,7 @@ export function ProductBreadcrumbs({ title, category }: { title: string; categor
         <li className="product-breadcrumbs__ancestor flex-none">
           <Link to="/marketplace" className="product-breadcrumbs__home inline-flex items-center gap-2 whitespace-nowrap font-semibold [&[href]]:text-[#1A1612]! [&[href]:hover]:text-[#B88E4F]!">
             <span className="product-breadcrumbs__home-icon grid size-7 place-items-center rounded-[7px] bg-[#FBF5EB] text-[#B88E4F]"><House size={14} aria-hidden="true" /></span>
-            <span>Sàn SCANMS</span>
+            <span>Hệ thống SCANMS</span>
           </Link>
         </li>
         {category && <li className="product-breadcrumbs__ancestor flex-none product-breadcrumbs__category max-w-[min(30vw,240px)] [&_a]:truncate [@media(max-width:639px)]:max-w-[calc(100%_-_125px)]">

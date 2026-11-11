@@ -343,7 +343,7 @@ export default function MarketplacePage() {
               <ScanMSLogo size="sm" />
             </div>
             <p className="m-0 text-xs leading-relaxed text-[#7D715E]">
-              Hệ thống sàn thương mại tiếp thị liên kết đa gian hàng, kết nối hàng nghìn Creator với các thương hiệu chính hãng hàng đầu.
+              Hệ thống quản lý tiếp thị liên kết và bán hàng trực thuộc, kết nối đội ngũ Cộng tác viên / KOL với các nhãn hàng chính hãng.
             </p>
           </div>
 
