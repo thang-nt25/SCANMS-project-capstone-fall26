@@ -42,15 +42,17 @@ export class PickupGateway {
       return {
         provider: 'MOCK',
         carrierName: 'SCANMS Demo',
-        trackingNumber: `SIM${input.clientOrderCode.replace(/[^A-Z0-9]/g, '').slice(-15)}`,
+        trackingNumber: `${input.clientOrderCode.startsWith('SC-X-') ? 'SIMX' : 'SIM'}${input.clientOrderCode.replace(/[^A-Z0-9]/g, '').slice(-15)}`,
         providerStatus: 'ready_to_pick',
         feeAmount: null,
       };
     }
 
     // Share the team's GHN TEST configuration; never fall back to LIVE credentials.
-    const token = process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
-    const shopId = process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
+    const token =
+      process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
+    const shopId =
+      process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
     if (!token || !shopId || !/^\d+$/.test(shopId)) {
       throw new ServiceUnavailableException(
         'Chưa cấu hình GHN Staging Token và ShopId ở backend',
@@ -111,16 +113,25 @@ export class PickupGateway {
         data?: { order_code?: string; total_fee?: number };
       };
       if (!response.ok || result.code !== 200 || !result.data?.order_code) {
-        throw new BadGatewayException(
-          `GHN Staging không tạo được đơn lấy hàng: ${result.message || 'Dữ liệu chưa hợp lệ'}`,
-        );
+        throw new BadGatewayException({
+          message: `GHN Staging không tạo được vận đơn: ${result.message || 'Dữ liệu chưa hợp lệ'}`,
+          code:
+            result.code === 400
+              ? 'GHN_CREATE_REJECTED'
+              : 'GHN_CREATE_UNCERTAIN',
+        });
       }
       return {
         provider: 'GHN_STAGING',
         carrierName: 'GHN (Staging)',
         trackingNumber: result.data.order_code,
         providerStatus: 'ready_to_pick',
-        feeAmount: result.data.total_fee ?? null,
+        feeAmount:
+          Number.isInteger(result.data.total_fee) &&
+          Number(result.data.total_fee) >= 0 &&
+          Number(result.data.total_fee) <= 2147483647
+            ? result.data.total_fee!
+            : null,
       };
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
@@ -135,8 +146,10 @@ export class PickupGateway {
       throw new ServiceUnavailableException(
         'Chỉ đồng bộ được vận đơn GHN Staging',
       );
-    const token = process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
-    const shopId = process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
+    const token =
+      process.env.GHN_STAGING_TOKEN || process.env.GHN_TEST_API_TOKEN;
+    const shopId =
+      process.env.GHN_STAGING_SHOP_ID || process.env.GHN_TEST_SHOP_ID;
     if (!token || !shopId)
       throw new ServiceUnavailableException('Chưa cấu hình GHN Staging');
     try {

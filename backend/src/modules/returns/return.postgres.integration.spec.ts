@@ -230,7 +230,7 @@ const isLocal = (() => {
           notes: 'Hàng trả đúng sản phẩm và đầy đủ bằng chứng.',
         },
       );
-      expect(result.status).toBe(ReturnRequestStatus.REFUND_PENDING);
+      expect(result.status).toBe(ReturnRequestStatus.AWAITING_CUSTOMER_CONFIRMATION);
       expect(result.refund?.status).toBe('PENDING');
       expect(
         (
@@ -239,7 +239,7 @@ const isLocal = (() => {
       ).toBe(0);
       await expect(
         service.confirmCompletion(customerId, UserRole.CUSTOMER, requestId),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow('Dịch vụ ví chưa sẵn sàng');
     });
   },
 );
