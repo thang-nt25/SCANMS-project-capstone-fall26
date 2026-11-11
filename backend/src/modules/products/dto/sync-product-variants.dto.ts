@@ -25,7 +25,7 @@ export class ProductVariantInputDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(13)
+  @MaxLength(50)
   barcode?: string | null;
 
   @IsString()

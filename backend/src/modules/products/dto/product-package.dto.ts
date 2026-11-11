@@ -5,17 +5,18 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
 /** Optional for existing API clients; checkout requires complete stored measurements. */
 export class ProductPackageDto {
   @ApiPropertyOptional({
-    description: 'Mã EAN-13 trên bao bì, bao gồm số kiểm tra',
+    description: 'Mã vạch / Barcode sản phẩm (tùy chọn)',
   })
   @IsOptional()
   @IsString()
-  @Matches(/^\d{13}$/, { message: 'EAN-13 phải gồm đúng 13 chữ số' })
+  @MaxLength(50)
   barcode?: string | null;
 
   @ApiPropertyOptional({

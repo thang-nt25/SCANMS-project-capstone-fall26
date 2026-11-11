@@ -215,19 +215,14 @@ export class ProductsService {
       );
     }
 
-    const hasOriginEvidence = [
+    const hasAnyEvidence = [
       ...(dto.originProofLinks || []),
       ...(dto.originProofImages || []),
-    ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasOriginEvidence)
-      issues.push('Minh chứng nguồn gốc: thêm ít nhất một link hoặc ảnh');
-
-    const hasLabelEvidence = [
       ...(dto.labelProofLinks || []),
       ...(dto.labelProofImages || []),
     ].some((item) => typeof item === 'string' && item.trim());
-    if (!hasLabelEvidence)
-      issues.push('Minh chứng nhãn mác: thêm ít nhất một link hoặc ảnh');
+    if (!hasAnyEvidence)
+      issues.push('Minh chứng sản phẩm: thêm ít nhất một link hoặc ảnh (hóa đơn VAT, giấy công bố hoặc nhãn mác)');
 
     const variants = dto.variants || [];
 
