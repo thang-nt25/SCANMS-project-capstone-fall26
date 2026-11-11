@@ -56,6 +56,9 @@ export interface ReturnDetail {
   returnWarehouse?: ReturnAddress | null;
   pickupProviderMode?: 'mock' | 'staging' | 'disabled';
   pickupSimulationEnabled?: boolean;
+  exchangeRecipient?: ReturnAddress;
+  exchangePackage?: { weight: number; length: number; width: number; height: number } | null;
+  exchangeBooking?: { pending: boolean; recipient?: PickupBookingInput | null; warehouse?: ReturnAddress | null } | null;
   receivedAt?: string | null;
   inspectionEscalatedAt?: string | null;
   inspectionCompletedAt?: string | null;
@@ -160,6 +163,11 @@ export const returnService = {
     unwrap<ReturnDetail>(await api.patch(`/returns/${id}/inspection/result`, data)),
   submitExchangeShipment: async (id: string, data: { carrierName: string; trackingNumber: string }) =>
     unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-shipment`, data)),
+  bookExchangeShipment: async (id: string, data: PickupBookingInput) =>
+    unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking`, data, { timeout: 45000 })),
+  syncExchangeShipment: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-booking/sync`)),
+  simulateExchangeShipment: async (id: string, data: { status: 'picked' | 'delivered' }) =>
+    unwrap<ReturnDetail>(await api.patch(`/returns/${id}/exchange-booking/simulate`, data)),
   confirmExchangeReceipt: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/exchange-receipt`)),
   confirmCompletion: async (id: string) => unwrap<ReturnDetail>(await api.post(`/returns/${id}/confirmation`)),
   openDispute: async (id: string, data: { reason: string; details: string }) =>

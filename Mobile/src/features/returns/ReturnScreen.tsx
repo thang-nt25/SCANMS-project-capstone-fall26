@@ -58,6 +58,7 @@ const ReturnSchema = z.object({
   id: z.string(),
   orderId: z.string(),
   status: z.string(),
+  resolution: z.enum(["REFUND", "EXCHANGE"]).nullish(),
   reason: z.string(),
   details: z.string().nullish(),
   imageUrls: z.array(z.string()),
@@ -628,14 +629,20 @@ function ReturnDetail({ id }: { id: string }) {
             label="Trạng thái"
             value={statusText(item.refund.status)}
           />
+          {item.refund.status === 'PENDING' && item.status === 'AWAITING_CUSTOMER_CONFIRMATION' && <Text>Chưa chuyển tiền. Bạn cần xác nhận đồng ý hoàn tiền để nhận vào Ví SCANMS.</Text>}
           <Text>{item.refund.failureReason}</Text>
         </Card>
       )}
       {customer &&
-        (item.status === "EXCHANGE_SHIPPED" ||
-          (item.status === "AWAITING_CUSTOMER_CONFIRMATION" &&
-            item.refund?.status === "SUCCEEDED")) &&
-        action("confirmation", "Xác nhận hoàn tất", "POST")}
+        item.status === "EXCHANGE_SHIPPED" && item.exchangeShipment &&
+        (!item.exchangeShipment.provider || item.exchangeShipment.providerStatus === "delivered") &&
+        action("exchange-receipt", "Tôi đã nhận hàng đổi", "POST")}
+      {customer &&
+        ((item.status === "AWAITING_CUSTOMER_CONFIRMATION" && item.resolution === "EXCHANGE" && item.exchangeShipment?.receivedAt) ||
+          (["AWAITING_CUSTOMER_CONFIRMATION", "REFUND_PENDING", "REFUND_FAILED"].includes(item.status) &&
+            item.resolution === "REFUND" && item.refund &&
+            ["PENDING", "FAILED", "SUCCEEDED"].includes(item.refund.status))) &&
+        action("confirmation", item.resolution === "REFUND" && item.refund?.status !== "SUCCEEDED" ? "Xác nhận đồng ý · Nhận tiền hoàn" : "Xác nhận hoàn tất", "POST")}
       {customer && mayDispute && (
         <Button
           title="Gửi khiếu nại"
@@ -723,6 +730,7 @@ function ReturnDetail({ id }: { id: string }) {
         />
       )}
       {reviewer &&
+        item.events.some(event => event.type === 'CUSTOMER_REFUND_CONFIRMED') &&
         ["REFUND_PENDING", "REFUND_FAILED"].includes(item.status) && (
           <Button
             title="Thử lại hoàn tiền"

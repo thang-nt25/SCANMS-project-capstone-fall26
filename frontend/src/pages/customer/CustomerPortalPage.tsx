@@ -1379,7 +1379,11 @@ export default function CustomerPortalPage() {
                               {/* Action Buttons Row */}
                               <div className="customer-order-actions flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
                                 {awaitingPayment && <Link to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`} className="customer-order-return-link customer-order-return-review">Thanh toán bằng QR</Link>}
-                                {(isCancelled || completedActions) && <button type="button" onClick={() => handleReorder(order)} className="customer-order-rebuy">Mua lại</button>}
+                                {completedActions && <Link
+                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                                  aria-label={`Xem chi tiết đơn ${order.externalOrderSn}`}
+                                >Xem chi tiết</Link>}
                                 {/* Secondary Button: Xem chi tiết */}
                                 {order.returnRequest ? <>
                                   {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link key={request.id} to={`/customer/returns/${request.id}`} className="customer-order-return-link">Hồ sơ đổi trả {index + 1}</Link>)}
@@ -1520,7 +1524,7 @@ export default function CustomerPortalPage() {
                                 )}
 
                                 {/* Return Request Button */}
-                                {canRequestReturn && !completedActions && (
+                                {canRequestReturn && (
                                   <button
                                     type="button"
                                     onClick={() => setReturnOrder(order)}

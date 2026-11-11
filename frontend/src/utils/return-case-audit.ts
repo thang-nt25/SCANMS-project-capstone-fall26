@@ -26,7 +26,7 @@ export function analyzeReturnCase(request: ReturnDetail, now = new Date()): Retu
 
   if (request.status === 'REFUND_FAILED' || request.refund?.status === 'FAILED') {
     add('REFUND_FAILED', 'action', 'Hoàn tiền vào ví chưa thành công',
-      'Manager kiểm tra lý do lỗi và dùng thao tác thử hoàn lại. Chỉ ghi nhận thu hồi thu nhập KOL sau khi hoàn tiền thành công.');
+      'Kiểm tra lý do lỗi; khách có thể mở hồ sơ và thử xác nhận lại. Manager chỉ thử hoàn lại nếu đã có xác nhận của khách. Chỉ thu hồi thu nhập KOL khi hoàn tiền thành công.');
   }
 
   const inspectionAge = hoursSince(request.receivedAt, now);

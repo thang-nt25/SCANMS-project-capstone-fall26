@@ -26,8 +26,8 @@ describe('merchant order filters preserve shop, customer and return scope', () =
       OR: expect.arrayContaining([{ customerName: { contains: 'An', mode: 'insensitive' } }]),
     });
     expect(prisma.order.findMany.mock.calls.at(-1)?.[0].where).toEqual(where);
-    expect(prisma.order.findMany.mock.calls.at(-1)?.[0].include.returnRequests).toEqual({
-      include: { refund: true, dispute: true }, orderBy: { submittedAt: 'desc' }, take: 1,
+    expect(prisma.order.findMany.mock.calls.at(-1)?.[0].include.returnRequests).toMatchObject({
+      include: { refund: true, dispute: true, shipments: { where: { direction: 'SHOP_TO_CUSTOMER' } } }, orderBy: { submittedAt: 'desc' }, take: 1,
     });
   });
   it('filters a chat customer by ID even when names collide', async () => {

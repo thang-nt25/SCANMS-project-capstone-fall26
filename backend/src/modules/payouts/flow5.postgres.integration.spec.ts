@@ -538,7 +538,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
     expect(status.currentRevenue).toBe(52000000);
   });
 
-  it('connects real Escrow → FR-09 → reservation → return refund → immediate clawback, before customer confirmation', async () => {
+  it('connects real Escrow → FR-09 → reservation → customer-confirmed refund and clawback', async () => {
     const kol = await creator('0');
     const customer = await prisma.user.create({
       data: {
@@ -679,6 +679,10 @@ suite('Flow 5 real PostgreSQL transactions', () => {
       liability: 'SHOP_FAULT',
       notes: 'Sản phẩm lỗi đã được xác minh',
     });
+    const approvedRefund = await prisma.refund.findUniqueOrThrow({ where: { returnRequestId: claim.id } });
+    expect(approvedRefund.status).toBe('PENDING');
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundedAmount.toFixed(2)).toBe('0.00');
+    await returns.confirmCompletion(customer.id, UserRole.CUSTOMER, claim.id);
     const after = await prisma.wallet.findUniqueOrThrow({
       where: { collaboratorId: kol.id },
     });
@@ -696,7 +700,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
           where: { id: claim.id },
         })
       ).status,
-    ).toBe('AWAITING_CUSTOMER_CONFIRMATION');
+    ).toBe('COMPLETED');
     expect(
       (
         await prisma.commission.findUniqueOrThrow({
