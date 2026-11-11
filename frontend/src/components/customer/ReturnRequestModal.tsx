@@ -21,10 +21,19 @@ const reasons: Array<{ value: CustomerReturnRequest['reason']; label: string }> 
 
 export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
   const dialogRef = useRef<HTMLFormElement>(null);
+  const alreadyRequested = useMemo(() => {
+    const quantities = new Map<string, number>();
+    for (const request of order.returnRequests || (order.returnRequest ? [order.returnRequest] : [])) {
+      if (!['COMPLETED', 'REFUNDED'].includes(request.status)) continue;
+      for (const item of request.items || []) quantities.set(item.orderItemId, (quantities.get(item.orderItemId) || 0) + item.quantity);
+    }
+    return quantities;
+  }, [order.returnRequests, order.returnRequest]);
+  const remainingQuantity = (orderItemId: string, purchased: number) => Math.max(0, purchased - (alreadyRequested.get(orderItemId) || 0));
   const [reason, setReason] = useState<CustomerReturnRequest['reason']>('DAMAGED');
   const [preferredResolution, setPreferredResolution] = useState<'REFUND' | 'EXCHANGE'>('EXCHANGE');
   const [selectedItems, setSelectedItems] = useState<Record<string, number>>(
-    () => order.orderItems.length === 1 ? { [order.orderItems[0].id]: order.orderItems[0].quantity } : {},
+    () => order.orderItems.length === 1 ? { [order.orderItems[0].id]: Math.max(0, order.orderItems[0].quantity - (alreadyRequested.get(order.orderItems[0].id) || 0)) } : {},
   );
   const [details, setDetails] = useState('');
   const [images, setImages] = useState<File[]>([]);
@@ -108,16 +117,17 @@ export function ReturnRequestModal({ order, onClose, onSubmitted }: Props) {
         <div className="mt-4 space-y-4">
           <fieldset className="space-y-2">
             <legend className="text-xs font-bold text-[#1A1612]">Sản phẩm và số lượng cần đổi trả</legend>
+            <p className="text-xs text-[#7D715E]">Bạn có thể tạo hồ sơ riêng cho sản phẩm còn lại trong 14 ngày, sau khi hồ sơ hiện tại kết thúc.</p>
             {order.orderItems.map(item => <div key={item.id} className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 text-xs ${selectedItems[item.id] ? 'border-[#C59B58] bg-[#FBF5EB]' : 'border-[#EAE4D7] bg-white'}`}>
-              <input type="checkbox" checked={Boolean(selectedItems[item.id])} aria-label={`Chọn ${item.product?.title || 'sản phẩm'}`}
-                onChange={event => setSelectedItems(current => ({ ...current, [item.id]: event.target.checked ? item.quantity : 0 }))} />
+              <input type="checkbox" checked={Boolean(selectedItems[item.id])} disabled={remainingQuantity(item.id, item.quantity) === 0} aria-label={`Chọn ${item.product?.title || 'sản phẩm'}`}
+                onChange={event => setSelectedItems(current => ({ ...current, [item.id]: event.target.checked ? remainingQuantity(item.id, item.quantity) : 0 }))} />
               <span className="min-w-[120px] flex-1 break-words leading-relaxed text-[#1A1612]">{item.product?.title || 'Sản phẩm'}{item.variant?.name ? ` · ${item.variant.name}` : ''}</span>
-              <input type="number" min={1} max={item.quantity} disabled={!selectedItems[item.id]}
+              <input type="number" min={1} max={remainingQuantity(item.id, item.quantity)} disabled={!selectedItems[item.id]}
                 value={selectedItems[item.id] === 0 ? '' : (selectedItems[item.id] ?? '')} aria-label={`Số lượng trả ${item.product?.title || 'sản phẩm'}`}
                 onChange={event => setSelectedItems(current => ({ ...current, [item.id]: event.target.value === '' ? ('' as unknown as number) : Number(event.target.value) }))}
-                onBlur={() => setSelectedItems(current => ({ ...current, [item.id]: Math.max(1, Math.min(item.quantity, Number(current[item.id]) || 1)) }))}
+                onBlur={() => setSelectedItems(current => ({ ...current, [item.id]: Math.max(1, Math.min(remainingQuantity(item.id, item.quantity), Number(current[item.id]) || 1)) }))}
                 className="w-14 rounded-lg border border-[#EAE4D7] p-2 text-center" />
-              <span className="text-[#7D715E]">/ {item.quantity}</span>
+              <span className="text-[#7D715E]">/ {remainingQuantity(item.id, item.quantity)} còn lại</span>
             </div>)}
           </fieldset>
           <label className="block text-xs font-bold text-[#1A1612]">Lý do

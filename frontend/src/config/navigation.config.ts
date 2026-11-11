@@ -18,9 +18,10 @@ import {
   Radio,
   Bell,
   ReceiptText,
-  RotateCcw,
   UserPlus,
   Megaphone,
+  Scale,
+  RotateCcw,
   type LucideProps,
 } from 'lucide-react';
 
@@ -45,8 +46,7 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     subTitle: 'Khách Mua Sắm',
     items: [
       { path: '/customer/orders', label: 'Đơn hàng', icon: ShoppingBag, group: 1 },
-      { path: '/customer/wallet', label: 'Ví mua sắm', icon: Wallet, badge: 'Ví', group: 1 },
-      { path: '/customer/vouchers', label: 'Mã ưu đãi', icon: Tag, group: 1 },
+      { path: '/customer/wallet', label: 'Ví mua sắm', icon: Wallet, group: 1 },
       { path: '/customer/wishlist', label: 'Yêu thích', icon: Heart, group: 1 },
       { path: '/customer/notifications', label: 'Thông báo', icon: Bell, group: 1 },
       { path: '/customer/profile', label: 'Tài khoản', icon: User, group: 2 },
@@ -71,12 +71,13 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/merchant/dashboard', label: 'Tổng quan', icon: Store, group: 1 },
       { path: '/merchant/orders', label: 'Quản lý đơn hàng', icon: ShoppingBag, group: 1 },
+      { path: '/merchant/returns', label: 'Hồ sơ đổi trả', icon: RotateCcw, group: 1 },
       { path: '/merchant/products', label: 'Sản phẩm', icon: Box, group: 1 },
       { path: '/merchant/kol-hub', label: 'Mạng lưới Đối tác', icon: Users, group: 2 },
-      { path: '/merchant/promotions', label: 'Khuyến mại & Đãi ngộ', icon: Tag, group: 2 },
+      { path: '/merchant/promotions', label: 'Ưu đãi & Đãi ngộ', icon: Tag, group: 2 },
       { path: '/merchant/live-sessions', label: 'Phiên Live', icon: Radio, group: 2 },
       { path: '/merchant/customer-messages', label: 'Chăm sóc khách hàng', icon: MessageSquare, group: 2 },
-      { path: '/merchant/settings', label: 'Cài đặt nhãn hàng', icon: Settings, group: 3 },
+      { path: '/merchant/settings', label: 'Cài đặt cửa hàng', icon: Settings, group: 3 },
     ],
   },
   SYSTEM_ADMIN: {
@@ -85,18 +86,14 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Báo cáo doanh thu', icon: TrendingUp, group: 1 },
       { path: '/admin/payouts', label: 'Quyết toán & Thuế', icon: ReceiptText, group: 1 },
-      { path: '/admin/vip-exceptions', label: 'Ngoại lệ VIP', icon: ShieldCheck, group: 1 },
-      { path: '/admin/personnel', label: 'Nhân sự & Nhãn hàng', icon: UserPlus, group: 2 },
-      { path: '/admin/users', label: 'Thẩm định eKYC', icon: ShieldCheck, group: 2 },
-      { path: '/admin/pricing', label: 'Kiểm duyệt giá sàn', icon: Tag, group: 2 },
-      { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, group: 2 },
-      { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu', icon: Package, group: 2 },
+      { path: '/admin/vip-exceptions', label: 'Thỏa thuận Đặc cách', icon: ShieldCheck, group: 1 },
+      { path: '/admin/personnel', label: 'Nhân sự & Cửa hàng', icon: UserPlus, group: 2 },
+      { path: '/admin/users', label: 'Duyệt hồ sơ đối tác', icon: ShieldCheck, group: 2 },
+      { path: '/admin/products-pricing', label: 'Sản phẩm & Giá sàn', icon: Package, group: 2 },
+      { path: '/admin/arbitration', label: 'Trọng tài & Pháp chế', icon: Scale, group: 3 },
       { path: '/admin/customer-reviews', label: 'Khiếu nại khách hàng', icon: MessageSquare, group: 3 },
-      { path: '/admin/return-disputes', label: 'Khiếu nại đổi trả', icon: RotateCcw, group: 3 },
       { path: '/admin/affiliate-oversight', label: 'Giám sát tiếp thị', icon: Link2, group: 3 },
-      { path: '/admin/fraud-sentinel', label: 'An ninh gian lận', icon: ShieldAlert, group: 3 },
-      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, group: 3 },
-      ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, group: 3 }] : [])
+      { path: '/admin/security-audit', label: 'An ninh & Kiểm toán', icon: ShieldAlert, group: 3 },
     ],
   },
   SYSTEM_MANAGER: {
@@ -105,16 +102,12 @@ export const NAVIGATION_BY_ROLE: Record<string, RoleNavigationGroup> = {
     items: [
       { path: '/admin/analytics', label: 'Báo cáo vận hành', icon: TrendingUp, group: 1 },
       { path: '/admin/payouts', label: 'Duyệt rút tiền', icon: ReceiptText, group: 1 },
-      { path: '/admin/users', label: 'Thẩm định eKYC', icon: ShieldCheck, group: 2 },
-      { path: '/admin/pricing', label: 'Kiểm duyệt giá sàn', icon: Tag, group: 2 },
-      { path: '/admin/product-moderation', label: 'Kiểm duyệt sản phẩm', icon: Box, group: 2 },
-      { path: '/admin/sample-requests', label: 'Trọng tài hàng mẫu', icon: Package, group: 2 },
+      { path: '/admin/users', label: 'Duyệt hồ sơ đối tác', icon: ShieldCheck, group: 2 },
+      { path: '/admin/products-pricing', label: 'Sản phẩm & Giá sàn', icon: Package, group: 2 },
+      { path: '/admin/arbitration', label: 'Trọng tài & Pháp chế', icon: Scale, group: 3 },
       { path: '/admin/customer-reviews', label: 'Khiếu nại khách hàng', icon: MessageSquare, group: 3 },
-      { path: '/admin/return-disputes', label: 'Khiếu nại đổi trả', icon: RotateCcw, group: 3 },
       { path: '/admin/affiliate-oversight', label: 'Giám sát tiếp thị', icon: Link2, group: 3 },
-      { path: '/admin/fraud-sentinel', label: 'Cảnh báo gian lận', icon: ShieldAlert, group: 3 },
-      { path: '/admin/audit-logs', label: 'Nhật ký kiểm toán', icon: ShieldCheck, group: 3 },
-      ...((import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_TOOLS === 'true') ? [{ path: '/admin/internal-traffic-test', label: 'Kiểm thử chống spam', icon: ShieldAlert, group: 3 }] : [])
+      { path: '/admin/security-audit', label: 'An ninh & Kiểm toán', icon: ShieldAlert, group: 3 },
     ],
   },
 };

@@ -21,6 +21,7 @@ import {
   ShoppingBag,
   Layers,
   Sparkles,
+  Handshake,
   X,
   Loader2,
   Store,
@@ -1048,7 +1049,7 @@ export default function ReferralLinksPage({
         <div className="kol-deals-heading flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-              <Sparkles className="w-4.5 h-4.5 text-[#B88E4F]" />
+              <Handshake className="w-4.5 h-4.5 text-[#B88E4F]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1163,7 +1164,7 @@ export default function ReferralLinksPage({
                       {/* Các chỉ số hoa hồng chuẩn Business */}
                       <div className="kol-deal-rates flex flex-wrap items-center gap-2 text-xs">
                         <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                          <span>Sàn:</span>
+                          <span>Gốc:</span>
                           <strong className="ml-1 text-[#1A1612]">{deal.publicCommissionRate ?? '10'}%</strong>
                         </div>
                         <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F]">
@@ -1435,11 +1436,11 @@ export default function ReferralLinksPage({
             </div>
             <h3 className="text-base font-bold text-[#1A1612] mb-1">Bạn chưa tạo liên kết tiếp thị nào</h3>
             <p className="text-sm text-[#7D715E] max-w-md mx-auto mb-6">
-              Hãy chọn sản phẩm từ các Cửa hàng uy tín trên sàn để bắt đầu tạo link rút gọn và chia sẻ tới người theo dõi của bạn.
+              Hãy chọn sản phẩm từ các Cửa hàng uy tín trên hệ thống để bắt đầu tạo link rút gọn và chia sẻ tới người theo dõi của bạn.
             </p>
             <button
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#EBD08C] via-[#E5C783] to-[#DEC07A] hover:from-[#DEC07A] hover:to-[#DEC07A] text-white font-bold text-sm shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white font-bold text-sm shadow-xs active:scale-[0.98] transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Tạo link đầu tiên ngay
@@ -1980,7 +1981,7 @@ export default function ReferralLinksPage({
                         onClick={() => openExclusiveDealDialog(selectedProduct)}
                         className="mt-2 inline-flex items-center gap-2 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-bold text-[#B88E4F] hover:bg-[#F3EFE6]"
                       >
-                        <Sparkles className="h-3.5 w-3.5" /> Đề xuất deal độc quyền với Shop
+                        <Handshake className="h-3.5 w-3.5" /> Đề xuất Deal độc quyền với Shop
                       </button>
                     )}
 
@@ -3096,7 +3097,7 @@ export default function ReferralLinksPage({
           dealToDelete?.status === 'PENDING'
             ? `Bạn có chắc chắn muốn hủy và thu hồi đề xuất Exclusive Deal cho sản phẩm "${dealToDelete?.product?.title || 'này'}"? Shop sẽ không còn nhận được yêu cầu này nữa.`
             : dealToDelete?.status === 'APPROVED'
-            ? `Bạn có chắc chắn muốn gỡ bỏ deal độc quyền cho sản phẩm "${dealToDelete?.product?.title || 'này'}"? Link tiếp thị sẽ quay về mức hoa hồng sàn cơ bản nếu bạn tiếp tục sử dụng.`
+            ? `Bạn có chắc chắn muốn gỡ bỏ deal độc quyền cho sản phẩm "${dealToDelete?.product?.title || 'này'}"? Link tiếp thị sẽ quay về mức thù lao gốc cơ bản (10%) nếu bạn tiếp tục sử dụng.`
             : `Xóa vĩnh viễn đề xuất deal cho sản phẩm "${dealToDelete?.product?.title || 'này'}" khỏi danh sách của bạn?`
         }
         confirmText={

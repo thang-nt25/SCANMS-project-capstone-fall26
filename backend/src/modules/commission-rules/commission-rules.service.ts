@@ -1,3 +1,4 @@
+import { allocateItemClawback, type RefundLine } from './item-clawback';
 import {
   Injectable,
   NotFoundException,
@@ -1591,12 +1592,23 @@ export class CommissionRulesService {
   }
 
   // Duyệt thưởng tháng (PENDING -> APPROVED)
-  private async assertCompletionDatesResolved(client: Prisma.TransactionClient, storeId: string, collaboratorId: string) {
+  private async assertCompletionDatesResolved(
+    client: Prisma.TransactionClient,
+    storeId: string,
+    collaboratorId: string,
+  ) {
     const count = await client.order.count({
-      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
+      where: {
+        storeId,
+        attributedCollaboratorId: collaboratorId,
+        status: 'COMPLETED',
+        completedAt: null,
+      },
     });
     if (count > 0) {
-      throw new ConflictException('Chưa đủ dữ liệu kỳ: còn đơn hoàn tất thiếu ngày. Cần đối soát trước khi chốt, duyệt hoặc cộng thưởng.');
+      throw new ConflictException(
+        'Chưa đủ dữ liệu kỳ: còn đơn hoàn tất thiếu ngày. Cần đối soát trước khi chốt, duyệt hoặc cộng thưởng.',
+      );
     }
   }
 
@@ -1624,7 +1636,11 @@ export class CommissionRulesService {
         );
       }
 
-      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
+      await this.assertCompletionDatesResolved(
+        tx,
+        storeId,
+        settlement.collaboratorId,
+      );
 
       const updated = await tx.monthlyBonusResult.updateMany({
         where: { id: settlementId, storeId, status: CommissionStatus.PENDING },
@@ -1705,7 +1721,11 @@ export class CommissionRulesService {
       const now = new Date();
 
       // Cập nhật nguyên tử trạng thái sang PAID ngay trong transaction để loại bỏ hoàn toàn race condition
-      await this.assertCompletionDatesResolved(tx, storeId, settlement.collaboratorId);
+      await this.assertCompletionDatesResolved(
+        tx,
+        storeId,
+        settlement.collaboratorId,
+      );
       const updateResult = await tx.monthlyBonusResult.updateMany({
         where: {
           id: settlementId,
@@ -1826,6 +1846,7 @@ export class CommissionRulesService {
     ipAddress?: string,
     transaction?: Prisma.TransactionClient,
     sourceKey?: string,
+    refundLines?: RefundLine[],
   ) {
     const client = transaction ?? this.prisma;
     await this.verifyStoreExists(storeId);
@@ -2123,12 +2144,47 @@ export class CommissionRulesService {
       // 1.2 Phân bổ discount theo từng OrderItem và điều chỉnh commission của đơn hiện tại theo dòng hàng hoàn (Issue 5)
       const orderItems = await tx.orderItem.findMany({
         where: { orderId },
+        ...(refundLines
+          ? { include: { referralLink: { select: { collaboratorId: true } } } }
+          : {}),
       });
 
+      const commissions = await tx.commission.findMany({ where: { orderId } });
+      const refundedQuantities = new Map<string, number>();
+      if (refundLines) {
+        const previous = await tx.returnItem.findMany({
+          where: {
+            returnRequest: {
+              orderId,
+              resolution: 'REFUND',
+              refund: { status: 'SUCCEEDED' },
+            },
+          },
+          select: { orderItemId: true, quantity: true },
+        });
+        for (const line of previous)
+          refundedQuantities.set(
+            line.orderItemId,
+            (refundedQuantities.get(line.orderItemId) ?? 0) + line.quantity,
+          );
+      }
+      const allocation = refundLines
+        ? allocateItemClawback(
+            orderItems,
+            commissions,
+            refundLines,
+            refundedQuantities,
+            currentOrder.attributedCollaboratorId,
+          )
+        : null;
+
       for (const item of orderItems) {
-        const itemCommissionReversal = item.calculatedCommissionAmount
-          .mul(refundRatio)
-          .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+        if (allocation && !allocation.itemAmounts.has(item.id)) continue;
+        const itemCommissionReversal =
+          allocation?.itemAmounts.get(item.id) ??
+          item.calculatedCommissionAmount
+            .mul(refundRatio)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
         await tx.orderItem.update({
           where: { id: item.id },
@@ -2141,10 +2197,6 @@ export class CommissionRulesService {
       }
 
       // Thu hồi commission từ ví chờ hoặc ví khả dụng theo trạng thái hiện tại.
-      const commissions = await tx.commission.findMany({
-        where: { orderId },
-      });
-
       for (const comm of commissions) {
         if (
           comm.status === CommissionStatus.PENDING ||
@@ -2175,7 +2227,8 @@ export class CommissionRulesService {
                   trackedStoreId,
                 );
           };
-          const baseToReverse = comm.baseCommissionAmount ?? comm.commissionAmount;
+          const baseToReverse =
+            comm.baseCommissionAmount ?? comm.commissionAmount;
           const dealBonus = comm.dealBonusAmount ?? new Prisma.Decimal(0);
 
           if (isFullRefund) {
@@ -2225,12 +2278,19 @@ export class CommissionRulesService {
             });
           } else {
             // Partial refund
-            const baseReversal = baseToReverse
-              .mul(refundRatio)
-              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-            const dealReversal = dealBonus
-              .mul(refundRatio)
-              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+            const selectedIncome = allocation?.incomeAmounts.get(
+              comm.collaboratorId,
+            );
+            const baseReversal = allocation
+              ? Prisma.Decimal.min(baseToReverse, selectedIncome?.base ?? 0)
+              : baseToReverse
+                  .mul(refundRatio)
+                  .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+            const dealReversal = allocation
+              ? Prisma.Decimal.min(dealBonus, selectedIncome?.deal ?? 0)
+              : dealBonus
+                  .mul(refundRatio)
+                  .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
             if (dealReversal.greaterThan(0)) {
               if (comm.dealBonusStatus === DealBonusStatus.PENDING_KPI) {
@@ -2256,8 +2316,14 @@ export class CommissionRulesService {
               await reverseBalance(baseReversal);
             }
 
-            const remainingBase = Prisma.Decimal.max(0, baseToReverse.minus(baseReversal));
-            const remainingDeal = Prisma.Decimal.max(0, dealBonus.minus(dealReversal));
+            const remainingBase = Prisma.Decimal.max(
+              0,
+              baseToReverse.minus(baseReversal),
+            );
+            const remainingDeal = Prisma.Decimal.max(
+              0,
+              dealBonus.minus(dealReversal),
+            );
 
             await tx.commission.update({
               where: { id: comm.id },
@@ -2408,7 +2474,7 @@ export class CommissionRulesService {
           if (pastSettlement.status === 'PAID') {
             await this.walletsService.reverseAvailableBalance(
               tx,
-              collaboratorId!,
+              collaboratorId,
               overpaidBonus,
               { id: adjustmentRecord.id, type: 'MONTHLY_BONUS_ADJUSTMENT' },
               storeId,
@@ -2525,8 +2591,19 @@ export class CommissionRulesService {
       targetYearMonth,
     );
     const unassignedCompletedOrders = await this.prisma.order.findMany({
-      where: { storeId, attributedCollaboratorId: collaboratorId, status: 'COMPLETED', completedAt: null },
-      select: { externalOrderSn: true, status: true, completedAt: true, createdAt: true, finalAmount: true },
+      where: {
+        storeId,
+        attributedCollaboratorId: collaboratorId,
+        status: 'COMPLETED',
+        completedAt: null,
+      },
+      select: {
+        externalOrderSn: true,
+        status: true,
+        completedAt: true,
+        createdAt: true,
+        finalAmount: true,
+      },
     });
     const validRevenue = new Prisma.Decimal(revenueData.validRevenue);
 
@@ -2626,14 +2703,28 @@ export class CommissionRulesService {
       validRevenue: validRevenue.toFixed(2),
       validOrdersCount: revenueData.validOrdersCount,
       unassignedCompletedOrders: unassignedCompletedOrders
-        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
+        .filter(
+          (order) => order.status === 'COMPLETED' && order.completedAt === null,
+        )
         .map((order) => order.externalOrderSn),
       unassignedRecordedValue: unassignedCompletedOrders
-        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
-        .reduce((total, order) => total.add(order.finalAmount || 0), new Prisma.Decimal(0)).toFixed(2),
+        .filter(
+          (order) => order.status === 'COMPLETED' && order.completedAt === null,
+        )
+        .reduce(
+          (total, order) => total.add(order.finalAmount || 0),
+          new Prisma.Decimal(0),
+        )
+        .toFixed(2),
       unassignedOrderDetails: unassignedCompletedOrders
-        .filter((order) => order.status === 'COMPLETED' && order.completedAt === null)
-        .map((order) => ({ code: order.externalOrderSn, purchasedAt: order.createdAt, recordedValue: String(order.finalAmount || 0) })),
+        .filter(
+          (order) => order.status === 'COMPLETED' && order.completedAt === null,
+        )
+        .map((order) => ({
+          code: order.externalOrderSn,
+          purchasedAt: order.createdAt,
+          recordedValue: String(order.finalAmount || 0),
+        })),
       currentMilestone: bonusCalc.highestReachedRule,
       achievementBonus: bonusCalc.achievementBonus,
       rangeBonuses: bonusCalc.rangeBonuses,
@@ -2866,13 +2957,23 @@ export class CommissionRulesService {
     // Legacy completed orders without a completion timestamp cannot be assigned
     // to any month. Report them separately; never substitute createdAt/updatedAt.
     const unassignedOrders = await this.prisma.order.findMany({
-      where: { storeId, status: 'COMPLETED', completedAt: null, attributedCollaboratorId: { not: null } },
-      select: { id: true, externalOrderSn: true, attributedCollaboratorId: true },
+      where: {
+        storeId,
+        status: 'COMPLETED',
+        completedAt: null,
+        attributedCollaboratorId: { not: null },
+      },
+      select: {
+        id: true,
+        externalOrderSn: true,
+        attributedCollaboratorId: true,
+      },
     });
     const unassignedByCollaborator = new Map<string, string[]>();
     for (const order of unassignedOrders) {
       if (!order.attributedCollaboratorId) continue;
-      const codes = unassignedByCollaborator.get(order.attributedCollaboratorId) || [];
+      const codes =
+        unassignedByCollaborator.get(order.attributedCollaboratorId) || [];
       codes.push(order.externalOrderSn || order.id);
       unassignedByCollaborator.set(order.attributedCollaboratorId, codes);
     }

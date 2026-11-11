@@ -63,7 +63,7 @@ export default function AdminReferralLinksPage() {
       if (err?.response?.status === 403 || err?.status === 403) {
         setErrorMsg('Bạn không có quyền quản trị cấp sàn (SYSTEM_ADMIN hoặc SYSTEM_MANAGER) để truy cập dữ liệu liên kết tiếp thị này.');
       } else {
-        setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị toàn sàn');
+        setErrorMsg(err.message || 'Lỗi khi tải danh sách liên kết tiếp thị toàn hệ thống');
       }
     } finally {
       setLoading(false);

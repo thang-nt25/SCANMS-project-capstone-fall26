@@ -13,6 +13,13 @@ export interface ShippingPackage {
 }
 export type ShippingLine = {
   product: ProductPackageFields & { title?: string };
+  variant?: {
+    packageWeight?: number | null;
+    packageLength?: number | null;
+    packageWidth?: number | null;
+    packageHeight?: number | null;
+    attributes?: any;
+  } | null;
   quantity: number;
 };
 
@@ -21,7 +28,8 @@ export function buildShippingPackage(lines: ShippingLine[]): ShippingPackage {
   if (!lines.length)
     throw new BadRequestException('Không có sản phẩm để tính kiện hàng.');
   const result: ShippingPackage = { weight: 0, length: 0, width: 0, height: 0 };
-  for (const { product, quantity } of lines) {
+  for (const line of lines) {
+    const { product, variant, quantity } = line;
     if (!product)
       throw new BadRequestException(
         'Sản phẩm không còn khả dụng để tính kiện hàng.',
@@ -35,10 +43,35 @@ export function buildShippingPackage(lines: ShippingLine[]): ShippingPackage {
         `Shop cần cập nhật khối lượng và kích thước đóng gói của "${product.title || 'sản phẩm'}" trước khi tính cước.`,
       );
     }
-    result.weight += product.packageWeight! * quantity;
-    result.length = Math.max(result.length, product.packageLength!);
-    result.width = Math.max(result.width, product.packageWidth!);
-    result.height += product.packageHeight! * quantity;
+
+    // Resolve variant-level packaging overrides if available
+    const variantAttrs =
+      variant?.attributes &&
+      typeof variant.attributes === 'object' &&
+      !Array.isArray(variant.attributes)
+        ? (variant.attributes as Record<string, any>)
+        : {};
+
+    const rawWeight =
+      variant?.packageWeight ??
+      variantAttrs.packageWeight ??
+      variantAttrs.weight ??
+      product.packageWeight!;
+    const unitWeight = Number.isInteger(Number(rawWeight)) && Number(rawWeight) > 0 ? Number(rawWeight) : product.packageWeight!;
+
+    const rawLength = variant?.packageLength ?? variantAttrs.packageLength ?? product.packageLength!;
+    const unitLength = Number.isInteger(Number(rawLength)) && Number(rawLength) > 0 ? Number(rawLength) : product.packageLength!;
+
+    const rawWidth = variant?.packageWidth ?? variantAttrs.packageWidth ?? product.packageWidth!;
+    const unitWidth = Number.isInteger(Number(rawWidth)) && Number(rawWidth) > 0 ? Number(rawWidth) : product.packageWidth!;
+
+    const rawHeight = variant?.packageHeight ?? variantAttrs.packageHeight ?? product.packageHeight!;
+    const unitHeight = Number.isInteger(Number(rawHeight)) && Number(rawHeight) > 0 ? Number(rawHeight) : product.packageHeight!;
+
+    result.weight += unitWeight * quantity;
+    result.length = Math.max(result.length, unitLength);
+    result.width = Math.max(result.width, unitWidth);
+    result.height += unitHeight * quantity;
   }
   assertShippingPackage(result);
   return result;

@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { PartnerTaxStatements } from '../../components/wallet/FinanceReports';
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import type { FormEvent } from "react";
@@ -60,15 +61,15 @@ const formatMoney = (amount: string) =>
   }).format(Number(amount))} ₫`;
 
 const TRANSACTION_LABELS: Record<LedgerEntry["transactionType"], string> = {
-  COMMISSION_PENDING: "Ghi nhận hoa hồng chờ",
-  COMMISSION_APPROVED: "Duyệt hoa hồng / cộng thưởng",
+  COMMISSION_PENDING: "Ghi nhận thù lao chờ",
+  COMMISSION_APPROVED: "Duyệt thù lao / cộng thưởng",
   PAYOUT_WITHDRAW: "Yêu cầu rút tiền",
-  REVERSAL: "Thu hồi hoa hồng",
+  REVERSAL: "Thu hồi thù lao",
   PAYOUT_REJECT_REFUND: "Hoàn tiền yêu cầu rút",
 };
 
 const REFERENCE_LABELS: Record<string, string> = {
-  COMMISSION: 'Hoa hồng', PAYOUT_REQUEST: 'Yêu cầu rút tiền', MONTHLY_BONUS: 'Thưởng tháng',
+  COMMISSION: 'Thù lao', PAYOUT_REQUEST: 'Yêu cầu rút tiền', MONTHLY_BONUS: 'Thưởng tháng',
   ORDER_REFUND: 'Hoàn tiền đơn hàng', ORDER_PAYMENT: 'Thanh toán đơn hàng',
   TOPUP_DEMO: 'Nạp tiền kiểm thử', TOPUP_PAYOS: 'Nạp tiền',
   WALLET_RECONCILIATION: 'Đối soát số dư', RECONCILIATION_ORDER: 'Đối soát thanh toán cũ',
@@ -100,6 +101,7 @@ let lastWalletSnapshot: {
   history: WithdrawalHistory | null;
   ledger: LedgerHistory | null;
 } | null = null;
+registerPrivateCacheReset(() => { lastWalletSnapshot = null; });
 
 export default function WalletPage({ embedded = false, onBusyChange }: { embedded?: boolean; onBusyChange?: (busy: boolean) => void } = {}) {
   const [routeSearchParams, setRouteSearchParams] = useSearchParams();
@@ -1551,13 +1553,13 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                       {entry.transactionType === "COMMISSION_PENDING" && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
                           <Clock3 className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                          <span>Ghi nhận hoa hồng chờ</span>
+                          <span>Ghi nhận thù lao chờ</span>
                         </span>
                       )}
                       {entry.transactionType === "COMMISSION_APPROVED" && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
                           <CheckCircle2 className="w-3 h-3 text-[#059669] shrink-0" />
-                          <span>Duyệt hoa hồng / Thưởng</span>
+                          <span>Duyệt thù lao / Thưởng</span>
                         </span>
                       )}
                       {entry.transactionType === "PAYOUT_WITHDRAW" && (
@@ -1569,7 +1571,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                       {entry.transactionType === "REVERSAL" && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                           <AlertCircle className="w-3 h-3 text-[#DC2626] shrink-0" />
-                          <span>{entry.referenceType === 'WALLET_RECONCILIATION' ? 'Điều chỉnh đối soát' : entry.referenceType === 'RECONCILIATION_ORDER' ? 'Ghi nhận thanh toán cũ' : 'Thu hồi hoa hồng'}</span>
+                          <span>{entry.referenceType === 'WALLET_RECONCILIATION' ? 'Điều chỉnh đối soát' : entry.referenceType === 'RECONCILIATION_ORDER' ? 'Ghi nhận thanh toán cũ' : 'Thu hồi thù lao'}</span>
                         </span>
                       )}
                       {entry.transactionType === "PAYOUT_REJECT_REFUND" && (
@@ -1681,7 +1683,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
             </div>
             <h4 className="text-xs sm:text-sm font-bold text-[#1A1612] m-0">Chưa ghi nhận biến động số dư</h4>
             <p className="text-[11px] text-[#7D715E] mt-0.5 max-w-sm">
-              Mọi giao dịch phát sinh hoa hồng từ đơn hàng hoặc các lệnh rút tiền sẽ tự động được ghi nhận tại đây.
+              Mọi giao dịch phát sinh thù lao từ đơn hàng hoặc các lệnh rút tiền sẽ tự động được ghi nhận tại đây.
             </p>
           </div>
         )}

@@ -579,7 +579,7 @@ export function ScanmsFloatingChatWidget() {
   const openCouponPicker = async () => {
     const storeId = activeConversation?.store.id;
     if (!storeId) {
-      toast.error('Chưa xác định được gian hàng trong cuộc trò chuyện.');
+      toast.error('Chưa xác định được cửa hàng trong cuộc trò chuyện.');
       return;
     }
     setIsCouponPickerOpen(true);
@@ -694,7 +694,7 @@ export function ScanmsFloatingChatWidget() {
             ? ''
             : isLiveRoute
               ? 'bottom-20 right-4'
-              : 'bottom-4 right-4'
+              : 'bottom-5 right-5 sm:bottom-6 sm:right-6'
         } ${
           isDraggingLauncher
             ? 'cursor-grabbing scale-105 transition-none'
@@ -1082,7 +1082,7 @@ export function ScanmsFloatingChatWidget() {
                       isSelected ? 'bg-[#FBF5EB] border-l-3 border-l-[#C59B58]' : ''
                     }`}
                   >
-                    {/* Avatar Shop chuẩn thương hiệu SCANMS (Đồng bộ với Card Shop trên sàn) */}
+                    {/* Avatar Shop chuẩn thương hiệu SCANMS (Đồng bộ với Card Cửa Hàng) */}
                     <div className="w-9 h-9 rounded-xl bg-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-black text-sm shrink-0 border border-[#EAE4D7] shadow-2xs overflow-hidden relative select-none">
                       {c.store.logoUrl && !isUnsafeShopLogo(c.store.logoUrl) ? (
                         <img
@@ -1226,7 +1226,7 @@ export function ScanmsFloatingChatWidget() {
           {/* Empty state hint */}
           {visibleMessages.length === 0 && (
             <div className="py-8 text-center text-xs text-[#7D715E] leading-relaxed">
-              Chưa có tin nhắn nào.<br />Nhập nội dung bên dưới để bắt đầu trò chuyện với gian hàng.
+              Chưa có tin nhắn nào.<br />Nhập nội dung bên dưới để bắt đầu trò chuyện với cửa hàng.
             </div>
           )}
 
@@ -1648,7 +1648,7 @@ export function ScanmsFloatingChatWidget() {
         onClose={() => setConversationToDelete(null)}
         onConfirm={handleConfirmDeleteConversation}
         title="Xóa cuộc trò chuyện?"
-        message={`Bạn có chắc muốn xóa cuộc trò chuyện với "${conversationToDelete?.store?.name || 'gian hàng'}"? Toàn bộ lịch sử tin nhắn của cuộc trò chuyện này sẽ bị xóa khỏi danh sách.`}
+        message={`Bạn có chắc muốn xóa cuộc trò chuyện với "${conversationToDelete?.store?.name || 'cửa hàng'}"? Toàn bộ lịch sử tin nhắn của cuộc trò chuyện này sẽ bị xóa khỏi danh sách.`}
         confirmText="Xóa cuộc trò chuyện"
         cancelText="Hủy"
         variant="danger"

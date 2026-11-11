@@ -79,16 +79,19 @@ export const PartnerUpgradeTab: React.FC = () => {
   const navigate = useNavigate();
   const [statusData, setStatusData] = useState<UpgradeStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [kolForm, setKolForm] = useState(createEmptyKolForm);
 
   const loadStatus = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const data = await kycService.getMyUpgradeStatus();
       setStatusData(data);
     } catch (err: any) {
       console.error('Failed to load upgrade status:', err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -186,13 +189,23 @@ export const PartnerUpgradeTab: React.FC = () => {
     );
   }
 
+  if (loadError) {
+    return <div role="alert" className="rounded-2xl border border-[#EEDFC6] bg-white p-5 text-sm text-[#1A1612]">
+      <p>Không tải được trạng thái hồ sơ đối tác. Vui lòng kiểm tra kết nối trước khi gửi hồ sơ mới.</p>
+      <button type="button" onClick={() => void loadStatus()}
+        className="mt-3 min-h-11 rounded-xl border border-[#C59B58] bg-[#FBF5EB] px-4 font-semibold text-[#795A2D]">
+        Tải lại trạng thái
+      </button>
+    </div>;
+  }
+
   const kolApp = statusData?.kolApplication;
   const isVerified = kolApp?.status === 'VERIFIED';
   const isPending = kolApp?.status === 'UNVERIFIED';
   const isRejected = kolApp?.status === 'REJECTED';
 
   return (
-    <div className="w-full space-y-5 pb-12 text-[#1A1612]">
+    <div className="w-full max-w-[1200px] space-y-5 pb-12 text-[#1A1612]">
       {/* Header chỉ hiển thị khi đã được kích hoạt hoặc đang chờ duyệt */}
       {(isVerified || isPending) && (
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">

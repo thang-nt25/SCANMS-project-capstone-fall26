@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, ExternalLink, Minus, Plus, RefreshCw, ShoppingBag, Store, Ticket, Trash2, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, Minus, Plus, RefreshCw, ShoppingBag, Store, Trash2, X } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import type { CartItem } from '@/types/cart.types';
 import { formatMoney, getSafeProductImageUrl } from '@/utils/marketplace.utils';
@@ -118,7 +118,7 @@ export function CartDrawer() {
             <span className="scanms-cart-header__icon grid place-items-center w-[46px] h-[46px] shrink-0 rounded-[14px] bg-[color:#FBF5EB] border border-[#EEDFC6] text-[color:#B88E4F]! [@media_(max-width:480px)]:w-[40px] [@media_(max-width:480px)]:h-[40px] [@media_(max-width:480px)]:rounded-[12px]" aria-hidden="true"><ShoppingBag size={23} strokeWidth={1.7} /></span>
             <div>
               <h2 id="scanms-cart-title" ref={titleRef} tabIndex={-1}>Giỏ hàng của bạn</h2>
-              <p>{cart.length ? `${totalCount} sản phẩm · ${groupedByStore.length} gian hàng` : 'Chọn món bạn yêu thích trên SCANMS'}</p>
+              <p>{cart.length ? `${totalCount} sản phẩm · ${groupedByStore.length} cửa hàng` : 'Chọn món bạn yêu thích trên SCANMS'}</p>
             </div>
           </div>
           <button type="button" onClick={closeCart} className="scanms-cart-icon scanms-cart-close inline-flex items-center justify-center w-[44px] h-[44px] shrink-0 p-0 bg-transparent border border-[#EAE4D7] rounded-[12px] text-[color:#7D715E]! [transition:background_150ms,color_150ms] [&:hover]:bg-[color:#FAF8F5] [&:hover]:text-[color:#231D15]!" aria-label="Đóng giỏ hàng" title="Đóng giỏ hàng (Esc)"><X size={21} /></button>
@@ -153,7 +153,7 @@ export function CartDrawer() {
           </div> : groupedByStore.map((group) => {
             const groupSelected = group.items.filter((item) => isAvailable(item) && selectedItemIds.includes(item.cartItemId));
             const groupTotal = groupSelected.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            return <section key={group.storeId} className="scanms-cart-shop border border-[#EAE4D7] rounded-[16px] bg-[color:#FFFFFF] mb-[14px] [&:last-child]:mb-0" aria-label={`Gian hàng ${group.storeName}`}>
+            return <section key={group.storeId} className="scanms-cart-shop border border-[#EAE4D7] rounded-[16px] bg-[color:#FFFFFF] mb-[14px] [&:last-child]:mb-0" aria-label={`Cửa hàng ${group.storeName}`}>
               <div className="scanms-cart-shop__header flex items-center gap-[10px] p-[13px_16px] border-b border-b-[#EAE4D7] [@media_(max-width:480px)]:p-[12px] [@media_(max-width:480px)]:gap-[8px]">
                 <input type="checkbox" className="scanms-cart-check w-[17px] h-[17px] m-0 shrink-0 accent-[#C59B58] cursor-pointer [&:disabled]:opacity-[.4] [&:disabled]:cursor-not-allowed" checked={group.allSelected}
                   aria-label={`Chọn tất cả sản phẩm của ${group.storeName}`} disabled={!group.items.some(isAvailable)}
@@ -178,28 +178,7 @@ export function CartDrawer() {
             <div><span>Tạm tính tiền hàng</span><small>Đã chọn {selectedCount} sản phẩm</small></div>
             <strong aria-live="polite" aria-atomic="true">{formatMoney(subtotal)}</strong>
           </div>
-          {/* Thanh SCANMS Voucher Trigger Banner */}
-          <div
-            onClick={() => {
-              if (selected.length > 0) {
-                startCheckout(selected);
-              }
-            }}
-            className={`my-3 p-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between transition-colors ${
-              selected.length > 0 ? 'cursor-pointer hover:border-[#C59B58] hover:bg-[#FBF5EB]' : 'opacity-60 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-[#FBF5EB] border border-[#EEDFC6] flex items-center justify-center text-[#B88E4F] shrink-0">
-                <Ticket size={14} />
-              </div>
-              <span className="text-xs font-bold text-[#1A1612]">SCANMS Voucher</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#B88E4F]">
-              <span>Chọn hoặc nhập mã</span>
-              <ChevronRight size={14} />
-            </div>
-          </div>
+          <div className="my-3" />
 
           <button type="button" onClick={() => startCheckout(selected)} disabled={!selected.length || isValidatingStock || isCartSyncing} className="scanms-cart-primary scanms-cart-checkout inline-flex items-center justify-center gap-[12px] min-h-[48px] p-[12px_20px] border border-[#C59B58] rounded-[12px] bg-[color:#FBF5EB] text-[color:#1A1612]! [font-family:inherit]! text-[13px] font-[700] [transition:background_150ms,border-color_150ms] w-full border-[#EEDFC6] [&:hover:not(:disabled)]:bg-[color:#F3EFE6] [&:hover:not(:disabled)]:border-[#C59B58] [&:disabled]:bg-[color:#F3EFE6] [&:disabled]:border-[#EAE4D7] [&:disabled]:text-[color:#7D715E]!">
             <span>Thanh toán{selectedCount > 0 ? ` (${selectedCount})` : ''}</span><ArrowRight size={18} />

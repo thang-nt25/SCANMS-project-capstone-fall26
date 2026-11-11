@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ticket, Sparkles, Check, Clock3, AlertCircle, Copy, CheckCircle2, Calendar } from 'lucide-react';
+import { Ticket, Tag, Check, Clock3, AlertCircle, Copy, CheckCircle2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { couponService, type DiscountType, type CouponScope } from '../../services/coupon.service';
 
@@ -35,13 +35,11 @@ export function CouponProposalCardBubble({
   activeConv,
 }: CouponProposalCardProps) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [discountType, setDiscountType] = useState<DiscountType>(card.discountType || 'PERCENTAGE');
   const [discountValue, setDiscountValue] = useState<number>(
-    card.discountValue || card.discountPercent || card.desiredDiscount || 15
+    card.discountValue || card.discountPercent || card.desiredDiscount || 10
   );
   const [usageLimit, setUsageLimit] = useState<number>(card.usageLimit || 50);
   const [minOrder, setMinOrder] = useState<number>(card.minimumOrderAmount || 150000);
-  const [maxDiscount] = useState<number>(card.maximumDiscountAmount || 50000);
   const [validityDays] = useState<number>(card.validityDays || 30);
   const [status, setStatus] = useState<string>(card.status || 'PENDING_APPROVAL');
   const [loading, setLoading] = useState(false);
@@ -84,7 +82,7 @@ export function CouponProposalCardBubble({
 
   const handleApprove = async () => {
     if (!effectiveStoreId || !card.couponId) {
-      setError('Thiếu thông tin mã hoặc gian hàng để kích hoạt.');
+      setError('Thiếu thông tin mã hoặc cửa hàng để kích hoạt.');
       return;
     }
     setLoading(true);
@@ -95,22 +93,18 @@ export function CouponProposalCardBubble({
         : undefined;
 
       await couponService.approveCoupon(effectiveStoreId, card.couponId, {
-        discountType,
+        discountType: 'PERCENTAGE',
         discountValue,
         minimumOrderAmount: minOrder > 0 ? minOrder : undefined,
-        maximumDiscountAmount: discountType === 'PERCENTAGE' && maxDiscount > 0 ? maxDiscount : undefined,
         usageLimitTotal: usageLimit > 0 ? usageLimit : undefined,
         usageLimitPerCustomer: 1,
         expiresAt,
-        scopeType: card.scopeType || 'STORE_WIDE',
+        scopeType: 'STORE_WIDE',
       });
 
       setStatus('APPROVED');
       setIsConfigOpen(false);
-      const discountLabel = discountType === 'PERCENTAGE'
-        ? `giảm ${discountValue}%`
-        : `giảm ${discountValue.toLocaleString('vi-VN')}₫`;
-      toast.success(`Đã kích hoạt thành công mã "${card.code}" ${discountLabel}!`);
+      toast.success(`Đã kích hoạt thành công mã "${card.code}" giảm ${discountValue}%!`);
     } catch (err: any) {
       console.error('Lỗi duyệt mã coupon:', err);
       setError(err?.response?.data?.message || 'Không thể kích hoạt mã lúc này.');
@@ -119,7 +113,6 @@ export function CouponProposalCardBubble({
     }
   };
 
-  const isPercentage = (card.discountType || discountType) === 'PERCENTAGE';
   const displayVal = card.discountValue || card.discountPercent || card.desiredDiscount || 15;
 
   return (
@@ -172,21 +165,19 @@ export function CouponProposalCardBubble({
           <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
             <span className="text-[10px] text-[#7D715E] block">Mức giảm đề xuất</span>
             <strong className="text-sm font-bold text-[#B88E4F]">
-              {isPercentage ? `${displayVal}%` : `${Number(displayVal).toLocaleString('vi-VN')}₫`}
+              {displayVal}%
             </strong>
-            {isPercentage && card.maximumDiscountAmount && (
-              <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
-                Tối đa {Number(card.maximumDiscountAmount).toLocaleString('vi-VN')}₫
-              </span>
-            )}
+            <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
+              Shop duyệt bảo vệ giá sàn
+            </span>
           </div>
           <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7]">
             <span className="text-[10px] text-[#7D715E] block">Đơn tối thiểu</span>
             <strong className="text-xs font-bold text-[#1A1612] block">
-              {card.minimumOrderAmount ? `${Number(card.minimumOrderAmount).toLocaleString('vi-VN')}₫` : 'Không giới hạn'}
+              {card.minimumOrderAmount ? `${Number(card.minimumOrderAmount).toLocaleString('vi-VN')}₫` : 'Shop cấu hình'}
             </strong>
             <span className="text-[9.5px] text-[#7D715E] block mt-0.5">
-              {card.scopeType === 'PRODUCTS' ? 'Sản phẩm chỉ định' : 'Toàn gian hàng'}
+              Toàn cửa hàng
             </span>
           </div>
         </div>
@@ -198,7 +189,7 @@ export function CouponProposalCardBubble({
             <span>Thời hạn: {card.validityDays ? `${card.validityDays} ngày` : '30 ngày'}</span>
           </span>
           <span className="truncate max-w-[130px] font-medium text-[#1A1612]">
-            {card.storeName || activeConv?.store?.name || 'Gian hàng đối tác'}
+            {card.storeName || activeConv?.store?.name || 'Cửa hàng trực thuộc'}
           </span>
         </div>
 
@@ -232,66 +223,54 @@ export function CouponProposalCardBubble({
                 onClick={() => setIsConfigOpen(true)}
                 className="w-full min-h-[34px] px-3 py-1.5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#231D15] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Sparkles size={14} />
+                <Tag size={14} />
                 <span>Cấu hình & Kích hoạt mã ngay</span>
               </button>
             ) : (
               <div className="p-3 bg-white rounded-xl border border-[#EEDFC6] space-y-2.5 animate-in fade-in-50 duration-150">
                 <span className="text-[11px] font-bold text-[#1A1612] block">
-                  Thiết lập hạn mức giảm chính thức:
+                  Thiết lập hạn mức % giảm chính thức:
                 </span>
+                <p className="text-[10px] text-[#7D715E] m-0">
+                  KOL kỳ vọng: <strong className="text-[#B88E4F]">{displayVal}%</strong>. Shop thẩm định bảo đảm trên Giá sàn (floorPrice).
+                </p>
 
-                {/* Type toggle */}
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setDiscountType('PERCENTAGE')}
-                    className={`py-1 rounded-lg border font-bold transition cursor-pointer ${
-                      discountType === 'PERCENTAGE'
-                        ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226]'
-                        : 'border-[#EAE4D7] text-[#7D715E]'
-                    }`}
-                  >
-                    Giảm %
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDiscountType('FIXED_AMOUNT')}
-                    className={`py-1 rounded-lg border font-bold transition cursor-pointer ${
-                      discountType === 'FIXED_AMOUNT'
-                        ? 'border-[#C59B58] bg-[#FBF5EB] text-[#8C6226]'
-                        : 'border-[#EAE4D7] text-[#7D715E]'
-                    }`}
-                  >
-                    Giảm số tiền VNĐ
-                  </button>
+                {/* Percentage input & quick presets */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] text-[#7D715E] font-bold">% Giảm giá chính thức:</label>
+                    <span className="text-xs font-extrabold text-[#B88E4F]">{discountValue}%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={discountValue === 0 ? '0' : (discountValue || '')}
+                      onChange={(e) => setDiscountValue(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value))}
+                      className="w-18 p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
+                    />
+                    <div className="flex items-center gap-1.5 flex-1">
+                      {[5, 10].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => setDiscountValue(pct)}
+                          className={`flex-1 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border ${
+                            discountValue === pct
+                              ? 'bg-[#FBF5EB] border-[#C59B58] text-[#8C6226]'
+                              : 'bg-[#FAF8F5] border-[#EAE4D7] text-[#7D715E]'
+                          }`}
+                        >
+                          Giảm {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Values */}
+                {/* Usage limit & Min order */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="text-[10px] text-[#7D715E] block mb-0.5">
-                      {discountType === 'PERCENTAGE' ? '% Giảm giá:' : 'Tiền giảm (VNĐ):'}
-                    </label>
-                    <input
-                      type={discountType === 'PERCENTAGE' ? 'number' : 'text'}
-                      inputMode="numeric"
-                      value={discountType === 'PERCENTAGE' ? (discountValue === 0 ? '0' : (discountValue || '')) : (discountValue ? String(discountValue) : '')}
-                      onChange={(e) => {
-                        if (discountType === 'PERCENTAGE') {
-                          setDiscountValue(e.target.value === '' ? ('' as unknown as number) : Number(e.target.value));
-                        } else {
-                          handleNumericInput(e.target.value, setDiscountValue);
-                        }
-                      }}
-                      className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
-                    />
-                    {discountType === 'FIXED_AMOUNT' && discountValue > 0 && (
-                      <span className="text-[10px] text-[#B88E4F] font-bold font-mono block mt-0.5">
-                        {discountValue.toLocaleString('vi-VN')} ₫
-                      </span>
-                    )}
-                  </div>
                   <div>
                     <label className="text-[10px] text-[#7D715E] block mb-0.5">Số lượt tối đa:</label>
                     <input
@@ -304,24 +283,17 @@ export function CouponProposalCardBubble({
                       className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold focus:border-[#C59B58] outline-none"
                     />
                   </div>
-                </div>
-
-                {/* Min order */}
-                <div>
-                  <label className="text-[10px] text-[#7D715E] block mb-0.5">Đơn tối thiểu (VNĐ):</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={minOrder ? String(minOrder) : ''}
-                    onChange={(e) => handleNumericInput(e.target.value, setMinOrder)}
-                    className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
-                    placeholder="150000"
-                  />
-                  {minOrder > 0 && (
-                    <span className="text-[10px] text-[#B88E4F] font-bold font-mono block mt-0.5">
-                      Đơn từ {minOrder.toLocaleString('vi-VN')} ₫
-                    </span>
-                  )}
+                  <div>
+                    <label className="text-[10px] text-[#7D715E] block mb-0.5">Đơn tối thiểu (VNĐ):</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={minOrder ? String(minOrder) : ''}
+                      onChange={(e) => handleNumericInput(e.target.value, setMinOrder)}
+                      className="w-full p-1.5 border border-[#EAE4D7] rounded-lg text-xs font-semibold font-mono focus:border-[#C59B58] outline-none"
+                      placeholder="150000"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -347,7 +319,7 @@ export function CouponProposalCardBubble({
         ) : (
           <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
             <Clock3 size={13} className="text-[#B88E4F] shrink-0" />
-            <span>Đã gửi đề xuất · Đang chờ Chủ Shop kích hoạt hạn mức</span>
+            <span>Đã gửi đề xuất · Đang chờ Quản lý Cửa hàng kích hoạt hạn mức</span>
           </div>
         )}
       </footer>

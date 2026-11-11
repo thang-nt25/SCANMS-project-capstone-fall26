@@ -53,6 +53,7 @@ describe('Customer shopping rules', () => {
       completedAt: new Date(),
       updatedAt: new Date(),
       returnRequest: null,
+      returnRequests: [],
       orderItems: [{ id: 'line-1', quantity: 1, unitPrice: '100000.00' }],
     } as any);
     await expect(
@@ -69,6 +70,7 @@ describe('Customer shopping rules', () => {
     const tx = {
       order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       returnRequest: {
+        findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn().mockResolvedValue({ id: 'request-1' }),
       },
       returnEvent: { create: jest.fn() },
@@ -84,6 +86,7 @@ describe('Customer shopping rules', () => {
       status: OrderStatus.COMPLETED,
       deliveredAt: new Date(Date.now() - 86400000),
       returnRequest: null,
+      returnRequests: [],
       store: { ownerId: 'owner-1' },
       externalOrderSn: 'S-001',
       orderItems: [{ id: 'line-1', quantity: 2, unitPrice: '100000.00' }],
@@ -110,6 +113,67 @@ describe('Customer shopping rules', () => {
         data: { orderId: 'order-1', returnRequestId: 'request-1' },
       },
     });
+  });
+
+  it('allows a later case for another item after the first case closes', async () => {
+    const earlier = { status: 'COMPLETED', items: [{ orderItemId: 'line-1', quantity: 1 }] };
+    const tx = {
+      order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      returnRequest: { findMany: jest.fn().mockResolvedValue([earlier]), create: jest.fn().mockResolvedValue({ id: 'request-2' }) },
+      notification: { create: jest.fn() },
+    };
+    const service = serviceWith({ $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) });
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      status: OrderStatus.COMPLETED, deliveredAt: new Date(Date.now() - 86400000),
+      returnRequests: [earlier], store: { ownerId: 'owner-1' }, externalOrderSn: 'S-002',
+      orderItems: [
+        { id: 'line-1', quantity: 1, unitPrice: '100000.00' },
+        { id: 'line-2', quantity: 1, unitPrice: '200000.00' },
+      ],
+    } as any);
+    await service.createReturnRequest('customer-1', 'order-1', {
+      reason: 'WRONG_ITEM', imageUrls: ['https://example.com/image.jpg'],
+    } as any);
+    expect(tx.returnRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ items: { create: [expect.objectContaining({ orderItemId: 'line-2', quantity: 1 })] } }),
+    });
+    expect(tx.order.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a repeated quantity from a previous case', async () => {
+    const earlier = { status: 'COMPLETED', items: [{ orderItemId: 'line-1', quantity: 1 }] };
+    const tx = {
+      order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      returnRequest: { findMany: jest.fn().mockResolvedValue([earlier]), create: jest.fn() },
+    };
+    const service = serviceWith({ $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) });
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      status: OrderStatus.COMPLETED, deliveredAt: new Date(Date.now() - 86400000), returnRequests: [earlier],
+      orderItems: [{ id: 'line-1', quantity: 1, unitPrice: '100000.00' }],
+    } as any);
+    await expect(service.createReturnRequest('customer-1', 'order-1', {
+      reason: 'WRONG_ITEM', imageUrls: ['https://example.com/image.jpg'], items: [{ orderItemId: 'line-1', quantity: 1 }],
+    } as any)).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.returnRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('does not consume an item when the earlier return expired before fulfillment', async () => {
+    const earlier = { status: 'EXPIRED', items: [{ orderItemId: 'line-1', quantity: 1 }] };
+    const tx = {
+      order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      returnRequest: { findMany: jest.fn().mockResolvedValue([earlier]), create: jest.fn().mockResolvedValue({ id: 'request-new' }) },
+      notification: { create: jest.fn() },
+    };
+    const service = serviceWith({ $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) });
+    jest.spyOn(service, 'getOrderDetails').mockResolvedValue({
+      status: OrderStatus.DELIVERED, deliveredAt: new Date(Date.now() - 86400000), returnRequests: [earlier],
+      store: { ownerId: 'owner-1' }, externalOrderSn: 'S-003',
+      orderItems: [{ id: 'line-1', quantity: 1, unitPrice: '100000.00' }],
+    } as any);
+    await service.createReturnRequest('customer-1', 'order-1', {
+      reason: 'WRONG_ITEM', imageUrls: ['https://example.com/image.jpg'], items: [{ orderItemId: 'line-1', quantity: 1 }],
+    } as any);
+    expect(tx.returnRequest.create).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a review unless the order is completed', async () => {
@@ -152,6 +216,7 @@ describe('Customer shopping rules', () => {
       customerId: 'customer-1',
       status: OrderStatus.DELIVERED,
       returnRequest: null,
+      returnRequests: [],
     } as any);
 
     await service.confirmReceipt('customer-1', 'order-1');

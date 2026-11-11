@@ -1,3 +1,4 @@
+import { clearCheckoutAddressCaches } from '../utils/checkout-address-cache';
 import api from './api';
 import { productLoginUrl } from '../utils/login-return';
 
@@ -142,6 +143,7 @@ const nextProfile = JSON.stringify(user);
   },
 
   logout(returnTo?: string) {
+    clearCheckoutAddressCaches();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('scanms-current-role');

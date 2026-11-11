@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Tag,
@@ -84,6 +85,7 @@ const money = (val: unknown) =>
   val == null ? '0 ₫' : `${Number(val).toLocaleString('vi-VN')} ₫`;
 
 let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
+registerPrivateCacheReset(() => { lastCreatorIncentivesSnapshot = null; });
 
 export function ShopCreatorIncentivesTab() {
   const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>('coupons');
@@ -91,6 +93,7 @@ export function ShopCreatorIncentivesTab() {
   const [currentStoreId, setCurrentStoreId] = useState<string>(() => lastCreatorIncentivesSnapshot?.currentStoreId || '');
   const [loading, setLoading] = useState<boolean>(() => !lastCreatorIncentivesSnapshot);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -114,8 +117,9 @@ export function ShopCreatorIncentivesTab() {
 
   const loadData = useCallback(async (showIndicator = false) => {
     if (showIndicator) setIsRefreshing(true);
+    setLoadError('');
     try {
-      const store = await storeService.getMyStore().catch(() => null);
+      const store = await storeService.getMyStore();
       const sId = store?.id || '';
       setCurrentStoreId(sId);
 
@@ -123,6 +127,8 @@ export function ShopCreatorIncentivesTab() {
         sId ? couponService.getStoreCoupons(sId) : api.get('/coupons'),
         api.get('/store-collaborators/shop'),
       ]);
+      if (couponsRes.status === 'rejected' || partnersRes.status === 'rejected')
+        setLoadError('Chưa tải đủ mã ưu đãi và đối tác. Dữ liệu đang hiển thị có thể chưa được cập nhật.');
 
       if (couponsRes.status === 'fulfilled') {
         const resVal = couponsRes.value as any;
@@ -144,8 +150,8 @@ export function ShopCreatorIncentivesTab() {
         setPartnerKols(list);
       }
       lastCreatorIncentivesSnapshot = { coupons: couponsRes.status === 'fulfilled' ? ((couponsRes.value as any)?.data?.data || (couponsRes.value as any)?.data || (couponsRes.value as any)?.items || (Array.isArray(couponsRes.value) ? couponsRes.value : [])) : [], partnerKols: partnersRes.status === 'fulfilled' ? (partnersRes.value?.data?.data || partnersRes.value?.data || []) : [], currentStoreId: sId };
-    } catch {
-      // Fallback safe handling
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Không tải được ưu đãi của cửa hàng.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -294,6 +300,9 @@ export function ShopCreatorIncentivesTab() {
 
   return (
     <div className="space-y-4 animate-in fade-in-50 duration-200">
+      {loadError && <div role="alert" className="rounded-xl border border-[#EEDFC6] bg-white p-4 text-sm text-[#DC2626]">
+        {loadError}<button type="button" disabled={isRefreshing} onClick={() => void loadData(true)} className="ml-2 inline-flex min-h-11 items-center font-semibold underline">Thử lại</button>
+      </div>}
       {/* Sub-navigation tabs: Chuẩn 2 Trụ Cột Đãi Ngộ KOC */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-1.5 rounded-2xl bg-white border border-[#EAE4D7] shadow-2xs">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -345,7 +354,7 @@ export function ShopCreatorIncentivesTab() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-[#1A1612] text-xs font-bold shadow-2xs transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Cấp mã ưu đãi KOC</span>
+              <span>Cấp mã cho KOL có deal toàn Shop</span>
             </button>
           )}
         </div>
@@ -571,7 +580,7 @@ export function ShopCreatorIncentivesTab() {
             </table>
             {!filteredCoupons.length && (
               <div className="p-8 text-center text-xs text-[#7D715E]">
-                {loading ? 'Đang đồng bộ danh sách mã ưu đãi KOC...' : 'Chưa có mã ưu đãi định danh KOC nào được phát hành.'}
+                {loading ? 'Đang đồng bộ danh sách mã ưu đãi KOC...' : loadError ? 'Chưa xác định được danh sách mã ưu đãi.' : 'Chưa có mã ưu đãi định danh KOC nào được phát hành.'}
               </div>
             )}
           </div>
@@ -634,7 +643,7 @@ export function ShopCreatorIncentivesTab() {
         </div>
       )}
 
-      {/* Modal Cấp mã ưu đãi KOC Trực Tiếp */}
+      {/* Chỉ cấp mã cho KOL đã có deal toàn Shop được duyệt. */}
       {isIssueCouponOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl border border-[#EAE4D7] w-full max-w-md p-5 sm:p-6 text-left animate-in zoom-in-95 duration-150">
@@ -644,7 +653,7 @@ export function ShopCreatorIncentivesTab() {
                   <Tag className="w-4 h-4" />
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-[#1A1612] m-0">Cấp mã ưu đãi KOC</h3>
+                  <h3 className="text-base font-bold text-[#1A1612] m-0">Cấp mã độc quyền theo deal KOL</h3>
                 </div>
               </div>
               <button
@@ -657,6 +666,7 @@ export function ShopCreatorIncentivesTab() {
             </div>
 
             <form onSubmit={handleIssueCoupon} className="space-y-4">
+              <p className="text-xs text-[#7D715E]">Chỉ KOL có deal toàn Shop đã duyệt mới được cấp mã; mã cũ của KOL tại Shop sẽ hết hiệu lực.</p>
               <div>
                 <label className="text-xs font-bold text-[#1A1612] block mb-1">
                   Chọn KOC thụ hưởng <span className="text-[#DC2626]">*</span>

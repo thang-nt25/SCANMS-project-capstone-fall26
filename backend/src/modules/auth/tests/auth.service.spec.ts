@@ -26,6 +26,7 @@ describe('AuthService', () => {
   };
 
   const mockPrismaService = {
+    $transaction: jest.fn((callback: (tx: any) => Promise<unknown>) => callback(mockPrismaService)),
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
@@ -194,7 +195,7 @@ describe('AuthService', () => {
     expect(mockJwtService.sign).not.toHaveBeenCalled();
   });
 
-  it('keeps a new Shop applicant as a customer until KYC approval', async () => {
+  it('rejects public shop registration without creating a user or store', async () => {
     Object.assign(authService, {
       otpCache: new Map([
         [
@@ -203,43 +204,29 @@ describe('AuthService', () => {
         ],
       ]),
     });
-    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
-    mockPrismaService.user.create.mockResolvedValueOnce({
-      id: 'new-shop-owner',
-      email: 'new-shop@example.vn',
-      fullName: 'New Shop Owner',
-      role: UserRole.CUSTOMER,
-    });
-    mockPrismaService.store.create.mockResolvedValueOnce({
-      id: 'draft-store',
-      onboardingStatus: 'DRAFT',
-    });
-
-    const result = await authService.register({
+    await expect(authService.register({
       email: 'new-shop@example.vn',
       password: 'Password@123',
       fullName: 'New Shop Owner',
       role: UserRole.SHOP_MANAGER,
-      storeName: 'New Shop',
-      logoUrl: 'https://cdn.scanms.vn/shop-logo.jpg',
       otp: '123456',
-    });
+    })).rejects.toThrow();
+    expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    expect(mockPrismaService.store.create).not.toHaveBeenCalled();
+  });
 
-    expect(result.user.role).toBe(UserRole.CUSTOMER);
-    expect(mockPrismaService.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ role: UserRole.CUSTOMER }),
-      }),
-    );
-    expect(mockPrismaService.store.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          isVerified: false,
-          isActive: false,
-          onboardingStatus: 'DRAFT',
-        }),
-      }),
-    );
+  it('keeps OTP and does not create a KOL account when the required avatar is missing', async () => {
+    const otpCache = new Map([
+      ['new-kol@example.vn', { code: '123456', expiresAt: Date.now() + 60000 }],
+    ]);
+    Object.assign(authService, { otpCache });
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    await expect(authService.register({
+      email: 'new-kol@example.vn', password: 'Password@123',
+      fullName: 'New KOL', role: UserRole.COLLABORATOR, otp: '123456',
+    })).rejects.toThrow();
+    expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    expect(otpCache.has('new-kol@example.vn')).toBe(true);
   });
 
   it('should throw UnauthorizedException for wrong password', async () => {

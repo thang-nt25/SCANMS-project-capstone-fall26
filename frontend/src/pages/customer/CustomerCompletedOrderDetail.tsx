@@ -134,7 +134,7 @@ export function CustomerCompletedOrderDetail({ orderId, refreshVersion = 0, onCh
         {actions.review ? <button type="button" onClick={() => onReview(order)}><Star size={15} /> Đánh giá sản phẩm</button> : savedReviews && <button type="button" onClick={() => onViewReviews(order)}><Star size={15} /> Xem đánh giá</button>}
       </div>
       {actions.requestReturn && <button type="button" className="purchase-return-action" onClick={() => onReturn(order)}>Trả hàng / Hoàn tiền</button>}
-      {order.returnRequest && <Link className="purchase-return-action" to={`/customer/returns/${order.returnRequest.id}`}>Xem yêu cầu đổi trả</Link>}
+      {(order.returnRequests?.length ? order.returnRequests : order.returnRequest ? [order.returnRequest] : []).map((request, index) => <Link key={request.id} className="purchase-return-action" to={`/customer/returns/${request.id}`}>Hồ sơ đổi trả {index + 1}</Link>)}
     </section>
 
     {cancelled && <section className="purchase-cancellation" aria-label="Thông tin hủy đơn">

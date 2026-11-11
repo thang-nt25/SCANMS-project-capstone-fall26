@@ -5,6 +5,7 @@ describe('wallet cooperation visibility', () => {
   it('does not advertise withdrawal eligibility when store pending exceeds global pending', async () => {
     const d = (value: number) => new Prisma.Decimal(value);
     const service = new WalletSummaryService({
+      payoutRequest: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }) },
       wallet: { upsert: jest.fn().mockResolvedValue({
         availableBalance: d(1580000), pendingBalance: d(0), earningsReviewRequired: false,
         storeWallets: [{ storeId: 'sora', availableBalance: d(504000), pendingBalance: d(744000),
@@ -24,6 +25,7 @@ describe('wallet cooperation visibility', () => {
   it('includes zero-income partnerships without changing withdrawable balances or adding store wallets', async () => {
     const decimal = (value: number) => new Prisma.Decimal(value);
     const prisma: any = {
+      payoutRequest: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }) },
       wallet: {
         upsert: jest.fn().mockResolvedValue({
           availableBalance: decimal(133200),

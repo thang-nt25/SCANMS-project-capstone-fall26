@@ -1,15 +1,14 @@
 import { Navigate } from 'react-router-dom';
-import { Link2, Tag, Radio, Store } from 'lucide-react';
-import { SponsoredPlacementsPanel } from '../../components/stores/SponsoredPlacementsPanel';
+import { Link2, Tag, Radio } from 'lucide-react';
 import { HubTabs, type HubTabItem } from '../../components/common/HubTabs';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { authService } from '../../services/auth.service';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import AdminReferralLinksPage from './AdminReferralLinksPage';
-import AdminCouponsPage from './AdminCouponsPage';
+import { KolCouponManagement } from '../../components/coupons/KolCouponManagement';
 import AdminLiveSessionsPage from './AdminLiveSessionsPage';
 
-const ADMIN_OVERSIGHT_TABS = ['sponsorship', 'links', 'coupons', 'live-sessions'] as const;
+const ADMIN_OVERSIGHT_TABS = ['links', 'coupons', 'live-sessions'] as const;
 type AdminOversightTab = (typeof ADMIN_OVERSIGHT_TABS)[number];
 
 export default function AdminOversightHubPage() {
@@ -33,30 +32,27 @@ export default function AdminOversightHubPage() {
   }
 
   const tabs: HubTabItem[] = [
-    { id: 'sponsorship', label: 'Gian hàng tài trợ', icon: Store },
     {
       id: 'links',
-      label: 'Liên kết tiếp thị (Smart Link / QR)',
+      label: 'Liên kết tiếp thị',
       icon: Link2,
     },
     {
       id: 'coupons',
-      label: 'Mã ưu đãi định danh KOC',
+      label: 'Mã ưu đãi KOL',
       icon: Tag,
     },
     {
       id: 'live-sessions',
-      label: 'Phiên trực tiếp bán hàng',
+      label: 'Phiên Live',
       icon: Radio,
     },
   ];
 
   return (
-    <div className="w-full min-w-0 flex flex-col gap-4 text-[#1A1612]" id="admin-oversight-hub">
-      {/* 1. Page Header Chuẩn Hóa */}
+    <div className="w-full min-w-0 flex flex-col gap-3 text-[#1A1612]" id="admin-oversight-hub">
       <PageHeader
-        title="Quản trị Liên kết & Mã Ưu đãi"
-        description="Giám sát mạng lưới liên kết tiếp thị, mã giảm giá định danh và phiên trực tiếp bán hàng toàn hệ thống"
+        title="Giám sát tiếp thị"
         icon={<Link2 className="w-5 h-5 text-[#B88E4F]" />}
       />
 
@@ -67,7 +63,7 @@ export default function AdminOversightHubPage() {
         activeTab={activeTab}
         onChange={(id) => setActiveTab(id as AdminOversightTab)}
         stretchTabs
-        stretchTabColumns={4}
+        stretchTabColumns={3}
         tone="white"
       />
 
@@ -80,19 +76,13 @@ export default function AdminOversightHubPage() {
 
         {visitedTabs['coupons'] && (
           <div className={activeTab === 'coupons' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
-            <AdminCouponsPage />
+            <KolCouponManagement shop={false} />
           </div>
         )}
 
         {visitedTabs['live-sessions'] && (
           <div className={activeTab === 'live-sessions' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
             <AdminLiveSessionsPage />
-          </div>
-        )}
-
-        {visitedTabs['sponsorship'] && (
-          <div className={activeTab === 'sponsorship' ? 'block animate-in fade-in-50 duration-200' : 'hidden'}>
-            <SponsoredPlacementsPanel admin />
           </div>
         )}
       </div>

@@ -45,6 +45,9 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
     storeCollaborator: {
       findUnique: jest.fn(),
     },
+    exclusiveDealProposal: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'approved-deal' }),
+    },
     coupon: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
@@ -151,7 +154,10 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
       expect(mockPrisma.coupon.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            storeId: 'store-uuid-1', fundingSource: CouponFundingSource.SHOP_FUNDED, benefitType: 'GOODS', collaborator: {role:UserRole.COLLABORATOR},
+            storeId: 'store-uuid-1',
+            fundingSource: CouponFundingSource.SHOP_FUNDED,
+            benefitType: 'GOODS',
+            collaborator: { role: UserRole.COLLABORATOR },
             status: CouponStatus.ACTIVE,
             deletedAt: null,
           }),
@@ -227,6 +233,16 @@ describe('CouponsService (FR-12 Unit Tests)', () => {
   describe('Section 5 & 6: proposeCoupon', () => {
     const collaboratorId = 'collab-uuid-1';
     const storeId = 'store-uuid-1';
+
+    it('rejects KOL coupon proposals without an approved store-wide deal', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: collaboratorId, isActive: true, isDeleted: false });
+      mockPrisma.store.findUnique.mockResolvedValue({ id: storeId, isDeleted: false });
+      mockPrisma.storeCollaborator.findUnique.mockResolvedValue({ status: 'APPROVED' });
+      mockPrisma.exclusiveDealProposal.findFirst.mockResolvedValueOnce(null);
+      await expect(service.proposeCoupon(collaboratorId, { storeId, code: 'THANGVIP10' }))
+        .rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.coupon.create).not.toHaveBeenCalled();
+    });
 
     it('should throw ForbiddenException if KOL not approved by Shop', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({

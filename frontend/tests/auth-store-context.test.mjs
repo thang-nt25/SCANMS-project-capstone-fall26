@@ -18,6 +18,7 @@ globalThis.__authStoreApi = {
   get: async () => ({ data: user }),
 };
 const source = readFileSync(new URL('../src/services/auth.service.ts', import.meta.url), 'utf8')
+  .replace("import { clearCheckoutAddressCaches } from '../utils/checkout-address-cache';", "const clearCheckoutAddressCaches = () => {};")
   .replace("import api from './api';", 'const api = globalThis.__authStoreApi;')
   .replace("import { productLoginUrl } from '../utils/login-return';", "const productLoginUrl = () => '/login';");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;

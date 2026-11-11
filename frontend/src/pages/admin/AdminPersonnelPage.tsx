@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import React, { useState, useEffect } from 'react';
 import {
   UserPlus,
@@ -31,7 +32,7 @@ import {
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { toast } from '../../utils/toast';
 
-const LOCKED_CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'Mỹ phẩm & Chăm sóc da chuyên sâu',
   'Thời trang & May mặc thể thao năng động',
   'Dinh dưỡng, Thảo mộc & Sức khỏe thiên nhiên',
@@ -40,6 +41,7 @@ const LOCKED_CATEGORIES = [
 
 let cachedStaffList: InternalStaffMember[] = [];
 let cachedStoresList: AdminStoreOption[] = [];
+registerPrivateCacheReset(() => { cachedStaffList = []; cachedStoresList = []; });
 
 export const AdminPersonnelPage: React.FC = () => {
   const [staffList, setStaffList] = useState<InternalStaffMember[]>(() => cachedStaffList);
@@ -48,6 +50,16 @@ export const AdminPersonnelPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'SHOP_MANAGER' | 'SYSTEM_MANAGER' | 'SYSTEM_ADMIN' | 'STORES'>('ALL');
   const [storeStatusFilter, setStoreStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'>('ALL');
+
+  // 4 Core Locked Categories (Enterprise In-House Governance)
+  const categories = DEFAULT_CATEGORIES;
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('scanms_all_categories');
+      localStorage.removeItem('scanms_custom_categories');
+    } catch {}
+  }, []);
 
   // Shipping addresses (Provinces / Districts / Wards - standard like Customer address)
   const [shippingProvinces, setShippingProvinces] = useState<ShippingProvince[]>([]);
@@ -71,7 +83,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [storeForm, setStoreForm] = useState({
     name: '',
-    categoryName: LOCKED_CATEGORIES[0],
+    categoryName: DEFAULT_CATEGORIES[0],
     description: '',
     logoUrl: '',
     defaultCommissionRate: 10,
@@ -272,7 +284,7 @@ export const AdminPersonnelPage: React.FC = () => {
   const handleOpenCreateStoreModal = () => {
     setStoreForm({
       name: '',
-      categoryName: LOCKED_CATEGORIES[0],
+      categoryName: DEFAULT_CATEGORIES[0],
       description: '',
       logoUrl: '',
       defaultCommissionRate: 10,
@@ -358,7 +370,7 @@ export const AdminPersonnelPage: React.FC = () => {
     const wh = store.returnWarehouse || {};
     setEditStoreForm({
       name: store.name,
-      categoryName: store.categoryName || LOCKED_CATEGORIES[0],
+      categoryName: store.categoryName || DEFAULT_CATEGORIES[0],
       description: store.description || '',
       logoUrl: store.logoUrl || '',
       warehouseName: wh.warehouseName || `Kho Tổng ${store.name}`,
@@ -527,7 +539,7 @@ export const AdminPersonnelPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#EAE4D7]">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#1A1612] m-0">Quản trị Nhân sự & Gian Hàng Trực Thuộc</h1>
+            <h1 className="text-xl font-bold text-[#1A1612] m-0">Quản trị Nhân sự & Cửa Hàng Trực Thuộc</h1>
             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
               {staffList.length} nhân sự • {stores.length} nhãn hàng
             </span>
@@ -540,7 +552,7 @@ export const AdminPersonnelPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] hover:bg-[#F3EFE6] text-xs font-semibold transition cursor-pointer shadow-2xs"
           >
             <Store size={14} className="text-[#C59B58]" />
-            <span>Thêm Gian Hàng</span>
+            <span>Thêm Cửa Hàng</span>
           </button>
           <button
             onClick={() => setIsStaffModalOpen(true)}
@@ -595,7 +607,7 @@ export const AdminPersonnelPage: React.FC = () => {
                 : 'text-[#7D715E] hover:text-[#1A1612]'
             }`}
           >
-            Chuyên viên Sàn ({totalSystemManagers})
+            Chuyên viên Vận hành ({totalSystemManagers})
           </button>
           <button
             onClick={() => setRoleFilter('SYSTEM_ADMIN')}
@@ -616,7 +628,7 @@ export const AdminPersonnelPage: React.FC = () => {
             }`}
           >
             <Store size={12} className={roleFilter === 'STORES' ? 'text-[#C59B58]' : ''} />
-            <span>Gian hàng & Kho GHN</span>
+            <span>Cửa hàng & Kho GHN</span>
           </button>
         </div>
       </div>
@@ -625,7 +637,7 @@ export const AdminPersonnelPage: React.FC = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-[#EAE4D7] text-[#7D715E]">
           <RefreshCw className="w-6 h-6 animate-spin text-[#B88E4F] mb-2" />
-          <p className="text-xs">Đang tải dữ liệu nhân sự & gian hàng...</p>
+          <p className="text-xs">Đang tải dữ liệu nhân sự & cửa hàng...</p>
         </div>
       ) : roleFilter === 'STORES' ? (
         /* ================= TAB GIAN HÀNG & KHO GHN (BRAND GRID) ================= */
@@ -867,7 +879,7 @@ export const AdminPersonnelPage: React.FC = () => {
                             </span>
                           ) : staff.role === 'SYSTEM_MANAGER' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBF5EB] text-[#8F682E] border border-[#EEDFC6]">
-                              Chuyên viên Sàn
+                              Chuyên viên Vận hành
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
@@ -877,7 +889,7 @@ export const AdminPersonnelPage: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Gian hàng phụ trách */}
+                        {/* Cửa hàng phụ trách */}
                         <td className="py-3 px-4">
                           {assignedStore ? (
                             <div className="flex items-center gap-1.5">
@@ -888,7 +900,7 @@ export const AdminPersonnelPage: React.FC = () => {
                             </div>
                           ) : (
                             <span className="text-[11px] text-[#7D715E] italic">
-                              {staff.role === 'SHOP_MANAGER' ? 'Chưa gán shop' : 'Toàn sàn'}
+                              {staff.role === 'SHOP_MANAGER' ? 'Chưa gán shop' : 'Toàn hệ thống'}
                             </span>
                           )}
                         </td>
@@ -986,7 +998,7 @@ export const AdminPersonnelPage: React.FC = () => {
                     }`}
                   >
                     <ShieldCheck size={14} />
-                    <span>Chuyên viên Sàn</span>
+                    <span>Chuyên viên Vận hành</span>
                   </button>
                 </div>
               </div>
@@ -994,7 +1006,7 @@ export const AdminPersonnelPage: React.FC = () => {
               {staffForm.role === 'SHOP_MANAGER' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                    Gian hàng phụ trách <span className="text-[#DC2626]">*</span>
+                    Cửa hàng phụ trách <span className="text-[#DC2626]">*</span>
                   </label>
                   <select
                     value={staffForm.storeId || ''}
@@ -1185,22 +1197,18 @@ export const AdminPersonnelPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Locked Category Selection */}
+                  {/* Category Selection (Locked to 4 In-House Core Categories) */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold text-[#1A1612]">
-                        Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
-                      </label>
-                      <span className="text-[10px] text-[#8F682E] font-medium bg-[#FBF5EB] px-1.5 py-0.5 rounded border border-[#EEDFC6]">
-                        Khóa danh mục
-                      </span>
-                    </div>
+                    <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                      Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                    </label>
+
                     <select
                       value={storeForm.categoryName}
                       onChange={(e) => setStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
                     >
-                      {LOCKED_CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
@@ -1562,6 +1570,25 @@ export const AdminPersonnelPage: React.FC = () => {
                           onChange={(e) => setEditStoreForm((prev) => ({ ...prev, name: e.target.value }))}
                           className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
                         />
+                      </div>
+
+                      {/* Edit Store Category (Locked to 4 In-House Core Categories) */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1A1612] mb-1">
+                          Ngành hàng kinh doanh cố định <span className="text-[#DC2626]">*</span>
+                        </label>
+
+                        <select
+                          value={editStoreForm.categoryName}
+                          onChange={(e) => setEditStoreForm((prev) => ({ ...prev, categoryName: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
+                        >
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div>

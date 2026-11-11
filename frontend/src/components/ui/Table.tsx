@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 
 export const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto rounded-xl border border-slate-200/80 bg-white shadow-xs">
+    <div className="relative w-full min-w-0 overflow-auto rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
       <table ref={ref} className={cn('w-full caption-bottom text-sm text-left', className)} {...props} />
     </div>
   )
@@ -12,14 +12,14 @@ Table.displayName = 'Table';
 
 export const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn('bg-slate-50/80 border-b border-slate-200/80', className)} {...props} />
+    <thead ref={ref} className={cn('border-b border-[#EAE4D7] bg-[#FAF8F5]', className)} {...props} />
   )
 );
 TableHeader.displayName = 'TableHeader';
 
 export const TableBody = forwardRef<HTMLTableSectionElement, HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
-    <tbody ref={ref} className={cn('divide-y divide-slate-100', className)} {...props} />
+    <tbody ref={ref} className={cn('divide-y divide-[#EAE4D7]', className)} {...props} />
   )
 );
 TableBody.displayName = 'TableBody';
@@ -28,7 +28,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, HTMLAttributes<HTMLTable
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
-      className={cn('transition-colors hover:bg-slate-50/60 data-[state=selected]:bg-slate-50', className)}
+      className={cn('transition-colors hover:bg-[#FBF5EB] data-[state=selected]:bg-[#F3EFE6]', className)}
       {...props}
     />
   )
@@ -40,7 +40,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, ThHTMLAttributes<HTMLT
     <th
       ref={ref}
       className={cn(
-        'h-11 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider align-middle [&:has([role=checkbox])]:pr-0',
+        'h-11 px-4 text-xs font-bold text-[#7D715E] uppercase tracking-wider align-middle [&:has([role=checkbox])]:pr-0',
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, TdHTMLAttributes<HTMLT
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
-      className={cn('px-4 py-3.5 align-middle text-sm text-slate-700 [&:has([role=checkbox])]:pr-0', className)}
+      className={cn('px-4 py-3.5 align-middle text-sm text-[#1A1612] [&:has([role=checkbox])]:pr-0', className)}
       {...props}
     />
   )

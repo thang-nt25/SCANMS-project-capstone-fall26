@@ -4,7 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { OrderStatus, ReviewStatus } from '@prisma/client';
+import { OrderStatus, ReturnRequestStatus, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { MailService } from '../auth/mail.service';
 import { AuthService } from '../auth/auth.service';
@@ -26,6 +26,7 @@ import { CustomerOrdersQueryDto } from './dto/customer-orders-query.dto';
 import { notifyCustomerOrderEvent } from '../orders/customer-order-notifications';
 import { syncCustomerGhnSimulations } from '../shipping/sync-customer-ghn-simulation';
 import { CacheService } from '../../core/cache/cache.service';
+import { OrdersService } from '../orders/orders.service';
 
 const RETURN_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -42,6 +43,7 @@ export class CustomerService {
     private readonly authService: AuthService,
     private readonly identities: CustomerIdentityService,
     private readonly cacheService: CacheService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   /**
@@ -65,11 +67,7 @@ export class CustomerService {
     }
 
     // Điều kiện khớp đơn hàng của user
-    const orderFilterOr: any[] = [{ customerId: userId }];
-    if (user.email)
-      orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
-    if (user.phoneNumber)
-      orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
+    const orderFilterOr = [{ customerId: userId }];
 
     const [totalOrders, pendingOrders, completedOrders] = await Promise.all([
       this.prisma.order.count({ where: { OR: orderFilterOr } }),
@@ -294,16 +292,7 @@ export class CustomerService {
    * 4. Lấy danh sách đơn mua của khách hàng (lọc theo trạng thái & tìm kiếm)
    */
   async getOrders(userId: string, query: CustomerOrdersQueryDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, phoneNumber: true },
-    });
-
-    const orderFilterOr: any[] = [{ customerId: userId }];
-    if (user?.email)
-      orderFilterOr.push({ customerEmail: user.email.toLowerCase() });
-    if (user?.phoneNumber)
-      orderFilterOr.push({ customerPhone: user.phoneNumber.trim() });
+    const orderFilterOr = [{ customerId: userId }];
 
     const where: any = {
       OR: orderFilterOr,
@@ -337,7 +326,9 @@ export class CustomerService {
         {
           OR: [
             { externalOrderSn: { contains: q, mode: 'insensitive' } },
-            ...[...phoneTerms].map(phone => ({ customerPhone: { contains: phone } })),
+            ...[...phoneTerms].map((phone) => ({
+              customerPhone: { contains: phone },
+            })),
             { store: { name: { contains: q, mode: 'insensitive' } } },
             {
               orderItems: {
@@ -376,14 +367,23 @@ export class CustomerService {
             discountType: true,
           },
         },
-        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
+        returnRequests: {
+          include: {
+            dispute: { select: { id: true, status: true } },
+            items: true,
+          },
+          orderBy: { submittedAt: 'desc' },
+        },
         productReviews: true,
       },
     });
 
     return {
       total: orders.length,
-      orders,
+      orders: orders.map((order) => ({
+        ...order,
+        returnRequest: order.returnRequests?.[0] ?? null,
+      })),
     };
   }
 
@@ -391,16 +391,10 @@ export class CustomerService {
    * 5. Chi tiết 1 đơn hàng của khách
    */
   async getOrderDetails(userId: string, orderId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, phoneNumber: true },
+    await syncCustomerGhnSimulations(this.prisma, {
+      id: orderId,
+      OR: [{ customerId: userId }],
     });
-
-    await syncCustomerGhnSimulations(this.prisma, { id: orderId, OR: [
-      { customerId: userId },
-      ...(user?.email ? [{ customerEmail: user.email.toLowerCase() }] : []),
-      ...(user?.phoneNumber ? [{ customerPhone: user.phoneNumber.trim() }] : []),
-    ] });
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -414,7 +408,13 @@ export class CustomerService {
         coupon: true,
         paymentTransactions: true,
         productReviews: true,
-        returnRequest: { include: { dispute: { select: { id: true, status: true } } } },
+        returnRequests: {
+          include: {
+            dispute: { select: { id: true, status: true } },
+            items: true,
+          },
+          orderBy: { submittedAt: 'desc' },
+        },
       },
     });
 
@@ -422,60 +422,20 @@ export class CustomerService {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
-    const belongsToUser =
-      order.customerId === userId ||
-      (order.customerEmail &&
-        user?.email &&
-        order.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
-      (order.customerPhone &&
-        user?.phoneNumber &&
-        order.customerPhone.trim() === user.phoneNumber.trim());
+    const belongsToUser = order.customerId === userId;
 
     if (!belongsToUser) {
       throw new ForbiddenException('Bạn không có quyền truy cập đơn hàng này');
     }
 
-    return order;
+    return { ...order, returnRequest: order.returnRequests?.[0] ?? null };
   }
 
   /**
    * 6. Khách hàng tự hủy đơn hàng (khi đơn đang PENDING)
    */
   async cancelOrder(userId: string, orderId: string, reason?: string) {
-    const order = await this.getOrderDetails(userId, orderId);
-
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException(
-        `Không thể hủy đơn hàng ở trạng thái "${order.status}". Chỉ có thể hủy đơn khi đang Chờ xác nhận.`,
-      );
-    }
-
-    const cancelledOrder = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: OrderStatus.CANCELLED,
-        overrideReason: reason || 'Khách hàng yêu cầu hủy đơn trên hệ thống',
-      },
-    });
-
-    try {
-      await this.prisma.notification.create({
-        data: {
-          userId,
-          title: `Đơn hàng #${order.externalOrderSn || order.id.slice(0, 8)} đã hủy thành công`,
-          message: `Bạn đã yêu cầu hủy đơn hàng thành công. Lý do: "${reason || 'Khách hàng yêu cầu hủy'}".`,
-          type: 'ORDER_CANCELLED',
-          data: { orderId: order.id, externalOrderSn: order.externalOrderSn },
-        },
-      });
-    } catch {
-      // ignore notification error
-    }
-
-    return {
-      message: 'Hủy đơn hàng thành công',
-      order: cancelledOrder,
-    };
+    return this.ordersService.cancelCustomerOrder(orderId, userId, reason);
   }
 
   /**
@@ -509,7 +469,14 @@ export class CustomerService {
         'Chỉ có thể xác nhận khi đơn đang ở trạng thái Đã giao',
       );
     }
-    if (order.returnRequest) {
+    if (
+      order.returnRequests.some(
+        (request) =>
+          !['COMPLETED', 'CLOSED', 'EXPIRED', 'REFUNDED'].includes(
+            request.status,
+          ),
+      )
+    ) {
       throw new BadRequestException(
         'Đơn hàng đang có yêu cầu đổi trả nên chưa thể hoàn tất',
       );
@@ -520,7 +487,18 @@ export class CustomerService {
         where: {
           id: orderId,
           status: OrderStatus.DELIVERED,
-          returnRequest: { is: null },
+          returnRequests: {
+            none: {
+              status: {
+                notIn: [
+                  ReturnRequestStatus.COMPLETED,
+                  ReturnRequestStatus.CLOSED,
+                  ReturnRequestStatus.EXPIRED,
+                  ReturnRequestStatus.REFUNDED,
+                ],
+              },
+            },
+          },
         },
         data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
       });
@@ -551,7 +529,10 @@ export class CustomerService {
 
   async getReturnRequest(userId: string, orderId: string) {
     await this.getOrderDetails(userId, orderId);
-    return this.prisma.returnRequest.findUnique({ where: { orderId } });
+    return this.prisma.returnRequest.findFirst({
+      where: { orderId },
+      orderBy: { submittedAt: 'desc' },
+    });
   }
 
   async createReturnRequest(
@@ -562,15 +543,24 @@ export class CustomerService {
     const order = await this.getOrderDetails(userId, orderId);
     if (
       order.status !== OrderStatus.DELIVERED &&
-      order.status !== OrderStatus.COMPLETED
+      order.status !== OrderStatus.COMPLETED &&
+      order.status !== OrderStatus.RETURNED
     ) {
       throw new BadRequestException(
         'Chỉ đơn đã giao mới được yêu cầu đổi trả/hoàn tiền',
       );
     }
-    if (order.returnRequest) {
-      throw new BadRequestException('Đơn hàng này đã có yêu cầu đổi trả');
-    }
+    if (
+      order.returnRequests.some(
+        (request) =>
+          !['COMPLETED', 'CLOSED', 'EXPIRED', 'REFUNDED'].includes(
+            request.status,
+          ),
+      )
+    )
+      throw new BadRequestException(
+        'Đơn đang có hồ sơ đổi trả chưa kết thúc; vui lòng hoàn tất hồ sơ đó trước',
+      );
 
     const deliveredAt = order.deliveredAt || order.completedAt;
     if (!deliveredAt) {
@@ -583,15 +573,44 @@ export class CustomerService {
       throw new BadRequestException('Đơn hàng đã quá thời hạn đổi trả 14 ngày');
     }
 
-    const requestedItems = dto.items ?? order.orderItems.map(item => ({ orderItemId: item.id, quantity: item.quantity }));
-    if (!requestedItems.length || new Set(requestedItems.map(item => item.orderItemId)).size !== requestedItems.length) {
+    const alreadyFulfilled = new Map<string, number>();
+    for (const request of order.returnRequests) {
+      if (!['COMPLETED', 'REFUNDED'].includes(request.status)) continue;
+      for (const item of request.items)
+        alreadyFulfilled.set(
+          item.orderItemId,
+          (alreadyFulfilled.get(item.orderItemId) ?? 0) + item.quantity,
+        );
+    }
+    const requestedItems =
+      dto.items ??
+      order.orderItems
+        .map((item) => ({
+          orderItemId: item.id,
+          quantity: item.quantity - (alreadyFulfilled.get(item.id) ?? 0),
+        }))
+        .filter((item) => item.quantity > 0);
+    if (
+      !requestedItems.length ||
+      new Set(requestedItems.map((item) => item.orderItemId)).size !==
+        requestedItems.length
+    ) {
       throw new BadRequestException('Vui lòng chọn sản phẩm đổi trả hợp lệ');
     }
-    const orderItemMap = new Map(order.orderItems.map(item => [item.id, item]));
+    const orderItemMap = new Map(
+      order.orderItems.map((item) => [item.id, item]),
+    );
     for (const item of requestedItems) {
       const original = orderItemMap.get(item.orderItemId);
-      if (!original || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > original.quantity) {
-        throw new BadRequestException('Sản phẩm hoặc số lượng đổi trả không hợp lệ');
+      if (
+        !original ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > original.quantity
+      ) {
+        throw new BadRequestException(
+          'Sản phẩm hoặc số lượng đổi trả không hợp lệ',
+        );
       }
     }
 
@@ -600,28 +619,64 @@ export class CustomerService {
         where: {
           id: orderId,
           status: order.status,
-          returnRequest: { is: null },
         },
         data: { status: OrderStatus.RETURN_REQUESTED },
       });
       if (changed.count !== 1)
         throw new BadRequestException(
-          'Đơn đã thay đổi trạng thái hoặc đã có yêu cầu đổi trả',
+          'Đơn đã thay đổi trạng thái; vui lòng tải lại',
         );
+      const previous = await tx.returnRequest.findMany({
+        where: { orderId },
+        include: { items: true },
+      });
+      if (
+        previous.some(
+          (request) =>
+            !['COMPLETED', 'CLOSED', 'EXPIRED', 'REFUNDED'].includes(
+              request.status,
+            ),
+        )
+      )
+        throw new BadRequestException(
+          'Đơn đang có hồ sơ đổi trả chưa kết thúc',
+        );
+      const used = new Map<string, number>();
+      for (const request of previous) {
+        if (!['COMPLETED', 'REFUNDED'].includes(request.status)) continue;
+        for (const item of request.items)
+          used.set(
+            item.orderItemId,
+            (used.get(item.orderItemId) ?? 0) + item.quantity,
+          );
+      }
+      for (const item of requestedItems) {
+        const available =
+          orderItemMap.get(item.orderItemId)!.quantity -
+          (used.get(item.orderItemId) ?? 0);
+        if (item.quantity > available)
+          throw new BadRequestException(
+            'Số lượng đổi trả vượt số lượng còn lại của sản phẩm trong đơn',
+          );
+      }
       const request = await tx.returnRequest.create({
         data: {
           orderId,
           customerId: userId,
           reason: dto.reason,
-          preferredResolution: dto.preferredResolution ?? (dto.reason === 'CHANGE_OF_MIND' ? 'REFUND' : 'EXCHANGE'),
+          preferredResolution:
+            dto.preferredResolution ??
+            (dto.reason === 'CHANGE_OF_MIND' ? 'REFUND' : 'EXCHANGE'),
           details: dto.details?.trim() || null,
           imageUrls: dto.imageUrls,
           unboxingVideoUrl: dto.unboxingVideoUrl ?? null,
-          items: { create: requestedItems.map(item => ({
-            orderItemId: item.orderItemId,
-            quantity: item.quantity,
-            unitPrice: orderItemMap.get(item.orderItemId)!.unitPrice,
-          })) },
+          items: {
+            create: requestedItems.map((item) => ({
+              orderItemId: item.orderItemId,
+              quantity: item.quantity,
+              unitPrice: orderItemMap.get(item.orderItemId)!.unitPrice,
+            })),
+          },
           deadlineAt,
           originalOrderStatus: order.status,
         },
@@ -688,7 +743,9 @@ export class CustomerService {
         rejectionReason: null,
       },
     });
-    await this.cacheService.delPrefix(`landing:v2:${dto.productId}:`).catch(() => undefined);
+    await this.cacheService
+      .delPrefix(`landing:v2:${dto.productId}:`)
+      .catch(() => undefined);
     return { message: 'Đánh giá đã được đăng', review };
   }
 

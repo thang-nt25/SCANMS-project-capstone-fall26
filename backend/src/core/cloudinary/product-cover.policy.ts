@@ -18,14 +18,9 @@ export async function validateProductCover(file?: Express.Multer.File) {
       throw new BadRequestException(
         'Ảnh bìa cần là ảnh tĩnh JPG, PNG hoặc WEBP.',
       );
-    if (
-      !metadata.width ||
-      !metadata.height ||
-      metadata.width !== metadata.height ||
-      metadata.width < 800
-    )
+    if (!metadata.width || !metadata.height || metadata.width <= 0 || metadata.height <= 0)
       throw new BadRequestException(
-        'Ảnh bìa phải vuông (1:1) và có kích thước tối thiểu 800 × 800 px.',
+        'Không đọc được kích thước ảnh bìa. Vui lòng chọn lại ảnh hợp lệ.',
       );
   } catch (error) {
     if (error instanceof BadRequestException) throw error;

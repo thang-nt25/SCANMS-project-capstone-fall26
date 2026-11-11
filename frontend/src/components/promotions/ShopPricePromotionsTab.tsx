@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Tag,
@@ -18,6 +19,7 @@ const money = (val: unknown) =>
   val == null ? '0 đ' : `${Number(val).toLocaleString('vi-VN')} đ`;
 
 let lastPricePromotionsSnapshot: { promotions: any[]; catalog: any[] } | null = null;
+registerPrivateCacheReset(() => { lastPricePromotionsSnapshot = null; });
 
 export function ShopPricePromotionsTab() {
   const [promotions, setPromotions] = useState<any[]>(() => lastPricePromotionsSnapshot?.promotions || []);

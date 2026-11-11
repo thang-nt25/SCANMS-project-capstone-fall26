@@ -671,6 +671,7 @@ suite('Flow 5 real PostgreSQL transactions', () => {
       {} as CloudinaryService,
       undefined,
       wallets,
+      undefined,
       rules,
     );
     await returns.inspect(owner.id, UserRole.SHOP_MANAGER, claim.id, {

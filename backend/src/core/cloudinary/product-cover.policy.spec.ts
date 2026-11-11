@@ -11,16 +11,19 @@ async function image(width: number, height: number) {
   return { buffer, mimetype: 'image/png' } as Express.Multer.File;
 }
 describe('Product cover input validation', () => {
-  it('accepts the 800px square boundary and rejects small/rectangular images', async () => {
+  it('accepts images of various dimensions and aspect ratios', async () => {
     await expect(
       validateProductCover(await image(800, 800)),
     ).resolves.toBeUndefined();
-    await expect(validateProductCover(await image(799, 799))).rejects.toThrow(
-      '800',
-    );
-    await expect(validateProductCover(await image(1200, 800))).rejects.toThrow(
-      '1:1',
-    );
+    await expect(
+      validateProductCover(await image(500, 500)),
+    ).resolves.toBeUndefined();
+    await expect(
+      validateProductCover(await image(1200, 800)),
+    ).resolves.toBeUndefined();
+    await expect(
+      validateProductCover(await image(600, 900)),
+    ).resolves.toBeUndefined();
   });
   it('inspects bytes rather than trusting the MIME supplied by the caller', async () => {
     await expect(
@@ -40,10 +43,14 @@ describe('Product cover input validation', () => {
       uploadImage: jest.fn().mockResolvedValue({ secureUrl: '/image.png' }),
     };
     const controller = new UploadController(cloudinary);
-    const small = await image(50, 50);
-    await expect(controller.uploadProductCover(small)).rejects.toThrow('800');
+    const invalid = {
+      buffer: Buffer.from('not a valid image byte array'),
+      mimetype: 'image/png',
+    } as any;
+    await expect(controller.uploadProductCover(invalid)).rejects.toThrow('Không đọc được');
     expect(cloudinary.uploadImage).not.toHaveBeenCalled();
-    await controller.uploadImage(small, 'receipts');
-    expect(cloudinary.uploadImage).toHaveBeenCalledWith(small, 'receipts');
+    const valid = await image(50, 50);
+    await controller.uploadImage(valid, 'receipts');
+    expect(cloudinary.uploadImage).toHaveBeenCalledWith(valid, 'receipts');
   });
 });

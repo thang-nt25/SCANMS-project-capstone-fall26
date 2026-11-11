@@ -895,7 +895,7 @@ export const KolCouponsPage: React.FC = () => {
                   <div className="mt-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                     <span>
-                      Bạn chưa có quan hệ đối tác được phê duyệt với Gian hàng nào để tạo mã giảm giá riêng. Vui lòng liên kết với Gian hàng trước.
+                      Bạn cần có deal toàn Shop đã được duyệt trước khi đề xuất mã độc quyền. Hãy hoàn tất thỏa thuận với Shop trước.
                     </span>
                   </div>
                 )}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -31,6 +32,7 @@ import {
   shipmentSchema,
   simulatePickupSchema,
   shopQueueSchema,
+  returnHistoryQuerySchema,
   shopEscalationSchema,
   ghnClaimActionSchema,
   warehouseSchema,
@@ -44,6 +46,7 @@ import {
   type WarehouseInput,
   type ShopEscalationInput,
   type GhnClaimActionInput,
+  type ReturnHistoryQuery,
 } from './return.schemas';
 
 @ApiTags('Returns')
@@ -247,6 +250,29 @@ export class ReturnGhnWebhookController {
 @Controller('admin/return-disputes')
 export class ReturnDisputeAdminController {
   constructor(private readonly returns: ReturnService) {}
+
+  @Get('queue')
+  listQueue(
+    @CurrentUser('role') role: UserRole,
+    @Query('kind') kind: string,
+    @Query('page') rawPage?: string,
+  ) {
+    const allowed = ['active', 'rejected', 'ghn', 'stalled', 'disputes'] as const;
+    if (!allowed.includes(kind as typeof allowed[number]))
+      throw new BadRequestException('Nhóm hồ sơ không hợp lệ');
+    const page = rawPage === undefined ? 1 : Number(rawPage);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
+      throw new BadRequestException('Trang không hợp lệ');
+    return this.returns.listOversightQueue(role, kind as typeof allowed[number], page);
+  }
+
+  @Get('history')
+  listHistory(
+    @CurrentUser('role') role: UserRole,
+    @Query(new ReturnZodPipe(returnHistoryQuerySchema)) query: ReturnHistoryQuery,
+  ) {
+    return this.returns.listHistory(role, query.page, query.query);
+  }
 
   @Get('active-returns')
   listActive(@CurrentUser('role') role: UserRole) {

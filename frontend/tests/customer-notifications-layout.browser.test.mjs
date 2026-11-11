@@ -20,15 +20,15 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     const errors = [], mutations = [];
     page.on('pageerror', error => errors.push(error.message));
     const notifications = [
-      { id: 'welcome', type: 'WELCOME', title: 'Chào mừng bạn đến với Sàn SCANMS', message: 'Khám phá sản phẩm từ các gian hàng đối tác và theo dõi đơn mua của bạn ngay trên SCANMS.', isRead: false, data: {} },
-      { id: 'promotion', type: 'VOUCHER_RECEIVED', title: 'Bạn nhận được ưu đãi giảm 15% cho đơn mua tiếp theo', message: 'Khám phá kho voucher để xem điều kiện áp dụng và chọn ưu đãi phù hợp trước khi thanh toán.', isRead: false, data: { voucherCode: 'SCANMS15' } },
+      { id: 'welcome', type: 'WELCOME', title: 'Chào mừng bạn đến với Hệ thống SCANMS', message: 'Khám phá sản phẩm từ các nhãn hàng trực thuộc hệ thống và theo dõi đơn mua của bạn ngay trên SCANMS.', isRead: false, data: {} },
+      { id: 'system-update', type: 'SYSTEM', title: 'Hệ thống cập nhật chính sách bảo hành 14 ngày', message: 'Chính sách bảo hành đổi trả 14 ngày cho các đơn hàng đã được cập nhật.', isRead: false, data: {} },
       { id: 'order', type: 'ORDER_SHIPPED', title: 'Đơn mua từ Herbal Spa đang trên đường giao đến bạn', message: 'Kiện hàng đã được bàn giao cho đơn vị vận chuyển. Bạn có thể theo dõi hành trình trong chi tiết đơn mua.', isRead: false, data: { orderSn: 'SCANMS-181026-0001', trackingNumber: 'GHN-TRACKING-123456789012345678901234567890', productImageUrl: '/assets/products/real/chamomile-tea-50g.webp', productTitle: 'Trà hoa cúc' } },
       { id: 'read', type: 'SYSTEM', title: 'Thông tin tài khoản đã được cập nhật', message: 'Bạn có thể kiểm tra thông tin mới nhất trong hồ sơ cá nhân.', isRead: true, data: {} },
     ].map(item => ({ ...item, userId: 'qa-customer', createdAt: '2026-10-18T04:30:00.000Z' }));
-    const categoryOf = type => type.startsWith('ORDER_') ? 'ORDER' : type.startsWith('VOUCHER_') ? 'PROMOTION' : 'SYSTEM';
+    const categoryOf = type => type.startsWith('ORDER_') ? 'ORDER' : 'SYSTEM';
     const unreadDetails = () => ({
       unreadCount: notifications.filter(item => !item.isRead).length,
-      categoryUnreadCounts: Object.fromEntries(['ORDER', 'PROMOTION', 'SYSTEM'].map(category => [category, notifications.filter(item => !item.isRead && categoryOf(item.type) === category).length])),
+      categoryUnreadCounts: Object.fromEntries(['ORDER', 'SYSTEM'].map(category => [category, notifications.filter(item => !item.isRead && categoryOf(item.type) === category).length])),
     });
     await page.evaluateOnNewDocument(() => {
       localStorage.setItem('token', 'qa-notifications');
@@ -98,11 +98,12 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     await page.waitForSelector(`${first}[data-read="true"]`);
     assert.equal(new URL(page.url()).pathname, '/customer/notifications', 'marking as read does not navigate');
     assert.equal(await page.$(`${first} .customer-notification-mark`), null);
-    await page.click('nav[aria-label="Lọc thông báo"] button:nth-child(3)');
+    await page.click('nav[aria-label="Lọc thông báo"] button:nth-child(2)');
     await page.waitForFunction(() => document.querySelectorAll('.customer-notification-card').length === 1);
-    assert.equal(await page.$eval('.customer-notification-card', el => el.dataset.notificationId), 'promotion');
+    assert.equal(await page.$eval('.customer-notification-card', el => el.dataset.notificationId), 'order');
     await page.click('.customer-notification-open');
-    await page.waitForFunction(() => location.pathname === '/customer/vouchers');
+    await page.waitForFunction(() => location.pathname === '/customer/orders');
+    await page.waitForSelector('nav[aria-label="Menu chức năng"] a[href="/customer/notifications"]');
     await page.click('nav[aria-label="Menu chức năng"] a[href="/customer/notifications"]');
     await page.waitForSelector('.customer-notification-card');
     await page.$eval('nav[aria-label="Lọc thông báo"]', nav => nav.parentElement.querySelector(':scope > button').click());
@@ -110,10 +111,8 @@ test('notification cards fit all screens and preserve filtering, read actions, c
     assert.equal(await page.$('nav[aria-label="Lọc thông báo"] + button'), null, 'read-all disappears when unread count reaches zero');
     await page.click('[data-notification-id="welcome"] h3 button');
     assert.equal(new URL(page.url()).pathname, '/customer/notifications');
-    await page.click('[data-notification-id="order"] .customer-notification-open');
-    await page.waitForFunction(() => location.pathname === '/customer/orders');
     assert.ok(mutations.includes('/api/notifications/welcome/read'));
-    assert.ok(mutations.includes('/api/notifications/promotion/read'));
+    assert.ok(mutations.includes('/api/notifications/order/read'));
     assert.ok(mutations.includes('/api/notifications/read-all'));
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

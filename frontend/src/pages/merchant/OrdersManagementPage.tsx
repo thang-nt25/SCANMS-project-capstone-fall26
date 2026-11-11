@@ -1,3 +1,4 @@
+import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { MerchantOrderDetailModal } from '../../components/orders/MerchantOrderDetailModal';
 import { ManualOrderPaymentModal } from '../../components/orders/ManualOrderPaymentModal';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -139,6 +140,7 @@ function ProductThumbnail({
 
 // In-memory orders snapshot to enable Instant SWR rendering (Zero-Flicker Navigation)
 let lastOrdersSnapshot: { orders: StoreOrderRecord[]; total: number; totalPages: number } | null = null;
+registerPrivateCacheReset(() => { lastOrdersSnapshot = null; });
 
 export default function OrdersManagementPage({
   initialAction,

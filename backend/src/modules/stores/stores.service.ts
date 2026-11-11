@@ -60,7 +60,7 @@ export function resolveStoreDescription(store: {
       return desc;
     }
   }
-  return `${store.name} — Thương hiệu chính hãng hợp tác cùng sàn SCANMS, cam kết chất lượng chuẩn xuất xứ và chính sách bảo hành 14 ngày.`;
+  return `${store.name} — Thương hiệu chính hãng trực thuộc hệ thống SCANMS, cam kết chất lượng chuẩn xuất xứ và chính sách bảo hành 14 ngày.`;
 }
 
 @Injectable()

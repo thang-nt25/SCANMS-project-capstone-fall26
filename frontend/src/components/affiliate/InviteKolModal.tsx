@@ -64,13 +64,13 @@ export function InviteKolModal({ onClose, store }: { onClose: () => void; store?
     try {
       const response: any = await api.get('/stores/my-store');
       const store = response?.data || response;
-      if (!store?.slug) throw new Error('Gian hàng chưa có đường dẫn công khai để chia sẻ.');
+      if (!store?.slug) throw new Error('Cửa hàng chưa có đường dẫn công khai để chia sẻ.');
       const link = new URL(`/shop/${encodeURIComponent(store.slug)}`, window.location.origin).href;
       setSharedShopLink(link);
       if (!navigator.clipboard?.writeText) throw new Error('Trình duyệt không hỗ trợ sao chép tự động. Hãy chọn và chép liên kết bên dưới.');
       await navigator.clipboard.writeText(link);
       setCopiedLink(true);
-      toast.success('Đã sao chép trang gian hàng trên SCANMS.');
+      toast.success('Đã sao chép trang cửa hàng trên SCANMS.');
       setTimeout(() => setCopiedLink(false), 2500);
     } catch (error) {
       toast.error(error instanceof DOMException ? 'Trình duyệt chưa cho phép sao chép. Hãy chọn và chép liên kết bên dưới.' : error instanceof Error ? error.message : 'Không sao chép được. Bạn có thể chọn và chép liên kết bên dưới.');
@@ -96,12 +96,12 @@ export function InviteKolModal({ onClose, store }: { onClose: () => void; store?
           <p id="kol-invite-help" className="mt-2 text-xs leading-relaxed text-[#7D715E]">Hợp tác được xác nhận khi KOL chấp nhận lời mời.</p>
           {inviteError && <p role="alert" className="mt-3 text-sm text-[#DC2626]">{inviteError}</p>}
           {inviteSuccess && <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm text-[#1A1612]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><p>{inviteSuccess}</p></div>}
-          <button type="submit" disabled={inviting || !inviteEmail.trim()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C59B58] text-sm font-semibold text-[#231D15] transition hover:bg-[#B88E4F] disabled:cursor-not-allowed disabled:opacity-50"><UserPlus className="h-4 w-4" />{inviting ? 'Đang gửi…' : 'Gửi lời mời hợp tác'}</button>
+          <button type="submit" disabled={inviting || !inviteEmail.trim()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C59B58] text-sm font-bold text-white transition hover:bg-[#B88E4F] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer shadow-xs"><UserPlus className="h-4 w-4" />{inviting ? 'Đang gửi…' : 'Gửi lời mời hợp tác'}</button>
           <details className="group mt-5 border-t border-[#EAE4D7] pt-4">
-            <summary className="flex items-center gap-2 list-none cursor-pointer py-1 text-xs text-[#7D715E] [&::-webkit-details-marker]:hidden hover:text-[#1A1612]"><Share2 className="h-3.5 w-3.5 text-[#B88E4F]" /><span>Chia sẻ gian hàng</span><span className="ml-auto text-sm text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
+            <summary className="flex items-center gap-2 list-none cursor-pointer py-1 text-xs text-[#7D715E] [&::-webkit-details-marker]:hidden hover:text-[#1A1612]"><Share2 className="h-3.5 w-3.5 text-[#B88E4F]" /><span>Chia sẻ cửa hàng</span><span className="ml-auto text-sm text-[#B88E4F] group-open:rotate-45 transition-transform" aria-hidden="true">+</span></summary>
             <p className="mt-2 text-xs leading-relaxed text-[#7D715E]">Gửi trang shop để KOL tìm hiểu. Liên kết này không tạo lời mời hợp tác.</p>
-            <button type="button" disabled={copyingLink} onClick={handleCopyInviteLink} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] transition hover:bg-[#FBF5EB] disabled:opacity-50">{copiedLink ? <Check className="h-4 w-4 text-[#059669]" /> : <Copy className="h-4 w-4 text-[#B88E4F]" />}{copyingLink ? 'Đang lấy liên kết…' : copiedLink ? 'Đã sao chép' : 'Sao chép trang gian hàng'}</button>
-            {sharedShopLink && <input readOnly aria-label="Liên kết trang gian hàng" value={sharedShopLink} onFocus={(event) => event.target.select()} className="mt-2 h-9 w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs text-[#7D715E] outline-none" />}
+            <button type="button" disabled={copyingLink} onClick={handleCopyInviteLink} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-medium text-[#1A1612] transition hover:bg-[#FBF5EB] disabled:opacity-50 cursor-pointer">{copiedLink ? <Check className="h-4 w-4 text-[#059669]" /> : <Copy className="h-4 w-4 text-[#B88E4F]" />}{copyingLink ? 'Đang lấy liên kết…' : copiedLink ? 'Đã sao chép' : 'Sao chép trang cửa hàng'}</button>
+            {sharedShopLink && <input readOnly aria-label="Liên kết trang cửa hàng" value={sharedShopLink} onFocus={(event) => event.target.select()} className="mt-2 h-9 w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-3 text-xs text-[#7D715E] outline-none" />}
           </details>
         </form>
       </section>

@@ -72,4 +72,21 @@ describe('Shop evidence escalation', () => {
       type: 'SHOP_EVIDENCE_SUBMITTED', data: input,
     }) });
   });
+
+  it('lets Shop add another append-only evidence entry while the dispute remains open', async () => {
+    const previous = { id: 'evidence-1', type: 'SHOP_EVIDENCE_SUBMITTED' };
+    const { service, tx } = setup({
+      status: ReturnRequestStatus.DISPUTED,
+      dispute: { id: 'dispute-1', status: 'OPEN' }, events: [previous],
+    });
+    tx.returnRequest.findUnique.mockResolvedValue({
+      ...detail, status: ReturnRequestStatus.DISPUTED,
+      dispute: { id: 'dispute-1', status: 'OPEN' }, events: [previous],
+    });
+    await expect(service.escalateShopRejection('shop-1', UserRole.SHOP_MANAGER, detail.id, input))
+      .resolves.toEqual({ id: detail.id });
+    expect(tx.returnEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      type: 'SHOP_EVIDENCE_SUBMITTED', data: input,
+    }) });
+  });
 });

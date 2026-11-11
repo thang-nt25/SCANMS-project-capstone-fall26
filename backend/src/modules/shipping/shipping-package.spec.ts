@@ -119,4 +119,20 @@ describe('Persisted product package and shipping snapshots', () => {
       height: 5,
     });
   });
+  it('supports variant-level packaging weight overrides when buying multiple units', () => {
+    // 3 units of variant 100ml with custom weight 400g instead of product default 700g
+    const res = buildShippingPackage([
+      {
+        product,
+        variant: { packageWeight: 400 },
+        quantity: 3,
+      },
+    ]);
+    expect(res).toEqual({
+      weight: 1200, // 400g * 3
+      length: 20,
+      width: 15,
+      height: 15, // 5cm * 3
+    });
+  });
 });

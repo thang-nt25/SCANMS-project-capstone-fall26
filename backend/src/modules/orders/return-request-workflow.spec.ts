@@ -17,7 +17,7 @@ describe('Shop return request workflow', () => {
     externalOrderSn: 'S-001',
     status: OrderStatus.RETURN_REQUESTED,
     store: { ownerId: 'owner-1' },
-    returnRequest: request,
+    returnRequests: [request],
   };
 
   function setup(updatedCount = 1) {

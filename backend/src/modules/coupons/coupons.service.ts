@@ -762,8 +762,13 @@ export class CouponsService {
     const stores = storeCollabs
       .map((sc) => sc.store)
       .filter((s): s is NonNullable<typeof s> => Boolean(s));
-
-    return stores;
+    if (!stores.length) return [];
+    const deals = await this.prisma.exclusiveDealProposal.findMany({
+      where: { collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE', storeId: { in: stores.map(store => store.id) } },
+      select: { storeId: true },
+    });
+    const dealStores = new Set(deals.map(deal => deal.storeId));
+    return stores.filter(store => dealStores.has(store.id));
   }
 
   /**
@@ -819,6 +824,14 @@ export class CouponsService {
         'Bạn chưa được Gian hàng phê duyệt hợp tác để tạo mã giảm giá riêng',
       );
     }
+    if (dto.campaignId || (dto.scopeType && dto.scopeType !== 'STORE_WIDE'))
+      throw new ForbiddenException('Mã mới chỉ được cấp theo deal toàn Shop đã duyệt.');
+    const approvedDeal = await this.prisma.exclusiveDealProposal.findFirst({
+      where: { storeId: dto.storeId, collaboratorId, status: 'APPROVED', scopeType: 'STORE_WIDE' },
+      select: { id: true },
+    });
+    if (!approvedDeal)
+      throw new ForbiddenException('Bạn cần có deal toàn Shop được duyệt trước khi đề xuất mã độc quyền.');
 
     // 5.1 Kiểm tra Shop có chính sách hoa hồng đang hiệu lực không
     const hasActiveRules = await this.prisma.commissionRule.findFirst({
@@ -2694,7 +2707,7 @@ export class CouponsService {
     // Cap at eligible subtotal
     calculatedDiscount = Math.min(calculatedDiscount, eligibleSubtotal);
 
-    // C-10: Floor price guard in coupon evaluation
+    // C-10: Floor price advisory tracking (Allows clearance / liquidation below floor price)
     for (const item of storeItems) {
       const prod = dbProductMap.get(item.productId);
       if (!prod) continue;
@@ -2712,11 +2725,10 @@ export class CouponsService {
             : (calculatedDiscount / eligibleSubtotal) * itemUnitPrice;
         const discountedUnitPrice = itemUnitPrice - itemDiscount;
         if (discountedUnitPrice < itemFloorPrice) {
-          await this.recordValidationFailure(rateLimitKey);
-          throw new BadRequestException({
-            errorCode: 'FLOOR_PRICE_VIOLATION',
-            message: `Mã giảm giá làm đơn giá sản phẩm "${prod.title}" giảm xuống ${Math.round(discountedUnitPrice).toLocaleString('vi-VN')} ₫, thấp hơn Giá sàn quy định (${Math.round(itemFloorPrice).toLocaleString('vi-VN')} ₫).`,
-          });
+          // Clearance / liquidation sale allowed without hard blocking checkout
+          this.logger?.warn?.(
+            `[CLEARANCE_DISCOUNT] Sản phẩm "${prod.title}" áp mã giảm xuống ${Math.round(discountedUnitPrice)}đ (dưới giá sàn ${Math.round(itemFloorPrice)}đ)`,
+          );
         }
       }
     }

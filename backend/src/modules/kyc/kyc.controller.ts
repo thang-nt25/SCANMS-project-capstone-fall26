@@ -14,7 +14,6 @@ import { SubmitKycDto } from './dto/submit-kyc.dto';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import {
   ApplyKolUpgradeDto,
-  ApplyShopUpgradeDto,
   ReviewUpgradeApplicationDto,
   ReviewShopApplicationDto,
 } from './dto/apply-upgrade.dto';
@@ -55,15 +54,6 @@ export class KycController {
     @Body() dto: ApplyKolUpgradeDto,
   ) {
     return this.kycService.applyKolUpgrade(userId, dto);
-  }
-
-  @Post('upgrade/shop')
-  @ApiOperation({ summary: 'Khách Hàng nộp đơn đăng ký mở Gian Hàng (Shop)' })
-  async applyShopUpgrade(
-    @CurrentUser('id') userId: string,
-    @Body() dto: ApplyShopUpgradeDto,
-  ) {
-    return this.kycService.applyShopUpgrade(userId, dto);
   }
 
   @Get('upgrade/my-status')

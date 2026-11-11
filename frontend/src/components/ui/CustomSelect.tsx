@@ -75,7 +75,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     : options;
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`} onKeyDownCapture={event => {
+    <div ref={containerRef} className={`relative min-w-0 max-w-full w-full ${className}`} onKeyDownCapture={event => {
       if (isOpen && event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
@@ -100,7 +100,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full h-10 bg-[#FAF8F5] border rounded-xl px-3.5 py-2 text-xs font-semibold text-left flex items-center justify-between gap-2 transition-all duration-200 cursor-pointer shadow-2xs outline-none ${
+        className={`w-full min-h-11 min-w-0 bg-[#FAF8F5] border rounded-xl px-3.5 py-2 text-base sm:text-sm font-semibold text-left flex items-center justify-between gap-2 transition-all duration-200 cursor-pointer shadow-2xs outline-none ${
           disabled
             ? 'opacity-50 cursor-not-allowed border-[#EAE4D7] text-[#7D715E]'
             : isOpen
@@ -110,7 +110,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className={`truncate ${!selectedOption ? 'text-[#7D715E] font-normal' : 'text-[#1A1612]'}`}>
+        <span className={`min-w-0 truncate ${!selectedOption ? 'text-[#7D715E] font-normal' : 'text-[#1A1612]'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
@@ -137,13 +137,14 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Tìm nhanh..."
-                  className="w-full bg-transparent text-[11px] text-[#1A1612] outline-none placeholder-[#7D715E]"
+                  className="min-w-0 w-full bg-transparent text-base sm:text-sm text-[#1A1612] outline-none placeholder-[#7D715E]"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="text-[#7D715E] hover:text-[#1A1612]"
+                    aria-label="Xóa tìm kiếm"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-lg text-[#7D715E] hover:text-[#1A1612]"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -161,7 +162,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 onChange('');
                 setIsOpen(false);
               }}
-              className={`w-full px-3 py-2 rounded-xl text-xs text-left transition flex items-center justify-between cursor-pointer ${
+              className={`w-full min-h-11 px-3 py-2 rounded-xl text-sm text-left transition flex items-center justify-between cursor-pointer ${
                 value === ''
                   ? 'bg-[#FBF5EB] text-[#B88E4F] font-bold border border-[#EEDFC6]'
                   : 'text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
@@ -188,7 +189,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                       onChange(opt.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-xl text-xs text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                    className={`w-full min-h-11 px-3 py-2 rounded-xl text-sm text-left transition flex items-center justify-between gap-2 cursor-pointer ${
                       isSelected
                         ? 'bg-[#FBF5EB] text-[#B88E4F] font-black border border-[#EEDFC6] shadow-2xs'
                         : 'text-[#1A1612] hover:bg-[#FAF8F5] hover:text-[#B88E4F]'

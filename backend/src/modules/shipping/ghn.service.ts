@@ -464,7 +464,7 @@ export class GhnService {
       payment_type_id: 1, // Cước đã tính trong đơn; người gửi thanh toán cho GHN.
       note:
         customOptions?.note ||
-        `Đơn hàng #${order.externalOrderSn} từ sàn SCANMS`,
+        `Đơn hàng #${order.externalOrderSn} từ hệ thống SCANMS`,
       required_note:
         customOptions?.requiredNote || GhnRequiredNote.CHOXEMHANGKHONGTHU,
       from_name: fromName,

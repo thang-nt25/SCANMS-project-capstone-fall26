@@ -104,6 +104,12 @@ export const shopQueueSchema = z
   })
   .strict();
 
+export const returnHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  query: z.string().trim().max(80).default(''),
+}).strict();
+export type ReturnHistoryQuery = z.infer<typeof returnHistoryQuerySchema>;
+
 export type InstructionsInput = z.infer<typeof instructionsSchema>;
 export type ShipmentInput = z.infer<typeof shipmentSchema>;
 export type LiabilityAssessmentInput = z.infer<typeof liabilityAssessmentSchema>;
