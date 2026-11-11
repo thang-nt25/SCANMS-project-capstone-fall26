@@ -18,7 +18,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { CommissionCalculatorService } from './commission-calculator.service';
 import { tierBonusByName } from './commission-policy';
-import { isSelfReferral, requiresReferralReview } from './self-referral';
+import { isSelfReferral, referralRiskSignals, requiresReferralReview } from './self-referral';
 import { managedStoreWhere } from '../../common/store-access';
 import {
   COMMISSION_ELIGIBLE_ORDER_STATUSES,
@@ -634,7 +634,7 @@ export class CommissionsService {
   }
 
   /**
-   * Master Plan 4.3: seven calendar days, with claims/review holding release.
+   * Fourteen calendar days, with claims/review holding release.
    */
   getEscrowPolicyInfo(sampleDate?: string) {
     const targetDate = sampleDate ? new Date(sampleDate) : new Date();
@@ -655,11 +655,45 @@ export class CommissionsService {
       policy: {
         baseHoldDays: COMMISSION_HOLD_DAYS,
         description:
-          'Hoa hồng được bảo chứng 7 ngày lịch kể từ khi giao thành công; không cộng ngày lễ. Đơn có đổi trả, tranh chấp hoặc cần thẩm định tiếp tục được tạm giữ.',
+          `Hoa hồng được bảo chứng ${COMMISSION_HOLD_DAYS} ngày lịch kể từ khi giao thành công; không cộng ngày lễ. Đơn có đổi trả, tranh chấp hoặc cần thẩm định tiếp tục được tạm giữ.`,
         currentStatus:
           'Giải tỏa khi đủ thời gian và không còn điều kiện tạm giữ',
       },
       calculation,
+    };
+  }
+
+  async getReferralReview(orderId: string, viewer: Pick<AuthenticatedUser, 'id' | 'role'>) {
+    if (![UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN].includes(viewer.role as any)) throw new ForbiddenException();
+    const profile = { select: { bankName: true, bankAccountNumber: true, kycStatus: true } } as const;
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true, externalOrderSn: true, customerName: true, shippingAddress: true, createdAt: true, rawPayload: true,
+        customer: { select: { fullName: true, collaboratorProfile: profile } },
+        attributedCollaborator: { select: { fullName: true, collaboratorProfile: profile, customerAddresses: {
+          select: { detailAddress: true, wardName: true, districtName: true, provinceName: true },
+        } } },
+      },
+    });
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    const raw = order.rawPayload as Prisma.JsonObject | null;
+    const creator = order.attributedCollaborator;
+    const verified = (bank: NonNullable<typeof creator>['collaboratorProfile'] | undefined) => bank?.kycStatus === 'VERIFIED' ? bank : null;
+    const creatorBank = verified(creator?.collaboratorProfile);
+    const buyerBank = verified(order.customer?.collaboratorProfile);
+    const matchedAddresses = (creator?.customerAddresses ?? []).filter(address =>
+      referralRiskSignals(order.shippingAddress ?? '', [address]).includes('SHARED_DELIVERY_ADDRESS'));
+    const bank = (value: typeof creatorBank) => value ? { name: value.bankName, account: `••••${value.bankAccountNumber.slice(-4)}` } : null;
+    return {
+      orderId, orderCode: order.externalOrderSn, reviewRequired: requiresReferralReview(order),
+      recordedSignals: Array.isArray(raw?.selfReferralRiskSignals) ? raw.selfReferralRiskSignals.filter(v => typeof v === 'string') : [],
+      currentSignals: referralRiskSignals(order.shippingAddress ?? '', creator?.customerAddresses ?? [], creatorBank, buyerBank),
+      customerName: order.customerName || order.customer?.fullName || null,
+      collaboratorName: creator?.fullName ?? null, shippingAddress: order.shippingAddress,
+      matchedAddresses: matchedAddresses.map(address => [address.detailAddress, address.wardName, address.districtName, address.provinceName].join(', ')),
+      customerBank: bank(buyerBank), collaboratorBank: bank(creatorBank),
+      checkedAt: new Date().toISOString(), evidenceBasis: 'CURRENT_PROFILE',
     };
   }
 

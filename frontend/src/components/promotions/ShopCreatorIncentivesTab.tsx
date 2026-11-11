@@ -1,5 +1,6 @@
 import { registerPrivateCacheReset } from '@/utils/private-cache-session';
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Tag,
   Trophy,
@@ -18,6 +19,7 @@ import api from '../../services/api';
 import { storeService } from '../../services/store.service';
 import { couponService } from '../../services/coupon.service';
 import { toast } from '../../utils/toast';
+import { ShopMonthlyBonusPanel } from './ShopMonthlyBonusPanel';
 
 interface CreatorCoupon {
   id: string;
@@ -42,53 +44,12 @@ interface CreatorCoupon {
   createdAt: string;
 }
 
-interface MonthlyMilestone {
-  id: string;
-  name: string;
-  targetGmv: number;
-  rewardAmount: number;
-  description: string;
-}
-
-const MONTHLY_MILESTONES: MonthlyMilestone[] = [
-  {
-    id: 'M1',
-    name: 'Mốc Doanh Số Tháng 1',
-    targetGmv: 10000000,
-    rewardAmount: 200000,
-    description: 'Thưởng tiền mặt định kỳ khi đạt doanh số sạch từ 10.000.000 ₫ trong tháng.',
-  },
-  {
-    id: 'M2',
-    name: 'Mốc Doanh Số Tháng 2',
-    targetGmv: 25000000,
-    rewardAmount: 600000,
-    description: 'Thưởng tiền mặt định kỳ khi đạt doanh số sạch từ 25.000.000 ₫ trong tháng.',
-  },
-  {
-    id: 'M3',
-    name: 'Mốc Doanh Số Tháng 3',
-    targetGmv: 50000000,
-    rewardAmount: 1500000,
-    description: 'Thưởng tiền mặt định kỳ khi đạt doanh số sạch từ 50.000.000 ₫ trong tháng.',
-  },
-  {
-    id: 'M4',
-    name: 'Mốc Doanh Số Tháng 4',
-    targetGmv: 100000000,
-    rewardAmount: 4000000,
-    description: 'Thưởng tiền mặt định kỳ khi đạt doanh số sạch từ 100.000.000 ₫ trong tháng.',
-  },
-];
-
-const money = (val: unknown) =>
-  val == null ? '0 ₫' : `${Number(val).toLocaleString('vi-VN')} ₫`;
-
 let lastCreatorIncentivesSnapshot: { coupons: CreatorCoupon[]; partnerKols: any[]; currentStoreId: string; } | null = null;
 registerPrivateCacheReset(() => { lastCreatorIncentivesSnapshot = null; });
 
 export function ShopCreatorIncentivesTab() {
-  const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>('coupons');
+  const [searchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState<'coupons' | 'milestones'>(() => searchParams.get('section') === 'milestones' ? 'milestones' : 'coupons');
   const [coupons, setCoupons] = useState<CreatorCoupon[]>(() => lastCreatorIncentivesSnapshot?.coupons || []);
   const [currentStoreId, setCurrentStoreId] = useState<string>(() => lastCreatorIncentivesSnapshot?.currentStoreId || '');
   const [loading, setLoading] = useState<boolean>(() => !lastCreatorIncentivesSnapshot);
@@ -588,60 +549,7 @@ export function ShopCreatorIncentivesTab() {
       )}
 
       {/* SECTION 2: MONTHLY MILESTONE RULES (FR-09) - CHUẨN DOANH SỐ THÁNG */}
-      {activeSection === 'milestones' && (
-        <div className="space-y-4">
-          {/* Header Info */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-2xl bg-white border border-[#EAE4D7] text-xs shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
-                <Trophy className="w-4 h-4" />
-              </span>
-              <div>
-                <span className="font-bold text-[#1A1612] block">
-                  Quy chế Thưởng Mốc Doanh Số Tháng (FR-09 Phụ Trợ)
-                </span>
-                <span className="text-[11px] text-[#7D715E] block mt-0.5">
-                  Quyết toán tự động vào ngày 15 tháng kế tiếp (chờ đủ 14 ngày hết hạn đổi trả của đơn cuối tháng)
-                </span>
-              </div>
-            </div>
-            <span className="text-[11px] text-[#7D715E] shrink-0 font-medium">
-              Chu kỳ: Hàng tháng (Chốt ngày 15 tháng kế tiếp)
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {MONTHLY_MILESTONES.map((rule) => (
-              <div
-                key={rule.id}
-                className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 shadow-2xs space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-sm text-[#1A1612]">{rule.name}</h4>
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] tabular-nums">
-                    +{money(rule.rewardAmount)}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7] text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#7D715E]">Chỉ tiêu doanh số tháng:</span>
-                    <strong className="text-[#1A1612] font-mono text-sm">{money(rule.targetGmv)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#7D715E]">Hình thức chi trả:</span>
-                    <span className="font-semibold text-[#1A1612]">Thưởng tiền mặt vào Ví</span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-[#7D715E] leading-relaxed">
-                  {rule.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {activeSection === 'milestones' && <ShopMonthlyBonusPanel storeId={currentStoreId} />}
 
       {/* Chỉ cấp mã cho KOL đã có deal toàn Shop được duyệt. */}
       {isIssueCouponOpen && (

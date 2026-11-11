@@ -220,38 +220,7 @@ export default function ProductPricingPage({
   return (
     <div className={reviewer ? "space-y-4 text-[#1A1612] pb-6" : "space-y-6 bg-[#FAF8F5] p-4 text-[#1A1612] sm:p-6 min-h-screen"}>
       {/* Header section */}
-      {reviewer ? (
-        <div className="flex items-center justify-between gap-2 pb-1">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowMapInfoModal(true)}
-              title="Xem quy chuẩn kiểm soát giá sàn MAP"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#8C6226] text-xs font-semibold border border-[#EEDFC6] transition cursor-pointer"
-            >
-              <Info className="w-3.5 h-3.5" />
-              <span>Quy chuẩn giá sàn MAP</span>
-            </button>
-            {pendingCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                {pendingCount} chờ duyệt
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] transition cursor-pointer disabled:opacity-50"
-            disabled={loading || busy}
-            onClick={() => void load()}
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 text-[#7D715E] ${loading ? "animate-spin" : ""}`}
-            />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      ) : (
+      {!reviewer && (
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#EAE4D7]">
           <div>
             <div className="flex items-center gap-2">
@@ -314,26 +283,13 @@ export default function ProductPricingPage({
         <>
           {/* Section 1: Promotion requests */}
           <section className="space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-[#1A1612]">
-                  Chiến dịch khuyến mãi ({promotions.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowMapInfoModal(true)}
-                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
-                  title="Quy chuẩn thẩm định"
-                >
-                  <Info className="w-3 h-3" />
-                </button>
-              </div>
-
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Status Tabs */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7] overflow-x-auto">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>button]:flex [&>button]:min-h-11 [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button[aria-pressed=true]]:bg-[#FBF5EB]">
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ALL")}
+                  aria-pressed={promoFilter === 'ALL'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                     promoFilter === "ALL"
                       ? "bg-white text-[#1A1612] shadow-2xs"
@@ -345,6 +301,7 @@ export default function ProductPricingPage({
                 <button
                   type="button"
                   onClick={() => setPromoFilter("PENDING")}
+                  aria-pressed={promoFilter === 'PENDING'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "PENDING"
                       ? "bg-white text-[#92400E] shadow-2xs font-bold"
@@ -357,10 +314,11 @@ export default function ProductPricingPage({
                 <button
                   type="button"
                   onClick={() => setPromoFilter("ACTIVE")}
+                  aria-pressed={promoFilter === 'ACTIVE'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "ACTIVE"
-                      ? "bg-white text-[#065F46] shadow-2xs font-bold"
-                      : "text-[#7D715E] hover:text-[#065F46]"
+                      ? "bg-white text-[#8F682E] shadow-2xs font-bold"
+                      : "text-[#7D715E] hover:text-[#8F682E]"
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3 text-[#059669]" />
@@ -369,6 +327,7 @@ export default function ProductPricingPage({
                 <button
                   type="button"
                   onClick={() => setPromoFilter("HISTORY")}
+                  aria-pressed={promoFilter === 'HISTORY'}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                     promoFilter === "HISTORY"
                       ? "bg-white text-[#7D715E] shadow-2xs font-bold"
@@ -589,37 +548,25 @@ export default function ProductPricingPage({
 
           {/* Section 2: Catalog and MAP configuration */}
           <section className="space-y-3.5 pt-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-[#1A1612]">
-                  Cấu hình giá sàn bảo vệ biên lãi (MAP) ({filteredCatalog.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowMapInfoModal(true)}
-                  className="w-5 h-5 rounded-full bg-[#F3EFE6] hover:bg-[#EEDFC6] text-[#8C6226] inline-flex items-center justify-center border border-[#EAE4D7] transition"
-                  title="Quy chuẩn giá sàn MAP"
-                >
-                  <Info className="w-3 h-3" />
-                </button>
-              </div>
-
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
               {/* Filter by In-house Store and Search */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
                   <input
                     type="text"
                     placeholder="Tìm tên sản phẩm..."
+                    aria-label="Tìm tên sản phẩm"
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
-                    className="w-44 sm:w-52 px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#A79B89] focus:border-[#C59B58] focus:outline-none"
+                    className="h-11 w-full px-3 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] placeholder-[#A79B89] focus:border-[#C59B58] focus:outline-none"
                   />
                 </div>
                 {availableStores.length > 1 && (
                   <select
+                    aria-label="Lọc nhãn hàng"
                     value={storeFilter}
                     onChange={(e) => setStoreFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl border border-[#EAE4D7] bg-white text-xs text-[#1A1612] focus:border-[#C59B58] focus:outline-none"
+                    className="relative flex h-11 w-full items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-8 text-center text-sm font-semibold leading-normal text-[#1A1612] [text-align-last:center] [&::picker-icon]:absolute [&::picker-icon]:right-3 [&::picker-icon]:top-1/2 [&::picker-icon]:-translate-y-1/2 sm:w-64 focus:border-[#C59B58] focus:outline-none"
                   >
                     <option value="ALL">Tất cả nhãn hàng ({catalog.length})</option>
                     {availableStores.map((st) => (
@@ -634,7 +581,7 @@ export default function ProductPricingPage({
 
             <div className="overflow-x-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-2xs">
               <table className="w-full min-w-[700px] text-left text-xs">
-                <thead className="bg-[#F3EFE6] text-[#1A1612] font-semibold">
+                <thead className="border-b border-[#EAE4D7] bg-white text-[#1A1612] font-semibold">
                   <tr>
                     <th className="p-3.5">Sản phẩm / Nhãn hàng</th>
                     <th className="p-3.5 whitespace-nowrap">Giá niêm yết</th>

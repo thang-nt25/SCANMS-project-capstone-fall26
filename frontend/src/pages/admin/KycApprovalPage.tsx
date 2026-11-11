@@ -343,35 +343,6 @@ export default function KycApprovalPage() {
         </div>
       )}
 
-      {/* Header Chuẩn Mực */}
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 sm:px-6 shadow-[0_1px_2px_rgba(35,29,21,0.02)]">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid place-items-center shrink-0 w-10 h-10 border border-[#EEDFC6] rounded-xl bg-[#FBF5EB] text-[#B88E4F]">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <h1 className="m-0 text-base font-bold tracking-tight text-[#1A1612]">Duyệt hồ sơ đối tác</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#7D715E] transition hover:border-[#EEDFC6] hover:bg-[#FBF5EB] hover:text-[#8F682E] cursor-pointer"
-          >
-            <Download className="h-4 w-4 text-[#B88E4F]" />
-            <span>Xuất báo cáo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => loadApplications()}
-            disabled={loading}
-            className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3.5 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      </header>
-
       {/* 4 Thẻ Thống Kê Theo Quy Trình Vận Hành */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -437,7 +408,8 @@ export default function KycApprovalPage() {
       </div>
 
       {/* Bộ Lọc Tìm Kiếm & Trạng Thái */}
-      <Card className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_240px_auto] items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none">
+      <Card className="grid grid-cols-1 items-center gap-3 rounded-2xl border-[#EAE4D7] bg-white p-3.5 shadow-none sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_300px]">
+        <div className="min-w-0 sm:col-span-2 xl:col-span-1">
         <Input
           aria-label="Tìm hồ sơ đối tác"
           placeholder="Tìm theo tên đối tác, email, SĐT, số CCCD hoặc tên kênh..."
@@ -448,6 +420,7 @@ export default function KycApprovalPage() {
           icon={<Search className="h-4 w-4 text-[#7D715E]" />}
           className="border-[#EAE4D7] bg-white focus-within:border-[#C59B58] focus-within:ring-[#C59B58]/15"
         />
+        </div>
 
         <Select
           aria-label="Lọc trạng thái thẩm định"
@@ -462,9 +435,25 @@ export default function KycApprovalPage() {
             { value: 'REJECTED', label: 'Cần bổ sung / Từ chối' },
           ]}
         />
-        <span className="whitespace-nowrap text-xs text-[#7D715E] font-medium" aria-live="polite">
-          Hiển thị <strong className="text-[#1A1612]">{filteredKols.length}</strong> / {displayKols.length} hồ sơ
-        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] cursor-pointer"
+          >
+            <Download className="h-4 w-4 shrink-0" />
+            <span>Xuất báo cáo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => loadApplications()}
+            disabled={loading}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#8F682E] transition hover:bg-[#F3EFE6] disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </Card>
 
       {/* Bảng Danh Sách Hồ Sơ Đối Tác */}
@@ -478,9 +467,6 @@ export default function KycApprovalPage() {
               <h2 className="m-0 text-xs font-bold uppercase tracking-wider text-[#1A1612]">
                 Danh sách hồ sơ đối tác tiếp thị (KOL/KOC)
               </h2>
-              <p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">
-                Thẩm định CCCD 12 số, tài khoản ngân hàng thụ hưởng Napas và cấp Tích Xanh kênh truyền thông
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

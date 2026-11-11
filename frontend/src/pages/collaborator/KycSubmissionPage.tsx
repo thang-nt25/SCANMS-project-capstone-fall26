@@ -313,15 +313,15 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
       )}
       {/* 1. KHỐI TRẠNG THÁI XÁC MINH CỦA HỆ THỐNG */}
-      <div className="kyc-step-header">
-        <div className="kyc-review-inline" role="status">
-          <span className={`kyc-review-badge ${isRejected ? 'kyc-review-badge--rejected' : ''}`}>
+      <div className="kyc-step-header rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:p-5 space-y-4">
+        <div className="kyc-review-inline flex flex-wrap items-center gap-2 text-xs text-[#7D715E]" role="status">
+          <span className={`kyc-review-badge inline-flex items-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-1.5 text-xs font-semibold text-[#795A2D] ${isRejected ? 'kyc-review-badge--rejected' : ''}`}>
             {isVerified ? <Check size={13} /> : isRejected ? <ShieldAlert size={13} /> : <Clock size={13} />}
             {isVerified ? 'Đã xác thực' : isRejected ? 'Cần bổ sung hồ sơ' : isPending ? 'Đang xét duyệt' : 'Chưa nộp hồ sơ'}
           </span>
           <span>{isVerified ? 'Hồ sơ đã được phê duyệt' : isRejected ? (profile?.socialLinksJson?.rejectionReason || 'Vui lòng kiểm tra thông tin và gửi lại.') : isPending ? 'Dự kiến trong 24 giờ làm việc' : 'Hoàn thiện 3 phần bên dưới'}</span>
         </div>
-        <div className="kyc-step-tabs" role="group" aria-label="Các phần hồ sơ KYC">
+        <div className="kyc-step-tabs grid grid-cols-3 gap-2 [&>button]:flex [&>button]:min-h-12 [&>button]:items-center [&>button]:justify-center [&>button]:gap-2 [&>button]:rounded-xl [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button]:px-2 [&>button]:py-2 [&>button]:text-xs [&>button]:font-semibold [&>button]:text-[#7D715E] [&>button]:cursor-pointer [&>button[aria-pressed=true]]:bg-[#FBF5EB] [&>button[aria-pressed=true]]:border-[#C59B58] [&>button[aria-pressed=true]]:text-[#1A1612] [&>button>span]:grid [&>button>span]:size-6 [&>button>span]:place-items-center [&>button>span]:rounded-full [&>button>span]:border [&>button>span]:border-[#EEDFC6] max-sm:[&>button]:flex-col" role="group" aria-label="Các phần hồ sơ KYC">
           {([
             { id: 'channel', label: 'Kênh truyền thông' },
             { id: 'identity', label: 'Định danh CCCD' },
@@ -347,14 +347,14 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
             requestAnimationFrame(() => field.focus());
           }
         }}
-        className="kyc-profile-form"
+        className="kyc-profile-form min-w-0"
       >
-        <div className="kyc-content-card">
+        <div className="kyc-content-card rounded-2xl border border-[#EAE4D7] bg-white overflow-hidden">
         {/* 1. BẰNG CHỨNG SỞ HỮU KÊNH TRUYỀN THÔNG (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="channel" hidden={activeSection !== 'channel'}>
-          <div className="kyc-fixed-section-heading">
+        <section className="kyc-fixed-section [&[hidden]]:hidden" data-profile-section="channel" hidden={activeSection !== 'channel'}>
+          <div className="kyc-fixed-section-heading flex flex-wrap items-center gap-3 border-b border-[#EAE4D7] p-4 sm:px-5">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><LinkIcon size={15} /></span>
-            <div className="kyc-section-copy"><h2>Kênh sáng tạo</h2><p>{channelName || 'Thông tin kênh chính của bạn'}</p></div>
+            <div className="kyc-section-copy min-w-0 flex-1 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:text-[#1A1612] [&>p]:mt-1 [&>p]:text-xs [&>p]:text-[#7D715E]"><h2>Kênh sáng tạo</h2><p>{channelName || 'Thông tin kênh chính của bạn'}</p></div>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={channelComplete}>{channelComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
           </div>
           <div className="kyc-section-body flex flex-col gap-3 p-3 sm:p-4">
@@ -423,10 +423,10 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
             />
           </div>
 
-          <div className="kyc-channel-panels">
-          <section className="kyc-channel-panel" aria-labelledby="kyc-proof-heading">
-            <div className="kyc-channel-panel-heading"><Camera size={15} /><h3 id="kyc-proof-heading">Ảnh quản trị kênh</h3><span>{channelProofUrl ? 'Đã đính kèm' : 'Chưa đính kèm'}</span></div>
-            <div className="kyc-channel-panel-body">
+          <div className="kyc-channel-panels grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+          <section className="kyc-channel-panel min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white" aria-labelledby="kyc-proof-heading">
+            <div className="kyc-channel-panel-heading flex flex-wrap items-center gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-3 text-[#B88E4F] [&>h3]:flex-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:text-[#1A1612] [&>span]:text-[11px] [&>span]:text-[#7D715E]"><Camera size={15} /><h3 id="kyc-proof-heading">Ảnh quản trị kênh</h3><span>{channelProofUrl ? 'Đã đính kèm' : 'Chưa đính kèm'}</span></div>
+            <div className="kyc-channel-panel-body p-3.5">
           <ImageUploadDropzone
             className="kyc-channel-proof"
             variant="document"
@@ -441,8 +441,8 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
 
           {/* DANH SÁCH CÁC KÊNH PHỤ ĐÃ KẾT NỐI (NẾU CÓ) */}
           {socialChannels.length > 0 && (
-            <section className="kyc-channel-panel" aria-labelledby="kyc-connected-heading">
-              <div className="kyc-channel-panel-heading"><LinkIcon size={15} /><h3 id="kyc-connected-heading">Kênh đã kết nối</h3><span>{socialChannels.length} kênh</span>
+            <section className="kyc-channel-panel min-w-0 overflow-hidden rounded-xl border border-[#EAE4D7] bg-white" aria-labelledby="kyc-connected-heading">
+              <div className="kyc-channel-panel-heading flex flex-wrap items-center gap-2 border-b border-[#EAE4D7] bg-[#FAF8F5] px-3.5 py-3 text-[#B88E4F] [&>h3]:flex-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:text-[#1A1612] [&>span]:text-[11px] [&>span]:text-[#7D715E]"><LinkIcon size={15} /><h3 id="kyc-connected-heading">Kênh đã kết nối</h3><span>{socialChannels.length} kênh</span>
               <div className="kyc-connected-toolbar flex items-center justify-end">
                 <button
                   type="button"
@@ -455,7 +455,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
                 </button>
               </div>
               </div>
-            <div className="kyc-channel-panel-body">
+            <div className="kyc-channel-panel-body p-3.5">
 
               {/* Form thêm kênh phụ nhanh */}
               {showAddOtherChannel && (
@@ -509,16 +509,16 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
                 </div>
               )}
 
-              <div className="kyc-connected-list">
+              <div className="kyc-connected-list space-y-2">
                 {socialChannels.map((c) => (
                   <div
                     key={c.id}
-                    className="kyc-connected-channel"
+                    className="kyc-connected-channel flex items-center justify-between gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="kyc-channel-platform-icon"><LinkIcon size={16} /></span>
+                      <span className="kyc-channel-platform-icon grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[#B88E4F]"><LinkIcon size={16} /></span>
                       <div className="min-w-0">
-                        <div className="kyc-connected-name">
+                        <div className="kyc-connected-name flex flex-wrap items-center gap-2">
                       <strong className="text-xs text-[#1A1612]">{c.channelName}</strong>
                           {c.isPrimary && (
                             <span className="text-[9px] font-bold bg-[#EBD08C] text-[#231D15] px-1 py-0.2 rounded shrink-0">
@@ -574,10 +574,10 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
 
         {/* 2. ĐỊNH DANH CÁ NHÂN & KÊ KHAI THUẾ TNCN (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="identity" hidden={activeSection !== 'identity'}>
-          <div className="kyc-fixed-section-heading">
+        <section className="kyc-fixed-section [&[hidden]]:hidden" data-profile-section="identity" hidden={activeSection !== 'identity'}>
+          <div className="kyc-fixed-section-heading flex flex-wrap items-center gap-3 border-b border-[#EAE4D7] p-4 sm:px-5">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><UserCheck size={15} /></span>
-            <div className="kyc-section-copy"><h2>Định danh & mã số thuế</h2></div>
+            <div className="kyc-section-copy min-w-0 flex-1 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:text-[#1A1612] [&>p]:mt-1 [&>p]:text-xs [&>p]:text-[#7D715E]"><h2>Định danh & mã số thuế</h2></div>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={identityComplete}>{identityComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
           </div>
           <div className="kyc-section-body flex flex-col gap-3 p-3 sm:p-4">
@@ -634,10 +634,10 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
 
         {/* 3. TÀI KHOẢN NGÂN HÀNG NHẬN HOA HỒNG ĐỐI SOÁT (CHUẨN IMAGE 2) */}
-        <section className="kyc-fixed-section" data-profile-section="bank" hidden={activeSection !== 'bank'}>
-          <div className="kyc-fixed-section-heading">
+        <section className="kyc-fixed-section [&[hidden]]:hidden" data-profile-section="bank" hidden={activeSection !== 'bank'}>
+          <div className="kyc-fixed-section-heading flex flex-wrap items-center gap-3 border-b border-[#EAE4D7] p-4 sm:px-5">
             <span className="grid place-items-center w-[30px] h-[30px] shrink-0 border border-[#EAE4D7] rounded-lg bg-[#FAF8F5] text-[#B88E4F] group-open:bg-white group-open:border-[#EEDFC6]"><Building size={15} /></span>
-            <div className="kyc-section-copy"><h2>Ngân hàng & hồ sơ giới thiệu</h2><p>{bankName || 'Tài khoản nhận hoa hồng và ngành hàng thế mạnh'}</p></div>
+            <div className="kyc-section-copy min-w-0 flex-1 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:text-[#1A1612] [&>p]:mt-1 [&>p]:text-xs [&>p]:text-[#7D715E]"><h2>Ngân hàng & hồ sơ giới thiệu</h2><p>{bankName || 'Tài khoản nhận hoa hồng và ngành hàng thế mạnh'}</p></div>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 border border-[#EEDFC6] rounded-md bg-[#FBF5EB] text-[#B88E4F] text-[10px] whitespace-nowrap data-[complete=true]:border-[#EAE4D7] data-[complete=true]:bg-white data-[complete=true]:text-[#7D715E]" data-complete={bankComplete}>{bankComplete ? <><Check size={12} /> Đã điền</> : 'Cần bổ sung'}</span>
           </div>
           <div className="kyc-section-body flex flex-col gap-3 p-3 sm:p-4">
@@ -694,7 +694,7 @@ const KycSubmissionPage = forwardRef<{ refresh: () => Promise<void> }, KycSubmis
         </section>
 
         {/* NÚT LƯU & CẬP NHẬT HỒ SƠ KYC */}
-        <div className="kyc-profile-actions">
+        <div className="kyc-profile-actions flex justify-end gap-2 border-t border-[#EAE4D7] p-4 [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:border [&>button]:border-[#EEDFC6] [&>button]:bg-[#FBF5EB] [&>button]:px-5 [&>button]:text-sm [&>button]:font-semibold [&>button]:cursor-pointer [&>button:disabled]:opacity-50 [&>button[hidden]]:hidden">
           {activeSection !== 'bank' && <button type="button" disabled={saving || loading || isRefreshing} onClick={() => setActiveSection(activeSection === 'channel' ? 'identity' : 'bank')}>Tiếp tục</button>}
           <button
             type="submit"

@@ -158,7 +158,11 @@ export interface StoreOrdersResponse {
 
 export const orderService = {
   async confirmOrder(id: string) {
-    return api.post(`/orders/${id}/confirm`);
+    const response = await api.post(`/orders/${id}/confirm`) as unknown as ApiEnvelope<{ success: boolean; shopConfirmedAt: string }>;
+    if (!response.data?.success || !response.data.shopConfirmedAt) {
+      throw new Error('Máy chủ chưa trả về xác nhận đơn hợp lệ. Vui lòng tải lại để kiểm tra.');
+    }
+    return response.data;
   },
   async getMyStoreOrders(params?: {
     customerId?: string;

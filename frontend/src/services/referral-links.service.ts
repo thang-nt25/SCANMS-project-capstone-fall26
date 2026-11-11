@@ -80,6 +80,7 @@ export interface ReferralLinkItem {
 
 export interface CreateReferralLinkPayload {
   productId: string;
+  exclusiveDealId?: string;
   campaignId?: string;
   label?: string;
   channel?: string;

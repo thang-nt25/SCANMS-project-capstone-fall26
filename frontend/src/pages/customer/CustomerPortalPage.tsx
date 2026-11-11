@@ -1257,7 +1257,7 @@ export default function CustomerPortalPage() {
                             {/* Order Items List */}
                             <div className="min-w-0 px-[16px] @max-[499px]:px-[12px] divide-y divide-[#EAE4D7]">
                               {order.orderItems.map((item) => (
-                                <div key={item.id} className="customer-order-item grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-3.5 py-4">
+                                <div key={item.id} className="customer-order-item relative grid grid-cols-[80px_minmax(0,1fr)_auto] @max-[499px]:grid-cols-[64px_minmax(0,1fr)] items-center @max-[499px]:items-start gap-3.5 py-4">
                                   {(completedActions || awaitingPayment) && (
                                     <Link
                                       to={
@@ -1266,7 +1266,7 @@ export default function CustomerPortalPage() {
                                           : `/customer/orders/${encodeURIComponent(order.id)}`
                                       }
                                       data-order-detail-link
-                                      className="customer-order-item-detail-link"
+                                      className="customer-order-item-detail-link absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-[#C59B58]"
                                       aria-label={`Xem ${awaitingPayment ? 'thanh toán' : 'chi tiết'} đơn hàng ${order.externalOrderSn}`}
                                     />
                                   )}
@@ -1378,29 +1378,6 @@ export default function CustomerPortalPage() {
 
                               {/* Action Buttons Row */}
                               <div className="customer-order-actions flex items-center justify-end flex-wrap gap-[7px] ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
-                                {awaitingPayment && <Link to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`} className="customer-order-return-link customer-order-return-review">Thanh toán bằng QR</Link>}
-                                {(isCancelled || completedActions) && <button type="button" onClick={() => handleReorder(order)} className="customer-order-rebuy">Mua lại</button>}
-                                {/* Secondary Button: Xem chi tiết */}
-                                {order.returnRequest ? <>
-                                  {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link key={request.id} to={`/customer/returns/${request.id}`} className="customer-order-return-link">Hồ sơ đổi trả {index + 1}</Link>)}
-                                  <button type="button" onClick={() => handleOpenChat(order)} className="customer-order-contact">Liên hệ Shop</button>
-                                  {mayEscalateReturn && <Link to={`/customer/returns/${order.returnRequest.id}?dispute=1`} className="customer-order-return-link customer-order-return-review">Yêu cầu SCANMS xem xét</Link>}
-                                </> : isCancelled ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết hủy đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết hủy đơn</Link> : isShipping ? <Link
-                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
-                                  className="customer-order-return-link"
-                                  aria-label={`Xem chi tiết vận chuyển đơn ${order.externalOrderSn}`}
-                                >Xem chi tiết</Link> : !completedActions && <button
-                                  type="button"
-                                  onClick={() => awaitingPayment ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`) : isPending || isDelivered ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`) : setSelectedOrderDetails(order)}
-                                  className="inline-flex items-center justify-center gap-[5px] min-h-11 px-[11px] py-[7px] border border-[#EEDFC6] rounded-[8px] bg-[#FBF5EB] hover:border-[#C59B58] text-[#1A1612] text-[12px] font-[550] leading-[1.5] cursor-pointer @max-[499px]:min-w-0 @max-[499px]:whitespace-normal transition-colors"
-                                >
-                                  {isReturned ? 'Xem chi tiết đổi trả' : 'Xem chi tiết'}
-                                </button>}
-
                                 {awaitingPayment && (
                                   <Link
                                     to={`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`}
@@ -1423,12 +1400,13 @@ export default function CustomerPortalPage() {
 
                                 {order.returnRequest ? (
                                   <>
-                                    <Link
-                                      to={`/customer/returns/${order.returnRequest.id}`}
+                                    {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link
+                                      key={request.id}
+                                      to={`/customer/returns/${request.id}`}
                                       className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-medium transition-colors"
                                     >
-                                      Xem yêu cầu đổi trả
-                                    </Link>
+                                      {order.returnRequests && order.returnRequests.length > 1 ? `Hồ sơ đổi trả ${index + 1}` : 'Xem yêu cầu đổi trả'}
+                                    </Link>)}
                                     <button
                                       type="button"
                                       onClick={() => handleOpenChat(order)}
@@ -1469,9 +1447,7 @@ export default function CustomerPortalPage() {
                                       onClick={() =>
                                         awaitingPayment
                                           ? navigate(`/payment/payos-return?order=${encodeURIComponent(order.externalOrderSn)}`)
-                                          : isPending || isDelivered
-                                          ? navigate(`/customer/orders/${encodeURIComponent(order.id)}`)
-                                          : setSelectedOrderDetails(order)
+                                          : navigate(`/customer/orders/${encodeURIComponent(order.id)}`)
                                       }
                                       className="inline-flex items-center justify-center gap-1 min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] hover:border-[#C59B58] text-[#1A1612] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                                     >

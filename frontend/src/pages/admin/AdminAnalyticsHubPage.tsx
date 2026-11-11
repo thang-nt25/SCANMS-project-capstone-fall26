@@ -31,7 +31,7 @@ export default function AdminAnalyticsHubPage() {
   ];
 
   const headerTabs = (
-    <div className="grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 text-sm sm:grid-cols-3">
+    <div className={`grid w-full grid-cols-1 gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 text-sm ${tabs.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
       {tabs.map((tab, index) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;

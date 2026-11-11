@@ -28,6 +28,13 @@ import { UserRole } from '@prisma/client';
 export class CommissionsController {
   constructor(private readonly commissionsService: CommissionsService) {}
 
+  @Get('orders/:orderId/referral-review')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
+  getReferralReview(@Param('orderId', ParseUUIDPipe) orderId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.commissionsService.getReferralReview(orderId, user);
+  }
+
   @Post('orders/:orderId/referral-review')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
@@ -46,9 +53,9 @@ export class CommissionsController {
 
   @Get('escrow-info')
   @ApiOperation({
-    summary: 'Lấy chính sách Escrow 7 ngày lịch',
+    summary: 'Lấy chính sách Escrow 14 ngày lịch',
     description:
-      'Bảo chứng 7 ngày lịch từ lúc giao hàng; không cộng ngày lễ. Khiếu nại hoặc thẩm định tự mua tiếp tục giữ tiền.',
+      'Bảo chứng 14 ngày lịch từ lúc giao hàng; không cộng ngày lễ. Khiếu nại hoặc thẩm định tự mua tiếp tục giữ tiền.',
   })
   getEscrowPolicyInfo(@Query('sampleDate') sampleDate?: string) {
     return this.commissionsService.getEscrowPolicyInfo(sampleDate);

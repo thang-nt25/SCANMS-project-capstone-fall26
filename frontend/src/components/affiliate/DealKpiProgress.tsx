@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, CheckCircle, ChevronDown, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
+import { createPortal } from 'react-dom';
+import { Modal } from '@/components/ui/Modal';
+import { TrendingUp, CheckCircle, ChevronRight, Calendar, Clock, ShieldAlert, Lock } from "lucide-react";
 import {
   referralLinksService,
   type DealKpiProgress as Progress,
@@ -70,8 +72,8 @@ export function DealKpiProgress({ id }: { id: string }) {
     <div className="border border-[#EAE4D7] rounded-xl bg-white overflow-hidden text-xs">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
         className="w-full flex min-h-11 items-center justify-between gap-2 px-3 py-2 hover:bg-[#FAF8F5] transition-colors text-left font-medium text-[#1A1612]"
       >
         <div className="flex items-center gap-2">
@@ -79,15 +81,14 @@ export function DealKpiProgress({ id }: { id: string }) {
           <span>Tiến độ &amp; thời hạn</span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-[#7D715E]">
-          <span>{open ? "Thu gọn" : "Xem tiến độ"}</span>
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-          />
+          <span>Xem chi tiết</span>
+          <ChevronRight className="w-3.5 h-3.5" />
         </div>
       </button>
 
-      {open && (
-        <div className="p-3 border-t border-[#EAE4D7] bg-white space-y-3">
+      {open && createPortal(
+        <Modal isOpen={open} onClose={() => setOpen(false)} title="Tiến độ & thời hạn" maxWidth="lg" stickyHeader>
+        <div className="bg-white space-y-3 text-xs">
           {busy && !progress && (
             <p className="text-[#7D715E] text-[11px]">Đang tải số liệu...</p>
           )}
@@ -121,15 +122,14 @@ export function DealKpiProgress({ id }: { id: string }) {
                 </div>
               </div>
 
-              <details className="group rounded-xl border border-[#EAE4D7] bg-white">
-                <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs font-medium text-[#1A1612] [&::-webkit-details-marker]:hidden">
+              <section className="rounded-xl border border-[#EAE4D7] bg-white" aria-label="Chi tiết thù lao">
+                <div className="flex min-h-10 items-center gap-2 px-3 py-2 text-xs font-medium text-[#1A1612]">
                   <ShieldAlert className="h-4 w-4 shrink-0 text-[#B88E4F]" />
                   Chi tiết thù lao
                   <span className="ml-auto text-[11px] font-normal text-[#7D715E]">
                     {progress.rebateStatus === 'UNLOCKED' ? 'Đã mở khóa' : progress.rebateStatus === 'FORFEITED' ? 'Không đạt KPI' : 'Đang bảo lưu'}
                   </span>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#7D715E] transition-transform group-open:rotate-180" />
-                </summary>
+                </div>
                 <div className="border-t border-[#EAE4D7] p-3">
                   <div className="grid grid-cols-2 divide-x divide-[#EAE4D7]">
                     <div className="min-w-0 pr-3">
@@ -154,7 +154,7 @@ export function DealKpiProgress({ id }: { id: string }) {
                             : 'Chưa có chỉ tiêu mở khóa được ghi nhận.'}</span>
                   </p>
                 </div>
-              </details>
+              </section>
 
               <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-[#7D715E] border-t border-[#EAE4D7]">
                 <div className="flex items-center gap-1">
@@ -196,7 +196,7 @@ export function DealKpiProgress({ id }: { id: string }) {
                     }
                   }}
                   disabled={busy}
-                  className="w-full py-2 px-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                  className="w-full py-2 px-3 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] hover:bg-[#F3EFE6] text-[#1A1612] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>Quyết toán &amp; Mở khóa Quỹ Escrow ({formatVnd(progress.vipRebateEscrow || 0)})</span>
@@ -216,6 +216,7 @@ export function DealKpiProgress({ id }: { id: string }) {
             </div>
           )}
         </div>
+        </Modal>, document.body
       )}
     </div>
   );

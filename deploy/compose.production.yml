@@ -1,0 +1,88 @@
+name: scanms
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in deploy/backend.env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in deploy/backend.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    networks:
+      app:
+        ipv4_address: 172.30.94.2
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: /api
+        VITE_SOCKET_URL: https://${DOMAIN}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks: [app]
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.production
+    restart: unless-stopped
+    env_file: ./backend.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: ${DATABASE_URL:?Set the database connection privately}
+      JWT_SECRET: ${JWT_SECRET:?Set a strong private JWT_SECRET}
+      FRONTEND_URL: https://${DOMAIN}
+      PUBLIC_APP_URL: https://${DOMAIN}
+      PUBLIC_WEB_URL: https://${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN}
+      REDIS_URL: ""
+      REDIS_HOST: 172.30.94.10
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set a private Redis password}
+      REDIS_TLS: "false"
+      TRUST_PROXY: "true"
+      TRUSTED_PROXIES: 172.30.94.0/24
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [app]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set a private Redis password}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis_data:/data
+    networks:
+      app:
+        ipv4_address: 172.30.94.10
+
+networks:
+  app:
+    ipam:
+      config:
+        - subnet: 172.30.94.0/24
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:

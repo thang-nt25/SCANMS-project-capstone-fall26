@@ -248,7 +248,7 @@ export default function AdminFinancePayoutsPage() {
           }`}
         >
           <span className="finance-tab-number">2</span>
-          <span>Bảo chứng Escrow · 7 ngày</span>
+          <span>Bảo chứng Escrow · 14 ngày</span>
         </button>
         <button type="button" aria-pressed={activeTab === 'operations'} onClick={() => setActiveTab('operations')} className="flex items-center gap-2 cursor-pointer">
           <span className="finance-tab-number">3</span><span>Thuế &amp; Đối soát</span>

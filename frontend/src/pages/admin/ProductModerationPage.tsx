@@ -117,26 +117,18 @@ export default function ProductModerationPage() {
 
   return (
     <div id="product-moderation-page" className="w-full min-w-0 text-[#1A1612] pb-6 space-y-3.5">
-      <div className="flex items-center justify-between gap-2 pb-0.5">
-        <span className="text-xs font-semibold text-[#7D715E]">
-          Danh sách sản phẩm nội bộ cần thẩm định
-        </span>
-        <span className="whitespace-nowrap rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-1.5 text-[11px] font-semibold text-[#8C6226]">
-          {loading ? 'Đang tải hồ sơ…' : `${filteredProducts.length} hồ sơ · ${FILTERS.find(item => item.value === filter)?.label}`}
-        </span>
-      </div>
       <div className="space-y-4">
         <section className="moderation-toolbar rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-3.5">
-          <div className="moderation-toolbar-row flex flex-wrap items-center justify-between gap-3.5">
-            <div className="moderation-tabs flex flex-wrap gap-1 rounded-xl border border-[#EAE4D7] bg-[#F3EFE6] p-1 max-sm:w-full" role="group" aria-label="Lọc trạng thái kiểm duyệt">
+          <div className="moderation-toolbar-row grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)]">
+            <div className="moderation-tabs grid grid-cols-4 gap-1 rounded-xl border border-[#EAE4D7] bg-white p-1" role="group" aria-label="Lọc trạng thái kiểm duyệt">
               {FILTERS.map((item) => (
-                <button key={item.value} type="button" aria-pressed={filter === item.value} onClick={() => setFilter(item.value)} className="min-h-9 cursor-pointer whitespace-nowrap rounded-lg border border-transparent px-3 py-2 text-xs font-semibold text-[#7D715E] transition hover:bg-white hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] aria-pressed:border-[#EEDFC6] aria-pressed:bg-white aria-pressed:text-[#8C6226] aria-pressed:shadow-sm max-sm:flex-1 max-sm:px-2 max-sm:text-[11px]">
+                <button key={item.value} type="button" aria-pressed={filter === item.value} onClick={() => setFilter(item.value)} className="min-h-11 w-full cursor-pointer whitespace-nowrap rounded-lg border border-transparent px-2 py-2 text-xs font-semibold text-[#7D715E] transition hover:bg-[#FAF8F5] hover:text-[#1A1612] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C59B58] aria-pressed:border-[#EEDFC6] aria-pressed:bg-[#FBF5EB] aria-pressed:text-[#8C6226] max-sm:text-[11px]">
                   {item.label}
                 </button>
               ))}
             </div>
-            <div className="moderation-filter-controls flex min-w-0 flex-[1_1_330px] items-center justify-end gap-2.5">
-              <label className="moderation-search relative block min-w-0 max-w-[440px] flex-1 max-sm:max-w-none">
+            <div className="moderation-filter-controls flex min-w-0 items-center gap-2.5">
+              <label className="moderation-search relative block min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7D715E]" />
                 <input aria-label="Tìm sản phẩm, SKU hoặc Shop" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm sản phẩm, SKU, Shop…" className="h-11 w-full rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] py-2 pl-9 pr-3 text-xs outline-none focus:border-[#C59B58]" />
               </label>

@@ -663,17 +663,17 @@ export function EscrowFinanceReport() {
       {loading && <p role="status">Đang tải…</p>}
       {data && (
         <>
-          <div className="overflow-x-auto" hidden={!data.items.length}>
-            <table className="w-full table-fixed text-left text-sm [&_td]:align-top [&_th]:whitespace-nowrap">
+          <div className="min-w-0 w-full [overflow-wrap:anywhere]" hidden={!data.items.length}>
+            <table className="block w-full min-w-0! table-fixed text-left text-sm xl:table [&_td]:min-w-0 [&_td]:align-top">
               <colgroup>
                 <col className="w-[17%]" />
-                <col className="w-[31%]" />
-                <col className="w-[11%]" />
-                <col className="w-[13%]" />
-                <col className="w-[19%]" />
-                <col className="w-[9%]" />
+                <col className="w-[27%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[22%]" />
+                <col className="w-[12%]" />
               </colgroup>
-              <thead className="bg-[#F3EFE6]">
+              <thead className="hidden bg-[#FAF8F5] xl:table-header-group">
                 <tr>
                   {[
                     "Đơn hàng",
@@ -689,9 +689,9 @@ export function EscrowFinanceReport() {
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block xl:table-row-group">
                 {data.items.map((item) => (
-                  <tr className="border-b border-[#EAE4D7]" key={item.id}>
+                  <tr key={item.id} className="grid grid-cols-2 border-b border-[#EAE4D7] xl:table-row [&>td]:block xl:[&>td]:table-cell">
                     <td className="p-3">
                       <strong className="block font-semibold leading-6">{item.order.externalOrderSn || item.order.id.slice(0, 8)}</strong>
                       {item.order.testFixture && <small className="text-[#8F682E]">Đơn kiểm thử Escrow</small>}
@@ -704,12 +704,13 @@ export function EscrowFinanceReport() {
                       {line.product.imageUrl && <img src={line.product.imageUrl} alt="" />}
                       <div className="min-w-0"><strong className="block leading-6">{line.product.title}</strong><small>{line.variant?.name || 'Không có biến thể'} · SL: {line.quantity}</small></div>
                     </div>)}<small className="escrow-store-name">{item.order.store.name}</small></td>
-                    <td className="p-3 text-right whitespace-nowrap">{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price leading-6">{money(line.unitPrice)}</div>)}</td>
-                    <td className="p-3 text-right whitespace-nowrap tabular-nums">
+                    <td className="p-3 text-right tabular-nums"><span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Đơn giá</span>{item.order.orderItems?.map((line,index) => <div key={index} className="escrow-unit-price leading-6">{money(line.unitPrice)}</div>)}</td>
+                    <td className="p-3 text-right tabular-nums">
+                      <span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Hoa hồng giữ</span>
                       <strong className="block leading-6">{money(item.commissionAmount)}</strong>
                       {item.order.orderItems?.length === 1 && <small className="block text-[#7D715E]">{Number(item.order.orderItems[0].appliedCommissionRate)}% hoa hồng</small>}
                     </td>
-                    <td className="p-3">
+                    <td className="p-3"><span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Giải tỏa / Ngày giao</span>
                       <strong className="block font-semibold leading-6 tabular-nums" title="Hạn giải tỏa">{timestamp(item.availableAt)}</strong>
                       <span className="mt-1 block text-xs text-[#7D715E]">Giao: {item.order.deliveredAt ? timestamp(item.order.deliveredAt) : 'Chưa có ngày giao'}</span>
                       <small className="mt-2 block font-medium text-[#8F682E]">{(() => {
@@ -724,10 +725,12 @@ export function EscrowFinanceReport() {
                       {(item.order.referralReviewRequired || (item.order.returnRequest && !['CLOSED', 'EXPIRED', 'COMPLETED'].includes(item.order.returnRequest.status))) && <small className="mt-1 block text-[#DC2626]">Tiếp tục giữ khi hồ sơ đổi trả/thẩm định chưa được giải quyết.</small>}
                     </td>
                     <td className="p-3 text-center">
-                      {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : <span className="inline-flex whitespace-nowrap rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-xs text-[#7D715E]">Không đổi trả</span>}
+                      <span className="mb-1 block text-xs text-[#7D715E] xl:hidden">Đổi trả</span>
+                      {item.order.returnRequest ? returnStatusLabel(item.order.returnRequest.status as ReturnStatus) : <span className="inline-flex max-w-full rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] px-2 py-1 text-xs text-[#7D715E]">Không đổi trả</span>}
                       {item.order.referralReviewRequired && <ReferralReview orderId={item.order.id} signals={item.order.referralRiskSignals ?? []} onReviewed={() => setRefresh(value => value + 1)} />}
                     </td>
                   </tr>
+
                 ))}
               </tbody>
             </table>
@@ -782,22 +785,58 @@ export function EscrowFinanceReport() {
 }
 
 function ReferralReview({ orderId, signals, onReviewed }: { orderId: string; signals: string[]; onReviewed: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [evidence, setEvidence] = useState<{
+    orderCode: string; reviewRequired: boolean; customerName: string | null; collaboratorName: string | null;
+    shippingAddress: string | null; matchedAddresses: string[]; currentSignals: string[]; recordedSignals: string[];
+    customerBank: { name: string; account: string } | null; collaboratorBank: { name: string; account: string } | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [reload, setReload] = useState(0);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setLoading(true); setError(''); setEvidence(null);
+    api.get(`/commissions/orders/${orderId}/referral-review`, { headers: { 'x-skip-cache': 'true' } })
+      .then(response => { if (active) setEvidence(unwrap<NonNullable<typeof evidence>>(response)); })
+      .catch(() => { if (active) setError('Không tải được dữ liệu đối chiếu. Vui lòng thử lại.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [open, orderId, reload]);
   const submit = async (outcome: string) => {
     setBusy(true); setError("");
-    try { await api.post(`/commissions/orders/${orderId}/referral-review`, { outcome, reason }); onReviewed(); }
+    try { await api.post(`/commissions/orders/${orderId}/referral-review`, { outcome, reason }); setOpen(false); setReason(''); onReviewed(); }
     catch { setError("Không thể lưu kết luận thẩm định. Vui lòng tải lại và kiểm tra."); }
     finally { setBusy(false); }
   };
-  return <div className="mt-3 min-w-60 space-y-2">
-    <p className="font-semibold text-[#8F682E]">Tạm giữ để thẩm định tự mua</p>
-    <p>{signals.map(signal => signal === "SHARED_DELIVERY_ADDRESS" ? "Trùng địa chỉ nhận hàng" : signal === "SHARED_VERIFIED_BANK_ACCOUNT" ? "Trùng tài khoản ngân hàng đã xác minh" : "Cần đối soát").join("; ")}</p>
-    <textarea aria-label="Lý do kết luận thẩm định tự mua" className="w-full rounded-lg border border-[#EAE4D7] p-2" value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} placeholder="Ghi căn cứ đối soát (ít nhất 10 ký tự)" disabled={busy} />
-    <div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy || reason.trim().length < 10} onClick={() => submit("CLEARED")}>Xác nhận hợp lệ</button><button type="button" className={button} disabled={busy || reason.trim().length < 10} onClick={() => submit("SELF_REFERRAL")}>Xác nhận tự mua</button></div>
-    {error && <p role="alert" className="text-[#DC2626]">{error}</p>}
-  </div>;
+  const label = (signal: string) => signal === 'SHARED_DELIVERY_ADDRESS' ? 'Trùng địa chỉ nhận hàng' : signal === 'SHARED_VERIFIED_BANK_ACCOUNT' ? 'Trùng tài khoản ngân hàng đã xác minh' : 'Cần đối soát';
+  return <>
+    <button type="button" onClick={() => setOpen(true)} className="mt-2 inline-flex max-w-full items-center justify-center gap-1 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-2 text-xs font-semibold text-[#8F682E]" title={signals.map(label).join('; ')}>Cần kiểm tra ›</button>
+    <Modal isOpen={open} onClose={() => { if (!busy) setOpen(false); }} title="Đối chiếu đơn tiếp thị" subtitle={evidence?.orderCode} maxWidth="lg">
+      <div className="space-y-4 text-left text-sm">
+        {loading && <p role="status" className="text-[#7D715E]">Đang tải dữ liệu đối chiếu…</p>}
+        {error && <div role="alert" className="text-[#DC2626]">{error}{!evidence && <button type="button" onClick={() => setReload(value => value + 1)} className={`${button} ml-2`}>Thử lại</button>}</div>}
+        {evidence && <>
+          <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3"><strong>{(evidence.recordedSignals.length ? evidence.recordedSignals : signals).map(label).join(' · ')}</strong><p className="mt-1 text-xs text-[#7D715E]">Dấu hiệu cần kiểm tra, chưa phải kết luận tự mua.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <section className="min-w-0 rounded-xl border border-[#EAE4D7] p-4"><h3 className="mb-2 font-semibold">Người nhận đơn hàng</h3><p>{evidence.customerName || 'Chưa có tên'}</p><p className="mt-2 text-xs leading-relaxed text-[#7D715E]">{evidence.shippingAddress || 'Chưa có địa chỉ'}</p></section>
+            <section className="min-w-0 rounded-xl border border-[#EAE4D7] p-4"><h3 className="mb-2 font-semibold">Hồ sơ KOL hiện tại</h3><p>{evidence.collaboratorName || 'Chưa có thông tin'}</p>{evidence.matchedAddresses.length ? evidence.matchedAddresses.map(address => <p key={address} className="mt-2 text-xs leading-relaxed text-[#7D715E]">{address}</p>) : <p className="mt-2 text-xs text-[#7D715E]">Không có địa chỉ khớp trong hồ sơ hiện tại.</p>}</section>
+          </div>
+          {evidence.recordedSignals.includes('SHARED_VERIFIED_BANK_ACCOUNT') && <section className="rounded-xl border border-[#EAE4D7] p-4"><h3 className="mb-2 font-semibold">Ngân hàng đã xác minh</h3><p>Người mua: {evidence.customerBank ? `${evidence.customerBank.name} · ${evidence.customerBank.account}` : 'Chưa có dữ liệu'}</p><p className="mt-1">KOL: {evidence.collaboratorBank ? `${evidence.collaboratorBank.name} · ${evidence.collaboratorBank.account}` : 'Chưa có dữ liệu'}</p></section>}
+          <p className="text-xs leading-relaxed text-[#7D715E]">Đối chiếu bằng hồ sơ hiện tại, không phải bản chụp tại lúc đặt hàng. {evidence.currentSignals.length ? 'Hiện vẫn có dấu hiệu trùng.' : 'Hiện không còn dữ liệu trùng; cần xác minh thêm trước khi kết luận.'}</p>
+          {evidence.reviewRequired ? <>
+            <label className="block font-semibold" htmlFor={`review-reason-${orderId}`}>Căn cứ kết luận</label>
+            <textarea id={`review-reason-${orderId}`} aria-label="Lý do kết luận thẩm định tự mua" className="min-h-24 w-full resize-y rounded-xl border border-[#EAE4D7] bg-white p-3 text-sm outline-none focus:border-[#C59B58]" value={reason} onChange={event => setReason(event.target.value)} minLength={10} maxLength={1000} placeholder="Ghi thông tin đã xác minh (ít nhất 10 ký tự)" disabled={busy} />
+            <p className="text-xs leading-relaxed text-[#7D715E]">Hợp lệ: tiếp tục theo điều kiện Escrow 14 ngày. Tự mua: thu hồi hoa hồng tạm giữ của đơn.</p>
+            <div className="grid grid-cols-2 gap-2"><button type="button" className={`${button} bg-[#FBF5EB] font-semibold`} disabled={busy || reason.trim().length < 10} onClick={() => submit('CLEARED')}>Xác nhận hợp lệ</button><button type="button" className={`${button} bg-white font-semibold`} disabled={busy || reason.trim().length < 10} onClick={() => submit('SELF_REFERRAL')}>Xác nhận tự mua</button></div>
+          </> : <p role="status" className="text-[#7D715E]">Đơn không còn chờ thẩm định. Đóng để xem danh sách mới.</p>}
+        </>}
+      </div>
+    </Modal>
+  </>;
 }
 
 interface Statement {
@@ -809,7 +848,7 @@ interface Statement {
   bankRefCode: string | null;
   processedAt: string | null;
 }
-export function PartnerTaxStatements() {
+export function PartnerTaxStatements({ payoutId, taxAmount = '0', sandbox = false }: { payoutId?: string; taxAmount?: string; sandbox?: boolean } = {}) {
   const [items, setItems] = useState<Statement[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -835,6 +874,7 @@ export function PartnerTaxStatements() {
     }
   }
   useEffect(() => {
+    if (payoutId) return;
     let active = true;
     api
       .get("/wallets/tax-invoices")
@@ -850,7 +890,7 @@ export function PartnerTaxStatements() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [payoutId]);
   async function printReceipt(id: string) {
     const popup = window.open("", "_blank", "width=850,height=700");
     if (!popup) {
@@ -920,6 +960,15 @@ export function PartnerTaxStatements() {
       setError("Không tải được chi tiết bảng kê.");
     }
   }
+  if (payoutId) return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs font-semibold text-[#795A2D] hover:border-[#C59B58] cursor-pointer" onClick={() => void printReceipt(payoutId)}>Bảng kê / PDF</button>
+        {!sandbox && Number(taxAmount) > 0 && <button type="button" className={button} onClick={() => void downloadCertificate(payoutId)}>Chứng từ thuế</button>}
+      </div>
+      {error && <p role="alert" className="max-w-64 whitespace-normal text-xs text-[#DC2626]">{error}</p>}
+    </div>
+  );
   return (
     <section className={panel} aria-busy={loading}>
       <h2 className="font-semibold">Bảng kê chi trả và thuế khấu trừ</h2>

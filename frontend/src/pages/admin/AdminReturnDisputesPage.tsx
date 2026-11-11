@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Scale, Search, X } from 'lucide-react';
+import { Scale, Search, X } from 'lucide-react';
 import { returnService, type ReturnDetail, type ReturnDisputeRecord } from '../../services/return.service';
 import { ReturnTimeline } from '../../components/returns/ReturnTimeline';
 import { toast } from '../../utils/toast';
@@ -122,19 +122,9 @@ export default function AdminReturnDisputesPage() {
 
   return <div className="w-full min-w-0 space-y-4 pb-6 text-[#1A1612]">
     <div className="w-full min-w-0 space-y-4">
-      <div className="flex items-center justify-between gap-3 pb-0.5">
-        <span className="text-xs font-semibold text-[#7D715E]">Hồ sơ khiếu nại đổi trả và bồi hoàn GHN</span>
-        <button type="button" onClick={() => { void disputes.refetch(); void stalled.refetch(); void activeReturns.refetch(); void ghnClaims.refetch(); void rejectedReturns.refetch(); void history.refetch(); }}
-          disabled={disputes.isFetching || stalled.isFetching}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#1A1612] hover:bg-[#FBF5EB] disabled:opacity-50 cursor-pointer">
-          <RefreshCw className="h-3.5 w-3.5 text-[#B88E4F]" /> Làm mới
-        </button>
-      </div>
-
       <section className="rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5" aria-label="Tìm hồ sơ đổi trả">
-        <label htmlFor="return-case-search" className="text-sm font-bold">Tìm nhanh hồ sơ Flow 4</label>
-        <p className="mt-1 text-xs text-[#7D715E]">Tìm trong các hàng đợi đã tải theo mã đơn, khách, gian hàng hoặc vận đơn GHN.</p>
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] px-3 focus-within:border-[#B88E4F]">
+        <label htmlFor="return-case-search" className="sr-only">Tìm hồ sơ đổi trả</label>
+        <div className="flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-white px-3 focus-within:border-[#B88E4F]">
           <Search className="h-4 w-4 shrink-0 text-[#B88E4F]" />
           <input id="return-case-search" value={caseSearch} onChange={(event) => setCaseSearch(event.target.value)}
             placeholder="Mã đơn, khách, shop, vận đơn…" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none" />
@@ -245,10 +235,7 @@ export default function AdminReturnDisputesPage() {
         <QueuePager page={queuePages.stalled} total={stalled.data?.total} onPage={(page) => setQueuePage('stalled', page)} />
       </section>
 
-      <div id="open-disputes" className="scroll-mt-6">
-        <h2 className="text-lg font-bold">Hồ sơ cần phân xử</h2>
-        <p className="mt-1 text-sm text-[#7D715E]">Chọn một hồ sơ để xem bằng chứng và lưu quyết định.</p>
-      </div>
+      <div id="open-disputes" className="scroll-mt-6" />
       {disputes.isLoading && <p role="status">Đang tải khiếu nại…</p>}
       {disputes.error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-[#DC2626]">
         Không thể tải khiếu nại. Vui lòng thử lại.

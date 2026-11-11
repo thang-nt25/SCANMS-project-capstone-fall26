@@ -176,7 +176,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       )}
 
-      <section className="social-overview" aria-label="Tổng quan kênh mạng xã hội">
+      <section className="social-overview grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 [&>div]:rounded-2xl [&>div]:border [&>div]:border-[#EAE4D7] [&>div]:bg-white" aria-label="Tổng quan kênh mạng xã hội">
         <div className="flex items-center gap-3 p-3.5 sm:p-4 min-w-0">
           <span className="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-lg bg-[#FBF5EB] text-[#B88E4F]"><Share2 size={17} /></span>
           <div className="min-w-0">
@@ -203,8 +203,8 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       </section>
 
-      <div className="social-navigation-card">
-      <div className="social-toolbar">
+      <div className="social-navigation-card rounded-2xl border border-[#EAE4D7] bg-white p-3.5 space-y-3">
+      <div className="social-toolbar grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="relative min-w-0">
           <Search className="w-4 h-4 text-[#7D715E] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -232,7 +232,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
         </div>
       </div>
 
-      <div className="social-platform-tabs" role="group" aria-label="Lọc kênh theo nền tảng" style={{ gridTemplateColumns: `repeat(${new Set(channels.map(channel => channel.platformName)).size + 1}, minmax(140px, 1fr))` }}>
+      <div className="social-platform-tabs grid gap-2 overflow-x-auto pb-1 [&>button]:inline-flex [&>button]:min-h-11 [&>button]:items-center [&>button]:justify-center [&>button]:gap-2 [&>button]:rounded-xl [&>button]:border [&>button]:border-[#EAE4D7] [&>button]:bg-white [&>button]:px-3 [&>button]:text-xs [&>button]:font-semibold [&>button]:text-[#7D715E] [&>button]:cursor-pointer [&>button[aria-pressed=true]]:border-[#C59B58] [&>button[aria-pressed=true]]:bg-[#FBF5EB] [&>button[aria-pressed=true]]:text-[#1A1612] [&>button>span]:grid [&>button>span]:size-6 [&>button>span]:place-items-center [&>button>span]:rounded-full [&>button>span]:border [&>button>span]:border-[#EEDFC6] [&_small]:rounded-full [&_small]:bg-[#FAF8F5] [&_small]:px-2" role="group" aria-label="Lọc kênh theo nền tảng" style={{ gridTemplateColumns: `repeat(${new Set(channels.map(channel => channel.platformName)).size + 1}, minmax(140px, 1fr))` }}>
         {['ALL', ...new Set(channels.map(channel => channel.platformName))].map((platform, index) => (
           <button key={platform} type="button" aria-pressed={filterPlatform === platform} onClick={() => setFilterPlatform(platform)}>
             <span aria-hidden="true">{index + 1}</span>
@@ -243,8 +243,8 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
       </div>
       </div>
 
-      <section className="social-channel-list" aria-label="Danh sách kênh mạng xã hội">
-        <div className="social-list-heading">
+      <section className="social-channel-list rounded-2xl border border-[#EAE4D7] bg-white overflow-hidden" aria-label="Danh sách kênh mạng xã hội">
+        <div className="social-list-heading border-b border-[#EAE4D7] px-4 py-3.5 [&>h2]:flex [&>h2]:items-center [&>h2]:gap-2 [&>h2]:text-sm [&>h2]:font-semibold [&_span]:rounded-full [&_span]:bg-[#FBF5EB] [&_span]:px-2 [&_span]:py-0.5 [&_span]:text-xs [&_span]:text-[#8D6936]">
           <h2>Kênh đã liên kết <span>{filtered.length}</span></h2>
         </div>
         {!loading && filtered.length === 0 ? (
@@ -262,7 +262,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
             </Button>
           </div>
         ) : filtered.map((c, idx) => (
-          <article key={c.id || idx} className="social-channel-row">
+          <article key={c.id || idx} className="social-channel-row grid grid-cols-1 items-center gap-4 border-b border-[#EAE4D7] p-4 last:border-b-0 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(110px,.7fr)_minmax(110px,.7fr)_auto]">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="grid place-items-center w-[34px] h-[34px] shrink-0 rounded-lg border border-[#EAE4D7] bg-[#FAF8F5] text-[#B88E4F]"><Video size={17} /></span>
               <div className="min-w-0 flex-1">
@@ -290,7 +290,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 <strong className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#059669] text-[10px] font-medium whitespace-nowrap"><CheckCircle2 size={12} /> Đã xác minh</strong>
               ) : <strong className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 border border-[#EAE4D7] rounded-md bg-[#FAF8F5] text-[#7D715E] text-[10px] font-medium whitespace-nowrap">Tự khai báo</strong>}
             </div>
-            <div className="social-channel-actions">
+            <div className="social-channel-actions flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" icon={<Link2 size={13} className="text-[#B88E4F]" />} onClick={() => onCreateLink ? onCreateLink() : navigate('/collaborator/marketing?tab=links&action=create')} className="h-8 text-[11px]">Tạo link</Button>
               <a href={c.channelUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 h-8 px-2.5 border border-[#EAE4D7] rounded-lg bg-white text-[#1A1612] text-[11px] font-medium hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition-colors"><span>Xem kênh</span><ExternalLink size={13} className="text-[#B88E4F]" /></a>
               {c.id && (
@@ -304,9 +304,9 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
       </section>
 
       {showModal && (
-        <div className="social-modal-backdrop fixed inset-0 z-50">
-          <div className="social-add-dialog" role="dialog" aria-modal="true" aria-labelledby="add-social-channel-title">
-            <div className="social-dialog-heading">
+        <div className="social-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#231D15]/40 p-3 backdrop-blur-sm">
+          <div className="social-add-dialog w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl border border-[#EAE4D7] bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-social-channel-title">
+            <div className="social-dialog-heading flex items-center gap-3 border-b border-[#EAE4D7] p-4">
               <span className="grid place-items-center w-[38px] h-[38px] shrink-0 rounded-xl bg-[#FBF5EB] text-[#B88E4F]" aria-hidden="true"><Share2 size={19} /></span>
               <div className="flex-1 min-w-0">
                 <h3 id="add-social-channel-title" className="text-base sm:text-lg font-semibold text-[#1A1612] tracking-tight">Thêm kênh mạng xã hội</h3>
@@ -322,7 +322,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
               </button>
             </div>
 
-            <form onSubmit={handleAdd} className="social-add-form">
+            <form onSubmit={handleAdd} className="social-add-form space-y-4 p-4 sm:p-5">
               <div>
                 <label htmlFor="add-social-platform" className="text-xs font-medium text-[#7D715E] mb-1.5 block">
                   Nền tảng
@@ -388,7 +388,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 />
               </div>
 
-              <label className="social-primary-option">
+              <label className="social-primary-option flex items-center gap-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 text-[#B88E4F]">
                 <input
                   type="checkbox"
                   checked={isPrimary}
@@ -401,7 +401,7 @@ const SocialChannelsPage = forwardRef<{ refresh: () => Promise<void> }, SocialCh
                 <Star size={15} aria-hidden="true" />
               </label>
 
-              <div className="social-dialog-actions">
+              <div className="social-dialog-actions grid grid-cols-2 gap-3 border-t border-[#EAE4D7] pt-4">
                 <Button
                   type="button"
                   variant="outline"

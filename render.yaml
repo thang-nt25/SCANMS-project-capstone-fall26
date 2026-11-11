@@ -1,0 +1,74 @@
+# Demo deployment. Enter secrets in Render, never in this file.
+# Scheduled financial jobs stay paused until the hosted environment is verified.
+services:
+  - type: web
+    name: scanms-api
+    runtime: node
+    region: singapore
+    plan: free
+    branch: tuan
+    rootDir: backend
+    autoDeployTrigger: off
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /api/health
+    domains:
+      - api.scanms.io.vn
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://scanms.io.vn
+      - key: PUBLIC_APP_URL
+        value: https://scanms.io.vn
+      - key: PUBLIC_WEB_URL
+        value: https://scanms.io.vn
+      - key: CORS_ORIGINS
+        value: https://scanms.io.vn
+      - key: DB_POOL_MAX
+        value: "3"
+      - key: DISABLE_SCHEDULED_JOBS
+        value: "true"
+      - key: SEMANTIC_MODEL_CACHE_DIR
+        value: /tmp/scanms-semantic-models
+      - key: SEMANTIC_ALLOW_DOWNLOAD
+        value: "true"
+
+  - type: web
+    name: scanms-web
+    runtime: static
+    branch: tuan
+    rootDir: frontend
+    autoDeployTrigger: off
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: dist
+    domains:
+      - scanms.io.vn
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        value: https://api.scanms.io.vn/api
+      - key: VITE_SOCKET_URL
+        value: https://api.scanms.io.vn
+    routes:
+      - type: redirect
+        source: /r/*
+        destination: https://api.scanms.io.vn/r/:splat
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin-allow-popups

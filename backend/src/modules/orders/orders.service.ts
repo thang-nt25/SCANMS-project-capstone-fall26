@@ -4735,7 +4735,7 @@ export class OrdersService {
    * Cập nhật trạng thái giao hàng & mã vận đơn bưu cục của Shop
    */
   async confirmOrder(orderId: string, userId: string, userRole: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const confirmation = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId}::uuid FOR UPDATE`;
       const order = await tx.order.findUnique({
         where: { id: orderId },
@@ -4787,6 +4787,14 @@ export class OrdersService {
       });
       return { success: true, shopConfirmedAt };
     });
+    // Clear list snapshots only after the transaction has committed, including
+    // idempotent confirmations, so the next read exposes the shipping action.
+    try {
+      await this.cacheService?.delPrefix('orders:store:');
+    } catch {
+      this.logger.warn('Đã xác nhận đơn; cache danh sách sẽ cập nhật khi hết hạn.');
+    }
+    return confirmation;
   }
 
   async updateOrderFulfillment(

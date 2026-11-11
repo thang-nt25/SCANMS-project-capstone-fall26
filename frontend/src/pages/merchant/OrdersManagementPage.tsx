@@ -264,6 +264,12 @@ export default function OrdersManagementPage({
       return;
     }
     const results = await Promise.allSettled(pendingOrders.map((order) => orderService.confirmOrder(order.id)));
+    const confirmations = new Map(results.flatMap((result, index) => result.status === 'fulfilled'
+      ? [[pendingOrders[index].id, result.value.shopConfirmedAt] as const] : []));
+    setOrders(current => current.map(order => confirmations.has(order.id)
+      ? { ...order, shopConfirmedAt: confirmations.get(order.id)! } : order));
+    setSelectedOrderDetails(current => current && confirmations.has(current.id)
+      ? { ...current, shopConfirmedAt: confirmations.get(current.id)! } : current);
     const confirmed = results.filter((result) => result.status === 'fulfilled').length;
     if (confirmed) toast.success(`Đã xác nhận ${confirmed} đơn. Hãy tạo vận đơn cho từng đơn sau khi chuẩn bị hàng.`);
     if (confirmed < results.length) toast.error(`${results.length - confirmed} đơn không thể xác nhận. Vui lòng kiểm tra lại.`);
@@ -1243,15 +1249,7 @@ export default function OrdersManagementPage({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setOrdersRefreshCount((c) => c + 1)}
-                title="Tải lại danh sách"
-                className="h-9 px-3 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#FBF5EB] hover:border-[#B88E4F] text-[#7D715E] hover:text-[#B88E4F] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 text-xs font-semibold"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${(ordersLoading || isBackgroundRefreshing) ? "animate-spin text-[#B88E4F]" : ""}`} />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
+
             </div>
           </div>
 
@@ -1543,11 +1541,16 @@ export default function OrdersManagementPage({
                                   onClick={async () => {
                                     setOrdersLoading(true);
                                     try {
-                                      await orderService.confirmOrder(order.id);
+                                      const confirmation = await orderService.confirmOrder(order.id);
+                                      if (!confirmation?.success || !confirmation.shopConfirmedAt) {
+                                        throw new Error('Máy chủ chưa trả về thời điểm xác nhận đơn. Vui lòng tải lại để kiểm tra.');
+                                      }
+                                      setOrders(current => current.map(item => item.id === order.id ? { ...item, shopConfirmedAt: confirmation.shopConfirmedAt } : item));
+                                      setSelectedOrderDetails(current => current?.id === order.id ? { ...current, shopConfirmedAt: confirmation.shopConfirmedAt } : current);
                                       toast.success('Đã xác nhận đơn. Có thể chuẩn bị hàng và tạo vận đơn.');
                                       setOrdersRefreshCount((c) => c + 1);
                                     } catch (error: any) {
-                                      toast.error(error.response?.data?.message || 'Không thể xác nhận đơn');
+                                      toast.error(error.response?.data?.message || error.message || 'Không thể xác nhận đơn');
                                     } finally { setOrdersLoading(false); }
                                   }}
                                   className="px-2.5 py-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] text-[#8A642C] text-[11px] font-bold cursor-pointer disabled:opacity-50">

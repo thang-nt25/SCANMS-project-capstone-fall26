@@ -217,6 +217,7 @@ function AppRoutes() {
               <Route path="merchant/return-requests" element={<ShopReturnsQueuePage />} />
 
               {/* Merchant Backward Compatibility Redirects */}
+              <Route path="merchant/commissions" element={<Navigate to="/merchant/promotions?tab=creator-incentives&section=milestones" replace />} />
               <Route path="merchant/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="stores/:storeId/commission-rules" element={<Navigate to="/merchant/promotions?tab=creator-incentives" replace />} />
               <Route path="merchant/referral-links" element={<Navigate to="/merchant/kol-hub?tab=performance" replace />} />

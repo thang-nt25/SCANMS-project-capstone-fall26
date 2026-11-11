@@ -728,10 +728,10 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
 
 
       {/* SECTION TÀI KHOẢN NHẬN TIỀN & YÊU CẦU RÚT TIỀN (SCANMS CREATOR COMPACT STYLE) */}
-      <section hidden={walletPanel !== 'withdraw'} className="wallet-detail-panel wallet-payout-stack grid! grid-cols-[minmax(260px,_.7fr)_minmax(0,_1.3fr)]! items-stretch! gap-[16px]! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ">
+      <section hidden={walletPanel !== 'withdraw'} className="wallet-detail-panel wallet-payout-stack w-full min-w-0 grid! grid-cols-[minmax(280px,_.85fr)_minmax(0,_1.35fr)]! items-stretch! gap-[16px]! [&[hidden]]:hidden! [@media(max-width:1023px)]:grid-cols-[minmax(0,1fr)]! ">
 
         {/* Cột 1: Quản lý tài khoản ngân hàng thụ hưởng (VietQR) */}
-        <div className={cn("wallet-bank-row", embedded && "wallet-bank-row [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_>_div]:grid! [&_>_div]:grid-cols-[minmax(0,1fr)]! [&_>_div]:gap-[14px]! [&_>_div_>_div:first-child]:flex-row! [&_>_div_>_div:first-child]:items-center! [&_>_div_>_div:first-child]:justify-between! [&_>_div_>_div:first-child]:gap-[8px]! [&_>_div_>_div:first-child]:[border-top:0]! [&_>_div_>_div:first-child]:[border-right:0]! [&_>_div_>_div:first-child]:[border-left:0]! [&_>_div_>_div:first-child]:[border-bottom:1px_solid_#eae4d7]! [&_>_div_>_div:first-child]:p-[0_0_12px]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! [@media(max-width:639px)]:p-[14px]! ")}>
+        <div className={cn("wallet-bank-row min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 flex flex-col [&>div]:grid [&>div]:min-w-0 [&>div]:gap-4 [&>div]:flex-1 [&>div]:content-start", embedded && "wallet-bank-row [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_>_div]:grid! [&_>_div]:grid-cols-[minmax(0,1fr)]! [&_>_div]:gap-[14px]! [&_>_div_>_div:first-child]:flex-row! [&_>_div_>_div:first-child]:items-center! [&_>_div_>_div:first-child]:justify-between! [&_>_div_>_div:first-child]:gap-[8px]! [&_>_div_>_div:first-child]:[border-top:0]! [&_>_div_>_div:first-child]:[border-right:0]! [&_>_div_>_div:first-child]:[border-left:0]! [&_>_div_>_div:first-child]:[border-bottom:1px_solid_#eae4d7]! [&_>_div_>_div:first-child]:p-[0_0_12px]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! [@media(max-width:639px)]:p-[14px]! ")}>
           <div>
             {/* Header: Tiêu đề + Badge bảo mật */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
@@ -751,7 +751,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
 
             {/* Khi ĐÃ có tài khoản ngân hàng */}
             {wallet?.bankAccount && !showAddBankForm && (
-              <div className={cn("wallet-bank-summary", embedded && "wallet-bank-summary grid! grid-cols-[minmax(0,1fr)]! items-center! gap-[5px_18px]! [&_>_div:first-child]:col-[1]! ")}>
+              <div className={cn("wallet-bank-summary min-w-0 space-y-3", embedded && "wallet-bank-summary grid! grid-cols-[minmax(0,1fr)]! items-center! gap-[5px_18px]! [&_>_div:first-child]:col-[1]! ")}>
                 {(() => {
                   const bankMatch = findBankByQuery(wallet.bankAccount.bankName);
                   return (
@@ -792,7 +792,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                       </div>
 
                       {/* Phân cách & Nút Thao tác */}
-                      <p className={cn("wallet-bank-caption", embedded && "wallet-bank-caption col-[1]! m-[0]! pl-[52px]! text-[length:11px]! text-[#7d715e]! leading-[17px]! [@media(max-width:639px)]:pl-[0]! ")}>Nhận tiền sau khi yêu cầu rút được xử lý.</p>
+                      <p className={cn("wallet-bank-caption m-0 text-xs leading-5 text-[#7D715E]", embedded && "wallet-bank-caption col-[1]! m-[0]! pl-[52px]! text-[length:11px]! text-[#7d715e]! leading-[17px]! [@media(max-width:639px)]:pl-[0]! ")}>Nhận tiền sau khi yêu cầu rút được xử lý.</p>
                       <section className="wallet-bank-manage" aria-label="Quản lý tài khoản">
                         <div className="wallet-bank-management-heading">
                           <h3>Quản lý tài khoản</h3>
@@ -972,9 +972,9 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
         <form
           aria-label="Yêu cầu rút tiền"
           onSubmit={(event) => void handleWithdrawal(event)}
-          className={cn("kol-wallet-transfer wallet-withdraw-row", embedded && "kol-wallet-transfer wallet-withdraw-row rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! flex! flex-col! gap-[12px]! min-w-0! [@media(max-width:639px)]:p-[14px]! ")}
+          className={cn("kol-wallet-transfer wallet-withdraw-row min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-4 sm:p-5 flex flex-col gap-4", embedded && "kol-wallet-transfer wallet-withdraw-row rounded-xl border border-[#EAE4D7] bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between [border:1px_solid_#eae4d7]! rounded-[16px]! bg-[#fff]! p-[16px_18px]! [box-shadow:0_2px_5px_#231d1504]! [&_h2]:text-[length:14px]! [&_h2]:font-[650]! flex! flex-col! gap-[12px]! min-w-0! [@media(max-width:639px)]:p-[14px]! ")}
         >
-          <div className={cn("wallet-withdraw-fields", embedded && "wallet-withdraw-fields min-w-0! [&_>_div:first-child]:pb-[12px]! [&_>_div:first-child]:[border-bottom:0]! ")}>
+          <div className={cn("wallet-withdraw-fields min-w-0 space-y-4", embedded && "wallet-withdraw-fields min-w-0! [&_>_div:first-child]:pb-[12px]! [&_>_div:first-child]:[border-bottom:0]! ")}>
             {/* Header: Tiêu đề + Giới hạn rút tối thiểu */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#EAE4D7]">
               <div className="flex items-center gap-2">
@@ -991,19 +991,19 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
             </div>
 
 
-            <div className="wallet-withdraw-inputs grid! grid-cols-[1fr_1fr]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:639px)]:grid-cols-[1fr]! [@media(max-width:639px)]:gap-[12px]! ">
+            <div className="wallet-withdraw-inputs grid! grid-cols-[minmax(0,1fr)_minmax(0,1fr)]! gap-[16px]! [&_label]:normal-case! [&_label]:tracking-[0]! [&_label]:font-[500]! [&_label]:text-[length:11px]! [@media(max-width:767px)]:grid-cols-[minmax(0,1fr)]! [@media(max-width:639px)]:gap-[12px]! ">
             {/* Nguồn tiền chi trả */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex min-h-6 flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-2">
                 <label className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider">
                   Nguồn tiền chi trả
                 </label>
-                <span className="text-[11px] font-semibold text-[#059669] flex items-center gap-1">
+                <span className="text-[11px] font-medium text-[#7D715E] flex items-center gap-1 [&>svg]:text-[#B88E4F]">
                   <CheckCircle2 className="w-3 h-3" />
                   <span>Hệ thống SCANMS chi trả</span>
                 </span>
               </div>
-              <div className="w-full h-10 px-3.5 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex items-center justify-between text-xs sm:text-sm select-none">
+              <div className="w-full min-h-12 px-3.5 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm select-none">
                 <span className="text-[#7D715E] font-medium">Toàn bộ ví khả dụng:</span>
                 <span className="font-bold text-[#1A1612] font-mono text-sm tabular-nums">
                   {wallet ? formatMoney(wallet.availableBalance) : '0 ₫'}
@@ -1013,7 +1013,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
 
             {/* Số tiền rút + Nút rút toàn bộ */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex min-h-6 flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-2">
                 <label
                   htmlFor="withdrawal-amount"
                   className="text-[11px] font-bold text-[#7D715E] uppercase tracking-wider"
@@ -1044,7 +1044,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                   required
                   maxLength={16}
                   disabled={submitting || loading}
-                  className="w-full h-10 px-3.5 pr-14 bg-white rounded-xl border border-[#EAE4D7] font-mono text-sm font-bold text-[#1A1612] placeholder:text-[#A89E90] placeholder:font-normal outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition disabled:bg-[#FAF8F5]"
+                  className="w-full h-12 px-3.5 pr-14 bg-white rounded-xl border border-[#EAE4D7] tabular-nums text-sm font-semibold text-[#1A1612] placeholder:text-[#A89E90] placeholder:font-normal outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition disabled:bg-[#FAF8F5]"
                 />
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-[#7D715E] pointer-events-none select-none">
                   VNĐ
@@ -1101,7 +1101,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           </div>
 
           {/* Nút gửi yêu cầu & Chú thích */}
-          <div className={cn("wallet-withdraw-actions", embedded && "wallet-withdraw-actions pt-[0]! w-full! [&_>_button]:h-[42px]! [&_>_button]:[border:1px_solid_#c59b58]! [&_>_button]:bg-[#c59b58]! [&_>_button]:text-[#1a1612]! [&_>_button]:text-[length:12px]! [&_>_button]:font-[600]! [&_>_button:not(:disabled):hover]:bg-[#b88e4f]! [&_>_button:disabled]:bg-[#f3efe6]! [&_>_button:disabled]:border-[#eae4d7]! [&_>_button:disabled]:text-[#7d715e]! [&_>_button:disabled]:opacity-[.7]! [&_>_div]:[border:0]! [&_>_div]:p-[0]! [&_>_div]:bg-[transparent]! [&_>_div]:text-[length:10px]! [&_>_div]:leading-[16px]! ")}>
+          <div className={cn("wallet-withdraw-actions mt-auto pt-1", embedded && "wallet-withdraw-actions pt-[0]! w-full! [&_>_button]:h-[42px]! [&_>_button]:[border:1px_solid_#c59b58]! [&_>_button]:bg-[#c59b58]! [&_>_button]:text-[#1a1612]! [&_>_button]:text-[length:12px]! [&_>_button]:font-[600]! [&_>_button:not(:disabled):hover]:bg-[#b88e4f]! [&_>_button:disabled]:bg-[#f3efe6]! [&_>_button:disabled]:border-[#eae4d7]! [&_>_button:disabled]:text-[#7d715e]! [&_>_button:disabled]:opacity-[.7]! [&_>_div]:[border:0]! [&_>_div]:p-[0]! [&_>_div]:bg-[transparent]! [&_>_div]:text-[length:10px]! [&_>_div]:leading-[16px]! ")}>
             <button
               type="submit"
               disabled={submitting || loading || !isWithdrawEligible}
@@ -1171,15 +1171,16 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
 
           {/* Bảng 5 biến động gần nhất */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-[10.5px] font-bold uppercase tracking-wider text-[#7D715E]">
+            <table className="w-full min-w-[1080px] table-fixed text-left text-sm border-collapse">
+              <colgroup><col className="w-[12%]" /><col className="w-[25%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[23%]" /><col className="w-[16%]" /></colgroup>
+              <thead className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-xs font-semibold uppercase tracking-wide text-[#7D715E]">
                 <tr>
-                  <th className="px-3.5 py-2 whitespace-nowrap">Thời gian</th>
-                  <th className="px-3.5 py-2 whitespace-nowrap">Nghiệp vụ thù lao</th>
-                  <th className="px-3.5 py-2 whitespace-nowrap">Ngăn ví</th>
-                  <th className="px-3.5 py-2 text-right whitespace-nowrap">Biến động</th>
-                  <th className="px-3.5 py-2 whitespace-nowrap">Dòng tiền</th>
-                  <th className="px-3.5 py-2 whitespace-nowrap">Nguồn / Tham chiếu</th>
+                  <th className="px-4 py-3.5 align-middle whitespace-nowrap">Thời gian</th>
+                  <th className="px-4 py-3.5 align-middle whitespace-nowrap">Nghiệp vụ thù lao</th>
+                  <th className="px-4 py-3.5 align-middle whitespace-nowrap">Ngăn ví</th>
+                  <th className="px-4 py-3.5 align-middle text-right whitespace-nowrap">Biến động</th>
+                  <th className="px-4 py-3.5 align-middle whitespace-nowrap">Dòng tiền</th>
+                  <th className="px-4 py-3.5 align-middle whitespace-nowrap">Nguồn / Tham chiếu</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAE4D7]">
@@ -1191,53 +1192,53 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     const isNegative = amt < 0;
                     return (
                       <tr key={entry.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                        <td className="px-3.5 py-2 whitespace-nowrap font-mono text-[11px] text-[#7D715E]">
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap font-mono text-xs text-[#7D715E]">
                           {entryDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}{" "}
                           {entryDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                         </td>
-                        <td className="px-3.5 py-2 whitespace-nowrap">
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                           {entry.transactionType === "COMMISSION_PENDING" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
-                              <Clock3 className="w-2.5 h-2.5 text-[#B88E4F]" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6]">
+                              <Clock3 className="w-3.5 h-3.5 text-[#B88E4F]" />
                               Ghi nhận thù lao chờ 14 ngày
                             </span>
                           )}
                           {entry.transactionType === "COMMISSION_APPROVED" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
-                              <CheckCircle2 className="w-2.5 h-2.5 text-[#059669]" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
                               Mở khóa khả dụng sau 14 ngày
                             </span>
                           )}
                           {entry.transactionType === "PAYOUT_WITHDRAW" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
-                              <ArrowUpRight className="w-2.5 h-2.5 text-[#B88E4F]" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
+                              <ArrowUpRight className="w-3.5 h-3.5 text-[#B88E4F]" />
                               Yêu cầu rút tiền
                             </span>
                           )}
                           {entry.transactionType === "REVERSAL" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                              <AlertCircle className="w-2.5 h-2.5 text-[#DC2626]" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                              <AlertCircle className="w-3.5 h-3.5 text-[#DC2626]" />
                               Thu hồi Clawback hoàn trả
                             </span>
                           )}
                           {!["COMMISSION_PENDING", "COMMISSION_APPROVED", "PAYOUT_WITHDRAW", "REVERSAL"].includes(entry.transactionType) && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
                               {TRANSACTION_LABELS[entry.transactionType] || entry.transactionType}
                             </span>
                           )}
                         </td>
-                        <td className="px-3.5 py-2 whitespace-nowrap text-[11px]">
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap text-xs">
                           {entry.balanceBucket === "PENDING" ? (
-                            <span className="px-2 py-0.5 rounded bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] font-medium text-[10.5px]">
+                            <span className="inline-flex min-h-7 items-center px-2.5 py-1 rounded-lg bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7] font-medium text-xs">
                               Ví Chờ 14d
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] font-semibold text-[10.5px]">
+                            <span className="inline-flex min-h-7 items-center px-2.5 py-1 rounded-lg bg-[#FBF5EB] text-[#8C6226] border border-[#EEDFC6] font-semibold text-xs">
                               Ví Khả Dụng
                             </span>
                           )}
                         </td>
-                        <td className="px-3.5 py-2 text-right whitespace-nowrap font-mono text-xs font-bold tabular-nums">
+                        <td className="px-4 py-3.5 align-middle text-right whitespace-nowrap font-mono text-xs font-bold tabular-nums">
                           <span className={cn(
                             isPositive && "text-[#059669]",
                             isNegative && "text-[#DC2626]",
@@ -1246,12 +1247,12 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                             {isPositive ? "+" : ""}{formatMoney(entry.amount)}
                           </span>
                         </td>
-                        <td className="px-3.5 py-2 whitespace-nowrap font-mono text-[10.5px] text-[#7D715E] tabular-nums">
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap font-mono text-xs text-[#7D715E] tabular-nums">
                           <span>{formatMoney(entry.balanceBefore)}</span>
                           <span className="mx-1 text-[#B88E4F]">→</span>
                           <strong className="text-[#1A1612] font-bold">{formatMoney(entry.balanceAfter)}</strong>
                         </td>
-                        <td className="px-3.5 py-2 whitespace-nowrap text-[10.5px] text-[#7D715E]">
+                        <td className="px-4 py-3.5 align-middle break-words text-xs leading-5 text-[#7D715E]">
                           {entry.referenceDetails?.storeName || (entry.referenceType ? REFERENCE_LABELS[entry.referenceType] : 'Hệ thống')}
                         </td>
                       </tr>
@@ -1291,33 +1292,28 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           <div id="wallet-withdrawal-details">
             {/* Table Container */}
             <div className="overflow-x-auto" hidden={!loading && history?.total === 0}>
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-[#FAF8F5]/90 border-b border-[#EAE4D7] text-[10.5px] font-bold uppercase tracking-wider text-[#7D715E]">
+          <table className="w-full min-w-0! text-left text-sm border-collapse block lg:table">
+            <thead className="bg-[#FAF8F5]/90 border-b border-[#EAE4D7] text-xs font-semibold uppercase tracking-wide hidden lg:table-header-group text-[#7D715E]">
               <tr>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-3.5 align-middle whitespace-nowrap">
                   Mã yêu cầu
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
-                  Gian hàng phụ trách
+                <th scope="col" className="px-4 py-3.5 align-middle whitespace-nowrap">
+                  Nguồn thu nhập
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-3.5 align-middle whitespace-nowrap">
                   Thời gian
                 </th>
-                <th scope="col" className="px-4 py-2.5 text-right whitespace-nowrap">
-                  Số tiền rút
+                <th scope="col" className="px-4 py-3.5 align-middle text-right whitespace-nowrap">
+                  Số tiền
                 </th>
-                <th scope="col" className="px-4 py-2.5 text-right whitespace-nowrap">
-                  Thuế khấu trừ
-                </th>
-                <th scope="col" className="px-4 py-2.5 text-right whitespace-nowrap">
-                  Thực nhận
-                </th>
-                <th scope="col" className="px-4 py-2.5 text-center whitespace-nowrap">
+                <th scope="col" className="px-4 py-3.5 align-middle text-center whitespace-nowrap">
                   Trạng thái
                 </th>
+                <th scope="col" className="px-4 py-3.5 align-middle whitespace-nowrap">Bảng kê</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EAE4D7]">
+            <tbody className="block lg:table-row-group divide-y divide-[#EAE4D7]">
               {history?.requests.map((request) => {
                 const reqDate = new Date(request.createdAt);
                 const isApproved = request.status === 'APPROVED';
@@ -1328,12 +1324,12 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 return (
                   <tr
                     key={request.id}
-                    className="hover:bg-[#FAF8F5]/80 transition-colors group"
+                    className="grid grid-cols-2 gap-x-2 p-3 lg:p-0 lg:table-row hover:bg-[#FAF8F5]/80 transition-colors group [&>td]:block lg:[&>td]:table-cell [&>td:first-child]:col-span-2"
                   >
                     {/* Mã yêu cầu với nút copy */}
-                    <td className="px-4 py-2.5 whitespace-nowrap">
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-1">
-                        <span title={request.id} className="font-mono text-xs font-bold text-[#1A1612] bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EAE4D7]">
+                        <span title={request.id} className="text-sm font-semibold text-[#1A1612] tabular-nums">
                           {payoutDisplayCode(request.id, request.createdAt)}
                         </span>
                         <button
@@ -1352,88 +1348,68 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     </td>
 
                     {/* Shop */}
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-1.5 max-w-[200px]">
                         <div className="w-6 h-6 rounded-md bg-[#FAF8F5] border border-[#EAE4D7] flex items-center justify-center shrink-0 text-[#B88E4F]">
                           <Store className="w-3 h-3" />
                         </div>
                         <span className="font-semibold text-xs text-[#1A1612] truncate">
-                          {request.store?.name ?? "Chờ đối soát shop"}
+                          {request.store?.name ?? "Toàn bộ ví khả dụng"}
                         </span>
                       </div>
                     </td>
 
                     {/* Thời gian */}
-                    <td className="whitespace-nowrap px-4 py-2.5">
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle">
                       <div className="text-xs leading-tight">
                         <span className="font-semibold text-[#1A1612] block">
                           {reqDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
-                        <span className="text-[10.5px] text-[#7D715E] font-mono inline-flex items-center gap-0.5 mt-0.5">
-                          <Clock className="w-2.5 h-2.5 text-[#B88E4F]" />
+                        <span className="text-xs text-[#7D715E] font-mono inline-flex items-center gap-0.5 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 text-[#B88E4F]" />
                           {reqDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
                       </div>
                     </td>
 
                     {/* Số tiền rút */}
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                      <span className="font-mono text-xs sm:text-[13px] font-bold text-[#1A1612] tabular-nums">
-                        {formatMoney(request.amount)}
-                      </span>
-                    </td>
-
-                    {/* Thuế */}
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                      {request.taxCalculated ? (
-                        <div className="text-xs font-mono tabular-nums leading-tight text-[#DC2626]">
-                          <span>-{formatMoney(request.taxAmount)}</span>
-                          <span className="text-[9.5px] text-[#7D715E] block font-sans">{Number(request.taxAmount) > 0 ? 'Đã khấu trừ' : 'Không khấu trừ'}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-[#7D715E] italic">Chưa tính thuế</span>
-                      )}
-                    </td>
-
-                    {/* Thực nhận */}
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                      {request.taxCalculated ? (
-                        <span className="font-mono text-xs sm:text-[13px] font-extrabold text-[#059669] tabular-nums bg-[#ECFDF5] px-2 py-0.5 rounded-md border border-[#A7F3D0]">
-                          {formatMoney(request.netAmount)}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold text-[#7D715E]">Chưa xác định</span>
-                      )}
+                    <td className="px-4 py-3.5 align-middle text-right">
+                      <dl className="space-y-1 text-xs tabular-nums">
+                        <div className="flex justify-between gap-4 text-[#7D715E]"><dt>Yêu cầu</dt><dd>{formatMoney(request.amount)}</dd></div>
+                        <div className="flex justify-between gap-4 text-[#7D715E]"><dt>Thuế</dt><dd>{request.taxCalculated ? formatMoney(request.taxAmount) : 'Chưa tính'}</dd></div>
+                        <div className="flex justify-between gap-4 font-semibold text-[#1A1612]"><dt>{isApproved ? 'Thực nhận' : 'Dự kiến nhận'}</dt><dd className="text-sm">{request.taxCalculated ? formatMoney(request.netAmount) : 'Chưa xác định'}</dd></div>
+                      </dl>
                     </td>
 
                     {/* Trạng thái */}
-                    <td className="whitespace-nowrap px-4 py-2.5 text-center">
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle text-center">
                       {isPending && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6] shadow-2xs">
-                          <Clock className="w-2.5 h-2.5 text-[#B88E4F]" />
+                          <Clock className="w-3.5 h-3.5 text-[#B88E4F]" />
                           <span>{STATUS_LABELS.PENDING}</span>
                         </span>
                       )}
                       {isProcessing && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] shadow-2xs">
-                          <RefreshCw className="w-2.5 h-2.5 text-[#2563EB] animate-spin" />
+                          <RefreshCw className="w-3.5 h-3.5 text-[#2563EB] animate-spin" />
                           <span>{STATUS_LABELS.PROCESSING}</span>
                         </span>
                       )}
                       {isApproved && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] shadow-2xs">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-[#059669]" />
-                          <span>{request.transferProvider === 'BIDV_SANDBOX' ? 'Hoàn tất · Sandbox' : STATUS_LABELS.APPROVED}</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FBF5EB] text-[#1A1612] border border-[#EEDFC6] shadow-2xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#059669]" />
+                          <span>Hoàn tất</span>
                         </span>
                       )}
                       {isRejected && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] shadow-2xs">
-                          <AlertCircle className="w-2.5 h-2.5 text-[#DC2626]" />
+                          <AlertCircle className="w-3.5 h-3.5 text-[#DC2626]" />
                           <span>{STATUS_LABELS.REJECTED}</span>
                         </span>
                       )}
-                      {request.transferProvider === 'BIDV_SANDBOX' && <p className="mt-1 text-[10px] text-[#7D715E]">Thử nghiệm · Không chuyển tiền ngoài đời</p>}
+                      {request.transferProvider === 'BIDV_SANDBOX' && <p className="mt-1 text-xs text-[#7D715E]" title="Thử nghiệm, không chuyển tiền ngoài đời">BIDV Sandbox · Thử nghiệm</p>}
                     </td>
+                    <td className="px-4 py-3.5 align-middle">{isApproved ? <PartnerTaxStatements payoutId={request.id} taxAmount={request.taxAmount} sandbox={request.transferProvider === 'BIDV_SANDBOX'} /> : <span className="text-xs text-[#7D715E]">Chưa phát hành</span>}</td>
                   </tr>
                 );
               })}
@@ -1488,7 +1464,6 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
           </div>
       </section>
 
-      <div hidden={walletPanel !== 'history'} className="wallet-detail-panel wallet-tax-statements"><PartnerTaxStatements /></div>
 
       {/* 2. BIẾN ĐỘNG TÀI CHÍNH GẦN NHẤT (SỔ CÁI MINH BẠCH - APPEND-ONLY LEDGER) */}
       <section hidden={walletPanel !== 'history'} className="wallet-detail-panel wallet-ledger-section overflow-hidden rounded-xl border border-[#EAE4D7] bg-white shadow-xs">
@@ -1498,32 +1473,32 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
             {/* Table Container */}
             <div className="overflow-x-auto">
           <table
-            className="w-full text-left text-xs border-collapse"
+            className="w-full min-w-0! text-left text-sm border-collapse block lg:table"
             aria-label="Sổ cái tài chính"
           >
-            <thead className="bg-[#FAF8F5]/90 border-b border-[#EAE4D7] text-[10.5px] font-bold uppercase tracking-wider text-[#7D715E]">
+            <thead className="bg-[#FAF8F5]/90 border-b border-[#EAE4D7] text-xs font-semibold uppercase tracking-wide hidden lg:table-header-group text-[#7D715E]">
               <tr>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-4 align-middle whitespace-nowrap">
                   Thời gian
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-4 align-middle whitespace-nowrap">
                   Loại giao dịch
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-4 align-middle whitespace-nowrap">
                   Ngăn ví
                 </th>
-                <th scope="col" className="px-4 py-2.5 text-right whitespace-nowrap">
+                <th scope="col" className="px-4 py-4 align-middle text-right whitespace-nowrap">
                   Biến động số dư
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
+                <th scope="col" className="px-4 py-4 align-middle whitespace-nowrap">
                   Dòng tiền (Trước ➔ Sau)
                 </th>
-                <th scope="col" className="px-4 py-2.5 whitespace-nowrap">
-                  Nguồn giao dịch
+                <th scope="col" className="px-4 py-4 align-middle whitespace-nowrap">
+                  Giao dịch liên quan
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EAE4D7]">
+            <tbody className="block lg:table-row-group divide-y divide-[#EAE4D7]">
               {ledger?.entries.map((entry) => {
                 const entryDate = new Date(entry.createdAt);
                 const amt = Number(entry.amount);
@@ -1533,15 +1508,15 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                 return (
                   <tr
                     key={entry.id}
-                    className="hover:bg-[#FAF8F5]/80 transition-colors group"
+                    className="grid grid-cols-2 gap-x-2 p-3 lg:p-0 lg:table-row hover:bg-[#FAF8F5]/80 transition-colors group [&>td]:block lg:[&>td]:table-cell"
                   >
                     {/* Thời gian */}
-                    <td className="whitespace-nowrap px-4 py-2.5">
+                    <td className="whitespace-nowrap px-4 py-4 align-middle">
                       <div className="text-xs leading-tight">
                         <span className="font-semibold text-[#1A1612] block">
                           {entryDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
-                        <span className="text-[10.5px] text-[#7D715E] font-mono inline-flex items-center gap-0.5 mt-0.5">
+                        <span className="text-xs text-[#7D715E] font-mono inline-flex items-center gap-0.5 mt-0.5">
                           <Clock className="w-2.5 h-2.5 text-[#B88E4F]" />
                           {entryDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
@@ -1549,53 +1524,53 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     </td>
 
                     {/* Loại giao dịch */}
-                    <td className="px-4 py-2.5 whitespace-nowrap">
+                    <td className="px-4 py-4 align-middle whitespace-nowrap">
                       {entry.transactionType === "COMMISSION_PENDING" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <Clock3 className="w-3 h-3 text-[#B88E4F] shrink-0" />
                           <span>Ghi nhận thù lao chờ</span>
                         </span>
                       )}
                       {entry.transactionType === "COMMISSION_APPROVED" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <CheckCircle2 className="w-3 h-3 text-[#059669] shrink-0" />
-                          <span>Duyệt thù lao / Thưởng</span>
+                          <span>{entry.referenceType === 'MONTHLY_BONUS' ? 'Thưởng doanh số tháng' : 'Giải tỏa hoa hồng'}</span>
                         </span>
                       )}
                       {entry.transactionType === "PAYOUT_WITHDRAW" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FAF8F5] text-[#1A1612] border border-[#EAE4D7]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <ArrowUpRight className="w-3 h-3 text-[#B88E4F] shrink-0" />
                           <span>Yêu cầu rút tiền</span>
                         </span>
                       )}
                       {entry.transactionType === "REVERSAL" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <AlertCircle className="w-3 h-3 text-[#DC2626] shrink-0" />
                           <span>{entry.referenceType === 'WALLET_RECONCILIATION' ? 'Điều chỉnh đối soát' : entry.referenceType === 'RECONCILIATION_ORDER' ? 'Ghi nhận thanh toán cũ' : 'Thu hồi thù lao'}</span>
                         </span>
                       )}
                       {entry.transactionType === "PAYOUT_REJECT_REFUND" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <RefreshCw className="w-3 h-3 text-[#2563EB] shrink-0" />
                           <span>Hoàn tiền yêu cầu rút</span>
                         </span>
                       )}
                       {!["COMMISSION_PENDING", "COMMISSION_APPROVED", "PAYOUT_WITHDRAW", "REVERSAL", "PAYOUT_REJECT_REFUND"].includes(entry.transactionType) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FAF8F5] text-[#7D715E] border border-[#EAE4D7]">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#1A1612]">
                           <span>{TRANSACTION_LABELS[entry.transactionType] || entry.transactionType}</span>
                         </span>
                       )}
                     </td>
 
                     {/* Ngăn ví */}
-                    <td className="whitespace-nowrap px-4 py-2.5">
+                    <td className="whitespace-nowrap px-4 py-4 align-middle">
                       {entry.balanceBucket === "PENDING" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-[#F3EFE6] text-[#7D715E] border border-[#EAE4D7]">
                           <Clock3 className="w-2.5 h-2.5 text-[#B88E4F]" />
                           <span>Ví Chờ</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]">
                           <Wallet className="w-2.5 h-2.5 text-[#B88E4F]" />
                           <span>Ví Khả Dụng</span>
                         </span>
@@ -1603,7 +1578,7 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     </td>
 
                     {/* Biến động số dư */}
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-4 py-4 align-middle text-right">
                       <span
                         className={cn(
                           "font-mono text-xs sm:text-[13px] font-extrabold tabular-nums inline-flex items-center gap-0.5",
@@ -1619,54 +1594,51 @@ export default function WalletPage({ embedded = false, onBusyChange }: { embedde
                     </td>
 
                     {/* Dòng tiền (Trước ➔ Sau) */}
-                    <td className="whitespace-nowrap px-4 py-2.5">
-                      <div className="wallet-balance-flow flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-[#7D715E]">
-                        <span className="bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EAE4D7]">
+                    <td className="whitespace-nowrap px-4 py-4 align-middle">
+                      <div className="wallet-balance-flow flex flex-wrap items-center gap-2 text-sm tabular-nums text-[#7D715E]">
+                        <span className="text-[#7D715E]">
                           {formatMoney(entry.balanceBefore)}
                         </span>
                         <ArrowRight className="w-3 h-3 text-[#B88E4F] shrink-0" />
-                        <span className="font-bold text-[#1A1612] bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EEDFC6]">
+                        <span className="font-semibold text-[#1A1612]">
                           {formatMoney(entry.balanceAfter)}
                         </span>
                       </div>
                     </td>
 
                     {/* Nguồn giao dịch */}
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <div className="wallet-ledger-reference flex items-center gap-1">
-                        <span title={entry.referenceType ?? undefined} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#FAF8F5] border border-[#EAE4D7] text-[#7D715E]">
-                          {entry.referenceType ? REFERENCE_LABELS[entry.referenceType] ?? 'Tham chiếu khác' : 'Hệ thống'}
-                        </span>
+                    <td className="px-4 py-4 align-middle">
+                      <div className="wallet-ledger-reference-details max-w-72 space-y-1 text-xs leading-5 text-[#7D715E]">
+                        {entry.referenceDetails?.storeName && <p className="font-semibold text-[#1A1612]">{entry.referenceDetails.storeName}</p>}
+                        {entry.referenceDetails?.orderId && <p title={`Mã đơn: ${entry.referenceDetails.orderCode || entry.referenceDetails.orderId}`}>
+                          Đơn <span className="font-medium text-[#795A2D]">{entry.referenceDetails.orderCode || `#${entry.referenceDetails.orderId.slice(0, 8)}…`}</span>
+                        </p>}
+                        {entry.referenceDetails?.period && <p>{entry.referenceType === 'MONTHLY_BONUS' ? 'Thưởng tháng' : 'Kỳ'} {entry.referenceDetails.period}</p>}
+                        {!entry.referenceDetails?.storeName && !entry.referenceDetails?.orderId && !entry.referenceDetails?.period && <p className="font-medium text-[#1A1612]">{entry.referenceType ? REFERENCE_LABELS[entry.referenceType] ?? 'Giao dịch hệ thống' : 'Hệ thống SCANMS'}</p>}
+                      </div>
+                      <div className="wallet-ledger-reference mt-1.5 flex flex-wrap items-center gap-1 text-xs text-[#7D715E]">
                         {entry.referenceId && (
-                          <div className="flex items-center gap-0.5">
-                            <span title={entry.referenceId} className="font-mono text-xs font-medium text-[#1A1612]">
-                              #{entry.referenceId.slice(0, 8)}...
+                          <div className="flex items-center gap-1">
+                            <span>{entry.referenceType === 'PAYOUT_REQUEST' ? 'Mã lệnh rút' : entry.referenceType === 'COMMISSION' ? 'Mã khoản thù lao' : entry.referenceType === 'MONTHLY_BONUS' ? 'Mã thưởng' : 'Mã liên quan'}</span>
+                            <span title={entry.referenceId} className="tabular-nums">
+                              {entry.referenceId.slice(0, 8)}…
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleCopyId(entry.referenceId!, 'mã tham chiếu')}
-                              className="w-5 h-5 rounded flex items-center justify-center text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FAF8F5] transition cursor-pointer"
-                              title="Sao chép toàn bộ mã tham chiếu"
-                              aria-label={`Sao chép mã tham chiếu ${entry.referenceId}`}
+                              onClick={() => handleCopyId(entry.referenceId!, 'mã liên quan')}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#7D715E] hover:text-[#B88E4F] hover:bg-[#FBF5EB] transition cursor-pointer"
+                              title="Sao chép mã đầy đủ"
+                              aria-label={`Sao chép mã ${entry.referenceId}`}
                             >
                               {copiedId === entry.referenceId ? (
                                 <Check className="w-3 h-3 text-[#059669]" />
                               ) : (
-                                <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                                <Copy className="w-3.5 h-3.5" />
                               )}
                             </button>
                           </div>
                         )}
                       </div>
-                      {entry.referenceDetails && (
-                        <div className="wallet-ledger-reference-details mt-1 text-[10px] leading-4 text-[#7D715E]">
-                          {entry.referenceDetails.storeName && <span className="block">{entry.referenceDetails.storeName}</span>}
-                          {entry.referenceDetails.orderId && <span className="block" title={`Mã đơn: ${entry.referenceDetails.orderCode || entry.referenceDetails.orderId}`}>
-                            Đơn {entry.referenceDetails.orderCode || `#${entry.referenceDetails.orderId.slice(0, 8)}…`}
-                          </span>}
-                          {entry.referenceDetails.period && <span className="block">Kỳ {entry.referenceDetails.period}</span>}
-                        </div>
-                      )}
                     </td>
                   </tr>
                 );

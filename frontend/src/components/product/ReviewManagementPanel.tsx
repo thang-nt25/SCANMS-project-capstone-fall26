@@ -210,8 +210,8 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
       </div>
 
       {/* Toolbar: Bộ lọc tab bên trái + Nút Làm mới bên phải */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0" role="group" aria-label="Bộ lọc đánh giá">
+      <div className="grid w-full grid-cols-2 items-stretch gap-2 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="contents" role="group" aria-label="Bộ lọc đánh giá">
           {filterTabs.map((tab) => {
             const isSelected = filter === tab.key;
             return (
@@ -219,7 +219,8 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
                 type="button"
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+                aria-pressed={isSelected}
+                className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                   isSelected
                     ? 'bg-[#FBF5EB] border-[#C59B58] text-[#B88E4F] shadow-2xs'
                     : 'bg-white border-[#EAE4D7] text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5]'
@@ -242,7 +243,7 @@ export function ReviewManagementPanel({ admin = false }: { admin?: boolean }) {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer self-end sm:self-auto shrink-0"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#EAE4D7] bg-white text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] hover:bg-[#FAF8F5] transition cursor-pointer disabled:opacity-50"
         >
           <RotateCw size={13} className={loading ? 'animate-spin text-[#B88E4F]' : ''} />
           <span>Làm mới</span>

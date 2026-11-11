@@ -11,7 +11,6 @@ import {
   RefreshCw,
   ChevronRight,
   ChevronDown,
-  Filter,
   X,
   Check,
   ArrowUpRight,
@@ -219,20 +218,20 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
         { label: 'Doanh số Top 10', value: formatVND(allTop.reduce((sum, item) => sum + item.grossRevenue, 0)), detail: scopeLabel },
         { label: 'Đơn hàng Top 10', value: formatNumber(allTop.reduce((sum, item) => sum + item.totalOrders, 0)), detail: 'Theo kỳ và phạm vi đang chọn' },
       ]} /></div>}
-      <section className="leaderboard-controls p-3.5 sm:p-4 min-w-0 border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Bộ lọc bảng vinh danh">
-        <div className="leaderboard-filter-row">
-          <div className="min-w-0">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 border border-[#EAE4D7] rounded-[10px] bg-[#FAF8F5]" role="group" aria-label="Khoảng thời gian xếp hạng">
+      <section className="leaderboard-controls p-3.5 sm:p-4 min-w-0 overflow-x-auto border border-[#EAE4D7] rounded-[15px] bg-white" aria-label="Bộ lọc bảng vinh danh">
+        <div className={`leaderboard-filter-row grid min-w-[780px] items-center gap-2.5 ${canChangeScope ? 'grid-cols-6' : 'grid-cols-5'}`}>
+          <div className="contents">
+            <div className="contents" role="group" aria-label="Khoảng thời gian xếp hạng">
               {timeOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   aria-pressed={timeRange === option.value}
                   onClick={() => setTimeRange(option.value)}
-                  className={`flex items-center justify-center gap-1.5 min-h-[32px] sm:min-h-[34px] px-2 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 min-h-11 px-2 py-2 rounded-lg text-xs transition-all cursor-pointer ${
                     timeRange === option.value
-                      ? 'bg-white border border-[#EEDFC6] text-[#1A1612] font-semibold shadow-xs'
-                      : 'border border-transparent text-[#7D715E] hover:bg-white hover:text-[#1A1612]'
+                      ? 'bg-[#FBF5EB] border border-[#EEDFC6] text-[#8F682E] font-semibold'
+                      : 'bg-white border border-[#EAE4D7] text-[#7D715E] hover:bg-[#FAF8F5] hover:text-[#1A1612]'
                   }`}
                 >
                   {option.label}
@@ -240,18 +239,16 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
               ))}
             </div>
           </div>
-          <div className="flex items-center flex-wrap gap-2.5">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-[#7D715E] whitespace-nowrap">
-              <Filter aria-hidden="true" className="w-3.5 h-3.5 text-[#B88E4F]" /> Xếp hạng theo:
-            </span>
+          <div className="contents">
 
             {/* Select Metric */}
-            <div className="relative min-w-[170px] shrink-0">
+            <div className="relative w-full min-w-0">
               <select
                 id="lb-metric-select"
+                aria-label="Tiêu chí xếp hạng"
                 value={metric}
                 onChange={(event) => setMetric(event.target.value as LeaderboardMetric)}
-                className="w-full h-9 rounded-xl border border-[#EAE4D7] bg-white pl-3 pr-8 text-xs font-semibold text-[#1A1612] appearance-none focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58]"
+                className="flex w-full h-11 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-8 text-center [text-align-last:center] text-xs font-semibold text-[#1A1612] appearance-none [&::picker-icon]:hidden focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer hover:border-[#C59B58]"
               >
                 {Object.entries(metricLabels).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -268,12 +265,12 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
             {/* Select Scope */}
             {canChangeScope && (
               <>
-                <div className="relative min-w-[145px] shrink-0">
+                <div className="relative w-full min-w-0">
                   <select
                     aria-label="Phạm vi xếp hạng"
                     value={scope}
                     onChange={(event) => setScope(event.target.value as LeaderboardScope)}
-                    className="w-full h-9 rounded-xl border border-[#EAE4D7] bg-white pl-3 pr-8 text-xs font-semibold text-[#1A1612] appearance-none focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer shadow-2xs hover:border-[#C59B58]"
+                    className="flex w-full h-11 items-center justify-center rounded-xl border border-[#EAE4D7] bg-white px-8 text-center [text-align-last:center] text-xs font-semibold text-[#1A1612] appearance-none [&::picker-icon]:hidden focus:outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58] transition-all cursor-pointer hover:border-[#C59B58]"
                   >
                     <option value="GLOBAL">Toàn sàn</option>
                     <option value="STORE">{isAdmin ? 'Theo gian hàng' : 'Gian hàng của tôi'}</option>
@@ -286,7 +283,7 @@ export default function LeaderboardPage({ alignToContainer = false }: { alignToC
 
                 {/* Select Specific Store when scope is STORE */}
                 {scope === 'STORE' && isAdmin && (
-                  <div className="relative min-w-[210px] max-w-[280px] shrink-0 animate-in fade-in duration-150">
+                  <div className="relative col-span-full w-full max-w-[320px] min-w-0 animate-in fade-in duration-150">
                     <Store
                       aria-hidden="true"
                       className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B88E4F]"

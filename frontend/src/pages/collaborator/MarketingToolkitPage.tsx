@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SubmitKolVideoModal } from '../../components/media/SubmitKolVideoModal';
-import { Link2, Package, Tag, Video, Plus, Gift } from 'lucide-react';
+import { Link2, Package, Tag, Video, Plus, Gift, Sparkles } from 'lucide-react';
 import { type HubTabItem } from '../../components/common/HubTabs';
 import { useControlledTab } from '../../hooks/useControlledTab';
 import ReferralLinksPage from './ReferralLinksPage';
 import SampleRequestsPage from './SampleRequestsPage';
 import KolCouponsPage from './KolCouponsPage';
 
-const MARKETING_TOOLKIT_TABS = ['links', 'samples', 'coupons'] as const;
+const MARKETING_TOOLKIT_TABS = ['links', 'deals', 'samples', 'coupons'] as const;
 type MarketingToolkitTab = (typeof MARKETING_TOOLKIT_TABS)[number];
 
 export default function MarketingToolkitPage() {
@@ -25,6 +25,11 @@ export default function MarketingToolkitPage() {
       icon: Link2,
     },
     {
+      id: 'deals',
+      label: 'Deal độc quyền',
+      icon: Sparkles,
+    },
+    {
       id: 'samples',
       label: 'Mẫu thử & Video review',
       icon: Package,
@@ -37,7 +42,7 @@ export default function MarketingToolkitPage() {
   ];
 
   const renderContextualActions = () => {
-    if (activeTab === 'links') return null;
+    if (activeTab === 'links' || activeTab === 'deals') return null;
 
     if (activeTab === 'samples') {
       return (
@@ -83,7 +88,7 @@ export default function MarketingToolkitPage() {
   return (
     <div id="marketing-toolkit-hub" data-active-tab={activeTab} role="region" aria-label="Công cụ tiếp thị" className="flex flex-col gap-4 w-full min-w-0 text-[#1A1612] pb-16 md:pb-0">
       <div className="mb-1 w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-2.5 shadow-2xs">
-        <div role="tablist" aria-label="Công cụ tiếp thị" className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
+        <div role="tablist" aria-label="Công cụ tiếp thị" className="grid min-w-0 grid-cols-2 gap-2.5 lg:grid-cols-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
@@ -95,7 +100,7 @@ export default function MarketingToolkitPage() {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveTab(tab.id as MarketingToolkitTab)}
-                className={`inline-flex min-h-[42px] min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+                className={`inline-flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center text-xs font-bold transition-all cursor-pointer sm:px-4 sm:text-sm ${
                   selected
                     ? 'border-[#C59B58] bg-[#FBF5EB] text-[#1A1612] shadow-xs'
                     : 'border-[#EAE4D7] bg-white text-[#7D715E] hover:border-[#EEDFC6] hover:bg-[#FAF8F5]'
@@ -112,8 +117,8 @@ export default function MarketingToolkitPage() {
 
       {/* Container giữ DOM: Chuyển tab 0ms mượt mà, không giật lag, không reload ngầm */}
       <div className="w-full min-w-0 min-h-[500px]">
-        <div className={activeTab === 'links' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-links">
-          {visitedTabs['links'] && <ReferralLinksPage />}
+        <div className={activeTab === 'links' || activeTab === 'deals' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby={`hub-tab-${activeTab === 'deals' ? 'deals' : 'links'}`}>
+          {(visitedTabs['links'] || visitedTabs['deals']) && <ReferralLinksPage view={activeTab === 'deals' ? 'deals' : 'links'} />}
         </div>
 
         <div className={activeTab === 'samples' ? 'block' : 'hidden'} role="tabpanel" aria-labelledby="hub-tab-samples">

@@ -1181,6 +1181,8 @@ export default function ProductDetailPage() {
     setQuantity(value => currentStock > 0 ? Math.min(value, currentStock) : 1);
   }, [currentStock]);
   const currentSku = selectedVariant?.sku || data?.product?.sku || '';
+  const packageWeight = Number((selectedVariant?.attributes as any)?.packageWeight ?? (selectedVariant as any)?.packageWeight ?? selectedVariant?.weight ?? (data?.product as any)?.packageWeight);
+  const hasPackageWeight = Number.isFinite(packageWeight) && packageWeight > 0;
   const selectedVariantIsReal = Boolean(
     selectedVariant && data?.product?.variants?.some((variant) => variant.id === selectedVariant.id),
   );
@@ -1833,7 +1835,7 @@ export default function ProductDetailPage() {
                         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-[#7D715E] bg-[#FAF8F5] px-3.5 py-2 rounded-xl border border-[#EAE4D7] animate-in fade-in duration-150">
                           <Package className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
                           <span>
-                            Đã chọn: <strong className="text-[#1A1612] font-semibold">{selectedVariant.name}</strong> · Mã SKU: <strong className="font-mono text-[#1A1612]">{selectedVariant.sku}</strong> · Tồn kho: <strong className="text-[#8C6226] font-bold">{selectedVariant.stockQuantity}</strong> chiếc · Kiện GHN: <strong className="text-[#8C6226] font-mono font-bold">{(selectedVariant.attributes as any)?.packageWeight || (selectedVariant as any).packageWeight || (product as any).packageWeight || 180}g</strong>
+                            Đã chọn: <strong className="text-[#1A1612] font-semibold">{selectedVariant.name}</strong> · Tồn kho: <strong className="text-[#8C6226] font-bold">{selectedVariant.stockQuantity}</strong> chiếc
                           </span>
                         </div>
                       )}
@@ -1850,7 +1852,16 @@ export default function ProductDetailPage() {
                             const isSelected = selectedVariant?.id === v.id;
                             const isOutOfStock = v.stockQuantity <= 0;
                             const variantImg = v.imageUrl || product.imageUrl || SCANMS_PLACEHOLDER;
-                            const attributeText = Object.values(v.attributes || {}).filter(Boolean).join(' · ');
+                            const normalizedVariantName = v.name.toLocaleLowerCase('vi-VN').replace(/\s+/g, '');
+                            const attributeText = [...new Set(Object.entries(v.attributes || {})
+                              .filter(([key, value]) => {
+                                const normalizedKey = key.toLocaleLowerCase('vi-VN').replace(/[\s_-]/g, '');
+                                const text = String(value ?? '').trim();
+                                return text && !/barcode|sku|gtin|ean|upc|mã|package|weight|length|width|height/.test(normalizedKey)
+                                  && !/^\d{8,}$/.test(text)
+                                  && !normalizedVariantName.includes(text.toLocaleLowerCase('vi-VN').replace(/\s+/g, ''));
+                              })
+                              .map(([, value]) => String(value).trim()))].join(' · ');
                             const isHovered = hoveredImage === variantImg;
                             return (
                               <button
@@ -1899,11 +1910,6 @@ export default function ProductDetailPage() {
                                     </span>
                                   )}
                                 </div>
-                                {((v.attributes as any)?.packageWeight || (v as any).packageWeight) && (
-                                  <span className="text-[10px] font-mono font-semibold text-[#8C6226] bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#EEDFC6] shrink-0">
-                                    {(v.attributes as any)?.packageWeight || (v as any).packageWeight}g
-                                  </span>
-                                )}
                                 {isSelected && (
                                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#B88E4F] [clip-path:polygon(100%_0,0_100%,100%_100%)] rounded-br-xl" />
                                 )}
@@ -1916,14 +1922,6 @@ export default function ProductDetailPage() {
                             <AlertCircle size={14} aria-hidden="true" />
                             Vui lòng chọn phân loại hàng để tiếp tục.
                           </p>
-                        )}
-                        {selectedVariant && (
-                          <div className="mt-2.5 flex items-center gap-2 text-xs text-[#7D715E] bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#EAE4D7] animate-in fade-in duration-150">
-                            <Package className="w-3.5 h-3.5 text-[#B88E4F] shrink-0" />
-                            <span>
-                              Quy cách đóng gói: <strong className="text-[#1A1612] font-semibold">{selectedVariant.name}</strong> · Trọng lượng kiện: <strong className="text-[#8C6226] font-mono font-bold">{(selectedVariant.attributes as any)?.packageWeight || (selectedVariant as any).packageWeight || (product as any).packageWeight || 250}g</strong>/đơn vị (Tiêu chuẩn đóng gói GHN)
-                            </span>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -2188,8 +2186,7 @@ export default function ProductDetailPage() {
                   <div className="grid grid-cols-3 p-3 bg-white">
                     <span className="text-[#7D715E] font-medium">Khối lượng kiện:</span>
                     <span className="col-span-2 font-bold text-[#1A1612]">
-                      {(selectedVariant?.weight || (selectedVariant?.attributes as any)?.packageWeight || (selectedVariant as any)?.packageWeight || (product as any).packageWeight || 250)}g / đơn vị
-                      <span className="text-[10.5px] font-normal text-[#7D715E] ml-1">(Tiêu chuẩn GHN)</span>
+                      {hasPackageWeight ? `${packageWeight.toLocaleString('vi-VN')} g / đơn vị` : 'Chưa cập nhật'}
                     </span>
                   </div>
 

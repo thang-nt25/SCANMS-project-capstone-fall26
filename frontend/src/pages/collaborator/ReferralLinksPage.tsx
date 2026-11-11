@@ -28,7 +28,6 @@ import {
   ShieldAlert,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   Clock,
   Flame,
   RotateCcw,
@@ -54,6 +53,7 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { Select } from '../../components/ui/Select';
 import { toast } from '../../utils/toast';
 import { ReferralLinkActions } from './ReferralLinkActions';
+import { getSafeProductImageUrl, handleProductImageError } from '@/utils/marketplace.utils';
 
 import QRCode from 'qrcode';
 
@@ -114,9 +114,11 @@ function useQrDataUrl(value?: string | null) {
 
 export default function ReferralLinksPage({
   modalOnly = false,
+  view = 'all',
   onCreateClose,
 }: {
   modalOnly?: boolean;
+  view?: 'all' | 'links' | 'deals';
   onCreateClose?: () => void;
 } = {}) {
   const navigate = useNavigate();
@@ -181,28 +183,12 @@ export default function ReferralLinksPage({
   const [modalShopFilter, setModalShopFilter] = useState('ALL');
   const [modalCategoryFilter, setModalCategoryFilter] = useState('ALL');
   const [selectedProduct, setSelectedProduct] = useState<EligibleProduct | null>(null);
+  const [createFromDealId, setCreateFromDealId] = useState<string | null>(null);
   const [dealProposals, setDealProposals] = useState<any[]>([]);
   const [dealProposalProduct, setDealProposalProduct] = useState<EligibleProduct | null>(null);
   const [loadingDealProposals, setLoadingDealProposals] = useState(false);
   const [deletingDealId, setDeletingDealId] = useState<string | null>(null);
   const [dealToDelete, setDealToDelete] = useState<any | null>(null);
-  const [isExclusiveDealsCollapsed, setIsExclusiveDealsCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('scanms_deals_collapsed') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleExclusiveDealsCollapse = () => {
-    setIsExclusiveDealsCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('scanms_deals_collapsed', String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   const dealStats = useMemo(() => {
     const total = dealProposals.length;
@@ -650,6 +636,7 @@ export default function ReferralLinksPage({
 
 
   const handleOpenCreateModal = async () => {
+    setCreateFromDealId(null);
     setCreateLinkStep(1);
     setIsCreateModalOpen(true);
     setCreatedSuccessLink(null);
@@ -693,6 +680,7 @@ export default function ReferralLinksPage({
 
     if (shouldCreate) {
       const openWithContext = async () => {
+        setCreateFromDealId(null);
         setCreateLinkStep(1);
         setIsCreateModalOpen(true);
         setCreatedSuccessLink(null);
@@ -728,6 +716,7 @@ export default function ReferralLinksPage({
 
 
   const handleSelectProduct = (prod: EligibleProduct) => {
+    setCreateFromDealId(null);
     setSelectedProduct(prod);
     setIsChangingProduct(false);
     setSelectedCampaignId('');
@@ -762,6 +751,28 @@ export default function ReferralLinksPage({
   };
 
   const openExclusiveDealDialog = (product: EligibleProduct) => { setDealProposalProduct(product); };
+
+  const handleCreateFromDeal = async (deal: any) => {
+    await handleOpenCreateModal();
+    try {
+      const products = await referralLinksService.getEligibleProducts({ storeId: deal.storeId, search: deal.product?.title, page: 1, limit: 100 });
+      const product = products.find((item) => item.id === deal.productId);
+      if (!product) {
+        setLoadProductsError('Sản phẩm của deal chưa đủ điều kiện tạo link. Vui lòng kiểm tra với Shop.');
+        return;
+      }
+      const dealRate = Number(deal.approvedCommissionRate);
+      setSelectedProduct({ ...product,
+        estimatedCommissionRate: Number.isFinite(dealRate) && dealRate > 0 ? dealRate : product.estimatedCommissionRate,
+      });
+      setCreateFromDealId(deal.id);
+      setSelectedCampaignId('');
+      setFormLabel(`VIP: ${product.title}`);
+      setCreateLinkStep(2);
+    } catch {
+      setLoadProductsError('Chưa tải được sản phẩm của deal. Vui lòng thử lại.');
+    }
+  };
 
   const openDealRevision = (deal: any) => {
     const existingProduct = eligibleProducts.find((product) => product.id === deal.productId);
@@ -862,7 +873,8 @@ export default function ReferralLinksPage({
       console.log('[ReferralLinksPage] Calling referralLinksService.createLink...');
       const newLink = await referralLinksService.createLink({
         productId: selectedProduct.id,
-        campaignId: selectedCampaignId || undefined,
+        exclusiveDealId: createFromDealId || undefined,
+        campaignId: createFromDealId ? undefined : (selectedCampaignId || undefined),
         channel: formChannel,
         label: formLabel.trim(),
         customCouponCode: formCoupon.trim() || undefined,
@@ -1011,6 +1023,8 @@ export default function ReferralLinksPage({
       {!modalOnly && (<>
       {/* 4 Thẻ Thống Kê Chuẩn Warm Sand & Brand Gold */}
 
+      {view !== 'deals' && <>
+      <div className="flex justify-end"><button type="button" onClick={() => void handleOpenCreateModal()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-4 text-sm font-semibold text-[#1A1612] hover:border-[#C59B58] cursor-pointer"><Plus className="h-4 w-4 text-[#B88E4F]" />Tạo link tiếp thị</button></div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5" aria-label="Thống kê liên kết tiếp thị">
         {[
           { label: 'Liên kết tiếp thị', value: totalLinks, icon: Layers, suffix: 'liên kết', badge: 'Đang hoạt động' },
@@ -1041,11 +1055,13 @@ export default function ReferralLinksPage({
         ))}
       </div>
 
+      </>}
+      {view !== 'links' && (
       <section
-        className="kol-exclusive-deals w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-3.5 sm:px-5 sm:py-4 shadow-xs"
+        className="kol-exclusive-deals w-full min-w-0 rounded-2xl border border-[#EAE4D7] bg-white p-3 sm:p-4"
         aria-labelledby="exclusive-deals-heading"
       >
-        <div className="kol-deals-heading flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="kol-deals-heading flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-xl bg-[#FBF5EB] border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center shrink-0">
               <Sparkles className="w-4.5 h-4.5 text-[#B88E4F]" />
@@ -1076,27 +1092,7 @@ export default function ReferralLinksPage({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 items-center gap-2 shrink-0 lg:min-w-[420px]">
-            <button type="button" onClick={() => void handleOpenCreateModal()} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#F3EFE6] cursor-pointer">
-              <Plus className="h-4 w-4 shrink-0 text-[#B88E4F]" aria-hidden="true" />
-              Tạo link tiếp thị
-            </button>
-            <button
-              type="button"
-              onClick={toggleExclusiveDealsCollapse}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#795A2D] hover:bg-[#F3EFE6] transition-colors cursor-pointer select-none"
-              title={isExclusiveDealsCollapsed ? 'Mở rộng danh sách đề xuất Exclusive Deal' : 'Thu gọn danh sách đề xuất'}
-              aria-expanded={!isExclusiveDealsCollapsed}
-              aria-controls="kol-deal-list"
-            >
-              <span>{isExclusiveDealsCollapsed ? 'Mở rộng' : 'Thu gọn'}</span>
-              {isExclusiveDealsCollapsed ? (
-                <ChevronDown className="w-3.5 h-3.5 text-[#B88E4F]" />
-              ) : (
-                <ChevronUp className="w-3.5 h-3.5 text-[#7D715E]" />
-              )}
-            </button>
-
+          <div className="flex items-center justify-end gap-2 shrink-0">
             <button
               type="button"
               onClick={() => navigate('/chat')}
@@ -1110,7 +1106,7 @@ export default function ReferralLinksPage({
         </div>
 
         {/* Nội dung danh sách deal (Có thể thu gọn / mở rộng) */}
-        {!isExclusiveDealsCollapsed && (
+        {(
           <div id="kol-deal-list" className="kol-deal-content mt-4 border-t border-[#EAE4D7] pt-4">
             {loadingDealProposals ? (
               <div className="py-4 flex items-center justify-center gap-2 text-sm text-[#7D715E]">
@@ -1122,23 +1118,23 @@ export default function ReferralLinksPage({
                 Bạn chưa gửi đề xuất nào. Chọn sản phẩm trong kho hàng rồi bấm “Đề xuất deal độc quyền”.
               </p>
             ) : (
-              <div className="kol-deal-grid grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="kol-deal-grid grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {dealProposals.map((deal) => (
                   <div
                     key={deal.id}
-                    className="kol-deal-card rounded-xl border border-[#EAE4D7] bg-white hover:border-[#C59B58]/60 hover:bg-white p-3.5 transition-all shadow-2xs flex flex-col justify-between"
+                    className="kol-deal-card min-w-0 rounded-xl border border-[#EAE4D7] bg-white p-3.5 transition-colors hover:border-[#C59B58]/60 flex flex-col"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-3 pb-3">
                       {/* Tiêu đề Sản phẩm & Trạng thái thẩm định */}
-                      <div className="kol-deal-card-heading flex items-start justify-between gap-3">
+                      <div className="kol-deal-card-heading flex min-w-0 flex-col gap-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className="kol-deal-product text-sm font-bold text-[#1A1612] line-clamp-1" title={deal.product?.title || 'Sản phẩm'}>
+                          <h3 className="kol-deal-product text-sm leading-5 font-bold text-[#1A1612] line-clamp-2 min-h-10" title={deal.product?.title || 'Sản phẩm'}>
                             {deal.product?.title || 'Sản phẩm'}
                           </h3>
-                          <div className="mt-0.5 text-xs text-[#7D715E] flex items-center gap-1.5">
-                            <span className="font-semibold text-[#1A1612]">{deal.store?.name || 'Shop'}</span>
+                          <div className="mt-1 text-[11px] text-[#7D715E] flex min-w-0 items-center gap-1.5">
+                            <span className="truncate" title={deal.store?.name || 'Shop'}>{deal.store?.name || 'Shop'}</span>
                             <span>•</span>
-                            <span>{new Date(deal.createdAt).toLocaleDateString('vi-VN')}</span>
+                            <span className="shrink-0">{new Date(deal.createdAt).toLocaleDateString('vi-VN')}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1192,10 +1188,10 @@ export default function ReferralLinksPage({
                     </div>
 
                     {/* Dòng link tiếp thị độc quyền và nút điều chỉnh / hủy / gỡ deal */}
-                    <div className="kol-deal-footer mt-3 pt-2.5 border-t border-[#EAE4D7]/60">
+                    <div className="kol-deal-footer mt-auto pt-3 [&>div]:mt-3 border-t border-[#EAE4D7] [&_button]:min-h-9 [&_button]:justify-center [&_button]:rounded-lg">
                       {deal.status === 'APPROVED' && deal.shortUrl ? (
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="kol-deal-link flex-1 min-w-0 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white border border-[#EEDFC6] text-xs">
+                          <div className="kol-deal-link w-full min-w-0 flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-xs">
                             <div className="flex items-center gap-1.5 overflow-hidden">
                               <span className="text-[11px] font-bold text-[#7D715E] shrink-0 font-sans">Link:</span>
                               <a
@@ -1260,6 +1256,9 @@ export default function ReferralLinksPage({
                         </div>
                       ) : deal.status === 'APPROVED' ? (
                         <div className="flex flex-wrap items-center justify-between gap-2">
+                          {deal.isCurrentDeal && !deal.closedAt && (
+                            <button type="button" onClick={() => void handleCreateFromDeal(deal)} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 text-xs font-semibold text-[#1A1612] hover:border-[#C59B58] cursor-pointer"><Plus className="h-3.5 w-3.5 text-[#B88E4F]" />Tạo link từ deal</button>
+                          )}
                           {deal.isCurrentDeal && !dealProposals.some((item) => item.productId === deal.productId && item.status === 'PENDING') ? (
                             <button
                               type="button"
@@ -1339,8 +1338,9 @@ export default function ReferralLinksPage({
           </div>
         )}
       </section>
+      )}
 
-      <section className="space-y-3" aria-label="Danh sách liên kết tiếp thị">
+      {view !== 'deals' && <section className="space-y-3" aria-label="Danh sách liên kết tiếp thị">
       <form onSubmit={handleSearchSubmit} className="p-3 bg-white rounded-2xl border border-[#EAE4D7] shadow-2xs flex flex-col md:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full min-w-0">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D715E]" />
@@ -1449,7 +1449,7 @@ export default function ReferralLinksPage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] table-fixed text-left border-collapse">
               <thead>
-                <tr className="bg-[#FAF8F5] border-b border-[#EAE4D7] text-xs font-bold text-[#7D715E] uppercase tracking-wider">
+                <tr className="bg-white border-b border-[#EAE4D7] text-xs font-semibold text-[#7D715E]">
                   <th className="w-[24%] py-3 px-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span>Sản phẩm &amp; Cửa hàng</span>
@@ -1475,12 +1475,10 @@ export default function ReferralLinksPage({
                       <td data-label="Sản phẩm & Cửa hàng" className="py-2.5 px-3 overflow-hidden">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <img
-                            src={
-                              link.product?.imageUrl ||
-                              '/assets/product-placeholder.svg'
-                            }
+                            src={getSafeProductImageUrl(link.product?.imageUrl)}
+                            onError={handleProductImageError}
                             alt={link.product?.title}
-                            className="w-11 h-11 rounded-lg object-cover border border-[#EAE4D7] flex-shrink-0 bg-[#FAF8F5]"
+                            className="w-14 h-14 rounded-xl object-contain p-1 border border-[#EAE4D7] flex-shrink-0 bg-white"
                           />
                           <div className="min-w-0">
                             <div className="kol-link-product-name font-semibold text-[#1A1612] text-xs line-clamp-2" title={link.product?.title}>
@@ -1514,8 +1512,8 @@ export default function ReferralLinksPage({
 
                       <td data-label="Mã rút gọn & Kênh" className="py-2.5 px-3 overflow-hidden">
                         <div className="flex flex-col gap-1.5 text-left">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] w-fit">
-                            <span className="font-mono font-bold text-xs text-[#B88E4F]">
+                          <div className="inline-flex max-w-full items-center gap-1.5 w-fit">
+                            <span className="truncate font-mono font-semibold text-xs text-[#8F682E]" title={link.shortCode}>
                               {link.shortCode}
                             </span>
                             <button
@@ -1550,10 +1548,7 @@ export default function ReferralLinksPage({
 
 
                       <td data-label="Lượt nhấp" className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-[#EAE4D7] rounded-lg text-left">
-                          <div className="w-5 h-5 rounded-md bg-white border border-[#EAE4D7]/60 flex items-center justify-center text-[#B88E4F] flex-shrink-0">
-                            <MousePointerClick className="w-3 h-3" />
-                          </div>
+                        <div className="inline-flex items-center justify-center text-center tabular-nums">
                           <div>
                             <div className="text-xs font-extrabold text-[#1A1612] leading-none">
                               {link.totalClicks}
@@ -1567,9 +1562,8 @@ export default function ReferralLinksPage({
 
 
                       <td data-label="Đơn hàng" className="py-2.5 px-2 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-[#EAE4D7] text-[#7D715E] rounded-lg font-semibold text-[11px]">
-                          <ShoppingBag className="w-3 h-3 text-[#B88E4F] flex-shrink-0" />
-                          <span>{link.totalOrders} đơn</span>
+                        <div className="text-xs font-semibold tabular-nums text-[#1A1612]">
+                          <span>{link.totalOrders}</span>
                         </div>
                       </td>
 
@@ -1600,7 +1594,7 @@ export default function ReferralLinksPage({
           </div>
         )}
       </div>
-      </section>
+      </section>}
       </>)}
 
       {isCreateModalOpen && (
@@ -1722,6 +1716,7 @@ export default function ReferralLinksPage({
                     onClick={() => {
                       setCreateLinkStep(1);
                       setCreatedSuccessLink(null);
+                      setCreateFromDealId(null);
                       setSelectedProduct(null);
                       setSelectedCampaignId('');
                       setCustomExpiresAt('');
@@ -2032,7 +2027,8 @@ export default function ReferralLinksPage({
                         <span>Đổi sản phẩm</span>
                       </button>
                     </div>
-                  {selectedProduct && eligibleCampaignsForProduct.length > 0 && (
+                  {createFromDealId && <p className="rounded-lg border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-xs text-[#795A2D]">Link gắn với deal độc quyền đã duyệt của sản phẩm này.</p>}
+                  {!createFromDealId && selectedProduct && eligibleCampaignsForProduct.length > 0 && (
                     <div className="p-2 bg-[#FAF8F5] rounded-xl border border-[#EAE4D7] space-y-1 animate-fadeIn">
                       <div className="flex items-center justify-between text-[11px]">
                         <label className="font-bold text-[#7D715E] uppercase tracking-wider flex items-center gap-1">
