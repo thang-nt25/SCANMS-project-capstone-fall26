@@ -341,8 +341,8 @@ export const AdminPersonnelPage: React.FC = () => {
         description: storeForm.description.trim() || undefined,
         logoUrl: storeForm.logoUrl.trim() || undefined,
         warehouseName: storeForm.warehouseName.trim() || `Kho Tổng ${storeForm.name.trim()}`,
-        contactName: storeForm.contactName.trim() || 'Bộ phận kho vận',
-        contactPhone: storeForm.contactPhone.trim() || '0901234567',
+        contactName: `Bộ phận kho vận - ${storeForm.name.trim()}`,
+        contactPhone: storeForm.contactPhone?.trim() || '0901234567',
         warehouseAddress: fullAddress,
         provinceCode: storeForm.provinceCode,
         provinceName: storeForm.provinceName,
@@ -513,7 +513,7 @@ export const AdminPersonnelPage: React.FC = () => {
     const matchQuery =
       st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (st.categoryName && st.categoryName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (st.owner?.fullName && st.owner.fullName.toLowerCase().includes(searchQuery.toLowerCase()));
+      (st.owner?.role === 'SHOP_MANAGER' && st.owner.fullName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     let matchStatus = true;
     if (storeStatusFilter === 'ACTIVE') {
@@ -769,7 +769,7 @@ export const AdminPersonnelPage: React.FC = () => {
                         <div className="flex items-center justify-between text-[#7D715E]">
                           <span>Quản lý phụ trách:</span>
                           <span className="font-semibold text-[#1A1612] truncate max-w-[150px]">
-                            {st.owner?.fullName || 'Chưa phân công'}
+                            {st.owner?.role === 'SHOP_MANAGER' ? st.owner.fullName : 'Chưa phân công'}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[#7D715E]">
@@ -1015,11 +1015,14 @@ export const AdminPersonnelPage: React.FC = () => {
                   >
                     {stores
                       .filter((st) => !st.isDeleted)
-                      .map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.name} {st.owner ? `(${st.owner.fullName})` : '(Chưa có quản lý)'}
-                        </option>
-                      ))}
+                      .map((st) => {
+                        const hasRealManager = st.owner && st.owner.role === 'SHOP_MANAGER';
+                        return (
+                          <option key={st.id} value={st.id}>
+                            {st.name} {hasRealManager ? `(${st.owner?.fullName})` : '(Chưa có quản lý)'}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
               )}
@@ -1252,33 +1255,6 @@ export const AdminPersonnelPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Người phụ trách & SĐT */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        Người phụ trách kho
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nguyễn Quản Kho"
-                        value={storeForm.contactName || ''}
-                        onChange={(e) => setStoreForm((prev) => ({ ...prev, contactName: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                        SĐT kho xuất
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="0901234567"
-                        value={storeForm.contactPhone || ''}
-                        onChange={(e) => setStoreForm((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                      />
-                    </div>
-                  </div>
 
                   {/* Tỉnh / Thành phố */}
                   <div>
@@ -1642,29 +1618,10 @@ export const AdminPersonnelPage: React.FC = () => {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                            Người phụ trách kho
-                          </label>
-                          <input
-                            type="text"
-                            value={editStoreForm.contactName}
-                            onChange={(e) => setEditStoreForm((prev) => ({ ...prev, contactName: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                            SĐT kho xuất
-                          </label>
-                          <input
-                            type="text"
-                            value={editStoreForm.contactPhone}
-                            onChange={(e) => setEditStoreForm((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                          />
-                        </div>
+                      {/* Thông tin liên hệ kho tự động đồng bộ theo Shop Manager phụ trách */}
+                      <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] text-[#7D715E] flex items-center justify-between">
+                        <span>Người phụ trách kho & SĐT tự động đồng bộ theo <strong>Shop Manager</strong>.</span>
+                        <span className="font-bold text-[#8F682E]">{selectedStore.owner?.fullName || 'Chưa gán'}</span>
                       </div>
 
                       {/* Tỉnh / Thành phố */}
@@ -1805,14 +1762,14 @@ export const AdminPersonnelPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-white border border-[#EEDFC6] text-[#B88E4F] flex items-center justify-center font-bold text-sm">
-                          {selectedStore.owner?.fullName?.[0] || 'Q'}
+                          {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.fullName?.[0] || 'Q') : '—'}
                         </div>
                         <div>
                           <div className="font-bold text-xs text-[#1A1612]">
-                            {selectedStore.owner?.fullName || 'Chưa phân công'}
+                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? selectedStore.owner.fullName : 'Chưa phân công'}
                           </div>
                           <div className="text-[11px] text-[#7D715E] font-mono">
-                            {selectedStore.owner?.email || 'N/A'}
+                            {selectedStore.owner?.role === 'SHOP_MANAGER' ? (selectedStore.owner?.email || 'N/A') : 'Chờ bổ nhiệm Shop Manager'}
                           </div>
                         </div>
                       </div>

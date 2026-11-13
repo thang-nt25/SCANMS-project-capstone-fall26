@@ -176,8 +176,15 @@ export class UsersService {
     if (dto.role === UserRole.SHOP_MANAGER && dto.storeId) {
       const store = await this.prisma.store.findUnique({
         where: { id: dto.storeId },
+        include: { owner: { select: { role: true } } },
       });
-      if (store && !store.ownerId) {
+      if (
+        store &&
+        (!store.ownerId ||
+          store.owner?.role === UserRole.SYSTEM_ADMIN ||
+          store.owner?.role === UserRole.SYSTEM_MANAGER ||
+          store.ownerId !== newUser.id)
+      ) {
         await this.prisma.store.update({
           where: { id: dto.storeId },
           data: { ownerId: newUser.id },
