@@ -163,6 +163,15 @@ export class UpdateProductDto extends ProductPackageDto {
   price?: number;
 
   @ApiPropertyOptional({
+    example: 350000,
+    description: 'Giá sàn tối thiểu bảo vệ biên lợi nhuận của Shop (VNĐ)',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Giá sàn phải là một số' })
+  @Min(0, { message: 'Giá sàn không được âm' })
+  floorPrice?: number;
+
+  @ApiPropertyOptional({
     example: 650000,
     description: 'Giá gốc niêm yết (VNĐ)',
   })

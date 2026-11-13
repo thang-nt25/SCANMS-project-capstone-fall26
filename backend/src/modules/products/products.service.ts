@@ -180,6 +180,29 @@ export class ProductsService {
       );
   }
 
+  private isCategoryVerticalCompatible(cat1: string, cat2: string): boolean {
+    const c1 = cat1.trim().toLowerCase();
+    const c2 = cat2.trim().toLowerCase();
+    if (c1 === c2) return true;
+    if (c1.includes(c2) || c2.includes(c1)) return true;
+
+    const verticalKeywords = [
+      ['mỹ phẩm', 'skincare', 'chăm sóc da', 'làm đẹp', 'son', 'serum', 'cosmetic'],
+      ['thời trang', 'may mặc', 'quần', 'áo', 'apparel', 'activewear', 'thể thao'],
+      ['thực phẩm', 'dinh dưỡng', 'sức khỏe', 'thảo mộc', 'nutrition', 'health'],
+      ['gia dụng', 'đồ bếp', 'thiết bị', 'living', 'smart'],
+      ['điện tử', 'công nghệ', 'phụ kiện', 'tech'],
+    ];
+
+    for (const group of verticalKeywords) {
+      const m1 = group.some((k) => c1.includes(k));
+      const m2 = group.some((k) => c2.includes(k));
+      if (m1 && m2) return true;
+    }
+
+    return false;
+  }
+
   private assertProductSubmissionComplete(dto: CreateProductDto): void {
     assertProductGalleryLimit(dto.subImages);
     validateProductPackage(dto);
@@ -1201,7 +1224,7 @@ export class ProductsService {
       }
       if (
         dto.categoryName &&
-        dto.categoryName.trim().toLowerCase() !== store.categoryName.trim().toLowerCase()
+        !this.isCategoryVerticalCompatible(dto.categoryName, store.categoryName)
       ) {
         throw new BadRequestException(
           `Gian hàng "${store.name}" thuộc ngành hàng chuyên biệt "${store.categoryName}". Không được đăng sản phẩm sai ngành hàng đã cấp phép.`,
@@ -1268,7 +1291,7 @@ export class ProductsService {
         Object.keys(raw).length > 4 ||
         Object.entries(raw).some(
           ([key, value]) =>
-            !/^[a-z][a-z0-9_]{0,29}$/.test(key) ||
+            !/^[\p{L}a-zA-Z][\p{L}a-zA-Z0-9_ /().-]{0,59}$/u.test(key) ||
             typeof value !== 'string' ||
             value.trim().length > 80,
         )
@@ -1287,6 +1310,7 @@ export class ProductsService {
         imageUrl: variant.imageUrl!.trim(),
         price: variant.price ?? dto.price,
         listPrice: variant.price ?? dto.price,
+        floorPrice: variant.floorPrice ?? dto.floorPrice ?? null,
         stockQuantity: variant.stockQuantity,
       };
     });
@@ -1308,6 +1332,7 @@ export class ProductsService {
           imageUrl: dto.imageUrl?.trim() || null,
           price: dto.price,
           listPrice: dto.price,
+          floorPrice: dto.floorPrice ?? (preparedVariants[0]?.floorPrice ?? null),
           originalPrice: dto.originalPrice || null,
           customCommissionRate: 10,
           stockQuantity: preparedVariants.length
@@ -1440,8 +1465,10 @@ export class ProductsService {
       }
       if (
         dto.categoryName &&
-        dto.categoryName.trim().toLowerCase() !==
-          product.store.categoryName.trim().toLowerCase()
+        !this.isCategoryVerticalCompatible(
+          dto.categoryName,
+          product.store.categoryName,
+        )
       ) {
         throw new BadRequestException(
           `Gian hàng "${product.store.name}" thuộc ngành hàng chuyên biệt "${product.store.categoryName}". Không thể thay đổi sang ngành hàng khác.`,
@@ -1600,6 +1627,7 @@ export class ProductsService {
           imageUrl: dto.imageUrl?.trim() || null,
         }),
         ...(dto.price !== undefined && { price: dto.price, ...(Number(dto.price) !== Number(product.price) ? { listPrice: dto.price } : {}) }),
+        ...(dto.floorPrice !== undefined && { floorPrice: dto.floorPrice }),
         ...(dto.originalPrice !== undefined && {
           originalPrice: dto.originalPrice,
         }),
@@ -1973,6 +2001,7 @@ export class ProductsService {
           attributes: normalizedAttributes[index],
           price,
           listPrice: previous && Number(previous.price) === Number(price) ? previous.listPrice ?? price : price,
+          floorPrice: variant.floorPrice !== undefined ? variant.floorPrice : (previous?.floorPrice ?? product.floorPrice ?? null),
           stockQuantity: variant.stockQuantity,
           imageUrl: variant.imageUrl?.trim() || null,
           isActive: true,

@@ -41,6 +41,11 @@ export class ProductVariantInputDto {
   @Min(1, { message: 'Giá bán phân loại phải lớn hơn 0' })
   price?: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: 'Giá sàn phân loại không được âm' })
+  floorPrice?: number;
+
   @IsInt()
   @Min(0)
   stockQuantity: number;

@@ -38,7 +38,6 @@ import {
   Check,
   Loader2,
   FileText,
-  SlidersHorizontal,
   Zap,
   Layers,
 } from 'lucide-react';
@@ -82,7 +81,7 @@ type ProductVariantItem = {
   labelInfo?: string;
   attributes: VariantAttributes;
   price: number | '';
-  basePrice?: number | '';
+  floorPrice?: number | '';
   stockQuantity: number | '';
   imageUrl: string;
   tier1Value?: string;
@@ -342,71 +341,6 @@ const inferCategoryFromTitle = (title: string) => {
   return '';
 };
 
-interface ProductSpecificationItem {
-  id: string;
-  key: string;
-  value: string;
-}
-
-const getDefaultSpecsForCategory = (cat: string): ProductSpecificationItem[] => {
-  if (!cat) return [
-    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
-    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
-    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
-  ];
-  const lower = cat.toLowerCase();
-  if (lower.includes('thời trang') || lower.includes('may mặc') || lower.includes('thể thao') || lower.includes('activewear') || lower.includes('áo') || lower.includes('quần') || lower.includes('apparel')) {
-    return [
-      { id: 'spec-1', key: 'Chất liệu vải chính', value: '' },
-      { id: 'spec-2', key: 'Độ co giãn & Form dáng', value: '' },
-      { id: 'spec-3', key: 'Xuất xứ nguồn vải', value: '' },
-      { id: 'spec-4', key: 'Hướng dẫn giặt ủi', value: '' },
-    ];
-  }
-  if (lower.includes('mỹ phẩm') || lower.includes('skincare') || lower.includes('da') || lower.includes('serum') || lower.includes('cosmetic')) {
-    return [
-      { id: 'spec-1', key: 'Loại da / Đối tượng phù hợp', value: '' },
-      { id: 'spec-2', key: 'Chỉ số chống nắng (SPF/PA)', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
-      { id: 'spec-4', key: 'Đặc tính / Công dụng chính', value: '' },
-    ];
-  }
-  if (lower.includes('trang điểm') || lower.includes('làm đẹp') || lower.includes('makeup') || lower.includes('son')) {
-    return [
-      { id: 'spec-1', key: 'Tone màu / Loại da phù hợp', value: '' },
-      { id: 'spec-2', key: 'Độ che phủ / Chống thấm nước', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp (PAO)', value: '' },
-      { id: 'spec-4', key: 'Đặc tính / Hiệu quả nổi bật', value: '' },
-    ];
-  }
-  if (lower.includes('cơ thể') || lower.includes('tóc') || lower.includes('body') || lower.includes('tắm') || lower.includes('gội')) {
-    return [
-      { id: 'spec-1', key: 'Đối tượng / Tình trạng da & tóc', value: '' },
-      { id: 'spec-2', key: 'Hạn sử dụng sau mở nắp', value: '' },
-      { id: 'spec-3', key: 'Công dụng dưỡng ẩm / Làm sạch', value: '' },
-    ];
-  }
-  if (lower.includes('thực phẩm') || lower.includes('dinh dưỡng') || lower.includes('sức khỏe') || lower.includes('thảo mộc') || lower.includes('nutrition') || lower.includes('health')) {
-    return [
-      { id: 'spec-1', key: 'Đối tượng sử dụng phù hợp', value: '' },
-      { id: 'spec-2', key: 'Hướng dẫn bảo quản', value: '' },
-      { id: 'spec-3', key: 'Hạn sử dụng sau mở nắp', value: '' },
-    ];
-  }
-  if (lower.includes('thiết bị') || lower.includes('điện tử') || lower.includes('gia dụng') || lower.includes('đồ bếp') || lower.includes('smart') || lower.includes('living')) {
-    return [
-      { id: 'spec-1', key: 'Cổng kết nối / Nguồn điện', value: '' },
-      { id: 'spec-2', key: 'Công suất / Dung lượng pin', value: '' },
-      { id: 'spec-3', key: 'Thời gian bảo hành chính hãng', value: '' },
-    ];
-  }
-  return [
-    { id: 'spec-1', key: 'Đặc tính / Đối tượng phù hợp', value: '' },
-    { id: 'spec-2', key: 'Chất liệu / Cấu hình kỹ thuật', value: '' },
-    { id: 'spec-3', key: 'Hướng dẫn bảo quản & Sử dụng', value: '' },
-  ];
-};
-
 interface CategoryContextInfo {
   titlePlaceholder: string;
   descriptionPlaceholder: string;
@@ -566,7 +500,6 @@ export default function ProductManagementPage() {
     return cachedProductsMap.get(key) || [];
   });
   const [storeCategory, setStoreCategory] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -696,18 +629,13 @@ export default function ProductManagementPage() {
   ];
 
   const [formSku, setFormSku] = useState('');
-  const [formBarcode, setFormBarcode] = useState('');
   const [formTitle, setFormTitle] = useState('');
-  const [formBrand, setFormBrand] = useState('');
-  const [formTags, setFormTags] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formCustomCategory, setFormCustomCategory] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formIngredients, setFormIngredients] = useState('');
   const [formKeyActives, setFormKeyActives] = useState('');
   const [formShelfLife, setFormShelfLife] = useState('');
-  const [formPao, setFormPao] = useState('');
-  const [formResponsibleEntity, setFormResponsibleEntity] = useState('');
   const [formNotificationNumber, setFormNotificationNumber] = useState('');
   const [useCommonShipping, setUseCommonShipping] = useState<boolean>(true);
   const [formOrigin, setFormOrigin] = useState('');
@@ -717,8 +645,7 @@ export default function ProductManagementPage() {
   const [formLabelProofLinks, setFormLabelProofLinks] = useState<string[]>([]);
   const [formLabelProofImages, setFormLabelProofImages] = useState<string[]>([]);
   const [formPrice, setFormPrice] = useState<number | ''>('');
-  const [formBasePrice, setFormBasePrice] = useState<number | ''>('');
-  const [formOriginalPrice, setFormOriginalPrice] = useState<number | ''>('');
+  const [formFloorPrice, setFormFloorPrice] = useState<number | ''>('');
   const [discountModalProduct, setDiscountModalProduct] = useState<any>(null);
   const [bulkDiscountProducts, setBulkDiscountProducts] = useState<any[] | null>(null);
   const [formAffiliateEnabled, setFormAffiliateEnabled] = useState(false);
@@ -729,10 +656,6 @@ export default function ProductManagementPage() {
   const [formPackageHeight, setFormPackageHeight] = useState<number | ''>('');
   const [formSampleEnabled, setFormSampleEnabled] = useState(false);
   const [formSampleQuota, setFormSampleQuota] = useState<number | ''>('');
-  const [formSpecifications, setFormSpecifications] = useState<ProductSpecificationItem[]>([
-    { id: 'spec-1', key: 'Chất liệu vải', value: '' },
-    { id: 'spec-2', key: 'Kiểu dáng / Form dáng', value: '' },
-  ]);
   const [formImage, setFormImage] = useState('');
   const [formSubImages, setFormSubImages] = useState<string[]>([]);
   const [formVariants, setFormVariants] = useState<ProductVariantItem[]>([]);
@@ -751,7 +674,7 @@ export default function ProductManagementPage() {
   const [attrGroup2Input, setAttrGroup2Input] = useState('');
 
   // Batch Fill Bar States
-  const [batchBasePrice, setBatchBasePrice] = useState<string>('');
+  const [batchFloorPrice, setBatchFloorPrice] = useState<string>('');
   const [batchPrice, setBatchPrice] = useState<string>('');
   const [batchStock, setBatchStock] = useState<string>('');
 
@@ -776,9 +699,9 @@ export default function ProductManagementPage() {
       (v) =>
         v.name.trim() &&
         v.sku.trim() &&
-        (!v.barcode?.trim() || /^\d{8,14}$/.test(v.barcode.trim())) &&
-        Number(v.basePrice) > 0 &&
+        Number(v.floorPrice) > 0 &&
         Number(v.price) > 0 &&
+        Number(v.price) >= Number(v.floorPrice) &&
         v.stockQuantity !== '' &&
         Number(v.stockQuantity) >= 0 &&
         (useCommonShipping || (
@@ -789,7 +712,7 @@ export default function ProductManagementPage() {
         ))
     ) &&
     formOrigin.trim() &&
-    (formKeyActives.trim() || formIngredients.trim()) &&
+    (formIngredients.trim() || formKeyActives.trim() || formLabelInfo.trim()) &&
     (useCommonShipping
       ? Number(formPackageWeight) > 0 &&
         Number(formPackageLength) > 0 &&
@@ -828,14 +751,14 @@ export default function ProductManagementPage() {
       const vLabel = formVariants.length === 1 ? 'Phân loại hàng' : `Phân loại #${idx + 1} (${v.name || 'chưa đặt tên'})`;
       if (!v.name.trim()) errors.push(`${vLabel}: Vui lòng nhập tên phân loại.`);
       if (!v.sku.trim()) errors.push(`${vLabel}: Vui lòng nhập mã SKU.`);
-      if (v.barcode?.trim() && v.barcode.trim().length > 50) {
-        errors.push(`${vLabel}: Mã vạch không được vượt quá 50 ký tự.`);
-      }
-      if (v.basePrice === '' || v.basePrice === undefined || Number(v.basePrice) <= 0) {
-        errors.push(`${vLabel}: Nhập giá kho cơ bản (giá sàn bảo vệ) > 0.`);
+      if (v.floorPrice === '' || v.floorPrice === undefined || Number(v.floorPrice) <= 0) {
+        errors.push(`${vLabel}: Nhập giá sàn bảo vệ biên lợi nhuận > 0.`);
       }
       if (v.price === '' || v.price === undefined || Number(v.price) <= 0) {
         errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
+      }
+      if (Number(v.floorPrice) > 0 && Number(v.price) > 0 && Number(v.price) < Number(v.floorPrice)) {
+        errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải lớn hơn hoặc bằng giá sàn (${Number(v.floorPrice).toLocaleString('vi-VN')}₫).`);
       }
       if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
         errors.push(`${vLabel}: Nhập tồn kho mở bán là số nguyên >= 0.`);
@@ -854,17 +777,13 @@ export default function ProductManagementPage() {
     if (new Set(skus).size !== skus.length) {
       errors.push('Mã SKU giữa các phân loại không được trùng nhau.');
     }
-    const barcodes = formVariants.map((v) => v.barcode?.trim()).filter(Boolean);
-    if (new Set(barcodes).size !== barcodes.length) {
-      errors.push('Mã vạch giữa các phân loại không được trùng nhau.');
-    }
 
     // Thông số kỹ thuật sản phẩm (cấp sản phẩm)
     if (!formOrigin.trim()) {
       errors.push('Thông số sản phẩm: Vui lòng nhập nguồn gốc xuất xứ.');
     }
-    if (!formKeyActives.trim() && !formIngredients.trim()) {
-      errors.push('Thông số sản phẩm: Vui lòng nhập hoạt chất chính hoặc công dụng nổi bật.');
+    if (!formIngredients.trim() && !formKeyActives.trim() && !formLabelInfo.trim()) {
+      errors.push('Thông số sản phẩm: Vui lòng nhập thành phần, cấu tạo hoặc hoạt chất.');
     }
 
     // Quy cách đóng gói & vận chuyển GHN (khi dùng chung)
@@ -897,7 +816,8 @@ export default function ProductManagementPage() {
     if (modalStep === 1) {
       const v1 = validateStep1();
       if (!v1.valid) {
-        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi chuyển bước.');
+        setSaveError(v1.errors.join('\n'));
+        showToast(v1.errors[0]);
         return;
       }
       // Đảm bảo Phân loại 1 có SKU từ formSku nếu chưa có
@@ -908,7 +828,8 @@ export default function ProductManagementPage() {
     } else if (modalStep === 2) {
       const v2 = validateStep2();
       if (!v2.valid) {
-        setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi chuyển bước.');
+        setSaveError(v2.errors.join('\n'));
+        showToast(v2.errors[0]);
         return;
       }
       // Tự động gán fallback nếu trống để đồng bộ
@@ -921,8 +842,7 @@ export default function ProductManagementPage() {
       const primary = formVariants[0];
       if (primary) {
         setFormPrice(primary.price);
-        setFormBasePrice(primary.basePrice || Math.round((Number(primary.price) || 0) * 0.6));
-        setFormBarcode(primary.barcode || '');
+        setFormFloorPrice(primary.floorPrice || Math.round((Number(primary.price) || 0) * 0.7));
       }
       // Đồng bộ thông số sản phẩm và kiện GHN
       if (useCommonShipping) {
@@ -1173,33 +1093,34 @@ export default function ProductManagementPage() {
 
   useEffect(() => {
     if (!isKol) {
-      if (currentStoreId) {
-        api.get(`/stores/public/id/${currentStoreId}`)
-          .then((res: any) => {
-            const s = res?.data || res;
-            if (s?.categoryName) setStoreCategory(s.categoryName);
-            if (s?.name) setStoreName(s.name);
-          })
-          .catch(() => {
-            if (!isAdminOrManager) {
-              storeService.getMyStore().then((s) => {
-                if (s?.categoryName) setStoreCategory(s.categoryName);
-                if (s?.name) setStoreName(s.name);
-              }).catch(() => {});
-            }
-          });
-      } else if (!isAdminOrManager) {
+      if (!isAdminOrManager) {
+        // SHOP_MANAGER: dùng getMyStore() làm nguồn chính — trả về categoryName chính xác nhất
         storeService
           .getMyStore()
           .then((s) => {
-            if (s?.categoryName) {
-              setStoreCategory(s.categoryName);
-            }
-            if (s?.name) {
-              setStoreName(s.name);
-            }
+            if (s?.categoryName) setStoreCategory(s.categoryName);
           })
-          .catch((err) => console.warn('Không thể tải ngành hàng của shop:', err));
+          .catch(() => {
+            // fallback: thử public API nếu getMyStore lỗi
+            if (currentStoreId) {
+              api
+                .get(`/stores/public/id/${currentStoreId}`)
+                .then((res: any) => {
+                  const s = res?.data || res;
+                  if (s?.categoryName) setStoreCategory(s.categoryName);
+                })
+                .catch(() => {});
+            }
+          });
+      } else if (currentStoreId) {
+        // ADMIN / SYSTEM_MANAGER: dùng public API
+        api
+          .get(`/stores/public/id/${currentStoreId}`)
+          .then((res: any) => {
+            const s = res?.data || res;
+            if (s?.categoryName) setStoreCategory(s.categoryName);
+          })
+          .catch(() => {});
       }
     }
   }, [isAdminOrManager, isKol, currentStoreId]);
@@ -1227,7 +1148,6 @@ export default function ProductManagementPage() {
 
   const handleCategoryChange = (categoryName: string) => {
     setFormCategory(categoryName);
-        setFormSpecifications(getDefaultSpecsForCategory(categoryName));
     const nextFields = getVariantFields(categoryName);
     setFormVariants((current) => current.map((variant) => {
       const attributes = Object.fromEntries(nextFields
@@ -1259,9 +1179,8 @@ export default function ProductManagementPage() {
         {
           sku: uniqueSku,
           name: `Phân loại ${count}`,
-          barcode: '',
           price: primary?.price || Number(formPrice) || 0,
-          basePrice: primary?.basePrice || Number(formBasePrice) || 0,
+          floorPrice: primary?.floorPrice || Number(formFloorPrice) || Math.round((Number(primary?.price || formPrice || 0)) * 0.7),
           stockQuantity: 50,
           imageUrl: '',
           // Kế thừa thông minh từ Loại 1 để không phải gõ lại
@@ -1272,7 +1191,7 @@ export default function ProductManagementPage() {
           packageLength: primary?.packageLength || formPackageLength || 15,
           packageWidth: primary?.packageWidth || formPackageWidth || 10,
           packageHeight: primary?.packageHeight || formPackageHeight || 5,
-          attributes: {},
+          attributes: { type: `Phân loại ${count}` },
         },
       ];
     });
@@ -1303,7 +1222,6 @@ export default function ProductManagementPage() {
       id: undefined,
       sku: uniqueSku,
       name: `${target.name || 'Phân loại'} (Bản sao)`,
-      barcode: '', // Cần nhập mã vạch mới
       attributes: { ...target.attributes },
     };
     setFormVariants((current) => {
@@ -1340,18 +1258,19 @@ export default function ProductManagementPage() {
     existingVariants: ProductVariantItem[],
     baseSku: string,
   ): ProductVariantItem[] => {
+    const fields = getVariantFields(formCategory);
+    const primaryAttrKey = fields[0]?.key || 'type';
+    const secondaryAttrKey = fields[1]?.key || 'specification';
     const cleanG1 = g1Values.map((v) => v.trim()).filter(Boolean);
     const cleanG2 = g2Values.map((v) => v.trim()).filter(Boolean);
 
     if (cleanG1.length === 0) {
       return [{
-        id: `var-${Date.now()}-def`,
         name: 'Phân loại tiêu chuẩn',
         tier1Value: 'Phân loại tiêu chuẩn',
         sku: baseSku || 'SKU-01',
-        barcode: '',
         price: 0,
-        basePrice: 0,
+        floorPrice: 0,
         stockQuantity: 100,
         imageUrl: '',
         attributes: { type: 'Phân loại tiêu chuẩn' },
@@ -1368,16 +1287,14 @@ export default function ProductManagementPage() {
         }
         const cleanSlug = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
         return {
-          id: `var-${Date.now()}-${idx}-${cleanSlug}`,
           name: v1,
           tier1Value: v1,
           sku: `${baseSku || 'SKU'}-${cleanSlug || String(idx + 1).padStart(2, '0')}`,
-          barcode: '',
           price: 0,
-          basePrice: 0,
+          floorPrice: 0,
           stockQuantity: 100,
           imageUrl: '',
-          attributes: { type: v1 },
+          attributes: { [primaryAttrKey]: v1 },
         };
       });
     }
@@ -1395,18 +1312,17 @@ export default function ProductManagementPage() {
         } else {
           const s1 = v1.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `V${i1 + 1}`;
           const s2 = v2.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || `S${i2 + 1}`;
+          const secKey = secondaryAttrKey && secondaryAttrKey !== primaryAttrKey ? secondaryAttrKey : 'specification';
           result.push({
-            id: `var-${Date.now()}-${i1}-${i2}`,
             name: combinedName,
             tier1Value: v1,
             tier2Value: v2,
             sku: `${baseSku || 'SKU'}-${s1}-${s2}`,
-            barcode: '',
             price: 0,
-            basePrice: 0,
+            floorPrice: 0,
             stockQuantity: 100,
             imageUrl: '',
-            attributes: { color: v1, size: v2, type: combinedName },
+            attributes: { [primaryAttrKey]: v1, [secKey]: v2 },
           });
         }
       });
@@ -1481,17 +1397,17 @@ export default function ProductManagementPage() {
 
   const applyBatchValues = () => {
     const bPrice = batchPrice === '' ? null : Math.max(0, Number(batchPrice));
-    const bBasePrice = batchBasePrice === '' ? null : Math.max(0, Number(batchBasePrice));
+    const bFloorPrice = batchFloorPrice === '' ? null : Math.max(0, Number(batchFloorPrice));
     const bStock = batchStock === '' ? null : Math.max(0, Number(batchStock));
 
-    if (bPrice === null && bBasePrice === null && bStock === null) {
+    if (bPrice === null && bFloorPrice === null && bStock === null) {
       showToast('Vui lòng nhập ít nhất một chỉ số (Giá sàn, Giá bán hoặc Tồn kho) để áp dụng.');
       return;
     }
     setFormVariants((curr) =>
       curr.map((v) => ({
         ...v,
-        ...(bBasePrice !== null ? { basePrice: bBasePrice } : {}),
+        ...(bFloorPrice !== null ? { floorPrice: bFloorPrice } : {}),
         ...(bPrice !== null ? { price: bPrice } : {}),
         ...(bStock !== null ? { stockQuantity: bStock } : {}),
       }))
@@ -1504,7 +1420,7 @@ export default function ProductManagementPage() {
     setModalStep(1);
 
     setEditingProduct(null);
-    const initialCategory = storeCategory || products[0]?.categoryName || (products[0] as any)?.category || STANDARD_CATEGORIES[0].name;
+    const initialCategory = storeCategory || STANDARD_CATEGORIES[0].name;
     setFormCategory(initialCategory);
     setFormCustomCategory('');
     let defaultSku = '';
@@ -1518,15 +1434,10 @@ export default function ProductManagementPage() {
     }
     setFormSku(defaultSku);
     setFormTitle('');
-    setFormBrand(storeName || '');
-    setFormTags('');
-    setFormBarcode('');
     setFormDescription('');
     setFormIngredients('');
     setFormKeyActives('');
     setFormShelfLife('');
-    setFormPao('');
-    setFormResponsibleEntity('');
     setFormNotificationNumber('');
     setUseCommonShipping(true);
     setFormOrigin('Việt Nam');
@@ -1536,8 +1447,10 @@ export default function ProductManagementPage() {
     setFormLabelProofLinks([]);
     setFormLabelProofImages([]);
     setFormPrice('');
-    setFormBasePrice('');
-    setFormOriginalPrice('');
+    setFormFloorPrice('');
+    setBatchFloorPrice('');
+    setBatchPrice('');
+    setBatchStock('');
     setFormAffiliateEnabled(true);
     setFormStock('');
     setFormPackageWeight(250);
@@ -1546,26 +1459,24 @@ export default function ProductManagementPage() {
     setFormPackageHeight(5);
     setFormSampleEnabled(false);
     setFormSampleQuota('');
-    setFormSpecifications(getDefaultSpecsForCategory(initialCategory));
     setFormImage('');
     setFormSubImages([]);
 
     const catInfo = getCategoryContextPlaceholders(initialCategory);
-    const g1Name = catInfo.group1Name || 'Màu sắc';
-    const g1Presets = catInfo.group1Presets.slice(0, 2);
+    const g1Name = catInfo.group1Name || 'Phân loại';
+    const g1Presets = catInfo.group1Presets.slice(0, 1);
     const g2Name = catInfo.group2Name || 'Kích cỡ (Size)';
-    const g2Presets = catInfo.group2Presets.slice(0, 2);
 
     setAttrGroup1Name(g1Name);
     setAttrGroup1Values(g1Presets.length ? g1Presets : ['Mặc định']);
-    setHasTier2(g2Presets.length > 0);
+    setHasTier2(false);
     setAttrGroup2Name(g2Name);
-    setAttrGroup2Values(g2Presets);
+    setAttrGroup2Values([]);
 
     const initialVariants = generateCartesianVariants(
       g1Presets.length ? g1Presets : ['Mặc định'],
-      g2Presets,
-      g2Presets.length > 0,
+      [],
+      false,
       [],
       defaultSku,
     );
@@ -1607,12 +1518,9 @@ export default function ProductManagementPage() {
     setModalStep(1);
     setEditingProduct(p);
     setFormSku(p.sku || '');
-    setFormBarcode(p.barcode || '');
     setFormTitle(p.title || p.name);
     const pAttrs = p.attributes && typeof p.attributes === 'object' && !Array.isArray(p.attributes) ? p.attributes : {};
-    setFormBrand(p.brand || pAttrs.brand || storeName || '');
-    setFormTags(p.tags || pAttrs.tags || '');
-                    const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
+    const matchedCat = STANDARD_CATEGORIES.find((c) => c.name === (p.categoryName || p.category));
     if (matchedCat) {
       setFormCategory(matchedCat.name);
       setFormCustomCategory('');
@@ -1623,34 +1531,12 @@ export default function ProductManagementPage() {
     let initialDesc = p.description || '';
     const specsMatch = initialDesc.match(/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:\n([\s\S]*?)(?:\n\n|$)/);
     if (specsMatch) {
-      const specsRaw = specsMatch[1];
-      const parsedSpecs: ProductSpecificationItem[] = [];
-      const lines = specsRaw.split('\n');
-      for (const line of lines) {
-        const bulletMatch = line.match(/^•\s*([^:]+):\s*(.*)$/);
-        if (bulletMatch) {
-          parsedSpecs.push({
-            id: `spec-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-            key: bulletMatch[1].trim(),
-            value: bulletMatch[2].trim(),
-          });
-        }
-      }
-      if (parsedSpecs.length > 0) {
-        setFormSpecifications(parsedSpecs);
-        initialDesc = initialDesc.replace(specsMatch[0], '').trim();
-      } else {
-        setFormSpecifications(getDefaultSpecsForCategory(matchedCat ? matchedCat.name : ''));
-      }
-    } else {
-      setFormSpecifications(getDefaultSpecsForCategory(matchedCat ? matchedCat.name : ''));
+      initialDesc = initialDesc.replace(specsMatch[0], '').trim();
     }
     setFormDescription(initialDesc);
     setFormIngredients(p.ingredients || '');
     setFormKeyActives(pAttrs.keyActives || p.keyActives || '');
     setFormShelfLife(pAttrs.shelfLife || p.shelfLife || '');
-    setFormPao(pAttrs.pao || p.pao || '');
-    setFormResponsibleEntity(pAttrs.responsibleEntity || p.responsibleEntity || '');
     setFormNotificationNumber(pAttrs.notificationNumber || p.notificationNumber || '');
     setFormOrigin(p.origin || '');
     setFormLabelInfo(p.labelInfo || '');
@@ -1660,7 +1546,6 @@ export default function ProductManagementPage() {
     setFormLabelProofImages(Array.isArray(p.labelProofImages) ? p.labelProofImages : []);
     const currentPrice = Number(p.price) || 0;
     setFormPrice(currentPrice);
-    setFormOriginalPrice(p.originalPrice ? Number(p.originalPrice) : '');
     setFormAffiliateEnabled(p.isAffiliateEnabled !== false);
     setFormStock(p.stockQuantity ?? p.stock ?? 0);
     setFormPackageWeight(p.packageWeight ?? '');
@@ -1674,7 +1559,6 @@ export default function ProductManagementPage() {
     const mappedVariants: ProductVariantItem[] = existingVariants.map((variant: any) => ({
       id: variant.id,
       sku: variant.sku || '',
-      barcode: variant.barcode || p.barcode || '',
       packageWeight: variant.packageWeight ?? (variant.attributes?.packageWeight ? Number(variant.attributes.packageWeight) : (p.packageWeight ?? 250)),
       packageLength: variant.packageLength ?? (variant.attributes?.packageLength ? Number(variant.attributes.packageLength) : (p.packageLength ?? 15)),
       packageWidth: variant.packageWidth ?? (variant.attributes?.packageWidth ? Number(variant.attributes.packageWidth) : (p.packageWidth ?? 10)),
@@ -1685,7 +1569,7 @@ export default function ProductManagementPage() {
       name: variant.name || 'Phân loại tiêu chuẩn',
       attributes: variant.attributes && typeof variant.attributes === 'object' && !Array.isArray(variant.attributes) ? variant.attributes : {},
       price: Number(variant.price ?? p.price) || 0,
-      basePrice: Number(variant.basePrice ?? p.basePrice ?? Math.round((Number(variant.price ?? p.price) || 0) * 0.6)) || 0,
+      floorPrice: Number(variant.floorPrice ?? (p as any).floorPrice ?? Math.round((Number(variant.price ?? p.price) || 0) * 0.7)) || 0,
       stockQuantity: Number(variant.stockQuantity ?? p.stockQuantity ?? 0),
       imageUrl: variant.imageUrl || '',
     }));
@@ -1694,10 +1578,9 @@ export default function ProductManagementPage() {
       mappedVariants.push({
         name: 'Phân loại tiêu chuẩn',
         sku: p.sku || '',
-        barcode: p.barcode || '',
         imageUrl: p.imageUrl || '',
         price: Number(p.price) || 0,
-        basePrice: Number(p.basePrice ?? Math.round((Number(p.price) || 0) * 0.6)) || 0,
+        floorPrice: Number((p as any).floorPrice ?? Math.round((Number(p.price) || 0) * 0.7)) || 0,
         stockQuantity: Number(p.stockQuantity ?? 0),
         origin: p.origin || 'Việt Nam',
         ingredients: p.ingredients || '',
@@ -1709,6 +1592,9 @@ export default function ProductManagementPage() {
         attributes: {},
       });
     }
+
+    setFormFloorPrice(mappedVariants[0]?.floorPrice ?? (p as any).floorPrice ?? Math.round(currentPrice * 0.7));
+    setBatchFloorPrice('');
 
     const catInfo = getCategoryContextPlaceholders(p.category || storeCategory || '');
     const hasComma = mappedVariants.some((v) => v.name.includes(','));
@@ -1977,10 +1863,6 @@ export default function ProductManagementPage() {
 
     // Đồng bộ thông số từ Phân loại 1 (Loại chính) ra cấp sản phẩm
     const primary = formVariants[0];
-    const effectiveBarcode = primary?.barcode || formBarcode || '';
-    const effectiveOrigin = primary?.origin || formOrigin || 'Việt Nam';
-    const effectiveIngredients = primary?.ingredients || formIngredients || '';
-    const effectiveLabelInfo = primary?.labelInfo || formLabelInfo || '';
     const effectivePackageWeight = Number(
       useCommonShipping
         ? (formPackageWeight || primary?.packageWeight || 250)
@@ -2007,46 +1889,38 @@ export default function ProductManagementPage() {
     // Chuẩn hóa danh sách phân loại gửi lên API
     const fields = getVariantFields(formCategory);
     const primaryAttrKey = fields[0]?.key || 'type';
+    const secondaryAttrKey = fields[1]?.key || 'specification';
     const normalizedVariants = formVariants.map((v) => {
-      const vWeight = useCommonShipping ? effectivePackageWeight : Number(v.packageWeight || effectivePackageWeight);
-      const vLength = useCommonShipping ? effectivePackageLength : Number(v.packageLength || effectivePackageLength);
-      const vWidth = useCommonShipping ? effectivePackageWidth : Number(v.packageWidth || effectivePackageWidth);
-      const vHeight = useCommonShipping ? effectivePackageHeight : Number(v.packageHeight || effectivePackageHeight);
+      const cleanAttrs: Record<string, string> = {};
+      if (v.tier1Value?.trim()) {
+        cleanAttrs[primaryAttrKey] = v.tier1Value.trim();
+      } else if (v.attributes?.[primaryAttrKey]?.trim()) {
+        cleanAttrs[primaryAttrKey] = v.attributes[primaryAttrKey].trim();
+      } else {
+        cleanAttrs[primaryAttrKey] = v.name.trim();
+      }
+      if (v.tier2Value?.trim()) {
+        const secKey = secondaryAttrKey && secondaryAttrKey !== primaryAttrKey ? secondaryAttrKey : 'specification';
+        cleanAttrs[secKey] = v.tier2Value.trim();
+      }
+
+      const vFloorPrice = Number(v.floorPrice || formFloorPrice || 0) || Math.round((Number(v.price) || effectivePrice) * 0.7);
 
       return {
-        id: v.id,
+        ...(editingProduct && v.id && !v.id.startsWith('var-') ? { id: v.id } : {}),
         sku: v.sku.trim().toUpperCase() || formSku.trim().toUpperCase(),
         name: v.name.trim(),
-        barcode: v.barcode?.trim() || effectiveBarcode || null,
         imageUrl: v.imageUrl?.trim() || formImage,
         price: Number(v.price) || effectivePrice,
-        basePrice: Number(v.basePrice) || Math.round((Number(v.price) || effectivePrice) * 0.6),
+        floorPrice: vFloorPrice,
         stockQuantity: Number(v.stockQuantity) || 0,
-        attributes: {
-          [primaryAttrKey]: v.attributes?.[primaryAttrKey] || v.name.trim(),
-          origin: v.origin?.trim() || effectiveOrigin,
-          ingredients: v.ingredients?.trim() || effectiveIngredients,
-          labelInfo: v.labelInfo?.trim() || effectiveLabelInfo,
-          packageWeight: String(vWeight),
-          packageLength: String(vLength),
-          packageWidth: String(vWidth),
-          packageHeight: String(vHeight),
-          ...(formBrand.trim() ? { brand: formBrand.trim() } : {}),
-          ...(formTags.trim() ? { tags: formTags.trim() } : {}),
-          ...(formKeyActives.trim() ? { keyActives: formKeyActives.trim() } : {}),
-          ...(formShelfLife.trim() ? { shelfLife: formShelfLife.trim() } : {}),
-          ...(formPao.trim() ? { pao: formPao.trim() } : {}),
-          ...(formResponsibleEntity.trim() ? { responsibleEntity: formResponsibleEntity.trim() } : {}),
-          ...(formNotificationNumber.trim() ? { notificationNumber: formNotificationNumber.trim() } : {}),
-          ...v.attributes,
-        },
+        attributes: cleanAttrs,
       };
     });
 
     let packageData: ReturnType<typeof productPackageInput>;
     try {
       packageData = productPackageInput({
-        barcode: effectiveBarcode,
         packageWeight: effectivePackageWeight,
         packageLength: effectivePackageLength,
         packageWidth: effectivePackageWidth,
@@ -2064,17 +1938,11 @@ export default function ProductManagementPage() {
       const allErrors = [...v1.errors, ...v2.errors, ...v3.errors];
 
       if (allErrors.length) {
-        if (!v1.valid) {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 1 trước khi gửi duyệt.');
-          setModalStep(1);
-        } else if (!v2.valid) {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 2 trước khi gửi duyệt.');
-          setModalStep(2);
-        } else {
-          setSaveError('Vui lòng hoàn thiện các trường bắt buộc ở Bước 3 trước khi gửi duyệt.');
-          setModalStep(3);
-        }
-        showToast('Chưa gửi sản phẩm. Vui lòng kiểm tra các thông tin còn thiếu.');
+        const stepToFocus = !v1.valid ? 1 : (!v2.valid ? 2 : 3);
+        const stepErrors = !v1.valid ? v1.errors : (!v2.valid ? v2.errors : v3.errors);
+        setSaveError(stepErrors.join('\n'));
+        setModalStep(stepToFocus);
+        showToast(stepErrors[0]);
         return;
       }
     }
@@ -2164,39 +2032,25 @@ export default function ProductManagementPage() {
         ? formCustomCategory.trim() || 'Khác'
         : formCategory;
 
-    const validSpecs = [...formSpecifications.filter((s) => s.key.trim() && s.value.trim())];
-    let combinedDescription = formDescription.trim();
-    const descriptionInputsChanged = !editingProduct ||
-      combinedDescription !== (editingProduct.description || '').trim() ||
-      formSpecifications.some(spec => spec.key.trim() && spec.value.trim());
-    // Changing sample policy must not silently rewrite approved product content.
-    if (descriptionInputsChanged && validSpecs.length > 0 && !/📌 THÔNG SỐ KỸ THUẬT(?: SẢN PHẨM)?:/.test(combinedDescription)) {
-      const specsBlock = `📌 THÔNG SỐ KỸ THUẬT SẢN PHẨM:\n` +
-        validSpecs.map((s) => `• ${s.key.trim()}: ${s.value.trim()}`).join('\n') +
-        `\n\n`;
-      combinedDescription = specsBlock + combinedDescription;
-    }
-
-    const extraDetails: string[] = [];
-    if (formKeyActives.trim()) extraDetails.push(`• Hoạt chất / Đặc tính nổi bật: ${formKeyActives.trim()}`);
-    if (formShelfLife.trim()) extraDetails.push(`• Hạn sử dụng: ${formShelfLife.trim()}`);
-    if (formPao.trim()) extraDetails.push(`• Hạn sau mở nắp (PAO): ${formPao.trim()}`);
-    if (formResponsibleEntity.trim()) extraDetails.push(`• Đơn vị chịu trách nhiệm: ${formResponsibleEntity.trim()}`);
-    if (formNotificationNumber.trim()) extraDetails.push(`• Số công bố / Giấy phép lưu hành: ${formNotificationNumber.trim()}`);
-    if (extraDetails.length > 0 && !combinedDescription.includes('📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:')) {
-      const extraBlock = `\n\n📌 QUY CHUẨN & PHÁP LÝ SẢN PHẨM:\n` + extraDetails.join('\n') + `\n`;
-      combinedDescription = combinedDescription + extraBlock;
-    }
+    const combinedDescription = formDescription.trim();
 
     saveLocked.current = true;
     setSavingProduct(true);
     try {
-      const fingerprint = JSON.stringify([editingProduct?.id, currentStoreId, formTitle.trim(), formSku.trim(), formBarcode.trim()]);
+      const fingerprint = JSON.stringify([editingProduct?.id, currentStoreId, formTitle.trim(), formSku.trim()]);
       if ((!editingProduct || editingProduct.title !== formTitle.trim()) && confirmedIdentity.current !== fingerprint) {
-        const response: any = await api.get('/products/identity-check', { timeout: 120000, params: { title: formTitle.trim(), storeId: currentStoreId, productId: editingProduct?.id }, headers: { 'x-skip-cache': '1' } });
-        const body = response?.data?.data || response?.data || response;
-        if (!Array.isArray(body?.items)) throw new Error('Không kiểm tra được danh mục trùng. Vui lòng thử lại.');
-        if (body.items.length) { setIdentityWarning({ items: body.items, fingerprint }); return; }
+        try {
+          const response: any = await api.get('/products/identity-check', { timeout: 15000, params: { title: formTitle.trim(), storeId: currentStoreId, productId: editingProduct?.id }, headers: { 'x-skip-cache': '1' } });
+          const body = response?.data?.data || response?.data || response;
+          if (Array.isArray(body?.items) && body.items.length) {
+            setIdentityWarning({ items: body.items, fingerprint });
+            setSavingProduct(false);
+            saveLocked.current = false;
+            return;
+          }
+        } catch (identErr) {
+          console.warn('Bỏ qua pre-check do timeout hoặc model local đang khởi động:', identErr);
+        }
       }
       if (editingProduct) {
         const productUpdate = await productService.updateProduct(editingProduct.id, {
@@ -2212,7 +2066,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: effectivePrice,
-          originalPrice: formBasePrice !== '' ? Number(formBasePrice) : (formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined),
+          floorPrice: Number(formFloorPrice || formVariants[0]?.floorPrice || 0) || Math.round(effectivePrice * 0.7),
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           // syncProductVariants updates the parent total from the saved SKU quantities.
@@ -2243,7 +2097,7 @@ export default function ProductManagementPage() {
           labelProofLinks: formLabelProofLinks.map((url) => url.trim()).filter(Boolean),
           labelProofImages: formLabelProofImages,
           price: effectivePrice,
-          originalPrice: formOriginalPrice !== '' ? Number(formOriginalPrice) : undefined,
+          floorPrice: Number(formFloorPrice || formVariants[0]?.floorPrice || 0) || Math.round(effectivePrice * 0.7),
           customCommissionRate: 10,
           isAffiliateEnabled: formAffiliateEnabled,
           stockQuantity: effectiveStock,
@@ -2936,6 +2790,32 @@ export default function ProductManagementPage() {
         )}
       >
         <form id="product-editor-form" noValidate onSubmit={handleSave} className="product-editor-form w-full flex-1 flex flex-col min-h-0">
+          {saveError && (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs text-rose-800 shadow-xs animate-in fade-in duration-150">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-rose-900 mb-1">Cần hoàn thiện thông tin trước khi tiếp tục:</div>
+                  <div className="whitespace-pre-line text-[11.5px] leading-relaxed space-y-0.5">
+                    {saveError.split('\n').map((err, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-rose-500">•</span>
+                        <span>{err}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSaveError(null)}
+                  className="text-rose-400 hover:text-rose-700 hover:bg-rose-100 rounded-lg p-1 transition cursor-pointer"
+                  title="Đóng thông báo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
           {editingProduct?.moderationStatus === 'REJECTED' && (
             <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
               <strong className="block">Sản phẩm chưa được duyệt</strong>
@@ -3487,11 +3367,11 @@ export default function ProductManagementPage() {
                     <input
                       type="number"
                       min={1}
-                      value={batchBasePrice}
-                      onChange={(e) => setBatchBasePrice(e.target.value)}
+                      value={batchFloorPrice}
+                      onChange={(e) => setBatchFloorPrice(e.target.value)}
                       placeholder="Giá sàn (₫)..."
                       className="h-8 w-28 rounded-lg border border-[#EEDFC6] bg-white px-2.5 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] transition"
-                      title="Nhập giá sàn cơ bản bảo vệ để áp dụng cho mọi phân loại"
+                      title="Nhập giá sàn tối thiểu bảo vệ để áp dụng cho mọi phân loại"
                     />
                     <input
                       type="number"
@@ -3537,7 +3417,6 @@ export default function ProductManagementPage() {
                           <th className="py-2.5 px-2.5 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
                         )}
                         <th className="py-2.5 px-2.5 min-w-[110px]">Mã SKU <span className="text-rose-500">*</span></th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Mã vạch EAN-13</th>
                         <th className="py-2.5 px-2.5 min-w-[115px]">Giá sàn (₫) <span className="text-rose-500">*</span></th>
                         <th className="py-2.5 px-2.5 min-w-[115px]">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
                         <th className="py-2.5 px-2.5 w-20">Tồn kho <span className="text-rose-500">*</span></th>
@@ -3547,8 +3426,7 @@ export default function ProductManagementPage() {
                     <tbody className="divide-y divide-[#EAE4D7]">
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
-                        const isBelowFloor = Number(variant.basePrice) > 0 && Number(variant.price) < Number(variant.basePrice);
-                        const isBarcodeInvalid = Boolean(variant.barcode && variant.barcode.trim().length > 50);
+                        const isBelowFloor = Number(variant.floorPrice) > 0 && Number(variant.price) > 0 && Number(variant.price) < Number(variant.floorPrice);
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
@@ -3662,39 +3540,19 @@ export default function ProductManagementPage() {
                                 />
                               </td>
 
-                              {/* 4. Mã vạch */}
-                              <td className="py-2 px-2.5 align-middle">
-                                <input
-                                  type="text"
-                                  value={variant.barcode || ''}
-                                  maxLength={50}
-                                  onChange={(e) => {
-                                    const val = e.target.value.trim();
-                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, barcode: val } : v)));
-                                  }}
-                                  placeholder="Mã vạch (tùy chọn)"
-                                  className={`h-8.5 w-full rounded-lg border px-2 text-xs font-mono font-medium outline-none transition focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 ${
-                                    isBarcodeInvalid
-                                      ? 'border-rose-400 bg-rose-50/60 text-rose-700 ring-1 ring-rose-200'
-                                      : 'border-[#EAE4D7] bg-white text-[#1A1612]'
-                                  }`}
-                                  title={isBarcodeInvalid ? `Mã vạch không được quá 50 ký tự` : undefined}
-                                />
-                              </td>
-
-                              {/* 5. Giá sàn (₫) */}
+                              {/* 4. Giá sàn (₫) */}
                               <td className="py-2 px-2.5 align-middle">
                                 <input
                                   type="number"
                                   min={1}
-                                  value={variant.basePrice === 0 ? '' : (variant.basePrice ?? '')}
+                                  value={variant.floorPrice === 0 ? '' : (variant.floorPrice ?? '')}
                                   onChange={(e) => {
                                     const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
-                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, basePrice: val as number } : v)));
+                                    setFormVariants((curr) => curr.map((v, i) => (i === index ? { ...v, floorPrice: val as number } : v)));
                                   }}
                                   placeholder="100.000"
                                   className="h-8.5 w-full rounded-lg border border-[#EEDFC6] bg-[#FAF8F5] px-2 text-xs font-bold tabular-nums text-[#8C6226] outline-none focus:border-[#C59B58] focus:ring-1 focus:ring-[#C59B58]/20 transition"
-                                  title="Giá sàn tối thiểu bảo vệ, không thể giảm thấp hơn"
+                                  title="Giá sàn tối thiểu bảo vệ biên lợi nhuận của Shop (bắt buộc > 0 và <= Giá bán)"
                                 />
                               </td>
 
@@ -3892,7 +3750,7 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
 
-                {/* 3 Thông số cốt lõi tinh gọn */}
+                {/* 3 Thông số cốt lõi tinh gọn phục vụ kiểm duyệt & chi tiết sản phẩm */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
@@ -3909,174 +3767,30 @@ export default function ProductManagementPage() {
 
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                      Hoạt chất chính & Công dụng nổi bật <span className="text-rose-500">*</span>
+                      Thành phần / Chất liệu / Cấu tạo <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={formKeyActives}
-                      onChange={(e) => {
-                        setFormKeyActives(e.target.value);
-                        if (!formIngredients) setFormIngredients(e.target.value);
-                      }}
-                      placeholder={contextPlaceholders.keyActivesPlaceholder || 'VD: Niacinamide 10%, B5 2% - Mờ thâm sáng da'}
+                      value={formIngredients}
+                      onChange={(e) => setFormIngredients(e.target.value)}
+                      placeholder={contextPlaceholders.ingredientsPlaceholder || 'VD: Niacinamide 10%, Cotton 100%, Inox 304...'}
                       className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
                     />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                      Hạn sử dụng <span className="text-rose-500">*</span>
+                      Nhãn mác, Cảnh báo & HDSD <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={formShelfLife}
-                      onChange={(e) => {
-                        setFormShelfLife(e.target.value);
-                        if (!formLabelInfo) setFormLabelInfo(`Bảo quản nơi khô ráo, HSD: ${e.target.value}`);
-                      }}
-                      placeholder={contextPlaceholders.shelfLifePlaceholder || 'VD: 36 tháng kể từ NSX'}
+                      value={formLabelInfo}
+                      onChange={(e) => setFormLabelInfo(e.target.value)}
+                      placeholder="VD: Bảo quản khô ráo, tem phụ tiếng Việt..."
                       className="h-8.5 w-full rounded-xl border border-[#EAE4D7] bg-white px-3 text-xs font-semibold text-[#1A1612] outline-none focus:border-[#B88E4F] transition"
                     />
                   </div>
                 </div>
-
-                {/* Tùy chọn nâng cao (Collapsible) cho catalog chuyên sâu */}
-                <details className="group rounded-xl border border-[#EAE4D7] bg-[#FAF8F5]/80 overflow-hidden">
-                  <summary className="flex items-center justify-between p-3 text-xs font-bold text-[#8C6226] cursor-pointer hover:bg-[#FBF5EB] select-none transition">
-                    <span className="flex items-center gap-1.5">
-                      <SlidersHorizontal size={13} className="text-[#8C6226]" />
-                      <span>Thông số chuyên sâu bổ sung (INCI, Tem nhãn, PAO & Đơn vị chịu trách nhiệm)</span>
-                    </span>
-                    <span className="text-[10px] text-[#7D715E] font-normal group-open:hidden">Bấm để mở rộng</span>
-                  </summary>
-
-                  <div className="p-3 border-t border-[#EAE4D7] space-y-3 bg-white">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          {contextPlaceholders.ingredientsLabel || 'Bảng thành phần đầy đủ'}
-                        </label>
-                        <input
-                          type="text"
-                          value={formIngredients}
-                          onChange={(e) => setFormIngredients(e.target.value)}
-                          placeholder={contextPlaceholders.ingredientsPlaceholder}
-                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Đơn vị chịu trách nhiệm đưa SP ra thị trường
-                        </label>
-                        <input
-                          type="text"
-                          value={formResponsibleEntity}
-                          onChange={(e) => setFormResponsibleEntity(e.target.value)}
-                          placeholder={contextPlaceholders.responsibleEntityPlaceholder}
-                          className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                          Hạn sau mở nắp (PAO)
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={formPao}
-                            onChange={(e) => setFormPao(e.target.value)}
-                            placeholder="PAO (VD: 12M)"
-                            className="h-8 flex-1 rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                          />
-                          {['6M', '12M', '24M'].map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setFormPao(p)}
-                              className={`px-1.5 py-1 rounded text-[9.5px] font-bold border transition cursor-pointer ${
-                                formPao === p
-                                  ? 'bg-[#C59B58] text-white border-[#C59B58]'
-                                  : 'bg-[#FAF8F5] text-[#8C6226] border-[#EEDFC6] hover:bg-[#FBF5EB]'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-[#1A1612] block mb-1">
-                        Nhãn mác, Cảnh báo & Hướng dẫn bảo quản
-                      </label>
-                      <input
-                        type="text"
-                        value={formLabelInfo}
-                        onChange={(e) => setFormLabelInfo(e.target.value)}
-                        placeholder="VD: Tem phụ tiếng Việt, bảo quản nhiệt độ phòng, tránh ánh nắng..."
-                        className="h-8 w-full rounded-lg border border-[#EAE4D7] bg-white px-2.5 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                      />
-                    </div>
-
-                    {/* Thuộc tính mở rộng ngành hàng (formSpecifications) */}
-                    <div className="pt-2 border-t border-[#EAE4D7]/70 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11.5px] font-bold text-[#1A1612] flex items-center gap-1">
-                          Thuộc tính chi tiết theo ngành hàng:
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newId = `spec-${Date.now()}`;
-                            setFormSpecifications((prev) => [...prev, { id: newId, key: '', value: '' }]);
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold text-[#8C6226] bg-[#FBF5EB] hover:bg-[#F3EFE6] border border-[#EEDFC6] transition cursor-pointer"
-                        >
-                          <Plus size={11} />
-                          <span>Thêm thuộc tính</span>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {formSpecifications.map((spec, specIdx) => (
-                          <div key={spec.id || `spec-${specIdx}`} className="flex items-center gap-1.5 p-1.5 rounded-xl bg-[#FAF8F5] border border-[#EAE4D7]">
-                            <input
-                              type="text"
-                              value={spec.key}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, key: val } : s));
-                              }}
-                              placeholder="Tên thuộc tính"
-                              className="h-7 w-2/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs font-bold text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                            />
-                            <input
-                              type="text"
-                              value={spec.value}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormSpecifications((prev) => prev.map((s, idx) => idx === specIdx ? { ...s, value: val } : s));
-                              }}
-                              placeholder="Giá trị"
-                              className="h-7 w-3/5 rounded-lg border border-[#EAE4D7] bg-white px-2 text-xs text-[#1A1612] outline-none focus:border-[#B88E4F]"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setFormSpecifications((prev) => prev.filter((_, idx) => idx !== specIdx))}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
-                              title="Xóa thuộc tính này"
-                            >
-                              <X size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </details>
               </div>
 
               {/* KHỐI 2.3: QUY CÁCH ĐÓNG GÓI & VẬN CHUYỂN GHN */}

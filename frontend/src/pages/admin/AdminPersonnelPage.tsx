@@ -1618,29 +1618,10 @@ export const AdminPersonnelPage: React.FC = () => {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                            Người phụ trách kho
-                          </label>
-                          <input
-                            type="text"
-                            value={editStoreForm.contactName}
-                            onChange={(e) => setEditStoreForm((prev) => ({ ...prev, contactName: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#1A1612] mb-1">
-                            SĐT kho xuất
-                          </label>
-                          <input
-                            type="text"
-                            value={editStoreForm.contactPhone}
-                            onChange={(e) => setEditStoreForm((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-[#EAE4D7] text-xs bg-white focus:outline-none focus:border-[#C59B58]"
-                          />
-                        </div>
+                      {/* Thông tin liên hệ kho tự động đồng bộ theo Shop Manager phụ trách */}
+                      <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#EAE4D7] text-[11px] text-[#7D715E] flex items-center justify-between">
+                        <span>Người phụ trách kho & SĐT tự động đồng bộ theo <strong>Shop Manager</strong>.</span>
+                        <span className="font-bold text-[#8F682E]">{selectedStore.owner?.fullName || 'Chưa gán'}</span>
                       </div>
 
                       {/* Tỉnh / Thành phố */}
