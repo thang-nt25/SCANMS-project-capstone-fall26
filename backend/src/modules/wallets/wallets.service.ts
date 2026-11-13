@@ -662,7 +662,7 @@ export class WalletsService {
   }
 
   /**
-   * Hoàn tiền siêu tốc vào ví SCANMS khi duyệt đổi trả / tranh chấp
+   * Ghi khoản hoàn vào ví; luồng đổi trả chỉ gọi sau khi khách xác nhận đồng ý.
    */
   async refundToWallet(
     tx: Prisma.TransactionClient,

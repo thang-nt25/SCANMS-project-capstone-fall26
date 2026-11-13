@@ -1404,7 +1404,12 @@ export default function CustomerPortalPage() {
                               {isCancelled && <span className="customer-order-cancel-note text-xs text-[#7D715E] font-medium">Đơn hàng đã hủy</span>}
 
                               {/* Action Buttons Row */}
-                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 ml-auto">
+                              <div className="customer-order-actions flex items-center justify-end flex-wrap gap-2 ml-auto @max-[499px]:w-full @max-[499px]:grid @max-[499px]:grid-cols-2">
+                                {completedActions && <Link
+                                  to={`/customer/orders/${encodeURIComponent(order.id)}`}
+                                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#EAE4D7] bg-white px-3 py-2 text-xs font-medium text-[#1A1612] transition-colors hover:border-[#C59B58] hover:bg-[#FAF8F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B88E4F]"
+                                  aria-label={`Xem chi tiết đơn ${order.externalOrderSn}`}
+                                >Xem chi tiết</Link>}
 
                                 {awaitingPayment && (
                                   <Link
@@ -1428,12 +1433,11 @@ export default function CustomerPortalPage() {
 
                                 {order.returnRequest ? (
                                   <>
-                                    <Link
-                                      to={`/customer/returns/${order.returnRequest.id}`}
-                                      className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-medium transition-colors"
-                                    >
-                                      Xem yêu cầu đổi trả
-                                    </Link>
+                                    {(order.returnRequests?.length ? order.returnRequests : [order.returnRequest]).map((request, index) => <Link
+                                      key={request.id}
+                                      to={`/customer/returns/${request.id}`}
+                                      className="inline-flex min-h-11 min-w-0 items-center justify-center px-3.5 py-1.5 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-[#1A1612] text-xs font-medium transition-colors"
+                                    >Hồ sơ đổi trả {index + 1}</Link>)}
                                     <button
                                       type="button"
                                       onClick={() => handleOpenChat(order)}
@@ -1525,7 +1529,7 @@ export default function CustomerPortalPage() {
                                 )}
 
                                 {/* Return Request Button */}
-                                {canRequestReturn && !completedActions && (
+                                {canRequestReturn && (
                                   <button
                                     type="button"
                                     onClick={() => setReturnOrder(order)}

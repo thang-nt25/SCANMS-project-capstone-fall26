@@ -80,7 +80,7 @@ describe('Flow 4 replacement and liability', () => {
   });
 
   it('does not record an exchange shipment when the variant is out of stock', async () => {
-    const { tx, service } = setup();
+    const { tx, prisma, service } = setup();
     tx.productVariant.updateMany.mockResolvedValue({ count: 0 });
     await expect(
       service.submitExchangeShipment(
@@ -90,7 +90,9 @@ describe('Flow 4 replacement and liability', () => {
         { carrierName: 'GHN', trackingNumber: 'GHN-REPLACEMENT-1' },
       ),
     ).rejects.toThrow(ConflictException);
-    expect(tx.product.updateMany).not.toHaveBeenCalled();
+    // Product rows are reserved first to share checkout's lock order. Prisma
+    // rolls that reservation back when the variant cannot be reserved.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.returnShipment.create).not.toHaveBeenCalled();
   });
 

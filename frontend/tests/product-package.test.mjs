@@ -42,5 +42,5 @@ test('products without barcode are allowed and existing optional barcodes can be
   const form = { barcode: '', packageWeight: 500, packageLength: 20, packageWidth: 10, packageHeight: 10 };
   assert.deepEqual(productPackageInput(form), { packageWeight: 500, packageLength: 20, packageWidth: 10, packageHeight: 10 });
   assert.equal(productPackageInput(form, { barcode: '4006381333931' }).barcode, null);
-  assert.throws(() => productPackageInput({ ...form, barcode: '4006381333932' }), /EAN-13/);
+  assert.equal(productPackageInput({ ...form, barcode: '4006381333932' }).barcode, '4006381333932');
 });

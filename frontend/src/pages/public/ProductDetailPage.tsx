@@ -2201,16 +2201,6 @@ export default function ProductDetailPage() {
                     </span>
                   </div>
 
-                  {/* Mã vạch EAN-13 */}
-                  {((selectedVariant as any)?.barcode || (product as any).barcode) && (
-                    <div className="grid grid-cols-3 p-3 bg-white">
-                      <span className="text-[#7D715E] font-medium">Mã vạch EAN-13:</span>
-                      <span className="col-span-2 font-mono font-bold text-[#1A1612]">
-                        {(selectedVariant as any)?.barcode || (product as any).barcode}
-                      </span>
-                    </div>
-                  )}
-
                   {/* Nhãn phụ & Bảo quản */}
                   {(product as any).labelInfo && (
                     <div className="grid grid-cols-3 p-3 bg-[#FAF8F5]">

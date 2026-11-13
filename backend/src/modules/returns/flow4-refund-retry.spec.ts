@@ -10,7 +10,7 @@ function fixture() {
     id, orderId: 'order-1', customerId: 'customer-1',
     status: ReturnRequestStatus.REFUND_PENDING, resolution: ReturnResolution.REFUND,
     refund: { amount: new Prisma.Decimal(427500), status: ReturnRefundStatus.PENDING },
-    items: [],
+    items: [], events: [{ type: 'CUSTOMER_REFUND_CONFIRMED', actorId: 'customer-1' }],
     order: { id: 'order-1', externalOrderSn: 'SCN-99120', finalAmount: new Prisma.Decimal(427500),
       refundedAmount: new Prisma.Decimal(0), orderItems: [], store: { id: 'store-1', ownerId: 'shop-1' } },
   };
@@ -55,6 +55,24 @@ describe('Flow 4 pending refund recovery', () => {
     await service.retryPendingRefund(managerId, UserRole.SYSTEM_MANAGER, id);
     expect(walletsService.refundToWallet).not.toHaveBeenCalled();
     expect(commissionRulesService.handleRefundAdjustment).not.toHaveBeenCalled();
+  });
+
+  it('cannot bypass the customer confirmation through a manager retry', async () => {
+    const { current, tx, walletsService, commissionRulesService, service } = fixture();
+    current.events = [];
+    await expect(service.retryPendingRefund(managerId, UserRole.SYSTEM_MANAGER, id))
+      .rejects.toThrow('Khách chưa xác nhận');
+    expect(walletsService.refundToWallet).not.toHaveBeenCalled();
+    expect(commissionRulesService.handleRefundAdjustment).not.toHaveBeenCalled();
+    expect(tx.refund.update).not.toHaveBeenCalled();
+  });
+
+  it('does not accept a confirmation event attributed to another account', async () => {
+    const { current, walletsService, service } = fixture();
+    current.events = [{ type: 'CUSTOMER_REFUND_CONFIRMED', actorId: managerId }];
+    await expect(service.retryPendingRefund(managerId, UserRole.SYSTEM_MANAGER, id))
+      .rejects.toThrow('Khách chưa xác nhận');
+    expect(walletsService.refundToWallet).not.toHaveBeenCalled();
   });
 
   it('rejects a changed amount before writing a wallet or income entry', async () => {

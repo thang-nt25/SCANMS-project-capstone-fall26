@@ -89,6 +89,7 @@ export class StoresService {
         id: true,
         name: true,
         slug: true,
+        categoryName: true,
         logoUrl: true,
         description: true,
         isActive: true,
@@ -710,6 +711,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
@@ -793,6 +795,7 @@ export class StoresService {
             id: true,
             fullName: true,
             email: true,
+            role: true,
           },
         },
         _count: {
@@ -872,7 +875,7 @@ export class StoresService {
         ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
       },
       include: {
-        owner: { select: { id: true, fullName: true, email: true } },
+        owner: { select: { id: true, fullName: true, email: true, role: true } },
         _count: { select: { products: { where: { isDeleted: false } } } },
       },
     });

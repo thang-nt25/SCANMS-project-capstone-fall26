@@ -34,11 +34,30 @@ const CATEGORY_FIELDS: Record<string, Array<[string, string]>> = {
 export function productVariantFields(
   category?: string | null,
 ): Array<[string, string]> {
-  return (
-    CATEGORY_FIELDS[category?.trim() || ''] || [
-      ['type', 'Loại / mẫu'],
-      ['specification', 'Kích thước / quy cách'],
-      ['color', 'Màu / phiên bản'],
-    ]
-  );
+  const cat = category?.trim() || '';
+  if (CATEGORY_FIELDS[cat]) return CATEGORY_FIELDS[cat];
+  const lower = cat.toLowerCase();
+  if (lower.includes('mỹ phẩm') || lower.includes('skincare') || lower.includes('da') || lower.includes('serum') || lower.includes('cosmetic')) {
+    return CATEGORY_FIELDS['Mỹ phẩm & Chăm sóc da'];
+  }
+  if (lower.includes('trang điểm') || lower.includes('làm đẹp') || lower.includes('makeup') || lower.includes('son')) {
+    return CATEGORY_FIELDS['Trang điểm & Làm đẹp'];
+  }
+  if (lower.includes('cơ thể') || lower.includes('tóc') || lower.includes('body') || lower.includes('tắm') || lower.includes('gội')) {
+    return CATEGORY_FIELDS['Chăm sóc cơ thể & Tóc'];
+  }
+  if (lower.includes('thực phẩm') || lower.includes('dinh dưỡng') || lower.includes('sức khỏe') || lower.includes('thảo mộc') || lower.includes('health') || lower.includes('nutrition')) {
+    return CATEGORY_FIELDS['Thực phẩm chức năng & Sức khỏe'];
+  }
+  if (lower.includes('thời trang') || lower.includes('may mặc') || lower.includes('áo') || lower.includes('quần') || lower.includes('thể thao') || lower.includes('activewear') || lower.includes('apparel')) {
+    return CATEGORY_FIELDS['Thời trang & Phụ kiện'];
+  }
+  if (lower.includes('gia dụng') || lower.includes('đồ bếp') || lower.includes('thiết bị') || lower.includes('điện tử') || lower.includes('living') || lower.includes('smart')) {
+    return CATEGORY_FIELDS['Thiết bị điện tử & Phụ kiện'];
+  }
+  return [
+    ['type', 'Loại / mẫu'],
+    ['specification', 'Kích thước / quy cách'],
+    ['color', 'Màu / phiên bản'],
+  ];
 }

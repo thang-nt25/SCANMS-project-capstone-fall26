@@ -60,6 +60,7 @@ export interface AdminStoreOption {
     id: string;
     fullName: string;
     email: string;
+    role?: string;
   };
   _count?: {
     products: number;

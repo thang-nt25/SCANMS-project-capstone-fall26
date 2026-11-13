@@ -14,7 +14,7 @@ const labels: Record<ReturnStatus, string> = {
   REFUND_PROCESSING: 'Đang xử lý hoàn tiền',
   REFUND_FAILED: 'Hoàn tiền gặp lỗi',
   EXCHANGE_PENDING: 'Shop chuẩn bị hàng đổi',
-  EXCHANGE_SHIPPED: 'Shop đã gửi hàng đổi',
+  EXCHANGE_SHIPPED: 'Đã tạo vận đơn hàng đổi',
   AWAITING_CUSTOMER_CONFIRMATION: 'Chờ khách xác nhận',
   COMPLETED: 'Đã hoàn tất',
   DISPUTED: 'Đang khiếu nại',
