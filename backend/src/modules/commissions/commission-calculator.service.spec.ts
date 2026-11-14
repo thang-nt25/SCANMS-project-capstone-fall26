@@ -49,7 +49,7 @@ describe('CommissionCalculatorService', () => {
     expect(result.totalCommissionAmount.toFixed(2)).toBe('32500.00');
   });
 
-  it('calculates unsnapshotted remuneration on the original item price', () => {
+  it('calculates unsnapshotted remuneration on the net item price after discounts', () => {
     const result = service.calculateOrderCommission(
       [
         {
@@ -63,7 +63,7 @@ describe('CommissionCalculatorService', () => {
       new Prisma.Decimal(0),
       new Prisma.Decimal(500000),
     );
-    expect(result.totalCommissionAmount.toFixed(2)).toBe('100000.00');
+    expect(result.totalCommissionAmount.toFixed(2)).toBe('50000.00');
   });
 
   it('keeps a finalized snapshot despite subsequent rate and tier changes', () => {

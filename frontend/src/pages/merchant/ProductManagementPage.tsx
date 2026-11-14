@@ -2,6 +2,7 @@ import { ProductAiMatchDrawer } from '../../components/product/ProductAiMatchDra
 import { ProductIdentityWarning, type SimilarProduct } from '../../components/product/ProductIdentityWarning';
 import { ReviewManagementDialog } from '../../components/product/ReviewManagementPanel';
 import { ProposePromotionModal } from '../../components/promotions/ProposePromotionModal';
+import { calculateMinSafePrice } from '../../utils/pricing-math';
 import { useState, useEffect, useRef, useMemo, Fragment, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -757,8 +758,11 @@ export default function ProductManagementPage() {
       if (v.price === '' || v.price === undefined || Number(v.price) <= 0) {
         errors.push(`${vLabel}: Nhập giá niêm yết bán lẻ > 0.`);
       }
-      if (Number(v.floorPrice) > 0 && Number(v.price) > 0 && Number(v.price) < Number(v.floorPrice)) {
-        errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải lớn hơn hoặc bằng giá sàn (${Number(v.floorPrice).toLocaleString('vi-VN')}₫).`);
+      if (Number(v.floorPrice) > 0 && Number(v.price) > 0) {
+        const minSafe = calculateMinSafePrice(Number(v.floorPrice));
+        if (Number(v.price) < minSafe) {
+          errors.push(`${vLabel}: Giá bán (${Number(v.price).toLocaleString('vi-VN')}₫) phải >= ${minSafe.toLocaleString('vi-VN')}₫ (đã gánh Voucher 10% + KOL 25%).`);
+        }
       }
       if (v.stockQuantity === '' || v.stockQuantity === undefined || Number(v.stockQuantity) < 0 || !Number.isInteger(Number(v.stockQuantity))) {
         errors.push(`${vLabel}: Nhập tồn kho mở bán là số nguyên >= 0.`);
@@ -3399,6 +3403,34 @@ export default function ProductManagementPage() {
                       <Zap size={13} />
                       <span>Áp dụng tất cả</span>
                     </button>
+                    <div className="flex items-center gap-1 pl-1 border-l border-[#EEDFC6]">
+                      {[0, 0.2, 0.3].map((reserve) => (
+                        <button
+                          key={reserve}
+                          type="button"
+                          onClick={() => {
+                            const refFloor = Number(batchFloorPrice || formVariants[0]?.floorPrice || formFloorPrice || 0);
+                            if (refFloor <= 0) return;
+                            const suggested = calculateMinSafePrice(refFloor, 0.1, 0.25, reserve);
+                            setBatchPrice(String(suggested));
+                            setFormVariants((curr) =>
+                              curr.map((v) => {
+                                const f = Number(batchFloorPrice || v.floorPrice || refFloor);
+                                return {
+                                  ...v,
+                                  floorPrice: f,
+                                  price: calculateMinSafePrice(f, 0.1, 0.25, reserve),
+                                };
+                              }),
+                            );
+                          }}
+                          title={`Tính tự động giá bán an toàn từ Giá sàn (gánh Voucher 10% + KOL 25% + dự phòng giảm giá ${Math.round(reserve * 100)}%)`}
+                          className="h-8 px-2 rounded-lg border border-[#C59B58]/50 bg-white hover:bg-[#FBF5EB] text-[11px] font-bold text-[#8C6226] transition cursor-pointer tabular-nums"
+                        >
+                          +{Math.round(reserve * 100)}%
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -3417,8 +3449,28 @@ export default function ProductManagementPage() {
                           <th className="py-2.5 px-2.5 min-w-[150px]">Tên phân loại <span className="text-rose-500">*</span></th>
                         )}
                         <th className="py-2.5 px-2.5 min-w-[110px]">Mã SKU <span className="text-rose-500">*</span></th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá sàn (₫) <span className="text-rose-500">*</span></th>
-                        <th className="py-2.5 px-2.5 min-w-[115px]">Giá niêm yết (₫) <span className="text-rose-500">*</span></th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">
+                          <span className="inline-flex items-center gap-1">
+                            Giá sàn (₫) <span className="text-rose-500">*</span>
+                            <span
+                              title="Ngưỡng thực thu tối thiểu công ty giữ lại sau Khuyến mãi + Voucher KOL (10%) + Hoa hồng KOL (25%)."
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                            >
+                              ?
+                            </span>
+                          </span>
+                        </th>
+                        <th className="py-2.5 px-2.5 min-w-[115px]">
+                          <span className="inline-flex items-center gap-1">
+                            Giá niêm yết (₫) <span className="text-rose-500">*</span>
+                            <span
+                              title="Bắt buộc >= Giá sàn / 0.675 để đảm bảo không lỗ khi áp tối đa Voucher 10% + Hoa hồng 25%."
+                              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#FBF5EB] border border-[#EEDFC6] text-[10px] font-bold text-[#B88E4F] cursor-help"
+                            >
+                              !
+                            </span>
+                          </span>
+                        </th>
                         <th className="py-2.5 px-2.5 w-20">Tồn kho <span className="text-rose-500">*</span></th>
                         <th className="py-2.5 px-2 text-center w-16">Thao tác</th>
                       </tr>
@@ -3426,7 +3478,8 @@ export default function ProductManagementPage() {
                     <tbody className="divide-y divide-[#EAE4D7]">
                       {formVariants.map((variant, index) => {
                         const isPrimary = index === 0;
-                        const isBelowFloor = Number(variant.floorPrice) > 0 && Number(variant.price) > 0 && Number(variant.price) < Number(variant.floorPrice);
+                        const minSafePrice = Number(variant.floorPrice) > 0 ? calculateMinSafePrice(Number(variant.floorPrice)) : 0;
+                        const isBelowFloor = minSafePrice > 0 && Number(variant.price) > 0 && Number(variant.price) < minSafePrice;
 
                         return (
                           <Fragment key={variant.id || `variant-${index}`}>
