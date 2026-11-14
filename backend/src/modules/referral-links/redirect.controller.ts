@@ -25,7 +25,7 @@ import {
 } from './utils/short-code.generator';
 import { extractTrustedClientIp } from './utils/client-ip.util';
 
-@ApiTags('Public - Referral Link Redirect & Tracking Engine (FR-13)')
+@ApiTags('Public - Referral Link Redirect & Tracking Engine')
 @Controller()
 export class RedirectController {
   private readonly logger = new Logger(RedirectController.name);
@@ -153,7 +153,7 @@ export class RedirectController {
   @Get(['r/rate-limit/health', 'api/referral-links/rate-limit/health'])
   @ApiOperation({
     summary:
-      'Kiểm tra trạng thái sức khỏe Redis Rate Limiter (FR-14 Mục 23, 29)',
+      'Kiểm tra trạng thái sức khỏe Redis Rate Limiter',
     description:
       'Cung cấp thông tin trạng thái Redis, chế độ fallback degraded, và số liệu metric.',
   })
@@ -164,7 +164,7 @@ export class RedirectController {
   @Get(['r/:shortCode', 'api/r/:shortCode'])
   @ApiOperation({
     summary:
-      'Chuyển hướng liên kết rút gọn, đặt cookie HttpOnly scanms_attr & redirect 302 (FR-13)',
+      'Chuyển hướng liên kết rút gọn, đặt cookie HttpOnly scanms_attr & redirect 302',
     description:
       'Ghi nhận lượt click, kiểm tra rate-limit, nhận diện bot, thiết lập hoặc cập nhật cookie Last-Click cho từng Shop và chuyển hướng an toàn.',
   })
@@ -175,7 +175,7 @@ export class RedirectController {
   @ApiResponse({
     status: 302,
     description:
-      'Chuyển hướng thành công (Found) tới trang sản phẩm/đích. Link hợp lệ được cấp cookie HttpOnly scanms_attr; Link PAUSED, EXPIRED, vượt Rate Limit (tối đa 60 clicks/phút/IP), Bot hoặc Opt-out vẫn chuyển hướng an toàn 302 nhưng không cấp cookie attribution (theo đặc tả FR-13).',
+      'Chuyển hướng thành công (Found) tới trang sản phẩm/đích. Link hợp lệ được cấp cookie HttpOnly scanms_attr; Link PAUSED, EXPIRED, vượt Rate Limit (tối đa 60 clicks/phút/IP), Bot hoặc Opt-out vẫn chuyển hướng an toàn 302 nhưng không cấp cookie attribution.',
     headers: {
       Location: {
         description: 'URL trang đích hợp lệ thuộc allowlist',
@@ -463,7 +463,7 @@ export class RedirectController {
   @Get('p/:idOrSlug')
   @ApiOperation({
     summary:
-      'Chuyển hướng URL sản phẩm rút gọn: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA (FR-15)',
+      'Chuyển hướng URL sản phẩm rút gọn: Bot mạng xã hội vào SEO HTML, người dùng vào React SPA',
   })
   async handleDirectProductUrl(
     @Param('idOrSlug') idOrSlug: string,

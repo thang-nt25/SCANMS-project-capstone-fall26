@@ -24,6 +24,7 @@ import {
   CreditCard,
   Award,
   Link as LinkIcon,
+  Lock,
 } from 'lucide-react';
 import { CustomSelect } from '../../components/ui/CustomSelect';
 import { ImageUploadDropzone } from '../../components/ui/ImageUploadDropzone';
@@ -180,6 +181,7 @@ export function KolUpgradeForm({
   submitting,
   rejectionReason,
   status,
+  readOnly = false,
 }: {
   form: ApplyKolData;
   setForm: Dispatch<SetStateAction<ApplyKolData>>;
@@ -187,6 +189,7 @@ export function KolUpgradeForm({
   submitting: boolean;
   rejectionReason?: string;
   status?: string | null;
+  readOnly?: boolean;
 }) {
   // Stepper state: 1 = Hồ sơ sáng tạo, 2 = Định danh & thanh toán
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
@@ -360,18 +363,54 @@ export function KolUpgradeForm({
   const step1Complete = hasChannel && hasCategory && hasBio && hasProof;
   const step2Ready = hasIdCard && hasPhotos;
 
+  const isNeedsInfo = status === 'NEEDS_INFO';
+  const isRejected = status === 'REJECTED';
+
   return (
     <form
       id="partner-upgrade-form"
       className="w-full text-[#1A1612] space-y-4"
       autoComplete="off"
-      onSubmit={onSubmit}
+      onSubmit={(e) => {
+        if (readOnly) {
+          e.preventDefault();
+          return;
+        }
+        onSubmit(e);
+      }}
     >
-      {rejectionReason && (
-        <div className="flex items-start gap-2.5 border border-[#EEDFC6] rounded-xl p-3 bg-[#FBF5EB] text-xs text-[#7D715E] leading-relaxed">
-          <ShieldCheck size={16} className="text-[#DC2626] shrink-0 mt-0.5" />
+      {readOnly && (
+        <div className="flex items-start gap-2.5 border border-[#EEDFC6] rounded-xl p-3.5 bg-[#FBF5EB] text-xs text-[#7D715E] leading-relaxed">
+          <Lock size={16} className="text-[#B88E4F] shrink-0 mt-0.5" />
           <div>
-            <strong className="block text-[#DC2626] font-semibold">Yêu cầu bổ sung</strong>
+            <strong className="block text-[#1A1612] font-semibold">
+              Hồ sơ đang trong quá trình thẩm định — Đã khóa chỉnh sửa
+            </strong>
+            Thông tin của bạn đã được gửi lên Ban Quản Trị SCANMS (thời gian duyệt tiêu chuẩn trong 24 giờ làm việc). Bạn có thể xem lại các trường đã nộp ở Bước 1 &amp; Bước 2 nhưng không thể thay đổi cho đến khi Quản lý phản hồi hoặc yêu cầu bổ sung.
+          </div>
+        </div>
+      )}
+
+      {rejectionReason && (
+        <div
+          className={`flex items-start gap-2.5 border rounded-xl p-3.5 text-xs leading-relaxed ${
+            isRejected
+              ? 'border-red-200 bg-red-50/70 text-[#7D715E]'
+              : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#7D715E]'
+          }`}
+        >
+          <ShieldCheck
+            size={16}
+            className={`shrink-0 mt-0.5 ${isRejected ? 'text-[#DC2626]' : 'text-[#D97706]'}`}
+          />
+          <div>
+            <strong
+              className={`block font-semibold ${
+                isRejected ? 'text-[#DC2626]' : 'text-[#D97706]'
+              }`}
+            >
+              {isNeedsInfo ? 'Yêu cầu bổ sung từ Ban Quản Trị' : 'Hồ sơ bị từ chối'}
+            </strong>
             {rejectionReason}
           </div>
         </div>
@@ -463,7 +502,7 @@ export function KolUpgradeForm({
           {/* -------------------------------------------------------- */}
           {currentStep === 1 && (
             <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
-              <div className="space-y-3.5">
+              <fieldset disabled={readOnly} className={`space-y-3.5 ${readOnly ? 'opacity-85 pointer-events-none select-text' : ''}`}>
               {/* 1. Nền tảng chính đại diện */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[#1A1612]">
@@ -646,23 +685,29 @@ export function KolUpgradeForm({
                   placeholder="Mô tả phong cách sáng tạo, thế mạnh nội dung và tệp khán giả mục tiêu..."
                 />
               </div>
-              </div>
+              </fieldset>
 
               {/* Cụm nút hành động chính ngay dưới chân form */}
               <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EAE4D7]">
+                {!readOnly ? (
+                  <button
+                    type="button"
+                    onClick={handleSaveDraft}
+                    className="h-9 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
+                  >
+                    Lưu nháp
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-semibold text-[#7D715E]">
+                    Chế độ chỉ xem (Đang chờ duyệt)
+                  </span>
+                )}
                 <button
                   type="button"
-                  onClick={handleSaveDraft}
-                  className="h-9 px-4 rounded-xl border border-[#EAE4D7] bg-white hover:bg-[#FAF8F5] text-xs font-bold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
-                >
-                  Lưu nháp
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextStep}
+                  onClick={() => (readOnly ? setCurrentStep(2) : handleNextStep())}
                   className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>Tiếp tục</span>
+                  <span>{readOnly ? 'Xem bước 2' : 'Tiếp tục'}</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -674,7 +719,7 @@ export function KolUpgradeForm({
           {/* -------------------------------------------------------- */}
           {currentStep === 2 && (
             <div className="flex flex-col p-4 sm:p-5 rounded-2xl border border-[#EAE4D7] bg-white">
-              <div className="space-y-4">
+              <fieldset disabled={readOnly} className={`space-y-4 ${readOnly ? 'opacity-85 pointer-events-none select-text' : ''}`}>
                 {/* Header Card Bước 2 */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#EAE4D7]">
                   <div className="flex items-center gap-2.5">
@@ -849,7 +894,7 @@ export function KolUpgradeForm({
                   </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
 
             {/* Cụm nút hành động chính ngay dưới chân form Bước 2 */}
             <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#EAE4D7]">
@@ -861,14 +906,27 @@ export function KolUpgradeForm({
                 <ChevronLeft size={14} />
                 <span>Quay lại</span>
               </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
-              >
-                <Send size={13} />
-                <span>{submitting ? 'Đang gửi hồ sơ…' : 'Gửi hồ sơ đăng ký'}</span>
-              </button>
+              {!readOnly ? (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="h-9 px-5 rounded-xl bg-[#C59B58] hover:bg-[#B88E4F] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                >
+                  <Send size={13} />
+                  <span>
+                    {submitting
+                      ? 'Đang gửi hồ sơ…'
+                      : isNeedsInfo
+                        ? 'Cập nhật & Gửi lại hồ sơ'
+                        : 'Gửi hồ sơ đăng ký'}
+                  </span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#B88E4F]">
+                  <Lock size={13} />
+                  Hồ sơ đã khóa để chờ duyệt
+                </span>
+              )}
             </div>
           </div>
         )}

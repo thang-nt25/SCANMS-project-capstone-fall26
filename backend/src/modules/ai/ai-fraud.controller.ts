@@ -28,7 +28,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 
-@ApiTags('AI - Fraud Sentinel & Anomaly Detection (FR-31)')
+@ApiTags('AI - Fraud Sentinel & Anomaly Detection')
 @ApiBearerAuth()
 @Controller('ai/fraud')
 @UseGuards(JwtAuthGuard, RolesGuard)

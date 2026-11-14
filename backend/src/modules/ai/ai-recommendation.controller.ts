@@ -29,7 +29,7 @@ import {
   MatchAnalysisRequestDto,
 } from './dto/ai-recommendation.dto';
 
-@ApiTags('FR-30 — AI Smart KOL Recommendation & Matching Engine')
+@ApiTags('AI Smart KOL Recommendation & Matching Engine')
 @ApiBearerAuth()
 @Controller('ai')
 @UseGuards(JwtAuthGuard, RolesGuard)
