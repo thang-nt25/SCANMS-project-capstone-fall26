@@ -62,7 +62,7 @@ export class MerchantPayoutsController {
   @Patch(':payoutId/approve')
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
-    summary: 'FR-24: Xác nhận đã chuyển khoản, bắt buộc bill và mã giao dịch',
+    summary: 'Xác nhận đã chuyển khoản, bắt buộc bill và mã giao dịch',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -122,7 +122,7 @@ export class MerchantPayoutsController {
   @Post('export-vietqr')
   @Roles(UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiOperation({
-    summary: 'FR-24: Tạo lô, đánh dấu PROCESSING và tải Excel VietQR',
+    summary: 'Tạo lô, đánh dấu PROCESSING và tải Excel VietQR',
   })
   async exportBatch(
     @Param('storeId', ParseUUIDPipe) storeId: string,

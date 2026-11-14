@@ -21,7 +21,7 @@ import {
   QueryReferralOrdersDto,
 } from './dto/dashboard-analytics.dto';
 
-@ApiTags('FR-28 — Realtime Sales & Performance Analytics')
+@ApiTags('Realtime Sales & Performance Analytics')
 @ApiBearerAuth()
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard)

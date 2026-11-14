@@ -201,6 +201,27 @@ export class KycService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
+    if (user.collaboratorProfile) {
+      const existingJson =
+        user.collaboratorProfile.socialLinksJson &&
+        typeof user.collaboratorProfile.socialLinksJson === 'object'
+          ? (user.collaboratorProfile.socialLinksJson as Record<string, any>)
+          : {};
+      if (user.collaboratorProfile.kycStatus === KycStatus.VERIFIED) {
+        throw new BadRequestException('Hồ sơ đối tác của bạn đã được xác minh.');
+      }
+      if (
+        user.collaboratorProfile.kycStatus === KycStatus.UNVERIFIED &&
+        existingJson.submittedAt &&
+        existingJson.needsInfo !== true &&
+        existingJson.reviewStatus !== 'NEEDS_INFO'
+      ) {
+        throw new BadRequestException(
+          'Hồ sơ đang trong quá trình thẩm định, không thể chỉnh sửa cho đến khi có phản hồi từ Ban Quản Trị.',
+        );
+      }
+    }
+
     const incomingChannels =
       dto.channels && dto.channels.length > 0
         ? dto.channels
@@ -249,6 +270,9 @@ export class KycService {
       frontCardUrl: dto.frontCardUrl || null,
       backCardUrl: dto.backCardUrl || null,
       submittedAt: new Date().toISOString(),
+      reviewStatus: 'PENDING_APPROVAL',
+      needsInfo: false,
+      rejectionReason: null,
     };
 
     // 1. Upsert CollaboratorProfile
@@ -449,17 +473,41 @@ export class KycService {
       }),
     ]);
 
+    const kolMeta =
+      kolProfile?.socialLinksJson &&
+      typeof kolProfile.socialLinksJson === 'object'
+        ? (kolProfile.socialLinksJson as Record<string, any>)
+        : {};
+    const kolReviewStatus =
+      kolProfile?.kycStatus === KycStatus.VERIFIED
+        ? 'VERIFIED'
+        : kolProfile?.kycStatus === KycStatus.REJECTED
+          ? 'REJECTED'
+          : kolMeta.needsInfo === true || kolMeta.reviewStatus === 'NEEDS_INFO'
+            ? 'NEEDS_INFO'
+            : kolMeta.submittedAt || kolProfile?.idCardNumber
+              ? 'PENDING_APPROVAL'
+              : 'DRAFT';
+
     return {
       userRole: user?.role || 'CUSTOMER',
       kolApplication: kolProfile
         ? {
             id: kolProfile.id,
             status: kolProfile.kycStatus,
+            reviewStatus: kolReviewStatus,
+            rejectionReason: kolMeta.rejectionReason || null,
+            idCardNumber: kolProfile.idCardNumber,
+            taxCode: kolProfile.taxCode,
+            bankName: kolProfile.bankName,
+            bankAccountNumber: kolProfile.bankAccountNumber,
+            bankAccountName: kolProfile.bankAccountName,
+            bio: kolProfile.bio,
             tier: kolProfile.tier?.name,
             totalFollowers: kolProfile.totalFollowers,
             socialLinksJson: kolProfile.socialLinksJson,
             channels: kolProfile.user?.socialChannels || [],
-            submittedAt: kolProfile.createdAt,
+            submittedAt: kolMeta.submittedAt || kolProfile.createdAt,
             updatedAt: kolProfile.updatedAt,
           }
         : null,
@@ -600,14 +648,10 @@ export class KycService {
       }
     }
 
-    const updatedProfile = await this.prisma.collaboratorProfile.update({
-      where: { id: profileId },
-      data: {
-        kycStatus:
-          dto.status === 'VERIFIED' ? KycStatus.VERIFIED : KycStatus.REJECTED,
-        ...(dto.status === 'VERIFIED' && bronzeTierId ? { tierId: bronzeTierId } : {}),
-      },
-    });
+    const currentJson =
+      profile.socialLinksJson && typeof profile.socialLinksJson === 'object'
+        ? (profile.socialLinksJson as Record<string, any>)
+        : {};
 
     if (dto.status === 'VERIFIED') {
       // 1. Nâng quyền user nếu đang là CUSTOMER
@@ -632,16 +676,16 @@ export class KycService {
         });
       }
 
-      // 3. Kích hoạt xác minh các Kênh Mạng Xã Hội (FR-07)
-      const currentJson =
-        profile.socialLinksJson && typeof profile.socialLinksJson === 'object'
-          ? (profile.socialLinksJson as Record<string, any>)
-          : {};
-      await this.prisma.collaboratorProfile.update({
+      const updatedProfile = await this.prisma.collaboratorProfile.update({
         where: { id: profileId },
         data: {
+          kycStatus: KycStatus.VERIFIED,
+          ...(bronzeTierId ? { tierId: bronzeTierId } : {}),
           socialLinksJson: {
             ...currentJson,
+            reviewStatus: 'VERIFIED',
+            needsInfo: false,
+            rejectionReason: null,
             channelsVerified: true,
             verifiedAt: new Date().toISOString(),
           },
@@ -658,22 +702,80 @@ export class KycService {
           type: 'KOL_APPROVED',
         },
       });
-    } else {
+
+      return {
+        success: true,
+        message: 'Đã phê duyệt hồ sơ KOL thành công',
+        profile: updatedProfile,
+      };
+    }
+
+    if (dto.status === 'NEEDS_INFO') {
+      const reasonText =
+        dto.note?.trim() ||
+        'Vui lòng kiểm tra, bổ sung ảnh hoặc thông tin chính xác để hoàn tất thẩm định.';
+
+      const updatedProfile = await this.prisma.collaboratorProfile.update({
+        where: { id: profileId },
+        data: {
+          kycStatus: KycStatus.UNVERIFIED,
+          socialLinksJson: {
+            ...currentJson,
+            reviewStatus: 'NEEDS_INFO',
+            needsInfo: true,
+            rejectionReason: reasonText,
+            reviewedAt: new Date().toISOString(),
+          },
+        },
+      });
+
       await this.prisma.notification.create({
         data: {
           userId: profile.userId,
-          title: 'Hồ sơ đối tác KOL cần cập nhật thêm',
-          message:
-            dto.note ||
-            'Hồ sơ nâng cấp KOL chưa đáp ứng đủ tiêu chí xác thực kênh. Vui lòng nộp lại thông tin chính xác.',
-          type: 'KOL_REJECTED',
+          title: 'Hồ sơ đối tác KOL cần bổ sung thông tin',
+          message: reasonText,
+          type: 'KOL_NEEDS_INFO',
         },
       });
+
+      return {
+        success: true,
+        message: 'Đã gửi yêu cầu bổ sung hồ sơ cho đối tác',
+        profile: updatedProfile,
+      };
     }
+
+    // REJECTED (Từ chối vĩnh viễn)
+    const rejectText =
+      dto.note?.trim() ||
+      'Hồ sơ nâng cấp KOL chưa đáp ứng điều kiện tiêu chuẩn của hệ thống SCANMS.';
+
+    const updatedProfile = await this.prisma.collaboratorProfile.update({
+      where: { id: profileId },
+      data: {
+        kycStatus: KycStatus.REJECTED,
+        socialLinksJson: {
+          ...currentJson,
+          reviewStatus: 'REJECTED',
+          needsInfo: false,
+          rejectionReason: rejectText,
+          reviewedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    await this.prisma.notification.create({
+      data: {
+        userId: profile.userId,
+        title: 'Hồ sơ đối tác KOL đã bị từ chối',
+        message: rejectText,
+        type: 'KOL_REJECTED',
+      },
+    });
 
     return {
       success: true,
-      message: `Đã ${dto.status === 'VERIFIED' ? 'phê duyệt' : 'từ chối'} hồ sơ KOL thành công`,
+      message: 'Đã từ chối hồ sơ KOL thành công',
       profile: updatedProfile,
     };
   }

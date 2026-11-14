@@ -62,7 +62,7 @@ export default function KycApprovalPage() {
   // Inspect modal
   const [inspectProfile, setInspectProfile] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [reviewActionMode, setReviewActionMode] = useState<'NEEDS_INFO' | 'REJECTED' | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function KycApprovalPage() {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  // Mutation: Duyệt/Từ chối KOL
+  // Mutation: Duyệt/Bổ sung/Từ chối KOL
   const reviewKolMutation = useMutation({
     mutationFn: async ({
       profileId,
@@ -102,7 +102,7 @@ export default function KycApprovalPage() {
       reason,
     }: {
       profileId: string;
-      status: 'VERIFIED' | 'REJECTED';
+      status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
       reason?: string;
     }) => {
       return kycService.reviewKolApplication(profileId, status, reason);
@@ -112,10 +112,12 @@ export default function KycApprovalPage() {
       showToast(
         status === 'VERIFIED'
           ? 'Đã phê duyệt Đối tác, kích hoạt Hạng Đồng (10%) và cấp Tích Xanh kênh!'
-          : 'Đã từ chối hồ sơ và gửi thông báo yêu cầu cập nhật.',
+          : status === 'NEEDS_INFO'
+            ? 'Đã gửi yêu cầu bổ sung thông tin và mở khóa hồ sơ cho đối tác cập nhật.'
+            : 'Đã từ chối hồ sơ đối tác.',
       );
       setInspectProfile(null);
-      setShowRejectInput(false);
+      setReviewActionMode(null);
       setRejectReason('');
     },
     onError: (err: any) => {
@@ -123,26 +125,43 @@ export default function KycApprovalPage() {
     },
   });
 
-  const handleReviewKol = async (profileId: string, status: 'VERIFIED' | 'REJECTED') => {
-    if (status === 'REJECTED' && !showRejectInput) {
-      setShowRejectInput(true);
+  const handleReviewKol = async (profileId: string, status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED') => {
+    if (status === 'VERIFIED') {
+      reviewKolMutation.mutate({ profileId, status });
       return;
     }
-    if (status === 'REJECTED' && !rejectReason.trim()) {
-      showToast('Vui lòng nêu rõ lý do cần bổ sung hoặc chỉnh sửa để đối tác cập nhật.', 'error');
+
+    if (reviewActionMode !== status) {
+      setReviewActionMode(status);
+      setRejectReason('');
       return;
     }
-    reviewKolMutation.mutate({ profileId, status, reason: rejectReason.trim() || undefined });
+
+    if (!rejectReason.trim()) {
+      showToast(
+        status === 'NEEDS_INFO'
+          ? 'Vui lòng nêu rõ các mục cần đối tác bổ sung hoặc chỉnh sửa.'
+          : 'Vui lòng nhập lý do từ chối hồ sơ.',
+        'error',
+      );
+      return;
+    }
+
+    reviewKolMutation.mutate({ profileId, status, reason: rejectReason.trim() });
   };
 
   // Chuẩn hóa danh sách KOL
   const rawKols = applicationsData?.kolApplications || [];
   const displayKols = rawKols.map((p: any) => {
     const rawKyc = p.kycStatus || 'UNVERIFIED';
+    const socialLinks = readKycMetadata(p.socialLinksJson);
     const isVerified = rawKyc === 'VERIFIED';
     const isRejected = rawKyc === 'REJECTED';
+    const isNeedsInfo =
+      !isVerified &&
+      !isRejected &&
+      (socialLinks.needsInfo === true || socialLinks.reviewStatus === 'NEEDS_INFO');
     const fullName = p.fullName || p.user?.fullName || 'Đối tác Tiếp thị';
-    const socialLinks = readKycMetadata(p.socialLinksJson);
     const socialChannels = p.user?.socialChannels || [];
     const primaryChannel = socialChannels.find((channel: any) => channel.isPrimary) || socialChannels[0];
     const frontCardUrl = socialLinks.frontCardUrl || null;
@@ -176,11 +195,14 @@ export default function KycApprovalPage() {
       phone: p.user?.phoneNumber || 'Chưa cung cấp',
       role: p.user?.role || 'CUSTOMER',
       kycStatus: rawKyc,
-      kycLabel: isVerified ? 'Đã xác minh' : isRejected ? 'Bị từ chối' : 'Chờ thẩm định',
+      reviewStatus: isVerified ? 'VERIFIED' : isRejected ? 'REJECTED' : isNeedsInfo ? 'NEEDS_INFO' : 'PENDING_APPROVAL',
+      isNeedsInfo,
+      rejectionReason: socialLinks.rejectionReason || null,
+      kycLabel: isVerified ? 'Đã xác minh' : isRejected ? 'Bị từ chối' : isNeedsInfo ? 'Chờ bổ sung' : 'Chờ thẩm định',
       tierName: p.tier?.name || 'Hạng Đồng (Bronze)',
       commissionRate: '10%',
       createdAt: formatKycDate(socialLinks.submittedAt || p.updatedAt || p.createdAt),
-      status: isVerified ? 'active' : isRejected ? 'rejected' : 'pending',
+      status: isVerified ? 'active' : isRejected ? 'rejected' : isNeedsInfo ? 'needs_info' : 'pending',
       avatar: fullName[0]?.toUpperCase() || 'K',
       avatarBg: isVerified
         ? 'bg-[#FBF5EB] text-[#B88E4F] border border-[#EEDFC6]'
@@ -306,7 +328,7 @@ export default function KycApprovalPage() {
       {/* Toast thông báo */}
       {toastMsg && (
         <div
-          className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 border transition-all ${
+          className={`fixed top-5 right-5 z-[120] px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 border transition-all ${
             toastMsg.type === 'error'
               ? 'bg-rose-50 text-rose-700 border-rose-200'
               : 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
@@ -372,40 +394,44 @@ export default function KycApprovalPage() {
         </div>
       </header>
 
-      {/* 4 Thẻ Thống Kê Theo Quy Trình Vận Hành */}
+      {/* 4 Thẻ Thống Kê */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
             label: 'Chờ thẩm định',
-            subLabel: 'Cần Maker-Checker xử lý',
             value: pendingCount,
             filter: 'UNVERIFIED' as const,
-            icon: <Clock className="h-4 w-4" />,
-            isHighlight: pendingCount > 0,
+            icon: <Clock className="h-4 w-4 text-[#D97706]" />,
+            accentBorder: 'border-l-4 border-l-[#D97706]',
+            iconBox: 'bg-amber-50 border-amber-200',
+            valueColor: 'text-[#D97706]',
           },
           {
-            label: 'Đã xác minh (Tích Xanh)',
-            subLabel: 'Hạng Đồng · 10% Thù lao',
+            label: 'Đã xác minh',
             value: verifiedCount,
             filter: 'VERIFIED' as const,
             icon: <CheckCircle2 className="h-4 w-4 text-[#059669]" />,
-            isHighlight: false,
+            accentBorder: 'border-l-4 border-l-[#059669]',
+            iconBox: 'bg-emerald-50 border-emerald-200',
+            valueColor: 'text-[#1A1612]',
           },
           {
             label: 'Cần bổ sung / Từ chối',
-            subLabel: 'Chờ đối tác nộp lại',
             value: rejectedCount,
             filter: 'REJECTED' as const,
-            icon: <AlertCircle className="h-4 w-4 text-rose-600" />,
-            isHighlight: false,
+            icon: <AlertCircle className="h-4 w-4 text-[#DC2626]" />,
+            accentBorder: 'border-l-4 border-l-[#DC2626]',
+            iconBox: 'bg-rose-50 border-rose-200',
+            valueColor: 'text-[#DC2626]',
           },
           {
-            label: 'Tổng hồ sơ đăng ký',
-            subLabel: 'Mạng lưới đối tác sàn',
+            label: 'Tổng hồ sơ',
             value: totalCount,
             filter: 'ALL' as const,
             icon: <CreditCard className="h-4 w-4 text-[#B88E4F]" />,
-            isHighlight: false,
+            accentBorder: 'border-l-4 border-l-[#C59B58]',
+            iconBox: 'bg-[#FBF5EB] border-[#EEDFC6]',
+            valueColor: 'text-[#1A1612]',
           },
         ].map((stat) => (
           <button
@@ -416,21 +442,20 @@ export default function KycApprovalPage() {
               setFilterStatus(stat.filter);
               setSearch('');
             }}
-            className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition cursor-pointer min-h-[96px] ${
+            className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition cursor-pointer min-h-[88px] ${stat.accentBorder} ${
               filterStatus === stat.filter
-                ? 'border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/20'
+                ? 'border-[#C59B58] bg-[#FBF5EB] shadow-xs ring-1 ring-[#C59B58]/25'
                 : 'border-[#EAE4D7] bg-white hover:border-[#C59B58]'
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-[#7D715E]">{stat.label}</span>
-              <span className="grid h-7 w-7 place-items-center rounded-lg border border-[#EAE4D7] bg-[#FAF8F5]">
+              <span className="text-xs font-semibold text-[#7D715E] whitespace-nowrap">{stat.label}</span>
+              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border ${stat.iconBox}`}>
                 {stat.icon}
               </span>
             </div>
-            <div className="mt-2 flex items-baseline justify-between">
-              <strong className="text-2xl font-bold tabular-nums text-[#1A1612]">{stat.value}</strong>
-              <span className="text-[10px] text-[#9A8D78]">{stat.subLabel}</span>
+            <div className="mt-2">
+              <strong className={`text-2xl font-bold tabular-nums ${stat.valueColor}`}>{stat.value}</strong>
             </div>
           </button>
         ))}
@@ -469,37 +494,30 @@ export default function KycApprovalPage() {
 
       {/* Bảng Danh Sách Hồ Sơ Đối Tác */}
       <Card className="overflow-hidden rounded-2xl border-[#EAE4D7] bg-white p-0 shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3.5 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EAE4D7] bg-white px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2.5">
             <span className="grid h-8 w-8 place-items-center rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] text-[#B88E4F]">
               <Sparkles className="h-4 w-4" />
             </span>
-            <div>
-              <h2 className="m-0 text-xs font-bold uppercase tracking-wider text-[#1A1612]">
-                Danh sách hồ sơ đối tác tiếp thị (KOL/KOC)
-              </h2>
-              <p className="mb-0 mt-0.5 text-[11px] text-[#7D715E]">
-                Thẩm định CCCD 12 số, tài khoản ngân hàng thụ hưởng Napas và cấp Tích Xanh kênh truyền thông
-              </p>
-            </div>
+            <h2 className="m-0 text-xs font-bold uppercase tracking-wider text-[#1A1612]">
+              Danh sách hồ sơ đối tác (KOL/KOC)
+            </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border border-[#EEDFC6] bg-[#FBF5EB] px-2.5 py-0.5 text-[11px] font-semibold text-[#8F682E]">
-              {pendingCount} hồ sơ chờ thẩm định
-            </span>
-          </div>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-[#D97706] whitespace-nowrap">
+            {pendingCount} chờ thẩm định
+          </span>
         </div>
 
         <div className="max-w-full overflow-x-auto" role="region" aria-label="Danh sách hồ sơ đối tác" tabIndex={0}>
-          <table className="w-full min-w-[1020px] table-fixed border-collapse text-left text-xs">
+          <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-xs">
             <colgroup>
+              <col className="w-[19%]" />
               <col className="w-[20%]" />
               <col className="w-[18%]" />
-              <col className="w-[18%]" />
-              <col className="w-[11%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
               <col className="w-[12%]" />
               <col className="w-[11%]" />
-              <col className="w-[10%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-[#EAE4D7] bg-[#FAF8F5]">
@@ -615,49 +633,46 @@ export default function KycApprovalPage() {
                     </td>
 
                     {/* Cột 5: Hạng khởi điểm */}
-                    <td className="px-4 py-3.5 align-middle">
-                      <div className="inline-flex flex-col">
-                        <span className="font-semibold text-xs text-[#8F682E]">
-                          {u.tierName}
-                        </span>
-                        <span className="text-[10px] text-[#7D715E] font-mono">
-                          Thù lao gốc: {u.commissionRate}
-                        </span>
-                      </div>
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 font-semibold text-[11px] text-[#8F682E]">
+                        Đồng · {u.commissionRate}
+                      </span>
                     </td>
 
                     {/* Cột 6: Trạng thái */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${
                           u.kycStatus === 'VERIFIED'
-                            ? 'bg-[#FBF5EB] border-[#EEDFC6] text-[#059669]'
+                            ? 'bg-emerald-50 border-emerald-200 text-[#059669]'
                             : u.kycStatus === 'REJECTED'
-                              ? 'bg-rose-50 border-rose-200 text-rose-700'
-                              : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#8F682E]'
+                              ? 'bg-rose-50 border-rose-200 text-[#DC2626]'
+                              : u.isNeedsInfo
+                                ? 'bg-amber-50 border-amber-200 text-[#D97706]'
+                                : 'bg-[#FBF5EB] border-[#EEDFC6] text-[#B88E4F]'
                         }`}
                       >
                         {u.kycStatus === 'VERIFIED' ? (
-                          <CheckCircle2 className="w-3 h-3 text-[#059669]" />
+                          <CheckCircle2 className="w-3 h-3 shrink-0 text-[#059669]" />
                         ) : u.kycStatus === 'REJECTED' ? (
-                          <AlertCircle className="w-3 h-3 text-rose-600" />
+                          <AlertCircle className="w-3 h-3 shrink-0 text-[#DC2626]" />
                         ) : (
-                          <Clock className="w-3 h-3 text-[#B88E4F]" />
+                          <Clock className="w-3 h-3 shrink-0 text-[#D97706]" />
                         )}
                         {u.kycLabel}
                       </span>
                     </td>
 
                     {/* Cột 7: Thao tác */}
-                    <td className="px-4 py-3.5 align-middle text-right">
+                    <td className="px-4 py-3.5 align-middle text-right whitespace-nowrap">
                       <Button
                         variant="gold"
                         size="sm"
-                        className="px-3 text-xs"
-                        icon={<Eye className="h-3.5 w-3.5" />}
+                        className="px-3 text-xs whitespace-nowrap"
+                        icon={<Eye className="h-3.5 w-3.5 shrink-0" />}
                         onClick={() => {
                           setInspectProfile(u);
-                          setShowRejectInput(false);
+                          setReviewActionMode(null);
                           setRejectReason('');
                         }}
                       >
@@ -672,127 +687,113 @@ export default function KycApprovalPage() {
         </div>
       </Card>
 
-      {/* MODAL THẨM ĐỊNH CHI TIẾT MAKER-CHECKER (FR-05, FR-06, FR-07) */}
+      {/* MODAL THẨM ĐỊNH CHI TIẾT */}
       {inspectProfile && (
         <Modal
           isOpen={true}
           onClose={() => setInspectProfile(null)}
           title={
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold text-[#1A1612]">
-                Hồ sơ Thẩm định Đối tác Tiếp thị (Maker-Checker)
-              </span>
-              <span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-bold text-[#8F682E]">
-                FR-05 · FR-06 · FR-07
-              </span>
-            </div>
+            <span className="text-base font-bold text-[#1A1612]">
+              Thẩm định hồ sơ đối tác
+            </span>
           }
           subtitle={
             <span className="text-xs text-[#7D715E]">
-              {inspectProfile.fullName} · {inspectProfile.email} · Nộp ngày: {inspectProfile.createdAt}
+              {inspectProfile.fullName} · {inspectProfile.email} · Nộp {inspectProfile.createdAt}
             </span>
           }
           icon={<ShieldCheck className="h-4 w-4 text-[#B88E4F]" />}
-          maxWidth="4xl"
-          className="max-h-[calc(100dvh-2rem)] overflow-hidden rounded-3xl border-[#EAE4D7] bg-[#FAF8F5] p-5 shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
+          maxWidth="6xl"
+          className="max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-3xl border-[#EAE4D7] bg-[#FAF8F5] p-5 shadow-[0_24px_80px_rgba(35,29,21,0.18)]"
         >
-          <div className="flex flex-col gap-4 text-left text-xs max-h-[78vh] overflow-y-auto pr-1">
-            {/* Banner Thông tin đối tác & Trạng thái */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-sm text-[#8F682E]">
+          <div className="flex flex-col gap-3 text-left text-xs overflow-y-auto pr-1">
+            {/* Thanh thông tin đối tác & Kết quả đối soát gọn trên 1 hàng */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EAE4D7] bg-white px-4 py-3 shadow-2xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] font-bold text-sm text-[#8F682E]">
                   {inspectProfile.avatarUrl ? (
                     <img src={inspectProfile.avatarUrl} alt={inspectProfile.fullName} className="h-full w-full object-cover" />
                   ) : (
                     inspectProfile.avatar
                   )}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <strong className="text-sm font-bold text-[#1A1612]">{inspectProfile.fullName}</strong>
+                    <strong className="text-sm font-bold text-[#1A1612] truncate">{inspectProfile.fullName}</strong>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${
                         inspectProfile.status === 'active'
-                          ? 'border-[#EEDFC6] bg-[#FBF5EB] text-[#059669]'
+                          ? 'border-emerald-200 bg-emerald-50 text-[#059669]'
                           : inspectProfile.status === 'rejected'
-                            ? 'border-rose-200 bg-rose-50 text-rose-700'
-                            : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]'
+                            ? 'border-rose-200 bg-rose-50 text-[#DC2626]'
+                            : inspectProfile.isNeedsInfo
+                              ? 'border-amber-200 bg-amber-50 text-[#D97706]'
+                              : 'border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E]'
                       }`}
                     >
                       {inspectProfile.kycLabel}
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#7D715E]">
-                    <span>Email: <strong className="text-[#1A1612]">{inspectProfile.email}</strong></span>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#7D715E]">
                     <span>SĐT: <strong className="text-[#1A1612]">{inspectProfile.phone}</strong></span>
-                    <span>Vai trò hiện tại: <strong className="text-[#1A1612]">{inspectProfile.role}</strong></span>
+                    <span>·</span>
+                    <span>Hạng kích hoạt: <strong className="text-[#8F682E]">Đồng (10%)</strong></span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] px-3 py-2 text-right">
-                  <span className="block text-[10px] text-[#7D715E]">Cấp bậc kích hoạt</span>
-                  <strong className="block text-xs font-bold text-[#8F682E]">Hạng Đồng (Bronze) · 10%</strong>
-                </div>
-              </div>
-            </div>
 
-            {/* BẢNG ĐỐI SOÁT TỰ ĐỘNG MAKER-CHECKER (AUTOMATED CROSS-CHECK) */}
-            {/* Thanh trạng thái đối soát */}
-            <div className="rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-3 flex flex-wrap items-center justify-between gap-2.5">
-              <span className="text-xs font-semibold text-[#1A1612]">Kết quả đối soát:</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium border ${
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
                   inspectProfile.isNameMatched
-                    ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
-                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                    ? 'bg-emerald-50 text-[#059669] border-emerald-200'
+                    : 'bg-rose-50 text-[#DC2626] border-rose-200'
                 }`}>
-                  {inspectProfile.isNameMatched ? 'Khớp tên chủ thẻ' : 'Lệch tên đăng ký'}
+                  {inspectProfile.isNameMatched ? 'Khớp tên ngân hàng' : 'Lệch tên ngân hàng'}
                 </span>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium border ${
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
                   inspectProfile.isValidIdCardLength
                     ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
-                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-amber-50 text-[#D97706] border-amber-200'
                 }`}>
-                  {inspectProfile.isValidIdCardLength ? 'CCCD 12 số hợp lệ' : 'Kiểm tra lại số CCCD'}
+                  {inspectProfile.isValidIdCardLength ? 'CCCD hợp lệ' : 'Kiểm tra số CCCD'}
                 </span>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium border ${
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap ${
                   inspectProfile.frontCardUrl && inspectProfile.backCardUrl
                     ? 'bg-[#FBF5EB] text-[#8F682E] border-[#EEDFC6]'
-                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-rose-50 text-[#DC2626] border-rose-200'
                 }`}>
                   {inspectProfile.frontCardUrl && inspectProfile.backCardUrl ? 'Đủ 2 mặt CCCD' : 'Thiếu ảnh CCCD'}
                 </span>
               </div>
             </div>
 
-            {/* KIẾN TRÚC 3 KHỐI THẨM ĐỊNH (3-COLUMN EXECUTIVE GRID) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-              {/* KHỐI 1: GIẤY TỜ ĐỊNH DANH CÁ NHÂN (eKYC - FR-05) */}
-              <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#FAF8F5]">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
+            {/* 3 KHỐI THẨM ĐỊNH CÂN ĐỐI */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
+              {/* KHỐI 1: ĐỊNH DANH CÁ NHÂN */}
+              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
                       <FileText className="w-3.5 h-3.5" />
                     </span>
-                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
+                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612] whitespace-nowrap">
                       Thông tin định danh
                     </strong>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70 flex items-center justify-between">
-                    <div>
-                      <span className="block text-[10px] text-[#7D715E]">Số CCCD gắn chip</span>
-                      <strong className="font-mono text-xs font-bold text-[#1A1612]">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70 flex items-center justify-between gap-1.5">
+                    <div className="min-w-0">
+                      <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Số CCCD</span>
+                      <strong className="font-mono text-xs font-bold text-[#1A1612] truncate block">
                         {inspectProfile.idCardNumber}
                       </strong>
                     </div>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(inspectProfile.idCardNumber, 'Số CCCD')}
-                      className="p-1 rounded-md hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition"
+                      className="p-1 rounded-md hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition shrink-0 cursor-pointer"
                       title="Sao chép số CCCD"
                     >
                       {copiedText === 'Số CCCD' ? <Check className="w-3.5 h-3.5 text-[#059669]" /> : <Copy className="w-3.5 h-3.5" />}
@@ -800,22 +801,22 @@ export default function KycApprovalPage() {
                   </div>
 
                   <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
-                    <span className="block text-[10px] text-[#7D715E]">Mã số thuế cá nhân</span>
-                    <strong className="font-mono text-xs text-[#1A1612]">
-                      {inspectProfile.taxCode || 'Chưa cung cấp'}
+                    <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Mã số thuế</span>
+                    <strong className={`font-mono text-xs block truncate ${inspectProfile.taxCode ? 'text-[#1A1612] font-bold' : 'text-[#7D715E] font-normal'}`}>
+                      {inspectProfile.taxCode || 'Chưa cập nhật'}
                     </strong>
                   </div>
                 </div>
 
                 {/* Ảnh CCCD 2 mặt */}
-                <div className="space-y-2 pt-1">
+                <div className="space-y-1.5">
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
-                    Tài liệu ảnh chụp CCCD
+                    Ảnh chụp CCCD
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: 'CCCD Mặt trước', url: inspectProfile.frontCardUrl },
-                      { label: 'CCCD Mặt sau', url: inspectProfile.backCardUrl },
+                      { label: 'Mặt trước', url: inspectProfile.frontCardUrl },
+                      { label: 'Mặt sau', url: inspectProfile.backCardUrl },
                     ].map((doc) => (
                       <div key={doc.label} className="space-y-1">
                         <span className="block text-[10px] text-[#7D715E] font-medium">{doc.label}</span>
@@ -824,7 +825,6 @@ export default function KycApprovalPage() {
                             type="button"
                             onClick={() => setPreviewImage(doc.url)}
                             className="group relative h-28 w-full cursor-zoom-in overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] transition hover:border-[#C59B58]"
-                            title="Bấm để phóng to đối soát"
                           >
                             <img
                               src={doc.url}
@@ -846,221 +846,294 @@ export default function KycApprovalPage() {
                 </div>
               </div>
 
-              {/* KHỐI 2: KÊNH MẠNG XÃ HỘI & NỘI DUNG (FR-07) */}
-              <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#FAF8F5]">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
+              {/* KHỐI 2: KÊNH TRUYỀN THÔNG */}
+              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
                       <Sparkles className="w-3.5 h-3.5" />
                     </span>
-                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
+                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612] whitespace-nowrap">
                       Kênh truyền thông
                     </strong>
                   </div>
-                  <span className="rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-bold text-[#8F682E] uppercase">
+                  <span className="shrink-0 rounded-md border border-[#EEDFC6] bg-[#FBF5EB] px-2 py-0.5 text-[10px] font-bold text-[#8F682E] uppercase whitespace-nowrap">
                     {inspectProfile.channelPlatform}
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
-                      <span className="block text-[10px] text-[#7D715E]">Tên kênh / Profile</span>
-                      <strong className="mt-0.5 block truncate text-xs font-bold text-[#1A1612]">
-                        {inspectProfile.channelName}
-                      </strong>
-                    </div>
-                    <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
-                      <span className="block text-[10px] text-[#7D715E]">Người theo dõi</span>
-                      <strong className="mt-0.5 block text-xs font-bold tabular-nums text-[#1A1612]">
-                        {Number(inspectProfile.followerCount).toLocaleString('vi-VN')}
-                      </strong>
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
+                    <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Tên kênh</span>
+                    <strong className="mt-0.5 block truncate text-xs font-bold text-[#1A1612]">
+                      {inspectProfile.channelName}
+                    </strong>
                   </div>
+                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
+                    <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Người theo dõi</span>
+                    <strong className="mt-0.5 block text-xs font-bold tabular-nums text-[#1A1612]">
+                      {Number(inspectProfile.followerCount).toLocaleString('vi-VN')}
+                    </strong>
+                  </div>
+                </div>
 
-                  {inspectProfile.channelUrl ? (
-                    <a
-                      href={inspectProfile.channelUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5 text-[11px] font-semibold text-[#8F682E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition"
+                {inspectProfile.channelUrl ? (
+                  <a
+                    href={inspectProfile.channelUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] p-2.5 text-[11px] font-semibold text-[#8F682E] hover:bg-[#FBF5EB] hover:border-[#EEDFC6] transition"
+                  >
+                    <span className="truncate pr-2">{inspectProfile.channelUrl}</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <div className="p-2.5 rounded-xl border border-dashed border-[#EAE4D7] text-[11px] text-[#7D715E]">
+                    Chưa có liên kết kênh
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
+                    Minh chứng sở hữu kênh
+                  </span>
+                  {inspectProfile.channelProofUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(inspectProfile.channelProofUrl)}
+                      className="group relative h-24 w-full cursor-zoom-in overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] transition hover:border-[#C59B58]"
                     >
-                      <span className="truncate pr-2">{inspectProfile.channelUrl}</span>
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                    </a>
+                      <img
+                        src={inspectProfile.channelProofUrl}
+                        alt="Minh chứng sở hữu kênh"
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <span className="absolute inset-x-0 bottom-0 bg-[#231D15]/70 py-1 text-center text-[9px] font-semibold text-white">
+                        Xem ảnh minh chứng
+                      </span>
+                    </button>
                   ) : (
-                    <div className="p-2.5 rounded-xl border border-dashed border-[#EAE4D7] text-[11px] text-[#7D715E]">
-                      Chưa cung cấp liên kết kênh
-                    </div>
-                  )}
-
-                  {/* Ảnh minh chứng sở hữu kênh / Analytics */}
-                  <div className="space-y-1 pt-1">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[#7D715E]">
-                      Minh chứng sở hữu kênh (Analytics)
-                    </span>
-                    {inspectProfile.channelProofUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(inspectProfile.channelProofUrl)}
-                        className="group relative h-28 w-full cursor-zoom-in overflow-hidden rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] transition hover:border-[#C59B58]"
-                        title="Bấm để phóng to minh chứng"
-                      >
-                        <img
-                          src={inspectProfile.channelProofUrl}
-                          alt="Minh chứng sở hữu kênh"
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                        <span className="absolute inset-x-0 bottom-0 bg-[#231D15]/70 py-1 text-center text-[9px] font-semibold text-white">
-                          Xem ảnh minh chứng
-                        </span>
-                      </button>
-                    ) : (
-                      <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] text-[10px] text-[#7D715E]">
-                        Chưa nộp ảnh chụp Creator Center
-                      </div>
-                    )}
-                  </div>
-
-                  {inspectProfile.bio && (
-                    <div className="rounded-xl bg-[#FAF8F5] p-2 text-[10px] text-[#7D715E] leading-4">
-                      <span className="font-semibold block text-[#1A1612]">Tiểu sử:</span>
-                      {inspectProfile.bio}
+                    <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-[#EAE4D7] bg-[#FAF8F5] text-[10px] text-[#7D715E]">
+                      Chưa nộp ảnh minh chứng
                     </div>
                   )}
                 </div>
+
+                {inspectProfile.bio && (
+                  <div className="rounded-xl bg-[#FAF8F5] px-2.5 py-2 text-[11px] text-[#7D715E] leading-snug line-clamp-2" title={inspectProfile.bio}>
+                    <span className="font-semibold text-[#1A1612]">Giới thiệu: </span>
+                    {inspectProfile.bio}
+                  </div>
+                )}
               </div>
 
-              {/* KHỐI 3: TÀI KHOẢN NGÂN HÀNG NAPAS 24/7 & HẠNG ĐỐI TÁC */}
-              <div className="space-y-3 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#FAF8F5]">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
+              {/* KHỐI 3: TÀI KHOẢN NGÂN HÀNG */}
+              <div className="flex flex-col gap-2.5 rounded-2xl border border-[#EAE4D7] bg-white p-4 shadow-2xs">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#FAF8F5]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[#FBF5EB] text-[#B88E4F]">
                       <CreditCard className="w-3.5 h-3.5" />
                     </span>
-                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612]">
-                      Tài khoản nhận hoa hồng
+                    <strong className="text-xs font-bold uppercase tracking-wider text-[#1A1612] whitespace-nowrap">
+                      Tài khoản ngân hàng
                     </strong>
                   </div>
-                  <span className="text-[10px] font-bold text-[#059669]">
-                    {inspectProfile.isNameMatched ? 'Khớp tên chủ thẻ' : 'Lệch tên đăng ký'}
+                  <span
+                    className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
+                      inspectProfile.isNameMatched
+                        ? 'border-emerald-200 bg-emerald-50 text-[#059669]'
+                        : 'border-rose-200 bg-rose-50 text-[#DC2626]'
+                    }`}
+                  >
+                    {inspectProfile.isNameMatched ? 'Khớp tên' : 'Lệch tên'}
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
-                    <span className="block text-[10px] text-[#7D715E]">Ngân hàng thụ hưởng</span>
-                    <strong className="mt-0.5 block text-xs font-bold text-[#1A1612]">
-                      {inspectProfile.bankName}
+                    <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Ngân hàng thụ hưởng</span>
+                    <strong className={`mt-0.5 block text-xs ${inspectProfile.bankName && inspectProfile.bankName !== 'Chưa cung cấp' ? 'font-bold text-[#1A1612]' : 'font-normal text-[#7D715E]'}`}>
+                      {inspectProfile.bankName && inspectProfile.bankName !== 'Chưa cung cấp' ? inspectProfile.bankName : 'Chưa cập nhật'}
                     </strong>
                   </div>
 
-                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70 flex items-center justify-between">
-                    <div>
-                      <span className="block text-[10px] text-[#7D715E]">Số tài khoản nhận hoa hồng</span>
-                      <strong className="font-mono text-xs font-bold text-[#1A1612]">
-                        {inspectProfile.accountNumber}
+                  <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Số tài khoản</span>
+                      <strong className={`font-mono text-xs block truncate ${inspectProfile.accountNumber && inspectProfile.accountNumber !== 'Chưa cung cấp' ? 'font-bold text-[#1A1612]' : 'font-normal text-[#7D715E]'}`}>
+                        {inspectProfile.accountNumber && inspectProfile.accountNumber !== 'Chưa cung cấp' ? inspectProfile.accountNumber : 'Chưa cập nhật'}
                       </strong>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(inspectProfile.accountNumber, 'Số tài khoản')}
-                      className="p-1 rounded-md hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition"
-                      title="Sao chép số tài khoản"
-                    >
-                      {copiedText === 'Số tài khoản' ? <Check className="w-3.5 h-3.5 text-[#059669]" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
+                    {inspectProfile.accountNumber && inspectProfile.accountNumber !== 'Chưa cung cấp' && (
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(inspectProfile.accountNumber, 'Số tài khoản')}
+                        className="p-1 rounded-md hover:bg-white text-[#7D715E] hover:text-[#1A1612] transition shrink-0 cursor-pointer"
+                        title="Sao chép số tài khoản"
+                      >
+                        {copiedText === 'Số tài khoản' ? <Check className="w-3.5 h-3.5 text-[#059669]" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                   </div>
 
                   <div className="rounded-xl bg-[#FAF8F5] p-2.5 border border-[#EAE4D7]/70">
-                    <span className="block text-[10px] text-[#7D715E]">Tên chủ tài khoản (Chữ in hoa)</span>
-                    <strong className="mt-0.5 block text-xs font-bold uppercase text-[#1A1612]">
-                      {inspectProfile.accountHolder}
+                    <span className="block text-[10px] text-[#7D715E] whitespace-nowrap">Tên chủ tài khoản</span>
+                    <strong className={`mt-0.5 block text-xs ${inspectProfile.accountHolder && inspectProfile.accountHolder !== 'Chưa cung cấp' ? 'font-bold uppercase text-[#1A1612]' : 'font-normal text-[#7D715E]'}`}>
+                      {inspectProfile.accountHolder && inspectProfile.accountHolder !== 'Chưa cung cấp' ? inspectProfile.accountHolder : 'Chưa cập nhật'}
                     </strong>
                   </div>
 
-                  {/* Chính sách thuế & Cấp bậc */}
-                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 space-y-1.5 text-[10px]">
-                    <div className="flex items-center justify-between text-[#8F682E] font-semibold">
-                      <span>Cơ chế khấu trừ thuế:</span>
-                      <span className="font-bold">10% Thuế TNCN</span>
+                  {/* Tóm tắt chính sách gọn 1 dòng mỗi mục */}
+                  <div className="rounded-xl border border-[#EEDFC6] bg-[#FBF5EB] p-3 space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[#7D715E] whitespace-nowrap">Hạng khởi điểm</span>
+                      <span className="font-bold text-[#8F682E] whitespace-nowrap">Hạng Đồng · 10%</span>
                     </div>
-                    <div className="flex items-center justify-between text-[#7D715E]">
-                      <span>Cổng chi trả tự động:</span>
-                      <span className="font-medium text-[#1A1612]">Napas 24/7 tức thì</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[#7D715E] pt-1 border-t border-[#EEDFC6]/60">
-                      <span>Hạng sau phê duyệt:</span>
-                      <span className="font-bold text-[#8F682E]">Hạng Đồng (Base Rate 10%)</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[#7D715E] whitespace-nowrap">Khấu trừ thuế</span>
+                      <span className="font-semibold text-[#1A1612] whitespace-nowrap">10% TNCN</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Khung nhập lý do từ chối nếu có yêu cầu */}
-            {showRejectInput && (
-              <div className="space-y-2 rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
-                <label className="block text-xs font-bold text-rose-800">
-                  Nội dung phản hồi / Lý do từ chối hồ sơ đối tác
-                </label>
-                <textarea
-                  rows={2}
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="VD: Ảnh CCCD mặt sau bị mờ góc; Vui lòng cập nhật đúng tên chủ thẻ ngân hàng trùng với CCCD..."
-                  className="w-full resize-y rounded-xl border border-rose-200 bg-white p-3 text-xs text-[#1A1612] outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
-                />
-                <span className="text-[10px] text-rose-600 block">
-                  Thông báo này sẽ được gửi trực tiếp đến hộp thư và màn hình nâng cấp của đối tác.
-                </span>
+            {/* Banner trạng thái nếu đang chờ khách hàng bổ sung */}
+            {inspectProfile.isNeedsInfo && !reviewActionMode && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-xs">
+                <Clock className="w-4 h-4 text-[#D97706] shrink-0" />
+                <div className="text-[#7D715E]">
+                  <strong className="text-[#D97706]">Đang chờ đối tác bổ sung: </strong>
+                  {inspectProfile.rejectionReason && (
+                    <span className="text-[#1A1612]">&ldquo;{inspectProfile.rejectionReason}&rdquo;</span>
+                  )}
+                </div>
               </div>
             )}
 
             {/* Trạng thái đã duyệt xong */}
             {inspectProfile.kycStatus === 'VERIFIED' && (
-              <div className="p-3.5 rounded-2xl bg-[#FBF5EB] border border-[#EEDFC6] flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-[#059669] shrink-0" />
-                <div className="text-xs text-[#7D715E]">
-                  <strong className="text-[#1A1612] block">Hồ sơ đối tác đã được thẩm định & phê duyệt</strong>
-                  Tài khoản đang hoạt động với Hạng Đồng (Base Rate 10%) và được cấp Tích Xanh cho toàn bộ kênh truyền thông.
-                </div>
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-2.5 text-xs text-[#059669] font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Hồ sơ đã được phê duyệt (Hạng Đồng · 10%).</span>
               </div>
             )}
           </div>
 
-          {/* Modal Actions Footer */}
-          <div className="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-[#EAE4D7] pt-3.5 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              size="md"
-              className="w-full sm:w-auto"
-              onClick={() => setInspectProfile(null)}
+          {/* Khung nhập lý do GHIM CỐ ĐỊNH ngay trên footer (không bị trôi khi cuộn) */}
+          {reviewActionMode && (
+            <div
+              className={`mt-3 shrink-0 space-y-2 rounded-2xl border p-3.5 ${
+                reviewActionMode === 'NEEDS_INFO'
+                  ? 'border-[#EEDFC6] bg-[#FBF5EB]'
+                  : 'border-rose-200 bg-rose-50/70'
+              }`}
             >
-              Đóng
-            </Button>
+              <label
+                className={`block text-xs font-bold ${
+                  reviewActionMode === 'NEEDS_INFO' ? 'text-[#8F682E]' : 'text-[#DC2626]'
+                }`}
+              >
+                {reviewActionMode === 'NEEDS_INFO'
+                  ? 'Nội dung yêu cầu đối tác bổ sung'
+                  : 'Lý do từ chối hồ sơ'}
+              </label>
+              <textarea
+                autoFocus
+                rows={2}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={
+                  reviewActionMode === 'NEEDS_INFO'
+                    ? 'Nhập thông tin cần đối tác chỉnh sửa hoặc bổ sung...'
+                    : 'Nhập lý do từ chối hồ sơ...'
+                }
+                className={`w-full resize-none rounded-xl border bg-white p-2.5 text-xs text-[#1A1612] outline-none ${
+                  reviewActionMode === 'NEEDS_INFO'
+                    ? 'border-[#EEDFC6] focus:border-[#C59B58]'
+                    : 'border-rose-200 focus:border-rose-400'
+                }`}
+              />
+            </div>
+          )}
 
-            {inspectProfile.kycStatus !== 'VERIFIED' && (
+          {/* Modal Actions Footer */}
+          <div className="mt-3 flex shrink-0 flex-col-reverse gap-2 border-t border-[#EAE4D7] pt-3 sm:flex-row sm:justify-end">
+            {reviewActionMode ? (
               <>
                 <Button
                   variant="outline"
                   size="md"
-                  className="w-full border-rose-200 bg-white text-rose-700 hover:bg-rose-50 sm:w-auto"
-                  onClick={() => handleReviewKol(inspectProfile.id, 'REJECTED')}
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setReviewActionMode(null);
+                    setRejectReason('');
+                  }}
                   disabled={reviewKolMutation.isPending}
                 >
-                  {showRejectInput ? 'Xác nhận Từ chối' : 'Yêu cầu sửa / Từ chối'}
+                  Quay lại
                 </Button>
                 <Button
-                  variant="gold"
+                  variant={reviewActionMode === 'NEEDS_INFO' ? 'gold' : 'outline'}
                   size="md"
-                  icon={<ShieldCheck className="w-4 h-4" />}
-                  onClick={() => handleReviewKol(inspectProfile.id, 'VERIFIED')}
+                  className={
+                    reviewActionMode === 'REJECTED'
+                      ? 'w-full border-rose-300 bg-rose-600 text-white hover:bg-rose-700 sm:w-auto'
+                      : 'w-full sm:w-auto'
+                  }
+                  onClick={() => handleReviewKol(inspectProfile.id, reviewActionMode)}
                   disabled={reviewKolMutation.isPending}
-                  className="w-full sm:w-auto"
                 >
-                  {reviewKolMutation.isPending ? 'Đang xử lý...' : 'Phê duyệt Đối tác'}
+                  {reviewKolMutation.isPending
+                    ? 'Đang xử lý...'
+                    : reviewActionMode === 'NEEDS_INFO'
+                      ? 'Xác nhận Yêu cầu bổ sung'
+                      : 'Xác nhận Từ chối'}
                 </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="w-full sm:w-auto"
+                  onClick={() => setInspectProfile(null)}
+                >
+                  Đóng
+                </Button>
+
+                {inspectProfile.kycStatus !== 'VERIFIED' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="md"
+                      className="w-full border-rose-200 bg-white text-rose-700 hover:bg-rose-50 sm:w-auto"
+                      onClick={() => handleReviewKol(inspectProfile.id, 'REJECTED')}
+                      disabled={reviewKolMutation.isPending}
+                    >
+                      Từ chối hồ sơ
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="md"
+                      className="w-full border-[#EEDFC6] bg-[#FBF5EB] text-[#8F682E] hover:bg-[#F3EFE6] sm:w-auto"
+                      onClick={() => handleReviewKol(inspectProfile.id, 'NEEDS_INFO')}
+                      disabled={reviewKolMutation.isPending}
+                    >
+                      Yêu cầu bổ sung
+                    </Button>
+                    <Button
+                      variant="gold"
+                      size="md"
+                      icon={<ShieldCheck className="w-4 h-4" />}
+                      onClick={() => handleReviewKol(inspectProfile.id, 'VERIFIED')}
+                      disabled={reviewKolMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
+                      {reviewKolMutation.isPending ? 'Đang xử lý...' : 'Phê duyệt Đối tác'}
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
