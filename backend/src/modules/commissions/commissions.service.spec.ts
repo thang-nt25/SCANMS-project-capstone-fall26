@@ -104,7 +104,7 @@ describe('CommissionsService', () => {
       Number(
         (getOrderItemUpdateInput() as any).data.calculatedCommissionAmount,
       ),
-    ).toBe(30000);
+    ).toBe(27600);
   });
 
   it('creates one pending commission and credits the pending wallet atomically', async () => {

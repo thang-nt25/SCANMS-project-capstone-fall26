@@ -1483,6 +1483,19 @@ export class CouponsService {
         dto.campaignId ?? coupon.campaignId,
       );
 
+    // Only the Shop owner approves a proposal and accepts its entire cost.
+    if (
+      dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
+      dto.fundingSource === CouponFundingSource.CO_FUNDED ||
+      (dto.shopFundingRate !== undefined &&
+        Number(dto.shopFundingRate) !== 100) ||
+      Number(dto.platformFundingRate || 0) > 0
+    ) {
+      throw new ForbiddenException(
+        'Voucher Shop phải do Shop tài trợ 100%. Voucher Sàn được phát hành riêng bởi quản trị viên.',
+      );
+    }
+
     // Validate percentage (default KOL voucher cap <= 10% to preserve minSafePrice margin)
     if (
       dto.discountType === DiscountType.PERCENTAGE &&
@@ -1503,19 +1516,6 @@ export class CouponsService {
     if (startsAt && expiresAt && startsAt > expiresAt) {
       throw new BadRequestException(
         'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc',
-      );
-    }
-
-    // Only the Shop owner approves a proposal and accepts its entire cost.
-    if (
-      dto.fundingSource === CouponFundingSource.PLATFORM_FUNDED ||
-      dto.fundingSource === CouponFundingSource.CO_FUNDED ||
-      (dto.shopFundingRate !== undefined &&
-        Number(dto.shopFundingRate) !== 100) ||
-      Number(dto.platformFundingRate || 0) > 0
-    ) {
-      throw new ForbiddenException(
-        'Voucher Shop phải do Shop tài trợ 100%. Voucher Sàn được phát hành riêng bởi quản trị viên.',
       );
     }
     const shopFundingRate = 100;
