@@ -123,6 +123,14 @@ export interface UpgradeStatusResponse {
   kolApplication: {
     id: string;
     status: 'UNVERIFIED' | 'VERIFIED' | 'REJECTED';
+    reviewStatus?: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFO' | 'VERIFIED' | 'REJECTED';
+    rejectionReason?: string | null;
+    idCardNumber?: string | null;
+    taxCode?: string | null;
+    bankName?: string | null;
+    bankAccountNumber?: string | null;
+    bankAccountName?: string | null;
+    bio?: string | null;
     tier?: string;
     totalFollowers: number;
     socialLinksJson?: any;
@@ -205,7 +213,11 @@ export const kycService = {
     return res.data;
   },
 
-  async reviewKolApplication(profileId: string, status: 'VERIFIED' | 'REJECTED', note?: string) {
+  async reviewKolApplication(
+    profileId: string,
+    status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED',
+    note?: string,
+  ) {
     const res: any = await api.patch(`/kyc/admin/kol/${profileId}/review`, { status, note });
     return res.data;
   },

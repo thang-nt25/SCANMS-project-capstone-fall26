@@ -293,7 +293,7 @@ export function ShopCreatorIncentivesTab() {
             }`}
           >
             <Trophy className={`w-3.5 h-3.5 ${activeSection === 'milestones' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-            <span>Thưởng mốc tháng (FR-09)</span>
+            <span>Thưởng mốc tháng</span>
           </button>
         </div>
 

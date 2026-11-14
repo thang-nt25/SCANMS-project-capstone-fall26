@@ -195,7 +195,7 @@ export class OrdersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'FR-16: Tiếp nhận webhook đối soát thanh toán VietQR từ cổng thanh toán/ngân hàng',
+      'Tiếp nhận webhook đối soát thanh toán VietQR từ cổng thanh toán/ngân hàng',
     description:
       'Xác thực chữ ký HMAC-SHA256, kiểm tra số tiền và cập nhật trạng thái đơn sang PAID kèm ghi nhận AuditLog nguyên tử.',
   })
@@ -265,7 +265,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'FR-20: Tạo đơn hàng thủ công' })
+  @ApiOperation({ summary: 'Tạo đơn hàng thủ công' })
   @ApiResponse({ status: 201, description: 'Tạo đơn thủ công thành công' })
   @ApiResponse({ status: 400, description: 'Dữ liệu đơn hàng không hợp lệ' })
   @ApiResponse({ status: 409, description: 'Mã đơn hàng đã tồn tại' })
@@ -313,7 +313,7 @@ export class OrdersController {
       required: ['file'],
     },
   })
-  @ApiOperation({ summary: 'FR-20: Import danh sách đơn hàng từ Excel' })
+  @ApiOperation({ summary: 'Import danh sách đơn hàng từ Excel' })
   @ApiResponse({
     status: 200,
     description: 'Trả kết quả import theo từng dòng',
@@ -332,7 +332,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'FR-20: Kiểm tra mã giảm giá cho đơn thủ công' })
+  @ApiOperation({ summary: 'Kiểm tra mã giảm giá cho đơn thủ công' })
   async quoteManualDiscount(
     @CurrentUser() manager: OrderManagerIdentity,
     @Body() dto: ManualOrderDiscountDto,
@@ -344,7 +344,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_MANAGER, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'FR-20: Tải file Excel mẫu' })
+  @ApiOperation({ summary: 'Tải file Excel mẫu' })
   async downloadOrderTemplate(@Res() response: Response) {
     const buffer = await this.excelOrderImportService.createTemplate();
     response.set({
@@ -448,7 +448,7 @@ export class OrdersController {
   @Get('track')
   @ApiOperation({
     summary:
-      'FR-17: Tra cứu tiến trình đơn hàng công khai bằng SĐT hoặc Mã đơn',
+      'Tra cứu tiến trình đơn hàng công khai bằng SĐT hoặc Mã đơn',
     description:
       'Khách mua hàng nhập số điện thoại hoặc mã đơn hàng để tra cứu lộ trình vận chuyển: Đã tiếp nhận -> Đang đóng gói -> Đang giao GHN/GHTK -> Giao thành công.',
   })
@@ -464,7 +464,7 @@ export class OrdersController {
     }),
   )
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'FR-18: Upload ảnh/video sau xác minh đơn hàng' })
+  @ApiOperation({ summary: 'Upload ảnh/video sau xác minh đơn hàng' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -489,7 +489,7 @@ export class OrdersController {
   @Post(':id/review')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'FR-18: Gửi đánh giá & review 5 sao sau khi nhận hàng thành công',
+    summary: 'Gửi đánh giá & review 5 sao sau khi nhận hàng thành công',
     description:
       'Khách hàng gửi số sao (1-5★) và nhận xét sau khi đã xác nhận nhận hàng (COMPLETED).',
   })
@@ -556,7 +556,7 @@ export class OrdersController {
   @Get('public/:publicCode')
   @ApiOperation({
     summary:
-      'FR-16 & FR-17: Tra cứu chi tiết đơn hàng cho khách vãng lai (Mã đơn + SĐT/Token)',
+      'Tra cứu chi tiết đơn hàng cho khách vãng lai (Mã đơn + SĐT/Token)',
     description:
       'Chỉ trả thông tin cần thiết và che PII khách hàng, không lộ hoa hồng hay thông tin nội bộ.',
   })
@@ -579,7 +579,7 @@ export class OrdersController {
   @Post('public/:publicCode/request-cancellation-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'FR-16: Yêu cầu mã OTP hủy đơn hàng công khai',
+    summary: 'Yêu cầu mã OTP hủy đơn hàng công khai',
     description:
       'Gửi mã OTP 6 chữ số đến số điện thoại đặt hàng để khách xác thực hủy đơn khi không còn cancellationToken.',
   })
@@ -607,7 +607,7 @@ export class OrdersController {
   @Post('public/:publicCode/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'FR-16: Khách vãng lai hủy đơn hàng qua mã đơn công khai',
+    summary: 'Khách vãng lai hủy đơn hàng qua mã đơn công khai',
     description:
       'Hủy đơn an toàn bằng mã đơn công khai kết hợp token hoặc số điện thoại và OTP',
   })

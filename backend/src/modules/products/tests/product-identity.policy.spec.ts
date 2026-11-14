@@ -38,7 +38,7 @@ describe('Product catalogue identity', () => {
               storeId: 'store',
               sku: { equals: 'SERUM-30', mode: 'insensitive' },
             },
-            { barcode: '8938500123456' },
+            { storeId: 'store', barcode: '8938500123456' },
           ],
         }),
       }),

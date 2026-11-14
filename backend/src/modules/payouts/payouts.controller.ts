@@ -24,7 +24,7 @@ export class PayoutsController {
   constructor(private readonly payoutsService: PayoutsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'FR-22: Yêu cầu rút tiền từ ví khả dụng' })
+  @ApiOperation({ summary: 'Yêu cầu rút tiền từ ví khả dụng' })
   @ApiResponse({
     status: 201,
     description: 'Tạo payout request PENDING thành công',
@@ -41,7 +41,7 @@ export class PayoutsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'FR-22: Lịch sử yêu cầu rút tiền của chính KOL' })
+  @ApiOperation({ summary: 'Lịch sử yêu cầu rút tiền của chính KOL' })
   getMyWithdrawals(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: QueryWithdrawalsDto,

@@ -568,8 +568,8 @@ export class AiRecommendationService {
       kolAnalysis: found,
       recommendationAction:
         found.matchScore >= 80
-          ? 'Khuyến nghị gửi ngay Thẻ Mời Chiến Dịch VIP (FR-27) với mức thưởng hoa hồng cao.'
-          : 'Có thể gửi sản phẩm mẫu (FR-25) để KOL trải nghiệm trước khi ký hợp tác độc quyền.',
+          ? 'Khuyến nghị gửi ngay Thẻ Mời Thỏa thuận Độc quyền với mức thù lao ưu đãi.'
+          : 'Có thể gửi sản phẩm mẫu để KOL trải nghiệm trước khi ký hợp tác độc quyền.',
     };
   }
 

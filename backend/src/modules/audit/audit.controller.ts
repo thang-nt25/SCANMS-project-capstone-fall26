@@ -27,7 +27,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 
-@ApiTags('Audit Logs - Nhật ký kiểm toán & Giám sát an ninh (FR-32)')
+@ApiTags('Audit Logs - Nhật ký kiểm toán & Giám sát an ninh')
 @ApiBearerAuth()
 @Controller('audit-logs')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -41,7 +41,7 @@ export class AuditController {
   @Get()
   @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
   @ApiOperation({
-    summary: 'Tra cứu danh sách nhật ký kiểm toán hệ thống (FR-32)',
+    summary: 'Tra cứu danh sách nhật ký kiểm toán hệ thống',
     description:
       'Lọc đa chiều theo hành động, thời gian, người dùng, từ khóa IP/Email/Action, hỗ trợ phân trang.',
   })

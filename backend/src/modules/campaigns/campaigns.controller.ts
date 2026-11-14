@@ -29,7 +29,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 
-@ApiTags('FR-27 — Exclusive Campaigns & Chat VIP Invitations')
+@ApiTags('Exclusive Deals & Chat VIP Invitations')
 @ApiBearerAuth()
 @Controller('campaigns')
 @UseGuards(JwtAuthGuard, RolesGuard)

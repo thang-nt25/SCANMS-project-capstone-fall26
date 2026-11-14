@@ -9,14 +9,13 @@ export function isValidEan13(value: string): boolean {
 
 type PackageValues = { barcode?: string | null; packageWeight?: number | null;
   packageLength?: number | null; packageWidth?: number | null; packageHeight?: number | null };
-type PackageForm = { barcode: string; packageWeight: number | ''; packageLength: number | '';
+type PackageForm = { barcode?: string; packageWeight: number | ''; packageLength: number | '';
   packageWidth: number | ''; packageHeight: number | '' };
 
 /** Barcode is optional; legacy policy edits preserve unknown physical measurements. */
 export function productPackageInput(form: PackageForm, previous?: PackageValues | null): PackageValues {
   const result: PackageValues = {};
-  if (form.barcode.trim()) {
-    if (!isValidEan13(form.barcode.trim())) throw new Error('Nhập barcode EAN-13 gồm 13 chữ số, đúng số kiểm tra trên bao bì.');
+  if (form.barcode?.trim()) {
     result.barcode = form.barcode.trim();
   } else if (previous?.barcode) {
     result.barcode = null;

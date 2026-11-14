@@ -34,7 +34,7 @@ import {
   SubmitSampleVideoDto,
 } from './dto/sample-request.dto';
 
-@ApiTags('Sample Requests (FR-26)')
+@ApiTags('Sample Requests')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sample-requests')

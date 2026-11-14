@@ -18,6 +18,7 @@ export function Toaster({ position }: ToasterProps) {
       offset={effectiveOffset}
       mobileOffset={{ top: effectiveOffset, left: 12, right: 12 }}
       gap={8}
+      style={{ zIndex: 9999 }}
       containerAriaLabel="Thông báo"
       icons={{
         success: (
