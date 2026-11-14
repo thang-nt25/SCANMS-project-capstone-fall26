@@ -25,7 +25,7 @@ import {
   MyRankStatusDto,
 } from './dto/leaderboard.dto';
 
-@ApiTags('FR-29 — Gamified Creator Leaderboard & Podium')
+@ApiTags('Gamified Creator Leaderboard & Podium')
 @ApiBearerAuth()
 @Controller('leaderboard')
 @UseGuards(JwtAuthGuard)

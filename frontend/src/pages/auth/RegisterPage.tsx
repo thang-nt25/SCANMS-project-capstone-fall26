@@ -12,6 +12,9 @@ import {
   Lock,
   Clock,
   RefreshCw,
+  ShoppingBag,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import { GoogleOfficialButton } from '../../components/auth/GoogleOfficialButton';
@@ -19,6 +22,7 @@ import { ScanMSLogo } from '../../components/common/ScanMSLogo';
 import { Modal } from '../../components/ui/Modal';
 import { toast } from '../../utils/toast';
 import { RegisterShowcase } from '../../components/auth/RegisterShowcase';
+import PartnerUpgradeTab from '../customer/PartnerUpgradeTab';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -30,6 +34,11 @@ export default function RegisterPage() {
       ? requestedRedirect
       : null;
   const loginUrl = returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login';
+
+  const [registerIntent, setRegisterIntent] = useState<'CUSTOMER' | 'COLLABORATOR'>(() =>
+    searchParams.get('role') === 'kol' ? 'COLLABORATOR' : 'CUSTOMER',
+  );
+  const [onboardingStep, setOnboardingStep] = useState<'account' | 'kol_kyc'>('account');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -148,7 +157,11 @@ export default function RegisterPage() {
 
       try {
         await authService.login(registeredEmail, password);
-        if (returnTo) {
+        if (registerIntent === 'COLLABORATOR') {
+          setShowOtpModal(false);
+          setOnboardingStep('kol_kyc');
+          toast.success('Đã xác thực tài khoản! Hãy hoàn tất hồ sơ KOL & eKYC ở Bước 3.');
+        } else if (returnTo) {
           navigate(returnTo);
         } else {
           navigate('/customer/orders');
@@ -176,11 +189,16 @@ export default function RegisterPage() {
       setLoading(true);
       setError(null);
       await authService.googleLogin(idToken, 'CUSTOMER');
-      toast.success('Đăng ký & xác thực Google thành công!');
-      if (returnTo) {
-        navigate(returnTo);
+      if (registerIntent === 'COLLABORATOR') {
+        setOnboardingStep('kol_kyc');
+        toast.success('Đã xác thực Google! Hãy hoàn tất hồ sơ KOL & eKYC ở Bước 3.');
       } else {
-        navigate('/customer/orders');
+        toast.success('Đăng ký & xác thực Google thành công!');
+        if (returnTo) {
+          navigate(returnTo);
+        } else {
+          navigate('/customer/orders');
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Đăng ký qua Google thất bại');
@@ -206,16 +224,101 @@ export default function RegisterPage() {
       </header>
 
       <main className="register-page-main mx-auto mt-0 mb-auto w-full max-w-[1280px]">
+        {onboardingStep === 'kol_kyc' ? (
+          <div className="space-y-5 py-2">
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-semibold text-[#7D715E]">
+                  <span className="inline-flex items-center gap-1.5 text-[#059669]">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    1. Tạo tài khoản
+                  </span>
+                  <span className="h-px w-5 bg-[#EAE4D7]" />
+                  <span className="inline-flex items-center gap-1.5 text-[#059669]">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    2. Xác thực OTP
+                  </span>
+                  <span className="h-px w-5 bg-[#EAE4D7]" />
+                  <span className="inline-flex items-center gap-1.5 text-[#B88E4F]">
+                    <span className="w-5 h-5 rounded-full bg-[#C59B58] text-white inline-flex items-center justify-center text-[10px] font-bold">
+                      3
+                    </span>
+                    Hồ sơ KOL &amp; eKYC
+                  </span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold text-[#1A1612] m-0">
+                  Hoàn tất hồ sơ Cộng tác viên / KOL
+                </h1>
+                <p className="text-xs text-[#7D715E] m-0 leading-relaxed max-w-2xl">
+                  Tài khoản Khách hàng của bạn đã được tạo và xác thực thành công. Hãy điền thông tin kênh mạng xã hội và CCCD bên dưới để gửi Ban Quản Trị xét duyệt nâng cấp lên Cộng tác viên.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(returnTo || '/customer/orders')}
+                className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-[#EAE4D7] bg-[#FAF8F5] hover:bg-[#F3EFE6] text-xs font-semibold text-[#7D715E] hover:text-[#1A1612] transition cursor-pointer"
+              >
+                Để sau, vào trang Khách hàng
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-[#EAE4D7] bg-white p-5 sm:p-6 shadow-xs">
+              <PartnerUpgradeTab />
+            </div>
+          </div>
+        ) : (
         <div className="register-experience grid grid-cols-[1.06fr_1fr] overflow-hidden rounded-[30px] border border-line bg-white shadow-[0_20px_64px_rgb(125_113_94/9%)] max-[800px]:grid-cols-1 max-[800px]:rounded-3xl">
           <RegisterShowcase name={fullName} />
           <div className="register-form-panel flex min-w-0 flex-col gap-[18px] px-10 py-6 max-[1100px]:px-[26px] max-[800px]:gap-[19px] max-[800px]:p-[30px] max-[480px]:gap-[17px] max-[480px]:px-5 max-[480px]:py-[25px] register-compact:gap-3.5 register-compact:pt-5 register-compact:pb-[18px] [&_input]:accent-brand-strong [&_input::placeholder]:text-muted [&_input::placeholder]:font-normal">
             <div className="register-form-heading [&>h2]:mt-[13px] [&>h2]:mb-2 [&>h2]:text-[32px] [&>h2]:leading-[1.2] [&>h2]:font-bold [&>h2]:tracking-[-.7px] [&>h2>span]:text-brand-strong [&>p]:m-0 [&>p]:text-[13px] [&>p]:leading-[1.6] [&>p]:text-muted max-[480px]:[&>h2]:text-[29px] register-compact:[&>h2]:mt-3 register-compact:[&>h2]:mb-[7px] register-compact:[&>h2]:text-[29px]">
-              <div className="register-steps flex items-center gap-3 text-[11px] text-muted [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 [&_b]:grid [&_b]:size-5 [&_b]:place-items-center [&_b]:rounded-full [&_b]:border [&_b]:border-line [&_b]:text-[10px] [&_[aria-current]]:text-[#90682F] [&_[aria-current]_b]:border-brand-strong [&_[aria-current]_b]:bg-brand-strong [&_[aria-current]_b]:text-white [&>i]:h-px [&>i]:w-7 [&>i]:bg-line" aria-label="Các bước đăng ký">
+              <div className="register-steps flex flex-wrap items-center gap-2.5 text-[11px] text-muted [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 [&_b]:grid [&_b]:size-5 [&_b]:place-items-center [&_b]:rounded-full [&_b]:border [&_b]:border-line [&_b]:text-[10px] [&_[aria-current]]:text-[#90682F] [&_[aria-current]_b]:border-brand-strong [&_[aria-current]_b]:bg-brand-strong [&_[aria-current]_b]:text-white [&>i]:h-px [&>i]:w-5 [&>i]:bg-line" aria-label="Các bước đăng ký">
                 <span aria-current={showOtpModal ? undefined : 'step'}><b>1</b> Tạo tài khoản</span><i aria-hidden="true" />
-                <span aria-current={showOtpModal ? 'step' : undefined}><b>2</b> Xác thực email</span>
+                <span aria-current={showOtpModal ? 'step' : undefined}><b>2</b> Xác thực OTP</span>
+                {registerIntent === 'COLLABORATOR' && (
+                  <>
+                    <i aria-hidden="true" />
+                    <span><b>3</b> Hồ sơ KOL &amp; eKYC</span>
+                  </>
+                )}
               </div>
               <h2 className="font-display">Đăng <span>ký</span></h2>
               <p>Một tài khoản, nhiều kết nối mới.</p>
+            </div>
+
+            {/* Khay chọn mục đích đăng ký (Warm Sand Gold) */}
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#F3EFE6] border border-[#EAE4D7]">
+                <button
+                  type="button"
+                  onClick={() => setRegisterIntent('CUSTOMER')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    registerIntent === 'CUSTOMER'
+                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
+                      : 'text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <ShoppingBag className={`w-3.5 h-3.5 ${registerIntent === 'CUSTOMER' ? 'text-[#B88E4F]' : ''}`} />
+                  <span>Khách hàng</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegisterIntent('COLLABORATOR')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    registerIntent === 'COLLABORATOR'
+                      ? 'bg-white text-[#1A1612] shadow-2xs border border-[#EEDFC6]'
+                      : 'text-[#7D715E] hover:text-[#1A1612]'
+                  }`}
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${registerIntent === 'COLLABORATOR' ? 'text-[#B88E4F]' : ''}`} />
+                  <span>Cộng tác viên / KOL</span>
+                </button>
+              </div>
+              {registerIntent === 'COLLABORATOR' && (
+                <p className="text-[11px] text-[#7D715E] m-0 px-0.5 leading-snug">
+                  Bước 1 tạo tài khoản &amp; xác thực OTP, sau đó chuyển sang Bước 2 điền hồ sơ KOL &amp; CCCD gửi Quản lý duyệt.
+                </p>
+              )}
             </div>
 
             {/* Google Button */}
@@ -381,6 +484,7 @@ export default function RegisterPage() {
             </div>
           </div>
         </div>
+        )}
       </main>
 
       {/* Modal Xác thực OTP */}

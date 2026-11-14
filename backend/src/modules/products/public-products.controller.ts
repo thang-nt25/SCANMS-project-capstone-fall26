@@ -37,7 +37,7 @@ class OptionalJwtAuthGuard extends AuthGuard('jwt') {
   }
 }
 
-@ApiTags('Public Product Landing Page (FR-15)')
+@ApiTags('Public Product Landing Page')
 @Controller('public/products')
 export class PublicProductsController {
   constructor(
@@ -119,7 +119,7 @@ export class PublicProductsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Lấy dữ liệu Landing Page mua hàng công khai & Video Review (FR-15)',
+      'Lấy dữ liệu Landing Page mua hàng công khai & Video Review',
     description:
       'Cung cấp dữ liệu công khai an toàn cho khách vãng lai: Thông tin sản phẩm, tồn kho, chính sách Shop, video review KOL đã APPROVED (ưu tiên đúng KOL referral), thống kê sao và đánh giá đã duyệt có huy hiệu Đã mua hàng. Không lộ PII, commission hay thông tin nội bộ.',
   })
@@ -168,7 +168,7 @@ export class PublicProductsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Tiếp nhận sự kiện tương tác người dùng trên Landing Page (FR-15 Analytics)',
+      'Tiếp nhận sự kiện tương tác người dùng trên Landing Page Analytics',
     description:
       'Ghi nhận các sự kiện page_view, video_start, video_complete, cta_click, checkout_start phục vụ thống kê chuyển đổi tiếp thị.',
   })
@@ -201,7 +201,7 @@ export class PublicProductsController {
   @Get([':idOrSlug/seo', 'preview/:idOrSlug', 'p/:idOrSlug'])
   @ApiOperation({
     summary:
-      'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter) (FR-15 SEO)',
+      'Server-Side Render Open Graph Meta Tags cho mạng xã hội (Facebook, Zalo, Twitter)',
   })
   async getSeoPreview(
     @Param('idOrSlug') idOrSlug: string,

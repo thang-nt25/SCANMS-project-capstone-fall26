@@ -332,7 +332,7 @@ export function ShopCreatorIncentivesTab() {
             }`}
           >
             <Trophy className={`w-3.5 h-3.5 ${activeSection === 'milestones' ? 'text-[#B88E4F]' : 'text-[#7D715E]'}`} />
-            <span>Thưởng mốc tháng (FR-09)</span>
+            <span>Thưởng mốc tháng</span>
           </button>
         </div>
 
@@ -598,7 +598,7 @@ export function ShopCreatorIncentivesTab() {
               </span>
               <div>
                 <span className="font-bold text-[#1A1612] block">
-                  Quy chế Thưởng Mốc Doanh Số Tháng (FR-09 Phụ Trợ)
+                  Quy chế Thưởng Mốc Doanh Số Tháng
                 </span>
                 <span className="text-[11px] text-[#7D715E] block mt-0.5">
                   Quyết toán tự động vào ngày 15 tháng kế tiếp (chờ đủ 14 ngày hết hạn đổi trả của đơn cuối tháng)

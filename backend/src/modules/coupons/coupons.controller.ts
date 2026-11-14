@@ -48,7 +48,7 @@ import { QueryCouponsDto } from './dto/query-coupons.dto';
 // =========================================================================
 // 1. PUBLIC CHECKOUT CONTROLLER (GUEST & LOGGED IN)
 // =========================================================================
-@ApiTags('Public - Coupons (FR-12)')
+@ApiTags('Public - Coupons')
 @Controller('coupons')
 export class PublicCouponsController {
   constructor(private readonly service: CouponsService) {}
@@ -240,7 +240,7 @@ export class PublicCouponsController {
 // =========================================================================
 // 2. KOL / CTV CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Collaborator - Coupons (FR-12)')
+@ApiTags('Collaborator - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.COLLABORATOR)
@@ -305,7 +305,7 @@ export class CollaboratorCouponsController {
   @Get('eligible-stores')
   @ApiOperation({
     summary:
-      'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon (FR-12)',
+      'Lấy danh sách các Gian hàng KOL đã được APPROVED để tạo coupon',
   })
   @ApiResponse({ status: 200, description: 'Danh sách gian hàng hợp lệ' })
   async getEligibleStores(@CurrentUser('id') collaboratorId: string) {
@@ -384,7 +384,7 @@ export class CollaboratorCouponsController {
 // =========================================================================
 // 3. SHOP CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Store - Coupons (FR-12)')
+@ApiTags('Store - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SHOP_MANAGER, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)
@@ -604,7 +604,7 @@ export class StoreCouponsController {
 // =========================================================================
 // 4. ADMIN CONTROLLER (FR-12)
 // =========================================================================
-@ApiTags('Admin - Coupons (FR-12)')
+@ApiTags('Admin - Coupons')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_MANAGER)

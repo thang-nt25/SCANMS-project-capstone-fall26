@@ -305,14 +305,17 @@ export class ApplyShopUpgradeDto {
 }
 
 export class ReviewUpgradeApplicationDto {
-  @ApiProperty({ enum: ['VERIFIED', 'REJECTED'], example: 'VERIFIED' })
-  @IsIn(['VERIFIED', 'REJECTED'])
+  @ApiProperty({
+    enum: ['VERIFIED', 'NEEDS_INFO', 'REJECTED'],
+    example: 'VERIFIED',
+  })
+  @IsIn(['VERIFIED', 'NEEDS_INFO', 'REJECTED'])
   @IsNotEmpty()
-  status: 'VERIFIED' | 'REJECTED';
+  status: 'VERIFIED' | 'NEEDS_INFO' | 'REJECTED';
 
   @ApiPropertyOptional({
     example:
-      'Hồ sơ đã được xác minh đầy đủ giấy phép kinh doanh và chứng từ xuất xứ.',
+      'Vui lòng tải lại ảnh CCCD rõ nét hơn hoặc cập nhật đúng link kênh.',
   })
   @IsOptional()
   @IsString()
