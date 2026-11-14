@@ -1,4 +1,5 @@
 import { assertCataloguePriceEdit, assertFloor, lockPricingProducts } from '../pricing/pricing-policy';
+import { calculateMinSafePrice } from '../pricing/pricing-math';
 import {
   Injectable,
   NotFoundException,
@@ -1317,6 +1318,28 @@ export class ProductsService {
     this.assertDistinctVariantAttributes(
       preparedVariants.map((variant) => variant.attributes),
     );
+    const effectiveProductFloor = Number(
+      dto.floorPrice ?? preparedVariants[0]?.floorPrice ?? 0,
+    );
+    if (effectiveProductFloor > 0) {
+      const minSafe = calculateMinSafePrice(effectiveProductFloor);
+      if (Number(dto.price) < minSafe) {
+        throw new BadRequestException(
+          `Giá bán (${Number(dto.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+        );
+      }
+    }
+    for (const v of preparedVariants) {
+      const vFloor = Number(v.floorPrice ?? 0);
+      if (vFloor > 0) {
+        const minSafe = calculateMinSafePrice(vFloor);
+        if (Number(v.price) < minSafe) {
+          throw new BadRequestException(
+            `SKU ${v.sku}: Giá bán (${Number(v.price).toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+          );
+        }
+      }
+    }
 
     const product = await this.prisma.$transaction(async (tx) => {
       await assertProductIdentity(tx, { storeId: store.id, sku: dto.sku, barcode: dto.barcode });
@@ -1593,6 +1616,18 @@ export class ProductsService {
       throw new BadRequestException(
         `Hạn mức mẫu không thể thấp hơn số mẫu Shop đã duyệt (${product.sampleGrantedCount}).`,
       );
+    }
+    if (dto.price !== undefined || dto.floorPrice !== undefined) {
+      const nextFloor = Number(dto.floorPrice ?? product.floorPrice ?? 0);
+      const nextPrice = Number(dto.price ?? product.price ?? 0);
+      if (nextFloor > 0) {
+        const minSafe = calculateMinSafePrice(nextFloor);
+        if (nextPrice < minSafe) {
+          throw new BadRequestException(
+            `Giá bán (${nextPrice.toLocaleString('vi-VN')} ₫) phải >= ${minSafe.toLocaleString('vi-VN')} ₫ để đảm bảo không lỗ sau Voucher KOL (10%) và Thù lao KOL (25%).`,
+          );
+        }
+      }
     }
 
 

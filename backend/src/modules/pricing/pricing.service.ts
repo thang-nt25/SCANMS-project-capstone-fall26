@@ -22,6 +22,10 @@ import {
   lockPricingProducts,
   reconcileProductPrice,
 } from './pricing-policy';
+import {
+  calculateMinSafePrice,
+  estimateMaxLossPerUnit,
+} from './pricing-math';
 
 @Injectable()
 export class PricingService {
@@ -78,10 +82,10 @@ export class PricingService {
     });
   }
 
-  list(actorId: string, role: UserRole) {
+  async list(actorId: string, role: UserRole) {
     if (!this.reviewer(role) && role !== UserRole.SHOP_MANAGER)
       throw new ForbiddenException();
-    return this.prisma.productPricePromotion.findMany({
+    const rows = await this.prisma.productPricePromotion.findMany({
       where: this.reviewer(role) ? {} : { store: managedStoreWhere(actorId) },
       include: {
         product: { select: { id: true, title: true, sku: true, imageUrl: true, floorPrice: true, listPrice: true, price: true } },
@@ -90,6 +94,21 @@ export class PricingService {
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
+    });
+    return rows.map((row) => {
+      const floor = Number(row.variant?.floorPrice ?? row.product?.floorPrice ?? 0);
+      const minSafePrice = calculateMinSafePrice(floor);
+      const proposed = Number(row.proposedPrice || 0);
+      const isClearanceBelowSafeFloor = minSafePrice > 0 && proposed < minSafePrice;
+      const maxLossPerUnit = isClearanceBelowSafeFloor
+        ? estimateMaxLossPerUnit(proposed, floor)
+        : 0;
+      return {
+        ...row,
+        minSafePrice,
+        isClearanceBelowSafeFloor,
+        maxLossPerUnit,
+      };
     });
   }
 
@@ -191,7 +210,7 @@ export class PricingService {
   private validatePrice(
     product: Awaited<ReturnType<PricingService['access']>>,
     dto: { variantId?: string | null; proposedPrice: Prisma.Decimal | number },
-  ) {
+  ): { isClearanceBelowSafeFloor: boolean; minSafePrice: number; maxLossPerUnit: number } {
     const targets = dto.variantId
       ? product.variants.filter((variant) => variant.id === dto.variantId)
       : product.variants;
@@ -199,12 +218,16 @@ export class PricingService {
       throw new BadRequestException(
         'Phân loại không thuộc sản phẩm hoặc đã ngừng bán.',
       );
+    const proposedNum = Number(dto.proposedPrice);
+    let isClearanceBelowSafeFloor = false;
+    let maxMinSafePrice = 0;
+    let maxLossPerUnit = 0;
+
     if (!targets.length) {
       if (product.floorPrice == null)
         throw new BadRequestException(
           'Sản phẩm chưa có giá sàn được phê duyệt.',
         );
-      assertFloor(dto.proposedPrice, product.floorPrice);
       if (
         new Prisma.Decimal(dto.proposedPrice).gte(
           product.listPrice ?? product.price,
@@ -213,12 +236,17 @@ export class PricingService {
         throw new BadRequestException(
           'Giá khuyến mãi phải thấp hơn giá niêm yết.',
         );
+      const floorNum = Number(product.floorPrice);
+      maxMinSafePrice = calculateMinSafePrice(floorNum);
+      if (proposedNum < maxMinSafePrice) {
+        isClearanceBelowSafeFloor = true;
+        maxLossPerUnit = estimateMaxLossPerUnit(proposedNum, floorNum);
+      }
     }
     for (const variant of targets) {
       const floor = variant.floorPrice ?? product.floorPrice;
       if (floor == null)
         throw new BadRequestException(`SKU ${variant.sku} chưa có giá sàn.`);
-      assertFloor(dto.proposedPrice, floor, `SKU ${variant.sku}`);
       if (
         new Prisma.Decimal(dto.proposedPrice).gte(
           variant.listPrice ??
@@ -230,7 +258,22 @@ export class PricingService {
         throw new BadRequestException(
           `Giá khuyến mãi SKU ${variant.sku} phải thấp hơn giá niêm yết.`,
         );
+      const floorNum = Number(floor);
+      const safePrice = calculateMinSafePrice(floorNum);
+      if (safePrice > maxMinSafePrice) maxMinSafePrice = safePrice;
+      if (proposedNum < safePrice) {
+        isClearanceBelowSafeFloor = true;
+        maxLossPerUnit = Math.max(
+          maxLossPerUnit,
+          estimateMaxLossPerUnit(proposedNum, floorNum),
+        );
+      }
     }
+    return {
+      isClearanceBelowSafeFloor,
+      minSafePrice: maxMinSafePrice,
+      maxLossPerUnit,
+    };
   }
 
   async batchCreate(actorId: string, role: UserRole, dto: BatchCreatePricePromotionDto) {
@@ -398,7 +441,15 @@ export class PricingService {
           throw new BadRequestException(
             'Khoảng thời gian đề xuất đã kết thúc.',
           );
-        this.validatePrice(product, promotion);
+        const priceCheck = this.validatePrice(product, promotion);
+        if (
+          priceCheck.isClearanceBelowSafeFloor &&
+          role !== UserRole.SYSTEM_ADMIN
+        ) {
+          throw new ForbiddenException(
+            'Khuyến mãi xả hàng dưới giá sàn an toàn bắt buộc phải do SYSTEM_ADMIN phê duyệt.',
+          );
+        }
         const overlap = await tx.productPricePromotion.count({
           where: {
             productId: promotion.productId,

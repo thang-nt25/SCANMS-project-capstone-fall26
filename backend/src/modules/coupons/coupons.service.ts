@@ -1483,13 +1483,13 @@ export class CouponsService {
         dto.campaignId ?? coupon.campaignId,
       );
 
-    // Validate percentage
+    // Validate percentage (default KOL voucher cap <= 10% to preserve minSafePrice margin)
     if (
       dto.discountType === DiscountType.PERCENTAGE &&
-      (dto.discountValue <= 0 || dto.discountValue > 100)
+      (dto.discountValue <= 0 || dto.discountValue > 10)
     ) {
       throw new BadRequestException(
-        'Tỷ lệ giảm giá theo phần trăm phải nằm trong khoảng từ 1% đến 100%',
+        'Voucher KOL mặc định tối đa 10% để bảo vệ ngưỡng giá sàn an toàn.',
       );
     }
 
